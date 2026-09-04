@@ -359,10 +359,15 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Can_CommitValtanCompositionPatternSoundGeneration(SoundStatus)",
             save_body,
         )
-        self.assertLess(
-            save_body.index("Validate_ValtanCompositionPatternSoundGraphDependencies("),
-            save_body.index("Save_ValtanCompositionProduct("),
+        validation_at = save_body.index(
+            "Validate_ValtanCompositionPatternSoundGraphDependencies("
         )
+        prepare_at = save_body.index(
+            "Prepare_ValtanCompositionPatternSoundSave("
+        )
+        begin_at = save_body.index("Begin_ValtanCompositionSave(")
+        self.assertLess(validation_at, prepare_at)
+        self.assertLess(prepare_at, begin_at)
         for token in (
             "bPatternMutationAdmitted",
             "Prepare_ValtanCompositionPatternSoundSave(",
@@ -496,7 +501,18 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             if row["patternId"] == "VALTAN_DASH_CHARGE"
             and row["stageId"] == "GROGGY"
         ]
-        self.assertEqual([], recovery_sounds)
+        occurrence_by_id = {
+            row["clipOccurrenceId"]: row for row in occurrences
+        }
+        self.assertEqual(
+            set(occurrence_by_id),
+            {row["clipOccurrenceId"] for row in recovery_sounds},
+        )
+        for cue in recovery_sounds:
+            with self.subTest(soundOccurrenceId=cue["occurrenceId"]):
+                occurrence = occurrence_by_id[cue["clipOccurrenceId"]]
+                self.assertGreaterEqual(cue["startMs"], 0)
+                self.assertLess(cue["startMs"], occurrence["playMs"])
         self.assertNotIn(
             "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
             {row["clipOccurrenceId"] for row in sounds["cues"]},
@@ -1080,12 +1096,15 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(", save_start
         )
         save_body = self.workbench_cpp[save_start:save_end]
-        self.assertLess(
-            save_body.index(
-                "Validate_ValtanCompositionPatternSoundGraphDependencies("
-            ),
-            save_body.index("Save_ValtanCompositionProduct("),
+        validation_at = save_body.index(
+            "Validate_ValtanCompositionPatternSoundGraphDependencies("
         )
+        prepare_at = save_body.index(
+            "Prepare_ValtanCompositionPatternSoundSave("
+        )
+        begin_at = save_body.index("Begin_ValtanCompositionSave(")
+        self.assertLess(validation_at, prepare_at)
+        self.assertLess(prepare_at, begin_at)
 
     def test_unrelated_soundless_save_does_not_readmit_unchanged_sound_debt(self) -> None:
         sound_clip = {

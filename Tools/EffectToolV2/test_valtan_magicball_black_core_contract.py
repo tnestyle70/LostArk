@@ -13,6 +13,14 @@ GROUP_PATH = (
     / "Groups"
     / "boss.valtan.magicball.effectv2group.json"
 )
+AURA_GROUP_PATH = (
+    ROOT
+    / "Data"
+    / "Effects"
+    / "V2"
+    / "Groups"
+    / "boss.valtan.magicball.aura.effectv2group.json"
+)
 BINDINGS_PATH = (
     ROOT
     / "Data"
@@ -94,6 +102,61 @@ class ValtanMagicballBlackCoreContractTests(unittest.TestCase):
                     black["scale"]["start"], cyan["scale"]["start"]
                 )
             )
+        )
+
+    def test_channel_core_and_aura_share_the_stage_clock_and_stop_with_stage(self) -> None:
+        bindings = load_json(BINDINGS_PATH)["bindings"]
+        resources = {
+            "boss.valtan.magicball",
+            "boss.valtan.magicball.aura",
+        }
+        rows = [
+            row
+            for row in bindings
+            if row["resource"]["kind"] == "GROUP"
+            and row["resource"]["id"] in resources
+            and row["scope"]["actionId"] == "valtan.authoring.stagger-slot.channel"
+        ]
+        self.assertEqual(resources, {row["resource"]["id"] for row in rows})
+        self.assertEqual(2, len(rows))
+        for row in rows:
+            self.assertEqual(
+                {
+                    "patternId": "VALTAN_STAGGER_SLOT",
+                    "stageId": "CHANNEL",
+                    "actionId": "valtan.authoring.stagger-slot.channel",
+                },
+                row["scope"],
+            )
+            self.assertEqual(
+                {
+                    "basis": "STAGE",
+                    "clipOccurrenceId": None,
+                    "startMs": 0,
+                    "repeatPolicy": "ONCE",
+                },
+                row["clock"],
+            )
+            self.assertEqual("STAGE_END", row["stopPolicy"])
+
+        aura_group = load_json(AURA_GROUP_PATH)
+        self.assertEqual(0, aura_group["durationMs"])
+        self.assertEqual(2, len(aura_group["children"]))
+        for child in aura_group["children"]:
+            effect = load_effect(child["resource"]["id"])
+            self.assertEqual("Mesh", effect["effectType"])
+            self.assertEqual(12.0, effect["params"]["lifetime"])
+            self.assertFalse(effect["params"]["loop"])
+
+        runtime = (ROOT / "Client" / "Private" / "EffectV2_Runtime.cpp").read_text(
+            encoding="utf-8"
+        )
+        document = (ROOT / "Client" / "Private" / "EffectV2_Document.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Prune_Spawned(State, false, true);", runtime)
+        self.assertIn(
+            "EFFECT_V2_STOP_POLICY::STAGE_END == Binding.eStopPolicy", document
         )
 
     def test_runtime_preserves_equal_depth_group_submission_order(self) -> None:

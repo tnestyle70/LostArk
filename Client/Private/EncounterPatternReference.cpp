@@ -495,7 +495,8 @@ namespace
 					!Read_String(action, "targetingPolicy", false,
 						targetingPolicy) ||
 					(targetingPolicy != "PER_ALIVE_PLAYER" &&
-					 targetingPolicy != "BOSS_RELATIVE") ||
+					 targetingPolicy != "BOSS_RELATIVE" &&
+					 targetingPolicy != "ARENA_CENTER") ||
 					!Read_String(action, "layout", false, layout) ||
 					!Read_Unsigned(action, "countPerResolvedTarget", 8u,
 						countPerResolvedTarget) ||
@@ -556,7 +557,8 @@ namespace
 					targetingPolicy == "PER_ALIVE_PLAYER" &&
 					(hasNoArenaSupplement || hasArenaSupplement);
 				const bool_t isBossRelativeContract =
-					targetingPolicy == "BOSS_RELATIVE" &&
+					(targetingPolicy == "BOSS_RELATIVE" ||
+					 targetingPolicy == "ARENA_CENTER") &&
 					countPerResolvedTarget >= 2u &&
 					maximumTotalObjects >= countPerResolvedTarget &&
 					1u == spawnCount && 0u == spawnIntervalMs &&
@@ -582,8 +584,7 @@ namespace
 				{
 					const DATA_JSON_VALUE* stageId = stage.Find("stageId");
 					const DATA_JSON_VALUE* actionId = stage.Find("actionId");
-					constexpr double PORTAL_TRIANGLE_RADIUS_M =
-						25.403411844343534;
+					constexpr double PORTAL_TRIANGLE_RADIUS_M = 7.0;
 					if (nullptr == stageId || !stageId->Is_String() ||
 						stageId->Get_String() != "ACTIVE" ||
 						nullptr == actionId || !actionId->Is_String() ||

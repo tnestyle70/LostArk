@@ -6457,6 +6457,11 @@ void CMainApp::RenderDeveloperTools()
 		bCombatDebugChanged = true;
 	}
 	if (ImGui::Checkbox(
+			"Combat Object Hit", &CombatDebug.bCombatObjectHit))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
 			"Counter Proxy", &CombatDebug.bCounterProxy))
 	{
 		bCombatDebugChanged = true;
@@ -6475,7 +6480,7 @@ void CMainApp::RenderDeveloperTools()
 			Client::CClientReplication::Get_GlobalCombatDebugVisibility();
 	}
 	ImGui::TextDisabled(
-		"Global revision %llu. Pink=pulse, amber=Stage, cyan=counter. Authoring preview remains independent.",
+		"Global revision %llu. Pink=pulse, amber=Stage, green=combat object, cyan=counter. Authoring preview remains independent.",
 		static_cast<unsigned long long>(CombatDebug.iRevision));
 	ImGui::SeparatorText("Inventory (Debug)");
 	const std::vector<Client::ITEM_DEFINITION>& debugItems =

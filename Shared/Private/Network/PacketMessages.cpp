@@ -376,6 +376,28 @@ namespace
 			0u != snapshot.iGameplayPhase;
 	}
 
+	bool Is_Default_PortalRushRouteSnapshot(
+		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& route)
+	{
+		return !route.isValid &&
+			0.f == route.fStartX && 0.f == route.fStartY &&
+			0.f == route.fStartZ && 0.f == route.fEndX &&
+			0.f == route.fEndY && 0.f == route.fEndZ;
+	}
+
+	bool Is_Valid_PortalRushRouteSnapshot(
+		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& route)
+	{
+		const float deltaX = route.fEndX - route.fStartX;
+		const float deltaZ = route.fEndZ - route.fStartZ;
+		return route.isValid &&
+			std::isfinite(route.fStartX) && std::isfinite(route.fStartY) &&
+			std::isfinite(route.fStartZ) && std::isfinite(route.fEndX) &&
+			std::isfinite(route.fEndY) && std::isfinite(route.fEndZ) &&
+			std::isfinite(deltaX) && std::isfinite(deltaZ) &&
+			deltaX * deltaX + deltaZ * deltaZ > 0.000001f;
+	}
+
 	bool Is_Valid_WorldEntitySnapshot(
 		const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
 	{
@@ -395,6 +417,11 @@ namespace
 			(snapshot.hasBossCombatState ||
 			 snapshot.iPatternTargetNetEntityId ==
 				LostArk::Shared::INVALID_NET_ENTITY_ID) &&
+			(snapshot.hasBossCombatState ||
+			 !snapshot.PortalRushRoute.isValid) &&
+			(snapshot.PortalRushRoute.isValid ?
+				Is_Valid_PortalRushRouteSnapshot(snapshot.PortalRushRoute) :
+				Is_Default_PortalRushRouteSnapshot(snapshot.PortalRushRoute)) &&
 			(snapshot.hasBossCombatState ?
 				(Is_Valid_BossCombatSnapshot(snapshot.BossCombat) &&
 				 snapshot.iPhase == snapshot.BossCombat.iGameplayPhase) :
@@ -2278,6 +2305,16 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iPatternSequence);
 		writer.Write_U32(entity.iPatternStageIndex);
 		writer.Write_U32(entity.iPatternTargetNetEntityId);
+		writer.Write_U8(entity.PortalRushRoute.isValid ? 1u : 0u);
+		if (entity.PortalRushRoute.isValid)
+		{
+			writer.Write_F32(entity.PortalRushRoute.fStartX);
+			writer.Write_F32(entity.PortalRushRoute.fStartY);
+			writer.Write_F32(entity.PortalRushRoute.fStartZ);
+			writer.Write_F32(entity.PortalRushRoute.fEndX);
+			writer.Write_F32(entity.PortalRushRoute.fEndY);
+			writer.Write_F32(entity.PortalRushRoute.fEndZ);
+		}
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
@@ -2480,6 +2517,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	{
 		WORLD_ENTITY_SNAPSHOT entity{};
 		std::uint8_t rawAction = 0;
+		std::uint8_t rawHasPortalRushRoute = 0;
 		std::uint8_t rawHasBossCombatState = 0;
 		if (!reader.Read_U32(entity.iNetEntityId) ||
 			!reader.Read_U8(rawAction) ||
@@ -2495,6 +2533,23 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(entity.iPatternSequence) ||
 			!reader.Read_U32(entity.iPatternStageIndex) ||
 			!reader.Read_U32(entity.iPatternTargetNetEntityId) ||
+			!reader.Read_U8(rawHasPortalRushRoute) ||
+			rawHasPortalRushRoute > 1u)
+		{
+			return false;
+		}
+		entity.PortalRushRoute.isValid = 0u != rawHasPortalRushRoute;
+		if (entity.PortalRushRoute.isValid &&
+			(!reader.Read_F32(entity.PortalRushRoute.fStartX) ||
+			 !reader.Read_F32(entity.PortalRushRoute.fStartY) ||
+			 !reader.Read_F32(entity.PortalRushRoute.fStartZ) ||
+			 !reader.Read_F32(entity.PortalRushRoute.fEndX) ||
+			 !reader.Read_F32(entity.PortalRushRoute.fEndY) ||
+			 !reader.Read_F32(entity.PortalRushRoute.fEndZ)))
+		{
+			return false;
+		}
+		if (
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
 			!reader.Read_U8(entity.iPhase) ||

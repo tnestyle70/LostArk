@@ -511,6 +511,10 @@ Core를 직렬 재실행한다. 제품 UI는 같은 상태에서 last-good을 �
   `LOSTARK_RESOURCE_ROOT`/`LOSTARK_SHARED_ASSET_ROOT`로 실제 루트를 읽기 전용 지정하거나 검사에 필요한
   최소 파일만 복사한다. worktree 삭제 전에는 reparse point를 전수 확인하고, 발견된 link는 target을
   순회하지 않는 unlink 명령으로 먼저 분리한다.
+- `Client/Bin/Resources` 자체, 그 하위 일곱 폴더, 그리고 이를 포함하는 상위 폴더는 어떤 정리·복원 요청에서도
+  `rm -rf`, `Remove-Item -Recurse`, `git clean -x`로 지우지 않는다. 정리 대상은 `.vs`, `EngineSDK`, `out`,
+  `x64`, 구성별 Bin 산출물처럼 재생성 가능한 폴더로 한정하고, 삭제 명령의 경로가 Resources를 포함하는지
+  실행 전에 경로를 출력해 확인한다. 2026-09-03에 실제로 Drive pack 전체가 삭제된 사고가 있었다.
 - 이 절의 source/Product validate, native harness, Product/Core/FullDiagnostic PASS는 화면 품질 PASS가
   아니다. Effect 반복·위치·색, collider wire, Ghost body와 Sound timing의 최종 판정은 0절의 사용자
   전용 경계를 그대로 적용하며, 사용자의 서면 관찰 전에는 first pixel, eye smoke, visual PASS를

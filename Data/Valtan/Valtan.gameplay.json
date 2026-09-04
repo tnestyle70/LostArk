@@ -456,14 +456,14 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_PART_BREAK",
-        "sourceChainId": "derived.part-break",
+        "patternId": "VALTAN_FIST_IN_OUT_LARGE",
+        "sourceChainId": "derived.fist-in-out-large",
         "authoringPhase": 1,
         "admissionState": "DERIVED_SERVER_PATTERN"
       },
       {
-        "patternId": "VALTAN_FIST_IN_OUT_LARGE",
-        "sourceChainId": "derived.fist-in-out-large",
+        "patternId": "VALTAN_PART_BREAK",
+        "sourceChainId": "derived.part-break",
         "authoringPhase": 1,
         "admissionState": "DERIVED_SERVER_PATTERN"
       }
@@ -1678,7 +1678,7 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0
+                67
               ]
             },
             "serverDamageProfileId": "damage.valtan.jump-spin",
@@ -1815,7 +1815,7 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0
+                67
               ]
             },
             "serverDamageProfileId": "damage.valtan.jump-spin",
@@ -2376,12 +2376,12 @@
         "kind": "GHOST_PORTAL_LOOP",
         "ghostArchetypeId": "BOSS_VALTAN_GHOST",
         "ghostPatternIds": [
-          "VALTAN_SIX_PIZZA_106",
-          "VALTAN_GROUND_ROAR",
-          "VALTAN_STAGGER_SLOT",
-          "VALTAN_BIND_SLOT",
-          "VALTAN_SILENCE_SLOT",
-          "VALTAN_TRIPLE_COUNTER"
+          "VALTAN_WHIRLWIND",
+          "VALTAN_FOUR_SLASH",
+          "VALTAN_SEQUENCE_FOUR",
+          "VALTAN_CROSS",
+          "VALTAN_CHARGE",
+          "VALTAN_CHARGE_2"
         ],
         "spawnHalfExtentsM": [
           10.0,
@@ -2427,7 +2427,7 @@
           "stageId": "ACTIVE",
           "actionId": "valtan.ghost.portal-once.active",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 1900,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
@@ -2445,7 +2445,7 @@
               "countPerResolvedTarget": 3,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 25.403411844343534,
+                "radiusM": 7.0,
                 "startAngleDegrees": 30.0,
                 "angleStepDegrees": 120.0,
                 "mappingBasis": "PROJECT_TUNED"
@@ -2524,11 +2524,11 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
+          "verticalOffsetM": 0.5,
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
             "threshold": 1000
-          },
-          "verticalOffsetM": 0.5
+          }
         },
         {
           "stageId": "FINAL_ATTACK",
@@ -2677,8 +2677,20 @@
           "defaultNextActionId": "valtan.authoring.bind-slot.recovery",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [
@@ -2707,8 +2719,20 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                900
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -2762,7 +2786,14 @@
             }
           },
           "motion": null,
-          "events": [],
+          "events": [
+            {
+              "eventId": "event.valtan.silence-slot.step-01.enter",
+              "trigger": "ENTER",
+              "kind": "SET_PLAYER_SILENCE",
+              "durationMs": 7633
+            }
+          ],
           "branches": []
         },
         {
@@ -2777,14 +2808,7 @@
             }
           },
           "motion": null,
-          "events": [
-            {
-              "eventId": "event.valtan.silence-slot.apply.enter",
-              "trigger": "ENTER",
-              "kind": "SET_PLAYER_SILENCE",
-              "durationMs": 5000
-            }
-          ],
+          "events": [],
           "branches": []
         }
       ]
@@ -3160,11 +3184,11 @@
               "trigger": "ENTER",
               "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
               "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
-              "volleyPolicy": "BOSS_RELATIVE",
+              "volleyPolicy": "ARENA_CENTER",
               "countPerResolvedTarget": 4,
               "layout": {
-                "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 9.8994949366,
+                "kind": "RADIAL_AROUND_ARENA_CENTER",
+                "radiusM": 10.0,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"
@@ -3207,8 +3231,20 @@
           "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-04",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                267
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.jump-spin",
+            "pushRangeM": 3.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3222,8 +3258,20 @@
           "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-05",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                2100
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [],
@@ -3237,8 +3285,20 @@
           "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-06",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1300
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3267,8 +3327,20 @@
           "defaultNextActionId": "valtan.sequence.center-six-pizza-charge.step-08",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 25.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                250
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.super-smash",
+            "pushRangeM": 3.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3327,8 +3399,23 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 90.0,
+              "lengthM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                150,
+                700,
+                1150
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+            "pushRangeM": 0.4,
+            "pushMs": 97,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3606,9 +3693,10 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                1790,
-                2560,
-                3330
+                1233,
+                2233,
+                3233,
+                4200
               ]
             },
             "serverDamageProfileId": "damage.valtan.four-slash",
@@ -3667,8 +3755,20 @@
           "defaultNextActionId": "valtan.sequence.roar-charge.step-02",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [],
@@ -3697,8 +3797,20 @@
           "defaultNextActionId": "valtan.sequence.roar-charge.step-04",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                900
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3742,8 +3854,21 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 90.0,
+              "lengthM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.swing",
+            "pushRangeM": 2.0,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1200
           },
           "motion": null,
           "events": [],
@@ -3822,8 +3947,26 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "BOX",
+              "lengthM": 6.0,
+              "halfWidthM": 2.5
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                2450,
+                2650,
+                2850,
+                3050,
+                3250,
+                4600
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.dash-charge",
+            "pushRangeM": 2.0,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [],
@@ -3873,8 +4016,21 @@
           "defaultNextActionId": "valtan.sequence.three.step-02",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 75.0,
+              "lengthM": 15.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1617
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+            "pushRangeM": 0.4,
+            "pushMs": 97,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3888,8 +4044,21 @@
           "defaultNextActionId": "valtan.sequence.three.step-03",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 75.0,
+              "lengthM": 15.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                963
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+            "pushRangeM": 0.4,
+            "pushMs": 97,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -3911,7 +4080,7 @@
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
                 500,
-                1350
+                1300
               ]
             },
             "serverDamageProfileId": "damage.valtan.ground-wave-smash",
@@ -4095,8 +4264,20 @@
           "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [],
@@ -4138,8 +4319,20 @@
           "defaultNextActionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-12",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                900
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -4245,7 +4438,7 @@
           "stageId": "STEP_02",
           "actionId": "valtan.sequence.warp.step-02",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1600,
           "defaultNextActionId": "valtan.sequence.warp.step-03",
           "hit": {
             "shape": {
@@ -4256,6 +4449,10 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
+                300,
+                350,
+                400,
+                450,
                 500,
                 550,
                 600,
@@ -4271,7 +4468,13 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4282,8 +4485,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 300,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4299,7 +4502,7 @@
           "stageId": "STEP_03",
           "actionId": "valtan.sequence.warp.step-03",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-04",
           "hit": {
             "shape": {
@@ -4310,8 +4513,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4325,7 +4526,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4336,8 +4549,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4353,7 +4566,7 @@
           "stageId": "STEP_04",
           "actionId": "valtan.sequence.warp.step-04",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-05",
           "hit": {
             "shape": {
@@ -4364,8 +4577,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4379,7 +4590,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4390,8 +4613,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4407,7 +4630,7 @@
           "stageId": "STEP_05",
           "actionId": "valtan.sequence.warp.step-05",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-06",
           "hit": {
             "shape": {
@@ -4418,8 +4641,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4433,7 +4654,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4444,8 +4677,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4461,7 +4694,7 @@
           "stageId": "STEP_06",
           "actionId": "valtan.sequence.warp.step-06",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-07",
           "hit": {
             "shape": {
@@ -4472,8 +4705,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4487,7 +4718,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4498,8 +4741,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4515,7 +4758,7 @@
           "stageId": "STEP_07",
           "actionId": "valtan.sequence.warp.step-07",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-08",
           "hit": {
             "shape": {
@@ -4526,8 +4769,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4541,7 +4782,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4552,8 +4805,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4569,7 +4822,7 @@
           "stageId": "STEP_08",
           "actionId": "valtan.sequence.warp.step-08",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-09",
           "hit": {
             "shape": {
@@ -4580,8 +4833,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4595,7 +4846,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4606,8 +4869,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4623,7 +4886,7 @@
           "stageId": "STEP_09",
           "actionId": "valtan.sequence.warp.step-09",
           "stageKind": "ACTIVE",
-          "durationMs": 1800,
+          "durationMs": 1900,
           "defaultNextActionId": "valtan.sequence.warp.step-10",
           "hit": {
             "shape": {
@@ -4634,8 +4897,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                500,
-                550,
                 600,
                 650,
                 700,
@@ -4649,7 +4910,19 @@
                 1100,
                 1150,
                 1200,
-                1250
+                1250,
+                1300,
+                1350,
+                1400,
+                1450,
+                1500,
+                1550,
+                1600,
+                1650,
+                1700,
+                1750,
+                1800,
+                1850
               ]
             },
             "serverDamageProfileId": "damage.valtan.portal-rush",
@@ -4660,8 +4933,8 @@
           },
           "motion": {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
+            "retargetDelayMs": 600,
+            "speedMps": 12.3076925,
             "distanceM": 16.0
           },
           "events": [
@@ -4752,8 +5025,21 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 75.0,
+              "lengthM": 15.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1000
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+            "pushRangeM": 0.4,
+            "pushMs": 97,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -4818,8 +5104,22 @@
           "defaultNextActionId": "valtan.sequence.whirlwind.step-03",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 10.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                0,
+                210,
+                420
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.jump-spin",
+            "pushRangeM": 3.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -4833,8 +5133,23 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 10.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                0,
+                350,
+                700,
+                1050
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.jump-spin",
+            "pushRangeM": 3.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -6696,8 +7011,21 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CROSS",
+              "lengthM": 10.0,
+              "halfWidthM": 0.75
+            },
+            "activation": {
+              "kind": "ACTIVE_WINDOW",
+              "startMs": 1617,
+              "lifetimeMs": 500,
+              "perTargetPolicy": "ONCE"
+            },
+            "serverDamageProfileId": "damage.valtan.earthquake-smash",
+            "pushRangeM": 2.0,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1200
           },
           "motion": null,
           "events": [],
@@ -6793,8 +7121,23 @@
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1233,
+                2233,
+                3233,
+                4200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [
@@ -6807,7 +7150,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 4.9497474683,
+                "radiusM": 6.3639610307,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"
@@ -6850,8 +7193,22 @@
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 90.0,
+              "lengthM": 10.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                200,
+                400
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.down-smash",
+            "pushRangeM": 2.0,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1200
           },
           "motion": null,
           "events": [],
@@ -6865,8 +7222,21 @@
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CONE",
+              "angleDegrees": 75.0,
+              "lengthM": 15.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1000
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+            "pushRangeM": 0.4,
+            "pushMs": 97,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -6880,8 +7250,20 @@
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 8.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                1200
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.stomp",
+            "pushRangeM": 1.5,
+            "pushMs": 150,
+            "knockdown": true,
+            "downMs": 1000
           },
           "motion": null,
           "events": [],
@@ -6910,8 +7292,20 @@
           "defaultNextActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11",
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                900
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [],
@@ -7104,8 +7498,22 @@
           "defaultNextActionId": null,
           "hit": {
             "shape": {
-              "kind": "NONE"
-            }
+              "kind": "CIRCLE",
+              "outerRadiusM": 12.0
+            },
+            "schedule": {
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                600,
+                1300,
+                2700
+              ]
+            },
+            "serverDamageProfileId": "damage.valtan.ledge-roar",
+            "pushRangeM": 2.0,
+            "pushMs": 242,
+            "knockdown": true,
+            "downMs": 2000
           },
           "motion": null,
           "events": [
@@ -7118,7 +7526,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 4.9497475,
+                "radiusM": 6.3639610307,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"

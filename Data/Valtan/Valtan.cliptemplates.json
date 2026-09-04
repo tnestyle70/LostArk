@@ -1,0 +1,465 @@
+{
+  "schema": "lostark.valtan-clip-templates",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "tickToleranceMs": 33,
+  "templates": [
+    {
+      "templateId": "template.valtan.roar-end",
+      "clip": "mesh_att_battle_5_01_end",
+      "hits": [
+        {
+          "clipMs": 900,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.ledge-roar",
+          "pushRangeM": 2.0,
+          "pushMs": 242,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.shout.burst",
+          "clipMs": 733,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack18_Shot7", "clipMs": 900 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.roar-start-stomp",
+      "clip": "mesh_att_battle_5_01_start",
+      "hits": [
+        {
+          "clipMs": 1200,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 1200,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack03_Cast1", "clipMs": 1200 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.twohand-2-01",
+      "clip": "mesh_att_battle_2_01",
+      "hits": [
+        {
+          "clipMs": 1617,
+          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 1617,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack02_Shot1", "clipMs": 1617 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.twohand-2-02",
+      "clip": "mesh_att_battle_2_02",
+      "hits": [
+        {
+          "clipMs": 963,
+          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 963,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack02_Shot1", "clipMs": 963 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.twohand-2-03",
+      "clip": "mesh_att_battle_2_03",
+      "hits": [
+        {
+          "clipMs": 1300,
+          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 1300,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack02_Shot2", "clipMs": 1300 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.twohand-19-04",
+      "clip": "mesh_att_battle_19_04",
+      "hits": [
+        {
+          "clipMs": 1000,
+          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 1000,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 1000 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.twohand-14-03",
+      "clip": "mesh_att_battle_14_03",
+      "hits": [
+        {
+          "clipMs": 900,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.triple-counter",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 900,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack13_Shot1", "clipMs": 900 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.stomp-11-01",
+      "clip": "mesh_att_battle_11_01",
+      "hits": [
+        {
+          "clipMs": 600,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        },
+        {
+          "clipMs": 1300,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 600,
+          "anchorSlotId": "b_effectroot"
+        },
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 1300,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack10_Cast1", "clipMs": 600 },
+        { "soundEvent": "G_Voltan2_Attack10_Cast1", "clipMs": 1300 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.landing-12-03",
+      "clip": "mesh_att_battle_12_03",
+      "hits": [
+        {
+          "clipMs": 267,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "serverDamageProfileId": "damage.valtan.jump-spin",
+          "pushRangeM": 3.0,
+          "pushMs": 242,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 267,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack09_Shot1", "clipMs": 267 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.pizza-stomp-12-04",
+      "clip": "mesh_att_battle_12_04",
+      "hits": [
+        {
+          "clipMs": 2100,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 2100,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack11_Shot4", "clipMs": 2100 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.pizza-roar-12-05",
+      "clip": "mesh_att_battle_12_05",
+      "hits": [
+        {
+          "clipMs": 1300,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.ledge-roar",
+          "pushRangeM": 2.0,
+          "pushMs": 242,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.shout.burst",
+          "clipMs": 1300,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack18_Shot7", "clipMs": 1300 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.pizza-landing-12-07",
+      "clip": "mesh_att_battle_12_07",
+      "hits": [
+        {
+          "clipMs": 250,
+          "shape": { "kind": "CIRCLE", "outerRadiusM": 25.0 },
+          "serverDamageProfileId": "damage.valtan.super-smash",
+          "pushRangeM": 3.0,
+          "pushMs": 242,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 250,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack11_Shot5", "clipMs": 250 }
+      ]
+    },
+    {
+      "templateId": "template.valtan.pizza-finisher-12-11",
+      "clip": "mesh_att_battle_12_11",
+      "hits": [
+        {
+          "clipMs": 150,
+          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        },
+        {
+          "clipMs": 700,
+          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        },
+        {
+          "clipMs": 1150,
+          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "serverDamageProfileId": "damage.valtan.ground-wave-smash",
+          "pushRangeM": 0.4,
+          "pushMs": 97,
+          "knockdown": true,
+          "downMs": 2000
+        }
+      ],
+      "effects": [
+        {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 150,
+          "anchorSlotId": "b_effectroot"
+        }
+      ],
+      "sounds": [
+        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 150 },
+        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 700 },
+        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 1150 }
+      ]
+    }
+  ],
+  "allowlist": [
+    {
+      "patternId": "VALTAN_BIND_SLOT",
+      "stageId": "STEP_01",
+      "actionId": "valtan.authoring.bind-slot.step-01",
+      "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
+      "waivers": ["HIT", "SOUND"],
+      "reason": "The occurrence ends at clip-local 900ms, so the 900ms contact lies on the exclusive Stage boundary."
+    },
+    {
+      "patternId": "VALTAN_CROSS",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.cross.step-01",
+      "clipOccurrenceId": "valtan.sequence.cross.step-01.clip-01",
+      "waivers": ["HIT_SHAPE", "HIT_RESPONSE", "EFFECT"],
+      "reason": "The reviewed cross-rock occurrence keeps its pattern-specific CROSS shape and V1 cross composition at the shared contact time."
+    },
+    {
+      "patternId": "VALTAN_GROUND_ROAR",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.sequence.400440.0.step-01",
+      "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+      "waivers": ["HIT_SHAPE", "HIT_RESPONSE"],
+      "reason": "The single-hit-track Stage merges the 8m stomps and later 12m roar into one 12m ledge-roar response while preserving all three contact times."
+    },
+    {
+      "patternId": "VALTAN_THREE",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.three.step-03",
+      "clipOccurrenceId": "valtan.sequence.three.step-03.clip-01",
+      "waivers": ["EXTRA_HIT"],
+      "extraHitOffsetsMs": [500],
+      "reason": "The reviewed legacy occurrence retains its pre-existing 500ms first pulse in addition to the shared 1300ms clip-template contact."
+    },
+    {
+      "patternId": "VALTAN_TRASH",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.center-trash-rush-if.step-03",
+      "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-03.clip-01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "The shared landing clip occurs inside the established grab and counter flow; adding an unapproved area hit here changes existing combat behavior."
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03",
+      "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03.clip-01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "This same-clip landing contact was not approved for the existing terrain-destruction sequence and remains presentation-neutral."
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "LANDING",
+      "actionId": "valtan.mechanic.terrain-destruction-3.landing",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.landing.clip-01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "The authored occurrence is truncated to 200ms, before the reviewed 267ms landing contact."
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "LANDING",
+      "actionId": "valtan.mechanic.terrain-destruction-9.landing",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.landing.clip-01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "The authored occurrence is truncated to 200ms, before the reviewed 267ms landing contact."
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "IMPACT_HOLD",
+      "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+      "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "The established arena-break pattern already owns its impact in the preceding IMPACT stage; a second unapproved landing hit would change the mechanic."
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "WIDE_REVEAL",
+      "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+      "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
+      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "reason": "This post-impact occurrence starts at source 900ms, after the reviewed 267ms landing contact."
+    }
+  ]
+}

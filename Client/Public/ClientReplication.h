@@ -11,7 +11,6 @@
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
 #include "ReplicatedPlayerHealth.h"
-#include "PlayerHandGripTransform.h"
 #include "CombatDebugVisibility.h"
 
 #include <chrono>
@@ -141,6 +140,7 @@ namespace Client
 		std::uint32_t iPatternStageIndex = 0u;
 		LostArk::Shared::NET_ENTITY_ID iPatternTargetNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT PortalRushRoute;
 		std::uint32_t iActionStartTick = 0u;
 		LostArk::Shared::BOSS_COMBAT_SNAPSHOT BossCombat;
 		float3_t vPosition = {};
@@ -419,9 +419,24 @@ namespace Client
 
 	private:
 #ifdef _DEBUG
+		struct COMBAT_OBJECT_HIT_AREA_DEBUG final
+		{
+			std::string strHitShape;
+			bool_t bContact = false;
+			f32_t fOuterRadiusM = 0.f;
+			f32_t fInnerRadiusM = 0.f;
+			f32_t fAngleDegrees = 0.f;
+			f32_t fLengthM = 0.f;
+			f32_t fHalfWidthM = 0.f;
+			std::uint32_t iAtMs = 0u;
+			std::uint32_t iRepeatCount = 0u;
+			std::uint32_t iRepeatIntervalMs = 0u;
+		};
 		void Sync_GlobalCombatDebugVisibility();
 		void Apply_CombatDebugVisibility(
 			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
+		bool_t Load_CombatObjectHitAreaDebug(std::string& strOutStatus);
+		void Draw_CombatObjectHitAreaDebug();
 #endif
 		bool Create_Character(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
@@ -493,10 +508,8 @@ namespace Client
 			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
 		void Stop_CombatObjectPresentation(
 			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
-		void Stage_PlayerAttachmentPresentation(
-			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
-		void Update_PlayerAttachmentPresentations();
-
+		void Release_CombatObjectPresentation(
+			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
 		struct COMBAT_OBJECT_PRESENTATION_SINK final
 		{
 			CClientReplication& Owner;
@@ -517,6 +530,10 @@ namespace Client
 			void Stop(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 			{
 				Owner.Stop_CombatObjectPresentation(handle);
+			}
+			void Release(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
+			{
+				Owner.Release_CombatObjectPresentation(handle);
 			}
 		};
 
@@ -544,20 +561,6 @@ namespace Client
 		} m_DeferredLocalCharacterClassReplacement;
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
-		struct PLAYER_ATTACHMENT_PRESENTATION final
-		{
-			LostArk::Shared::NET_ENTITY_ID iOwnerNetEntityId =
-				LostArk::Shared::INVALID_NET_ENTITY_ID;
-			LostArk::Shared::PLAYER_ATTACHMENT_SLOT eSlot =
-				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
-			float4x4_t LocalOffset{};
-			bool_t bHasLocalOffset = false;
-			PLAYER_HAND_GRIP_LOCAL_OFFSET GripLocalOffset{};
-			bool_t bHasGripLocalOffset = false;
-		};
-		std::unordered_map<
-			LostArk::Shared::NET_ENTITY_ID,
-			PLAYER_ATTACHMENT_PRESENTATION> m_PlayerAttachments;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
@@ -586,6 +589,10 @@ namespace Client
 			m_ChatBubblesByNetEntityId;
 #ifdef _DEBUG
 		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
+		bool_t m_isCombatObjectHitAreaDebugLoadAttempted = false;
+		std::unordered_map<std::string,
+			std::vector<COMBAT_OBJECT_HIT_AREA_DEBUG>>
+			m_CombatObjectHitAreasByArchetype;
 #endif
 
 		struct WORLD_ENTITY_PRESENTATION

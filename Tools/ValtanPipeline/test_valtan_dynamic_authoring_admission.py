@@ -175,9 +175,22 @@ class ValtanDynamicAuthoringAdmissionTests(unittest.TestCase):
         gameplay, presentation, docs = self.sources()
         presentation_pattern = self.pattern(presentation, "VALTAN_WARP")
         presentation_stage = self.stage(presentation_pattern, "STEP_02")
-        cue = copy.deepcopy(presentation_stage["effectCues"][0])
+        cue = copy.deepcopy(next(
+            cue
+            for pattern in presentation["patterns"]
+            for stage in pattern["stages"]
+            for cue in stage["effectCues"]
+            if cue["anchorSlotId"] == "root"
+            and cue["followPolicy"] == "follow"
+            and "clipOccurrenceId" in cue
+        ))
         cue["cueId"] = "cue.valtan.user-authored.warp.portal-leg"
         cue["occurrenceId"] = cue["cueId"] + ".occurrence.01"
+        cue["clipOccurrenceId"] = presentation_stage["animation"]["occurrences"][0][
+            "clipOccurrenceId"
+        ]
+        cue["sourceStartMs"] = 0
+        cue["sourceEndMs"] = None
         cue["scalePolicy"] = {
             "kind": "GAMEPLAY_FOOTPRINT",
             "worldScale": [1.25, 1.25, 1.25],

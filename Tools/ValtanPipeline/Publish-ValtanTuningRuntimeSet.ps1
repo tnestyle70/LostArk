@@ -93,6 +93,10 @@ switch ($Mode) {
             ([string]::IsNullOrWhiteSpace($resolvedEffectV2Candidate))) {
             throw 'Effect V2 baseline/candidate paths must be paired.'
         }
+        if (-not [string]::IsNullOrWhiteSpace($resolvedEffectV2ReadSet) -and
+            [string]::IsNullOrWhiteSpace($resolvedEffectV2Baseline)) {
+            throw 'Effect V2 read-set path requires a paired baseline/candidate owner.'
+        }
         $command += @(
             'commit-canonical-draft',
             '--authoring-root', $resolvedAuthoringRoot,
@@ -165,4 +169,18 @@ switch ($Mode) {
 & python @command
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+if ($Mode -eq 'Validate') {
+    foreach ($validatorName in @(
+        'validate_valtan_clip_template_parity.py',
+        'validate_valtan_hit_presentation_alignment.py')) {
+        $validatorPath = Join-Path $PSScriptRoot $validatorName
+        if (-not [IO.File]::Exists($validatorPath)) {
+            throw "Missing Valtan product validator: $validatorPath"
+        }
+        & python $validatorPath --repository-root $repoRoot --check
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
 }

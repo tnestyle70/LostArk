@@ -185,8 +185,12 @@ public:
 			outStatus = "Ignored duplicate combat-object despawn";
 			return true;
 		}
+		/* A Server despawn (lifetimeMs) ends only the authoritative root pose. The
+		   presentation keeps its authored stop policy through Release, so a V1
+		   world-root Effect that outlives lifetimeMs completes on its own clock.
+		   Remove_Source and Reset still Stop because their owner or world is gone. */
 		if (record->second.PresentationHandle.Is_Valid())
-			sink.Stop(record->second.PresentationHandle);
+			sink.Release(record->second.PresentationHandle);
 		m_Records.erase(record);
 		outStatus = "Applied combat-object despawn";
 		return true;
@@ -228,6 +232,17 @@ public:
 	size_t Get_Count() const { return m_Records.size(); }
 	const COMBAT_OBJECT_PROJECTION_RECORD* Find(
 		LostArk::Shared::COMBAT_OBJECT_ID combatObjectId) const;
+#ifdef _DEBUG
+	template<typename TVisitor>
+	void Visit_Records(TVisitor&& Visitor) const
+	{
+		for (const auto& [combatObjectId, record] : m_Records)
+		{
+			(void)combatObjectId;
+			std::forward<TVisitor>(Visitor)(record);
+		}
+	}
+#endif
 
 private:
 	static uint32_t Next_RetryTick(const uint32_t tick)

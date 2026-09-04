@@ -15,7 +15,7 @@
       "kind": "particle",
       "resources": [
         { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds" },
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds" },
         { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds" },
         { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" },
         { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }
@@ -25,9 +25,9 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [0.150000006, 0, 1], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [0, 0, 20] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 3.4000001, 2.82999992, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 5.69999981, 2.24000001, 4.05000019], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.65 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.649999976 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": false, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -42,7 +42,7 @@
         "bursts": [        ],
         "modules": [        ] },
       "sourcePresentation": { "enabled": false },
-      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
+      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
     },
     {
       "id": "authored.copy.cross.rock-wave.arm.090.2",
@@ -53,7 +53,7 @@
       "kind": "particle",
       "resources": [
         { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds" },
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds" },
         { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds" },
         { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" },
         { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }
@@ -63,9 +63,9 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [0.0599999987, 0.0500000007, -0.709999979], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [0, 0, -20] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 3.4000001, 2.82999992, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 5.69999981, 2.24000001, 4.05000019], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.65 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.649999976 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": false, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -80,7 +80,7 @@
         "bursts": [        ],
         "modules": [        ] },
       "sourcePresentation": { "enabled": false },
-      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
+      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
     },
     {
       "id": "authored.copy.authored.copy.cross.rock-wave.arm.090.2.1",
@@ -91,7 +91,7 @@
       "kind": "particle",
       "resources": [
         { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds" },
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds" },
         { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds" },
         { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" },
         { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }
@@ -101,9 +101,9 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [-1.00999999, 0.0500000007, -0.170000002], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [-20, 0, 0] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 3.4000001, 2.82999992, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 5.69999981, 2.24000001, 4.05000019], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.65 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.649999976 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": false, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -118,7 +118,7 @@
         "bursts": [        ],
         "modules": [        ] },
       "sourcePresentation": { "enabled": false },
-      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
+      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
     },
     {
       "id": "authored.copy.cross.rock-wave.arm.090.1",
@@ -129,7 +129,7 @@
       "kind": "particle",
       "resources": [
         { "slotId": "meshModel", "assetId": "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel" },
-        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds" },
+        { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds" },
         { "slotId": "noise", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds" },
         { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" },
         { "slotId": "dissolve", "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }
@@ -139,9 +139,9 @@
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
         "transform": { "position": [1.17999995, 0, -0.0599999987], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [20, 0, 0] },
-        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 3.4000001, 2.82999992, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
+        "color": { "offset": [0, 0, 0, 0], "multiply": [0.100000001, 5.69999981, 2.24000001, 4.05000019], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.65 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 0.649999976 },
         "mesh": { "useModelMaterial": false, "modelPreScale": 0.00999999978, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": false, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -156,7 +156,7 @@
         "bursts": [        ],
         "modules": [        ] },
       "sourcePresentation": { "enabled": false },
-      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
+      "authoringOverrides": { "resources": [ { "slotId": "mask", "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds" }, { "slotId": "base", "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds", "compilerAssetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds" } ], "scalars": [], "colors": [] }
     },
     {
       "id": "cross.smoke-wave.arm.090",
@@ -177,7 +177,7 @@
         "transform": { "position": [0.150000006, 0, 1], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [0, 0, 20] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -188,7 +188,9 @@
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
       },
-      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1, "bursts": [], "modules": [] },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
       "sourcePresentation": { "enabled": false }
     },
     {
@@ -210,7 +212,7 @@
         "transform": { "position": [0.0599999987, 0.0500000007, -0.709999979], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [0, 0, -20] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -221,7 +223,9 @@
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
       },
-      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1, "bursts": [], "modules": [] },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
       "sourcePresentation": { "enabled": false }
     },
     {
@@ -243,7 +247,7 @@
         "transform": { "position": [-1.00999999, 0.0500000007, -0.170000002], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [-20, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -254,7 +258,9 @@
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
       },
-      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1, "bursts": [], "modules": [] },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
       "sourcePresentation": { "enabled": false }
     },
     {
@@ -276,7 +282,7 @@
         "transform": { "position": [1.17999995, 0, -0.0599999987], "rotationDegrees": [0, 90, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.400000006, 0.400000006, 0.699999988], "velocityPerSecond": [20, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
-        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "transformMotionDurationSeconds": 0, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
+        "timing": { "startDelaySeconds": 0, "lifeTimeSeconds": 0.5, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
         "mesh": { "useModelMaterial": false, "sourceTypeDataRotationDegrees": [0, 0, 0] },
         "sprite": { "billboard": true, "billboardRollDegrees": 0, "billboardRollDegreesPerSecond": 0 },
         "decal": { "size": [1, 1], "depth": 0.25 },
@@ -287,7 +293,9 @@
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
       },
-      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1, "bursts": [], "modules": [] },
+      "sourceRecipe": { "enabled": false, "rendererShape": "", "emitterDelaySeconds": 0, "emitterDurationSeconds": 0, "emitterLoopCount": 1,
+        "bursts": [        ],
+        "modules": [        ] },
       "sourcePresentation": { "enabled": false }
     }
   ]

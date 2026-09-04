@@ -2645,8 +2645,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 300
       }
     },
     {
@@ -2663,8 +2663,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2681,8 +2681,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2699,8 +2699,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2717,8 +2717,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2735,8 +2735,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2753,8 +2753,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2771,8 +2771,8 @@
         }
       ],
       "bodyVisibility": {
-        "hiddenFromMs": 1300,
-        "hiddenToMs": 1800
+        "hiddenFromMs": 0,
+        "hiddenToMs": 600
       }
     },
     {
@@ -2787,7 +2787,11 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 0,
+        "hiddenToMs": 300
+      }
     },
     {
       "actionId": "valtan.sequence.twohand.step-01",
@@ -4390,7 +4394,7 @@
           "clipOccurrenceId": "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
           "clip": "mesh_att_battle_5_01_end",
           "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 900,
+          "sourceStartMs": 0,
           "playMs": 3533,
           "playRate": 1.0,
           "loop": false

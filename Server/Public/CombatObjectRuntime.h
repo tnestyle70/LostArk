@@ -136,6 +136,9 @@ namespace LostArk::Server
 		SERVER_COMBAT_OBJECT_LIVE_STATE LiveState;
 		float fSpeedMps = 0.f;
 		float fRemainingDistanceM = -1.f;
+		std::uint32_t iMovementStartDelayMs = 0u;
+		bool bExpireOnDistanceEnd = true;
+		float fCoverRadiusM = 0.f;
 		float fRemainingMilliseconds = 0.f;
 		float fElapsedMilliseconds = 0.f;
 		std::vector<SERVER_COMBAT_OBJECT_HIT_RUNTIME> Hits;

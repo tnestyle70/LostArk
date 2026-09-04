@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
 VALTAN_HEADER = ROOT / "Client/Public/Valtan.h"
 VALTAN_SOURCE = ROOT / "Client/Private/Valtan.cpp"
+REPLICATION_HEADER = ROOT / "Client/Public/ClientReplication.h"
 REPLICATION_SOURCE = ROOT / "Client/Private/ClientReplication.cpp"
+CHARACTER_SOURCE = ROOT / "Client/Private/Character.cpp"
+GAME_ROOM_SOURCE = ROOT / "Server/Private/GameRoom.cpp"
 
 
 def load_gameplay() -> dict:
@@ -58,23 +61,32 @@ class ValtanGripLocalOffsetContractTests(unittest.TestCase):
             set(bindings),
         )
 
-    def test_client_lookup_is_pattern_keyed_and_fail_closed(self) -> None:
+    def test_client_never_composes_the_grip_on_a_hand_bone(self) -> None:
         header = VALTAN_HEADER.read_text(encoding="utf-8-sig")
         valtan = VALTAN_SOURCE.read_text(encoding="utf-8-sig")
+        replication_header = REPLICATION_HEADER.read_text(encoding="utf-8-sig")
         replication = REPLICATION_SOURCE.read_text(encoding="utf-8-sig")
-        self.assertIn("m_PlayerHandGripLocalOffsetByPatternId", header)
-        self.assertIn("Try_Get_PlayerHandGripLocalOffsetByPatternId", header)
-        self.assertIn(
-            "Pattern has conflicting CAPTURE gripLocalOffset values", valtan
-        )
-        self.assertIn("Get_ServerPatternId()", replication)
-        self.assertIn(
-            "bHasGripLocalOffset =\n"
-            "\t\t\t\tvaltan->Try_Get_PlayerHandGripLocalOffsetByPatternId(",
-            replication,
-        )
-        self.assertIn("retained its Server fallback", replication)
-        self.assertNotIn("(void)valtan->Try_Get_PlayerHandGripLocalOffset(", replication)
+        character = CHARACTER_SOURCE.read_text(encoding="utf-8-sig")
+        game_room = GAME_ROOM_SOURCE.read_text(encoding="utf-8-sig")
+        for forbidden in (
+            "Update_PlayerAttachmentPresentations",
+            "Stage_PlayerAttachmentPresentation",
+            "bip001-l-hand",
+            "m_PlayerAttachments",
+        ):
+            self.assertNotIn(forbidden, replication_header)
+            self.assertNotIn(forbidden, replication)
+        for forbidden in (
+            "m_PlayerHandGripLocalOffsetByActionId",
+            "m_PlayerHandGripLocalOffsetByPatternId",
+            "Try_Get_PlayerHandGripLocalOffset",
+            "Reload_PlayerHandGripLocalOffsets_WhileAdmitted",
+        ):
+            self.assertNotIn(forbidden, header)
+            self.assertNotIn(forbidden, valtan)
+        self.assertIn("PLAYER_ACTION_STATE::GRABBED == action", character)
+        self.assertIn("Update_PlayerAttachment(player, updateTick)", game_room)
+        self.assertIn("player.fAttachmentLocalOffsetX * cosine", game_room)
 
     def test_missing_grip_rejects_without_mutating_committed_source(self) -> None:
         committed = load_gameplay()

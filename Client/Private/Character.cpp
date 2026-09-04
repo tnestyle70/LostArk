@@ -1355,9 +1355,9 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
-		/* Valtan's left-hand matrix owns the body pose and translation while the
-		Server reports GRABBED. A neutral loop avoids player root motion fighting
-		the attachment every frame. */
+		/* The Server-authoritative boss-local attachment snapshot owns translation
+		while the Server reports GRABBED. A neutral loop avoids player root motion
+		fighting the replicated transform every frame; no hand bone is composed. */
 		Set_Animation(CHARACTER_ANIM::IDLE, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
@@ -1400,9 +1400,9 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
-		/* The hand attachment owns the transform. Until a dedicated caught pose
-		is authored, hold the existing class hit loop instead of allowing
-		locomotion to run while the body is carried. */
+		/* The Server-authoritative boss-local attachment snapshot owns the
+		transform. Until a dedicated caught pose is authored, hold the existing
+		class hit loop instead of allowing locomotion to run while carried. */
 		if (!Set_Animation(CHARACTER_ANIM::HIT, true))
 			Set_Animation(CHARACTER_ANIM::IDLE, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;

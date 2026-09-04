@@ -561,9 +561,12 @@ Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFile
 
 실행 중 boss pattern이 한 플레이어를 잠그면 Server의 stable `NetEntityId`가
 `WORLD_ENTITY_SNAPSHOT::iPatternTargetNetEntityId`로 복제된다. 일반 NPC와 monster는 이
-필드를 반드시 invalid로 둔다. Client는 대상을 다시 고르지 않으며, 62줄 잡기 표현은 이 ID로
-찾은 Character만 `bip001-l-hand` animated socket에 붙였다가 success/recovery 또는 패턴 종료 시
-Server snapshot transform으로 돌려놓는다.
+필드를 반드시 invalid로 둔다. Client는 이 target을 다시 고르지 않는다. 별도로 player가 `GRABBED`인 동안
+`PLAYER_SNAPSHOT`의 attachment owner/slot과 Server가 매 tick 계산한 world position/yaw가 포획 계약의
+정본이다. `CCharacter::Update_NetworkTransform`이 같은 authoritative snapshot 경로를 보간하며 Client는
+`BOSS_LEFT_HAND`를 model bone으로 해석하거나 Character transform을 다시 덮어쓰지 않는다. release 뒤에도
+같은 snapshot 경로가 이어진다. `gripLocalOffset`은 parser/publisher/Tool validation용 authoring metadata로
+유지하지만 runtime transform에는 적용하지 않는다.
 
 ```text
 CGameRoom::Tick

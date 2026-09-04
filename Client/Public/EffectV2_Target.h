@@ -53,6 +53,9 @@ struct EFFECT_V2_TARGET_VIEW final
 	std::shared_ptr<Engine::CModel> pModel;
 	float4x4_t BoneRoot{};
 	float4x4_t YawBasis{};
+	bool_t bHasPortalRushRoute = false;
+	float4x4_t PortalRushStart{};
+	float4x4_t PortalRushEnd{};
 };
 
 NS_END

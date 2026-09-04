@@ -26,9 +26,19 @@
 #include "ValtanPatternFlowService.h"
 #include "ValtanPresentationAssetService.h"
 #include "DeployPropRuntime.h"
+#ifdef _DEBUG
+#include "DataJson.h"
+#include "HitAreaWire.h"
+#include "ProjectDataRoot.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
+#ifdef _DEBUG
+#include <fstream>
+#include <iterator>
+#include <limits>
+#endif
 #include <span>
 
 namespace
@@ -100,21 +110,6 @@ namespace
 			left.fPositionY == right.fPositionY &&
 			left.fPositionZ == right.fPositionZ &&
 			left.fYawDegrees == right.fYawDegrees;
-	}
-
-	constexpr const char* VALTAN_LEFT_HAND_BONE = "bip001-l-hand";
-
-	bool Is_FiniteMatrix(const float4x4_t& matrix)
-	{
-		for (std::size_t row = 0u; row < 4u; ++row)
-		{
-			for (std::size_t column = 0u; column < 4u; ++column)
-			{
-				if (!std::isfinite(matrix.m[row][column]))
-					return false;
-			}
-		}
-		return true;
 	}
 
 	CValtan::PATTERN_TARGET_SNAPSHOT_POSE Resolve_ValtanPatternTargetSnapshotPose(
@@ -359,7 +354,10 @@ bool Client::CClientReplication::Update()
 	}
 
 	Update_DeathPresentations();
-	Update_PlayerAttachmentPresentations();
+#ifdef _DEBUG
+	if (m_CombatDebugVisibility.bCombatObjectHit)
+		Draw_CombatObjectHitAreaDebug();
+#endif
 	return allSucceeded;
 }
 
@@ -1124,6 +1122,282 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 		}
 	}
 }
+
+bool_t Client::CClientReplication::Load_CombatObjectHitAreaDebug(
+	std::string& strOutStatus)
+{
+	m_isCombatObjectHitAreaDebugLoadAttempted = true;
+	const std::filesystem::path Path = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Encounters") / L"Valtan" /
+		L"ValtanCombatObjects.json");
+	if (Path.empty())
+	{
+		strOutStatus =
+			"Combat-object hit Debug document resolved outside Project Data root.";
+		return false;
+	}
+	std::ifstream Input(Path, std::ios::binary);
+	if (!Input.is_open())
+	{
+		strOutStatus = "Combat-object hit Debug document is missing.";
+		return false;
+	}
+	const std::string Text{
+		std::istreambuf_iterator<char>(Input),
+		std::istreambuf_iterator<char>() };
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(Text, Root, strOutStatus) || !Root.Is_Object())
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "Combat-object hit Debug document root is invalid.";
+		return false;
+	}
+
+	const auto Field = [](
+		const DATA_JSON_VALUE& Object,
+		const char* const pName,
+		const DATA_JSON_TYPE eType) -> const DATA_JSON_VALUE*
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(pName);
+		return nullptr != pValue && pValue->Get_Type() == eType ?
+			pValue : nullptr;
+	};
+	const auto ReadString = [&Field](
+		const DATA_JSON_VALUE& Object,
+		const char* const pName,
+		std::string& strOutValue) -> bool_t
+	{
+		const DATA_JSON_VALUE* pValue = Field(
+			Object, pName, DATA_JSON_TYPE::STRING);
+		if (nullptr == pValue || pValue->Get_String().empty())
+			return false;
+		strOutValue = pValue->Get_String();
+		return true;
+	};
+	const auto ReadU32 = [&Field](
+		const DATA_JSON_VALUE& Object,
+		const char* const pName,
+		std::uint32_t& iOutValue) -> bool_t
+	{
+		const DATA_JSON_VALUE* pValue = Field(
+			Object, pName, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue)
+			return false;
+		const double Value = pValue->Get_Number();
+		if (!std::isfinite(Value) || std::floor(Value) != Value ||
+			Value < 0.0 || Value > static_cast<double>(
+				(std::numeric_limits<std::uint32_t>::max)()))
+		{
+			return false;
+		}
+		iOutValue = static_cast<std::uint32_t>(Value);
+		return true;
+	};
+	const auto ReadFloat = [&Field](
+		const DATA_JSON_VALUE& Object,
+		const char* const pName,
+		f32_t& fOutValue) -> bool_t
+	{
+		const DATA_JSON_VALUE* pValue = Field(
+			Object, pName, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || !std::isfinite(pValue->Get_Number()) ||
+			std::abs(pValue->Get_Number()) > 100000.0)
+		{
+			return false;
+		}
+		fOutValue = static_cast<f32_t>(pValue->Get_Number());
+		return std::isfinite(fOutValue);
+	};
+
+	std::string Schema;
+	std::string EncounterId;
+	std::uint32_t iFormatVersion = 0u;
+	const DATA_JSON_VALUE* pObjects = Field(
+		Root, "objects", DATA_JSON_TYPE::ARRAY);
+	if (!ReadString(Root, "schema", Schema) ||
+		"lostark.valtan-combat-objects" != Schema ||
+		!ReadU32(Root, "formatVersion", iFormatVersion) ||
+		1u != iFormatVersion ||
+		!ReadString(Root, "encounterId", EncounterId) ||
+		"ENCOUNTER_VALTAN" != EncounterId || nullptr == pObjects ||
+		pObjects->Get_Array().size() >
+			LostArk::Shared::MAX_COMBAT_OBJECTS_PER_SNAPSHOT)
+	{
+		strOutStatus = "Combat-object hit Debug document identity is invalid.";
+		return false;
+	}
+
+	std::unordered_map<std::string,
+		std::vector<COMBAT_OBJECT_HIT_AREA_DEBUG>> Staged;
+	for (const DATA_JSON_VALUE& Object : pObjects->Get_Array())
+	{
+		std::string ArchetypeId;
+		std::uint32_t iLifeMs = 0u;
+		const DATA_JSON_VALUE* pHits = Field(
+			Object, "hits", DATA_JSON_TYPE::ARRAY);
+		if (!Object.Is_Object() ||
+			!ReadString(Object, "combatObjectArchetypeId", ArchetypeId) ||
+			!ReadU32(Object, "lifeMs", iLifeMs) || 0u == iLifeMs ||
+			nullptr == pHits || pHits->Get_Array().size() > 16u)
+		{
+			strOutStatus =
+				"Combat-object hit Debug archetype row is invalid.";
+			return false;
+		}
+		auto [Definition, bInserted] = Staged.emplace(
+			ArchetypeId, std::vector<COMBAT_OBJECT_HIT_AREA_DEBUG>{});
+		if (!bInserted)
+		{
+			strOutStatus =
+				"Combat-object hit Debug archetype is duplicated: " +
+				ArchetypeId;
+			return false;
+		}
+		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
+		{
+			COMBAT_OBJECT_HIT_AREA_DEBUG Area;
+			std::string HitId;
+			std::string Trigger;
+			if (!Hit.Is_Object() || !ReadString(Hit, "hitId", HitId) ||
+				!ReadString(Hit, "hitShape", Area.strHitShape) ||
+				!ReadString(Hit, "trigger", Trigger) ||
+				!ReadFloat(Hit, "hitOuterRadius", Area.fOuterRadiusM) ||
+				!ReadFloat(Hit, "hitInnerRadius", Area.fInnerRadiusM) ||
+				!ReadFloat(Hit, "hitAngleDegrees", Area.fAngleDegrees) ||
+				!ReadFloat(Hit, "hitLength", Area.fLengthM) ||
+				!ReadFloat(Hit, "hitHalfWidth", Area.fHalfWidthM) ||
+				!ReadU32(Hit, "atMs", Area.iAtMs) ||
+				!ReadU32(Hit, "repeatCount", Area.iRepeatCount) ||
+				!ReadU32(Hit, "repeatIntervalMs", Area.iRepeatIntervalMs) ||
+				("CONTACT" != Trigger && "TIMED" != Trigger) ||
+				0u == Area.iRepeatCount || Area.iRepeatCount > 64u ||
+				(1u == Area.iRepeatCount ? 0u != Area.iRepeatIntervalMs :
+					0u == Area.iRepeatIntervalMs))
+			{
+				strOutStatus =
+					"Combat-object hit Debug row is invalid: " + ArchetypeId;
+				return false;
+			}
+			Area.bContact = "CONTACT" == Trigger;
+			const bool_t bZeroRadii = 0.f == Area.fOuterRadiusM &&
+				0.f == Area.fInnerRadiusM;
+			const bool_t bZeroDirectional = 0.f == Area.fAngleDegrees &&
+				0.f == Area.fLengthM && 0.f == Area.fHalfWidthM;
+			const bool_t bValidShape =
+				("CIRCLE" == Area.strHitShape &&
+				 Area.fOuterRadiusM > 0.f && 0.f == Area.fInnerRadiusM &&
+				 bZeroDirectional) ||
+				("RING" == Area.strHitShape &&
+				 Area.fOuterRadiusM > Area.fInnerRadiusM &&
+				 Area.fInnerRadiusM > 0.f && bZeroDirectional) ||
+				("CONE" == Area.strHitShape && bZeroRadii &&
+				 Area.fAngleDegrees > 0.f && Area.fAngleDegrees <= 180.f &&
+				 Area.fLengthM > 0.f && 0.f == Area.fHalfWidthM) ||
+				("BOX" == Area.strHitShape && bZeroRadii &&
+				 0.f == Area.fAngleDegrees && Area.fLengthM > 0.f &&
+				 Area.fHalfWidthM > 0.f);
+			const std::uint64_t iLastPulseMs =
+				static_cast<std::uint64_t>(Area.iAtMs) +
+				static_cast<std::uint64_t>(Area.iRepeatCount - 1u) *
+				Area.iRepeatIntervalMs;
+			if (!bValidShape || iLastPulseMs >= iLifeMs)
+			{
+				strOutStatus =
+					"Combat-object hit Debug shape or clock is invalid: " +
+					ArchetypeId + "/" + HitId;
+				return false;
+			}
+			Definition->second.push_back(std::move(Area));
+		}
+	}
+
+	m_CombatObjectHitAreasByArchetype = std::move(Staged);
+	strOutStatus = "Combat-object hit Debug geometry loaded.";
+	return true;
+}
+
+void Client::CClientReplication::Draw_CombatObjectHitAreaDebug()
+{
+	if (0u == m_CombatObjectProjectionRuntime.Get_Count() ||
+		0u == m_iLastServerTick)
+	{
+		return;
+	}
+	if (!m_isCombatObjectHitAreaDebugLoadAttempted)
+	{
+		std::string Status;
+		if (!Load_CombatObjectHitAreaDebug(Status))
+		{
+			OutputDebugStringA((
+				"[Client][CombatObjectDebug] " + Status + "\n").c_str());
+			return;
+		}
+	}
+	if (m_CombatObjectHitAreasByArchetype.empty())
+		return;
+
+	constexpr std::uint32_t COMBAT_OBJECT_HIT_COLOR_RGBA =
+		40u | (255u << 8) | (90u << 16) | (255u << 24);
+	constexpr f32_t METERS_TO_UNITS = 100.f;
+	const auto ToUnits = [](const f32_t fMeters)
+	{
+		return static_cast<std::int32_t>(
+			fMeters * METERS_TO_UNITS + 0.5f);
+	};
+	m_CombatObjectProjectionRuntime.Visit_Records(
+		[&](const COMBAT_OBJECT_PROJECTION_RECORD& Record)
+		{
+			const auto Definition = m_CombatObjectHitAreasByArchetype.find(
+				Record.strCombatObjectArchetypeId);
+			if (m_CombatObjectHitAreasByArchetype.end() == Definition)
+				return;
+
+			float4x4_t Root{};
+			XMStoreFloat4x4(
+				&Root,
+				XMMatrixRotationY(XMConvertToRadians(
+					Record.Snapshot.fYawDegrees)) *
+				XMMatrixTranslation(
+					Record.Snapshot.fPositionX,
+					Record.Snapshot.fPositionY,
+					Record.Snapshot.fPositionZ));
+			for (const COMBAT_OBJECT_HIT_AREA_DEBUG& Area :
+				Definition->second)
+			{
+				if (!COMBAT_OBJECT_HIT_DEBUG_CLOCK::Is_Visible(
+						Area.bContact, m_iLastServerTick, Record.iSpawnTick,
+						Area.iAtMs, Area.iRepeatCount,
+						Area.iRepeatIntervalMs))
+				{
+					continue;
+				}
+
+				HIT_AREA_SHAPE Shape{};
+				if ("CIRCLE" == Area.strHitShape ||
+					"RING" == Area.strHitShape)
+				{
+					Shape.iAreaType = 1;
+					Shape.iAreaRange = ToUnits(Area.fOuterRadiusM);
+					Shape.iAreaInner = ToUnits(Area.fInnerRadiusM);
+				}
+				else if ("CONE" == Area.strHitShape)
+				{
+					Shape.iAreaType = 3;
+					Shape.iAreaRange = ToUnits(Area.fLengthM);
+					Shape.iAreaAngle = static_cast<std::int32_t>(
+						Area.fAngleDegrees + 0.5f);
+				}
+				else if ("BOX" == Area.strHitShape)
+				{
+					Shape.iAreaType = 2;
+					Shape.iAreaRange = ToUnits(Area.fLengthM);
+					Shape.iAreaAngle = ToUnits(Area.fHalfWidthM * 2.f);
+				}
+				CHitAreaWire::Draw(
+					Root, Shape, COMBAT_OBJECT_HIT_COLOR_RGBA);
+			}
+		});
+}
 #endif
 
 bool Client::CClientReplication::Create_Character(
@@ -1279,8 +1553,6 @@ bool Client::CClientReplication::Apply_Despawn(
 
 	if (!m_Registry.Unregister(despawned.iNetEntityId))
 		return false;
-	m_PlayerAttachments.erase(despawned.iNetEntityId);
-
 	if (m_LocalCharacterHandle.iSlotIndex == handle.iSlotIndex &&
 		m_LocalCharacterHandle.iGeneration == handle.iGeneration)
 	{
@@ -1619,7 +1891,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.vPosition,
 		spawned.fYawDegrees,
 		WORLD_ENTITY_ACTION::IDLE,
-		{}, {}, 0u, 0u, 0u, 0u, {}))
+			{}, {}, 0u, 0u, 0u, 0u, {}, {}))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
@@ -2117,138 +2389,16 @@ void Client::CClientReplication::Stop_CombatObjectPresentation(
 	CEffectPresentationService::Stop_WorldRoot(effectHandle);
 }
 
-void Client::CClientReplication::Stage_PlayerAttachmentPresentation(
-	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+void Client::CClientReplication::Release_CombatObjectPresentation(
+	const COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 {
-	using namespace LostArk::Shared;
-	if (PLAYER_ACTION_STATE::GRABBED != snapshot.eAction)
-	{
-		m_PlayerAttachments.erase(snapshot.iNetEntityId);
-		return;
-	}
-
-	PLAYER_ATTACHMENT_PRESENTATION& presentation =
-		m_PlayerAttachments[snapshot.iNetEntityId];
-	if (presentation.iOwnerNetEntityId !=
-			snapshot.iAttachmentOwnerNetEntityId ||
-		presentation.eSlot != snapshot.eAttachmentSlot)
-	{
-		presentation = {};
-		presentation.iOwnerNetEntityId =
-			snapshot.iAttachmentOwnerNetEntityId;
-		presentation.eSlot = snapshot.eAttachmentSlot;
-		/* The replicated offset is expressed in the boss gameplay-root frame and
-		cannot be composed with a presentation bone. Capture the hand-local matrix
-		once both actual presentation transforms are available below. */
-		presentation.bHasLocalOffset = false;
-		presentation.bHasGripLocalOffset = false;
-	}
-}
-
-void Client::CClientReplication::Update_PlayerAttachmentPresentations()
-{
-	using namespace LostArk::Shared;
-	for (auto attachment = m_PlayerAttachments.begin();
-		attachment != m_PlayerAttachments.end();)
-	{
-		OBJECT_HANDLE playerHandle{};
-		if (!m_Registry.Find_Handle(attachment->first, playerHandle))
-		{
-			attachment = m_PlayerAttachments.erase(attachment);
-			continue;
-		}
-		const std::shared_ptr<CCharacter> character =
-			m_Registry.Resolve(playerHandle);
-		const auto owner =
-			m_WorldEntities.find(attachment->second.iOwnerNetEntityId);
-		if (nullptr == character || nullptr == character->Get_Transform() ||
-			m_WorldEntities.end() == owner ||
-			WORLD_ENTITY_KIND::BOSS != owner->second.eKind ||
-			owner->second.bPresentationIsolated ||
-			PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND !=
-				attachment->second.eSlot)
-		{
-			/* Apply_NetworkState already staged the Server fallback transform.
-			Keep the identity so a presentation that spawns later can attach, but
-			never apply a stale matrix while its owner is unavailable. */
-			++attachment;
-			continue;
-		}
-
-		const std::shared_ptr<CValtan> valtan = owner->second.pValtan.lock();
-		const std::shared_ptr<Engine::CModel> body =
-			nullptr == valtan ? nullptr : valtan->Get_BodyModel();
-		float4x4_t presentationRoot{};
-		if (nullptr == valtan || nullptr == body ||
-			!body->Has_Bone(VALTAN_LEFT_HAND_BONE) ||
-			!valtan->Try_Get_PresentationRootMatrix(&presentationRoot) ||
-			!Is_FiniteMatrix(presentationRoot))
-		{
-			++attachment;
-			continue;
-		}
-
-		const matrix_t handWorld = body->Get_BoneMatrix(
-			VALTAN_LEFT_HAND_BONE) * XMLoadFloat4x4(&presentationRoot);
-		float4x4_t handWorldStored{};
-		XMStoreFloat4x4(&handWorldStored, handWorld);
-		if (!Is_FiniteMatrix(handWorldStored))
-		{
-			++attachment;
-			continue;
-		}
-		if (!attachment->second.bHasLocalOffset)
-		{
-			float4x4_t localOffset{};
-			if (!CPlayerHandGripTransform::Build_LocalOffset(
-					*character->Get_Transform()->Get_WorldMatrixPtr(),
-					handWorldStored, localOffset))
-			{
-				++attachment;
-				continue;
-			}
-			attachment->second.GripLocalOffset = {};
-			attachment->second.bHasGripLocalOffset =
-				valtan->Try_Get_PlayerHandGripLocalOffsetByPatternId(
-				valtan->Get_ServerPatternId(),
-				attachment->second.GripLocalOffset);
-			if (!attachment->second.bHasGripLocalOffset)
-			{
-				m_strPendingPresentationFailure =
-					"Valtan left-hand attachment retained its Server fallback because the replicated Pattern has no admitted gripLocalOffset: " +
-					(valtan->Get_ServerPatternId().empty() ?
-						std::string("<empty>") : valtan->Get_ServerPatternId());
-				++attachment;
-				continue;
-			}
-			attachment->second.LocalOffset = localOffset;
-			attachment->second.bHasLocalOffset = true;
-		}
-
-		/* The authored correction moves the character's feet-origin to the palm
-		   in normalized wrist-local axes. The captured orientation/scale still
-		   follows the H3 local * hand contract, never the hit distance. */
-		float4x4_t attachedStored{};
-		if (!CPlayerHandGripTransform::Compose_World(
-				attachment->second.LocalOffset, handWorldStored,
-				attachment->second.bHasGripLocalOffset ?
-					attachment->second.GripLocalOffset :
-					PLAYER_HAND_GRIP_LOCAL_OFFSET{}, attachedStored))
-		{
-			++attachment;
-			continue;
-		}
-		const matrix_t attachedWorld = XMLoadFloat4x4(&attachedStored);
-
-		const std::shared_ptr<Engine::CTransform> transform =
-			character->Get_Transform();
-		transform->Set_State(STATE::RIGHT, attachedWorld.r[0]);
-		transform->Set_State(STATE::UP, attachedWorld.r[1]);
-		transform->Set_State(STATE::LOOK, attachedWorld.r[2]);
-		transform->Set_State(
-			STATE::POSITION, XMVectorSetW(attachedWorld.r[3], 1.f));
-		++attachment;
-	}
+	/* Server despawn (lifetimeMs) releases the root pose without cutting the
+	   visual. A V2 group owns a bounded clock and stops here. A V1 world root
+	   was spawned with EFFECT_STOP_POLICY::NATURAL, so its elements finish on
+	   their authored lifetime and CEffectPresentationService removes the
+	   occurrence on Is_Finished(), boss owner loss, or a level change. */
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP == handle.eKind)
+		CEffectV2Runtime::Stop_Group(static_cast<uint32_t>(handle.iValue));
 }
 
 bool Client::CClientReplication::Apply_WorldSnapshot(
@@ -2358,7 +2508,6 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		{
 			allSucceeded = false;
 		}
-		Stage_PlayerAttachmentPresentation(player);
 		character->Apply_NetworkStance(player.eStance);
 		if (isLocallyControlled)
 		{
@@ -2608,6 +2757,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			latest.iPatternStageIndex = entity.iPatternStageIndex;
 			latest.iPatternTargetNetEntityId =
 				entity.iPatternTargetNetEntityId;
+			latest.PortalRushRoute = entity.PortalRushRoute;
 			latest.iActionStartTick = entity.iActionStartTick;
 			latest.BossCombat = entity.BossCombat;
 			latest.vPosition = position;
@@ -2657,7 +2807,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity.iActionStartTick,
 				entity.iPatternSequence,
 				entity.iPatternStageIndex,
-				PatternTargetPose) ||
+				PatternTargetPose,
+				entity.PortalRushRoute) ||
 				!valtan->Apply_BossCombatState(entity.BossCombat) ||
 				!valtan->Apply_BrokenArmorMask(entity.iBrokenArmorMask))
 			{
@@ -2943,11 +3094,14 @@ void Client::CClientReplication::Reset_World()
 	}
 	m_DeathPresentations.clear();
 	m_Registry.Reset();
-	m_PlayerAttachments.clear();
 	m_LocalCharacterHandle = {};
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_iLastServerTick = 0;
+#ifdef _DEBUG
+	m_isCombatObjectHitAreaDebugLoadAttempted = false;
+	m_CombatObjectHitAreasByArchetype.clear();
+#endif
 	m_ValtanPresentationState = {};
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();

@@ -20,7 +20,9 @@
       "tools": [
         "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
         "Tools/ValtanPipeline/Format-PreservingJsonArray.ps1",
-        "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
+        "Tools/ValtanPipeline/valtan_tuning_pipeline.py",
+        "Tools/ValtanPipeline/validate_valtan_clip_template_parity.py",
+        "Tools/ValtanPipeline/validate_valtan_hit_presentation_alignment.py"
       ],
       "outputs": [],
       "requiredOutputPatterns": [],

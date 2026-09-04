@@ -764,22 +764,28 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				Cue.strAnchorSlotId == ARENA_CENTER_FACING_ANCHOR;
 			const bool_t bTargetFollow =
 				Cue.strAnchorSlotId == ARENA_CENTER_TARGET_FOLLOW_ANCHOR;
+			const bool_t bHasFixedCenterMotion =
+				pPattern->serverMotion.has_value() &&
+				(pPattern->serverMotion->kind == "LEAP_TO_ANCHOR" ||
+				 pPattern->serverMotion->kind == "LEAP_TO_TARGET");
 			const bool_t bHasCenterApproach = pPattern->serverMotion.has_value() &&
 				pPattern->serverMotion->kind == "LEAP_TO_ANCHOR" &&
 				pPattern->serverMotion->bMoveToAnchorBeforeTakeoff;
 			const bool_t bExactFixedCenter = bFixedCenter &&
+				bHasFixedCenterMotion &&
 				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT;
 			const bool_t bExactFixedFacing = bFixedFacing &&
+				bHasCenterApproach &&
 				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT &&
 				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
 				pPattern->aimPolicy == "LOCK_FACING_ON_START";
 			const bool_t bExactTargetFollow = bTargetFollow &&
+				bHasCenterApproach &&
 				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
 				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
 				pPattern->aimPolicy == "TRACK_TARGET_EACH_TICK";
-			if (!bHasCenterApproach ||
-				(!bExactFixedCenter && !bExactFixedFacing &&
-				 !bExactTargetFollow))
+			if (!bExactFixedCenter && !bExactFixedFacing &&
+				!bExactTargetFollow)
 			{
 				strOutStatus =
 					"Valtan arena-center Effect cue requires its exact fixed/follow Server contract: " +

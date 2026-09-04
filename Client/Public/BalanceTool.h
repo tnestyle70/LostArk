@@ -109,11 +109,12 @@ public:
 		double outerRadiusM = 0.0;
 	};
 
-	/* VALTAN_WARP owns eight identical Server rush legs (STEP_02..STEP_09).
-	   Expose them as one typed authoring value so a UI can never leave a
-	   half-updated portal pattern behind.  Delay/speed/distance/trailing gap
-	   are authored inputs; the Stage clock, travel, and hit count are derived
-	   atomically for all eight legs. */
+	/* VALTAN_WARP owns one first rush leg and seven cadence legs.  The first
+	   waits retargetDelayMs after its portal appears.  Later legs add
+	   trailingGapMs before that same lead, allowing the preceding NATURAL
+	   portal to linger and the replacement portal to start at the boundary.
+	   legDurationMs is the repeated cadence clock; every Stage clock and swept
+	   hit schedule is derived atomically for all eight legs. */
 	struct VALTAN_WARP_RUSH_EDIT final
 	{
 		std::uint32_t legDurationMs = 0u;
@@ -455,6 +456,7 @@ public:
 		std::string patternSoundCandidateBytes;
 		std::string effectV2BaselineBytes;
 		std::string effectV2CandidateBytes;
+		std::string effectV2ReadSetBytes;
 	};
 	/* Save is a durable asynchronous transaction. The immutable request is
 	   staged before the child starts; callers observe one job id and consume its

@@ -266,12 +266,8 @@ namespace LostArk::Server
 		static void Configure_PortalMotion(
 			SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_STAGE_DEFINITION& stage);
-		/* Stage actions choose the stable player identity. This snapshots that
-		   player's latest remembered position only at the authored delay edge;
-		   GameRoom also invokes it on ENTER for an exact zero-delay leg. */
-		static void Try_LockPortalTargetRush(
-			SERVER_WORLD_ENTITY& boss,
-			std::uint64_t elapsedStageTicks);
+		static bool Lock_PortalTargetRushAtStageStart(
+			SERVER_WORLD_ENTITY& boss);
 
 	private:
 		void Record_DecisionTrace(VALTAN_DECISION_TRACE&& trace) const;

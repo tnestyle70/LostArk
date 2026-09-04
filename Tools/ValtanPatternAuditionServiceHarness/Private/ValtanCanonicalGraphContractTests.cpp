@@ -484,13 +484,18 @@ namespace
 			EffectRoot,
 			"authored.copy.authored.copy.authored.copy.authored.copy."
 			"sprite_particle_8.1.1.1.1");
+		const SIX_PIZZA_ELEMENT_EVIDENCE RedRoarOverlay = ReadSixPizzaElement(
+			EffectRoot,
+			"requested.20260827.six-pizza.sector.red-roar-overlay");
 		const SIX_PIZZA_ELEMENT_EVIDENCE Finale = ReadSixPizzaElement(
 			EffectRoot,
 			"authored.copy.authored.copy.whirlwind.mesh.10.cyan.phase000.2.1");
 		Require(Landing.fStartDelaySeconds > 5.f &&
 			Sector.fStartDelaySeconds > Landing.fStartDelaySeconds &&
 			MirroredSector.fStartDelaySeconds == Sector.fStartDelaySeconds &&
-			LateSector.fStartDelaySeconds > Sector.fStartDelaySeconds &&
+			std::abs(RedRoarOverlay.fStartDelaySeconds - 19.5f) < 0.001f &&
+			RedRoarOverlay.fStartDelaySeconds > Sector.fStartDelaySeconds &&
+			LateSector.fStartDelaySeconds > RedRoarOverlay.fStartDelaySeconds &&
 			Finale.fStartDelaySeconds > LateSector.fStartDelaySeconds,
 			"six-pizza composite no longer contains ordered late-root elements");
 		Require(ReadSixPizzaParticleLocalSpace(
@@ -535,6 +540,10 @@ namespace
 			Sector.LocalTransform, SecondTickRoot.CueRoot);
 		const float4x4_t MirroredSectorWorld = ComposeElementWorld(
 			MirroredSector.LocalTransform, SecondTickRoot.CueRoot);
+		const float4x4_t RedRoarOverlayFirstWorld = ComposeElementWorld(
+			RedRoarOverlay.LocalTransform, FirstTickRoot.CueRoot);
+		const float4x4_t RedRoarOverlayTerminalWorld = ComposeElementWorld(
+			RedRoarOverlay.LocalTransform, SecondTickRoot.CueRoot);
 		const float4x4_t LateSectorWorld = ComposeElementWorld(
 			LateSector.LocalTransform, SecondTickRoot.CueRoot);
 		const float4x4_t FinaleWorld = ComposeElementWorld(
@@ -548,6 +557,21 @@ namespace
 			std::isfinite(FinaleWorld._41) &&
 			std::isfinite(FinaleWorld._43),
 			"late six-pizza elements did not compose under the updated shared root");
+		const f32_t fOverlayTerminalYawDegrees = std::atan2(
+			RedRoarOverlayTerminalWorld._31,
+			RedRoarOverlayTerminalWorld._33) *
+			(180.f / 3.14159265358979323846f);
+		Require(!MatrixNearlyEquals(
+				RedRoarOverlayFirstWorld, RedRoarOverlayTerminalWorld) &&
+			std::abs(RedRoarOverlayTerminalWorld._41 -
+				SecondTickRoot.CueRoot._41) < 0.0001f &&
+			std::abs(RedRoarOverlayTerminalWorld._43 -
+				SecondTickRoot.CueRoot._43) < 0.0001f &&
+			std::abs(std::remainder(
+				fOverlayTerminalYawDegrees - fSecondRootYawDegrees -
+					RedRoarOverlay.LocalTransform.vRotationDegrees.y,
+				360.f)) < 0.001f,
+			"the delayed pizza decal did not retain the terminal sector root");
 	}
 
 	void VerifyCanonicalGraphInventoryAndFlow()
@@ -780,19 +804,20 @@ namespace
 			5000u == BindEnter->iDurationMs,
 			"Bind Product action lost its Y+5m for 5000 ms contract");
 		const auto SilenceDeadline = std::find_if(
-			Silence.Stages[1].Actions.begin(), Silence.Stages[1].Actions.end(),
+			Silence.Stages[0].Actions.begin(), Silence.Stages[0].Actions.end(),
 			[](const VALTAN_STAGE_ACTION_VIEW& Action)
 			{
 				return "ENTER" == Action.strTrigger &&
 					"SET_PLAYER_SILENCE" == Action.strKind &&
 					"player.status.silence" == Action.strTargetId;
 			});
-		Require(1u == Silence.Stages[1].Actions.size() &&
-			Silence.Stages[1].Actions.end() != SilenceDeadline &&
+		Require(1u == Silence.Stages[0].Actions.size() &&
+			Silence.Stages[0].Actions.end() != SilenceDeadline &&
 			std::abs(SilenceDeadline->fValue - 1.f) < 0.001f &&
-			5000u == SilenceDeadline->iDurationMs &&
-			SilenceDeadline->iDurationMs >= Silence.Stages[1].iDurationMs,
-			"Silence Product action lost its ENTER-only 5000 ms deadline contract");
+			7633u == SilenceDeadline->iDurationMs &&
+			SilenceDeadline->iDurationMs >= Silence.Stages[0].iDurationMs &&
+			Silence.Stages[1].Actions.empty(),
+			"Silence Product action lost its immediate ENTER-only 7633 ms deadline contract");
 		Require(!Stagger.Stages[0].bSuppressAnimation &&
 			ClipNames(Stagger.Stages[0]) == std::vector<std::string>{
 				"mesh_att_battle_17_start", "mesh_att_battle_17_loop" } &&
@@ -1250,15 +1275,15 @@ namespace
 			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json");
 		std::string Gameplay = ReadExactBytes(GameplayPath);
 		const std::string EventMarker =
-			"\"eventId\": \"event.valtan.silence-slot.apply.enter\"";
+			"\"eventId\": \"event.valtan.silence-slot.step-01.enter\"";
 		const size_t iEvent = Gameplay.find(EventMarker);
-		const std::string DurationMarker = "\"durationMs\": 5000";
+		const std::string DurationMarker = "\"durationMs\": 7633";
 		const size_t iDuration = std::string::npos == iEvent ?
 			std::string::npos : Gameplay.find(DurationMarker, iEvent);
 		Require(std::string::npos != iDuration,
 			"typed stale-projection oracle could not find Silence deadline");
 		Gameplay.replace(iDuration, DurationMarker.size(),
-			"\"durationMs\": 6000");
+			"\"durationMs\": 8000");
 
 		const std::filesystem::path Temporary =
 			std::filesystem::temp_directory_path() /
@@ -1303,7 +1328,7 @@ namespace
 			Diagnostic.Requires_ProductProjection() &&
 			!Diagnostic.Is_AutomaticRetryable() &&
 			"VALTAN_SILENCE_SLOT" == Diagnostic.strRejectedPatternId &&
-			"SILENCE_APPLY" == Diagnostic.strRejectedStageId &&
+			"STEP_01" == Diagnostic.strRejectedStageId &&
 			0u == Preserved.Get_PatternCount(),
 			DiagnosticDetail.c_str());
 	}
@@ -1383,7 +1408,7 @@ namespace
 
 		VerifyMutation("geometry",
 			"\"eventId\": \"event.valtan.ghost.portal-once.volley\"",
-			"\"radiusM\": 25.403411844343534", "\"radiusM\": 24.403411844343534",
+			"\"radiusM\": 7.0", "\"radiusM\": 6.0",
 			"VALTAN_GHOST_PORTAL_ONCE", "ACTIVE");
 		/* The restored three-wave volley caps at 36 objects; the marker must
 		   match the high-jump event's own field, not a later event's "4". */

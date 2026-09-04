@@ -698,6 +698,9 @@ bool_t Client::CEffectV2Object::Resolve_TargetView(
 		}
 		OutView.pModel = pValtan->Get_BodyModel();
 		OutView.YawBasis = *pValtan->Get_Transform()->Get_WorldMatrixPtr();
+		OutView.bHasPortalRushRoute =
+			pValtan->Try_Get_PortalRushAnchorMatrices(
+				&OutView.PortalRushStart, &OutView.PortalRushEnd);
 		return true;
 	}
 	default:
@@ -714,14 +717,25 @@ bool_t Client::CEffectV2Object::Resolve_TargetPivot(
 	if (nullptr == View.pModel)
 		return false;
 	const matrix_t BoneRoot = XMLoadFloat4x4(&View.BoneRoot);
-	const matrix_t TargetWorld = XMLoadFloat4x4(&View.YawBasis);
 	matrix_t Pivot = BoneRoot;
-	if (!strBone.empty())
+	bool_t bPortalRushVirtualAnchor = false;
+	if ("portal.rush.start" == strBone || "portal.rush.end" == strBone)
+	{
+		if (!View.bHasPortalRushRoute)
+			return false;
+		Pivot = XMLoadFloat4x4(
+			"portal.rush.start" == strBone ?
+				&View.PortalRushStart : &View.PortalRushEnd);
+		bPortalRushVirtualAnchor = true;
+	}
+	else if (!strBone.empty())
 	{
 		if (!View.pModel->Has_Bone(strBone.c_str()))
 			return false;
 		Pivot = View.pModel->Get_BoneMatrix(strBone.c_str()) * BoneRoot;
 	}
+	const matrix_t TargetWorld = bPortalRushVirtualAnchor ?
+		Pivot : XMLoadFloat4x4(&View.YawBasis);
 	const vector_t Translation = XMVectorSetW(Pivot.r[3], 1.f);
 	if (PIVOT_ROTATION::BONE == eRotation)
 	{

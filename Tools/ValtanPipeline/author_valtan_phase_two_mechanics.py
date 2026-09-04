@@ -19,8 +19,14 @@ GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 CUE_PREFIX = "cue.valtan.phase2."
 REQUESTED_CUE_PREFIX = "cue.valtan.requested.20260827."
-GHOST_PORTAL_EDGE_LENGTH_M = 44.0
-GHOST_PORTAL_CIRCUMRADIUS_M = GHOST_PORTAL_EDGE_LENGTH_M / math.sqrt(3.0)
+GHOST_PORTAL_CIRCUMRADIUS_M = 7.0
+GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
+WARP_PORTAL_DISTANCE_M = 16.0
+WARP_PORTAL_TRAVEL_MS = 1300
+# Canonical C++ storage is float32; this decimal is that stable 16 m / 1.3 s value.
+WARP_PORTAL_SPEED_MPS = 12.3076925
+WARP_FIRST_LEG_DELAY_MS = 300
+WARP_REPEAT_LEG_DELAY_MS = 600
 
 
 class AuthoringError(RuntimeError):
@@ -70,6 +76,33 @@ def damage_hit(
         "schedule": {
             "kind": "EXPLICIT_OFFSETS",
             "offsetsMs": offsets_ms,
+        },
+        "serverDamageProfileId": damage_profile_id,
+        "pushRangeM": push_range_m,
+        "pushMs": push_ms,
+        "knockdown": knockdown,
+        "downMs": down_ms,
+    }
+
+
+def active_window_hit(
+    shape: dict[str, Any],
+    start_ms: int,
+    lifetime_ms: int,
+    damage_profile_id: str,
+    *,
+    push_range_m: float = 2.0,
+    push_ms: int = 150,
+    knockdown: bool = True,
+    down_ms: int = 1200,
+) -> dict[str, Any]:
+    return {
+        "shape": shape,
+        "activation": {
+            "kind": "ACTIVE_WINDOW",
+            "startMs": start_ms,
+            "lifetimeMs": lifetime_ms,
+            "perTargetPolicy": "ONCE",
         },
         "serverDamageProfileId": damage_profile_id,
         "pushRangeM": push_range_m,
@@ -533,7 +566,7 @@ def author_existing_patterns(
     set_tracking(three)
     stage(three, "STEP_03")["hit"] = damage_hit(
         {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0},
-        [500, 1350],
+        [500, 1300],
         "damage.valtan.ground-wave-smash",
         push_range_m=0.4,
         push_ms=97,
@@ -561,10 +594,19 @@ def author_existing_patterns(
     for leg in range(2, 10):
         stage_id = f"STEP_{leg:02d}"
         gameplay_stage = stage(warp, stage_id)
-        gameplay_stage["durationMs"] = 1800
+        retarget_delay_ms = (
+            WARP_FIRST_LEG_DELAY_MS if leg == 2 else WARP_REPEAT_LEG_DELAY_MS
+        )
+        gameplay_stage["durationMs"] = retarget_delay_ms + WARP_PORTAL_TRAVEL_MS
+        gameplay_stage["motion"] = {
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": retarget_delay_ms,
+            "speedMps": WARP_PORTAL_SPEED_MPS,
+            "distanceM": WARP_PORTAL_DISTANCE_M,
+        }
         gameplay_stage["hit"] = damage_hit(
             {"kind": "BOX", "lengthM": 8.0, "halfWidthM": 2.5},
-            list(range(500, 1300, 50)),
+            list(range(retarget_delay_ms, gameplay_stage["durationMs"], 50)),
             "damage.valtan.portal-rush",
             push_range_m=3.0,
             push_ms=180,
@@ -578,33 +620,17 @@ def author_existing_patterns(
             }
         ]
         leg_p = stage(warp_p, stage_id)
-        replace_phase_two_cues(
-            leg_p,
-            [
-                cue(
-                    f"{CUE_PREFIX}warp.step-{leg:02d}.composite",
-                    "effect.valtan.project-tuned.sequence.warp.portal",
-                    leg_p,
-                    scale_kind="OWNER_RELATIVE",
-                    position=(0.0, 0.0, 0.0),
-                    follow_policy="snapshot",
-                ),
-            ],
-        )
+        leg_p["bodyVisibility"] = {
+            "hiddenFromMs": 0,
+            "hiddenToMs": retarget_delay_ms,
+        }
+        replace_phase_two_cues(leg_p, [])
     recovery_p = stage(warp_p, "STEP_10")
-    replace_phase_two_cues(
-        recovery_p,
-        [
-            cue(
-                f"{CUE_PREFIX}warp.step-10.composite",
-                "effect.valtan.project-tuned.sequence.warp.portal",
-                recovery_p,
-                scale_kind="OWNER_RELATIVE",
-                position=(0.0, 0.0, 0.0),
-                follow_policy="snapshot",
-            ),
-        ],
-    )
+    recovery_p["bodyVisibility"] = {
+        "hiddenFromMs": 0,
+        "hiddenToMs": 300,
+    }
+    replace_phase_two_cues(recovery_p, [])
 
     counter = gameplay_by_id["VALTAN_COUNTER"]
     counter_p = presentation_by_id["VALTAN_COUNTER"]
@@ -1432,6 +1458,215 @@ def author_terrain_pairs(
     )
 
 
+def author_clip_aligned_stage_hits(
+    gameplay: dict[str, Any], presentation: dict[str, Any]
+) -> None:
+    """Keep source-reviewed attack contacts identical across matching clips."""
+    cone_smash = {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}
+    for pattern_id, stage_id, offsets_ms in (
+        ("VALTAN_THREE", "STEP_01", [1617]),
+        ("VALTAN_THREE", "STEP_02", [963]),
+        # Keep the source-reviewed 1300ms clip-template contact and the
+        # pre-existing 500ms first pulse reviewed for this occurrence only.
+        ("VALTAN_THREE", "STEP_03", [500, 1300]),
+        ("VALTAN_SEQUENCE_TWOHAND", "STEP_02", [1000]),
+        ("VALTAN_STRUGGLING", "STEP_07", [1000]),
+    ):
+        stage(pattern(gameplay, pattern_id), stage_id)["hit"] = damage_hit(
+            copy.deepcopy(cone_smash),
+            offsets_ms,
+            "damage.valtan.ground-wave-smash",
+            push_range_m=0.4,
+            push_ms=97,
+            down_ms=2000,
+        )
+
+    stomp = lambda offsets: damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 8.0},
+        offsets,
+        "damage.valtan.stomp",
+        push_range_m=1.5,
+        push_ms=150,
+        down_ms=1000,
+    )
+    for pattern_id, stage_id in (
+        ("VALTAN_BIND_SLOT", "STEP_01"),
+        ("VALTAN_ROAR_CHARGE", "STEP_01"),
+        ("VALTAN_TERRAIN_DESTRUCTION", "STEP_09"),
+        ("VALTAN_STRUGGLING", "STEP_08"),
+    ):
+        stage(pattern(gameplay, pattern_id), stage_id)["hit"] = stomp([1200])
+
+    # GROUND_ROAR contains both the stomp and roar clips in one canonical stage.
+    # The one-hit-per-stage schema cannot retain two damage profiles, and splitting
+    # this action would invalidate the rock owner action ID. Preserve topology and
+    # use the stronger roar response for the three source-reviewed contacts.
+    stage(pattern(gameplay, "VALTAN_GROUND_ROAR"), "STEP_01")["hit"] = damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 12.0},
+        [600, 1300, 2700],
+        "damage.valtan.ledge-roar",
+        push_range_m=2.0,
+        push_ms=242,
+        down_ms=2000,
+    )
+
+    roar = lambda: damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 12.0},
+        [900],
+        "damage.valtan.ledge-roar",
+        push_range_m=2.0,
+        push_ms=242,
+        down_ms=2000,
+    )
+    for pattern_id, stage_id in (
+        ("VALTAN_BIND_SLOT", "RECOVERY"),
+        ("VALTAN_ROAR_CHARGE", "STEP_03"),
+        ("VALTAN_TERRAIN_DESTRUCTION", "STEP_11"),
+        ("VALTAN_STRUGGLING", "STEP_10"),
+    ):
+        stage(pattern(gameplay, pattern_id), stage_id)["hit"] = roar()
+
+    stage(pattern(gameplay, "VALTAN_ROAR_CHARGE"), "STEP_06")["hit"] = damage_hit(
+        {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0},
+        [200],
+        "damage.valtan.swing",
+        push_range_m=2.0,
+        push_ms=150,
+        down_ms=1200,
+    )
+    stage(pattern(gameplay, "VALTAN_CROSS"), "STEP_01")["hit"] = active_window_hit(
+        {"kind": "CROSS", "lengthM": 10.0, "halfWidthM": 0.75},
+        1617,
+        500,
+        "damage.valtan.earthquake-smash",
+        push_range_m=2.0,
+        push_ms=150,
+        down_ms=1200,
+    )
+    # STEP_01/02 only play the pre-contact slice of mesh_att_battle_4_01.
+    # STEP_03 owns the complete clip and its published root-motion curve, so its
+    # source HIT contacts can follow the authoritative moving boss pose.
+    stage(pattern(gameplay, "VALTAN_SEQUENCE_RUSH"), "STEP_03")["hit"] = damage_hit(
+        {"kind": "BOX", "lengthM": 6.0, "halfWidthM": 2.5},
+        [2450, 2650, 2850, 3050, 3250, 4600],
+        "damage.valtan.dash-charge",
+        push_range_m=2.0,
+        push_ms=150,
+        down_ms=1000,
+    )
+
+    stage(pattern(gameplay, "VALTAN_SEQUENCE_FOUR"), "STEP_01")["hit"][
+        "schedule"
+    ] = {"kind": "EXPLICIT_OFFSETS", "offsetsMs": [1233, 2233, 3233, 4200]}
+    stage(pattern(gameplay, "VALTAN_STRUGGLING"), "STEP_04")["hit"] = stomp(
+        [1233, 2233, 3233, 4200]
+    )
+    stage(pattern(gameplay, "VALTAN_STRUGGLING"), "STEP_06")["hit"] = damage_hit(
+        {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 10.0},
+        [200, 400],
+        "damage.valtan.down-smash",
+        push_range_m=2.0,
+        push_ms=150,
+        down_ms=1200,
+    )
+
+    for stage_id, offsets_ms in (
+        ("STEP_02", [0, 210, 420]),
+        ("STEP_03", [0, 350, 700, 1050]),
+    ):
+        stage(pattern(gameplay, "VALTAN_SEQUENCE_WHIRLWIND"), stage_id)[
+            "hit"
+        ] = damage_hit(
+            {"kind": "CIRCLE", "outerRadiusM": 10.0},
+            offsets_ms,
+            "damage.valtan.jump-spin",
+            push_range_m=3.0,
+            push_ms=242,
+            down_ms=2000,
+        )
+
+    sequence_whirlwind_p = pattern(presentation, "VALTAN_SEQUENCE_WHIRLWIND")
+    for stage_id in ("STEP_02", "STEP_03"):
+        presentation_stage = stage(sequence_whirlwind_p, stage_id)
+        replace_phase_two_cues(
+            presentation_stage,
+            [cue(
+                f"{CUE_PREFIX}sequence-whirlwind.{stage_id.lower()}.active",
+                "effect.valtan.pattern.420633.active",
+                presentation_stage,
+                scale_kind="GAMEPLAY_FOOTPRINT",
+            )],
+        )
+
+    # The complete rush clip reaches its first reviewed contact at raw 2450ms.
+    # Reuse the Product dash-charge active carrier from that source point; the
+    # two 1500ms prep slices remain intentionally free of hit/effect rows.
+    rush_presentation_stage = stage(
+        pattern(presentation, "VALTAN_SEQUENCE_RUSH"), "STEP_03"
+    )
+    rush_effect = cue(
+        f"{CUE_PREFIX}sequence-rush.step-03.active",
+        "effect.valtan.project-tuned.dash-charge.active-shield",
+        rush_presentation_stage,
+        scale_kind="GAMEPLAY_FOOTPRINT",
+    )
+    rush_effect["sourceStartMs"] = 2450
+    replace_phase_two_cues(rush_presentation_stage, [rush_effect])
+
+    landing = lambda offsets: damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 8.0},
+        offsets,
+        "damage.valtan.jump-spin",
+        push_range_m=3.0,
+        push_ms=242,
+        down_ms=2000,
+    )
+    # These occurrences share the landing clip, but adding a new area hit to
+    # their established mechanics was not approved. Restore the non-damaging
+    # authored contract on every pass so an older generated document cannot
+    # retain the experimental same-clip contact.
+    for pattern_id, stage_id in (
+        ("VALTAN_TERRAIN_DESTRUCTION", "STEP_03"),
+        ("VALTAN_TRASH", "STEP_03"),
+        ("VALTAN_ARENA_BREAK_109", "IMPACT_HOLD"),
+    ):
+        stage(pattern(gameplay, pattern_id), stage_id)["hit"] = {
+            "shape": {"kind": "NONE"}
+        }
+    for pattern_id, stage_id, offsets_ms in (
+        ("VALTAN_SIX_PIZZA_106", "STEP_03", [267]),
+        ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "IMPACT", [67]),
+        ("VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK", "IMPACT", [67]),
+    ):
+        stage(pattern(gameplay, pattern_id), stage_id)["hit"] = landing(offsets_ms)
+
+    pizza = pattern(gameplay, "VALTAN_SIX_PIZZA_106")
+    stage(pizza, "STEP_04")["hit"] = stomp([2100])
+    stage(pizza, "STEP_05")["hit"] = damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 12.0},
+        [1300],
+        "damage.valtan.ledge-roar",
+        push_range_m=2.0,
+        push_ms=242,
+        down_ms=2000,
+    )
+    stage(pizza, "STEP_07")["hit"] = damage_hit(
+        {"kind": "CIRCLE", "outerRadiusM": 25.0},
+        [250],
+        "damage.valtan.super-smash",
+        push_range_m=3.0,
+        push_ms=242,
+        down_ms=2000,
+    )
+    stage(pizza, "STEP_11")["hit"] = damage_hit(
+        {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0},
+        [150, 700, 1150],
+        "damage.valtan.ground-wave-smash",
+        push_range_m=0.4,
+        push_ms=97,
+        down_ms=2000,
+    )
+
 def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, Any]) -> None:
     """Author independent hazards and finite boss motion without reordering the canonical sequence."""
     release = stage(pattern(gameplay, "VALTAN_CATCH_BREATH"), "STEP_04")["events"][0]
@@ -1454,7 +1689,12 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "defaultNextActionId": "valtan.authoring.silence-slot.apply",
             "hit": none_hit(),
             "motion": None,
-            "events": [],
+            "events": [{
+                "eventId": "event.valtan.silence-slot.step-01.enter",
+                "trigger": "ENTER",
+                "kind": "SET_PLAYER_SILENCE",
+                "durationMs": 7633,
+            }],
             "branches": [],
         },
         {
@@ -1465,14 +1705,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "defaultNextActionId": None,
             "hit": none_hit(),
             "motion": None,
-            "events": [
-                {
-                    "eventId": "event.valtan.silence-slot.apply.enter",
-                    "trigger": "ENTER",
-                    "kind": "SET_PLAYER_SILENCE",
-                    "durationMs": 5000,
-                },
-            ],
+            "events": [],
             "branches": [],
         },
     ]
@@ -1603,7 +1836,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                         "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
                     "clip": "mesh_att_battle_5_01_end",
                     "mappingBasis": "PROJECT_AUTHORED",
-                    "sourceStartMs": 900,
+                    "sourceStartMs": 0,
                     "playMs": 3533,
                     "playRate": 1.0,
                     "repeatUntilStageEnd": False,
@@ -2034,16 +2267,21 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     warp_p = pattern(presentation, "VALTAN_WARP")
     for leg in range(8):
         row = stage(warp, f"STEP_{leg + 2:02d}")
-        row["durationMs"] = 1800
+        retarget_delay_ms = (
+            WARP_FIRST_LEG_DELAY_MS if leg == 0 else WARP_REPEAT_LEG_DELAY_MS
+        )
+        row["durationMs"] = retarget_delay_ms + WARP_PORTAL_TRAVEL_MS
         row["motion"] = {
             "kind": "PORTAL_TARGET_RUSH",
-            "retargetDelayMs": 500,
-            "speedMps": 20.0,
-            "distanceM": 16.0,
+            "retargetDelayMs": retarget_delay_ms,
+            "speedMps": WARP_PORTAL_SPEED_MPS,
+            "distanceM": WARP_PORTAL_DISTANCE_M,
         }
         row["hit"]["schedule"] = {
             "kind": "EXPLICIT_OFFSETS",
-            "offsetsMs": list(range(500, 1300, 50)),
+            "offsetsMs": list(
+                range(retarget_delay_ms, row["durationMs"], 50)
+            ),
         }
         for effect_cue in stage(warp_p, row["stageId"])["effectCues"]:
             effect_cue["followPolicy"] = "snapshot"
@@ -2052,6 +2290,10 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         "eventId": "event.valtan.warp.return-center", "trigger": "ENTER",
         "kind": "RETURN_TO_ARENA_CENTER",
     }]
+    stage(warp_p, "STEP_10")["bodyVisibility"] = {
+        "hiddenFromMs": 0,
+        "hiddenToMs": 300,
+    }
 
     for pattern_id in ("VALTAN_SIX_PIZZA_106", "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
                        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"):
@@ -2077,16 +2319,18 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         combat_object_id: str,
         radius_m: float,
         first_offset_ms: int,
+        volley_policy: str = "BOSS_RELATIVE",
+        layout_kind: str = "RADIAL_AROUND_BOSS",
     ) -> dict[str, Any]:
         return {
             "eventId": event_id,
             "trigger": "ENTER",
             "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
             "combatObjectArchetypeId": combat_object_id,
-            "volleyPolicy": "BOSS_RELATIVE",
+            "volleyPolicy": volley_policy,
             "countPerResolvedTarget": 4,
             "layout": {
-                "kind": "RADIAL_AROUND_BOSS",
+                "kind": layout_kind,
                 "radiusM": radius_m,
                 "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
@@ -2107,15 +2351,17 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         rock_pillar_volley(
             "event.valtan.six-pizza.rock-pillars",
             "combatobject.valtan.six-pizza.rock-pillar",
-            9.8994949366,
+            10.0,
             1000,
+            "ARENA_CENTER",
+            "RADIAL_AROUND_ARENA_CENTER",
         )
     ]
     stage(pattern(gameplay, "VALTAN_STRUGGLING"), "STEP_04")["events"] = [
         rock_pillar_volley(
             "event.valtan.struggling.rock-pillars",
             "combatobject.valtan.struggling.rock-pillar",
-            4.9497474683,
+            6.3639610307,
             833,
         )
     ]
@@ -2123,14 +2369,14 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         {
             "independentEffectId":
                 "valtan.independent-effect.six-pizza-rock-pillars",
-            "displayName": "피자 패턴 / 1초 후 ±7m 돌 기둥 4개",
+            "displayName": "피자 패턴 / 1초 후 아레나 중앙 반경 10m 대각 돌 기둥 4개",
             "ownership": "SERVER_COMBAT_OBJECT",
             "spawnEventId": "event.valtan.six-pizza.rock-pillars",
         },
         {
             "independentEffectId":
                 "valtan.independent-effect.struggling-rock-pillars",
-            "displayName": "발악 패턴 / 5초 지점 ±3.5m 돌 기둥 4개",
+            "displayName": "발악 패턴 / 5초 지점 ±4.5m 돌 기둥 4개",
             "ownership": "SERVER_COMBAT_OBJECT",
             "spawnEventId": "event.valtan.struggling.rock-pillars",
         },
@@ -2177,7 +2423,10 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         finale["displayName"] = "유령 발탄 · 포탈 최종 패턴"
         finale["finale"] = {
             "kind": "GHOST_PORTAL_LOOP", "ghostArchetypeId": "BOSS_VALTAN_GHOST",
-            "ghostPatternIds": ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR"],
+            "ghostPatternIds": [
+                "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR",
+                "VALTAN_CROSS", "VALTAN_CHARGE", "VALTAN_CHARGE_2",
+            ],
             "spawnHalfExtentsM": [10.0, 10.0], "maximumActiveGhosts": 1,
         }
         finale_p = remap_finale(copy.deepcopy(warp_p))
@@ -2195,12 +2444,12 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     finale = pattern(gameplay, finale_id)
     finale_p = pattern(presentation, finale_id)
     finale["finale"]["ghostPatternIds"] = [
-        "VALTAN_SIX_PIZZA_106",
-        "VALTAN_GROUND_ROAR",
-        "VALTAN_STAGGER_SLOT",
-        "VALTAN_BIND_SLOT",
-        "VALTAN_SILENCE_SLOT",
-        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_CROSS",
+        "VALTAN_CHARGE",
+        "VALTAN_CHARGE_2",
     ]
     for leg in range(8):
         row = stage(finale, f"STEP_{leg + 2:02d}")
@@ -2254,7 +2503,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "stageId": "ACTIVE",
             "actionId": "valtan.ghost.portal-once.active",
             "stageKind": "ACTIVE",
-            "durationMs": 5000,
+            "durationMs": 1900,
             "defaultNextActionId": None,
             "hit": none_hit(),
             "motion": None,
@@ -2334,10 +2583,11 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     ]
     presentation["independentEffects"].append({
         "independentEffectId": independent_id,
-        "displayName": "망령 포탈 돌진 1회 / 44m 정삼각형",
+        "displayName": "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형",
         "ownership": "SERVER_COMBAT_OBJECT",
         "spawnEventId": "event.valtan.ghost.portal-once.volley",
     })
+    author_clip_aligned_stage_hits(gameplay, presentation)
 
 
 def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
