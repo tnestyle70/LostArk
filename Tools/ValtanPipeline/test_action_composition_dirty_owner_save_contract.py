@@ -24,6 +24,11 @@ class ActionCompositionDirtyOwnerSaveContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar",
         )
+        cls.accept = _function_body(
+            cls.workbench,
+            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+        )
 
     def test_dirty_snapshot_selects_the_only_save_participants(self) -> None:
         for token in (
@@ -78,15 +83,15 @@ class ActionCompositionDirtyOwnerSaveContractTests(unittest.TestCase):
         self.assertLess(effect_prepare, effect_consistency)
 
         self.assertIn(
-            "if (bPreparedPatternSoundDirty &&\n"
-            "\t\t!m_pAnimationTool->Accept_ValtanCompositionPatternSoundSave(",
-            self.save,
+            "m_bPendingPatternSoundOwner = bPreparedPatternSoundDirty", self.save
         )
+        self.assertIn("m_bPendingEffectV2Owner = bEffectV2Dirty", self.save)
+        self.assertIn("if (m_bPendingPatternSoundOwner)", self.accept)
         self.assertIn(
-            "if (bEffectV2Dirty &&\n"
-            "\t\t!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(",
-            self.save,
+            "Accept_ValtanCompositionPatternSoundSave(", self.accept
         )
+        self.assertIn("if (m_bPendingEffectV2Owner)", self.accept)
+        self.assertIn("Accept_BossValtanBindingDraftSave(", self.accept)
 
     def test_clean_sound_owner_is_not_polled_or_reported_as_pinned(self) -> None:
         timeline = _function_body(

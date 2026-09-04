@@ -102,6 +102,9 @@ producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일�
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
 정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 기본 `Core`는 제품과 중복 컴파일 없는 protocol 계약 및 Character Select `Core` live Server scenario 한 번을 실행하고, `-Profile Product`는 제품+CSO만, `-Profile FullDiagnostic`은 Character Select `Party2`/`Party4` transfer와 변경 domain 광역 진단까지 실행한다. `Tools/Build/BuildDomains.json`의 validation/publisher는 입력·도구·물리 Resources와 생성 output fingerprint가 같은 경우 `out/BuildPipeline/receipts`를 재사용한다. `-SkipBuild`는 현재 source closure 및 정확한 Engine/Shared/Server/Client EXE·DLL·LIB/PDB hash가 직전 product receipt와 모두 일치할 때만 허용하고, 불일치는 publisher 실행 전 거부한다. 성공 실행의 HEAD+dirty identity, source/input hash, binary/PDB hash, 단계별 시간은 `out/BuildPipeline/runs`에 남긴다. 퇴역한 EffectRender 광역 실행을 복원하지 않으며, 현재 Product/V2 fixture와 CSO closure가 그 고유 계약을 검증한다. Client 작업 디렉터리는 반드시 `Client/Default`로 고정한다.
+`BuildDomains.json`의 `composition.presentation` domain은 Product/Core/FullDiagnostic에서 Boss
+Composition과 Arena Sequencer source graph를 검증하고, resolved Client read model 4개와 publish receipt
+하나를 생성한다. 이 domain은 Server gameplay bootstrap이나 runtime Hot Reload를 대신하지 않는다.
 
 같은 working tree에서 Visual Studio와 자동화 빌드/publisher를 겹쳐 실행하지 않는다. 선언과 정의가 일치하는데
 `LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider
@@ -234,11 +237,11 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.14`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.4`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` simulation을 만든다. 따라서 class 변경, 몬스터 소환, collider 판정과 damage는 모두 Server에서 실행되지만 다른 Character Select session과 player/entity/HP/damage snapshot을 공유하지 않는다. session 퇴장 시 queued `LEAVE`를 room tick이 소비하고 private simulation을 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 world별 shared simulation을 유지한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.14:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.4:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
 보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server
@@ -319,6 +322,21 @@ exact canonical reload까지 성공해야 로컬 저장 완료다. Server runtim
 revision이 Server-active로 확인되기 전에는 Complete Play와 exact Restart를 막는다. admission 실패 뒤
 보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
 전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
+
+`Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
+JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.
+`Data/Compositions/Sequences/*.sequencer.json`도 Camera, World, Effect, UI 본문을 복제하지 않고 하나의
+arena clock과 stable owner reference만 소유하는 scheduling facade다.
+`Tools/CompositionPipeline/Publish-Compositions.ps1`은 이 graph를 strict join해
+`Client/Bin/DataFiles/Compositions`에 resolved read model과 receipt를 만든다. 생성물 안에 함께 보이는
+Stage와 cue 값은 파생 projection이며 새 정본이 아니다.
+
+현재 Valtan Boss Composition은 `SHADOW`, KakulSaydon Boss Composition은 `REFERENCE_ONLY`, 두 Arena
+Sequencer는 `SHADOW`이고 모두 `runtimeEligible=false`다. `CSequencerTool`은 `CProjectDataRoot`를 통해
+source manifest를 staged load하여 inspection만 제공하며 generated resolved Product를 두 번째 timeline
+runtime으로 읽지 않는다. Valtan의 상세 box 편집, Play와 Save는 기존 `CActionCompositionWorkbench`와
+split owner가 계속 담당한다. KakulSaydon은 reference inventory와 authored arena track을 표시할 뿐
+generic Composition Save/Play나 Server encounter를 제공하지 않는다.
 
 Pattern Sound cue는 exact occurrence dependency와 canonical read generation을 확인한 뒤 Sound owner에
 별도 CAS 저장한다. Pattern source와 하나의 atomic writer라고 표시하지 않는다. committed Sound source의

@@ -50,6 +50,15 @@ class FullPipelineEntrypointContractTests(unittest.TestCase):
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
         )
 
+    def test_step_result_cannot_overwrite_the_typed_scriptblock_parameter(self) -> None:
+        # PowerShell variable names are case-insensitive, so `$body = & $Body`
+        # attempts to assign a step result such as "PASS" back into the typed
+        # [scriptblock] parameter.  Keep the result in a distinctly named
+        # variable and do not call GetNewClosure on Invoke-PipelineStep output.
+        self.assertIn("$bodyResult = & $Body", self.runner)
+        self.assertNotIn("$body = & $Body", self.runner)
+        self.assertNotIn("}.GetNewClosure()", self.runner)
+
     def test_publish_v2_precedes_receipted_valtan_validation(self) -> None:
         publish = self.runner.index(
             "Invoke-PipelineStep 'Valtan split Product PublishV2'"
@@ -99,6 +108,9 @@ class FullPipelineEntrypointContractTests(unittest.TestCase):
         self.assertIn("-Profile $Profile", build_block)
         self.assertIn("-ResourceRoot $runtimeResourceRoot", build_block)
         self.assertNotIn("Invoke-BuildDomain", build_block)
+        self.assertIn("$ErrorActionPreference = 'Continue'", build_block)
+        self.assertIn("$buildExitCode = $global:LASTEXITCODE", build_block)
+        self.assertIn("if ($buildExitCode -ne 0)", build_block)
 
         for duplicate_publisher in (
             "Publish-BalanceRuntimeSet.ps1",

@@ -115,6 +115,34 @@ BINDING_KEYS = {
     "mappingBasis",
     "authority",
 }
+PATTERN_SCHEMA = "lostark.kakul-animation-pattern-bindings"
+PATTERN_ROOT_KEYS = {
+    "schema",
+    "formatVersion",
+    "profileId",
+    "referenceRevision",
+    "authority",
+    "nextPatternOrdinal",
+    "patterns",
+}
+PATTERN_KEYS = {
+    "patternId",
+    "displayName",
+    "sourceActionId",
+    "nextOccurrenceOrdinal",
+    "clips",
+}
+PATTERN_CLIP_KEYS = {
+    "occurrenceId",
+    "stageId",
+    "slotId",
+    "runtimeClip",
+    "sourceStartMs",
+    "playMs",
+    "playRate",
+    "endPolicy",
+}
+PATTERN_END_POLICIES = {"EXACT", "HOLD_LAST_POSE", "LOOP_TO_WINDOW"}
 
 
 class BuildError(ValueError):
@@ -774,6 +802,132 @@ def validate_authored_document(document: Any, reference: dict[str, Any]) -> None
             raise BuildError(f"authored playRate is out of range: {identity}")
         if not isinstance(binding["loop"], bool):
             raise BuildError(f"authored loop must be boolean: {identity}")
+
+
+def validate_pattern_document(document: Any, reference: dict[str, Any]) -> None:
+    """Validate the reference-only Kakul pattern authoring projection.
+
+    Pattern documents are independent authoring indexes, but every selected
+    action/stage/slot and runtime clip must still resolve to the exact immutable
+    action-reference revision.  This is intentionally usable by other domain
+    publishers so they do not duplicate a weaker ad-hoc admission path.
+    """
+
+    validate_reference_document(reference)
+    root = _strict_object(document, PATTERN_ROOT_KEYS, "pattern bindings")
+    if root["schema"] != PATTERN_SCHEMA or root["formatVersion"] != FORMAT_VERSION:
+        raise BuildError("pattern bindings header is invalid")
+    if root["authority"] != AUTHORITY:
+        raise BuildError("pattern bindings authority must be REFERENCE_ONLY")
+    profile_id = reference["profileId"]
+    if (
+        root["profileId"] != profile_id
+        or root["referenceRevision"] != reference["referenceRevision"]
+    ):
+        raise BuildError("pattern bindings/reference identity is stale")
+    next_pattern = root["nextPatternOrdinal"]
+    if (
+        isinstance(next_pattern, bool)
+        or not isinstance(next_pattern, int)
+        or not 1 <= next_pattern <= 1_000_000
+    ):
+        raise BuildError("pattern bindings nextPatternOrdinal is invalid")
+    patterns = root["patterns"]
+    if not isinstance(patterns, list) or len(patterns) > 4096:
+        raise BuildError("pattern bindings patterns must be an array <= 4096")
+
+    action_ids: set[int] = set()
+    source_slots: set[tuple[int, str, str]] = set()
+    runtime_clips: set[str] = set()
+    for action in reference["actions"]:
+        admitted = action["reviewStatus"] == REVIEW_CANDIDATE
+        if admitted:
+            action_ids.add(action["sourceActionId"])
+        for stage in action["stages"]:
+            for slot in stage["slots"]:
+                runtime_clips.add(slot["runtimeClip"])
+                if admitted:
+                    source_slots.add(
+                        (action["sourceActionId"], stage["stageId"], slot["slotId"])
+                    )
+
+    pattern_ids: set[str] = set()
+    occurrence_ids: set[str] = set()
+    total_clips = 0
+    pattern_shape = re.compile(
+        rf"kakul\.{re.escape(profile_id)}\.pattern\.([1-9][0-9]*)"
+    )
+    for pattern_ordinal, raw_pattern in enumerate(patterns):
+        pattern = _strict_object(
+            raw_pattern, PATTERN_KEYS, f"patterns[{pattern_ordinal}]"
+        )
+        pattern_id = pattern["patternId"]
+        match = pattern_shape.fullmatch(pattern_id) if isinstance(pattern_id, str) else None
+        if match is None or int(match.group(1)) >= next_pattern:
+            raise BuildError(f"pattern identity/ordinal is invalid: {pattern_id!r}")
+        if pattern_id in pattern_ids:
+            raise BuildError(f"duplicate patternId: {pattern_id}")
+        pattern_ids.add(pattern_id)
+        if not isinstance(pattern["displayName"], str) or not pattern["displayName"]:
+            raise BuildError(f"pattern displayName is invalid: {pattern_id}")
+        source_action_id = pattern["sourceActionId"]
+        if source_action_id not in action_ids:
+            raise BuildError(f"pattern sourceActionId is not admitted: {pattern_id}")
+        next_occurrence = pattern["nextOccurrenceOrdinal"]
+        if (
+            isinstance(next_occurrence, bool)
+            or not isinstance(next_occurrence, int)
+            or not 1 <= next_occurrence <= 1_000_000
+        ):
+            raise BuildError(f"pattern nextOccurrenceOrdinal is invalid: {pattern_id}")
+        clips = pattern["clips"]
+        if not isinstance(clips, list) or not clips or len(clips) > 4096:
+            raise BuildError(f"pattern clips must contain 1..4096 rows: {pattern_id}")
+        total_clips += len(clips)
+        if total_clips > 16384:
+            raise BuildError("pattern bindings contain more than 16384 clips")
+        occurrence_shape = re.compile(
+            rf"{re.escape(pattern_id)}\.clip\.([1-9][0-9]*)"
+        )
+        for clip_ordinal, raw_clip in enumerate(clips):
+            clip = _strict_object(
+                raw_clip,
+                PATTERN_CLIP_KEYS,
+                f"{pattern_id}.clips[{clip_ordinal}]",
+            )
+            occurrence_id = clip["occurrenceId"]
+            occurrence_match = (
+                occurrence_shape.fullmatch(occurrence_id)
+                if isinstance(occurrence_id, str)
+                else None
+            )
+            if occurrence_match is None or int(occurrence_match.group(1)) >= next_occurrence:
+                raise BuildError(f"pattern occurrence identity/ordinal is invalid: {occurrence_id!r}")
+            if occurrence_id in occurrence_ids:
+                raise BuildError(f"duplicate pattern occurrenceId: {occurrence_id}")
+            occurrence_ids.add(occurrence_id)
+            source_key = (source_action_id, clip["stageId"], clip["slotId"])
+            if source_key not in source_slots:
+                raise BuildError(f"pattern clip does not resolve to reference: {source_key}")
+            runtime_clip = clip["runtimeClip"]
+            if runtime_clip not in runtime_clips:
+                raise BuildError(f"pattern runtimeClip is unavailable: {runtime_clip!r}")
+            source_start = clip["sourceStartMs"]
+            play_ms = clip["playMs"]
+            if (
+                isinstance(source_start, bool)
+                or not isinstance(source_start, int)
+                or not 0 <= source_start <= MAX_TIMELINE_MS
+                or isinstance(play_ms, bool)
+                or not isinstance(play_ms, int)
+                or not 1 <= play_ms <= MAX_TIMELINE_MS
+            ):
+                raise BuildError(f"pattern clip timing is invalid: {occurrence_id}")
+            play_rate = _finite_number(clip["playRate"], "pattern playRate")
+            if play_rate < MIN_PLAY_RATE or play_rate > MAX_PLAY_RATE:
+                raise BuildError(f"pattern playRate is out of range: {occurrence_id}")
+            if clip["endPolicy"] not in PATTERN_END_POLICIES:
+                raise BuildError(f"pattern endPolicy is invalid: {occurrence_id}")
 
 
 def _json_bytes(document: dict[str, Any]) -> bytes:

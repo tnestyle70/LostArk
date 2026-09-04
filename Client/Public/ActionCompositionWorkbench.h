@@ -161,6 +161,13 @@ public:
 	{
 		return 0u != m_CanonicalView.Get_PatternCount();
 	}
+	/* Monotonic identity of the immutable canonical display snapshot. Sibling
+	   views may use it only to invalidate their own read-only projections; it
+	   is not a source or Product revision. */
+	[[nodiscard]] std::uint64_t Get_CanonicalDisplayGeneration() const noexcept
+	{
+		return m_iCanonicalDisplayGeneration;
+	}
 	[[nodiscard]] bool_t Is_FullyAdmitted() const
 	{
 		return Can_MutateValtanView(m_eAdmission);

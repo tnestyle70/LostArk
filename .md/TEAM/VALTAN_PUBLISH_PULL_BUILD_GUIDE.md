@@ -12,7 +12,11 @@ Product를 보게 만드는 실행 순서의 정본이다. `git pull` 성공과 
   `Authored`, `Groups` 문서
 - Git 관리 Product projection: `Data/Encounters/Valtan/ValtanEncounter.json`,
   `ValtanCombatObjects.json`, `Data/Animation/Authored/Valtan/*`
+- Git 관리 Composition descriptor: `Data/Compositions/Bosses/Valtan.bosscomposition.json`.
+  기존 owner의 경로·coverage·Pattern index만 소유하는 `SHADOW` source manifest다
 - 로컬 생성물: `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`
+- 로컬 Composition 생성물: `Client/Bin/DataFiles/Compositions/**`. resolved read model과 receipt이며
+  직접 편집하지 않고 현재 Client/Server gameplay runtime도 소비하지 않는다
 
 `Gameplay.bootstrap`은 직접 편집하거나 Git으로 전달하지 않는다. 각 PC의 publisher가 같은 Git
 정본으로 다시 생성한다. Client와 Server는 `Shared/Public/GameplayDataRevision.h`의 공용 format
@@ -22,6 +26,9 @@ version을 함께 사용한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode PublishV2 -RepositoryRoot $PWD
+powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode SyncValtanShadow -RepositoryRoot $PWD
+powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Validate -RepositoryRoot $PWD
+powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Publish -RepositoryRoot $PWD
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish
 python Tools/GameplayPipeline/test_valtan_presentation_generation.py
 python Tools/EffectToolV2/validate_effect_v2.py --repository-root . --resource-root Client/Bin/Resources
@@ -32,6 +39,8 @@ git diff --check
 
 `PublishV2`가 바꾼 Git 관리 Product 파일은 정본 변경과 같은 PR에 포함한다. publisher 또는 하네스
 기대값만 완화해 서로 다른 데이터 세대를 통과시키지 않는다.
+`SyncValtanShadow`가 갱신한 Composition descriptor도 같은 PR에 포함한다. 이 명령은 split join의
+Pattern index/coverage가 실제로 달라졌을 때만 descriptor revision을 올린다.
 
 ## 다른 PC에서 pull한 뒤 실행할 순서
 
@@ -39,6 +48,8 @@ git diff --check
 git pull --ff-only origin main
 powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode Validate -RepositoryRoot $PWD
+powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Validate -RepositoryRoot $PWD
+powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Publish -RepositoryRoot $PWD
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core
 ```
@@ -46,6 +57,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 증분 빌드가 통과했더라도 Core의 publisher와 하네스를 생략하지 않는다. 기존 PC에는 이전 bootstrap,
 이전 harness EXE 또는 이미 컴파일된 Client object가 남을 수 있어 새 PC의 clean build와 결과가
 달라질 수 있다.
+pull한 팀원은 `SyncValtanShadow`를 실행하지 않는다. 작성자가 PR에 포함하지 않은 descriptor drift를
+로컬에서 덮어 가릴 수 있기 때문이다. Product/Core/FullDiagnostic runner는 `BuildDomains.json`의
+`composition.presentation` domain으로 Composition Publish를 자동 실행한다.
 
 ## 대표 오류의 실제 소유자
 
@@ -56,10 +70,17 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 | `Gameplay.bootstrap version or row count is invalid` | presentation generation admission | 공용 bootstrap format version, publisher 출력, Client admission이 같은 값인지 |
 | `split authoring Product drift` | Valtan projector | `PublishV2` 결과를 PR에 포함했는지 |
 | `Effect V2 binding header/rows are invalid` | presentation publisher/admission | bindings와 groups가 strict formatVersion 2인지, validator가 아직 v1 row를 기대하지 않는지 |
+| `pattern index order/closure drift` 또는 `composition coverage drift` | Composition SHADOW descriptor | 작성자가 `PublishV2` 뒤 `SyncValtanShadow` 결과를 PR에 포함했는지 |
+| `KakulSaydon ... reference revision/action count drift` | Composition catalog validation | 네 Kakul reference/action/pattern-binding 문서가 같은 reference 세대인지 |
 
 이 오류들은 `git pull`이나 Git merge 자체의 실패가 아니다. pull로 받은 정본과 로컬에서 다시 실행된
 publisher/validator/reader 중 하나가 다른 계약 세대를 소비할 때 clean build가 의도적으로 중단한
 것이다.
+
+Composition publish는 Valtan `SHADOW`, KakulSaydon `REFERENCE_ONLY`, 두 Arena Sequencer `SHADOW`
+문서를 한 catalog로 검증한다. 현재 생성물은 모두 `runtimeEligible=false`다. Sequencer는 source manifest
+inspection과 기존 Valtan Workbench 진입만 제공하며 generic Composition Save/Play와 arena runtime은
+아직 완료되지 않았다.
 
 ## 화면 검증
 

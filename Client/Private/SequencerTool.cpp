@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <array>
+#include <string_view>
+#include <utility>
 
 namespace
 {
@@ -16,6 +18,66 @@ namespace
 		LANE::STAGE, LANE::ANIMATION, LANE::COLLIDER, LANE::EFFECT,
 		LANE::SOUND, LANE::LOGIC, LANE::CAMERA,
 	};
+
+	struct KAKUL_PROFILE_PRESENTATION final
+	{
+		const char_t* profileId;
+		const char_t* category;
+		const char_t* modelPolicy;
+	};
+
+	constexpr std::array<KAKUL_PROFILE_PRESENTATION, 4u>
+		KAKUL_PROFILE_PRESENTATIONS = {
+			KAKUL_PROFILE_PRESENTATION{
+				"MN_RPCZ_00", "Kakul",
+				"Dedicated MN_RPCZ_00 body, authored scale 1.0x" },
+			KAKUL_PROFILE_PRESENTATION{
+				"MN_RPCT_05", "Saydon",
+				"Dedicated MN_RPCT_05 body, authored scale 1.0x" },
+			KAKUL_PROFILE_PRESENTATION{
+				"MN_RPCT_06", "Large Saydon",
+				"Dedicated MN_RPCT_06 body/skeleton, scale 1.0x; not a scaled MN_RPCT_05" },
+			KAKUL_PROFILE_PRESENTATION{
+				"MN_RPCT_07", "Kakul + Saydon",
+				"Authoring profile alias on the shared MN_RPCT_05 physical body, scale 1.0x" },
+		};
+
+	const KAKUL_PROFILE_PRESENTATION* Find_KakulProfilePresentation(
+		const std::string_view profileId)
+	{
+		const auto found = std::find_if(
+			KAKUL_PROFILE_PRESENTATIONS.begin(),
+			KAKUL_PROFILE_PRESENTATIONS.end(),
+			[profileId](const KAKUL_PROFILE_PRESENTATION& candidate)
+			{
+				return profileId == candidate.profileId;
+			});
+		return found == KAKUL_PROFILE_PRESENTATIONS.end() ? nullptr : &*found;
+	}
+
+	std::string Track_ReferenceLabel(
+		const Client::ARENA_SEQUENCER_TRACK& track)
+	{
+		if (const auto* world =
+			std::get_if<Client::ARENA_WORLD_SEQUENCE_REFERENCE>(
+				&track.reference))
+		{
+			return world->instanceId;
+		}
+		if (const auto* camera =
+			std::get_if<Client::ARENA_CAMERA_SHOT_REFERENCE>(
+				&track.reference))
+		{
+			return camera->shotId;
+		}
+		if (const auto* actor =
+			std::get_if<Client::ARENA_ACTOR_PATTERN_REFERENCE>(
+				&track.reference))
+		{
+			return actor->bossCompositionId + " / " + actor->patternId;
+		}
+		return "?";
+	}
 }
 
 Client::CSequencerTool::CSequencerTool(
@@ -63,6 +125,297 @@ bool_t Client::CSequencerTool::Consume_CompositionOpenRequest()
 	return bRequested;
 }
 
+bool_t Client::CSequencerTool::Consume_KakulAnimationOpenRequest(
+	std::string& outProfileId)
+{
+	if (m_strKakulAnimationOpenProfileId.empty())
+		return false;
+	outProfileId = std::move(m_strKakulAnimationOpenProfileId);
+	m_strKakulAnimationOpenProfileId.clear();
+	return true;
+}
+
+const char_t* Client::CSequencerTool::SourceBoss_Label(
+	const SOURCE_BOSS boss)
+{
+	switch (boss)
+	{
+	case SOURCE_BOSS::VALTAN: return "Valtan";
+	case SOURCE_BOSS::KAKUL_SAYDON: return "Kakul Saydon";
+	default: return "?";
+	}
+}
+
+void Client::CSequencerTool::Reload_SourceDocuments()
+{
+	m_bSourceDocumentsLoaded = true;
+	m_iObservedCanonicalDisplayGeneration = nullptr == m_pWorkbench ? 0u :
+		m_pWorkbench->Get_CanonicalDisplayGeneration();
+	CCompositionDocumentCatalog stagedCatalog;
+	std::string catalogStatus;
+	const std::string bossId = SOURCE_BOSS::VALTAN == m_eSourceBoss ?
+		"boss.composition.valtan" : "boss.composition.kakulsaydon";
+	const std::string arenaId = SOURCE_BOSS::VALTAN == m_eSourceBoss ?
+		"arena.sequencer.valtan" : "arena.sequencer.kakulsaydon";
+	if (!stagedCatalog.Load_Pair(bossId, arenaId, catalogStatus))
+	{
+		m_strSourceDocumentStatus = "[Composition Descriptor] " +
+			catalogStatus + " The last parsed selected pair was preserved.";
+		return;
+	}
+	const CBossCompositionDocument* stagedBoss =
+		stagedCatalog.Find_Boss(bossId);
+	const CArenaSequencerDocument* stagedArena =
+		stagedCatalog.Find_Arena(arenaId);
+	if (nullptr == stagedBoss || nullptr == stagedArena)
+	{
+		m_strSourceDocumentStatus =
+			"Composition catalog omitted the selected Boss/Arena pair. The last parsed selected pair was preserved.";
+		return;
+	}
+	CBossCompositionDocument stagedBossDocument = *stagedBoss;
+	CArenaSequencerDocument stagedArenaDocument = *stagedArena;
+	m_SourceCatalog = std::move(stagedCatalog);
+	m_BossComposition = std::move(stagedBossDocument);
+	m_ArenaSequencer = std::move(stagedArenaDocument);
+	m_bSourceDocumentsParsed = true;
+	if (nullptr == m_BossComposition.Find_Pattern(m_strSourcePatternId))
+	{
+		m_strSourcePatternId = m_BossComposition.Get_Patterns().empty() ?
+			std::string{} :
+			m_BossComposition.Get_Patterns().front().patternId;
+	}
+	m_strSourceDocumentStatus = catalogStatus;
+}
+
+void Client::CSequencerTool::
+Synchronize_SourceDocumentsWithCanonicalGeneration()
+{
+	const std::uint64_t generation = nullptr == m_pWorkbench ? 0u :
+		m_pWorkbench->Get_CanonicalDisplayGeneration();
+	if (!m_bSourceDocumentsLoaded ||
+		generation != m_iObservedCanonicalDisplayGeneration)
+	{
+		Reload_SourceDocuments();
+	}
+}
+
+void Client::CSequencerTool::Render_SourceDocumentHeader()
+{
+	ImGui::SetNextItemWidth(180.f);
+	if (ImGui::BeginCombo("Boss##UnifiedCompositionBoss",
+		SourceBoss_Label(m_eSourceBoss)))
+	{
+		for (const SOURCE_BOSS candidate :
+			{ SOURCE_BOSS::VALTAN, SOURCE_BOSS::KAKUL_SAYDON })
+		{
+			const bool_t selected = candidate == m_eSourceBoss;
+			if (ImGui::Selectable(SourceBoss_Label(candidate), selected) &&
+				!selected)
+			{
+				m_eSourceBoss = candidate;
+				m_bSourceDocumentsLoaded = false;
+				m_bSourceDocumentsParsed = false;
+				m_BossComposition.Clear();
+				m_ArenaSequencer.Clear();
+				m_strSourcePatternId.clear();
+				m_strSourceDocumentStatus.clear();
+				m_strSelectedStableId.clear();
+				m_strSelectedStageId.clear();
+			}
+			if (selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Reload Sources##UnifiedComposition"))
+		Reload_SourceDocuments();
+	Synchronize_SourceDocumentsWithCanonicalGeneration();
+
+	if (!m_strSourceDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strSourceDocumentStatus.c_str());
+	if (!m_bSourceDocumentsParsed)
+	{
+		ImGui::TextDisabled(
+			"The legacy owner view remains unchanged; an invalid source descriptor cannot replace it.");
+		return;
+	}
+	ImGui::Text("Boss %s | %s | descriptor revision %u | %zu Patterns",
+		m_BossComposition.Get_CompositionId().c_str(),
+		CBossCompositionDocument::Status_ToString(
+			m_BossComposition.Get_Status()),
+		m_BossComposition.Get_Revision(),
+		m_BossComposition.Get_Patterns().size());
+	ImGui::Text("Arena %s | %s | descriptor revision %u | %zu Tracks",
+		m_ArenaSequencer.Get_SequencerId().c_str(),
+		CBossCompositionDocument::Status_ToString(
+			m_ArenaSequencer.Get_Status()),
+		m_ArenaSequencer.Get_Revision(),
+		m_ArenaSequencer.Get_Tracks().size());
+	ImGui::TextDisabled(
+		"SHADOW / REFERENCE_ONLY describes source intent only. Server gameplay and existing typed resource owners remain authoritative.");
+	ImGui::TextDisabled(
+		"This view only parsed source descriptors. Cross-owner exact revision/reference admission belongs to the Composition Publisher receipt.");
+	if (ImGui::TreeNode("Source References##UnifiedComposition"))
+	{
+		ImGui::TextDisabled("Boss Composition owners");
+		for (const BOSS_COMPOSITION_SOURCE_DOCUMENT& source :
+			m_BossComposition.Get_SourceDocuments())
+		{
+			ImGui::BulletText("%s: %s", source.role.c_str(), source.path.c_str());
+		}
+		ImGui::TextDisabled("Arena Sequencer owners");
+		for (const BOSS_COMPOSITION_SOURCE_DOCUMENT& source :
+			m_ArenaSequencer.Get_SourceDocuments())
+		{
+			ImGui::BulletText("%s: %s", source.role.c_str(), source.path.c_str());
+		}
+		ImGui::TreePop();
+	}
+}
+
+void Client::CSequencerTool::Render_SourcePatternSummary()
+{
+	if (!m_bSourceDocumentsParsed)
+		return;
+	const std::vector<BOSS_COMPOSITION_PATTERN>& patterns =
+		m_BossComposition.Get_Patterns();
+	if (patterns.empty())
+	{
+		ImGui::TextDisabled(
+			"No Pattern is indexed yet. REFERENCE_ONLY does not invent a boss Product or gameplay runtime.");
+		const BOSS_COMPOSITION_COVERAGE& coverage =
+			m_BossComposition.Get_Coverage();
+		if (!coverage.profiles.empty() &&
+			ImGui::BeginTable("##UnifiedCompositionReferenceProfiles", 4,
+				ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		{
+			ImGui::TableSetupColumn("Category");
+			ImGui::TableSetupColumn("Reference profile");
+			ImGui::TableSetupColumn("Actions");
+			ImGui::TableSetupColumn("Animation authoring");
+			ImGui::TableHeadersRow();
+			for (const BOSS_COMPOSITION_REFERENCE_PROFILE& profile :
+				coverage.profiles)
+			{
+				const KAKUL_PROFILE_PRESENTATION* presentation =
+					Find_KakulProfilePresentation(profile.profileId);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(nullptr == presentation ?
+					"Unknown" : presentation->category);
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(profile.profileId.c_str());
+				if (nullptr != presentation && ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s", presentation->modelPolicy);
+				ImGui::TableNextColumn();
+				ImGui::Text("%u", profile.expectedActionCount);
+				ImGui::TableNextColumn();
+				const std::string buttonLabel =
+					"Open Create / Append / Preview##" + profile.profileId;
+				if (ImGui::SmallButton(buttonLabel.c_str()))
+					m_strKakulAnimationOpenProfileId = profile.profileId;
+			}
+			ImGui::EndTable();
+		}
+		ImGui::TextDisabled(
+			"Kakul authoring stays in the existing Animation owner: Create Pattern, duplicate/append clip occurrence, Play/Pause/Stop, and atomic Save. Full BAT then validates and publishes this Composition join.");
+		return;
+	}
+	if (nullptr == m_BossComposition.Find_Pattern(m_strSourcePatternId))
+		m_strSourcePatternId = patterns.front().patternId;
+	ImGui::SetNextItemWidth(420.f);
+	if (ImGui::BeginCombo("Pattern##UnifiedCompositionPattern",
+		m_strSourcePatternId.c_str()))
+	{
+		for (const BOSS_COMPOSITION_PATTERN& pattern : patterns)
+		{
+			const bool_t selected = pattern.patternId == m_strSourcePatternId;
+			if (ImGui::Selectable(pattern.patternId.c_str(), selected) &&
+				!selected)
+			{
+				if (SOURCE_BOSS::VALTAN != m_eSourceBoss || nullptr == m_pWorkbench)
+				{
+					m_strSourcePatternId = pattern.patternId;
+				}
+				else
+				{
+					std::string status;
+					if (m_pWorkbench->Select_PatternById(pattern.patternId, status))
+						m_strSourcePatternId = pattern.patternId;
+					else
+						m_strStatus = std::move(status);
+				}
+			}
+			if (selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	const BOSS_COMPOSITION_PATTERN* pattern =
+		m_BossComposition.Find_Pattern(m_strSourcePatternId);
+	if (nullptr == pattern)
+		return;
+	ImGui::SameLine();
+	const BOSS_COMPOSITION_COVERAGE& coverage =
+		m_BossComposition.Get_Coverage();
+	ImGui::TextDisabled("%s | %u Patterns / %u Stages",
+		coverage.kind.c_str(), coverage.expectedPatternCount,
+		coverage.expectedStageCount);
+	ImGui::TextDisabled(
+		"The descriptor Pattern index declares join order and closure. Stage/cue boxes below still come from the Workbench canonical typed-owner view.");
+}
+
+void Client::CSequencerTool::Render_ArenaSequencerSummary() const
+{
+	if (!m_bSourceDocumentsParsed)
+		return;
+	if (!ImGui::CollapsingHeader("Arena Sequencer Source##UnifiedCompositionArena"))
+		return;
+	ImGui::TextDisabled(
+		"One arena clock over Camera, World, Effect, Screen Post, Light, UI and actor Pattern references. Payload remains in each typed owner.");
+	ImGui::TextDisabled(
+		"WORLD_SEQUENCE and CAMERA_SHOT owner resolution is Publisher validation; this native descriptor view checks only typed reference shape.");
+	if (m_ArenaSequencer.Get_Tracks().empty())
+	{
+		ImGui::TextDisabled("No arena tracks are authored yet.");
+		return;
+	}
+	if (!ImGui::BeginTable("##UnifiedArenaTracks", 5,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_SizingStretchProp))
+	{
+		return;
+	}
+	ImGui::TableSetupColumn("Track ID");
+	ImGui::TableSetupColumn("Kind");
+	ImGui::TableSetupColumn("Reference");
+	ImGui::TableSetupColumn("Start");
+	ImGui::TableSetupColumn("End");
+	ImGui::TableHeadersRow();
+	for (const ARENA_SEQUENCER_TRACK& track : m_ArenaSequencer.Get_Tracks())
+	{
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted(track.trackId.c_str());
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted(
+			CArenaSequencerDocument::TrackKind_ToString(track.kind));
+		ImGui::TableNextColumn();
+		const std::string reference = Track_ReferenceLabel(track);
+		ImGui::TextUnformatted(reference.c_str());
+		ImGui::TableNextColumn();
+		ImGui::Text("%u ms", track.startMs);
+		ImGui::TableNextColumn();
+		if (track.hasEndMs)
+			ImGui::Text("%u ms", track.endMs);
+		else
+			ImGui::TextDisabled("owner / natural");
+	}
+	ImGui::EndTable();
+}
+
 void Client::CSequencerTool::Render()
 {
 	if (!m_bOpen)
@@ -70,6 +423,15 @@ void Client::CSequencerTool::Render()
 	ImGui::SetNextWindowSize(ImVec2(1100.f, 520.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("Sequencer###LostArkSequencerV0", &m_bOpen))
 	{
+		ImGui::End();
+		return;
+	}
+	Render_SourceDocumentHeader();
+	ImGui::Separator();
+	if (SOURCE_BOSS::KAKUL_SAYDON == m_eSourceBoss)
+	{
+		Render_SourcePatternSummary();
+		Render_ArenaSequencerSummary();
 		ImGui::End();
 		return;
 	}
@@ -92,6 +454,11 @@ void Client::CSequencerTool::Render()
 	}
 	const std::vector<std::string> PatternIds = m_pWorkbench->Get_PatternIds();
 	const std::string strPatternId = m_pWorkbench->Get_SelectedPatternId();
+	if (!strPatternId.empty() &&
+		nullptr != m_BossComposition.Find_Pattern(strPatternId))
+	{
+		m_strSourcePatternId = strPatternId;
+	}
 	ImGui::SetNextItemWidth(360.f);
 	if (ImGui::BeginCombo("Pattern##SequencerPattern",
 			strPatternId.empty() ? "(select a Pattern)" : strPatternId.c_str()))
@@ -138,6 +505,12 @@ void Client::CSequencerTool::Render()
 	Render_Transport(iDurationMs);
 	Render_Lanes(Items, iDurationMs);
 	Render_Selection(Items);
+	if (ImGui::CollapsingHeader(
+		"Boss Composition Source Projection##UnifiedCompositionPattern"))
+	{
+		Render_SourcePatternSummary();
+	}
+	Render_ArenaSequencerSummary();
 	ImGui::End();
 }
 

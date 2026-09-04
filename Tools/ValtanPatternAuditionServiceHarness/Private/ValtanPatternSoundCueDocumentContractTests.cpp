@@ -475,13 +475,23 @@ namespace
 						"G_Voltan1_Attack13_Loop1" &&
 						cue.ResolvedAssetIds.empty();
 				}));
+		const std::size_t expectedUnresolvedRuntimeRows =
+			static_cast<std::size_t>(std::count_if(
+				loaded.Cues.begin(), loaded.Cues.end(),
+				[](const VALTAN_PATTERN_SOUND_CUE& cue)
+				{
+					return cue.strSoundEvent ==
+						"G_Voltan1_Attack13_Loop1";
+				}));
 		const bool hasPinnedRuntimeAsset = std::any_of(
 			runtimeLoaded.Cues.begin(), runtimeLoaded.Cues.end(),
 			[](const VALTAN_PATTERN_SOUND_CUE& cue)
 			{
 				return !cue.ResolvedAssetIds.empty();
 			});
-		if (!Require(2u == unresolvedRuntimeRows && hasPinnedRuntimeAsset,
+		if (!Require(0u != expectedUnresolvedRuntimeRows &&
+			expectedUnresolvedRuntimeRows == unresolvedRuntimeRows &&
+			hasPinnedRuntimeAsset,
 			"runtime Sound load did not preserve unresolved cues while pinning resolved assets"))
 		{
 			return false;

@@ -41,6 +41,9 @@ PATTERN_SOUND_REL = (
 EFFECT_V2_BINDINGS_REL = (
     "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 )
+COMPOSITION_DESCRIPTOR_REL = (
+    "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+)
 ROOT_MOTION_REL = "Data/Animation/RootMotion/Valtan.rootmotion.json"
 RECEIPT_REL = "Data/Valtan/Valtan.animation-chain-promotion.receipt.json"
 ANIM_NOTIFY_REL = "Data/Animation/Reference/Valtan/Valtan.animnotify"
@@ -2604,6 +2607,7 @@ def prepare_create_pattern_transaction(
             GAMEPLAY_REL,
             PRESENTATION_REL,
             RECEIPT_REL,
+            COMPOSITION_DESCRIPTOR_REL,
         )
     )
     expected_baselines = {
@@ -2618,6 +2622,10 @@ def prepare_create_pattern_transaction(
     )
     presentation = _read_json_bytes(
         expected_baselines[repo_root / PRESENTATION_REL], repo_root / PRESENTATION_REL
+    )
+    composition_descriptor = _read_json_bytes(
+        expected_baselines[repo_root / COMPOSITION_DESCRIPTOR_REL],
+        repo_root / COMPOSITION_DESCRIPTOR_REL,
     )
     current_source_payload = expected_baselines[repo_root / DEBUG_REL]
     if current_source_payload is None:
@@ -2659,6 +2667,25 @@ def prepare_create_pattern_transaction(
         debug_document=staged_debug,
         promotion_manifest=staged_manifest,
     )
+    pipeline = _load_v2_pipeline(repo_root)
+    try:
+        joined = pipeline.join_v2_authoring(
+            staged_gameplay,
+            staged_presentation,
+            pipeline.read_json(repo_root / pipeline.WORLD_SET_REL),
+            pipeline.read_json(repo_root / pipeline.COMBAT_AUTHORING_REL),
+        )
+        staged_composition_descriptor = (
+            pipeline.project_valtan_composition_shadow_index(
+                composition_descriptor,
+                joined,
+                repo_root,
+            )
+        )
+    except pipeline.PipelineError as exc:
+        raise PromotionError(
+            f"cannot project Create New Pattern Composition descriptor: {exc}"
+        ) from exc
     if set(outputs) != set(product_relatives):
         raise PromotionError(
             "Product projection target closure changed during Create New Pattern"
@@ -2669,6 +2696,9 @@ def prepare_create_pattern_transaction(
         repo_root / GAMEPLAY_REL: _json_text(staged_gameplay).encode("utf-8"),
         repo_root / PRESENTATION_REL: _json_text(staged_presentation).encode("utf-8"),
         repo_root / RECEIPT_REL: _json_text(receipt).encode("utf-8"),
+        repo_root / COMPOSITION_DESCRIPTOR_REL: _json_text(
+            staged_composition_descriptor
+        ).encode("utf-8"),
     }
     for relative, text in outputs.items():
         path = repo_root / relative
@@ -3532,6 +3562,21 @@ def commit_typed_authoring_patch(
                     committed_boss_catalog
                 ).encode("utf-8"),
             }
+            composition_target = repo_root / pipeline.COMPOSITION_DESCRIPTOR_REL
+            composition_baseline_bytes = _read_bytes_or_none(composition_target)
+            if not composition_baseline_bytes:
+                raise PromotionError("Valtan composition descriptor is missing")
+            composition_baseline = _read_json(composition_target)
+            composition_candidate = (
+                pipeline.project_valtan_composition_shadow_index(
+                    composition_baseline, committed_master, repo_root
+                )
+            )
+            target_payloads[composition_target] = (
+                composition_baseline_bytes
+                if composition_candidate == composition_baseline
+                else _json_text(composition_candidate).encode("utf-8")
+            )
             for relative, text in outputs.items():
                 target_payloads[repo_root / relative] = text.encode("utf-8")
             provided_baselines: dict[Path, bytes] = {}

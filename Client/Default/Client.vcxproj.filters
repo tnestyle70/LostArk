@@ -148,6 +148,15 @@
 	<Filter Include="96.DataFiles\Rendering\Authored">
 	  <UniqueIdentifier>{cc583833-a8f4-42a6-9da5-1bd2e33a518c}</UniqueIdentifier>
 	</Filter>
+	<Filter Include="96.DataFiles\Compositions">
+	  <UniqueIdentifier>{ee483c0f-a674-4cac-9761-7da94ab2342b}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Compositions\Bosses">
+	  <UniqueIdentifier>{59396a23-40e4-4f84-a8d9-183975ca65a4}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Compositions\Sequences">
+	  <UniqueIdentifier>{5a3f6bb0-32b9-40b0-9095-7a16ea6e728f}</UniqueIdentifier>
+	</Filter>
     <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
       <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
     </Filter>
@@ -299,6 +308,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\RenderingBenchmark.cpp">
       <Filter>03. Tools\10. Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossCompositionDocument.cpp">
+      <Filter>03. Tools\05. Sequencer</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\SequencerTool.cpp">
       <Filter>03. Tools\05. Sequencer</Filter>
@@ -738,6 +750,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\RenderingBenchmark.h">
       <Filter>03. Tools\10. Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BossCompositionDocument.h">
+      <Filter>03. Tools\05. Sequencer</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\SequencerTool.h">
       <Filter>03. Tools\05. Sequencer</Filter>
@@ -1356,6 +1371,18 @@
 	</None>
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json">
 	  <Filter>96.DataFiles\Rendering\Authored</Filter>
+	</None>
+	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json">
+	  <Filter>96.DataFiles\Compositions\Bosses</Filter>
+	</None>
+	<None Include="..\..\Data\Compositions\Bosses\KakulSaydon.bosscomposition.json">
+	  <Filter>96.DataFiles\Compositions\Bosses</Filter>
+	</None>
+	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json">
+	  <Filter>96.DataFiles\Compositions\Sequences</Filter>
+	</None>
+	<None Include="..\..\Data\Compositions\Sequences\KakulSaydonArena.sequencer.json">
+	  <Filter>96.DataFiles\Compositions\Sequences</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>

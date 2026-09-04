@@ -57,6 +57,16 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             promotion.RECEIPT_REL,
             promotion.ROOT_MOTION_REL,
             promotion.ANIM_NOTIFY_REL,
+            promotion.COMPOSITION_DESCRIPTOR_REL,
+            "Data/Valtan/Valtan.worldeventsets.json",
+            "Data/Valtan/Valtan.combatobjects.json",
+            "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+            "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+            "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
+            "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+            "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json",
+            "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
         ):
             source = REPOSITORY_ROOT / relative
             target = self.root / relative
@@ -198,6 +208,9 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         root_motion = json.loads(
             targets[self.root / promotion.ROOT_MOTION_REL]
         )
+        composition = json.loads(
+            targets[self.root / promotion.COMPOSITION_DESCRIPTOR_REL]
+        )
         pattern = next(
             row for row in gameplay["patterns"]
             if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN"
@@ -268,6 +281,17 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             manifest["sourceDocument"], receipt["sourceDocument"]
         )
         self.assertEqual("AUDITION_ONLY", result["selectionMode"])
+        self.assertIn(
+            "VALTAN_WORKBENCH_NEW_PATTERN",
+            [row["patternId"] for row in composition["patterns"]],
+        )
+        self.assertEqual(
+            promotion._read_json(
+                REPOSITORY_ROOT / promotion.COMPOSITION_DESCRIPTOR_REL
+            )["revision"]
+            + 1,
+            composition["revision"],
+        )
 
     def test_apply_commits_the_full_authoring_and_product_transaction(self) -> None:
         request_path = self.root / "CreatePattern.request.json"
@@ -283,6 +307,9 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         manifest = promotion._read_json(self.root / promotion.MANIFEST_REL)
         gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
         product = promotion._read_json(self.root / FAKE_PRODUCT_REL)
+        composition = promotion._read_json(
+            self.root / promotion.COMPOSITION_DESCRIPTOR_REL
+        )
         self.assertEqual(promotion.CREATE_RESULT_SCHEMA, result["schema"])
         self.assertEqual(
             promotion.CREATE_RESULT_FORMAT_VERSION, result["formatVersion"]
@@ -297,6 +324,10 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             [row["patternId"] for row in gameplay["patterns"]],
         )
         self.assertEqual("AUDITION_ONLY", product["selectionMode"])
+        self.assertIn(
+            "VALTAN_WORKBENCH_NEW_PATTERN",
+            [row["patternId"] for row in composition["patterns"]],
+        )
 
     def test_saved_intake_is_promoted_in_debug_order(self) -> None:
         targets, _baselines, result = self.prepare(self.request(saved=True))
@@ -414,6 +445,21 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         self.assertEqual(external_payload, product_path.read_bytes())
         for path, baseline in baselines.items():
             if path == product_path:
+                continue
+            self.assertEqual(baseline, promotion._read_bytes_or_none(path))
+
+    def test_compare_and_swap_rejects_late_composition_change_without_partial_commit(
+        self,
+    ) -> None:
+        targets, baselines, _result = self.prepare(self.request())
+        descriptor_path = self.root / promotion.COMPOSITION_DESCRIPTOR_REL
+        external_payload = descriptor_path.read_bytes() + b" "
+        descriptor_path.write_bytes(external_payload)
+        with self.assertRaisesRegex(promotion.PromotionError, "target changed"):
+            promotion._atomic_commit(targets, expected_baselines=baselines)
+        self.assertEqual(external_payload, descriptor_path.read_bytes())
+        for path, baseline in baselines.items():
+            if path == descriptor_path:
                 continue
             self.assertEqual(baseline, promotion._read_bytes_or_none(path))
 

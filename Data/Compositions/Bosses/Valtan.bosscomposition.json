@@ -1,0 +1,191 @@
+{
+  "schema": "lostark.boss-composition",
+  "formatVersion": 1,
+  "compositionId": "boss.composition.valtan",
+  "status": "SHADOW",
+  "revision": 1,
+  "displayName": "Valtan Boss Composition",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "encounterId": "ENCOUNTER_VALTAN",
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "sourceDocuments": [
+    {
+      "role": "GAMEPLAY",
+      "path": "Data/Valtan/Valtan.gameplay.json"
+    },
+    {
+      "role": "PRESENTATION",
+      "path": "Data/Valtan/Valtan.presentation.json"
+    },
+    {
+      "role": "COMBAT_OBJECTS",
+      "path": "Data/Valtan/Valtan.combatobjects.json"
+    },
+    {
+      "role": "WORLD_EVENT_SETS",
+      "path": "Data/Valtan/Valtan.worldeventsets.json"
+    },
+    {
+      "role": "ANIMATION_BINDINGS",
+      "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+    },
+    {
+      "role": "EFFECT_V1_CUES",
+      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+    },
+    {
+      "role": "EFFECT_V1_ALIASES",
+      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+    },
+    {
+      "role": "EFFECT_V2_BINDINGS",
+      "path": "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+    },
+    {
+      "role": "PATTERN_SOUND_CUES",
+      "path": "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+    },
+    {
+      "role": "PATTERN_SHAKE_CUES",
+      "path": "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json"
+    },
+    {
+      "role": "COMBAT_OBJECT_SOUND_CUES",
+      "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json"
+    }
+  ],
+  "coverage": {
+    "kind": "VALTAN_SPLIT_JOIN",
+    "expectedPatternCount": 42,
+    "expectedStageCount": 194,
+    "expectedIdentitySha256": "9ba6f9f2c31f3435a7b793f45e4ce7aba150fe11dc1e757fe756c364e17788ee"
+  },
+  "patterns": [
+    {
+      "patternId": "VALTAN_ENTRANCE_CINEMATIC"
+    },
+    {
+      "patternId": "VALTAN_WHIRLWIND"
+    },
+    {
+      "patternId": "VALTAN_DASH_CHARGE"
+    },
+    {
+      "patternId": "VALTAN_PART_BREAK"
+    },
+    {
+      "patternId": "VALTAN_FOUR_SLASH"
+    },
+    {
+      "patternId": "VALTAN_FIST_IN_OUT"
+    },
+    {
+      "patternId": "VALTAN_FIST_IN_OUT_LARGE"
+    },
+    {
+      "patternId": "VALTAN_HIGH_JUMP"
+    },
+    {
+      "patternId": "VALTAN_FLOOR_WIPE_130"
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_109"
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK"
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"
+    },
+    {
+      "patternId": "VALTAN_GHOST_FINALE"
+    },
+    {
+      "patternId": "VALTAN_GHOST_PORTAL_ONCE"
+    },
+    {
+      "patternId": "VALTAN_STAGGER_SLOT"
+    },
+    {
+      "patternId": "VALTAN_GROGGY_FOLLOWUP"
+    },
+    {
+      "patternId": "VALTAN_BIND_SLOT"
+    },
+    {
+      "patternId": "VALTAN_SILENCE_SLOT"
+    },
+    {
+      "patternId": "VALTAN_TRIPLE_COUNTER"
+    },
+    {
+      "patternId": "VALTAN_SIX_PIZZA_106"
+    },
+    {
+      "patternId": "VALTAN_ATTACK_WHIRLWIND"
+    },
+    {
+      "patternId": "VALTAN_CHARGE"
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_FOUR"
+    },
+    {
+      "patternId": "VALTAN_ROAR_CHARGE"
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_RUSH"
+    },
+    {
+      "patternId": "VALTAN_THREE"
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION"
+    },
+    {
+      "patternId": "VALTAN_WARP"
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_TWOHAND"
+    },
+    {
+      "patternId": "VALTAN_SEQUENCE_WHIRLWIND"
+    },
+    {
+      "patternId": "VALTAN_TRASH"
+    },
+    {
+      "patternId": "VALTAN_TRASH_CATCH_SUCCESS"
+    },
+    {
+      "patternId": "VALTAN_TRASH_CATCH_FAIL"
+    },
+    {
+      "patternId": "VALTAN_TRASH_CATCH_IF"
+    },
+    {
+      "patternId": "VALTAN_CATCH_BREATH"
+    },
+    {
+      "patternId": "VALTAN_COUNTER"
+    },
+    {
+      "patternId": "VALTAN_CHARGE_2"
+    },
+    {
+      "patternId": "VALTAN_CROSS"
+    },
+    {
+      "patternId": "VALTAN_STRUGGLING"
+    },
+    {
+      "patternId": "VALTAN_GHOST_RESPAWN_AUDITION"
+    },
+    {
+      "patternId": "VALTAN_GHOST_DEATH_AUDITION"
+    },
+    {
+      "patternId": "VALTAN_GROUND_ROAR"
+    }
+  ]
+}

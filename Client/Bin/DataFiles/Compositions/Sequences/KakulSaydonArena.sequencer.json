@@ -1,0 +1,64 @@
+{
+  "schema": "lostark.arena-sequencer-product",
+  "formatVersion": 1,
+  "sequencerId": "arena.sequencer.kakulsaydon",
+  "sourceRevision": 1,
+  "compositionRevision": "ca474335948b7f837333c576f2f535b90ae5e803aa549f2fa99ae4d510303aee",
+  "status": "SHADOW",
+  "runtimeEligible": false,
+  "displayName": "KakulSaydon Arena Sequencer",
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "bossCompositionId": "boss.composition.kakulsaydon",
+  "durationMs": 21010,
+  "sourceManifest": {
+    "schema": "lostark.composition-source-manifest",
+    "formatVersion": 1,
+    "sourceManifestId": "ca474335948b7f837333c576f2f535b90ae5e803aa549f2fa99ae4d510303aee",
+    "files": [
+      {
+        "path": "Data/Compositions/Bosses/KakulSaydon.bosscomposition.json",
+        "sha256": "cd51b33cf3f87163834d7ec08eece4f09771110d3e670438224fcab28912d0ef",
+        "bytes": 4255
+      },
+      {
+        "path": "Data/Compositions/Sequences/KakulSaydonArena.sequencer.json",
+        "sha256": "2c3e881241be13149b15e619dd3e1909c39f66829ceae4b7c299c03421fa398b",
+        "bytes": 1260
+      },
+      {
+        "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
+        "sha256": "81a194954862938bd068e2f6deec84326af7fe7d1e9c99d7f2dd196201ef703f",
+        "bytes": 737
+      },
+      {
+        "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+        "sha256": "e13f14bf50a1b4c8fbb251c124769fb38c48076b4c88c39da9ece3c4c629b243",
+        "bytes": 167840
+      },
+      {
+        "path": "Data/Rendering/Authored/RenderingProfiles.json",
+        "sha256": "9cd6bb32a3cdcc99e7d5cc9d90566320aa713514addbbfa1d2a10b4414d53932",
+        "bytes": 8130
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "trackId": "track.kakul.circus-finale.world",
+      "kind": "WORLD_SEQUENCE",
+      "startMs": 0,
+      "payload": {
+        "instanceId": "world.sequence.instance.circusfinale"
+      }
+    },
+    {
+      "trackId": "track.kakul.circus-finale.camera",
+      "kind": "CAMERA_SHOT",
+      "startMs": 0,
+      "endMs": 21010,
+      "payload": {
+        "shotId": "shot.1"
+      }
+    }
+  ]
+}

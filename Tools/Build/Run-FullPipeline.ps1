@@ -130,11 +130,16 @@ function Invoke-PipelineStep {
     $result = 'PASS'
     $script:currentStepLog = [Collections.Generic.List[string]]::new()
     try {
-        $body = & $Body
+        # PowerShell variable names are case-insensitive.  Reusing `$body`
+        # here would overwrite the typed `$Body` scriptblock parameter with
+        # the step's string result (for example `PASS`) and fail conversion.
+        $bodyResult = & $Body
         if ($global:LASTEXITCODE -ne 0) {
             throw "$Name failed (exit $global:LASTEXITCODE)."
         }
-        if ($null -ne $body -and $body -is [string]) { $result = $body }
+        if ($null -ne $bodyResult -and $bodyResult -is [string]) {
+            $result = $bodyResult
+        }
     }
     catch {
         $stepTimer.Stop()
@@ -187,19 +192,36 @@ try {
                 Assert-ValtanSourceRevision $pinnedValtanSourceRevision `
                     "domain $($domain.id) completion"
                 if ($domainResult.reused) { 'REUSED' } else { 'PASS' }
-            }.GetNewClosure()
+            }
         }
     }
     else {
         Invoke-PipelineStep "Build + regression ($Configuration / $Profile)" {
             Assert-ValtanSourceRevision $pinnedValtanSourceRevision `
                 'build and regression start'
-            & powershell -NoProfile -ExecutionPolicy Bypass -File `
-                'Tools/Build/Invoke-BuildAndRegression.ps1' `
-                -Configuration $Configuration -Profile $Profile `
-                -ResourceRoot $runtimeResourceRoot `
-                -ExpectedValtanSourceRevision $pinnedValtanSourceRevision `
-                2>&1 | Write-StepOutput
+            # unittest writes progress to stderr even on success.  Under the
+            # runner's Stop preference PowerShell wraps those lines as error
+            # records, so capture both streams with Continue and decide only
+            # from the child process exit code.
+            $previousBuildPreference = $ErrorActionPreference
+            $buildExitCode = -1
+            try {
+                $ErrorActionPreference = 'Continue'
+                & powershell -NoProfile -ExecutionPolicy Bypass -File `
+                    'Tools/Build/Invoke-BuildAndRegression.ps1' `
+                    -Configuration $Configuration -Profile $Profile `
+                    -ResourceRoot $runtimeResourceRoot `
+                    -ExpectedValtanSourceRevision $pinnedValtanSourceRevision `
+                    2>&1 | Write-StepOutput
+                $buildExitCode = $global:LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $previousBuildPreference
+            }
+            if ($buildExitCode -ne 0) {
+                throw "Build + regression child failed (exit $buildExitCode)."
+            }
+            $global:LASTEXITCODE = 0
             Assert-ValtanSourceRevision $pinnedValtanSourceRevision `
                 'build and regression completion'
         }

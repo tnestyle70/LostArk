@@ -1,6 +1,6 @@
-# 2026-09-03 통합 Sequencer 구현 계획서 (쿠크세이튼 연출 통합)
+# 2026-09-03 Boss Composition · Arena Sequencer 통합 구현 계획서
 
-브랜치 `GB/valtan-bugfix-koukusaydon-pattern`, HEAD `063e1a1a` = `origin/main`. 이 문서는 구현 계획서이며
+현재 브랜치 `GB/sequencer-composition`, 착수 HEAD `85cebb02` = `origin/main`. 이 문서는 구현 계획서이며
 디테일 계획서(전체 코드)는 각 G 착수 시 별도로 작성한다.
 
 읽은 정본: `AGENTS.md`, `CLAUDE.md`, `.md/GB/gotchas.md`, `.md/GB/계획서하네스규칙.local.md`, `.md/TEAM/README.md`,
@@ -9,8 +9,102 @@
 
 아래 1장은 전부 현재 저장소 파일 실측이다. 기억이나 이전 계획의 결론을 옮기지 않았다.
 
-전제: `Client/Bin/Resources`가 복구되기 전에는 이 계획의 실행 검증(Effect/Map/Sound 의존)을 시작할 수 없다.
-문서·검증기·Server 계약처럼 리소스에 의존하지 않는 G00은 복구 전에도 진행할 수 있다.
+`Client/Bin/Resources`는 사용자가 복구했다. Resources binary는 이 변경의 Git 대상이 아니며, 자동 검증은
+stable resource ID와 물리 상대 경로만 확인한다. 최종 화면·음향 판정은 계속 사용자 smoke가 소유한다.
+
+---
+
+## 방향 갱신 — Boss Composition을 pattern 시간축의 상위 정본으로 승격한다
+
+사용자 요구는 기존 `Data/Valtan` split 문서를 그대로 둔 채 화면 하나만 추가하는 것이 아니다. 최종 목표는
+`Valtan.bosscomposition.json`과 `KakulSaydon.bosscomposition.json`이 각 보스의 pattern/stage/branch와
+Animation, Effect V1/V2, Sound, Hit/Combat Object, Camera, UI, World 호출을 하나의 시간축으로 join하는
+정본이 되는 것이다. Arena 전체 연출은 `ValtanArena.sequencer.json`,
+`KakulSaydonArena.sequencer.json`이 여러 Boss Composition pattern과 Camera/Map/Screen/Light/Spawn 호출을
+배치한다.
+
+단, 현재 C00~C03에서 만든 source 문서는 아직 `SHADOW`/`REFERENCE_ONLY` manifest이며 정본 승격 전이다.
+발탄의 쓰기·Server 런타임 정본은 기존 typed owner와 split Product이고, Composition Publisher가 이를 strict
+join한 read model과 receipt를 만든다. 두 독립 런타임 소비자와 rollback 검증이 닫히기 전에 source 문서를
+`AUTHORITATIVE`로 표시하거나 기존 owner를 generated output으로 취급하지 않는다.
+
+통합은 리소스 본문 복사가 아니다. Effect element, Sound WAV, Camera shot, World placement는 각 전문 owner가
+계속 소유하고 Composition에는 stable ID, occurrence 시계, anchor, stop, branch 호출만 저장한다. 이 원칙은
+`.md/TEAM/UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md`의 "한 값 한 owner" 계약을 유지한다.
+
+```text
+현재 SHADOW
+  typed owner(gameplay/presentation/animation/V1/V2/sound/camera/hit/combat object)
+      -> Data/Compositions/Bosses/Valtan.bosscomposition.json (manifest/index)
+      -> strict validator/projector
+      -> Client/Bin/DataFiles/Compositions/... (resolved unified read model + receipt)
+
+최종 AUTHORITATIVE 목표
+  pattern -> stage -> branch
+                    -> cue(scope, clock, stop, anchor, payload stable ID)
+                    -> hit/combat-object invocation
+                    -> arena-sequence invocation
+                              |
+                              +--> Effect V1/V2 body, Sound asset, Camera shot,
+                                   World placement, Damage profile (각 owner 정본)
+
+Data/Compositions/Sequences/ValtanArena.sequencer.json
+  arena playhead -> ACTOR_PATTERN(Valtan composition patternId)
+                 -> CAMERA / WORLD_SEQUENCE / SCREEN_POST / LIGHT / UI / SPAWN
+
+Composition source --validate/join--> immutable Client read model + receipt
+기존 split owner --기존 publisher--> Server fixed-tick Product + Client presentation
+AUTHORITATIVE 승격 뒤 두 경로를 하나의 pinned generation으로 결합
+```
+
+### migration gate
+
+현재 제품 소비자는 Valtan split Product를 사용하므로 한 번에 갈아엎지 않는다.
+
+1. `SHADOW`: 네 통합 문서를 생성하고 split owner 전체를 lossless join해 composition revision을 계산한다.
+   validator는 누락/중복/drift를 실패시킨다. runtime과 기존 Save는 바뀌지 않는다.
+2. `PROJECTING`: Composition patch를 staged split 문서에 투영하고 기존 Valtan validator 전체가 byte/semantic
+   parity를 증명한다. Save는 Composition과 모든 projection을 한 writer transaction으로 commit한다.
+3. `AUTHORITATIVE`: 두 독립 소비자(Client Composition Tool, Server/Product publisher)가 Composition에서
+   투영된 같은 generation을 읽고 rollback harness가 통과한 뒤에만 split 문서를 generated compatibility
+   output으로 강등한다. 이 조건 전에는 validator가 수동 승격을 거부한다.
+
+쿠크세이튼은 현재 Animation reference/local pattern과 Arena world만 존재하고 Server boss Product가 없다.
+따라서 초기 `KakulSaydon.bosscomposition.json`은 실제 sourceAction/clip reference만 가진 `REFERENCE_ONLY`
+composition이며 가짜 damage/collider/branch를 채우지 않는다. 첫 쿠크 gameplay pattern을 추가할 때
+Data -> projection -> Server -> Client -> harness를 한 수직 슬라이스로 `AUTHORITATIVE` 승격한다.
+
+### 공통 cue 최소 계약
+
+```text
+scope    compositionId / patternId / stageId / actionId
+clock    STAGE | CLIP_OCCURRENCE + startMs + ONCE|EACH_LOOP
+stop     NATURAL | CUE_END | STAGE_END | PATTERN_END | EXPLICIT
+anchor   WORLD_ROOT | ARENA_ANCHOR | TARGET_SNAPSHOT | MOTION_LANDING |
+         named slot + follow/rotation/localTransform
+payload  정확히 하나의 typed stable reference
+```
+
+Effect 크기로 Server collider를 추측하지 않는다. 커지는 피자처럼 시각과 판정이 같은 곡선을 써야 하는 경우
+Composition이 공통 `geometryBindingId`를 참조하고 publisher가 Server hit geometry와 Client Effect parameter
+binding을 각각 투영한다. 돌 뒤 안전 판정은 stone mesh를 Client가 검사하지 않고 Server cover combat-object의
+stable geometry를 사용한다.
+
+### 이번 구현 G 구성
+
+| G | 구현 | 종료 증거 |
+|---|---|---|
+| C00 | Boss Composition/Arena Sequencer exact schema, cross-owner validator, deterministic receipt, 네 초기 문서 | Python 정상/negative/rollback 계약, Valtan 42 pattern join parity, Kakul 4 profile/349 action reference coverage |
+| C01 | BuildDomains와 Full BAT에 `composition.presentation` 도메인 연결 | `-DataOnly` receipt에 domain 1개와 네 Product·receipt, stale/locked/invalid reference 분류 |
+| C02 | Client generic Composition document/catalog를 추가하고 Workbench·Sequencer가 boss/arena 문서를 선택해 동일 timeline projection을 읽음 | Product compile, native parse/selection contract |
+| C03 | 기존 Valtan Save transaction에 Composition source/receipt를 결합하고 reopen generation을 pin | save/reload/rollback harness, split drift 0 |
+| C04 | local Play transport를 Animation/V1/V2/Sound/Hit mirror까지 같은 playhead로 통합하고 stop policy 적용 | pause/seek/restart 중복 0, Stage exit 즉시 STAGE_END 정리 |
+| C05 | 첫 쿠크 gameplay pattern 수직 슬라이스와 generic boss runner | Server/Client/Product 두 소비자와 Server contract 통과 후 Kakul authority 승격 |
+
+아래 기존 G00~G06은 착수 전 작성한 Arena player 아이디어를 보존한 역사적 부록이다. 파일명과 권위 경계는
+위 C00~C05가 대체하며 `Data/Sequences/**`, `sequence.presentation`, `CSequencePlayer`를 현재 구현 상태나
+확정 계약으로 읽지 않는다. 후속 구현은 `Data/Compositions/Sequences/<Boss>Arena.sequencer.json`과
+`composition.presentation`을 확장하고, 실제 adapter가 생긴 track kind만 formatVersion에 admit한다.
 
 ---
 
