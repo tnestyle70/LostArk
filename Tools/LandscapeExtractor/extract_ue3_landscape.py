@@ -677,7 +677,7 @@ def parse_landscape_package(package: PackageData) -> tuple[LandscapeProxy, list[
     proxy_exports = [
         export
         for export in package.exports
-        if class_name(package, export).casefold() == "landscapeproxy"
+        if class_name(package, export).casefold() in ("landscapeproxy", "landscape")
     ]
     if len(proxy_exports) != 1:
         raise LandscapeError(
@@ -699,7 +699,8 @@ def parse_landscape_package(package: PackageData) -> tuple[LandscapeProxy, list[
         location=vector3(value(proxy_map, "location", package.names, None), (0, 0, 0)),
         draw_scale=float(value(proxy_map, "drawscale", package.names, 1.0)),
         draw_scale3d=vector3(
-            value(proxy_map, "drawscale3d", package.names, None), (1, 1, 1)
+            # UE3 LandscapeProxy class default when the property is untagged.
+            value(proxy_map, "drawscale3d", package.names, None), (128, 128, 256)
         ),
         component_size_quads=int(
             value(proxy_map, "componentsizequads", package.names, 0)
@@ -942,7 +943,7 @@ def validate_collision_height_contract(
             f"collision {collision.export_index} height count "
             f"{len(collision.heights)} != {expected_count}"
         )
-    if len(collision.dominant_layers) != expected_count:
+    if collision.dominant_layers and len(collision.dominant_layers) != expected_count:
         raise LandscapeError(
             f"collision {collision.export_index} dominant layer count "
             f"{len(collision.dominant_layers)} != {expected_count}"
@@ -2116,6 +2117,12 @@ def build_layer_sources(
                 else None
             ),
         }
+    if "layercliff" not in layers and layers:
+        # Masters without a dedicated cliff layer (single-component garden
+        # Landscapes) reuse their first visual layer for steep faces.
+        first_layer = layers[sorted(layers)[0]]
+        layers["layercliff"] = dict(first_layer)
+        layers["layercliff"]["fallbackFromLayer"] = sorted(layers)[0]
     return layers
 
 

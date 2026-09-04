@@ -610,6 +610,7 @@
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingRecovery.json" />
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
+    <None Include="..\..\Data\UI\Lobby\LobbyServers.json" />
     <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />

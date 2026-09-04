@@ -171,21 +171,24 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
-	/* Lobby's authored title-background flipbook and Test/Character Select/Valtan/Bern buttons --
-	real CUI_Sprite slots (Lobby_Layout.json), hover/click via CUIInputRouter, submitting the
-	matching typed command only while the active Lobby is idle. A missing/old partial layout
-	atomically falls back to the same four default rects and product textures via runtime-created
-	slots, so the entry gate can never lose its buttons. Hidden entirely outside LOBBY. */
+	/* Lobby = retail server-select screen: the looping title movie, the one-shot logo reveal,
+	the server list rows (LobbyServers.json), the 접속(서버 선택) button that opens the
+	character-select window while the Lobby is idle, and the 종료/뒤로/환경설정 icon buttons --
+	real CUI_Sprite slots (Lobby_Layout.json), hover/click via CUIInputRouter. Hidden entirely
+	outside LOBBY. */
 	void Update_LobbyButtons(f32_t fTimeDelta);
 	/* Drives the character-select window while it is open (modal over the Lobby -- the Lobby
 	buttons skip their own pass then): NEW_CHARACTER intent submits the same
 	LOBBY_STAGE::CHARACTER_SELECT product command the old direct button did, CLOSE returns to
 	the Lobby. Hidden entirely outside LOBBY. */
 	void Update_CharacterSelectWindow(f32_t fTimeDelta);
-	/* White labels for the four Lobby command buttons, plus the Release product status line.
-	Called after EndFrame() like the other LOA-font text, for the same z-order reason as
-	RenderQuickSlotKeyLabels. */
+	/* Server-select text: panel title/header, row name/state/count, button captions, copyright,
+	plus the Release product status line. Called after EndFrame() like the other LOA-font text,
+	for the same z-order reason as RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
+	/* Data/UI/Lobby/LobbyServers.json -> m_LobbyServers (fail-closed: a missing/invalid file
+	leaves the list empty, so no row and a disabled 접속 button). */
+	void Load_LobbyServers();
 	/* 게임 시작/서버 선택/카드 라벨 -- after EndFrame(), same reasoning as
 	RenderLobbyButtonText. */
 	void RenderCharacterSelectWindowText();
@@ -526,6 +529,20 @@ private:
 	every ImGui window (the Debug Lobby panel stays ImGui, on top). Release-safe, like the HUD
 	view. */
 	unique_ptr<CUILayoutRuntime> m_pLobbyBackgroundView = { nullptr };
+	struct LOBBY_SERVER_ENTRY
+	{
+		wstring		strName;
+		wstring		strState;
+		wstring		strTag;
+		uint32_t	iCharacterCount = 0;
+		bool_t		bCreatable = true;
+	};
+	vector<LOBBY_SERVER_ENTRY>	m_LobbyServers;
+	int32_t						m_iLobbySelectedServer = -1;
+	/* False whenever the Lobby is not the current level; the first active frame afterwards
+	restarts the logo reveal. */
+	bool_t						m_bLobbyWasActive = false;
+	f32_t						m_fLobbyLogoIntroElapsed = 0.f;
 	/* Retail-style character-select window (Phase 1 start-sequence rework), opened by the
 	Lobby's "게임 시작" product button over the Lobby. Sprites under LEVEL::STATIC like the
 	Lobby view; Update_CharacterSelectWindow drives it and consumes its intents. */
