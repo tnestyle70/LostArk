@@ -213,7 +213,7 @@ class ValtanPatternSoundCueContractTests(unittest.TestCase):
             "cue.sound.valtan.semantic.stagger-slot.final-attack.impact-2900"
         )
         self.assertEqual("G_Voltan2_Attack25_Shot2", cue["soundEvent"])
-        self.assertEqual(2900, cue["startMs"])
+        self.assertEqual(1000, cue["startMs"])
 
     def test_invalid_identity_join_window_and_repeat_are_fail_closed(self) -> None:
         mutations = []

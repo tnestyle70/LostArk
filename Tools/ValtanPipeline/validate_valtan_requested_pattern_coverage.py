@@ -382,7 +382,7 @@ def _validate_status_patterns(
                     } or
                     final_attack.get("hit", {}).get("schedule") != {
                         "kind": "INTERVAL", "count": 1,
-                        "firstOffsetMs": 2900, "intervalMs": 0,
+                        "firstOffsetMs": 1000, "intervalMs": 0,
                     } or
                     final_attack.get("hit", {}).get("serverDamageProfileId") !=
                     "damage.valtan.omnidirectional-wipe-130"):

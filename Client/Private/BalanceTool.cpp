@@ -5369,7 +5369,7 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 			hasEffectBaseline != hasEffectReadSet)
 		{
 			status =
-				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and Reload read-set together.";
+				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and matching resource read-set together. Rebuild and restart the Client if this persists; the draft was preserved.";
 			return false;
 		}
 		const auto StageOwnerPair = [&](const wchar_t* const stem,
@@ -11304,7 +11304,7 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		{
 			CleanupTemporaryPaths();
 			status =
-				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and Reload read-set together.";
+				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and matching resource read-set together. Rebuild and restart the Client if this persists; the draft was preserved.";
 			return false;
 		}
 		const auto StageOwnerPair = [&](const wchar_t* const label,
