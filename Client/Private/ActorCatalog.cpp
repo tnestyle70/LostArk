@@ -146,6 +146,21 @@ namespace
 		return std::filesystem::path(value).extension() == L".wmodel";
 	}
 
+	/* A cutin flipbook's "UI/..." Resources-relative frame prefix (the _NNN.dds
+	suffix is appended by the consumer, so no extension here). */
+	bool_t IsUiFramePrefix(const std::string& value)
+	{
+		if (!value.starts_with("UI/") ||
+			!std::filesystem::path(value).is_relative())
+		{
+			return false;
+		}
+		for (const auto& part : std::filesystem::path(value))
+			if (part == L"..")
+				return false;
+		return std::filesystem::path(value).extension().empty();
+	}
+
 	LostArk::Shared::CHARACTER_CLASS_ID ParseClass(const std::string& value)
 	{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
@@ -470,14 +485,14 @@ namespace
 		{
 			const DATA_JSON_VALUE* pActionClips =
 				value.Is_Object() ? value.Find("actionClips") : nullptr;
-			const DATA_JSON_VALUE* pCutinWindow =
-				value.Is_Object() ? value.Find("cutinWindow") : nullptr;
+			const DATA_JSON_VALUE* pCutinMovie =
+				value.Is_Object() ? value.Find("cutinMovie") : nullptr;
 			const DATA_JSON_VALUE* pShaderProfile =
 				value.Is_Object() ? value.Find("shaderProfile") : nullptr;
 			size_t expectedFields = 6u;
 			if (nullptr != pActionClips)
 				++expectedFields;
-			if (nullptr != pCutinWindow)
+			if (nullptr != pCutinMovie)
 				++expectedFields;
 			if (nullptr != pShaderProfile)
 				++expectedFields;
@@ -546,35 +561,43 @@ namespace
 					}
 				}
 			}
-			if (nullptr != pCutinWindow)
+			if (nullptr != pCutinMovie)
 			{
-				const DATA_JSON_VALUE* pStart =
-					pCutinWindow->Is_Object() ?
-					pCutinWindow->Find("startMs") : nullptr;
-				const DATA_JSON_VALUE* pEnd =
-					pCutinWindow->Is_Object() ?
-					pCutinWindow->Find("endMs") : nullptr;
+				const DATA_JSON_VALUE* pPrefix =
+					pCutinMovie->Is_Object() ?
+					pCutinMovie->Find("framePrefix") : nullptr;
+				const DATA_JSON_VALUE* pFrameCount =
+					pCutinMovie->Is_Object() ?
+					pCutinMovie->Find("frameCount") : nullptr;
+				const DATA_JSON_VALUE* pFps =
+					pCutinMovie->Is_Object() ?
+					pCutinMovie->Find("fps") : nullptr;
+				const DATA_JSON_VALUE* pDelayMs =
+					pCutinMovie->Is_Object() ?
+					pCutinMovie->Find("delayMs") : nullptr;
 				if (nullptr == pActionClips ||
-					!pCutinWindow->Is_Object() ||
-					nullptr == pStart || !pStart->Is_Number() ||
-					pStart->Get_Number() < 0.0 ||
-					(nullptr != pEnd &&
-						(!pEnd->Is_Number() || pEnd->Get_Number() < 0.0)))
+					!pCutinMovie->Is_Object() ||
+					4u != pCutinMovie->Get_Object().size() ||
+					nullptr == pDelayMs || !pDelayMs->Is_Number() ||
+					pDelayMs->Get_Number() < 0.0 ||
+					pDelayMs->Get_Number() > 60000.0 ||
+					nullptr == pPrefix || !pPrefix->Is_String() ||
+					!IsUiFramePrefix(pPrefix->Get_String()) ||
+					nullptr == pFrameCount || !pFrameCount->Is_Number() ||
+					pFrameCount->Get_Number() < 1.0 ||
+					pFrameCount->Get_Number() > 100000.0 ||
+					nullptr == pFps || !pFps->Is_Number() ||
+					pFps->Get_Number() <= 0.0)
 				{
 					return false;
 				}
-				const size_t windowFields = nullptr != pEnd ? 2u : 1u;
-				if (windowFields != pCutinWindow->Get_Object().size())
-					return false;
-				entry.cutinStartMs =
-					static_cast<std::uint32_t>(pStart->Get_Number());
-				entry.cutinEndMs = nullptr != pEnd ?
-					static_cast<std::uint32_t>(pEnd->Get_Number()) : 0u;
-				if (0u != entry.cutinEndMs &&
-					entry.cutinEndMs <= entry.cutinStartMs)
-				{
-					return false;
-				}
+				entry.cutinMovie.framePrefix = pPrefix->Get_String();
+				entry.cutinMovie.frameCount =
+					static_cast<std::uint32_t>(pFrameCount->Get_Number());
+				entry.cutinMovie.fps =
+					static_cast<f32_t>(pFps->Get_Number());
+				entry.cutinMovie.delayMs =
+					static_cast<std::uint32_t>(pDelayMs->Get_Number());
 			}
 			if (nullptr != pShaderProfile)
 			{

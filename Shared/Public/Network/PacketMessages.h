@@ -587,15 +587,16 @@ namespace LostArk::Shared
 		slot, not a balance skill. Appended last, same wire rule as FALLING. */
 		ESTHER_CAST,
 		/* A boss owns the player's gameplay transform until it releases the
-		attachment. The Server still publishes a boss-relative fallback position;
-		the Client may replace only presentation with the typed attachment slot. */
+		attachment. The Server recomputes the world position and yaw from its
+		boss-local attachment snapshot; the Client presents that transform without
+		replacing it with a model-bone composition. */
 		GRABBED,
 		END
 	};
 
-	/* Typed replicated attachment sockets. This is deliberately not a model
-	bone name: Shared and Server never consume Client assets, while the Client
-	maps the stable slot to the admitted presentation rig. */
+	/* Typed replicated attachment identity. This is deliberately not a model
+	bone name: Shared and Server never consume Client assets, and the Client does
+	not map it to a presentation bone. */
 	enum class PLAYER_ATTACHMENT_SLOT : std::uint8_t
 	{
 		NONE,
@@ -639,14 +640,15 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
 		/* Canonical only while eAction is GRABBED. The owner is a replicated
-		world entity and the typed slot resolves on the Client; every other action
-		must carry INVALID/NONE so a stale attachment cannot survive release. */
+		world entity and the typed slot identifies the Server attachment contract;
+		every other action must carry INVALID/NONE so a stale attachment cannot
+		survive release. */
 		NET_ENTITY_ID iAttachmentOwnerNetEntityId = INVALID_NET_ENTITY_ID;
 		PLAYER_ATTACHMENT_SLOT eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::NONE;
-		/* Captured once in the owner's gameplay-root frame for the authoritative
-		Server fallback. The Client resolves the typed slot and separately captures
-		an actual-bone-local presentation matrix; it never composes these gameplay
-		offsets with a model bone. Canonical zero outside GRABBED. */
+		/* Captured once in the owner's gameplay-root frame. The Server uses these
+		offsets each tick to publish the authoritative player world transform; the
+		Client consumes that position and yaw and never composes a hand bone.
+		Canonical zero outside GRABBED. */
 		float fAttachmentLocalOffsetX = 0.f;
 		float fAttachmentLocalOffsetY = 0.f;
 		float fAttachmentLocalOffsetZ = 0.f;
@@ -724,6 +726,22 @@ namespace LostArk::Shared
 		std::uint8_t iGameplayPhase = 1;
 	};
 
+	/* Immutable Server route for one delayed Portal target-rush Stage.  The
+	Client cannot reconstruct this from the current boss pose because snapshot
+	coalescing may first expose the Stage after travel has already started. */
+	struct PORTAL_RUSH_ROUTE_SNAPSHOT
+	{
+		bool isValid = false;
+		float fStartX = 0.f;
+		float fStartY = 0.f;
+		float fStartZ = 0.f;
+		float fEndX = 0.f;
+		float fEndY = 0.f;
+		float fEndZ = 0.f;
+
+		bool operator==(const PORTAL_RUSH_ROUTE_SNAPSHOT&) const = default;
+	};
+
 	struct WORLD_ENTITY_SNAPSHOT
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
@@ -735,6 +753,7 @@ namespace LostArk::Shared
 		// Server-selected player locked by the running boss pattern. Non-boss
 		// entities must leave this invalid; Client presentation never reselects it.
 		NET_ENTITY_ID iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
+		PORTAL_RUSH_ROUTE_SNAPSHOT PortalRushRoute;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
@@ -1817,6 +1836,76 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_PARTY_TRANSFER_RESULT& message);
 	bool Read_Message(CPacketReader& reader, S2C_PARTY_TRANSFER_RESULT& message);
+
+	// ---- 파티 레이드 입장 전원 수락 투표 ----
+	// 입장은 전부 이 투표로 통일된다: 리더/솔로가 발의 -> Server가 파티 전원(솔로는 본인 1명)에게
+	// 프롬프트 -> 전원 수락 -> Server가 기존 SERVER_WORLD_TRANSFER_REQUEST batch 경로로 전송.
+	// 한 명이라도 거절/타임아웃이면 전원 원래 world 유지. 성공 authority는 S2C_ENTER_ACCEPTED뿐이다.
+
+	// 발의 시 고를 목표 레이드. NPC placement가 아니라 UI 탭이 소유하고, Server가 이 값으로
+	// target WORLD_ID를 결정한다(Client가 world를 직접 지정하지 않는다).
+	enum class RAID_ENTRY_TARGET : std::uint8_t
+	{
+		VALTAN = 0,
+		KAKULSAYDON,
+		END
+	};
+
+	// 투표 종료 사유. Server가 확정해 S2C_RAID_ENTRY_VOTE(bClosed=true)로 통지한다.
+	enum class RAID_ENTRY_VOTE_RESULT : std::uint8_t
+	{
+		ALL_ACCEPTED = 0,
+		DECLINED,
+		TIMEOUT,
+		CANCELLED,
+		END
+	};
+
+	// 파티장(또는 솔로)이 입장 UI에서 입장하기를 눌러 투표를 발의한다. 즉시 전송하지 않고
+	// 전원 투표를 연다. strNpcPlacementId로 near-NPC를 Server가 재검증하고, eTarget으로 목표를 고른다.
+	struct C2S_RAID_ENTRY_PROPOSE
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::string strNpcPlacementId;
+		RAID_ENTRY_TARGET eTarget = RAID_ENTRY_TARGET::VALTAN;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_RAID_ENTRY_PROPOSE& message);
+	bool Read_Message(CPacketReader& reader, C2S_RAID_ENTRY_PROPOSE& message);
+
+	// Server가 투표 대상 전원(발의자 포함)에게 보낸다. iProposalId는 방 로컬 단조 증가 식별자로,
+	// 응답이 이 값을 되돌려 stale 응답을 걸러낸다. strProposerNickname은 표시 전용이다.
+	struct S2C_RAID_ENTRY_PROMPT
+	{
+		std::uint32_t iProposalId = 0u;
+		NET_ENTITY_ID iProposerNetEntityId = INVALID_NET_ENTITY_ID;
+		RAID_ENTRY_TARGET eTarget = RAID_ENTRY_TARGET::VALTAN;
+		std::string strProposerNickname;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_RAID_ENTRY_PROMPT& message);
+	bool Read_Message(CPacketReader& reader, S2C_RAID_ENTRY_PROMPT& message);
+
+	// 각 대상이 수락/거절로 응답한다. iProposalId는 프롬프트가 준 값 그대로 되돌린다.
+	struct C2S_RAID_ENTRY_RESPOND
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::uint32_t iProposalId = 0u;
+		bool bAccepted = false;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_RAID_ENTRY_RESPOND& message);
+	bool Read_Message(CPacketReader& reader, C2S_RAID_ENTRY_RESPOND& message);
+
+	// 진행/종료 통지. 대상 전원에게 보낸다. bClosed=false면 진행 중(eResult=END),
+	// bClosed=true면 eResult가 확정 결과이며 ALL_ACCEPTED면 이어서 S2C_ENTER_ACCEPTED가 온다.
+	struct S2C_RAID_ENTRY_VOTE
+	{
+		std::uint32_t iProposalId = 0u;
+		std::uint8_t iAccepted = 0u;
+		std::uint8_t iTotal = 0u;
+		bool bClosed = false;
+		RAID_ENTRY_VOTE_RESULT eResult = RAID_ENTRY_VOTE_RESULT::END;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_RAID_ENTRY_VOTE& message);
+	bool Read_Message(CPacketReader& reader, S2C_RAID_ENTRY_VOTE& message);
 
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID

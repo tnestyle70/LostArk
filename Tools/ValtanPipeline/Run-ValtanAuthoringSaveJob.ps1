@@ -10,6 +10,7 @@ param(
     [string]$PatternSoundCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
     [string]$EffectV2CandidatePath = '',
+    [string]$EffectV2ReadSetPath = '',
     [switch]$CommitOnly,
     [ValidateRange(0.0, 300.0)]
     [double]$LockTimeoutSeconds = 30.0
@@ -103,6 +104,14 @@ try {
             $LockTimeoutSeconds.ToString(
                 [Globalization.CultureInfo]::InvariantCulture)
         )
+        $effectV2Presence = @(
+            -not [string]::IsNullOrWhiteSpace($EffectV2BaselinePath),
+            -not [string]::IsNullOrWhiteSpace($EffectV2CandidatePath),
+            -not [string]::IsNullOrWhiteSpace($EffectV2ReadSetPath)
+        )
+        if (($effectV2Presence | Where-Object { $_ }).Count -notin @(0, 3)) {
+            throw 'COMMIT_FAILED: Effect V2 baseline, candidate, and Reload read-set paths must be provided together.'
+        }
         $pairs = @(
             @('-PatternSoundBaselinePath', $PatternSoundBaselinePath),
             @('-PatternSoundCandidatePath', $PatternSoundCandidatePath),
@@ -114,6 +123,12 @@ try {
                 $commitArguments += @([string]$pair[0],
                     [IO.Path]::GetFullPath([string]$pair[1]))
             }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($EffectV2ReadSetPath)) {
+            $commitArguments += @(
+                '-EffectV2ReadSetPath',
+                [IO.Path]::GetFullPath($EffectV2ReadSetPath)
+            )
         }
         $commit = Invoke-StructuredPipeline $commitArguments 'canonical commit'
         if ([string]$commit.command -cne 'COMMIT_CANONICAL_DRAFT' -or

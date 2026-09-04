@@ -535,6 +535,8 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::CHARACTER_SELECT));
+	CNpcPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::CHARACTER_SELECT));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
 		ETOUI(LEVEL::CHARACTER_SELECT));
 	if (FAILED(CNpcPlacementPresentationService::Load(
@@ -577,6 +579,25 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 			characterClasses)))
 	{
 		return E_FAIL;
+	}
+	/* The Server enables the Esther gauge in this test arena too, so the same
+	summon roster as VALTAN is admitted here: a lazy first-spawn admission stalls
+	the frame the caster presses the key. Missing payload isolates only the summon. */
+	Set_Status(TEXT("CHARACTER SELECT: esther summon presentation"));
+	for (const char* pEstherArchetypeId :
+		{ "NPC_59030", "NPC_58700", "NPC_59060" })
+	{
+		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			pEstherArchetypeId)))
+		{
+			OutputDebugStringA(
+				(std::string("[Loader][NpcPresentation] CHARACTER SELECT esther "
+					"summon presentation is unavailable (") + pEstherArchetypeId +
+					"); the arena loads without it.\n").c_str());
+		}
 	}
 	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();
@@ -1401,10 +1422,22 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 
 HRESULT CLoader::Ready_ValtanPresentation(const uint32_t iLevelIndex)
 {
+	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			"BOSS_VALTAN")))
+	{
+		return E_FAIL;
+	}
+	/* The finale repeatedly checks out the ghost rig.  Register its body and
+	animation-set prototypes while the arena loader still owns the loading
+	window, never on the first visible dependent-boss spawn. */
 	return CValtanPresentationAssetService::Ensure_Prototypes(
 		m_pDevice,
 		m_pContext,
-		iLevelIndex);
+		iLevelIndex,
+		"BOSS_VALTAN_GHOST");
 }
 
 unique_ptr<CLoader> CLoader::Create(

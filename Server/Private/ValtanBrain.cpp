@@ -1627,21 +1627,30 @@ namespace
 			std::cos(yawRadians) * boss.fPortalRushDistanceM;
 	}
 
-	void LockPortalTargetRushAtRetargetDeadline(
-		SERVER_WORLD_ENTITY& boss,
-		const std::uint64_t elapsedStageTicks)
+	bool LockPortalTargetRushAtStageStart(SERVER_WORLD_ENTITY& boss)
 	{
-		if (!boss.bPortalMotionActive || boss.bPortalRushTargetLocked ||
+		if (boss.bPortalRushTargetLocked)
+			return true;
+		if (!boss.bPortalMotionActive ||
 			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
 				boss.ePatternStageMotionKind ||
-			!HasElapsedMilliseconds(
-				elapsedStageTicks, boss.iPortalRushRetargetDelayMs))
+			!boss.bHasPatternTargetLastPosition ||
+			!std::isfinite(boss.fPositionX) ||
+			!std::isfinite(boss.fPositionZ) ||
+			!std::isfinite(boss.fYawDegrees) ||
+			!std::isfinite(boss.fPatternTargetLastPositionX) ||
+			!std::isfinite(boss.fPatternTargetLastPositionZ) ||
+			!std::isfinite(boss.fPortalRushSpeedMps) ||
+			boss.fPortalRushSpeedMps <= 0.f ||
+			!std::isfinite(boss.fPortalRushDistanceM) ||
+			boss.fPortalRushDistanceM <= 0.f)
 		{
-			return;
+			return false;
 		}
-		/* LOCK_FACING_ON_START owns the Pattern target identity, while this
-		   Stage contract deliberately snapshots that target's latest position
-		   only after the inter-leg delay has elapsed. */
+		/* The paired V2 portals are both born on the Stage edge, so the Server
+		   must commit the same immutable facing and endpoint before that edge is
+		   replicated. retargetDelayMs still delays travel and hit evaluation; it
+		   no longer delays choosing the route. */
 		if (boss.bHasPatternTargetLastPosition)
 		{
 			FacePoint(boss, boss.fPatternTargetLastPositionX,
@@ -1650,13 +1659,18 @@ namespace
 		boss.fPortalStartX = boss.fPositionX;
 		boss.fPortalStartZ = boss.fPositionZ;
 		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
-		boss.fPortalEndX = boss.fPortalStartX +
+		const float portalEndX = boss.fPortalStartX +
 			std::sin(yawRadians) * boss.fPortalRushDistanceM;
-		boss.fPortalEndZ = boss.fPortalStartZ +
+		const float portalEndZ = boss.fPortalStartZ +
 			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+		if (!std::isfinite(portalEndX) || !std::isfinite(portalEndZ))
+			return false;
+		boss.fPortalEndX = portalEndX;
+		boss.fPortalEndZ = portalEndZ;
 		boss.fPortalLastHitSampleX = boss.fPortalStartX;
 		boss.fPortalLastHitSampleZ = boss.fPortalStartZ;
 		boss.bPortalRushTargetLocked = true;
+		return true;
 	}
 
 	void EnterPatternStage(
@@ -3046,7 +3060,6 @@ void LostArk::Server::CValtanBrain::Update(
 	boss.fActionElapsedSeconds =
 		static_cast<float>(elapsedStageTicks) /
 		static_cast<float>(SERVER_TICK_HZ);
-	LockPortalTargetRushAtRetargetDeadline(boss, elapsedStageTicks);
 	Advance_ArenaBreakLeap(boss);
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
 		boss.ePatternStageMotionKind && boss.iPatternStageDurationMs > 0u)
@@ -3406,11 +3419,10 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	boss.fPortalLastHitSampleZ = boss.fPositionZ;
 }
 
-void LostArk::Server::CValtanBrain::Try_LockPortalTargetRush(
-	SERVER_WORLD_ENTITY& boss,
-	const std::uint64_t elapsedStageTicks)
+bool LostArk::Server::CValtanBrain::Lock_PortalTargetRushAtStageStart(
+	SERVER_WORLD_ENTITY& boss)
 {
-	LockPortalTargetRushAtRetargetDeadline(boss, elapsedStageTicks);
+	return LockPortalTargetRushAtStageStart(boss);
 }
 
 bool LostArk::Server::CValtanBrain::Complete_ImpactStage(

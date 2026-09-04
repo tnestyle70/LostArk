@@ -1,0 +1,12 @@
+{
+  "schema": "lostark.lobby-servers",
+  "formatVersion": 1,
+  "servers": [
+    { "name": "쥬신", "state": "혼잡", "tag": "", "characterCount": 0, "creatable": true },
+    { "name": "루페온", "state": "원활", "tag": "", "characterCount": 0, "creatable": true },
+    { "name": "카단", "state": "원활", "tag": "", "characterCount": 0, "creatable": true },
+    { "name": "카제로스", "state": "원활", "tag": "", "characterCount": 0, "creatable": true },
+    { "name": "실리안", "state": "원활", "tag": "", "characterCount": 0, "creatable": true },
+    { "name": "아만", "state": "원활", "tag": "", "characterCount": 0, "creatable": true }
+  ]
+}

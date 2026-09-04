@@ -211,6 +211,16 @@ public:
 	bool Send_ConfirmNpcEntry(
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId);
+	/* 파티 레이드 입장 투표 발의/응답. propose는 즉시 전송하지 않고 Server가 파티 전원
+	투표를 열며, 결과는 S2C_RAID_ENTRY_PROMPT/S2C_RAID_ENTRY_VOTE replication 이벤트로 온다. */
+	bool Send_RaidEntryPropose(
+		std::uint32_t requestSequence,
+		std::string_view npcPlacementId,
+		LostArk::Shared::RAID_ENTRY_TARGET target);
+	bool Send_RaidEntryRespond(
+		std::uint32_t requestSequence,
+		std::uint32_t proposalId,
+		bool accepted);
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);

@@ -21,7 +21,9 @@ PRODUCT_CUES_PATH = (
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 )
 STONE_MODEL = "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel"
-STONE_BASE = "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds"
+# Project-tuned 2026-09-04 in the Effect Tool: the cross stones share the
+# ground-roar rock base so both rock families read as the same material.
+STONE_BASE = "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds"
 STONE_NOISE = "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds"
 STONE_MASK = "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds"
 STONE_DISSOLVE = "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds"
@@ -187,8 +189,10 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
                 stone_detail["timing"]["transformMotionDurationSeconds"],
                 stone_detail["timing"]["lifeTimeSeconds"],
             )
+            # The codec omits transformMotionDurationSeconds when it is 0, so a
+            # Tool save drops the key on smoke; omission is the zero identity.
             self.assertEqual(
-                smoke_detail["timing"]["transformMotionDurationSeconds"],
+                smoke_detail["timing"].get("transformMotionDurationSeconds", 0.0),
                 0.0,
             )
             for field in (
@@ -240,7 +244,9 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
                     timing["lifeTimeSeconds"],
                 )
             else:
-                self.assertEqual(0.0, timing["transformMotionDurationSeconds"])
+                self.assertEqual(
+                    0.0, timing.get("transformMotionDurationSeconds", 0.0)
+                )
             self.assertEqual(0, particle["burstCount"])
             self.assertEqual(0.0, particle["spawnRatePerSecond"])
             self.assertEqual(
@@ -329,8 +335,9 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
                 self.assertAlmostEqual(
                     detail["mesh"]["modelPreScale"], 0.01
                 )
-                self.assertEqual(
-                    detail["timing"]["dissolveStartNormalized"], 0.65
+                # Tool saves round-trip through float32 (0.649999976).
+                self.assertAlmostEqual(
+                    detail["timing"]["dissolveStartNormalized"], 0.65, places=6
                 )
                 self.assertFalse(detail["particle"]["billboard"])
                 self.assertEqual(

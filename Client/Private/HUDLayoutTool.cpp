@@ -196,6 +196,10 @@ namespace
 		at three different y values (116/156.1/187), because the component repositions them itself
 		at runtime. Those are placed by hand here rather than guessed from the shipped art. */
 		{ "Raid Entry",     "UI/RaidEntry/ValtanRaidEntry_Layout.json", "UI/RaidEntry/", false },
+		/* Retail-style character-select window over the Lobby (start-sequence Phase 1) --
+		traced from the real client's characterselect.gfx (CCharacterSelectWindowView). */
+		{ "Character Select Window", "UI/CharacterSelect/CharacterSelectWindow_Layout.json",
+			"UI/CharacterSelect/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

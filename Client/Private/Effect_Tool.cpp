@@ -14263,7 +14263,8 @@ bool_t Client::CEffect_Tool::Try_PlayValtanCombatObjectIndependentEffect(
 	if (1u != iOwnerStageMatches || nullptr == pOwnerStage ||
 		1u != iCombatObjectMatches || nullptr == pCombatObject ||
 		"ENTER" != pCombatObject->strTrigger ||
-		"BOSS_RELATIVE" != pCombatObject->strVolleyPolicy ||
+		("BOSS_RELATIVE" != pCombatObject->strVolleyPolicy &&
+		 "ARENA_CENTER" != pCombatObject->strVolleyPolicy) ||
 		"RADIAL" != pCombatObject->strVolleyLayout ||
 		0u == pCombatObject->iSpawnValue ||
 		0u == pCombatObject->iLifetimeMs ||
@@ -15868,7 +15869,8 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 		1u == iCombatObjectLifecycleMatches &&
 		nullptr != pCombatObjectLifecycle &&
 		"ENTER" == pCombatObjectLifecycle->strTrigger &&
-		"BOSS_RELATIVE" == pCombatObjectLifecycle->strVolleyPolicy &&
+		("BOSS_RELATIVE" == pCombatObjectLifecycle->strVolleyPolicy ||
+		 "ARENA_CENTER" == pCombatObjectLifecycle->strVolleyPolicy) &&
 		"RADIAL" == pCombatObjectLifecycle->strVolleyLayout &&
 		0u != pCombatObjectLifecycle->iSpawnValue &&
 		0u != pCombatObjectLifecycle->iLifetimeMs;
@@ -16003,6 +16005,16 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 			Effect.strOwnership.c_str());
 		ImGui::TextWrapped("Path: %s",
 			Path.empty() ? "(unavailable)" : Path.generic_string().c_str());
+		/* The V1 document is the authoring reference. When the catalog overrides
+		   the spawned Product presentation with a V2 group, say so here so nobody
+		   edits this file expecting Server play to change. */
+		if (bCombatObjectOwner && nullptr != pCombatObjectLifecycle &&
+			!pCombatObjectLifecycle->strEffectV2GroupId.empty())
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
+				"Product lane: EFFECT_V2_GROUP %s | Server play ignores this V1 document",
+				pCombatObjectLifecycle->strEffectV2GroupId.c_str());
+		}
 		if (nullptr != pStageClockCue)
 		{
 			ImGui::TextDisabled(
@@ -16025,13 +16037,15 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 		else if (bLocalCombatObjectLifecycleReady)
 		{
 			ImGui::TextDisabled(
-				"Local lifecycle: Valtan IDLE | %u world roots | yaw %.0f + n*%.0f deg | active lifetime %u ms",
+				"Local lifecycle: Valtan IDLE | %u world roots | %s | yaw %.0f + n*%.0f deg | Server lifetime %u ms",
 				pCombatObjectLifecycle->iSpawnValue,
+				"ARENA_CENTER" == pCombatObjectLifecycle->strVolleyPolicy ?
+					"arena-center origin, world yaw" : "boss origin, boss-relative yaw",
 				pCombatObjectLifecycle->fVolleyStartAngleDegrees,
 				pCombatObjectLifecycle->fVolleyAngleStepDegrees,
 				pCombatObjectLifecycle->iLifetimeMs);
 			ImGui::TextDisabled(
-				"At authored presentation time the active roots stop and the terminal hit/explode Effect is sampled; boss animation and Product cues stay suppressed.");
+				"At authored presentation time the terminal hit/explode Effect is sampled; active roots keep their authored lifetime past the Server despawn, and boss animation and Product cues stay suppressed.");
 		}
 		else
 		{

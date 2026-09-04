@@ -1,6 +1,8 @@
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
 
+#include <bcrypt.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -8,10 +10,15 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <map>
+#include <set>
+#include <sstream>
 #include <utility>
+
+#pragma comment(lib, "bcrypt.lib")
 
 namespace
 {
@@ -20,6 +27,15 @@ namespace
 	constexpr std::string_view DOCUMENT_SUFFIX = ".effectv2.json";
 	constexpr std::string_view GROUP_SUFFIX = ".effectv2group.json";
 	constexpr uint32_t MAX_BINDING_MS = 600000u;
+	constexpr const char* READ_SET_SCHEMA =
+		"lostark.effect-v2-binding-read-set";
+
+	const char* Resource_KindKey(
+		const Client::EFFECT_V2_RESOURCE_KIND eKind)
+	{
+		return Client::EFFECT_V2_RESOURCE_KIND::GROUP == eKind ?
+			"GROUP" : "LEAF";
+	}
 
 	bool_t Fail(std::string& strOutError, std::string strMessage)
 	{
@@ -54,6 +70,62 @@ namespace
 				"Cannot read: " + Path.string());
 		}
 		return true;
+	}
+
+	bool_t Calculate_Sha256LowerHex(
+		const std::string_view Payload,
+		std::string& strOutDigest)
+	{
+		if (Payload.size() > (std::numeric_limits<ULONG>::max)())
+			return false;
+		BCRYPT_ALG_HANDLE hAlgorithm = nullptr;
+		BCRYPT_HASH_HANDLE hHash = nullptr;
+		DWORD iHashObjectSize = 0u;
+		DWORD iBytesWritten = 0u;
+		DWORD iHashSize = 0u;
+		std::vector<unsigned char> HashObject;
+		std::vector<unsigned char> Digest;
+		bool_t bSucceeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+			&hAlgorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(
+				hAlgorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&iHashObjectSize),
+				sizeof(iHashObjectSize), &iBytesWritten, 0u) &&
+			0 <= BCryptGetProperty(
+				hAlgorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&iHashSize), sizeof(iHashSize),
+				&iBytesWritten, 0u))
+		{
+			HashObject.resize(iHashObjectSize);
+			Digest.resize(iHashSize);
+			if (0 <= BCryptCreateHash(
+					hAlgorithm, &hHash, HashObject.data(), iHashObjectSize,
+					nullptr, 0u, 0u) &&
+				0 <= BCryptHashData(
+					hHash,
+					reinterpret_cast<PUCHAR>(
+						const_cast<char*>(Payload.data())),
+					static_cast<ULONG>(Payload.size()), 0u) &&
+				0 <= BCryptFinishHash(
+					hHash, Digest.data(), iHashSize, 0u))
+			{
+				constexpr char HEX[] = "0123456789abcdef";
+				strOutDigest.resize(Digest.size() * 2u);
+				for (size_t iIndex = 0u; iIndex < Digest.size(); ++iIndex)
+				{
+					strOutDigest[iIndex * 2u] = HEX[Digest[iIndex] >> 4u];
+					strOutDigest[iIndex * 2u + 1u] =
+						HEX[Digest[iIndex] & 0x0fu];
+				}
+				bSucceeded = true;
+			}
+		}
+		if (nullptr != hHash)
+			BCryptDestroyHash(hHash);
+		if (nullptr != hAlgorithm)
+			BCryptCloseAlgorithmProvider(hAlgorithm, 0u);
+		return bSucceeded;
 	}
 
 	bool_t Enumerate_StableIds(
@@ -141,8 +213,12 @@ namespace
 	bool_t Stage_Documents(
 		std::vector<Client::EFFECT_V2_DOCUMENT>& OutDocuments,
 		std::vector<std::string>& Diagnostics,
-		std::string& strOutError)
+		std::string& strOutError,
+		std::vector<Client::EFFECT_V2_RESOURCE_READ_ROW>* const pOutReadRows =
+			nullptr)
 	{
+		if (nullptr != pOutReadRows)
+			pOutReadRows->clear();
 		std::vector<std::string> Ids;
 		if (!Enumerate_StableIds(
 			Client::CEffectV2Document::Document_Directory(),
@@ -155,15 +231,38 @@ namespace
 		Staged.reserve(Ids.size());
 		for (const std::string& strEffectId : Ids)
 		{
+			const std::filesystem::path Path =
+				Client::CEffectV2Document::Document_Path(strEffectId);
+			std::string strSourceBytes;
 			Client::EFFECT_V2_DOCUMENT Document;
-			if (!Client::CEffectV2Document::Load_DocumentFile(
-				strEffectId, Document, strOutError))
+			if (!Read_TextFile(Path, strSourceBytes, strOutError) ||
+				!Client::CEffectV2Document::Parse_Document(
+					strSourceBytes, Document, strOutError) ||
+				Document.strEffectId != strEffectId)
 			{
+				if (Document.strEffectId != strEffectId && strOutError.empty())
+					strOutError = "effectId does not match the file name.";
 				Diagnose(Diagnostics,
 					"Skipped Effect V2 document '" + strEffectId +
 					"': " + strOutError);
 				strOutError.clear();
 				continue;
+			}
+			if (nullptr != pOutReadRows)
+			{
+				Client::EFFECT_V2_RESOURCE_READ_ROW Row;
+				Row.eKind = Client::EFFECT_V2_RESOURCE_KIND::LEAF;
+				Row.strResourceId = strEffectId;
+				Row.strRepositoryPath =
+					"Data/Effects/V2/Authored/" + strEffectId +
+					std::string(DOCUMENT_SUFFIX);
+				if (!Calculate_Sha256LowerHex(strSourceBytes, Row.strSha256))
+				{
+					return Fail(strOutError,
+						"Could not hash Effect V2 document at catalog Reload: " +
+						Path.string());
+				}
+				pOutReadRows->push_back(std::move(Row));
 			}
 			Staged.push_back(std::move(Document));
 		}
@@ -174,8 +273,12 @@ namespace
 	bool_t Stage_Groups(
 		std::vector<Client::EFFECT_V2_GROUP>& OutGroups,
 		std::vector<std::string>& Diagnostics,
-		std::string& strOutError)
+		std::string& strOutError,
+		std::vector<Client::EFFECT_V2_RESOURCE_READ_ROW>* const pOutReadRows =
+			nullptr)
 	{
+		if (nullptr != pOutReadRows)
+			pOutReadRows->clear();
 		std::vector<std::string> Ids;
 		if (!Enumerate_StableIds(
 			Client::CEffectV2Document::Group_Directory(),
@@ -188,15 +291,38 @@ namespace
 		Staged.reserve(Ids.size());
 		for (const std::string& strGroupId : Ids)
 		{
+			const std::filesystem::path Path =
+				Client::CEffectV2Document::Group_Path(strGroupId);
+			std::string strSourceBytes;
 			Client::EFFECT_V2_GROUP Group;
-			if (!Client::CEffectV2Document::Load_GroupFile(
-				strGroupId, Group, strOutError))
+			if (!Read_TextFile(Path, strSourceBytes, strOutError) ||
+				!Client::CEffectV2Document::Parse_Group(
+					strSourceBytes, Group, strOutError) ||
+				Group.strGroupId != strGroupId)
 			{
+				if (Group.strGroupId != strGroupId && strOutError.empty())
+					strOutError = "groupId does not match the file name.";
 				Diagnose(Diagnostics,
 					"Skipped Effect V2 group '" + strGroupId +
 					"': " + strOutError);
 				strOutError.clear();
 				continue;
+			}
+			if (nullptr != pOutReadRows)
+			{
+				Client::EFFECT_V2_RESOURCE_READ_ROW Row;
+				Row.eKind = Client::EFFECT_V2_RESOURCE_KIND::GROUP;
+				Row.strResourceId = strGroupId;
+				Row.strRepositoryPath =
+					"Data/Effects/V2/Groups/" + strGroupId +
+					std::string(GROUP_SUFFIX);
+				if (!Calculate_Sha256LowerHex(strSourceBytes, Row.strSha256))
+				{
+					return Fail(strOutError,
+						"Could not hash Effect V2 group at catalog Reload: " +
+						Path.string());
+				}
+				pOutReadRows->push_back(std::move(Row));
 			}
 			Staged.push_back(std::move(Group));
 		}
@@ -864,12 +990,16 @@ bool_t Client::CEffectV2Catalog::Reload_BossValtan(std::string& strOutError)
 		std::vector<EFFECT_V2_DOCUMENT> StagedDocuments;
 		std::vector<EFFECT_V2_GROUP> StagedGroups;
 		std::vector<EFFECT_V2_BINDING> StagedBindings;
+		std::vector<EFFECT_V2_RESOURCE_READ_ROW> StagedDocumentReadRows;
+		std::vector<EFFECT_V2_RESOURCE_READ_ROW> StagedGroupReadRows;
 		std::vector<std::string> Diagnostics;
 		bool_t bBindingsComplete = true;
 		if (!Stage_Documents(
-				StagedDocuments, Diagnostics, strOutError) ||
+				StagedDocuments, Diagnostics, strOutError,
+				&StagedDocumentReadRows) ||
 			!Stage_Groups(
-				StagedGroups, Diagnostics, strOutError) ||
+				StagedGroups, Diagnostics, strOutError,
+				&StagedGroupReadRows) ||
 			!Stage_BossValtanBindings(
 				StagedBindings, bBindingsComplete,
 				Diagnostics, strOutError) ||
@@ -884,6 +1014,11 @@ bool_t Client::CEffectV2Catalog::Reload_BossValtan(std::string& strOutError)
 		pStaged->m_Documents = std::move(StagedDocuments);
 		pStaged->m_Groups = std::move(StagedGroups);
 		pStaged->m_BossValtanBindings = std::move(StagedBindings);
+		pStaged->m_ResourceReadRows = std::move(StagedGroupReadRows);
+		pStaged->m_ResourceReadRows.insert(
+			pStaged->m_ResourceReadRows.end(),
+			std::make_move_iterator(StagedDocumentReadRows.begin()),
+			std::make_move_iterator(StagedDocumentReadRows.end()));
 		pStaged->m_Diagnostics = std::move(Diagnostics);
 		pStaged->m_bBossValtanBindingsComplete = bBindingsComplete;
 		const std::string strIsolationSummary =
@@ -927,12 +1062,16 @@ Discard_BossValtanBindingDraftAndReload(std::string& strOutError)
 		std::vector<EFFECT_V2_DOCUMENT> StagedDocuments;
 		std::vector<EFFECT_V2_GROUP> StagedGroups;
 		std::vector<EFFECT_V2_BINDING> StagedBindings;
+		std::vector<EFFECT_V2_RESOURCE_READ_ROW> StagedDocumentReadRows;
+		std::vector<EFFECT_V2_RESOURCE_READ_ROW> StagedGroupReadRows;
 		std::vector<std::string> Diagnostics;
 		bool_t bBindingsComplete = true;
 		if (!Stage_Documents(
-				StagedDocuments, Diagnostics, strOutError) ||
+				StagedDocuments, Diagnostics, strOutError,
+				&StagedDocumentReadRows) ||
 			!Stage_Groups(
-				StagedGroups, Diagnostics, strOutError) ||
+				StagedGroups, Diagnostics, strOutError,
+				&StagedGroupReadRows) ||
 			!Stage_BossValtanBindings(
 				StagedBindings, bBindingsComplete,
 				Diagnostics, strOutError) ||
@@ -947,6 +1086,11 @@ Discard_BossValtanBindingDraftAndReload(std::string& strOutError)
 		pStaged->m_Documents = std::move(StagedDocuments);
 		pStaged->m_Groups = std::move(StagedGroups);
 		pStaged->m_BossValtanBindings = std::move(StagedBindings);
+		pStaged->m_ResourceReadRows = std::move(StagedGroupReadRows);
+		pStaged->m_ResourceReadRows.insert(
+			pStaged->m_ResourceReadRows.end(),
+			std::make_move_iterator(StagedDocumentReadRows.begin()),
+			std::make_move_iterator(StagedDocumentReadRows.end()));
 		pStaged->m_Diagnostics = std::move(Diagnostics);
 		pStaged->m_bBossValtanBindingsComplete = bBindingsComplete;
 		const std::string strIsolationSummary =
@@ -1016,6 +1160,7 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	pCandidate->m_Documents = m_pSnapshot->m_Documents;
 	pCandidate->m_Groups = m_pSnapshot->m_Groups;
 	pCandidate->m_BossValtanBindings = std::move(CandidateBindings);
+	pCandidate->m_ResourceReadRows = m_pSnapshot->m_ResourceReadRows;
 	pCandidate->m_Diagnostics = m_pSnapshot->m_Diagnostics;
 	pCandidate->m_bBossValtanBindingsComplete = true;
 	if (!Cross_Validate(
@@ -1322,12 +1467,14 @@ bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanStageBindingStart(
 bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(
 	std::string& strOutBaselineBytes,
 	std::string& strOutCandidateBytes,
+	std::string& strOutResourceReadSetBytes,
 	uint64_t& iOutDraftRevision,
 	bool_t& bOutDirty,
 	std::string& strOutError) const
 {
 	strOutBaselineBytes.clear();
 	strOutCandidateBytes.clear();
+	strOutResourceReadSetBytes.clear();
 	iOutDraftRevision = 0u;
 	bOutDirty = false;
 	const std::lock_guard Lock(m_SnapshotMutex);
@@ -1372,8 +1519,138 @@ bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(
 			"Effect V2 binding source changed after this Composition draft began; Load before saving.");
 	}
 
+	using READ_KEY = std::pair<std::string, std::string>;
+	std::map<READ_KEY, const EFFECT_V2_RESOURCE_READ_ROW*> ReadRowsByKey;
+	for (const EFFECT_V2_RESOURCE_READ_ROW& Row :
+		m_pSnapshot->m_ResourceReadRows)
+	{
+		const READ_KEY Key{ Resource_KindKey(Row.eKind), Row.strResourceId };
+		if (!ReadRowsByKey.emplace(Key, &Row).second)
+		{
+			return Fail(strOutError,
+				"Effect V2 catalog Reload captured a duplicate resource read-set row: " +
+				Row.strResourceId);
+		}
+	}
+	std::map<READ_KEY, const EFFECT_V2_RESOURCE_READ_ROW*> SelectedRows;
+	const auto SelectRow = [&](const EFFECT_V2_RESOURCE_KIND eKind,
+		const std::string& strResourceId) -> bool_t
+	{
+		const READ_KEY Key{ Resource_KindKey(eKind), strResourceId };
+		const auto Found = ReadRowsByKey.find(Key);
+		if (Found == ReadRowsByKey.end())
+		{
+			strOutError =
+				"Effect V2 Composition resource was not captured by catalog Reload: " +
+				Key.first + "/" + strResourceId + ". Reload before Save.";
+			return false;
+		}
+		SelectedRows.emplace(Key, Found->second);
+		return true;
+	};
+	std::set<std::string, std::less<>> VisitingGroups;
+	std::set<std::string, std::less<>> ResolvedGroups;
+	std::function<bool_t(const std::string&)> SelectGroup;
+	SelectGroup = [&](const std::string& strGroupId) -> bool_t
+	{
+		if (ResolvedGroups.contains(strGroupId))
+			return true;
+		if (!VisitingGroups.emplace(strGroupId).second)
+		{
+			strOutError =
+				"Effect V2 Composition resource read-set found a group cycle: " +
+				strGroupId;
+			return false;
+		}
+		if (!SelectRow(EFFECT_V2_RESOURCE_KIND::GROUP, strGroupId))
+			return false;
+		const EFFECT_V2_GROUP* const pGroup =
+			m_pSnapshot->Find_Group(strGroupId);
+		if (nullptr == pGroup)
+		{
+			strOutError =
+				"Effect V2 Composition resource read-set cannot resolve group: " +
+				strGroupId;
+			return false;
+		}
+		for (const EFFECT_V2_GROUP_CHILD& Child : pGroup->Children)
+		{
+			if (EFFECT_V2_RESOURCE_KIND::GROUP == Child.eResourceKind)
+			{
+				if (!SelectGroup(Child.strResourceId))
+					return false;
+			}
+			else if (!SelectRow(
+				EFFECT_V2_RESOURCE_KIND::LEAF, Child.strResourceId))
+			{
+				return false;
+			}
+		}
+		VisitingGroups.erase(strGroupId);
+		ResolvedGroups.emplace(strGroupId);
+		return true;
+	};
+	for (const EFFECT_V2_BINDING& Binding :
+		m_pSnapshot->m_BossValtanBindings)
+	{
+		if (EFFECT_V2_RESOURCE_KIND::GROUP == Binding.eResourceKind)
+		{
+			if (!SelectGroup(Binding.strResourceId))
+				return false;
+		}
+		else if (!SelectRow(
+			EFFECT_V2_RESOURCE_KIND::LEAF, Binding.strResourceId))
+		{
+			return false;
+		}
+	}
+	if (SelectedRows.size() > 8192u)
+	{
+		return Fail(strOutError,
+			"Effect V2 Composition resource read-set exceeds 8192 resources.");
+	}
+
+	std::ostringstream CanonicalIdentity;
+	CanonicalIdentity << "{\"archetypeId\":\"" << BOSS_VALTAN_ARCHETYPE_ID <<
+		"\",\"resources\":[";
+	bool_t bFirstReadRow = true;
+	for (const auto& [Key, pRow] : SelectedRows)
+	{
+		if (!bFirstReadRow)
+			CanonicalIdentity << ',';
+		bFirstReadRow = false;
+		CanonicalIdentity << "{\"id\":\"" << pRow->strResourceId <<
+			"\",\"kind\":\"" << Key.first << "\",\"path\":\"" <<
+			pRow->strRepositoryPath << "\",\"sha256\":\"" <<
+			pRow->strSha256 << "\"}";
+	}
+	CanonicalIdentity << "]}";
+	std::string strReadSetHash;
+	if (!Calculate_Sha256LowerHex(
+			CanonicalIdentity.str(), strReadSetHash))
+	{
+		return Fail(strOutError,
+			"Effect V2 Composition resource read-set identity could not be hashed.");
+	}
+	std::ostringstream ReadSetDocument;
+	ReadSetDocument << "{\n  \"schema\": \"" << READ_SET_SCHEMA <<
+		"\",\n  \"formatVersion\": 1,\n  \"archetypeId\": \"" <<
+		BOSS_VALTAN_ARCHETYPE_ID << "\",\n  \"resources\": [\n";
+	size_t iReadRow = 0u;
+	for (const auto& [Key, pRow] : SelectedRows)
+	{
+		ReadSetDocument << "    { \"kind\": \"" << Key.first <<
+			"\", \"id\": \"" << pRow->strResourceId <<
+			"\", \"path\": \"" << pRow->strRepositoryPath <<
+			"\", \"sha256\": \"" << pRow->strSha256 << "\" }" <<
+			(++iReadRow < SelectedRows.size() ? ",\n" : "\n");
+	}
+	ReadSetDocument << "  ],\n  \"readSetHash\": \"" << strReadSetHash <<
+		"\"\n}\n";
+
 	strOutBaselineBytes = m_strBossValtanBindingDraftBaselineBytes;
 	strOutCandidateBytes = Candidate;
+	strOutResourceReadSetBytes = ReadSetDocument.str();
 	iOutDraftRevision = m_pSnapshot->Get_Revision();
 	bOutDirty = true;
 	strOutError = "Prepared the Effect V2 binding draft for the Composition Save transaction.";

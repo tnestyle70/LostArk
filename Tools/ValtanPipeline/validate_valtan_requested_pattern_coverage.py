@@ -221,8 +221,8 @@ def _validate_status_patterns(
             ("RECOVERY", None, 0, 3533),
         ),
         "VALTAN_SILENCE_SLOT": (
-            ("STEP_01", None, 0, 2633),
-            ("SILENCE_APPLY", "SET_PLAYER_SILENCE", 1, 100),
+            ("STEP_01", "SET_PLAYER_SILENCE", 7633, 2633),
+            ("SILENCE_APPLY", None, 0, 100),
         ),
     }
 
@@ -260,7 +260,7 @@ def _validate_status_patterns(
         },
         ("VALTAN_BIND_SLOT", "RECOVERY"): {
             "endPolicy": "EXACT",
-            "occurrences": (("mesh_att_battle_5_01_end", 900, 3533, False),),
+            "occurrences": (("mesh_att_battle_5_01_end", 0, 3533, False),),
         },
         ("VALTAN_SILENCE_SLOT", "STEP_01"): {
             "endPolicy": "EXACT",
@@ -347,7 +347,7 @@ def _validate_status_patterns(
                     enter.get("durationMs") != expected_duration):
                 raise CoverageError(f"status bind contract differs: {pattern_id}")
             elif expected_kind == "SET_PLAYER_SILENCE" and (
-                    enter.get("durationMs") != 5000 or
+                    enter.get("durationMs") != expected_value or
                     len(stage.get("events", [])) != 1):
                 raise CoverageError(f"status silence contract differs: {pattern_id}")
             elif expected_kind == "SET_BOSS_FLAG" and (
@@ -382,7 +382,7 @@ def _validate_status_patterns(
                     } or
                     final_attack.get("hit", {}).get("schedule") != {
                         "kind": "INTERVAL", "count": 1,
-                        "firstOffsetMs": 2900, "intervalMs": 0,
+                        "firstOffsetMs": 1000, "intervalMs": 0,
                     } or
                     final_attack.get("hit", {}).get("serverDamageProfileId") !=
                     "damage.valtan.omnidirectional-wipe-130"):

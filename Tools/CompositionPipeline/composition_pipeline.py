@@ -1404,11 +1404,19 @@ def _validate_v1_effect_owners(
                 and pattern.get("targetPolicy") == "LOCK_RANDOM_ALIVE_ON_START"
                 and pattern.get("aimPolicy") == "TRACK_TARGET_EACH_TICK"
             )
+            fixed_center_motion = (
+                isinstance(motion, dict)
+                and motion.get("kind") in ("LEAP_TO_ANCHOR", "LEAP_TO_TARGET")
+            )
+            center_approach = (
+                isinstance(motion, dict)
+                and motion.get("kind") == "LEAP_TO_ANCHOR"
+                and motion.get("moveToAnchorBeforeTakeoff") is True
+            )
             if (
-                not isinstance(motion, dict)
-                or motion.get("kind") != "LEAP_TO_ANCHOR"
-                or motion.get("moveToAnchorBeforeTakeoff") is not True
-                or not (fixed_center or fixed_facing or target_follow)
+                not (fixed_center or fixed_facing or target_follow)
+                or (fixed_center and not fixed_center_motion)
+                or (not fixed_center and not center_approach)
             ):
                 raise CompositionError(
                     f"{binding_id} arena-center anchor contract is invalid"

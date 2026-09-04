@@ -690,6 +690,9 @@
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterSelectWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1178,6 +1181,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RaidEntryPreviewView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterSelectWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -1906,6 +1912,9 @@
     <None Include="..\..\Data\UI\Esther\EstherUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Esther\EstherCutin.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -1936,7 +1945,13 @@
     <None Include="..\..\Data\UI\Loading\LoadingRecovery.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Lobby\LobbyServers.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json">

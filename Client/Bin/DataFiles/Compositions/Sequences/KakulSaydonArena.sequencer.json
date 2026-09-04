@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.kakulsaydon",
   "sourceRevision": 1,
-  "compositionRevision": "0c0a91880b033a619ac153da0f4dab0c5922f04497b7065fd53e7245872b9eda",
+  "compositionRevision": "9029a455b263b45397f229c5e5905d80bdffc7006764a90b418d11751a2f29a7",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KakulSaydon Arena Sequencer",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "0c0a91880b033a619ac153da0f4dab0c5922f04497b7065fd53e7245872b9eda",
+    "sourceManifestId": "9029a455b263b45397f229c5e5905d80bdffc7006764a90b418d11751a2f29a7",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KakulSaydon.bosscomposition.json",
@@ -32,8 +32,8 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "9f1ab4f05152c764ba29bb596d498344ee1d1b754cb7899c1f4472818a336218",
-        "bytes": 5298040
+        "sha256": "65b850392ea0356131a3a065906eb0768dd963a01fda832cdcd5d85f959ad98a",
+        "bytes": 5621100
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",

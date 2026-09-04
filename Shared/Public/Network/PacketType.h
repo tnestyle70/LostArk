@@ -5,7 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 53 adds generic boss response progress and threshold levels to the
+	/* 55 integrates the independently shipped v54 portal-rush route fields
+	and raid-entry vote packet family. Neither v54 peer is wire-compatible
+	with the combined contract.
+	53 adds generic boss response progress and threshold levels to the
 	world-entity boss combat snapshot.
 	52 adds the Server-active replacement definition revision to exact
 	Valtan Restart requests and verdict echoes.
@@ -27,7 +30,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 53;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 55;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -232,7 +235,14 @@ namespace LostArk::Shared
 		// authored world sequence instance started. The Server owns the trigger
 		// entry that decides when; the Client owns only how it looks. Append-only
 		// so an older payload is never reinterpreted as this identity.
-		S2C_WORLD_SEQUENCE_PLAY
+		S2C_WORLD_SEQUENCE_PLAY,
+
+		// 파티 레이드 입장 전원 수락 투표. 입장을 propose -> prompt -> respond -> vote로
+		// 통일한다(솔로는 1명 투표). Append-only이므로 이전 payload를 이 identity로 재해석하지 않는다.
+		C2S_RAID_ENTRY_PROPOSE,
+		S2C_RAID_ENTRY_PROMPT,
+		C2S_RAID_ENTRY_RESPOND,
+		S2C_RAID_ENTRY_VOTE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -306,6 +316,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_PARTY_ROSTER:
 		case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
 		case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
+		case PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE:
+		case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
+		case PACKET_TYPE::C2S_RAID_ENTRY_RESPOND:
+		case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
 			return true;
 		default:
 			return  false;

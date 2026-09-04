@@ -81,6 +81,22 @@ function Assert-StableId([string]$Value, [string]$Context) {
     if ($Value -notmatch $stableIdPattern) { throw "$Context is not a stable ID: '$Value'" }
 }
 
+function Test-ValtanInlineHitRockVolleyOwner(
+	[string]$PatternId,
+	[string]$StageId,
+	[string]$ActionId,
+	[string]$CombatObjectId) {
+	return (
+		($PatternId -ceq 'VALTAN_GROUND_ROAR' -and
+		 $StageId -ceq 'STEP_01' -and
+		 $ActionId -ceq 'valtan.sequence.sequence.400440.0.step-01' -and
+		 $CombatObjectId -ceq 'combatobject.valtan.ground-roar.rock') -or
+		($PatternId -ceq 'VALTAN_STRUGGLING' -and
+		 $StageId -ceq 'STEP_04' -and
+		 $ActionId -ceq 'valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04' -and
+		 $CombatObjectId -ceq 'combatobject.valtan.struggling.rock-pillar'))
+}
+
 function Assert-FinitePatternGraph([object]$Pattern) {
     # Product stages fall through in order only when no TIMEOUT branch exists.
     # Check every node, including tails not taken in a particular audition.
@@ -790,7 +806,12 @@ foreach ($skill in @($skillDocument.skills)) {
 	# actually admits, rather than receiving a hidden whole-skill multiplier.
 	$expectedStaggerDamage = if ($dealsDamage) { [uint32]10 } else { [uint32]0 }
 	$expectedPartDamage = if ($dealsDamage) { [uint32]100 } else { [uint32]0 }
-	$expectedCounterPower = if ([uint32]$skill.skillId -eq 34580) {
+	# Counter power is a capability today: BossCombatRuntime tests nonzero and
+	# does not accumulate a strength threshold. Every damaging Q/W/E/R hit and
+	# the authored Lance Master A guard therefore use the canonical value 1.
+	$isQuickCounterSlot = @('Q','W','E','R') -ccontains [string]$skill.inputSlot
+	$expectedCounterPower = if ([uint32]$skill.skillId -eq 34580 -or
+		$isQuickCounterSlot) {
 		[uint32]1
 	} else {
 		[uint32]0
@@ -799,7 +820,8 @@ foreach ($skill in @($skillDocument.skills)) {
 		[uint32]$skill.partDamage -ne $expectedPartDamage -or
 		[uint32]$skill.counterPower -ne $expectedCounterPower -or
 		([uint32]$skill.counterPower -gt 0 -and
-		 [string]$skill.skillKind -cne 'COUNTER')) {
+		 [string]$skill.skillKind -cne 'COUNTER' -and
+		 -not $isQuickCounterSlot)) {
 		throw "Player skill boss combat traits violate the deterministic landed-hit policy: $($skill.skillId)"
 	}
 	if ([string]::IsNullOrWhiteSpace([string]$skill.displayName) -or ([string]$skill.displayName).Length -gt 64) {
@@ -1770,8 +1792,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		}
 		$ghostPatternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		$expectedValtanGhostPatternIds = @(
-			'VALTAN_SIX_PIZZA_106','VALTAN_GROUND_ROAR','VALTAN_STAGGER_SLOT',
-			'VALTAN_BIND_SLOT','VALTAN_SILENCE_SLOT','VALTAN_TRIPLE_COUNTER')
+			'VALTAN_WHIRLWIND','VALTAN_FOUR_SLASH','VALTAN_SEQUENCE_FOUR',
+			'VALTAN_CROSS','VALTAN_CHARGE','VALTAN_CHARGE_2')
 		if ([string]$pattern.patternId -ceq 'VALTAN_GHOST_FINALE' -and
 			(@($finale.ghostPatternIds) -join "`n") -cne
 			($expectedValtanGhostPatternIds -join "`n")) {
@@ -2421,6 +2443,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$targetingPolicy = [string]$stageAction.targetingPolicy
 					$isPerAlivePlayer = $targetingPolicy -ceq 'PER_ALIVE_PLAYER'
 					$isBossRelative = $targetingPolicy -ceq 'BOSS_RELATIVE'
+					$isArenaCenter = $targetingPolicy -ceq 'ARENA_CENTER'
 					$lastSpawnOffsetMs = [uint64]$firstSpawnOffsetMs +
 						[uint64]($spawnCount - 1) * [uint64]$spawnIntervalMs
 					$isSingle = [uint32]1 -eq $countPerTarget
@@ -2435,13 +2458,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							$arenaAnchorPolicy -ceq 'BOSS_SPAWN_POSITION')
 					$validPolicyTopology =
 						($isPerAlivePlayer -and $validArenaPolicy) -or
-						($isBossRelative -and -not $isSingle -and
+						(($isBossRelative -or $isArenaCenter) -and -not $isSingle -and
 							$spawnCount -eq 1 -and $arenaRandomCount -eq 0 -and
 							$arenaRandomRadiusM -eq 0.0 -and
 							$arenaHeightToleranceM -eq 0.0 -and
 							$arenaAnchorPolicy -ceq 'NONE')
 					if ($actionTrigger -cne 'ENTER' -or
-						(-not $isPerAlivePlayer -and -not $isBossRelative) -or
+						(-not $isPerAlivePlayer -and -not $isBossRelative -and
+							-not $isArenaCenter) -or
 						[uint64]$maximumTotalObjects -lt
 							([uint64]$countPerTarget + [uint64]$arenaRandomCount) -or
 						$radiusM -lt 0.0 -or
@@ -2732,7 +2756,18 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				$patternRows.Add(($stageActionRowFields -join "`t"))
 			}
 		}
-		if ($hasSpawnCombatObjectAction -and $shape -cne 'NONE') {
+		$allowsInlineHitRockVolley = $false
+		if ($hasSpawnCombatObjectAction -and $shape -cne 'NONE' -and
+			@($stage.actions).Count -eq 1) {
+			$onlyStageAction = @($stage.actions)[0]
+			$allowsInlineHitRockVolley =
+				[string]$onlyStageAction.kind -ceq 'SPAWN_COMBAT_OBJECT_VOLLEY' -and
+				(Test-ValtanInlineHitRockVolleyOwner `
+					([string]$pattern.patternId) ([string]$stage.stageId) `
+					([string]$stage.actionId) ([string]$onlyStageAction.targetId))
+		}
+		if ($hasSpawnCombatObjectAction -and $shape -cne 'NONE' -and
+			-not $allowsInlineHitRockVolley) {
 			throw "Combat object spawn stage cannot also own an inline hit: $($pattern.patternId) stage $stageIndex"
 		}
 
@@ -2919,8 +2954,21 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		'ownerStageActionId','kind','originPolicy','directionPolicy',
 		'offsetForwardM','offsetRightM','speedMps','maximumDistanceM',
 		'lifeMs','hits')
+	$hasMovementLifetimePolicy =
+		$null -ne $combatObject.PSObject.Properties['movementStartDelayMs'] -and
+		$null -ne $combatObject.PSObject.Properties['expireOnDistanceEnd']
+	if ($hasMovementLifetimePolicy) {
+		$combatObjectProperties += @('movementStartDelayMs','expireOnDistanceEnd')
+	}
+	elseif ($null -ne $combatObject.PSObject.Properties['movementStartDelayMs'] -or
+		$null -ne $combatObject.PSObject.Properties['expireOnDistanceEnd']) {
+		throw "Valtan combat object movement lifetime policy must be paired: $($combatObject.combatObjectArchetypeId)"
+	}
 	if ($null -ne $combatObject.PSObject.Properties['presentationEvents']) {
 		$combatObjectProperties += 'presentationEvents'
+	}
+	if ($null -ne $combatObject.PSObject.Properties['coverRadiusM']) {
+		$combatObjectProperties += 'coverRadiusM'
 	}
 	Assert-ExactProperties $combatObject $combatObjectProperties `
 		'Valtan combat object'
@@ -2984,8 +3032,24 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	}
 	$ownerPattern = $patternById[$ownerPatternId]
 	$ownerStage = $stageOwnerByKey["$ownerPatternId`n$ownerStageActionId"]
-	if ([string]$ownerStage.hitShape -cne 'NONE') {
+	$ownerStageActions = @($ownerStage.actions)
+	$allowsInlineHitRockVolley =
+		$ownerStageActions.Count -eq 1 -and
+		[string]$ownerStageActions[0].kind -ceq 'SPAWN_COMBAT_OBJECT_VOLLEY' -and
+		[string]$ownerStageActions[0].targetId -ceq $combatObjectId -and
+		(Test-ValtanInlineHitRockVolleyOwner $ownerPatternId `
+			([string]$ownerStage.stageId) $ownerStageActionId $combatObjectId)
+	if ([string]$ownerStage.hitShape -cne 'NONE' -and
+		-not $allowsInlineHitRockVolley) {
 		throw "Valtan combat object owner stage also owns an inline hit: $combatObjectId"
+	}
+	if ($hasMovementLifetimePolicy) {
+		Assert-JsonInteger $combatObject.movementStartDelayMs `
+			"Valtan combat object $($combatObject.combatObjectArchetypeId) movementStartDelayMs" `
+			0 600000
+		if ($combatObject.expireOnDistanceEnd -isnot [bool]) {
+			throw "Valtan combat object expireOnDistanceEnd must be boolean: $($combatObject.combatObjectArchetypeId)"
+		}
 	}
 
 	$kind = [string]$combatObject.kind
@@ -2995,7 +3059,19 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	$offsetRightM = [double]$combatObject.offsetRightM
 	$speedMps = [double]$combatObject.speedMps
 	$maximumDistanceM = [double]$combatObject.maximumDistanceM
+	$movementStartDelayMs = if ($hasMovementLifetimePolicy) {
+		[uint32]$combatObject.movementStartDelayMs
+	} else { [uint32]0 }
+	$expireOnDistanceEnd = if ($hasMovementLifetimePolicy) {
+		[bool]$combatObject.expireOnDistanceEnd
+	} else { $true }
 	$lifeMs = [uint32]$combatObject.lifeMs
+	$coverRadiusM = 0.0
+	if ($null -ne $combatObject.PSObject.Properties['coverRadiusM']) {
+		Assert-JsonNumber $combatObject.coverRadiusM `
+			"Valtan combat object $combatObjectId coverRadiusM"
+		$coverRadiusM = [double]$combatObject.coverRadiusM
+	}
 	$finiteMotion =
 		-not [double]::IsNaN($offsetForwardM) -and
 		-not [double]::IsInfinity($offsetForwardM) -and
@@ -3005,10 +3081,13 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		-not [double]::IsInfinity($speedMps) -and
 		-not [double]::IsNaN($maximumDistanceM) -and
 		-not [double]::IsInfinity($maximumDistanceM) -and
+		-not [double]::IsNaN($coverRadiusM) -and
+		-not [double]::IsInfinity($coverRadiusM) -and
 		[Math]::Abs($offsetForwardM) -le 100.0 -and
 		[Math]::Abs($offsetRightM) -le 100.0 -and
 		$speedMps -ge 0.0 -and $speedMps -le 1000.0 -and
-		$maximumDistanceM -ge 0.0 -and $maximumDistanceM -le 1000.0
+		$maximumDistanceM -ge 0.0 -and $maximumDistanceM -le 1000.0 -and
+		$coverRadiusM -ge 0.0 -and $coverRadiusM -le 100.0
 	$validMotion = $false
 	if ($kind -ceq 'FIXED_AREA') {
 		$stationary =
@@ -3028,7 +3107,8 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		}
 	}
 	elseif ($kind -ceq 'MISSILE') {
-		$maximumTravelM = $speedMps * ([double]$lifeMs / 1000.0)
+		$maximumTravelM = $speedMps *
+			([double]($lifeMs - $movementStartDelayMs) / 1000.0)
 		$nextRadialSlot =
 			$directionPolicy -ceq 'NEXT_RADIAL_SLOT' -and
 			$combatObjectId -ceq 'combatobject.valtan.ghost.portal-charge' -and
@@ -3038,9 +3118,13 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			[string]$ownerPattern.aimPolicy -ceq 'NONE'
 		$patternFacing =
 			$directionPolicy -ceq 'PATTERN_FACING_AT_SPAWN' -and
-			[string]$ownerPattern.aimPolicy -ceq 'LOCK_FACING_ON_START'
+			([string]$ownerPattern.aimPolicy -ceq 'LOCK_FACING_ON_START' -or
+			 ($combatObjectId -ceq 'combatobject.valtan.ghost.portal-charge' -and
+			  $ownerPatternId -ceq 'VALTAN_GHOST_PORTAL_ONCE' -and
+			  [string]$ownerPattern.aimPolicy -ceq 'NONE'))
 		$validMotion = $originPolicy -ceq 'BOSS_POSITION' -and
 			($patternFacing -or $nextRadialSlot) -and
+			$movementStartDelayMs -lt $lifeMs -and
 			$speedMps -gt 0.0 -and $maximumDistanceM -gt 0.0 -and
 			$maximumTravelM + 0.00001 -ge $maximumDistanceM
 	}
@@ -3054,7 +3138,12 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	$eventCount = @($combatObject.hits).Count + $presentationEvents.Count
 	if (-not $finiteMotion -or -not $validMotion -or
 		$combatObject.hits -isnot [Array] -or
-		$eventCount -lt 1 -or $eventCount -gt 16) {
+		$eventCount -lt 1 -or $eventCount -gt 16 -or
+		($coverRadiusM -gt 0.0 -and
+			($kind -cne 'FIXED_AREA' -or @($combatObject.hits).Count -eq 0 -or
+			 @($combatObject.hits | Where-Object {
+				[string]$_.trigger -cne 'TIMED'
+			 }).Count -ne 0))) {
 		throw "Valtan combat object motion or event count is invalid: $combatObjectId"
 	}
 
@@ -3070,6 +3159,9 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			"combat object $combatObjectId speedMps"),
 		(Format-InvariantFloat $maximumDistanceM `
 			"combat object $combatObjectId maximumDistanceM"),
+		$movementStartDelayMs, $(if ($expireOnDistanceEnd) { 1 } else { 0 }),
+		(Format-InvariantFloat $coverRadiusM `
+			"combat object $combatObjectId coverRadiusM"),
 		$lifeMs, $eventCount) -join "`t"))
 
 	for ($hitIndex = 0; $hitIndex -lt @($combatObject.hits).Count;

@@ -55,6 +55,7 @@
     <ClInclude Include="..\Public\CharacterCatalog.h" />
     <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
+    <ClInclude Include="..\Public\CharacterSelectWindowView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
@@ -256,6 +257,7 @@
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
+    <ClCompile Include="..\Private\CharacterSelectWindowView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
@@ -596,6 +598,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
+    <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
@@ -607,6 +610,8 @@
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingRecovery.json" />
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
+    <None Include="..\..\Data\UI\Lobby\LobbyServers.json" />
+    <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />

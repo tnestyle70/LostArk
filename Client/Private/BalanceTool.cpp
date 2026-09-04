@@ -2608,7 +2608,9 @@ bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
 	}
 
 	VALTAN_WARP_RUSH_EDIT aggregate{};
+	std::uint32_t firstLegDurationMs = 0u;
 	bool first = true;
+	bool firstRepeat = true;
 	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
 	{
 		const VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
@@ -2619,18 +2621,24 @@ bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
 			return false;
 		}
 		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
-		std::uint32_t trailingGapMs = 0u;
+		std::uint32_t stageTrailingGapMs = 0u;
 		std::string normalizeStatus;
 		if (!DerivePortalRushTrailingGapMs(
-				draft, trailingGapMs, normalizeStatus))
+				draft, stageTrailingGapMs, normalizeStatus))
 		{
 			status = std::string("VALTAN_WARP rush leg has no valid authored trailing gap: ") +
 				stageId + ". " + normalizeStatus;
 			return false;
 		}
+		if (0u != stageTrailingGapMs)
+		{
+			status = std::string("VALTAN_WARP rush leg retains a visible post-arrival Stage gap: ") +
+				stageId + ". The cadence requires arrival to own the Stage boundary.";
+			return false;
+		}
 		PATTERN_STAGE_EDIT normalized = draft;
 		if (!Normalize_ValtanPortalRushDraft(
-				normalized, trailingGapMs, normalizeStatus) ||
+				normalized, 0u, normalizeStatus) ||
 			normalized.durationMs != draft.durationMs ||
 			normalized.hitOffsetsMs != draft.hitOffsetsMs ||
 			normalized.hitCount != draft.hitCount ||
@@ -2638,6 +2646,14 @@ bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
 		{
 			status = std::string("VALTAN_WARP rush leg is not a normalized 50 ms Server sweep: ") +
 				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		if (!stage->bHasBodyHiddenWindow ||
+			0u != stage->iBodyHiddenFromMs ||
+			stage->iBodyHiddenToMs != draft.portalRetargetDelayMs)
+		{
+			status = std::string("VALTAN_WARP rush leg body visibility does not cover its hidden handoff: ") +
+				stageId + ".";
 			return false;
 		}
 		VALTAN_STAGE_VIEW presentation = *stage;
@@ -2652,24 +2668,54 @@ bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
 		}
 		if (first)
 		{
-			aggregate.legDurationMs = draft.durationMs;
+			firstLegDurationMs = draft.durationMs;
 			aggregate.retargetDelayMs = draft.portalRetargetDelayMs;
 			aggregate.speedMps = draft.portalSpeedMps;
 			aggregate.distanceM = draft.portalDistanceM;
-			aggregate.trailingGapMs = trailingGapMs;
 			aggregate.hitCount = draft.hitCount;
 			first = false;
 		}
-		else if (aggregate.legDurationMs != draft.durationMs ||
-			aggregate.retargetDelayMs != draft.portalRetargetDelayMs ||
-			std::abs(aggregate.speedMps - draft.portalSpeedMps) > 0.000001 ||
-			std::abs(aggregate.distanceM - draft.portalDistanceM) > 0.000001 ||
-			aggregate.trailingGapMs != trailingGapMs ||
-			aggregate.hitCount != draft.hitCount)
+		else
 		{
-			status = "VALTAN_WARP STEP_02..STEP_09 do not share one rush contract; reload or repair the canonical source before all-leg tuning.";
-			return false;
+			if (draft.portalRetargetDelayMs < aggregate.retargetDelayMs)
+			{
+				status = std::string("VALTAN_WARP cadence leg starts before the first portal lead: ") +
+					stageId + ".";
+				return false;
+			}
+			const std::uint32_t portalGapMs =
+				draft.portalRetargetDelayMs - aggregate.retargetDelayMs;
+			if (firstRepeat)
+			{
+				aggregate.legDurationMs = draft.durationMs;
+				aggregate.trailingGapMs = portalGapMs;
+				firstRepeat = false;
+			}
+			if (aggregate.legDurationMs != draft.durationMs ||
+				aggregate.trailingGapMs != portalGapMs ||
+				std::abs(aggregate.speedMps - draft.portalSpeedMps) > 0.000001 ||
+				std::abs(aggregate.distanceM - draft.portalDistanceM) > 0.000001 ||
+				aggregate.hitCount != draft.hitCount)
+			{
+				status = "VALTAN_WARP STEP_03..STEP_09 do not share one repeated portal cadence; reload or repair the canonical source before all-leg tuning.";
+				return false;
+			}
 		}
+	}
+	if (first || firstRepeat ||
+		aggregate.legDurationMs != firstLegDurationMs + aggregate.trailingGapMs)
+	{
+		status = "VALTAN_WARP first/repeated Stage clocks do not encode one portal-gap cadence.";
+		return false;
+	}
+	const VALTAN_STAGE_VIEW* const recovery =
+		FindValtanStage(*pattern, "STEP_10");
+	if (nullptr == recovery || !recovery->bHasBodyHiddenWindow ||
+		0u != recovery->iBodyHiddenFromMs ||
+		recovery->iBodyHiddenToMs != aggregate.trailingGapMs)
+	{
+		status = "VALTAN_WARP recovery must keep the boss hidden through the final portal linger.";
+		return false;
 	}
 	aggregate.travelMs = aggregate.distanceM / aggregate.speedMps * 1000.0;
 	rush = aggregate;
@@ -2704,7 +2750,7 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 	}
 
 	bool changed = false;
-	PATTERN_STAGE_EDIT admittedNormalized{};
+	bool firstLeg = true;
 	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
 	{
 		VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
@@ -2717,36 +2763,30 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
 		if (!draft.portalRushMotionEditable ||
 			"PORTAL_TARGET_RUSH" != draft.motionKind ||
-			current.legDurationMs != draft.durationMs ||
 			!stage->Motion.has_value())
 		{
 			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: stale or malformed rush leg ") +
 				stageId + ".";
 			return false;
 		}
-		draft.portalRetargetDelayMs = rush.retargetDelayMs;
+		const std::uint64_t stageDelayMs =
+			static_cast<std::uint64_t>(rush.retargetDelayMs) +
+			(firstLeg ? 0u : static_cast<std::uint64_t>(rush.trailingGapMs));
+		if (stageDelayMs > 120000u)
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: delay plus portal gap exceeds 120000 ms for ") +
+				stageId + ".";
+			return false;
+		}
+		draft.portalRetargetDelayMs = static_cast<std::uint32_t>(stageDelayMs);
 		draft.portalSpeedMps = rush.speedMps;
 		draft.portalDistanceM = rush.distanceM;
 		std::string normalizeStatus;
 		if (!Normalize_ValtanPortalRushDraft(
-				draft, rush.trailingGapMs, normalizeStatus))
+				draft, 0u, normalizeStatus))
 		{
 			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: ") +
 				normalizeStatus;
-			return false;
-		}
-		if (admittedNormalized.stageId.empty())
-			admittedNormalized = draft;
-		else if (admittedNormalized.portalRetargetDelayMs !=
-				draft.portalRetargetDelayMs ||
-			admittedNormalized.durationMs != draft.durationMs ||
-			std::abs(admittedNormalized.portalSpeedMps -
-				draft.portalSpeedMps) > 0.000001 ||
-			std::abs(admittedNormalized.portalDistanceM -
-				draft.portalDistanceM) > 0.000001 ||
-			admittedNormalized.hitOffsetsMs != draft.hitOffsetsMs)
-		{
-			status = "VALTAN_WARP all-leg edit rejected before mutation: the eight Stage clocks normalize to different rush contracts.";
 			return false;
 		}
 		bool loopWallChanged = false;
@@ -2760,6 +2800,9 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 
 		changed = changed ||
 			stage->iDurationMs != draft.durationMs || loopWallChanged ||
+			!stage->bHasBodyHiddenWindow ||
+			0u != stage->iBodyHiddenFromMs ||
+			stage->iBodyHiddenToMs != draft.portalRetargetDelayMs ||
 			stage->Motion->iRetargetDelayMs != draft.portalRetargetDelayMs ||
 			std::abs(stage->Motion->fSpeedMps -
 				static_cast<float>(draft.portalSpeedMps)) > 0.000001f ||
@@ -2769,6 +2812,9 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 			stage->iHitCount != draft.hitCount ||
 			0u != stage->iHitIntervalMs || 0u != stage->iHitDelayMs;
 		stage->iDurationMs = draft.durationMs;
+		stage->bHasBodyHiddenWindow = 0u < draft.portalRetargetDelayMs;
+		stage->iBodyHiddenFromMs = 0u;
+		stage->iBodyHiddenToMs = draft.portalRetargetDelayMs;
 		stage->Motion->iRetargetDelayMs = draft.portalRetargetDelayMs;
 		stage->Motion->fSpeedMps = static_cast<float>(draft.portalSpeedMps);
 		stage->Motion->fDistance = static_cast<float>(draft.portalDistanceM);
@@ -2776,7 +2822,20 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 		stage->iHitCount = draft.hitCount;
 		stage->iHitIntervalMs = 0u;
 		stage->iHitDelayMs = 0u;
+		firstLeg = false;
 	}
+	VALTAN_STAGE_VIEW* const recovery = FindValtanStage(*pattern, "STEP_10");
+	if (nullptr == recovery)
+	{
+		status = "VALTAN_WARP all-leg edit rejected before mutation: missing STEP_10 recovery.";
+		return false;
+	}
+	changed = changed || !recovery->bHasBodyHiddenWindow ||
+		0u != recovery->iBodyHiddenFromMs ||
+		recovery->iBodyHiddenToMs != rush.trailingGapMs;
+	recovery->bHasBodyHiddenWindow = 0u < rush.trailingGapMs;
+	recovery->iBodyHiddenFromMs = 0u;
+	recovery->iBodyHiddenToMs = rush.trailingGapMs;
 
 	if (!changed)
 	{
@@ -2787,7 +2846,7 @@ bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
 	   normalized in the value copy above before the aggregate is committed. */
 	m_valtanPatternTree = std::move(staged);
 	MarkDirty(true);
-	status = "Staged VALTAN_WARP delay/speed/distance/portal gap, derived Stage clocks, loop presentation, and 50 ms travel sweeps atomically for STEP_02..STEP_09. Use Save & Apply to validate and activate the data.";
+	status = "Staged VALTAN_WARP portal lead/speed/distance/next-portal offset, arrival-aligned Stage clocks, hidden handoffs, loop presentation, and 50 ms travel sweeps atomically for STEP_02..STEP_09. Use Save & Apply to validate and activate the data.";
 	return true;
 }
 
@@ -5303,11 +5362,14 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 			!ownerDrafts->effectV2BaselineBytes.empty();
 		const bool hasEffectCandidate =
 			!ownerDrafts->effectV2CandidateBytes.empty();
+		const bool hasEffectReadSet =
+			!ownerDrafts->effectV2ReadSetBytes.empty();
 		if (hasSoundBaseline != hasSoundCandidate ||
-			hasEffectBaseline != hasEffectCandidate)
+			hasEffectBaseline != hasEffectCandidate ||
+			hasEffectBaseline != hasEffectReadSet)
 		{
 			status =
-				"Composition owner baseline/candidate pairs are incomplete.";
+				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and matching resource read-set together. Rebuild and restart the Client if this persists; the draft was preserved.";
 			return false;
 		}
 		const auto StageOwnerPair = [&](const wchar_t* const stem,
@@ -5348,6 +5410,18 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 				L"-EffectV2CandidatePath"))
 		{
 			return false;
+		}
+		if (hasEffectReadSet)
+		{
+			const std::filesystem::path readSetPath =
+				m_valtanSaveJobDirectory / L"effect-v2-read-set.json";
+			if (!DurableWrite(
+					readSetPath, ownerDrafts->effectV2ReadSetBytes, status))
+			{
+				return false;
+			}
+			arguments += L" -EffectV2ReadSetPath \"" +
+				readSetPath.wstring() + L"\"";
 		}
 	}
 	void* processHandle = nullptr;
@@ -11222,11 +11296,15 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			!pOwnerDrafts->effectV2BaselineBytes.empty();
 		const bool hasEffectV2Candidate =
 			!pOwnerDrafts->effectV2CandidateBytes.empty();
+		const bool hasEffectV2ReadSet =
+			!pOwnerDrafts->effectV2ReadSetBytes.empty();
 		if (hasPatternSoundBaseline != hasPatternSoundCandidate ||
-			hasEffectV2Baseline != hasEffectV2Candidate)
+			hasEffectV2Baseline != hasEffectV2Candidate ||
+			hasEffectV2Baseline != hasEffectV2ReadSet)
 		{
 			CleanupTemporaryPaths();
-			status = "Composition owner baseline/candidate pairs are incomplete.";
+			status =
+				"Composition owner payloads are incomplete; Effect V2 requires baseline, candidate, and matching resource read-set together. Rebuild and restart the Client if this persists; the draft was preserved.";
 			return false;
 		}
 		const auto StageOwnerPair = [&](const wchar_t* const label,
@@ -11270,6 +11348,20 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		{
 			CleanupTemporaryPaths();
 			return false;
+		}
+		if (hasEffectV2ReadSet)
+		{
+			const std::filesystem::path readSetPath = temporaryDirectory /
+				(temporaryStem + L".EffectV2.read-set.json");
+			temporaryPaths.push_back(readSetPath);
+			if (!DurableWrite(
+					readSetPath, pOwnerDrafts->effectV2ReadSetBytes, status))
+			{
+				CleanupTemporaryPaths();
+				return false;
+			}
+			arguments += L" -EffectV2ReadSetPath \"" +
+				readSetPath.wstring() + L"\"";
 		}
 	}
 	std::string captured;

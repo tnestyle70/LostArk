@@ -11,8 +11,8 @@
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
 #include "ReplicatedPlayerHealth.h"
-#include "PlayerHandGripTransform.h"
 #include "CombatDebugVisibility.h"
+#include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
 #include <cstdint>
@@ -141,6 +141,7 @@ namespace Client
 		std::uint32_t iPatternStageIndex = 0u;
 		LostArk::Shared::NET_ENTITY_ID iPatternTargetNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT PortalRushRoute;
 		std::uint32_t iActionStartTick = 0u;
 		LostArk::Shared::BOSS_COMBAT_SNAPSHOT BossCombat;
 		float3_t vPosition = {};
@@ -409,6 +410,12 @@ namespace Client
 		}
 		bool Try_Consume_PartyTransferResult(
 			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
+		// 파티 레이드 입장 투표. 프롬프트 수신 시 Bern이 수락/거절 창을 열고, vote는
+		// 진행/종료 통지다. 각 한 번만 소비된다(read-only view).
+		bool Try_Consume_RaidEntryPrompt(
+			LostArk::Shared::S2C_RAID_ENTRY_PROMPT& outPrompt);
+		bool Try_Consume_RaidEntryVote(
+			LostArk::Shared::S2C_RAID_ENTRY_VOTE& outVote);
 		/* Head-bubble text for whoever last chatted, while their line is still
 		   within CHAT_BUBBLE_DURATION of arriving -- false (text left
 		   untouched) once it has aged out, so the renderer only ever draws a
@@ -419,9 +426,24 @@ namespace Client
 
 	private:
 #ifdef _DEBUG
+		struct COMBAT_OBJECT_HIT_AREA_DEBUG final
+		{
+			std::string strHitShape;
+			bool_t bContact = false;
+			f32_t fOuterRadiusM = 0.f;
+			f32_t fInnerRadiusM = 0.f;
+			f32_t fAngleDegrees = 0.f;
+			f32_t fLengthM = 0.f;
+			f32_t fHalfWidthM = 0.f;
+			std::uint32_t iAtMs = 0u;
+			std::uint32_t iRepeatCount = 0u;
+			std::uint32_t iRepeatIntervalMs = 0u;
+		};
 		void Sync_GlobalCombatDebugVisibility();
 		void Apply_CombatDebugVisibility(
 			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
+		bool_t Load_CombatObjectHitAreaDebug(std::string& strOutStatus);
+		void Draw_CombatObjectHitAreaDebug();
 #endif
 		bool Create_Character(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
@@ -446,6 +468,26 @@ namespace Client
 			std::string& strOutStatus) const;
 		void Remove_DependentBossPresentations(
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
+		bool_t Prepare_ValtanGhostPresentationPool(
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+			f32_t collisionRadius,
+			const LostArk::Shared::GameplayDataRevision& revision,
+			const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+			const std::shared_ptr<CValtan>& primaryValtan,
+			std::string& strOutStatus);
+		std::shared_ptr<CValtan> Checkout_ValtanGhostPresentation(
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+			f32_t collisionRadius,
+			const LostArk::Shared::GameplayDataRevision& revision,
+			const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+			const float3_t& position,
+			f32_t yawDegrees,
+			bool_t bHoldBodyHiddenUntilPatternSnapshot);
+		bool_t Checkin_ValtanGhostPresentation(
+			const std::shared_ptr<CValtan>& valtan);
+		bool_t Retry_DeferredValtanGhostPresentationPoolRefresh(
+			std::string& strOutStatus);
+		void Clear_ValtanGhostPresentationPool();
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Apply_CombatObjectPresentationEvent(
@@ -493,10 +535,8 @@ namespace Client
 			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
 		void Stop_CombatObjectPresentation(
 			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
-		void Stage_PlayerAttachmentPresentation(
-			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
-		void Update_PlayerAttachmentPresentations();
-
+		void Release_CombatObjectPresentation(
+			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
 		struct COMBAT_OBJECT_PRESENTATION_SINK final
 		{
 			CClientReplication& Owner;
@@ -517,6 +557,10 @@ namespace Client
 			void Stop(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 			{
 				Owner.Stop_CombatObjectPresentation(handle);
+			}
+			void Release(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
+			{
+				Owner.Release_CombatObjectPresentation(handle);
 			}
 		};
 
@@ -544,20 +588,6 @@ namespace Client
 		} m_DeferredLocalCharacterClassReplacement;
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
-		struct PLAYER_ATTACHMENT_PRESENTATION final
-		{
-			LostArk::Shared::NET_ENTITY_ID iOwnerNetEntityId =
-				LostArk::Shared::INVALID_NET_ENTITY_ID;
-			LostArk::Shared::PLAYER_ATTACHMENT_SLOT eSlot =
-				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
-			float4x4_t LocalOffset{};
-			bool_t bHasLocalOffset = false;
-			PLAYER_HAND_GRIP_LOCAL_OFFSET GripLocalOffset{};
-			bool_t bHasGripLocalOffset = false;
-		};
-		std::unordered_map<
-			LostArk::Shared::NET_ENTITY_ID,
-			PLAYER_ATTACHMENT_PRESENTATION> m_PlayerAttachments;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
@@ -574,6 +604,10 @@ namespace Client
 		CReplicatedPlayerHealth m_PlayerHealth;
 		bool m_hasPendingPartyTransferResult = false;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
+		bool m_hasPendingRaidEntryPrompt = false;
+		LostArk::Shared::S2C_RAID_ENTRY_PROMPT m_PendingRaidEntryPrompt{};
+		bool m_hasPendingRaidEntryVote = false;
+		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
 		std::vector<std::string> m_PendingWorldSequencePlays;
 
 		struct CHAT_BUBBLE_ENTRY
@@ -586,6 +620,10 @@ namespace Client
 			m_ChatBubblesByNetEntityId;
 #ifdef _DEBUG
 		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
+		bool_t m_isCombatObjectHitAreaDebugLoadAttempted = false;
+		std::unordered_map<std::string,
+			std::vector<COMBAT_OBJECT_HIT_AREA_DEBUG>>
+			m_CombatObjectHitAreasByArchetype;
 #endif
 
 		struct WORLD_ENTITY_PRESENTATION
@@ -617,6 +655,7 @@ namespace Client
 			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
 			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};
 			bool_t bPresentationIsolated = false;
+			bool_t bUsesValtanGhostPool = false;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
@@ -631,6 +670,33 @@ namespace Client
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
+		static constexpr std::size_t VALTAN_GHOST_PRESENTATION_POOL_CAPACITY = 4u;
+		struct VALTAN_GHOST_PRESENTATION_POOL_SLOT final
+		{
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			f32_t fCollisionRadius = 0.f;
+			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
+			VALTAN_PRESENTATION_GENERATION_RECEIPT AdmittedPresentationReceipt;
+			std::shared_ptr<CValtan> pValtan;
+			bool_t bCheckedOut = false;
+		};
+		std::vector<VALTAN_GHOST_PRESENTATION_POOL_SLOT>
+			m_ValtanGhostPresentationPool;
+		struct DEFERRED_VALTAN_GHOST_PRESENTATION_POOL_REFRESH final
+		{
+			bool_t bPending = false;
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			f32_t fCollisionRadius = 0.f;
+			LostArk::Shared::GameplayDataRevision PresentationRevision{};
+			VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+			std::weak_ptr<CValtan> pPrimaryValtan;
+		};
+		DEFERRED_VALTAN_GHOST_PRESENTATION_POOL_REFRESH
+			m_DeferredValtanGhostPresentationPoolRefresh;
+		VALTAN_PRESENTATION_GENERATION_RECEIPT
+			m_RejectedValtanGhostPoolReceipt;
 		CPrimaryValtanPresentationFreshnessGate
 			m_PrimaryValtanJoinedPresentationFreshness;
 		CPrimaryValtanPresentationFreshnessGate

@@ -3,6 +3,7 @@
 #include "MainApp.h"
 
 #include "CharacterSelectionState.h"
+#include "CharacterSelectWindowView.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -91,28 +92,15 @@ namespace
 			std::chrono::steady_clock::now() - s_Epoch).count();
 	}
 
-	struct LOBBY_PRODUCT_BUTTON
-	{
-		const char_t* pSlotId;
-		LOBBY_STAGE eStage;
-		const wchar_t* pLabel;
-		f32_t fDefaultX;
-		f32_t fDefaultY;
-		f32_t fDefaultWidth;
-		f32_t fDefaultHeight;
-	};
-
-	constexpr std::array<LOBBY_PRODUCT_BUTTON, 4> LOBBY_PRODUCT_BUTTONS =
-	{{
-		{ "Lobby_TestButton", LOBBY_STAGE::TEST, L"\xD14C\xC2A4\xD2B8",
-			338.f, 632.f, 142.f, 48.f },
-		{ "Lobby_CreateCharacterButton", LOBBY_STAGE::CHARACTER_SELECT,
-			L"\xCE90\xB9AD\xD130 \xC0DD\xC131", 488.f, 632.f, 142.f, 48.f },
-		{ "Lobby_ValtanButton", LOBBY_STAGE::VALTAN, L"\xBC1C\xD0C4",
-			638.f, 632.f, 142.f, 48.f },
-		{ "Lobby_BernButton", LOBBY_STAGE::BERN, L"\xBCA0\xB978",
-			788.f, 632.f, 142.f, 48.f },
-	}};
+	/* Retail login/server-select screen (EFUI_LOBBY login.gfx, Server_Login group) rebuilt on
+	the Lobby: server rows + 접속(서버 선택) button + 종료/뒤로/환경설정 icon buttons, slots
+	authored in Lobby_Layout.json at 1280x720 (retail 1920x1080 coordinates x 2/3). The row list
+	itself comes from Data/UI/Lobby/LobbyServers.json (name/state/tag/count are the user's
+	choice, not Server data -- this project has no account/server directory). */
+	constexpr size_t LOBBY_SERVER_ROW_COUNT = 8;
+	/* 37-frame retail logo reveal (total_sequence_00001..00073, every other frame of a 40fps
+	timeline) at 20 fps, then the static Logo_Final image takes over. */
+	constexpr f32_t LOBBY_LOGO_INTRO_SECONDS = 37.f / 20.f;
 
 	struct LOBBY_PRODUCT_RECT final
 	{
@@ -129,35 +117,12 @@ namespace
 			Rect.fWidth > 0.f && Rect.fHeight > 0.f;
 	}
 
-	bool_t Resolve_LobbyProductButtonRects(
-		Client::CUILayoutRuntime* pView,
-		std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()>& outRects)
+	bool_t Get_LobbySlotRect(Client::CUILayoutRuntime* pView, const char* pSlotId,
+		LOBBY_PRODUCT_RECT& outRect)
 	{
-		if (nullptr == pView)
-			return false;
-		bool_t hasCompleteAuthoredButtons = true;
-		for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
-		{
-			LOBBY_PRODUCT_RECT& Rect = outRects[i];
-			if (!pView->Get_SlotRect(
-				LOBBY_PRODUCT_BUTTONS[i].pSlotId,
-				Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight) ||
-				!Is_ValidProductRect(Rect))
-			{
-				hasCompleteAuthoredButtons = false;
-			}
-		}
-		if (!hasCompleteAuthoredButtons)
-		{
-			for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
-			{
-				const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-				outRects[i] = LOBBY_PRODUCT_RECT{
-					Button.fDefaultX, Button.fDefaultY,
-					Button.fDefaultWidth, Button.fDefaultHeight };
-			}
-		}
-		return hasCompleteAuthoredButtons;
+		return nullptr != pView && pView->Get_SlotRect(pSlotId,
+			outRect.fX, outRect.fY, outRect.fWidth, outRect.fHeight) &&
+			Is_ValidProductRect(outRect);
 	}
 
 	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
@@ -751,6 +716,8 @@ HRESULT CMainApp::Initialize()
 	/* Same reasoning as Hide_BossHealthBar just above -- hidden until Update_EstherGauge finds a
 	real Esther roster in a Valtan room. */
 	Hide_EstherUI();
+	m_pEstherCutinService = std::make_unique<CEstherCutinPresentationService>(
+		m_pDevice, m_pContext);
 	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/ItemUpgrade/ItemUpgradeUI.json");
@@ -765,6 +732,12 @@ HRESULT CMainApp::Initialize()
 	by construction (engine sprites render before ImGui), which is all the old BACKGROUND draw
 	target actually guaranteed here. */
 	m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+	Load_LobbyServers();
+	/* After the Lobby view on purpose: created later means its sprites join Layer_UI later and
+	draw on top of the Lobby backdrop/buttons while the window is open. Its own constructor
+	hides every slot. */
+	m_pCharacterSelectWindowView = std::make_unique<CCharacterSelectWindowView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
 	it was removed by product decision (see the migrated keybind block below), so the window can
 	never open, and constructing it would stand up the last ImGui product-path renderer for
@@ -841,10 +814,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bPDown = pDown;
 	}
 	Update_LobbyButtons(fTimeDelta);
+	Update_CharacterSelectWindow(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
 	Update_EstherGauge();
+	if (nullptr != m_pEstherCutinService)
+		m_pEstherCutinService->Update(fTimeDelta);
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
@@ -1399,9 +1375,8 @@ HRESULT CMainApp::Render()
 #endif
 		m_pImGuiLayer->EndFrame();
 	}
-	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
-	/* Raid entry popup's live boss: same slot in the frame as the cutin -- over the popup's
-	   own sprites, under the Draw_Text pass that letters it. */
+	/* Raid entry popup's live boss: over the popup's own sprites, under the Draw_Text pass
+	   that letters it. */
 	CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
@@ -1440,6 +1415,7 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
+	RenderCharacterSelectWindowText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -1966,62 +1942,180 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 	{
 		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+		m_bLobbyWasActive = false;
 		return;
 	}
 
-	/* Resolve the required four-slot set first. An old or corrupt external Data checkout may
-	contain only the legacy Create button; forcing every button onto the same four default
-	rects atomically (runtime-creating any missing slot, repositioning any invalid one) avoids
-	overlapping hit targets and preserves every Lobby command -- the entry gate must never lose
-	its buttons to a bad layout file. */
-	std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()> ButtonRects{};
-	const bool_t hasCompleteAuthoredButtons = Resolve_LobbyProductButtonRects(
-		m_pLobbyBackgroundView.get(), ButtonRects);
-	if (!hasCompleteAuthoredButtons)
+	/* The character-select window is modal over the Lobby: while it is open the Lobby
+	backdrop/buttons hide and skip their own hover/click pass entirely --
+	Update_CharacterSelectWindow owns the frame's pointer. */
+	if (nullptr != m_pCharacterSelectWindowView &&
+		m_pCharacterSelectWindowView->Is_Open())
 	{
-		for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
-		{
-			const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-			m_pLobbyBackgroundView->Ensure_RuntimeSlot(Button.pSlotId,
-				Button.fDefaultX, Button.fDefaultY,
-				Button.fDefaultWidth, Button.fDefaultHeight,
-				"UI/Lobby/create_character_button.png");
-			m_pLobbyBackgroundView->Set_SlotRect(Button.pSlotId,
-				Button.fDefaultX, Button.fDefaultY,
-				Button.fDefaultWidth, Button.fDefaultHeight);
-		}
+		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+		return;
 	}
 
+	/* Entering the Lobby (first run, or back from a stage) replays the retail logo reveal once;
+	closing the character-select window does not (retail keeps the settled logo). */
+	if (!m_bLobbyWasActive)
+	{
+		m_bLobbyWasActive = true;
+		m_fLobbyLogoIntroElapsed = 0.f;
+		m_pLobbyBackgroundView->Restart_Animation("Lobby_LogoIntro");
+	}
+	m_fLobbyLogoIntroElapsed += fTimeDelta;
+	const bool_t bLogoIntroDone = m_fLobbyLogoIntroElapsed >= LOBBY_LOGO_INTRO_SECONDS;
+
 	m_pLobbyBackgroundView->Set_AllSlotsVisible(true);
+	m_pLobbyBackgroundView->Set_SlotVisible("Lobby_LogoIntro", !bLogoIntroDone);
+	m_pLobbyBackgroundView->Set_SlotVisible("Lobby_Logo", bLogoIntroDone);
 
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pLobbyBackgroundView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pLobbyBackgroundView->Get_ResolutionHeight();
-	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+	const auto HoverAndClick = [&](const LOBBY_PRODUCT_RECT& Rect, bool_t& outClicked)
 	{
-		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-		const LOBBY_PRODUCT_RECT& Rect = ButtonRects[i];
-
+		outClicked = false;
 		const bool_t bHovered = Router.Is_Hovered(
 			Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
-		/* Empty path reverts to the slot's own idle art (the authored layer, or the product
-		texture the fallback slot was created with). */
-		m_pLobbyBackgroundView->Set_SlotTexture(Button.pSlotId, bHovered ?
-			"UI/Lobby/create_character_button_hover.png" : "");
 		if (bHovered)
 		{
 			Router.Claim_Mouse_This_Frame();
-			if (Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
-					fRefWidth, fRefHeight) &&
-				CLevel_Lobby::Submit_ProductCommand(Button.eStage))
-			{
-				Play_UIButtonClickSound();
-			}
+			outClicked = Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
+				fRefWidth, fRefHeight);
+		}
+		return bHovered;
+	};
+
+	/* Server rows (retail ServerRenderer: 'over' skin under the pointer, 'selected_up' skin on
+	the chosen row; a click selects). Rows past the authored list stay hidden. */
+	const size_t iRowCount = (std::min)(m_LobbyServers.size(), LOBBY_SERVER_ROW_COUNT);
+	if (m_iLobbySelectedServer >= static_cast<int32_t>(iRowCount))
+		m_iLobbySelectedServer = iRowCount > 0 ? 0 : -1;
+	for (size_t i = 0; i < LOBBY_SERVER_ROW_COUNT; ++i)
+	{
+		const string strRowId = "Lobby_ServerRow_" + std::to_string(i);
+		const string strCountId = "Lobby_ServerRowCount_" + std::to_string(i);
+		if (i >= iRowCount)
+		{
+			m_pLobbyBackgroundView->Set_SlotVisible(strRowId, false);
+			m_pLobbyBackgroundView->Set_SlotVisible(strCountId, false);
+			continue;
+		}
+		LOBBY_PRODUCT_RECT Rect{};
+		bool_t bClicked = false;
+		const bool_t bHovered = Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
+			strRowId.c_str(), Rect) && HoverAndClick(Rect, bClicked);
+		if (bClicked)
+		{
+			m_iLobbySelectedServer = static_cast<int32_t>(i);
+			Play_UIButtonClickSound();
+		}
+		const bool_t bSelected = static_cast<int32_t>(i) == m_iLobbySelectedServer;
+		m_pLobbyBackgroundView->Set_SlotTexture(strRowId, bSelected ?
+			"UI/Lobby/ServerSelect/row_selected.png" :
+			bHovered ? "UI/Lobby/ServerSelect/row_over.png" : "");
+		/* Retail shows the head-count icon only for a server that still accepts characters;
+		otherwise the row's characterState text ("생성 불가") takes that column. */
+		m_pLobbyBackgroundView->Set_SlotVisible(strCountId, m_LobbyServers[i].bCreatable);
+	}
+
+	/* 접속(서버 선택) -- the old 게임 시작 button: opens the character-select window for the
+	selected server. The window's own card still submits CHARACTER_SELECT. */
+	{
+		LOBBY_PRODUCT_RECT Rect{};
+		bool_t bClicked = false;
+		const bool_t bHovered = Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
+			"Lobby_JoinButton", Rect) && HoverAndClick(Rect, bClicked);
+		const bool_t bEnabled = m_iLobbySelectedServer >= 0 &&
+			nullptr != m_pCharacterSelectWindowView &&
+			CLevel_Lobby::Can_SubmitProductCommand();
+		m_pLobbyBackgroundView->Set_SlotTexture("Lobby_JoinButton",
+			bHovered && bEnabled ? "UI/Lobby/ServerSelect/btn_join_over.png" : "");
+		if (bClicked && bEnabled)
+		{
+			m_pCharacterSelectWindowView->Open();
+			Play_UIButtonClickSound();
 		}
 	}
 
-	/* TitleBackground's 151-frame looping flipbook. */
+	/* Bottom icon buttons. 종료 closes the game (WM_CLOSE -> WM_DESTROY -> quit, the same
+	path as the title-bar X); 뒤로 (retail: back to the login page) and 환경설정 have no
+	product target here yet, so they only show their hover art. */
+	struct LOBBY_ICON_BUTTON
+	{
+		const char* pSlotId;
+		const char* pOverTexture;
+		bool_t bExit;
+	};
+	constexpr LOBBY_ICON_BUTTON IconButtons[3] =
+	{
+		{ "Lobby_ExitIcon", "UI/Lobby/ServerSelect/btn_exit_over.png", true },
+		{ "Lobby_PrevIcon", "UI/Lobby/ServerSelect/btn_prev_over.png", false },
+		{ "Lobby_OptionIcon", "UI/Lobby/ServerSelect/btn_option_over.png", false },
+	};
+	for (const LOBBY_ICON_BUTTON& Icon : IconButtons)
+	{
+		LOBBY_PRODUCT_RECT Rect{};
+		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), Icon.pSlotId, Rect))
+			continue;
+		/* Retail's hit area is the 118x82 button group (icon + caption), not just the icon. */
+		const LOBBY_PRODUCT_RECT HitRect{ Rect.fX - 26.f, Rect.fY - 6.f, Rect.fWidth + 52.f, 54.f };
+		bool_t bClicked = false;
+		const bool_t bHovered = HoverAndClick(HitRect, bClicked);
+		m_pLobbyBackgroundView->Set_SlotTexture(Icon.pSlotId, bHovered ? Icon.pOverTexture : "");
+		if (bClicked && Icon.bExit)
+		{
+			Play_UIButtonClickSound();
+			PostMessage(g_hWnd, WM_CLOSE, 0, 0);
+		}
+	}
+
+	/* TitleBackground's looping movie flipbook and the one-shot logo reveal. */
 	m_pLobbyBackgroundView->Update(fTimeDelta);
+}
+
+void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pCharacterSelectWindowView)
+		return;
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		/* A level change while open (the submitted CHARACTER_SELECT approval landing) must
+		not leave the window's sprites showing under the next level -- they live on
+		LEVEL::STATIC. */
+		if (m_pCharacterSelectWindowView->Is_Open())
+			m_pCharacterSelectWindowView->Close();
+		return;
+	}
+
+	m_pCharacterSelectWindowView->Update(fTimeDelta);
+
+	switch (m_pCharacterSelectWindowView->Consume_Intent())
+	{
+	case CCharacterSelectWindowView::INTENT::NEW_CHARACTER:
+		/* The same product command the Lobby button used to submit directly. The window
+		stays open while the Server approval runs -- success changes the level (the branch
+		above closes it), a rejection leaves the window up and the user can ESC back to the
+		Lobby's status line. */
+		(void)CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT);
+		break;
+	case CCharacterSelectWindowView::INTENT::CLOSE:
+		m_pCharacterSelectWindowView->Close();
+		break;
+	default:
+		break;
+	}
+}
+
+void CMainApp::RenderCharacterSelectWindowText()
+{
+	if (nullptr == m_pCharacterSelectWindowView)
+		return;
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+	m_pCharacterSelectWindowView->RenderText();
 }
 
 void CMainApp::RenderLobbyButtonText()
@@ -2030,32 +2124,126 @@ void CMainApp::RenderLobbyButtonText()
 		return;
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
+	/* The Lobby's sprites are hidden while the character-select window is open -- their
+	labels (and the Release status line) must not float over it either. */
+	if (nullptr != m_pCharacterSelectWindowView &&
+		m_pCharacterSelectWindowView->Is_Open())
+		return;
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
-	std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()> ButtonRects{};
-	Resolve_LobbyProductButtonRects(m_pLobbyBackgroundView.get(), ButtonRects);
 
-	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+	/* Retail font sizes are 1920x1080 pixels; fFontPx is that x 2/3 (1280 reference units).
+	fAlign: 0 = left edge at fX, 0.5 = centered on fX, 1 = right edge at fX. */
+	const auto DrawAt = [&](const wchar_t* pText, const wstring& strFont, f32_t fFontPx,
+		f32_t fX, f32_t fCenterY, f32_t fAlign, f32_t fMaxWidth, fvector_t vColor)
 	{
-		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-		const LOBBY_PRODUCT_RECT& Rect = ButtonRects[i];
+		if (nullptr == pText || 0 == pText[0])
+			return;
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
+		f32_t fScale = (vMeasured.y > 0.f) ? (fFontPx / vMeasured.y) : 1.f;
+		if (fMaxWidth > 0.f && vMeasured.x * fScale > fMaxWidth)
+			fScale = fMaxWidth / vMeasured.x;
+		CGameInstance::Get().Draw_Text(strFont, pText,
+			float2_t(fX * textScaleX, fCenterY * textScaleY),
+			vColor, 0.f, float2_t(fAlign, 0.5f), fScale * textUiScale);
+	};
+	const auto DrawInSlot = [&](const char* pSlotId, const wchar_t* pText,
+		const wstring& strFont, f32_t fFontPx, fvector_t vColor)
+	{
+		LOBBY_PRODUCT_RECT Rect{};
+		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), pSlotId, Rect))
+			return;
+		DrawAt(pText, strFont, fFontPx, Rect.fX + Rect.fWidth * 0.5f,
+			Rect.fY + Rect.fHeight * 0.5f, 0.5f, Rect.fWidth, vColor);
+	};
+	const auto Rgb = [](uint32_t iHex)
+	{
+		return XMVectorSet(((iHex >> 16) & 0xFF) / 255.f, ((iHex >> 8) & 0xFF) / 255.f,
+			(iHex & 0xFF) / 255.f, 1.f);
+	};
+	const wstring strYoon = TEXT("Font_YoonGasiIIM");
+	const wstring strYG760 = TEXT("Font_YG760");
 
-		const float2_t vMeasured = CGameInstance::Get().Measure_Text(
-			TEXT("Font_YoonGasiIIM"), Button.pLabel);
-		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
-			(Rect.fHeight * 0.32f / vMeasured.y) : 1.f;
-		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
-			(Rect.fWidth * 0.8f / vMeasured.x) : 1.f;
-		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Button.pLabel,
-			float2_t(
-				(Rect.fX + Rect.fWidth * 0.5f) * textScaleX,
-				(Rect.fY + Rect.fHeight * 0.5f) * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	/* Panel title ($YoonGasiIIM 22 #fff7e2) and the list header row ($YoonGasiIIM 18 #d5ac66):
+	서버 / 상태 / 캐릭터. */
+	DrawInSlot("Lobby_ServerTitleText", L"\xC11C\xBC84 \xC120\xD0DD", strYoon, 20.f, Rgb(0xfff7e2));
+	DrawInSlot("Lobby_ServerHeaderName", L"\xC11C\xBC84", strYoon, 18.f, Rgb(0xd5ac66));
+	DrawInSlot("Lobby_ServerHeaderState", L"\xC0C1\xD0DC", strYoon, 18.f, Rgb(0xd5ac66));
+	DrawInSlot("Lobby_ServerHeaderChar", L"\xCE90\xB9AD\xD130", strYoon, 18.f, Rgb(0xd5ac66));
+
+	/* Rows (retail ServerRenderer, 626x37 at 1920 -> x 2/3): typeMc tag at x+10 ($YoonGasiIIM
+	16, 신규 #ffd43e / 추천 #00aeff / else #22facf), serverName centered in 238 at x+62,
+	serverState centered in 137 at x+314, then either the head-count icon + number ($YG760 14,
+	left at x+548) or the characterState text centered in 124 at x+476. The state colours are
+	this project's reading of the retail palette (원활 green / 보통 amber / 혼잡 red). */
+	const size_t iRowCount = (std::min)(m_LobbyServers.size(), LOBBY_SERVER_ROW_COUNT);
+	for (size_t i = 0; i < iRowCount; ++i)
+	{
+		const LOBBY_SERVER_ENTRY& Entry = m_LobbyServers[i];
+		LOBBY_PRODUCT_RECT Rect{};
+		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
+			("Lobby_ServerRow_" + std::to_string(i)).c_str(), Rect))
+			continue;
+		const f32_t fCenterY = Rect.fY + 12.333f;
+		if (!Entry.strTag.empty())
+		{
+			const fvector_t vTagColor = Entry.strTag == L"\xC2E0\xADDC" ? Rgb(0xffd43e) :
+				Entry.strTag == L"\xCD94\xCC9C" ? Rgb(0x00aeff) : Rgb(0x22facf);
+			DrawAt(Entry.strTag.c_str(), strYoon, 16.f, Rect.fX + 6.667f, fCenterY,
+				0.f, 52.f, vTagColor);
+		}
+		DrawAt(Entry.strName.c_str(), strYG760, 16.f, Rect.fX + 41.333f + 79.333f,
+			fCenterY, 0.5f, 158.667f, Colors::White);
+		const fvector_t vStateColor = Entry.strState == L"\xC6D0\xD65C" ? Rgb(0x7ed957) :
+			Entry.strState == L"\xBCF4\xD1B5" ? Rgb(0xffd43e) :
+			Entry.strState == L"\xD63C\xC7A1" ? Rgb(0xff6a5a) : Colors::White;
+		DrawAt(Entry.strState.c_str(), strYG760, 16.f, Rect.fX + 209.333f + 45.667f,
+			fCenterY, 0.5f, 91.333f, vStateColor);
+		if (Entry.bCreatable)
+		{
+			const wstring strCount = std::to_wstring(Entry.iCharacterCount);
+			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY,
+				0.f, 33.333f, Colors::White);
+		}
+		else
+		{
+			DrawAt(L"\xC0DD\xC131 \xBD88\xAC00", strYG760, 16.f, Rect.fX + 317.333f + 41.333f,
+				fCenterY, 0.5f, 82.667f, Rgb(0xb0b0b0));
+		}
 	}
+
+	/* 접속(서버 선택) button caption ($YG760 16 x 1.278 button scale), the three icon-button
+	captions ($YG760 14, 45px under the button top at 1920), and the copyright line. */
+	{
+		LOBBY_PRODUCT_RECT Rect{};
+		if (Get_LobbySlotRect(m_pLobbyBackgroundView.get(), "Lobby_JoinButton", Rect))
+		{
+			const bool_t bEnabled = m_iLobbySelectedServer >= 0;
+			DrawAt(L"\xC11C\xBC84 \xC120\xD0DD", strYG760, 13.6f, Rect.fX + Rect.fWidth * 0.5f,
+				Rect.fY + 16.2f, 0.5f, Rect.fWidth - 8.f,
+				bEnabled ? Colors::White : Rgb(0x787878));
+		}
+	}
+	struct LOBBY_ICON_CAPTION { const char* pSlotId; const wchar_t* pLabel; f32_t fCenterX; };
+	const LOBBY_ICON_CAPTION IconCaptions[3] =
+	{
+		{ "Lobby_ExitIcon", L"\xC885\xB8CC", 54.667f },
+		{ "Lobby_PrevIcon", L"\xB4A4\xB85C", 133.333f },
+		{ "Lobby_OptionIcon", L"\xD658\xACBD\xC124\xC815", 1226.667f },
+	};
+	for (const LOBBY_ICON_CAPTION& Caption : IconCaptions)
+	{
+		LOBBY_PRODUCT_RECT Rect{};
+		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), Caption.pSlotId, Rect))
+			continue;
+		DrawAt(Caption.pLabel, strYG760, 9.333f, Caption.fCenterX, 672.f, 0.5f, 100.f,
+			Colors::White);
+	}
+	DrawAt(L"(C) Smilegate RPG, Inc. All rights reserved.", strYG760, 9.333f, 640.f,
+		711.f, 0.5f, 800.f, Rgb(0xeeeeee));
 
 #ifndef _DEBUG
 	/* Release product status line (Debug shows the same status inside the Lobby debug panel
@@ -2104,6 +2292,58 @@ void CMainApp::RenderLobbyButtonText()
 		}
 	}
 #endif
+}
+
+void CMainApp::Load_LobbyServers()
+{
+	m_LobbyServers.clear();
+	m_iLobbySelectedServer = -1;
+	const filesystem::path DataPath = CProjectDataRoot::Resolve(L"UI/Lobby/LobbyServers.json");
+	ifstream Stream(DataPath, ios::binary);
+	if (!Stream.is_open())
+	{
+		OutputDebugStringA("[Lobby] LobbyServers.json missing -- server list stays empty.\n");
+		return;
+	}
+	const string Text((istreambuf_iterator<char>(Stream)), istreambuf_iterator<char>());
+	DATA_JSON_VALUE Root;
+	string Error;
+	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	{
+		OutputDebugStringA(("[Lobby] LobbyServers.json parse failed: " + Error + "\n").c_str());
+		return;
+	}
+	const DATA_JSON_VALUE* pServers = Root.Find("servers");
+	if (nullptr == pServers || !pServers->Is_Array())
+		return;
+	for (const DATA_JSON_VALUE& Value : pServers->Get_Array())
+	{
+		if (!Value.Is_Object())
+			continue;
+		LOBBY_SERVER_ENTRY Entry{};
+		const auto ReadText = [&](const char* pKey, wstring& outText)
+		{
+			const DATA_JSON_VALUE* pText = Value.Find(pKey);
+			if (nullptr != pText && pText->Is_String())
+				(void)ConvertUtf8ToWide(pText->Get_String(), outText);
+		};
+		ReadText("name", Entry.strName);
+		ReadText("state", Entry.strState);
+		ReadText("tag", Entry.strTag);
+		if (const DATA_JSON_VALUE* pCount = Value.Find("characterCount"))
+			if (pCount->Is_Number() && pCount->Get_Number() >= 0.0)
+				Entry.iCharacterCount = static_cast<uint32_t>(pCount->Get_Number());
+		if (const DATA_JSON_VALUE* pCreatable = Value.Find("creatable"))
+			if (pCreatable->Is_Boolean())
+				Entry.bCreatable = pCreatable->Get_Boolean();
+		if (Entry.strName.empty())
+			continue;
+		m_LobbyServers.push_back(std::move(Entry));
+		if (m_LobbyServers.size() >= LOBBY_SERVER_ROW_COUNT)
+			break;
+	}
+	if (!m_LobbyServers.empty())
+		m_iLobbySelectedServer = 0;
 }
 
 void CMainApp::RenderItemUpgradeButtonText()
@@ -2435,11 +2675,15 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	// circle) stays visible all the way through burst-playing and the settled result -- it's the
 	// one background for this whole screen, not something to swap out mid-flow. Only the dismiss
 	// (OK button) turns it off, back to the normal reforge window.
-	// Real in-game capture: while the burst plays, ONLY the SmeltLoding circle + SmeltSuccess/Fail
-	// burst show -- no icon/name/result text/OK button yet (those would sit on top of the burst
-	// otherwise). Once the burst's own real one-shot duration finishes, the per-frame settle check
-	// in Update() hides the circle+burst and reveals the icon/name/result content in their place.
-	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 90.0 / 30.0;
+	// While the burst plays, ONLY the SmeltSuccess/Fail burst shows (the SmeltLoding wait loop is
+	// switched off below as the burst starts) -- no icon/name/result text/OK button yet (those
+	// would sit on top of the burst otherwise). Once the burst's own real one-shot duration
+	// finishes, the per-frame settle check in Update() hides the burst and reveals the
+	// icon/name/result content in its place.
+	/* Real smelt_SWeffect / smelt_FailEffectComp movies (ItemUpgradeUI.json SmeltSuccess/
+	SmeltFail flipbooks) are 120 frames at 30 fps -- must match the JSON frame count so the
+	result content reveals exactly when the burst's last frame lands. */
+	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 120.0 / 30.0;
 	m_dItemUpgradeResultSettleAt = Product_Now_Seconds() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
@@ -2447,6 +2691,10 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
 	// Real reforge result screens dim the reforge window itself (drawn above, in Update()) instead
 	// of an opaque bounded panel image -- SuccessModalBg/FailModalBg are never shown.
+	// The wait loop (SmeltLoding) stops the moment the result burst starts -- the real
+	// smelt_SWeffect / smelt_FailEffectComp clips are distinct art from the loading loop, so
+	// leaving it additively underneath would double-expose the burst.
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", bSuccess);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", !bSuccess);
 	if (bSuccess)
@@ -4542,17 +4790,19 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 		}
 	}
 
-	/* Valtan Arena's own loading background: Level_Loading::Ready_Layer_Chrome swaps the
-	Background slot's texture path to this one at runtime (LEVEL::VALTAN_ARENA only), so it
-	never appears in LoadingLayout.json's own layers and the scan above never finds it --
-	register it explicitly or its CUI_Sprite clone fails to find a texture prototype. */
+	/* Per-target loading backgrounds: Level_Loading::Ready_Layer_Chrome swaps the Background
+	slot's texture path to one of these at runtime (Valtan Arena, Character Select), so they
+	never appear in LoadingLayout.json's own layers and the scan above never finds them --
+	register them explicitly or the CUI_Sprite clone fails to find a texture prototype. */
+	for (const wchar_t* pLoadingBackground : {
+		L"UI/Loading/Loading_Background_Valtan.png",
+		L"UI/Loading/Loading_Background_Prologue.png" })
 	{
-		constexpr wchar_t VALTAN_LOADING_BACKGROUND[] = L"UI/Loading/Loading_Background_Valtan.png";
 		const filesystem::path resolvedPath =
-			CRuntimeAssetRoot::Resolve(VALTAN_LOADING_BACKGROUND);
+			CRuntimeAssetRoot::Resolve(pLoadingBackground);
 		if (!resolvedPath.empty() &&
 			FAILED(CGameInstance::Get().Add_Prototype(
-				ETOUI(LEVEL::STATIC), VALTAN_LOADING_BACKGROUND,
+				ETOUI(LEVEL::STATIC), pLoadingBackground,
 				CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
 		{
 			return E_FAIL;
@@ -6457,6 +6707,11 @@ void CMainApp::RenderDeveloperTools()
 		bCombatDebugChanged = true;
 	}
 	if (ImGui::Checkbox(
+			"Combat Object Hit", &CombatDebug.bCombatObjectHit))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
 			"Counter Proxy", &CombatDebug.bCounterProxy))
 	{
 		bCombatDebugChanged = true;
@@ -6475,7 +6730,7 @@ void CMainApp::RenderDeveloperTools()
 			Client::CClientReplication::Get_GlobalCombatDebugVisibility();
 	}
 	ImGui::TextDisabled(
-		"Global revision %llu. Pink=pulse, amber=Stage, cyan=counter. Authoring preview remains independent.",
+		"Global revision %llu. Pink=pulse, amber=Stage, green=combat object, cyan=counter. Authoring preview remains independent.",
 		static_cast<unsigned long long>(CombatDebug.iRevision));
 	ImGui::SeparatorText("Inventory (Debug)");
 	const std::vector<Client::ITEM_DEFINITION>& debugItems =
@@ -6564,27 +6819,8 @@ void CMainApp::RenderDeveloperTools()
 
 	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
 	{
-		ESTHER_CUTIN_TUNING& cutinTuning =
-			CEstherCutinPresentationService::Debug_Tuning();
-		ImGui::DragFloat("Model Yaw (deg)",
-			&cutinTuning.fModelYawDegrees, 1.f, -360.f, 360.f);
-		ImGui::DragFloat("Eye X / Height",
-			&cutinTuning.fEyeXPerHeight, 0.01f, -2.f, 2.f);
-		ImGui::DragFloat("Eye Y / Height",
-			&cutinTuning.fEyeYPerHeight, 0.01f, -1.f, 3.f);
-		ImGui::DragFloat("Distance / Height",
-			&cutinTuning.fDistancePerHeight, 0.02f, 0.3f, 6.f);
-		ImGui::DragFloat("Target Y / Height",
-			&cutinTuning.fAtYPerHeight, 0.01f, 0.f, 2.f);
-		ImGui::DragFloat("FOV (deg)",
-			&cutinTuning.fFovDegrees, 0.5f, 10.f, 90.f);
-		ImGui::DragFloat4("Rect X/Y/W/H (720p)",
-			&cutinTuning.fRectX, 2.f, -400.f, 1600.f);
-		if (ImGui::Button("Reset Tuning"))
-			CEstherCutinPresentationService::Debug_ResetTuning();
 		ImGui::TextDisabled(
-			"Preview replays the cutin only; prototypes must be loaded"
-			" (enter Valtan first).");
+			"Replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
 		const auto previewButton = [](
 			const char_t* pLabel, const char_t* pArchetypeId)
 		{
@@ -6596,20 +6832,6 @@ void CMainApp::RenderDeveloperTools()
 		previewButton("Preview Wei", "NPC_58700");
 		ImGui::SameLine();
 		previewButton("Preview Bahuntur", "NPC_59060");
-		ImGui::Text(
-			"yaw %.1f  eye(%.2f, %.2f)  dist %.2f  target %.2f  fov %.1f",
-			cutinTuning.fModelYawDegrees,
-			cutinTuning.fEyeXPerHeight,
-			cutinTuning.fEyeYPerHeight,
-			cutinTuning.fDistancePerHeight,
-			cutinTuning.fAtYPerHeight,
-			cutinTuning.fFovDegrees);
-		ImGui::Text(
-			"rect (%.0f, %.0f, %.0f, %.0f)",
-			cutinTuning.fRectX,
-			cutinTuning.fRectY,
-			cutinTuning.fRectWidth,
-			cutinTuning.fRectHeight);
 	}
 
 	if (ImGui::CollapsingHeader("Raid Boss Showcase (Debug)"))

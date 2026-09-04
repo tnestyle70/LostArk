@@ -5050,6 +5050,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	}
 	std::string EffectV2BaselineBytes;
 	std::string EffectV2CandidateBytes;
+	std::string EffectV2ReadSetBytes;
 	uint64_t iEffectV2DraftRevision = 0u;
 	bool_t bEffectV2Dirty = false;
 	std::string EffectV2Status;
@@ -5057,6 +5058,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	{
 		if (!CEffectV2Catalog::Get().Prepare_BossValtanBindingDraftSave(
 				EffectV2BaselineBytes, EffectV2CandidateBytes,
+				EffectV2ReadSetBytes,
 				iEffectV2DraftRevision, bEffectV2Dirty, EffectV2Status))
 		{
 			m_strStatus =
@@ -5082,6 +5084,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	{
 		OwnerDrafts.effectV2BaselineBytes = std::move(EffectV2BaselineBytes);
 		OwnerDrafts.effectV2CandidateBytes = EffectV2CandidateBytes;
+		OwnerDrafts.effectV2ReadSetBytes = std::move(EffectV2ReadSetBytes);
 	}
 	std::uint64_t iSaveJobId = 0u;
 	std::string SaveStatus;
@@ -6648,13 +6651,13 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		else
 		{
 			ImGui::TextDisabled(
-				"STEP_02..STEP_09 share one Server motion contract. A change is normalized and committed to the in-memory Pattern draft only after all eight legs validate.");
+				"STEP_02 owns the first portal lead; STEP_03..STEP_09 add the next-portal offset before the same lead. Shared speed/distance changes commit only after all eight arrival-aligned legs validate.");
 			bool_t bRushChanged = false;
 			ImGui::BeginDisabled(!bMutationAdmitted);
 			int32_t iRetargetDelay = static_cast<int32_t>(
 				RushDraft.retargetDelayMs);
 			if (ImGui::DragInt(
-					"Delay Before Rush (ms)##WarpAllLegs", &iRetargetDelay,
+					"Portal Lead Before Rush (ms)##WarpAllLegs", &iRetargetDelay,
 					5.f, 0, 120000,
 					"%d ms", ImGuiSliderFlags_AlwaysClamp))
 			{
@@ -6676,7 +6679,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			int32_t iTrailingGap = static_cast<int32_t>(
 				RushDraft.trailingGapMs);
 			if (ImGui::DragInt(
-					"Portal Gap After Rush (ms)##WarpAllLegs", &iTrailingGap,
+					"Next Portal Offset After Arrival (ms)##WarpAllLegs", &iTrailingGap,
 					5.f, 0, 120000, "%d ms",
 					ImGuiSliderFlags_AlwaysClamp))
 			{
@@ -6696,7 +6699,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 					NormalizedStage.portalSpeedMps = RushDraft.speedMps;
 					NormalizedStage.portalDistanceM = RushDraft.distanceM;
 					if (CBalanceTool::Normalize_ValtanPortalRushDraft(
-							NormalizedStage, RushDraft.trailingGapMs,
+							NormalizedStage, 0u,
 							RushStatus))
 					{
 						RushDraft.retargetDelayMs =
@@ -6725,10 +6728,14 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				}
 				m_strStatus = RushStatus;
 			}
+			const uint32_t iFirstLegDurationMs =
+				RushDraft.legDurationMs >= RushDraft.trailingGapMs ?
+				RushDraft.legDurationMs - RushDraft.trailingGapMs : 0u;
 			ImGui::Text(
-				"Computed leg total %u ms = delay %u ms + travel %.3f ms + portal gap %u ms",
-				RushDraft.legDurationMs, RushDraft.retargetDelayMs,
-				RushDraft.travelMs, RushDraft.trailingGapMs);
+				"First leg %u ms; repeated cadence %u ms = next-portal offset %u ms + portal lead %u ms + travel %.3f ms",
+				iFirstLegDurationMs, RushDraft.legDurationMs,
+				RushDraft.trailingGapMs, RushDraft.retargetDelayMs,
+				RushDraft.travelMs);
 			ImGui::TextDisabled(
 				"Swept hit count %u at 50 ms. Portal visuals use boss-root snapshots at Stage boundaries; they do not predict or expose a Server-authoritative endpoint.",
 				RushDraft.hitCount);
@@ -6858,7 +6865,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	if (bWarpLegClockOwned)
 	{
 		ImGui::TextDisabled(
-			"Stage duration is derived for all eight legs from delay + distance/speed travel + Portal Gap After Rush above.");
+			"Stage duration is derived for all eight legs from the portal lead + distance/speed travel, with the repeated cadence adding the Next Portal Offset After Arrival above.");
 	}
 	if (!Draft.durationEditable)
 		ImGui::TextDisabled("Stage duration is locked by its typed gameplay policy.");
@@ -7050,7 +7057,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		{
 			ImGui::SeparatorText("Left-hand Grip");
 			ImGui::TextDisabled(
-				"Character feet-origin correction in normalized wrist-local metres. The runtime keeps local offset x animated left-hand world.");
+				"Authored CAPTURE metadata retained for schema validation. Runtime placement uses the Server-authoritative boss-local attachment snapshot; the Client does not compose a hand bone.");
 			constexpr double fMinimumGripOffset =
 				-Client::CPlayerHandGripTransform::MAX_GRIP_OFFSET_COMPONENT_M;
 			constexpr double fMaximumGripOffset =
@@ -8700,14 +8707,18 @@ void Client::CActionCompositionWorkbench::Render_Details(
 				"LOCK_NEAREST_ON_START" == pPattern->strTargetPolicy ||
 				"LOCK_RANDOM_ALIVE_ON_START" == pPattern->strTargetPolicy ||
 				"LOCK_RANDOM_ALIVE_BEHIND_ON_START" == pPattern->strTargetPolicy;
-			const bool_t bArenaAnchorAdmitted = pPattern->ServerMotion.has_value() &&
+			const bool_t bFixedArenaAnchorAdmitted =
+				pPattern->ServerMotion.has_value() &&
+				("LEAP_TO_ANCHOR" == pPattern->ServerMotion->strKind ||
+				 "LEAP_TO_TARGET" == pPattern->ServerMotion->strKind);
+			const bool_t bArenaApproachAdmitted = pPattern->ServerMotion.has_value() &&
 				"LEAP_TO_ANCHOR" == pPattern->ServerMotion->strKind &&
 				pPattern->ServerMotion->bMoveToAnchorBeforeTakeoff;
-			const bool_t bArenaFacingAnchorAdmitted = bArenaAnchorAdmitted &&
+			const bool_t bArenaFacingAnchorAdmitted = bArenaApproachAdmitted &&
 				"LOCK_FACING_ON_START" == pPattern->strAimPolicy &&
 				"LOCK_RANDOM_ALIVE_ON_START" == pPattern->strTargetPolicy;
 			const bool_t bArenaTargetFollowAnchorAdmitted =
-				bArenaAnchorAdmitted &&
+				bArenaApproachAdmitted &&
 				"TRACK_TARGET_EACH_TICK" == pPattern->strAimPolicy &&
 				"LOCK_RANDOM_ALIVE_ON_START" == pPattern->strTargetPolicy;
 			if (ImGui::BeginCombo("Anchor", Draft.strAnchorSlotId.c_str()))
@@ -8720,7 +8731,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 						("pattern.target.snapshot" == std::string_view(pAnchor) &&
 						 bTargetAnchorAdmitted) ||
 						("arena.center" == std::string_view(pAnchor) &&
-						 bArenaAnchorAdmitted) ||
+						 bFixedArenaAnchorAdmitted) ||
 						("arena.center.facing" == std::string_view(pAnchor) &&
 						 bArenaFacingAnchorAdmitted) ||
 						("arena.center.target-follow" == std::string_view(pAnchor) &&

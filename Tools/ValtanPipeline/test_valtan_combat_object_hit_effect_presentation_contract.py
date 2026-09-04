@@ -19,25 +19,39 @@ def _function(source: str, signature: str, next_signature: str) -> str:
 
 
 class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
-    def test_ground_roar_rock_is_a_timed_presentation_carrier(self) -> None:
+    def test_rock_explosions_are_timed_damage_carriers(self) -> None:
         document = json.loads(
             _read("Data/Encounters/Valtan/ValtanCombatObjects.json")
         )
-        rock = next(
-            row for row in document["objects"]
-            if row["combatObjectArchetypeId"]
-            == "combatobject.valtan.ground-roar.rock"
-        )
-        self.assertEqual([], rock["hits"])
-        self.assertEqual(
-            [{
-                "presentationEventId":
-                    "pulse.valtan.ground-roar.rock.explode",
-                "atMs": 5000,
-            }],
-            rock["presentationEvents"],
-        )
-        self.assertEqual(6200, rock["lifeMs"])
+        expected = {
+            "combatobject.valtan.ground-roar.rock": (5000, 6200),
+            "combatobject.valtan.six-pizza.rock-pillar": (19500, 20700),
+            "combatobject.valtan.struggling.rock-pillar": (5000, 6200),
+            "combatobject.valtan.part-break.rock": (5000, 6200),
+        }
+        for archetype_id, (at_ms, life_ms) in expected.items():
+            with self.subTest(archetype_id=archetype_id):
+                rock = next(
+                    row for row in document["objects"]
+                    if row["combatObjectArchetypeId"] == archetype_id
+                )
+                self.assertEqual(1.5, rock["coverRadiusM"])
+                self.assertEqual(life_ms, rock["lifeMs"])
+                self.assertNotIn("presentationEvents", rock)
+                self.assertEqual(1, len(rock["hits"]))
+                hit = rock["hits"][0]
+                self.assertEqual(
+                    "hit." + archetype_id.removeprefix("combatobject.") +
+                    ".explode",
+                    hit["hitId"],
+                )
+                self.assertEqual("TIMED", hit["trigger"])
+                self.assertEqual(at_ms, hit["atMs"])
+                self.assertEqual("CIRCLE", hit["hitShape"])
+                self.assertEqual(3.0, hit["hitOuterRadius"])
+                self.assertEqual("damage.valtan.stomp", hit["serverDamageProfileId"])
+                self.assertEqual(1, hit["repeatCount"])
+                self.assertEqual(0, hit["repeatIntervalMs"])
 
     def test_native_consumers_admit_presentation_only_carriers(self) -> None:
         tree = _read("Client/Private/ValtanPatternTree.cpp")
@@ -80,10 +94,6 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                 "clientVisualId":
                     "combatobject.visual.valtan.ground-roar.rock.v1",
                 "effectAssetId": "effect.valtan.ground-roar.rock.active",
-                "effectV2Group": {
-                    "groupId": "boss.valtan.rock-pillar.sequence",
-                    "playbackRate": 1.0,
-                },
                 "hitEffectAssetId":
                     "effect.valtan.ground-roar.rock.explode",
             },
@@ -159,7 +169,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         )
         self.assertEqual(5.0, detail["timing"]["lifeTimeSeconds"])
         self.assertEqual(
-            5.0,
+            1.0,
             detail["timing"]["transformMotionDurationSeconds"],
         )
         self.assertEqual(
@@ -222,7 +232,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         body = _function(
             source,
             "/* Ground Roar owns",
-            "/* Phase-three portal charges start together",
+            "CGameRoom portalRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };",
         )
         for expected in (
             "4u == groundRoarObjects.size()",
@@ -287,7 +297,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         self.assertEqual("BOSS_RELATIVE", event["volleyPolicy"])
         self.assertEqual(4, event["countPerResolvedTarget"])
         self.assertEqual("RADIAL_AROUND_BOSS", event["layout"]["kind"])
-        self.assertEqual(4.9497475, event["layout"]["radiusM"])
+        self.assertEqual(6.3639610307, event["layout"]["radiusM"])
         self.assertEqual(45.0, event["layout"]["startAngleDegrees"])
         self.assertEqual(90.0, event["layout"]["angleStepDegrees"])
         self.assertEqual(4, event["maximumTotalObjects"])
@@ -360,6 +370,156 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         self.assertIn("event.fYawDegrees", body)
         self.assertIn("std::to_string(event.iEventSequence)", body)
         self.assertNotIn("Stop_WorldRoot", body)
+
+    def test_rock_explosion_sound_shares_the_active_wave_and_hit_visual_edge(
+        self,
+    ) -> None:
+        catalog = json.loads(_read("Data/Actors/BossCatalog.json"))
+        valtan = next(
+            boss for boss in catalog["bosses"]
+            if boss["archetypeId"] == "BOSS_VALTAN"
+        )
+        expected = {
+            "combatobject.valtan.ground-roar.rock": (
+                "effect.valtan.ground-roar.rock.active",
+                "effect.valtan.ground-roar.rock.explode",
+                5.0,
+            ),
+            "combatobject.valtan.six-pizza.rock-pillar": (
+                "effect.valtan.six-pizza.rock.active",
+                "effect.valtan.six-pizza.rock.explode",
+                19.5,
+            ),
+            "combatobject.valtan.struggling.rock-pillar": (
+                "effect.valtan.struggling.rock.active",
+                "effect.valtan.struggling.rock.explode",
+                5.0,
+            ),
+            "combatobject.valtan.part-break.rock": (
+                "effect.valtan.ground-roar.rock.active",
+                "effect.valtan.ground-roar.rock.explode",
+                5.0,
+            ),
+        }
+        effects = json.loads(_read("Data/Effects/EffectCatalog.json"))
+        paths = {
+            row["effectAssetId"]: row["authoringPath"]
+            for row in effects["effects"]
+        }
+        for archetype_id, (active_id, hit_id, hit_seconds) in expected.items():
+            with self.subTest(archetype_id=archetype_id):
+                visual = next(
+                    row for row in valtan["combatObjectVisuals"]
+                    if row["combatObjectArchetypeId"] == archetype_id
+                )
+                self.assertEqual(active_id, visual["effectAssetId"])
+                self.assertEqual(hit_id, visual["hitEffectAssetId"])
+
+                active = json.loads(_read("Data/" + paths[active_id]))
+                active_meshes = [
+                    row for row in active["elements"]
+                    if row["visible"] and row["kind"] == "mesh"
+                ]
+                self.assertEqual(1, len(active_meshes))
+                mesh_timing = active_meshes[0]["detail"]["timing"]
+                self.assertEqual(0.0, mesh_timing["startDelaySeconds"])
+                self.assertAlmostEqual(
+                    hit_seconds,
+                    mesh_timing["startDelaySeconds"] +
+                    mesh_timing["lifeTimeSeconds"],
+                    places=5,
+                )
+
+                impact_waves = [
+                    row for row in active["elements"]
+                    if row["visible"] and row["kind"] == "particle" and
+                    row["displayName"] == "donut.impact.wave.black"
+                ]
+                self.assertEqual(2, len(impact_waves))
+                self.assertEqual(
+                    [hit_seconds, hit_seconds + 0.2],
+                    sorted(
+                        row["detail"]["timing"]["startDelaySeconds"]
+                        for row in impact_waves
+                    ),
+                )
+                for wave in impact_waves:
+                    self.assertEqual(16, wave["detail"]["particle"]["burstCount"])
+                    self.assertTrue(any(
+                        resource["assetId"].endswith("/fx_h_wave_04.dds")
+                        for resource in wave["resources"]
+                    ))
+
+                telegraph_names = {
+                    "donut.telegraph.inner.grow",
+                    "sprite_particle_6",
+                    "donut.telegraph.outer.red",
+                }
+                terminal_telegraphs = [
+                    row for row in active["elements"]
+                    if row["visible"] and row["kind"] == "particle" and
+                    row["displayName"] in telegraph_names
+                ]
+                self.assertEqual(telegraph_names, {
+                    row["displayName"] for row in terminal_telegraphs
+                })
+                self.assertTrue(all(
+                    row["detail"]["timing"]["startDelaySeconds"] ==
+                    hit_seconds - 1.0
+                    for row in terminal_telegraphs
+                ))
+
+                document = json.loads(_read("Data/" + paths[hit_id]))
+                visible_particles = [
+                    row for row in document["elements"]
+                    if row["visible"] and row["kind"] == "particle"
+                ]
+                self.assertGreater(len(visible_particles), 0)
+                self.assertEqual(
+                    0.0,
+                    min(
+                        row["detail"]["timing"]["startDelaySeconds"]
+                        for row in visible_particles
+                    ),
+                )
+                self.assertTrue(
+                    any(
+                        row["detail"]["particle"]["burstCount"] > 0
+                        for row in visible_particles
+                    )
+                )
+                self.assertEqual(
+                    1.2,
+                    max(
+                        row["detail"]["timing"]["lifeTimeSeconds"]
+                        for row in visible_particles
+                    ),
+                )
+
+        cues = json.loads(_read(
+            "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json"
+        ))
+        rock_cues = [
+            cue for cue in cues["cues"]
+            if cue["combatObjectArchetypeId"] in expected
+        ]
+        self.assertEqual(4, len(rock_cues))
+        self.assertTrue(all("hitId" in cue for cue in rock_cues))
+        self.assertTrue(all("startMs" not in cue and "delayMs" not in cue
+                            for cue in rock_cues))
+
+        parser = _read("Client/Private/ValtanCombatObjectSoundCueDocument.cpp")
+        self.assertNotIn('"delayMs"', parser)
+        self.assertNotIn('"startMs"', parser)
+        runtime = _function(
+            _read("Client/Private/Valtan.cpp"),
+            "bool_t CValtan::Apply_CombatObjectPresentationEvent(",
+            "void CValtan::Load_PatternShakeCues()",
+        )
+        self.assertLess(
+            runtime.index("CEffectPresentationService::Spawn_WorldRoot("),
+            runtime.index("CGameInstance::Get().Play_Sound("),
+        )
 
     def test_level_entry_prewarms_active_and_hit_effects(self) -> None:
         for relative in (
@@ -435,14 +595,19 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal)",
             "fStageAgeMs <",
             "Instance.Template.iFirstSpawnOffsetMs",
-            "fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)",
+            "Instance.bActiveAttempted = true;",
             "CEffectPresentationService::Stop_WorldRoot(Handle);",
             "Desc.strEffectAssetId = Visual->hitEffectAssetId;",
             "Event.iAtMs",
         ):
             self.assertIn(token, sync)
+        # The active root keeps its authored NATURAL lifetime past the Server
+        # lifetimeMs, mirroring the Release path taken on S2C despawn.
+        self.assertNotIn(
+            "fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)", sync
+        )
         self.assertLess(
-            sync.index("fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)"),
+            sync.index("Instance.bActiveAttempted = true;"),
             sync.index("Desc.strEffectAssetId = Visual->hitEffectAssetId;"),
         )
         staging = _function(
@@ -549,10 +714,19 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         )
         self.assertIn("m_CombatObjectProjectionRuntime.Apply_Despawn(", body)
         runtime = _read("Client/Public/CombatObjectProjectionRuntime.h")
+        despawn = _function(runtime, "bool_t Apply_Despawn(", "size_t Remove_Source(")
         self.assertIn(
-            "sink.Stop(record->second.PresentationHandle);", runtime
+            "sink.Release(record->second.PresentationHandle);", despawn
         )
-        self.assertIn("m_Records.erase(record);", runtime)
+        self.assertNotIn("sink.Stop(", despawn)
+        self.assertIn("m_Records.erase(record);", despawn)
+        release = _function(
+            source,
+            "void Client::CClientReplication::Release_CombatObjectPresentation(",
+            "bool Client::CClientReplication::Apply_WorldSnapshot(",
+        )
+        self.assertNotIn("Stop_WorldRoot(", release)
+        self.assertIn("CEffectV2Runtime::Stop_Group(", release)
 
     def test_composition_shows_four_independent_instances_through_explosion_time(self) -> None:
         source = _read("Client/Private/ActionCompositionWorkbench.cpp")

@@ -358,7 +358,9 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "\tbool_t Stage_Documents(",
             "\tbool_t Stage_Groups(",
         )
-        self.assertIn("Load_DocumentFile(", documents)
+        self.assertIn("Read_TextFile(Path, strSourceBytes", documents)
+        self.assertIn("CEffectV2Document::Parse_Document(", documents)
+        self.assertIn("Calculate_Sha256LowerHex(strSourceBytes", documents)
         self.assertIn("Skipped Effect V2 document", documents)
         self.assertIn("continue;", documents)
 

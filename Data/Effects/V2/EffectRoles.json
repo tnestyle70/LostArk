@@ -1,0 +1,115 @@
+{
+  "schema": "lostark.effect-v2-role-ledger",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "resources": [
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.axe",
+      "role": "ATTACK",
+      "alignmentPolicy": "COMBAT_OBJECT_HIT"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.impact",
+      "role": "ATTACK",
+      "alignmentPolicy": "BINDING_START"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.magicball",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.magicball.aura",
+      "role": "STATE",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.portal",
+      "role": "STATE",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.pounding",
+      "role": "ATTACK",
+      "alignmentPolicy": "BINDING_START"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.pounding.chase",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.project-tuned.sequence.trash.pulse-group",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.shout",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.shout.burst",
+      "role": "ATTACK",
+      "alignmentPolicy": "CLIP_TEMPLATE"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.six.sonic",
+      "role": "ATTACK",
+      "alignmentPolicy": "BINDING_START"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.twohand",
+      "role": "ATTACK",
+      "alignmentPolicy": "CLIP_TEMPLATE_OR_BINDING_START"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_1",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_2",
+      "role": "TELEGRAPH",
+      "alignmentPolicy": "NONE"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_3",
+      "role": "ATTACK",
+      "alignmentPolicy": "STAGE_DAMAGE_ACTION"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_4",
+      "role": "ATTACK",
+      "alignmentPolicy": "STAGE_DAMAGE_ACTION"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_5",
+      "role": "ATTACK",
+      "alignmentPolicy": "STAGE_DAMAGE_ACTION"
+    },
+    {
+      "kind": "LEAF",
+      "id": "boss.valtan.hand_6",
+      "role": "ATTACK",
+      "alignmentPolicy": "STAGE_DAMAGE_ACTION"
+    }
+  ]
+}

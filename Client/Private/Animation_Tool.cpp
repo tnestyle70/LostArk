@@ -2727,6 +2727,8 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 	std::string& strOutStatus)
 {
+	const std::string StableOccurrenceId = strOccurrenceId;
+	const std::string StableSoundEvent = strSoundEvent;
 	std::string AuthoringRevision;
 	std::string AuthoringStatus;
 	bool_t bCanonicalDraftDirty = false;
@@ -2741,7 +2743,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 				AuthoringStatus;
 		return false;
 	}
-	if (!m_bValtanPatternSoundCuesReady || strOccurrenceId.empty() ||
+	if (!m_bValtanPatternSoundCuesReady || StableOccurrenceId.empty() ||
 		(eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
 		 eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))
 	{
@@ -2752,7 +2754,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	const std::vector<std::string> Events =
 		Collect_ValtanCompositionPatternSoundEvents();
 	if (Events.end() == std::find(
-			Events.begin(), Events.end(), strSoundEvent))
+			Events.begin(), Events.end(), StableSoundEvent))
 	{
 		strOutStatus =
 			"Pattern Sound patch rejected an event without admitted Valtan assets.";
@@ -2767,7 +2769,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 		m_ValtanPatternSoundCues.Cues.end(),
 		[&](const VALTAN_PATTERN_SOUND_CUE& Cue)
 		{
-			return Cue.strOccurrenceId == strOccurrenceId &&
+			return Cue.strOccurrenceId == StableOccurrenceId &&
 				Cue.strPatternId == Pattern.strPatternId &&
 				Cue.strStageId == Stage.strStageId &&
 				Cue.strActionId == Stage.strActionId;
@@ -2794,9 +2796,9 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
 	VALTAN_PATTERN_SOUND_CUE& Candidate = Staged.Cues[
 		static_cast<std::size_t>(Current - m_ValtanPatternSoundCues.Cues.begin())];
-	Candidate.strSoundEvent = strSoundEvent;
+	Candidate.strSoundEvent = StableSoundEvent;
 	Candidate.strSoundBank = std::string(
-		ValtanSoundBankForEvent(strSoundEvent));
+		ValtanSoundBankForEvent(StableSoundEvent));
 	Candidate.iStartMs = iStartMs;
 	Candidate.eRepeatPolicy = eRepeatPolicy;
 	if (Candidate == *Current)
@@ -2808,7 +2810,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	m_bValtanPatternSoundCuesDirty = true;
 	++m_iValtanPatternSoundDraftGeneration;
 	m_strValtanPatternSoundCueStatus =
-		"UNSAVED Pattern Sound occurrence: " + strOccurrenceId + ".";
+		"UNSAVED Pattern Sound occurrence: " + StableOccurrenceId + ".";
 	strOutStatus = m_strValtanPatternSoundCueStatus;
 	return true;
 }
@@ -5479,16 +5481,17 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		}
 		const auto SubmitPortalRush = [&]()
 		{
-			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs;
+			const bool_t bFirstRushLeg = "STEP_02" == Draft.stageId;
+			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs +
+				(bFirstRushLeg ? 0u : RushDraft.trailingGapMs);
 			Draft.portalSpeedMps = RushDraft.speedMps;
 			Draft.portalDistanceM = RushDraft.distanceM;
 			if (!CBalanceTool::Normalize_ValtanPortalRushDraft(
-					Draft, RushDraft.trailingGapMs, RushStatus))
+					Draft, 0u, RushStatus))
 			{
 				m_strValtanPatternMasterStatus = RushStatus;
 				return;
 			}
-			RushDraft.retargetDelayMs = Draft.portalRetargetDelayMs;
 			RushDraft.speedMps = Draft.portalSpeedMps;
 			RushDraft.distanceM = Draft.portalDistanceM;
 			if (m_pBalanceTool->Set_ValtanWarpRushDraft(
@@ -5501,8 +5504,11 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 						Refreshed, RefreshStatus))
 				{
 					RushDraft = Refreshed;
-					Draft.durationMs = Refreshed.legDurationMs;
-					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs;
+					Draft.durationMs = bFirstRushLeg ?
+						Refreshed.legDurationMs - Refreshed.trailingGapMs :
+						Refreshed.legDurationMs;
+					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs +
+						(bFirstRushLeg ? 0u : Refreshed.trailingGapMs);
 					Draft.portalSpeedMps = Refreshed.speedMps;
 					Draft.portalDistanceM = Refreshed.distanceM;
 					Draft.hitCount = Refreshed.hitCount;
@@ -5512,12 +5518,12 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 			m_strValtanPatternMasterStatus = RushStatus;
 		};
 		ImGui::TextWrapped(
-			"Typed WARP rush - All 8 Legs: one edit atomically updates STEP_02..STEP_09. The Server waits, travels, and regenerates 50 ms swept-hit samples; portal boundaries remain boss-root snapshots, not predicted endpoints.");
+			"Typed WARP rush - All 8 Legs: STEP_02 owns the first portal lead; later legs add the next-portal offset before the same lead. The Server aligns every Stage boundary to arrival and regenerates 50 ms swept-hit samples.");
 		ImGui::BeginDisabled(!RushStatus.empty());
 		const std::uint32_t iDelayStepMs = 50u;
 		const std::uint32_t iDelayFastStepMs = 100u;
 		ImGui::SetNextItemWidth(210.f);
-		if (ImGui::InputScalar("Retarget / wait delay ms", ImGuiDataType_U32,
+		if (ImGui::InputScalar("Portal lead before rush ms", ImGuiDataType_U32,
 			&RushDraft.retargetDelayMs, &iDelayStepMs,
 			&iDelayFastStepMs, "%u"))
 		{
@@ -5541,7 +5547,7 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		}
 		ImGui::SetNextItemWidth(210.f);
 		if (ImGui::InputScalar(
-			"Portal Gap After Rush (ms)", ImGuiDataType_U32,
+			"Next portal offset after arrival ms", ImGuiDataType_U32,
 			&RushDraft.trailingGapMs, &iDelayStepMs,
 			&iDelayFastStepMs, "%u"))
 		{
@@ -5549,10 +5555,14 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 				RushDraft.trailingGapMs, 120000u);
 			SubmitPortalRush();
 		}
+		const std::uint32_t iFirstLegDurationMs =
+			RushDraft.legDurationMs >= RushDraft.trailingGapMs ?
+			RushDraft.legDurationMs - RushDraft.trailingGapMs : 0u;
 		ImGui::TextDisabled(
-			"Computed leg total %u ms | travel %.3f ms | portal gap %u ms | swept hits %u",
-			RushDraft.legDurationMs, RushDraft.travelMs,
-			RushDraft.trailingGapMs, RushDraft.hitCount);
+			"First %u ms | repeat %u ms | travel %.3f ms | next portal offset %u ms | swept hits %u",
+			iFirstLegDurationMs, RushDraft.legDurationMs,
+			RushDraft.travelMs, RushDraft.trailingGapMs,
+			RushDraft.hitCount);
 		ImGui::TextColored(
 			ImVec4(1.f, 0.70f, 0.20f, 1.f),
 			"Distance endpoint currently bypasses navigation clamp; keep it inside the arena.");
