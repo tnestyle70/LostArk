@@ -4,6 +4,7 @@
 #include "Character.h"
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "KakulArenaHiddenPlacements.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
@@ -329,6 +330,23 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		{
 			OutputDebugStringA((
 				"[Level_KakulSaydonArena][CircusFinale] placement not hidden: " +
+				std::to_string(placementId) + "\n").c_str());
+		}
+	}
+
+	/* The pop-up book cutscene raises the tent arena, so it must not already be
+	   standing when the level opens. The generated list is every placement
+	   within 80m of the roulette floor; the circus plaza is 800m away and never
+	   overlaps it. */
+	for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
+	{
+		MAP_RUNTIME_PLACED_ENTRY* const entry = CWorldSequencePlayer::Find_Placement(
+			m_MapRuntime.Get_MutablePlacements(), placementId);
+		if (nullptr == entry ||
+			!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+		{
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena][Arena] placement not hidden: " +
 				std::to_string(placementId) + "\n").c_str());
 		}
 	}
