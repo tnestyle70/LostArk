@@ -1364,7 +1364,6 @@ function Read-WorldSequenceDocument {
         if ($total -lt 1 -or $total -gt 32) {
             throw "World sequence template track count is invalid: $($template.sequenceId)"
         }
-        $trackCounts[[string]$template.sequenceId] = $total
         $slotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($track in $tracks) {
             Assert-ExactJsonProperties $track @('slotId','keys') 'World sequence track'
@@ -1407,12 +1406,29 @@ function Read-WorldSequenceDocument {
                 throw "World sequence track must span the whole duration: $($template.sequenceId)/$($track.slotId)"
             }
         }
+        # An animation slot may carry an ordered clip chain, checked against
+        # that slot's previous start instead of a plain unique set. A Deploy
+        # slot may also carry a transform track so one binding can walk an
+        # animated prop while its clips play.
+        $animationSlotStarts = @{}
         foreach ($track in $animationTracks) {
-            Assert-ExactJsonProperties $track `
-                @('slotId','clipName','playbackRate','loop','holdLastFrame') `
+            $trackProperties = @('slotId','clipName','playbackRate','loop','holdLastFrame')
+            if ($null -ne $track.PSObject.Properties['startMs']) {
+                $trackProperties += 'startMs'
+            }
+            Assert-ExactJsonProperties $track $trackProperties `
                 'World sequence animation track'
+            $startMs = 0
+            if ($null -ne $track.PSObject.Properties['startMs']) {
+                if (-not (Test-JsonNumber $track.startMs) -or
+                    [double]$track.startMs -lt 0 -or
+                    [double]$track.startMs -ne [math]::Floor([double]$track.startMs) -or
+                    [double]$track.startMs -ge [double]$template.durationMs) {
+                    throw "World sequence animation track start is invalid: $($template.sequenceId)"
+                }
+                $startMs = [int][double]$track.startMs
+            }
             if ($track.slotId -isnot [string] -or $track.slotId -notmatch $stableId -or
-                -not $slotIds.Add([string]$track.slotId) -or
                 $track.clipName -isnot [string] -or
                 $track.clipName.Length -lt 1 -or $track.clipName.Length -gt 128 -or
                 -not (Test-JsonNumber $track.playbackRate) -or
@@ -1422,7 +1438,24 @@ function Read-WorldSequenceDocument {
                 $track.holdLastFrame -isnot [bool]) {
                 throw "World sequence animation track is invalid: $($template.sequenceId)"
             }
+            $slot = [string]$track.slotId
+            if ($animationSlotStarts.ContainsKey($slot)) {
+                if ($startMs -le $animationSlotStarts[$slot]) {
+                    throw "World sequence animation chain must advance: $($template.sequenceId)/$slot"
+                }
+            } else {
+                # A slot may also carry a transform track, so only a second
+                # animation chain on the same slot is a conflict.
+                if (0 -ne $startMs) {
+                    throw "World sequence animation track is invalid: $($template.sequenceId)"
+                }
+                [void]$slotIds.Add($slot)
+            }
+            $animationSlotStarts[$slot] = $startMs
         }
+        # One binding per slot, so a chained slot and a slot that also carries
+        # a transform track each still count once.
+        $trackCounts[[string]$template.sequenceId] = $slotIds.Count
     }
     $instanceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($instance in $instances) {
@@ -1504,9 +1537,18 @@ function Read-CameraShotDocument {
     $stableId = '^[A-Za-z0-9._-]{1,128}$'
     $shotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($shot in $shots) {
-        Assert-ExactJsonProperties $shot `
-            @('shotId','sequenceInstanceId','box','eye','lookAt','fovYDegrees','blendInMs','blendOutMs','priority') `
-            'Camera shot'
+        $shotProperties = @('shotId','sequenceInstanceId','box','eye','lookAt','fovYDegrees','blendInMs','blendOutMs','priority')
+        # A shot may carry an optional keyframed camera track. Without it the
+        # shot is the single authored pose it has always been.
+        if ($null -ne $shot.PSObject.Properties['cameraTrack']) {
+            $shotProperties += 'cameraTrack'
+        }
+        # A side scrolling stage slides one framing with the player instead
+        # of pinning it, so that shot carries two offsets and no track.
+        if ($null -ne $shot.PSObject.Properties['follow']) {
+            $shotProperties += 'follow'
+        }
+        Assert-ExactJsonProperties $shot $shotProperties 'Camera shot'
         if ($shot.shotId -isnot [string] -or
             $shot.shotId -notmatch $stableId -or
             -not $shotIds.Add([string]$shot.shotId)) {
@@ -1559,6 +1601,30 @@ function Read-CameraShotDocument {
                 [double]$value -lt 0 -or [double]$value -gt $pair[1] -or
                 [math]::Floor([double]$value) -ne [double]$value) {
                 throw "Camera shot $($pair[0]) is out of range: $($shot.shotId)"
+            }
+        }
+        if ($null -ne $shot.PSObject.Properties['follow']) {
+            Assert-ExactJsonProperties $shot.follow `
+                @('eyeOffset','lookAtOffset') "Camera shot follow $($shot.shotId)"
+            foreach ($triplet in @(@($shot.follow.eyeOffset), @($shot.follow.lookAtOffset))) {
+                if ($triplet.Count -ne 3) {
+                    throw "Camera shot follow offset must hold three numbers: $($shot.shotId)"
+                }
+                foreach ($component in $triplet) {
+                    if (-not (Test-JsonNumber $component)) {
+                        throw "Camera shot follow offset is not finite: $($shot.shotId)"
+                    }
+                }
+            }
+            # The follow pose needs a direction for the same reason the
+            # authored pose does.
+            $followDelta = 0.0
+            for ($axis = 0; $axis -lt 3; $axis++) {
+                $step = [double]$shot.follow.lookAtOffset[$axis] - [double]$shot.follow.eyeOffset[$axis]
+                $followDelta += $step * $step
+            }
+            if ($followDelta -le 0.000001) {
+                throw "Camera shot follow offsets coincide: $($shot.shotId)"
             }
         }
     }

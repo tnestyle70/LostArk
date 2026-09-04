@@ -4087,10 +4087,71 @@ void LostArk::Server::CGameRoom::Broadcast_PartyRoster(
 	}
 }
 
+std::uint32_t LostArk::Server::CGameRoom::Place_PartyForCutscene(
+	const std::string& instanceId)
+{
+	using namespace LostArk::Shared;
+	/* Only the pop-up book cutscene stages the party; every other sequence is
+	   presentation the players watch from where they already stand. */
+	if ("world.sequence.instance.original_kouku" != instanceId)
+		return 0u;
+
+	/* Authored in front of the boss at (-0.29, 1.33, 737.63), three metres
+	   apart, each checked walkable against the Area navigation. */
+	struct CUTSCENE_STAND_SPOT final
+	{
+		float fX;
+		float fY;
+		float fZ;
+	};
+	static constexpr CUTSCENE_STAND_SPOT SPOTS[] = {
+		{ -1.166f, 1.31f, 745.078f },
+		{ -3.339f, 1.32f, 743.009f },
+		{ -5.512f, 1.30f, 740.941f },
+		{ -7.685f, 1.32f, 738.872f },
+	};
+	static constexpr float BOSS_X = -0.2883f;
+	static constexpr float BOSS_Z = 737.6292f;
+
+	std::uint32_t placed = 0u;
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (0u == player.iCurrentHp)
+			continue;
+		const CUTSCENE_STAND_SPOT& spot =
+			SPOTS[placed % (sizeof(SPOTS) / sizeof(SPOTS[0]))];
+		/* A cutscene entrance is a placement, not a move: clear whatever the
+		   player was doing so no queued path or skill drags them back off. */
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
+		player.fActionElapsedSeconds = 0.f;
+		player.iComboStage = 0;
+		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.fPositionX = spot.fX;
+		player.fPositionY = spot.fY;
+		player.fPositionZ = spot.fZ;
+		/* Face the boss so the party watches the show. */
+		player.fYawDegrees = std::atan2(BOSS_X - spot.fX, BOSS_Z - spot.fZ) *
+			RADIANS_TO_DEGREES;
+		++placed;
+	}
+	return placed;
+}
+
 void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	const std::string& instanceId)
 {
 	using namespace LostArk::Shared;
+
+	/* Place before the frame goes out so the snapshot that carries the
+	   cutscene already carries the party on the arena. */
+	(void)Place_PartyForCutscene(instanceId);
 
 	S2C_WORLD_SEQUENCE_PLAY message{};
 	message.strSequenceInstanceId = instanceId;

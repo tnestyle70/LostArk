@@ -496,6 +496,12 @@ void CDeployPropObject::End_AnimationAuthoringPreview()
 		return;
 
 	m_bAnimationAuthoringPreviewActive = false;
+	/* The walked pose belongs to the preview, so the prop snaps back to its
+	   authored placement the moment the preview ends. */
+	m_bAnimationAuthoringPoseActive = false;
+	m_AnimationAuthoringPosition = {};
+	m_AnimationAuthoringRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	Apply_Transform();
 	if (nullptr != m_pIntactModelCom &&
 		m_iPreAuthoringAnimationIndex <
 			m_pIntactModelCom->Get_NumAnimations())
@@ -532,13 +538,17 @@ bool_t CDeployPropObject::Get_WorldBounds(
 	const float3_t& localMaximum = model->Get_LocalBoundsMax();
 	/* Same scale and rotation Apply_Transform builds, without the translation,
 	   so the eight rotated corners can be re-bounded around the placement. */
+	const bool_t rootOverridden =
+		m_bPhysicsPreviewActive || m_bAnimationAuthoringPoseActive;
 	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
-		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
+		m_PhysicsPreviewRotation : (m_bAnimationAuthoringPoseActive ?
+			m_AnimationAuthoringRotation : m_Placement.rotationQuaternion);
 	float3_t rootPosition = m_bPhysicsPreviewActive ?
-		m_PhysicsPreviewPosition : m_Placement.position;
+		m_PhysicsPreviewPosition : (m_bAnimationAuthoringPoseActive ?
+			m_AnimationAuthoringPosition : m_Placement.position);
 	vector_t quaternion =
 		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
-	if (!m_bPhysicsPreviewActive)
+	if (!rootOverridden)
 	{
 		quaternion = XMQuaternionNormalize(XMQuaternionMultiply(
 			XMQuaternionNormalize(XMLoadFloat4(
@@ -675,6 +685,42 @@ bool_t CDeployPropObject::Begin_PhysicsPreview(
 	m_PhysicsPreviewRotation = m_Placement.rotationQuaternion;
 	m_bPhysicsPreviewActive = true;
 	Apply_Transform();
+	return true;
+}
+
+bool_t CDeployPropObject::Apply_AnimationAuthoringPose(
+	const float3_t& position,
+	const float4_t& rotationQuaternion)
+{
+	if (!m_bAnimationAuthoringPreviewActive ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(rotationQuaternion.x) ||
+		!std::isfinite(rotationQuaternion.y) ||
+		!std::isfinite(rotationQuaternion.z) ||
+		!std::isfinite(rotationQuaternion.w))
+	{
+		return false;
+	}
+	const vector_t rotation = XMLoadFloat4(&rotationQuaternion);
+	const f32_t lengthSquared = XMVectorGetX(XMVector4LengthSq(rotation));
+	if (!std::isfinite(lengthSquared) || lengthSquared <= 0.000001f)
+		return false;
+
+	m_AnimationAuthoringPosition = position;
+	XMStoreFloat4(
+		&m_AnimationAuthoringRotation, XMQuaternionNormalize(rotation));
+	m_bAnimationAuthoringPoseActive = true;
+	Apply_Transform();
+	return true;
+}
+
+bool_t CDeployPropObject::Get_PlacedRootPose(
+	float3_t& outPosition,
+	float4_t& outRotationQuaternion) const
+{
+	outPosition = m_Placement.position;
+	outRotationQuaternion = m_Placement.rotationQuaternion;
 	return true;
 }
 
@@ -1383,13 +1429,17 @@ bool_t CDeployPropObject::Should_RenderDeferredEmissiveOverlay() const
 
 void CDeployPropObject::Apply_Transform()
 {
+	const bool_t rootOverridden =
+		m_bPhysicsPreviewActive || m_bAnimationAuthoringPoseActive;
 	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
-		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
+		m_PhysicsPreviewRotation : (m_bAnimationAuthoringPoseActive ?
+			m_AnimationAuthoringRotation : m_Placement.rotationQuaternion);
 	float3_t rootPosition = m_bPhysicsPreviewActive ?
-		m_PhysicsPreviewPosition : m_Placement.position;
+		m_PhysicsPreviewPosition : (m_bAnimationAuthoringPoseActive ?
+			m_AnimationAuthoringPosition : m_Placement.position);
 	vector_t quaternion =
 		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
-	if (!m_bPhysicsPreviewActive)
+	if (!rootOverridden)
 	{
 		quaternion = XMQuaternionNormalize(XMQuaternionMultiply(
 			XMQuaternionNormalize(XMLoadFloat4(

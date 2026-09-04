@@ -689,6 +689,10 @@ namespace LostArk::Server
 		   instance started. Presentation only: the Server keeps no sequence
 		   state, so a session that joins later simply misses a played edge. */
 		void Broadcast_WorldSequencePlay(const std::string& instanceId);
+		/* The pop-up book cutscene opens the tent arena, so the room's living
+		   players stand on it while the sequence plays. Returns how many were
+		   placed; zero means this sequence stages nobody. */
+		std::uint32_t Place_PartyForCutscene(const std::string& instanceId);
 		/* Leave() calls this so a disconnecting player does not linger as a
 		   ghost roster entry for whoever they partied with. */
 		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);
