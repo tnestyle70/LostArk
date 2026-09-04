@@ -108,6 +108,7 @@ flowchart LR
 | `Data/Animation/Authored` | `.animevents`, `skillbindings.json` | `CURRENT` |
 | `Data/Animation/Reference` | `.skilltiming/.clipmap/.animnotify/.clipseq` | `REFERENCE` |
 | `Data/Balance` | Player/Boss profile, skill, damage | `CURRENT`, formatVersion 2 |
+| `Data/Compositions` | Boss source manifest와 Arena scheduling facade. 참조 owner의 본문 값은 복제 소유하지 않음 | `PARTIAL`; strict validation/publish와 read-only inspection은 연결됐지만 generic Save/Play/runtime은 없음 |
 | `Data/Encounters` | Encounter authoring과 pattern 정의 | `PARTIAL`; Valtan 첫 pattern의 range/timing/damage만 publish, `states[]`는 runtime 미소비 |
 | `Data/Items` | Item catalog(`itemId`/`displayName`/`maxStack`/`iconPath`/`healPercent`) 정의 | `CURRENT`; Server inventory, Debug give-item, quick-slot consumable이 소비하며 drop/trade/equipment는 미구현 |
 | `Data/Maps/Imported` | 추출 catalog/shard 기준 | `CURRENT` |
@@ -174,6 +175,8 @@ flowchart TD
 | `placementId` | `Gameplay.world.json` | Area 안 gameplay instance identity |
 | `runtimePlacementId` | map/deploy placement publisher | 시각 placement identity. gameplay `placementId`와 다른 domain |
 | `encounterId`, `patternId`, `phaseId` | `Data/Encounters` | Server encounter graph identity |
+| `compositionId` | `Data/Compositions/Bosses` | 기존 Boss owner graph를 묶는 source manifest identity. `patternId`와 `actionId`를 재발급하지 않음 |
+| `sequencerId`, `trackId` | `Data/Compositions/Sequences` | Arena clock과 typed owner reference identity. 참조 payload의 ID를 대체하지 않음 |
 | `slot.id` | `Data/UI` | runtime widget identity |
 | `conditionId` | 목표 `.navblockers`와 trigger event | 동적 navigation 조건 identity. 현재 발탄 blocker row/Server consumer는 없음 |
 | `visualAssetId`, `animationSetId` | Actor catalog의 Client presentation metadata | 실제 registry consumer가 있을 때만 유지하는 Client-only ID |
@@ -646,6 +649,44 @@ BossCatalog
   animation marker만으로 활성화하지 않는다.
 - Boss pattern timeline에는 clip/effect ID를 넣지 않는다.
 
+#### 13.2.1 Boss Composition과 Arena Sequencer
+
+Boss Composition은 기존 정본을 한 파일로 복사하는 새 거대 정본이 아니라 stable ID와 revision으로
+owner graph를 묶는 source manifest다. Arena Sequencer도 Camera, World, Effect, UI 본문을 소유하지 않고
+하나의 arena clock에서 typed owner reference를 배치하는 scheduling facade다.
+
+```text
+기존 typed owner
+  ├─ gameplay / stage / branch / hit / motion
+  ├─ animation occurrence / Effect V1·V2 / Sound / Camera
+  ├─ combat object / world event
+  └─ map world sequence / camera shot / rendering profile
+            ↓ stable-ID manifest + full-graph validation
+Data/Compositions source manifest
+            ↓ Publish-Compositions.ps1
+Client/Bin/DataFiles/Compositions
+  ├─ resolved unified read model
+  └─ source/product hash receipt
+```
+
+resolved Product의 `scope`, `clock`, `stopPolicy`, `anchor`, `payload`는 서로 다른 owner를 한 timeline에서
+검사하기 위한 파생 read model이다. Product에 Stage와 cue 값이 함께 보이더라도 그 값의 저작 owner가
+Composition으로 이동한 것이 아니다. 관리 graph 밖 cue는 조용히 버리지 않고 `detachedCues`로 남긴다.
+
+현재 상태는 다음과 같다.
+
+| 문서 | 상태 | 현재 경계 |
+|---|---|---|
+| `Valtan.bosscomposition.json` | `SHADOW` | 기존 Valtan split owner의 Pattern index와 coverage를 고정한다. Server와 기존 Product가 계속 runtime 권위다 |
+| `KakulSaydon.bosscomposition.json` | `REFERENCE_ONLY` | 네 profile의 349개 reference action을 검증한다. boss/encounter ID와 gameplay Pattern을 만들지 않는다 |
+| `ValtanArena.sequencer.json`, `KakulSaydonArena.sequencer.json` | `SHADOW` | authored arena track과 owner reference를 검증하지만 scene runtime을 실행하지 않는다 |
+
+네 문서의 published Product는 모두 `runtimeEligible=false`다. 현재 Client Sequencer는 source manifest를
+staged load해 inspection만 제공하고 generated resolved Product를 두 번째 runtime으로 읽지 않는다.
+Valtan의 상세 편집, Play, Save는 기존 Action Composition Workbench와 split writer가 계속 담당한다.
+generic Composition writer/player, Server trigger adapter, Client scene runner, revision/rollback harness가 같은
+수직 슬라이스로 연결되기 전에는 `AUTHORITATIVE`로 승격하지 않는다.
+
 ### 13.3 발탄 공식 데이터의 현재 사실
 
 현재 날짜별 공식 밸런스 계획에 기록된 `REFERENCE_UNVERIFIED` 기준:
@@ -879,6 +920,7 @@ Publish-ItemCatalog.ps1
 Publish-BalanceRuntimeSet.ps1   # 위 세 domain의 Server output 6종 통합 promotion
 Publish-ServerNavigation.ps1
 Publish-MapAuthoring.ps1
+Publish-Compositions.ps1       # Client SHADOW/REFERENCE_ONLY resolved read model + receipt
 ```
 
 각 publisher의 domain parser는 유지한다. 현재 `Publish-BalanceRuntimeSet.ps1`은 gameplay bootstrap 1종,
@@ -1058,6 +1100,7 @@ definition을 혼동하지 않는다. 모든 field에 receipt가 있다는 사�
 | Effect asset | resource path/dependency/schema, preview/runtime parity | effect preview와 gameplay cue |
 | UI binding | duplicate slot, bad typed binding, missing class slot | 모든 class cooldown/resource/damage font |
 | Boss encounter | phase transition, pattern selection, damage once, bad reference | Valtan phase/pattern/death |
+| Boss Composition/Arena Sequencer | wrong schema/status/path, coverage drift, source mutation race, duplicate track, unknown owner reference, promotion rollback | 현재는 source inspection만; generic runtime smoke는 미구현 |
 | World placement | kind exact fields, actor/encounter/deploy ref, rollback | spawn/lazy spawn/disconnect |
 | Trigger/destroyable | event target, once/edge, replicated state | trigger 진입, fracture, late join |
 | Navigation | source/paint/blocker, spawn projection, hash parity | move/chase/path invalidation |
@@ -1101,6 +1144,9 @@ promotion 실패와 기존 runtime 보존을 검증한다.
 | 단일 hit 시각·거리 판정 | `CURRENT`의 `hitTimeMs`/`maximumRange`; shape collider 계약은 아님 |
 | multi-hit/shape/status combat timeline | `TARGET` |
 | Valtan 첫 pattern 수치와 C++ phase threshold | `CURRENT`; Encounter `states[]`는 `PARTIAL` |
+| Valtan Boss Composition | `PARTIAL`: `SHADOW` source manifest, resolved Product/receipt와 read-only Sequencer inspection까지 연결 |
+| KakulSaydon Boss Composition | `PARTIAL`: `REFERENCE_ONLY` 4 profile/349 action coverage만 연결, gameplay/Server runtime 없음 |
+| Arena Sequencer | `PARTIAL`: 두 source가 `SHADOW`; typed track validation은 있으나 generic Save/Play/scene runtime 없음 |
 | Player defense 감산 | `CURRENT`: `raw*100/(100+defense)`, `PROJECT_TUNED` |
 | 원작 Valtan pattern timeline | `REFERENCE 추출 선행 필요` |
 | playerSpawn/Boss world kind | `CURRENT` |

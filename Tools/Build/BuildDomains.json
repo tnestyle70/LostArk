@@ -13,6 +13,8 @@
         "Data/Actors/BossCatalog.json",
         "Data/Balance/**",
         "Data/Effects/EffectCatalog.json",
+        "Data/Effects/V2/**",
+        "Data/Compositions/Bosses/Valtan.bosscomposition.json",
         "Data/Effects/Authored/effect.valtan.*.effect.json"
       ],
       "tools": [
@@ -32,6 +34,66 @@
           "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
           "-Mode",
           "Validate",
+          "-RepositoryRoot",
+          "{repositoryRoot}"
+        ]
+      }
+    },
+    {
+      "id": "composition.presentation",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Compositions/**",
+        "Data/Valtan/**",
+        "Data/Animation/Authored/Valtan/**",
+        "Data/Animation/Reference/KakulSaydon/*.actionreference.json",
+        "Data/Animation/Authored/KakulSaydon/*.actionbindings.json",
+          "Data/Animation/Authored/KakulSaydon/*.patternbindings.json",
+          "Data/Effects/V2/**",
+          "Data/Effects/EffectCatalog.json",
+          "Data/Effects/Authored/effect.valtan.*.effect.json",
+      "Data/Sound/CharacterSoundCatalog.json",
+      "Data/Encounters/Valtan/ValtanEncounter.json",
+      "Data/Encounters/Valtan/ValtanCinematicCamera.json",
+          "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/*.worldsequences.json",
+        "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/*.camerashots.json",
+        "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/*.mapeffects.json",
+        "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/*.maplights.json",
+        "Data/Rendering/Authored/RenderingProfiles.json"
+      ],
+      "tools": [
+        "Tools/CompositionPipeline/composition_pipeline.py",
+          "Tools/CompositionPipeline/Publish-Compositions.ps1",
+          "Tools/EffectToolV2/effect_v2_binding_pipeline.py",
+          "Tools/KakulSaydonPipeline/build_kakul_animation_reference.py",
+          "Tools/GameplayPipeline/valtan_presentation_generation.py",
+          "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
+      ],
+      "outputs": [
+        "Client/Bin/DataFiles/Compositions/Bosses/Valtan.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Bosses/KakulSaydon.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/ValtanArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/KakulSaydonArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Composition.publish.receipt.json"
+      ],
+      "requiredOutputPatterns": [
+        "Client/Bin/DataFiles/Compositions/Bosses/Valtan.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Bosses/KakulSaydon.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/ValtanArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/KakulSaydonArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Composition.publish.receipt.json"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/CompositionPipeline/Publish-Compositions.ps1",
+          "-Mode",
+          "Publish",
           "-RepositoryRoot",
           "{repositoryRoot}"
         ]
@@ -235,6 +297,7 @@
         "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
         "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
         "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
+        "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
         "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json",
         "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
         "Data/Sound/CharacterSoundCatalog.json",
@@ -244,6 +307,7 @@
         "Data/Valtan/**",
         "Data/Effects/EffectCatalog.json",
         "Data/Effects/V2/**",
+        "Data/Compositions/Bosses/Valtan.bosscomposition.json",
         "Data/Effects/Authored/effect.valtan.*.effect.json"
       ],
       "tools": [

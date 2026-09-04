@@ -96,6 +96,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             publishers,
             {
                 "map.kakul",
+                "composition.presentation",
                 "world.gameplay",
                 "navigation",
                 "world.destruction",
@@ -113,6 +114,34 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         gameplay = self.domains["gameplay.balance"]
         self.assertIn("-SkipValtanSplitProjection", gameplay["action"]["arguments"])
         self.assertIn("Data/Effects/V2/**", gameplay["inputs"])
+        self.assertIn(
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+            gameplay["inputs"],
+        )
+        self.assertIn(
+            "Data/Compositions/Bosses/Valtan.bosscomposition.json",
+            gameplay["inputs"],
+        )
+
+        composition = self.domains["composition.presentation"]
+        self.assertIn("Data/Compositions/**", composition["inputs"])
+        self.assertIn(
+            "Data/Effects/V2/**",
+            composition["inputs"],
+        )
+        self.assertIn(
+            "Data/Encounters/Valtan/ValtanEncounter.json",
+            composition["inputs"],
+        )
+        self.assertIn(
+            "Tools/EffectToolV2/effect_v2_binding_pipeline.py",
+            composition["tools"],
+        )
+        self.assertEqual(5, len(composition["outputs"]))
+        self.assertEqual(
+            composition["outputs"], composition["requiredOutputPatterns"]
+        )
+        self.assertIn("Publish-Compositions.ps1", json.dumps(composition))
 
     def test_kakul_map_publisher_has_exact_clean_checkout_closure(self) -> None:
         domain = self.domains["map.kakul"]
@@ -155,6 +184,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         )[0]
         for domain_id in (
             "map.kakul",
+            "composition.presentation",
             "world.gameplay",
             "navigation",
             "valtan.product",

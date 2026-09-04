@@ -61,6 +61,7 @@
   <ItemGroup>
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
 	<ClCompile Include="..\Private\ValtanCanonicalGraphContractTests.cpp" />
+	<ClCompile Include="..\Private\BossCompositionDocumentContractTests.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModelContractTests.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowViewModelContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPresentationGenerationAdmissionContractTests.cpp" />
@@ -79,6 +80,7 @@
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\BossCompositionDocument.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\EffectV2_Document.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp">
@@ -109,6 +111,7 @@
 	<ClInclude Include="..\..\..\Client\Public\CombatDebugVisibility.h" />
 	<ClInclude Include="..\..\..\Client\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\..\..\Client\Public\BossLogicFlowView.h" />
+	<ClInclude Include="..\..\..\Client\Public\BossCompositionDocument.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPresentationGenerationAdmission.h" />
 	<ClInclude Include="..\..\..\Client\Public\EffectV2_Document.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h" />

@@ -542,6 +542,8 @@ namespace
 	struct KAKUL_ACTION_PROFILE_CONTRACT final
 	{
 		const char_t* pProfileId;
+		const char_t* pCategoryLabel;
+		const char_t* pModelPolicy;
 		const char_t* pPreviewAssetName;
 		const char_t* pModelAssetId;
 	};
@@ -549,16 +551,24 @@ namespace
 	constexpr std::array<KAKUL_ACTION_PROFILE_CONTRACT, 4u>
 		KAKUL_ACTION_PROFILES = {
 			KAKUL_ACTION_PROFILE_CONTRACT{
-				"MN_RPCT_05", "MN_RPCT_05",
+				"MN_RPCT_05", "Saydon",
+				"Dedicated MN_RPCT_05 body, authored scale 1.0x",
+				"MN_RPCT_05",
 				"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
-				"MN_RPCT_06", "MN_RPCT_06",
+				"MN_RPCT_06", "Large Saydon",
+				"Dedicated MN_RPCT_06 body/skeleton, scale 1.0x; not a scaled MN_RPCT_05",
+				"MN_RPCT_06",
 				"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
-				"MN_RPCT_07", "MN_RPCT_05",
+				"MN_RPCT_07", "Kakul + Saydon",
+				"Authoring profile alias on the shared MN_RPCT_05 body, scale 1.0x",
+				"MN_RPCT_05",
 				"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
-				"MN_RPCZ_00", "MN_RPCZ_00",
+				"MN_RPCZ_00", "Kakul",
+				"Dedicated MN_RPCZ_00 body, authored scale 1.0x",
+				"MN_RPCZ_00",
 				"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00" },
 		};
 
@@ -11855,7 +11865,7 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 		"it never creates a Server Product boss pattern.");
 
 	ImGui::TextDisabled(
-		"Planner profiles (MN_RPCT_07 previews on the shared MN_RPCT_05 body):");
+		"Categories use exact physical models; Large Saydon is MN_RPCT_06 at 1.0x, not a scaled MN_RPCT_05. MN_RPCT_07 is the shared-body alias:");
 	for (std::size_t iProfile = 0u;
 		iProfile < KAKUL_ACTION_PROFILES.size(); ++iProfile)
 	{
@@ -11865,8 +11875,12 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 			ImGui::SameLine();
 		ImGui::PushID(static_cast<int32_t>(iProfile));
 		ImGui::BeginDisabled(Profile.pProfileId == m_strKakulProfileId);
-		if (ImGui::SmallButton(Profile.pProfileId))
+		const std::string profileButton = std::string(Profile.pCategoryLabel) +
+			"##KakulProfile_" + Profile.pProfileId;
+		if (ImGui::SmallButton(profileButton.c_str()))
 			(void)Open_KakulProfile(Profile.pProfileId);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s | %s", Profile.pProfileId, Profile.pModelPolicy);
 		ImGui::EndDisabled();
 		ImGui::PopID();
 	}

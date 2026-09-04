@@ -1,0 +1,26 @@
+{
+  "schema": "lostark.arena-sequencer",
+  "formatVersion": 1,
+  "sequencerId": "arena.sequencer.valtan",
+  "status": "SHADOW",
+  "revision": 1,
+  "displayName": "Valtan Arena Sequencer",
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "bossCompositionId": "boss.composition.valtan",
+  "durationMs": 0,
+  "sourceDocuments": [
+    {
+      "role": "BOSS_COMPOSITION",
+      "path": "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+    },
+    {
+      "role": "MAP_EFFECTS",
+      "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json"
+    },
+    {
+      "role": "MAP_LIGHTS",
+      "path": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json"
+    }
+  ],
+  "tracks": []
+}

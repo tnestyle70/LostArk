@@ -183,6 +183,7 @@
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\ProfilerTool.h" />
     <ClInclude Include="..\Public\RenderingBenchmark.h" />
+    <ClInclude Include="..\Public\BossCompositionDocument.h" />
     <ClInclude Include="..\Public\SequencerTool.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
     <ClInclude Include="..\Public\MapEffectDocument.h" />
@@ -362,6 +363,7 @@
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\ProfilerTool.cpp" />
     <ClCompile Include="..\Private\RenderingBenchmark.cpp" />
+    <ClCompile Include="..\Private\BossCompositionDocument.cpp" />
     <ClCompile Include="..\Private\SequencerTool.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
     <ClCompile Include="..\Private\MapEffectDocument.cpp" />
@@ -418,6 +420,10 @@
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
 	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />
+	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json" />
+	<None Include="..\..\Data\Compositions\Bosses\KakulSaydon.bosscomposition.json" />
+	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json" />
+	<None Include="..\..\Data\Compositions\Sequences\KakulSaydonArena.sequencer.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
@@ -711,11 +717,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.4</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.4</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

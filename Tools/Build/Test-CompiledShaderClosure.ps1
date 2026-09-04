@@ -171,7 +171,20 @@ function Get-DirectShaderConsumers {
 function Get-FileHashValue {
     param([string]$Path)
 
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    # Do not depend on PowerShell module auto-loading here.  This validator is
+    # also invoked through the nested full-pipeline runner, where a fresh
+    # no-profile process can otherwise fail to discover Get-FileHash after the
+    # native build steps have completed.
+    $stream = [System.IO.File]::OpenRead($Path)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString(
+            $sha256.ComputeHash($stream)).Replace('-', '')
+    }
+    finally {
+        $sha256.Dispose()
+        $stream.Dispose()
+    }
 }
 
 function Invoke-ProductEffectShaderWarpProbe {

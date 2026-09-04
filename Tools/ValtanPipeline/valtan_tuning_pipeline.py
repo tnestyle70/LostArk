@@ -70,6 +70,18 @@ EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 COMBAT_OBJECT_SOUND_CUES_REL = (
     "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json"
 )
+PATTERN_SOUND_CUES_REL = (
+    "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+)
+EFFECT_V2_BINDINGS_REL = (
+    "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+)
+COMPOSITION_DESCRIPTOR_REL = (
+    "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+)
+EFFECT_V1_ALIASES_REL = (
+    "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+)
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
 GAMEPLAY_BOOTSTRAP_VERSION = 32
@@ -629,6 +641,248 @@ def source_text_identity(path: Path) -> tuple[str, int]:
 
 def canonical_hash(value: Any) -> str:
     return sha256_bytes(canonical_bytes(value))
+
+
+def project_valtan_composition_shadow_index(
+    document: Mapping[str, Any],
+    joined: Mapping[str, Any],
+    repository_root: Path | None = None,
+) -> dict[str, Any]:
+    """Refresh only the derived index owned by the SHADOW descriptor.
+
+    The split gameplay/presentation documents remain the writable owners.  A
+    Pattern save therefore updates only coverage and stable Pattern IDs in the
+    composition descriptor, keeping the descriptor in the same atomic commit
+    without copying any Stage or cue payload into a second source owner.
+    """
+
+    if not isinstance(document, dict):
+        raise PipelineError("Valtan composition descriptor must be an object")
+    exact(
+        document,
+        (
+            "schema",
+            "formatVersion",
+            "compositionId",
+            "status",
+            "revision",
+            "displayName",
+            "bossArchetypeId",
+            "encounterId",
+            "areaId",
+            "sourceDocuments",
+            "coverage",
+            "patterns",
+        ),
+        "Valtan composition descriptor",
+    )
+    if document.get("schema") != "lostark.boss-composition":
+        raise PipelineError(
+            "Valtan composition descriptor schema must be lostark.boss-composition"
+        )
+    if document.get("compositionId") != "boss.composition.valtan":
+        raise PipelineError("Valtan composition descriptor has the wrong compositionId")
+    if document.get("status") != "SHADOW":
+        raise PipelineError("Valtan composition descriptor must remain SHADOW")
+    format_version = document.get("formatVersion")
+    if (
+        isinstance(format_version, bool)
+        or not isinstance(format_version, int)
+        or format_version != 1
+    ):
+        raise PipelineError("Valtan composition descriptor formatVersion must be 1")
+    revision = document.get("revision")
+    if (
+        isinstance(revision, bool)
+        or not isinstance(revision, int)
+        or revision < 1
+        or revision > (1 << 32) - 1
+    ):
+        raise PipelineError("Valtan composition descriptor revision must be positive")
+    if not isinstance(document.get("displayName"), str) or not document["displayName"]:
+        raise PipelineError("Valtan composition descriptor displayName is invalid")
+    for field, expected in (
+        ("bossArchetypeId", "BOSS_VALTAN"),
+        ("encounterId", "ENCOUNTER_VALTAN"),
+        ("areaId", "LV_LUT_HEARTRB_ED"),
+    ):
+        if document.get(field) != expected:
+            raise PipelineError(
+                f"Valtan composition descriptor {field} must be {expected}"
+            )
+
+    source_documents = document.get("sourceDocuments")
+    if not isinstance(source_documents, list) or not source_documents:
+        raise PipelineError(
+            "Valtan composition descriptor sourceDocuments must be non-empty"
+        )
+    source_roles: set[str] = set()
+    source_paths: set[str] = set()
+    for ordinal, row in enumerate(source_documents):
+        if not isinstance(row, dict):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}] must be an object"
+            )
+        exact(
+            row,
+            ("role", "path"),
+            f"Valtan composition sourceDocuments[{ordinal}]",
+        )
+        role = row.get("role")
+        path = row.get("path")
+        if not isinstance(role, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", role):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}].role is invalid"
+            )
+        if role in source_roles:
+            raise PipelineError(f"duplicate Valtan composition source role: {role}")
+        source_roles.add(role)
+        if (
+            not isinstance(path, str)
+            or not path
+            or "\\" in path
+            or not path.startswith("Data/")
+            or any(part in {"", ".."} for part in path.split("/"))
+        ):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}].path is invalid"
+            )
+        if path in source_paths:
+            raise PipelineError(f"duplicate Valtan composition source path: {path}")
+        source_paths.add(path)
+    required_sources = {
+        "GAMEPLAY": GAMEPLAY_AUTHORING_REL,
+        "PRESENTATION": PRESENTATION_AUTHORING_REL,
+        "COMBAT_OBJECTS": COMBAT_AUTHORING_REL,
+        "WORLD_EVENT_SETS": WORLD_SET_REL,
+        "ANIMATION_BINDINGS": BINDINGS_REL,
+        "EFFECT_V1_CUES": CUES_REL,
+        "EFFECT_V1_ALIASES": EFFECT_V1_ALIASES_REL,
+        "EFFECT_V2_BINDINGS": EFFECT_V2_BINDINGS_REL,
+        "PATTERN_SOUND_CUES": PATTERN_SOUND_CUES_REL,
+        "PATTERN_SHAKE_CUES": SHAKE_CUES_REL,
+        "COMBAT_OBJECT_SOUND_CUES": COMBAT_OBJECT_SOUND_CUES_REL,
+    }
+    if source_roles != set(required_sources):
+        raise PipelineError(
+            "Valtan composition descriptor source role closure is invalid: "
+            f"expected={sorted(required_sources)} actual={sorted(source_roles)}"
+        )
+    actual_by_role = {row["role"]: row["path"] for row in source_documents}
+    for role, expected_path in required_sources.items():
+        if actual_by_role[role] != expected_path:
+            raise PipelineError(
+                f"Valtan composition source role {role} must reference {expected_path}"
+            )
+    if repository_root is not None:
+        for role, relative_path in required_sources.items():
+            if not (repository_root / relative_path).is_file():
+                raise PipelineError(
+                    f"Valtan composition source role {role} is missing: {relative_path}"
+                )
+
+    coverage = document.get("coverage")
+    if not isinstance(coverage, dict):
+        raise PipelineError("Valtan composition descriptor coverage must be an object")
+    exact(
+        coverage,
+        (
+            "kind",
+            "expectedPatternCount",
+            "expectedStageCount",
+            "expectedIdentitySha256",
+        ),
+        "Valtan composition descriptor coverage",
+    )
+    if coverage.get("kind") != "VALTAN_SPLIT_JOIN":
+        raise PipelineError("Valtan composition coverage kind must be VALTAN_SPLIT_JOIN")
+    for field in ("expectedPatternCount", "expectedStageCount"):
+        value = coverage.get(field)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < 1
+            or value > (1 << 32) - 1
+        ):
+            raise PipelineError(f"Valtan composition coverage {field} is invalid")
+    digest = coverage.get("expectedIdentitySha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise PipelineError(
+            "Valtan composition coverage expectedIdentitySha256 is invalid"
+        )
+
+    pattern_index = document.get("patterns")
+    if not isinstance(pattern_index, list) or not pattern_index:
+        raise PipelineError("Valtan composition pattern index must be non-empty")
+    indexed_pattern_ids: set[str] = set()
+    for ordinal, row in enumerate(pattern_index):
+        if not isinstance(row, dict):
+            raise PipelineError(
+                f"Valtan composition patterns[{ordinal}] must be an object"
+            )
+        exact(row, ("patternId",), f"Valtan composition patterns[{ordinal}]")
+        pattern_id = row.get("patternId")
+        if not isinstance(pattern_id, str) or not pattern_id:
+            raise PipelineError(
+                f"Valtan composition patterns[{ordinal}].patternId is invalid"
+            )
+        if pattern_id in indexed_pattern_ids:
+            raise PipelineError(
+                f"duplicate Valtan composition patternId: {pattern_id}"
+            )
+        indexed_pattern_ids.add(pattern_id)
+    patterns = joined.get("patterns") if isinstance(joined, dict) else None
+    if not isinstance(patterns, list) or not patterns:
+        raise PipelineError("joined Valtan Pattern graph must be a non-empty array")
+
+    identity: list[dict[str, Any]] = []
+    for pattern_ordinal, pattern in enumerate(patterns):
+        if not isinstance(pattern, dict) or not isinstance(
+            pattern.get("patternId"), str
+        ):
+            raise PipelineError(
+                f"joined Valtan Pattern[{pattern_ordinal}] has no stable patternId"
+            )
+        stages = pattern.get("stages")
+        if not isinstance(stages, list) or not stages:
+            raise PipelineError(
+                f"joined Valtan Pattern {pattern['patternId']} has no stages"
+            )
+        stage_identity: list[dict[str, Any]] = []
+        for stage_ordinal, stage in enumerate(stages):
+            if (
+                not isinstance(stage, dict)
+                or not isinstance(stage.get("stageId"), str)
+                or not isinstance(stage.get("actionId"), str)
+            ):
+                raise PipelineError(
+                    "joined Valtan Stage identity is invalid: "
+                    f"pattern={pattern['patternId']} ordinal={stage_ordinal}"
+                )
+            stage_identity.append(
+                {"stageId": stage["stageId"], "actionId": stage["actionId"]}
+            )
+        identity.append(
+            {"patternId": pattern["patternId"], "stages": stage_identity}
+        )
+
+    candidate = copy.deepcopy(document)
+    candidate["coverage"] = {
+        "kind": "VALTAN_SPLIT_JOIN",
+        "expectedPatternCount": len(identity),
+        "expectedStageCount": sum(len(row["stages"]) for row in identity),
+        "expectedIdentitySha256": canonical_hash(identity),
+    }
+    candidate["patterns"] = [
+        {"patternId": row["patternId"]} for row in identity
+    ]
+    comparable_before = copy.deepcopy(document)
+    comparable_before.pop("revision", None)
+    comparable_after = copy.deepcopy(candidate)
+    comparable_after.pop("revision", None)
+    if comparable_before != comparable_after:
+        candidate["revision"] = revision + 1
+    return candidate
 
 
 def exact(value: Mapping[str, Any], fields: Iterable[str], context: str) -> None:
@@ -7279,6 +7533,9 @@ def source_manifest(root: Path) -> dict[str, Any]:
         EFFECT_CATALOG_REL,
         DEBUG_PRESENTATION_REL,
         ANIMATION_PROMOTION_MANIFEST_REL,
+        PATTERN_SOUND_CUES_REL,
+        EFFECT_V2_BINDINGS_REL,
+        COMPOSITION_DESCRIPTOR_REL,
     )
 
     def snapshot_entries() -> list[dict[str, Any]]:

@@ -1308,6 +1308,19 @@ HRESULT CMainApp::Render()
 				{
 					m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION;
 				}
+				std::string kakulProfileId;
+				if (m_pSequencerTool->Consume_KakulAnimationOpenRequest(
+						kakulProfileId) &&
+					SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
+					nullptr != m_pAnimationTool)
+				{
+					const bool_t opened =
+						m_pAnimationTool->Open_KakulProfile(kakulProfileId);
+					m_strToolStatus = opened ?
+						"Opened the selected Kakul Composition profile in its Animation authoring owner." :
+						"Animation Tool opened, but the selected Kakul profile was rejected; the current dirty draft was preserved.";
+					m_eDebugWindowFocusPending = DEBUG_TOOL::ANIMATION;
+				}
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
 			}
