@@ -411,6 +411,24 @@ private:
 		const std::string& strAssetId,
 		bool_t bSRGB,
 		ComPtr<ID3D11ShaderResourceView>& OutView);
+	/* Sprite and Decal draw the same unit quad, so one process-global
+	   CVIBuffer_Rect is shared by every instance instead of a CreateBuffer
+	   pair per spawn. Rendering never mutates the rect. */
+	static HRESULT Acquire_SharedRect(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		shared_ptr<Engine::CVIBuffer_Rect>& OutRect);
+	/* Sprite-particle instance buffers are checked out of a capacity-bucket
+	   free list and returned by the destructor. A checked-out buffer is owned
+	   by exactly one CEffectV2Object; Update_Instances rewrites it every frame
+	   with WRITE_DISCARD so no stale instance data survives a reuse. */
+	static HRESULT Acquire_ParticleBuffer(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		uint32_t iRequiredCapacity,
+		shared_ptr<Engine::CVIBuffer_ParticleRect>& OutBuffer);
+	static void Release_ParticleBuffer(
+		shared_ptr<Engine::CVIBuffer_ParticleRect>& Buffer);
 	void Apply_Transform();
 	void Sync_Animation(bool_t bRestart);
 	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
