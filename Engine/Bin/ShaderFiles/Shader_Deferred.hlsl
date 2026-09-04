@@ -825,6 +825,27 @@ PS_OUT_BACKBUFFER PS_MAIN_ZOOM_BLUR(PS_IN In)
     return Out;
 }
 
+PS_OUT_BACKBUFFER PS_MAIN_CHROMATIC_ABERRATION(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float2 vFromCenter = In.vTexcoord - float2(0.5f, 0.5f);
+    float fExponent = g_fPresentationSecondaryIntensity > 0.f ?
+        clamp(g_fPresentationSecondaryIntensity, 0.5f, 8.f) : 2.f;
+    float fFalloff = pow(saturate(length(vFromCenter) * 1.41421f), fExponent);
+    float2 vShift = vFromCenter *
+        clamp(g_fPresentationIntensity, 0.f, 8.f) * 0.012f * fFalloff;
+    float3 vColor;
+    vColor.r = g_PostProcessTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord + vShift, 0.f, 1.f)).r;
+    vColor.g = g_PostProcessTexture.Sample(PostProcessSampler,
+        In.vTexcoord).g;
+    vColor.b = g_PostProcessTexture.Sample(PostProcessSampler,
+        clamp(In.vTexcoord - vShift, 0.f, 1.f)).b;
+    Out.vBackBuffer = float4(Sanitize_HDR(
+        vColor * g_vPresentationTint.rgb), 1.f);
+    return Out;
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_FILM_NOISE(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out;
@@ -1167,6 +1188,16 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_TEXTURED_OVERLAY();
+    }
+
+    pass PresentationChromaticAberration
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_CHROMATIC_ABERRATION();
     }
 
 }

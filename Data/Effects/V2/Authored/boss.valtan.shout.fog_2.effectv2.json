@@ -7,7 +7,7 @@
     "mesh": "",
     "base": "Effect/Valtan/Textures/FX_TEX_00/fx_bg_fogsheet_cloudtex_01.dds",
     "noise": "Effect/Valtan/Textures/FX_TEX_04/fx_j_mirnoise_01.dds",
-    "mask": "",
+    "mask": "Effect/Artist/Textures/fx_a_glow_003.dds",
     "emissive": "",
     "dissolve": "Effect/Valtan/Textures/Custom/fx_radialmask_centerdark_01.dds"
   },
@@ -41,6 +41,8 @@
     "dissolveStart": 0.099,
     "dissolveInEnd": 0.0,
     "dissolveSoftness": 0.207,
+    "dissolveWarp": false,
+    "maskWarp": false,
     "alphaInEnd": 0.102,
     "alphaOutStart": 1.0,
     "blend": "Alpha",

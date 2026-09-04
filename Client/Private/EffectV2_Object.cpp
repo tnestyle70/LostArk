@@ -763,8 +763,17 @@ void Client::CEffectV2Object::Stop_Emission()
 		m_bFinished = true;
 }
 
-void Client::CEffectV2Object::Update(const f32_t fTimeDelta)
+void Client::CEffectV2Object::Update(const f32_t fTimeDeltaIn)
 {
+	/* The spawn frame can be one long hitch (deferred decode, texture load).
+	   A newly spawned effect must not consume that delta or short-lived
+	   elements finish before their first render. */
+	f32_t fTimeDelta = fTimeDeltaIn;
+	if (m_bFirstUpdatePending)
+	{
+		m_bFirstUpdatePending = false;
+		fTimeDelta = 0.f;
+	}
 	if (m_bFollowTarget)
 	{
 		EFFECT_V2_TARGET_VIEW View;
@@ -1330,6 +1339,9 @@ HRESULT Client::CEffectV2Object::Submit_Presentation()
 		break;
 	case SCREEN_POST_PROFILE::FILM_NOISE:
 		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED;
+		break;
+	case SCREEN_POST_PROFILE::CHROMATIC_ABERRATION:
+		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::CHROMATIC_ABERRATION_RECONSTRUCTED;
 		break;
 	default:
 		Post.eProfile = Engine::PRESENTATION_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED;

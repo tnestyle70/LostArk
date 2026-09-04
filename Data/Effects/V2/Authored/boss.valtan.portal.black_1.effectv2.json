@@ -9,7 +9,7 @@
     "noise": "Effect/Valtan/Textures/FX_TEX_04/fx_j_mirnoise_01.dds",
     "mask": "Effect/Valtan/Textures/FX_TEX_03/fx_e_atypical_009.dds",
     "emissive": "",
-    "dissolve": "Effect/Valtan/Textures/FX_TEX_00/fx_b_decal_001_e.dds"
+    "dissolve": "Effect/Valtan/Textures/FX_TEX_04/fx_i_atypical_02.dds"
   },
   "params": {
     "position": { "start": [0.0, 3.0, 3.0], "end": [0.0, 0.0, 0.0], "lerp": false },
