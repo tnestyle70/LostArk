@@ -100,14 +100,14 @@ CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
 COMPOSITION_CUE_ID_PREFIX = "cue.valtan.composition."
 DIRECT_AUTHORED_EFFECT_KIND = "DIRECT_AUTHORED_DOCUMENT"
 SUPPORTED_AUTHORED_EFFECT_VERSIONS = frozenset((13, 15))
-GHOST_PORTAL_CIRCUMRADIUS_M = 7.0
+GHOST_PORTAL_CIRCUMRADIUS_M = 7.5
 GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
 GHOST_PORTAL_TRAVEL_MS = 1300
 GHOST_PORTAL_START_DELAY_MS = 300
 GHOST_PORTAL_LIFETIME_MS = 1900
 GHOST_PORTAL_SPEED_MPS = GHOST_PORTAL_EDGE_LENGTH_M / (GHOST_PORTAL_TRAVEL_MS / 1000.0)
 GHOST_PORTAL_INDEPENDENT_DISPLAY_NAME = (
-    "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형"
+    "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형"
 )
 REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS = frozenset(
     (
@@ -280,6 +280,7 @@ MANAGED_CUE_SCALE_POLICIES = {
         f"cue.valtan.finale.warp.step-{leg:02d}.composite": OWNER_RELATIVE
         for leg in range(2, 10)
     },
+    "cue.valtan.ghost.portal-once.dash-floor": OWNER_RELATIVE,
     "cue.valtan.phase2.terrain.four-axe.01": GAMEPLAY_FOOTPRINT,
     "cue.valtan.phase2.terrain.four-axe.02": GAMEPLAY_FOOTPRINT,
     "cue.valtan.phase2.terrain.four-axe.03": GAMEPLAY_FOOTPRINT,
@@ -5406,7 +5407,7 @@ def validate_v2_master(
             for edge_length in portal_edge_lengths
         ):
             raise PipelineError(
-                "live ghost portal must be a closed radius-7m equilateral triangle"
+                "live ghost portal must be a closed radius-7.5m equilateral triangle"
             )
     independent_ids: set[str] = set()
     referenced_cues: set[str] = set()

@@ -35,6 +35,15 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         cls.replication_cpp = (
             REPO_ROOT / "Client/Private/ClientReplication.cpp"
         ).read_text(encoding="utf-8")
+        cls.loader_cpp = (
+            REPO_ROOT / "Client/Private/Loader.cpp"
+        ).read_text(encoding="utf-8")
+        cls.valtan_h = (
+            REPO_ROOT / "Client/Public/Valtan.h"
+        ).read_text(encoding="utf-8")
+        cls.valtan_cpp = (
+            REPO_ROOT / "Client/Private/Valtan.cpp"
+        ).read_text(encoding="utf-8")
         cls.combat_projection_h = (
             REPO_ROOT / "Client/Public/CombatObjectProjectionRuntime.h"
         ).read_text(encoding="utf-8")
@@ -252,6 +261,106 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
             "active R_new serializes an existing primary and ghost at their exact retained R_old",
         ):
             self.assertIn(token, self.server_tests)
+
+    def test_dependent_valtan_ghosts_use_one_exact_dormant_pool(self) -> None:
+        ready_start = self.loader_cpp.index("HRESULT CLoader::Ready_ValtanPresentation")
+        ready_end = self.loader_cpp.index("unique_ptr<CLoader> CLoader::Create", ready_start)
+        ready = self.loader_cpp[ready_start:ready_end]
+        self.assertLess(ready.index('"BOSS_VALTAN"'), ready.index('"BOSS_VALTAN_GHOST"'))
+
+        for token in (
+            "VALTAN_GHOST_PRESENTATION_POOL_CAPACITY = 4u",
+            "bUsesValtanGhostPool",
+            "AdmittedPresentationReceipt",
+            "Copy_AdmittedPatternPresentationFrom(",
+            "Activate_ReplicatedPoolOccurrence(",
+            "Return_ToReplicatedPool()",
+            "m_DeferredValtanGhostPresentationPoolRefresh",
+        ):
+            self.assertIn(token, self.replication_h + self.valtan_h)
+
+        prepare_start = self.replication_cpp.index(
+            "Prepare_ValtanGhostPresentationPool("
+        )
+        prepare_end = self.replication_cpp.index(
+            "Checkout_ValtanGhostPresentation(", prepare_start
+        )
+        prepare = self.replication_cpp[prepare_start:prepare_end]
+        ignore = "EFFECT_V2_TARGET::From_Valtan(valtan), true);"
+        self.assertIn(ignore, prepare)
+        self.assertLess(
+            prepare.index(ignore),
+            prepare.index("Copy_AdmittedPatternPresentationFrom("),
+        )
+        self.assertIn("Slot.AdmittedPresentationReceipt == receipt", prepare)
+
+        spawn_start = self.replication_cpp.index(
+            "bool Client::CClientReplication::Apply_WorldEntitySpawn("
+        )
+        spawn_end = self.replication_cpp.index(
+            "void Client::CClientReplication::Remove_DependentBossPresentations(",
+            spawn_start,
+        )
+        spawn = self.replication_cpp[spawn_start:spawn_end]
+        for token in (
+            '"BOSS_VALTAN_GHOST" == spawned.strArchetypeId',
+            '"valtan.ghost.portal-once.active" == spawned.strActionId',
+            "bHoldPortalRunnerBodyHiddenUntilPatternSnapshot",
+            "CValtanPresentationAssetService::Is_Ready(",
+            "Checkout_ValtanGhostPresentation(",
+            "has no dormant pool slot for its exact presentation generation",
+            "const bool_t joinedReloaded = isPooledGhost ||",
+            "presentation.bUsesValtanGhostPool = isPooledGhost;",
+        ):
+            self.assertIn(token, spawn)
+        checkout_start = spawn.index("if (isPooledGhost)")
+        checkout = spawn[
+            checkout_start : spawn.index("\n\telse if", checkout_start)
+        ]
+        self.assertNotIn("Add_GameObject_to_Layer(", checkout)
+        self.assertNotIn("Reload_PatternPresentationAuthoring(", checkout)
+
+        for token in (
+            "m_isReplicationDormant",
+            "m_bHoldSpawnBodyHiddenUntilPatternSnapshot",
+            "m_bGhostPortalRoutePresentationActive",
+            "m_fGhostPortalRoutePresentationAgeSeconds",
+            '"VALTAN_GHOST_PORTAL_ONCE" == patternId',
+            '"valtan.ghost.portal-once.active" == actionId',
+            "m_PatternBodyVisibilityByActionId.find(actionId)",
+            "CEffectV2Runtime::Set_Ignored(",
+            "Reset_ReplicatedOccurrenceState();",
+            "Update_GhostPortalRoutePresentation(fTimeDelta);",
+            "XMVectorLerp(vStart, vEnd, fRushRatio)",
+            "VALTAN_GHOST_PORTAL_BODY_TERMINAL_HIDE_MS",
+        ):
+            self.assertIn(token, self.valtan_cpp)
+
+        checkin_start = self.replication_cpp.index(
+            "Checkin_ValtanGhostPresentation("
+        )
+        checkin_end = self.replication_cpp.index(
+            "Clear_ValtanGhostPresentationPool()", checkin_start
+        )
+        checkin = self.replication_cpp[checkin_start:checkin_end]
+        self.assertIn("bAllSlotsReturned", checkin)
+        self.assertIn(
+            "Retry_DeferredValtanGhostPresentationPoolRefresh(", checkin
+        )
+
+        apply_start = self.valtan_cpp.index("bool_t CValtan::Apply_NetworkState(")
+        apply = self.valtan_cpp[apply_start:]
+        self.assertLess(
+            apply.index('"VALTAN_GHOST_PORTAL_ONCE" == patternId'),
+            apply.index(
+                "m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;"
+            ),
+        )
+        self.assertIn(
+            "if (!m_bHoldSpawnBodyHiddenUntilPatternSnapshot)\n"
+            "\t\t\tm_isPatternBodyHidden = false;",
+            apply,
+        )
 
 
 if __name__ == "__main__":

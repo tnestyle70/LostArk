@@ -35615,9 +35615,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12.12435565298,
+      "sourceValue": 12.9903810568,
       "transform": "Balance Tool authored override",
-      "resultValue": 12.12435565298,
+      "resultValue": 12.9903810568,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -35699,9 +35699,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 9.32642742537,
+      "sourceValue": 9.9926008129,
       "transform": "Balance Tool authored override",
-      "resultValue": 9.32642742537,
+      "resultValue": 9.9926008129,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {

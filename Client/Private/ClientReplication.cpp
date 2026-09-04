@@ -717,8 +717,359 @@ bool_t Client::CClientReplication::Ensure_ValtanPresentationRevision(
 			ExpectedRevision, ReloadStatus);
 		m_PrimaryValtanCombatObjectSoundFreshness.Admit(
 			ExpectedRevision, ReloadStatus);
+		LostArk::Shared::NET_ENTITY_ID primaryEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		for (const auto& [entityId, Candidate] : m_WorldEntities)
+		{
+			if (&Candidate == &Presentation)
+			{
+				primaryEntityId = entityId;
+				break;
+			}
+		}
+		std::string PoolStatus;
+		if (LostArk::Shared::INVALID_NET_ENTITY_ID == primaryEntityId ||
+			!Prepare_ValtanGhostPresentationPool(
+				primaryEntityId,
+				Presentation.fCollisionRadius,
+				ExpectedRevision,
+				Receipt,
+				pValtan,
+				PoolStatus))
+		{
+			if (!m_strPendingPresentationFailure.empty())
+				m_strPendingPresentationFailure += " ";
+			m_strPendingPresentationFailure +=
+				"Ghost presentation pool refresh failed: " + PoolStatus;
+		}
 	}
 	return true;
+}
+
+bool_t Client::CClientReplication::Prepare_ValtanGhostPresentationPool(
+	const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+	const f32_t collisionRadius,
+	const LostArk::Shared::GameplayDataRevision& revision,
+	const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+	const std::shared_ptr<CValtan>& primaryValtan,
+	std::string& strOutStatus)
+{
+	using LostArk::Shared::INVALID_NET_ENTITY_ID;
+	strOutStatus.clear();
+	if (INVALID_NET_ENTITY_ID == ownerBossNetEntityId ||
+		nullptr == primaryValtan || !revision.Is_Valid() ||
+		!receipt.Is_Valid() ||
+		receipt.ServerGameplayRevision != revision ||
+		!std::isfinite(collisionRadius) || collisionRadius <= 0.f)
+	{
+		strOutStatus = "Valtan ghost presentation pool input is invalid.";
+		return false;
+	}
+
+	if (VALTAN_GHOST_PRESENTATION_POOL_CAPACITY ==
+		m_ValtanGhostPresentationPool.size())
+	{
+		const bool_t bExactReady = std::all_of(
+			m_ValtanGhostPresentationPool.begin(),
+			m_ValtanGhostPresentationPool.end(),
+			[ownerBossNetEntityId, collisionRadius, &revision, &receipt](
+				const VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot)
+			{
+				return nullptr != Slot.pValtan &&
+					Slot.iOwnerBossNetEntityId == ownerBossNetEntityId &&
+					Slot.fCollisionRadius == collisionRadius &&
+					Slot.AdmittedPresentationRevision == revision &&
+					Slot.AdmittedPresentationReceipt == receipt;
+			});
+		if (bExactReady)
+		{
+			if (m_DeferredValtanGhostPresentationPoolRefresh.bPending &&
+				m_DeferredValtanGhostPresentationPoolRefresh.
+					PresentationReceipt == receipt)
+			{
+				m_DeferredValtanGhostPresentationPoolRefresh = {};
+			}
+			strOutStatus = "Valtan ghost presentation pool is already ready.";
+			return true;
+		}
+	}
+	if (std::any_of(
+			m_ValtanGhostPresentationPool.begin(),
+			m_ValtanGhostPresentationPool.end(),
+			[](const VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot)
+			{ return Slot.bCheckedOut; }))
+	{
+		m_DeferredValtanGhostPresentationPoolRefresh.bPending = true;
+		m_DeferredValtanGhostPresentationPoolRefresh.
+			iOwnerBossNetEntityId = ownerBossNetEntityId;
+		m_DeferredValtanGhostPresentationPoolRefresh.fCollisionRadius =
+			collisionRadius;
+		m_DeferredValtanGhostPresentationPoolRefresh.PresentationRevision =
+			revision;
+		m_DeferredValtanGhostPresentationPoolRefresh.PresentationReceipt =
+			receipt;
+		m_DeferredValtanGhostPresentationPoolRefresh.pPrimaryValtan =
+			primaryValtan;
+		strOutStatus =
+			"Valtan ghost presentation pool generation refresh is deferred until every checked-out slot returns.";
+		return false;
+	}
+	if (m_RejectedValtanGhostPoolReceipt == receipt)
+	{
+		if (m_DeferredValtanGhostPresentationPoolRefresh.bPending &&
+			m_DeferredValtanGhostPresentationPoolRefresh.
+				PresentationReceipt == receipt)
+		{
+			m_DeferredValtanGhostPresentationPoolRefresh = {};
+		}
+		strOutStatus =
+			"Valtan ghost presentation pool remains isolated for its rejected revision.";
+		return false;
+	}
+	Clear_ValtanGhostPresentationPool();
+
+	const BOSS_ACTOR_ENTRY* ghostActor =
+		CActorCatalog::Find_Boss("BOSS_VALTAN_GHOST");
+	if (nullptr == ghostActor ||
+		ghostActor->clientPresentationId != "boss.valtan.client.v1" ||
+		FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_Desc.pDevice,
+			m_Desc.pContext,
+			m_Desc.iPrototypeLevelIndex,
+			"BOSS_VALTAN_GHOST")))
+	{
+		m_RejectedValtanGhostPoolReceipt = receipt;
+		strOutStatus =
+			"Valtan ghost presentation pool has no admitted ghost prototype.";
+		return false;
+	}
+
+	std::vector<VALTAN_GHOST_PRESENTATION_POOL_SLOT> Staged;
+	Staged.reserve(VALTAN_GHOST_PRESENTATION_POOL_CAPACITY);
+	const auto Rollback = [this, &Staged]()
+	{
+		for (VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot : Staged)
+		{
+			if (nullptr == Slot.pValtan)
+				continue;
+			CEffectV2Runtime::Set_Ignored(
+				EFFECT_V2_TARGET::From_Valtan(Slot.pValtan), false);
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				Slot.pValtan);
+		}
+		Staged.clear();
+	};
+
+	for (std::size_t iSlot = 0u;
+		iSlot < VALTAN_GHOST_PRESENTATION_POOL_CAPACITY; ++iSlot)
+	{
+		CValtan::VALTAN_DESC desc{};
+		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+		desc.vPosition = {};
+		desc.fScale = ghostActor->presentationScale;
+		desc.isServerAuthoritative = true;
+		desc.bStartReplicationDormant = true;
+		desc.strArchetypeId = "BOSS_VALTAN_GHOST";
+		desc.iOwnerBossNetEntityId = ownerBossNetEntityId;
+		desc.fCollisionRadius = collisionRadius;
+		std::shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+				m_Desc.iPrototypeLevelIndex,
+				TEXT("Prototype_GameObject_Valtan"),
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				&desc,
+				&gameObject)))
+		{
+			Rollback();
+			m_RejectedValtanGhostPoolReceipt = receipt;
+			strOutStatus =
+				"Valtan ghost presentation pool could not clone a dormant slot.";
+			return false;
+		}
+		const std::shared_ptr<CValtan> valtan =
+			std::dynamic_pointer_cast<CValtan>(gameObject);
+		if (nullptr != valtan)
+		{
+			/* A dormant Layer resident must never be discoverable by the V2
+			runtime between clone commit and its first checkout. */
+			CEffectV2Runtime::Set_Ignored(
+				EFFECT_V2_TARGET::From_Valtan(valtan), true);
+		}
+		std::string CopyStatus;
+		if (nullptr == valtan ||
+			!valtan->Copy_AdmittedPatternPresentationFrom(
+				*primaryValtan, revision, receipt, CopyStatus))
+		{
+			if (nullptr != valtan)
+			{
+				CEffectV2Runtime::Set_Ignored(
+					EFFECT_V2_TARGET::From_Valtan(valtan), false);
+			}
+			if (nullptr != gameObject)
+			{
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					m_Desc.iLayerLevelIndex,
+					m_Desc.strWorldEntityLayerTag,
+					gameObject);
+			}
+			Rollback();
+			m_RejectedValtanGhostPoolReceipt = receipt;
+			strOutStatus = CopyStatus.empty() ?
+				"Valtan ghost presentation pool could not admit a dormant slot." :
+				CopyStatus;
+			return false;
+		}
+#ifdef _DEBUG
+		valtan->Set_CombatDebugVisibility(
+			m_CombatDebugVisibility.bBossBodyCollider,
+			m_CombatDebugVisibility.bBossPatternHitPulse,
+			m_CombatDebugVisibility.bBossStageGeometry,
+			m_CombatDebugVisibility.bCounterProxy);
+#endif
+		VALTAN_GHOST_PRESENTATION_POOL_SLOT Slot;
+		Slot.iOwnerBossNetEntityId = ownerBossNetEntityId;
+		Slot.fCollisionRadius = collisionRadius;
+		Slot.AdmittedPresentationRevision = revision;
+		Slot.AdmittedPresentationReceipt = receipt;
+		Slot.pValtan = valtan;
+		Staged.push_back(std::move(Slot));
+	}
+
+	m_ValtanGhostPresentationPool = std::move(Staged);
+	m_RejectedValtanGhostPoolReceipt = {};
+	strOutStatus = "Prepared four dormant Valtan ghost presentation slots.";
+	return true;
+}
+
+std::shared_ptr<CValtan>
+Client::CClientReplication::Checkout_ValtanGhostPresentation(
+	const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+	const f32_t collisionRadius,
+	const LostArk::Shared::GameplayDataRevision& revision,
+	const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+	const float3_t& position,
+	const f32_t yawDegrees,
+	const bool_t bHoldBodyHiddenUntilPatternSnapshot)
+{
+	for (VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot :
+		m_ValtanGhostPresentationPool)
+	{
+		if (Slot.bCheckedOut || nullptr == Slot.pValtan ||
+			Slot.iOwnerBossNetEntityId != ownerBossNetEntityId ||
+			Slot.fCollisionRadius != collisionRadius ||
+			Slot.AdmittedPresentationRevision != revision ||
+			Slot.AdmittedPresentationReceipt != receipt ||
+			!Slot.pValtan->Is_ReplicationDormant())
+		{
+			continue;
+		}
+		if (!Slot.pValtan->Activate_ReplicatedPoolOccurrence(
+				position, yawDegrees,
+				bHoldBodyHiddenUntilPatternSnapshot))
+		{
+			return nullptr;
+		}
+		Slot.bCheckedOut = true;
+		return Slot.pValtan;
+	}
+	return nullptr;
+}
+
+bool_t Client::CClientReplication::Checkin_ValtanGhostPresentation(
+	const std::shared_ptr<CValtan>& valtan)
+{
+	if (nullptr == valtan)
+		return false;
+	bool_t bReturned = false;
+	for (VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot :
+		m_ValtanGhostPresentationPool)
+	{
+		if (Slot.pValtan.get() != valtan.get())
+			continue;
+		if (!Slot.bCheckedOut || !valtan->Return_ToReplicatedPool())
+			return false;
+		Slot.bCheckedOut = false;
+		bReturned = true;
+		break;
+	}
+	if (!bReturned)
+		return false;
+
+	const bool_t bAllSlotsReturned = std::none_of(
+		m_ValtanGhostPresentationPool.begin(),
+		m_ValtanGhostPresentationPool.end(),
+		[](const VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot)
+		{ return Slot.bCheckedOut; });
+	if (bAllSlotsReturned &&
+		m_DeferredValtanGhostPresentationPoolRefresh.bPending)
+	{
+		std::string RefreshStatus;
+		if (!Retry_DeferredValtanGhostPresentationPoolRefresh(
+				RefreshStatus))
+		{
+			if (!m_strPendingPresentationFailure.empty())
+				m_strPendingPresentationFailure += " ";
+			m_strPendingPresentationFailure +=
+				"Deferred Valtan ghost presentation pool refresh failed: " +
+				RefreshStatus;
+		}
+	}
+	return true;
+}
+
+bool_t Client::CClientReplication::
+Retry_DeferredValtanGhostPresentationPoolRefresh(
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (!m_DeferredValtanGhostPresentationPoolRefresh.bPending)
+		return true;
+
+	/* Prepare clears the pending latch while transactionally replacing the
+	pool, so copy the immutable request before entering it. */
+	const DEFERRED_VALTAN_GHOST_PRESENTATION_POOL_REFRESH Pending =
+		m_DeferredValtanGhostPresentationPoolRefresh;
+	const std::shared_ptr<CValtan> PrimaryValtan =
+		Pending.pPrimaryValtan.lock();
+	if (nullptr == PrimaryValtan)
+	{
+		m_DeferredValtanGhostPresentationPoolRefresh = {};
+		strOutStatus =
+			"Deferred Valtan ghost presentation donor no longer exists.";
+		return false;
+	}
+	return Prepare_ValtanGhostPresentationPool(
+		Pending.iOwnerBossNetEntityId,
+		Pending.fCollisionRadius,
+		Pending.PresentationRevision,
+		Pending.PresentationReceipt,
+		PrimaryValtan,
+		strOutStatus);
+}
+
+void Client::CClientReplication::Clear_ValtanGhostPresentationPool()
+{
+	for (VALTAN_GHOST_PRESENTATION_POOL_SLOT& Slot :
+		m_ValtanGhostPresentationPool)
+	{
+		if (nullptr == Slot.pValtan)
+			continue;
+		if (Slot.bCheckedOut)
+			(void)Slot.pValtan->Return_ToReplicatedPool();
+		CEffectPresentationService::Stop_BossOwner(Slot.pValtan);
+		CEffectV2Runtime::Set_Ignored(
+			EFFECT_V2_TARGET::From_Valtan(Slot.pValtan), false);
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			Slot.pValtan);
+	}
+	m_ValtanGhostPresentationPool.clear();
+	m_DeferredValtanGhostPresentationPoolRefresh = {};
+	m_RejectedValtanGhostPoolReceipt = {};
 }
 
 bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
@@ -812,6 +1163,31 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
 	   Sound, combat-object Sound and shake as one joined generation. */
 	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
 		ExpectedRevision, ReloadStatus);
+	LostArk::Shared::NET_ENTITY_ID primaryEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	for (const auto& [entityId, Candidate] : m_WorldEntities)
+	{
+		if (&Candidate == Presentation)
+		{
+			primaryEntityId = entityId;
+			break;
+		}
+	}
+	std::string PoolStatus;
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == primaryEntityId ||
+		!Prepare_ValtanGhostPresentationPool(
+			primaryEntityId,
+			Presentation->fCollisionRadius,
+			ExpectedRevision,
+			PresentationReceipt,
+			PrimaryValtan,
+			PoolStatus))
+	{
+		if (!m_strPendingPresentationFailure.empty())
+			m_strPendingPresentationFailure += " ";
+		m_strPendingPresentationFailure +=
+			"Ghost presentation pool refresh failed: " + PoolStatus;
+	}
 	strOutStatus =
 		"Authoritative primary Valtan joined presentation reloaded. " +
 		ReloadStatus;
@@ -908,6 +1284,31 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
 		ExpectedRevision, ReloadStatus);
 	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
 		ExpectedRevision, ReloadStatus);
+	LostArk::Shared::NET_ENTITY_ID primaryEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	for (const auto& [entityId, Candidate] : m_WorldEntities)
+	{
+		if (&Candidate == Presentation)
+		{
+			primaryEntityId = entityId;
+			break;
+		}
+	}
+	std::string PoolStatus;
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == primaryEntityId ||
+		!Prepare_ValtanGhostPresentationPool(
+			primaryEntityId,
+			Presentation->fCollisionRadius,
+			ExpectedRevision,
+			PresentationReceipt,
+			PrimaryValtan,
+			PoolStatus))
+	{
+		if (!m_strPendingPresentationFailure.empty())
+			m_strPendingPresentationFailure += " ";
+		m_strPendingPresentationFailure +=
+			"Ghost presentation pool refresh failed: " + PoolStatus;
+	}
 	strOutStatus =
 		"Authoritative primary Valtan combat-object Sound reloaded. " +
 		ReloadStatus;
@@ -1883,13 +2284,38 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	{
 		return false;
 	}
-	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
-		m_Desc.pDevice,
-		m_Desc.pContext,
-		m_Desc.iPrototypeLevelIndex, spawned.strArchetypeId)))
+	const bool_t isPooledGhost =
+		"BOSS_VALTAN_GHOST" == spawned.strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID !=
+			spawned.iOwnerBossNetEntityId;
+	const bool_t bHoldPortalRunnerBodyHiddenUntilPatternSnapshot =
+		isPooledGhost &&
+		"valtan.ghost.portal-once.active" == spawned.strActionId;
+	if ((isPooledGhost &&
+		 !CValtanPresentationAssetService::Is_Ready(
+			 m_Desc.iPrototypeLevelIndex, spawned.strArchetypeId)) ||
+		(!isPooledGhost &&
+		 FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			 m_Desc.pDevice,
+			 m_Desc.pContext,
+			 m_Desc.iPrototypeLevelIndex,
+			 spawned.strArchetypeId))))
 	{
 		m_strPendingPresentationFailure =
 			"Boss model admission failed: " + spawned.strArchetypeId;
+		return false;
+	}
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+	std::string ReceiptStatus;
+	const bool_t hasExactReceipt =
+		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
+			spawned.PinnedDefinitionRevision,
+			PresentationReceipt, ReceiptStatus);
+	if (isPooledGhost && !hasExactReceipt)
+	{
+		m_strPendingPresentationFailure =
+			"Replicated ghost has no exact presentation pool receipt: " +
+			ReceiptStatus;
 		return false;
 	}
 
@@ -1905,28 +2331,52 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	desc.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
 	desc.fCollisionRadius = spawned.fCollisionRadius;
 	std::shared_ptr<CGameObject> gameObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		m_Desc.iPrototypeLevelIndex,
-		TEXT("Prototype_GameObject_Valtan"),
-		m_Desc.iLayerLevelIndex,
-		m_Desc.strWorldEntityLayerTag,
-		&desc,
-		&gameObject)))
+	std::shared_ptr<CValtan> valtan;
+	if (isPooledGhost)
+	{
+		valtan = Checkout_ValtanGhostPresentation(
+			spawned.iOwnerBossNetEntityId,
+			spawned.fCollisionRadius,
+			spawned.PinnedDefinitionRevision,
+			PresentationReceipt,
+			desc.vPosition,
+			spawned.fYawDegrees,
+			bHoldPortalRunnerBodyHiddenUntilPatternSnapshot);
+		gameObject = valtan;
+		if (nullptr == valtan)
+		{
+			m_strPendingPresentationFailure =
+				"Replicated Valtan ghost has no dormant pool slot for its exact presentation generation.";
+			return false;
+		}
+	}
+	else if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_Desc.iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Valtan"),
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			&desc,
+			&gameObject)))
 	{
 		return false;
 	}
-	const std::shared_ptr<CValtan> valtan =
-		std::dynamic_pointer_cast<CValtan>(gameObject);
+	if (!isPooledGhost)
+		valtan = std::dynamic_pointer_cast<CValtan>(gameObject);
 	if (nullptr == valtan || !valtan->Apply_NetworkState(
 		desc.vPosition,
 		spawned.fYawDegrees,
 		WORLD_ENTITY_ACTION::IDLE,
 			{}, {}, 0u, 0u, 0u, 0u, {}, {}))
 	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strWorldEntityLayerTag,
-			gameObject);
+		if (isPooledGhost)
+			(void)Checkin_ValtanGhostPresentation(valtan);
+		else
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				gameObject);
+		}
 		return false;
 	}
 
@@ -1939,24 +2389,22 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	presentation.PinnedDefinitionRevision = spawned.PinnedDefinitionRevision;
 	presentation.pValtan = valtan;
 	presentation.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
+	presentation.bUsesValtanGhostPool = isPooledGhost;
 	const bool_t isPrimaryValtan = "BOSS_VALTAN" == spawned.strArchetypeId &&
 		LostArk::Shared::INVALID_NET_ENTITY_ID ==
 			spawned.iOwnerBossNetEntityId;
 	std::string JoinedReloadStatus;
 	std::string CombatObjectSoundReloadStatus;
-	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
-	std::string ReceiptStatus;
-	const bool_t hasExactReceipt =
-		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
-			spawned.PinnedDefinitionRevision,
-			PresentationReceipt, ReceiptStatus);
 	const bool_t entryReceiptRecoveryPending = !hasExactReceipt &&
 		CNetworkManager::Get().Get_GameplayRevisionState().
 			hasPendingEntryPresentationBaselineRecovery;
-	const bool_t joinedReloaded = hasExactReceipt &&
-		valtan->Reload_PatternPresentationAuthoring(
+	const bool_t joinedReloaded = isPooledGhost ||
+		(hasExactReceipt && valtan->Reload_PatternPresentationAuthoring(
 			spawned.PinnedDefinitionRevision,
-			PresentationReceipt, JoinedReloadStatus);
+			PresentationReceipt, JoinedReloadStatus));
+	if (isPooledGhost)
+		JoinedReloadStatus =
+			"Checked out an exact-revision dormant Valtan ghost presentation.";
 	const bool_t combatObjectSoundReloaded = joinedReloaded;
 	CombatObjectSoundReloadStatus = joinedReloaded ? JoinedReloadStatus :
 		(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
@@ -1986,10 +2434,15 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		m_strPendingPresentationFailure =
 			"Replicated Valtan presentation rejected its exact generation receipt: " +
 			(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strWorldEntityLayerTag,
-			valtan);
+		if (isPooledGhost)
+			(void)Checkin_ValtanGhostPresentation(valtan);
+		else
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				valtan);
+		}
 		return false;
 	}
 	const auto [iter, inserted] = m_WorldEntities.emplace(
@@ -1998,10 +2451,15 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	(void)iter;
 	if (!inserted)
 	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strWorldEntityLayerTag,
-			valtan);
+		if (isPooledGhost)
+			(void)Checkin_ValtanGhostPresentation(valtan);
+		else
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				valtan);
+		}
 	}
 	else if (isPrimaryValtan)
 	{
@@ -2039,6 +2497,24 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			if (!m_strPendingPresentationFailure.empty())
 				m_strPendingPresentationFailure += " ";
 			m_strPendingPresentationFailure += Diagnostic;
+		}
+		if (joinedReloaded)
+		{
+			std::string PoolStatus;
+			if (!Prepare_ValtanGhostPresentationPool(
+					spawned.iNetEntityId,
+					spawned.fCollisionRadius,
+					spawned.PinnedDefinitionRevision,
+					PresentationReceipt,
+					valtan,
+					PoolStatus))
+			{
+				if (!m_strPendingPresentationFailure.empty())
+					m_strPendingPresentationFailure += " ";
+				m_strPendingPresentationFailure +=
+					"Ghost presentation pool preparation failed: " +
+					PoolStatus;
+			}
 		}
 	}
 	return inserted;
@@ -2088,6 +2564,13 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 		CCombatHUDViewModel::Get().Set_BossDeadRaw(true);
 	}
 	Remove_DependentBossPresentations(despawned.iNetEntityId);
+	const bool_t bPrimaryValtanDespawn =
+		LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind &&
+		"BOSS_VALTAN" == iter->second.strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID ==
+			iter->second.iOwnerBossNetEntityId;
+	if (bPrimaryValtanDespawn)
+		Clear_ValtanGhostPresentationPool();
 	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
 	const size_t removedCombatObjects =
 		m_CombatObjectProjectionRuntime.Remove_Source(
@@ -2107,8 +2590,16 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	}
 	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
 	{
-		CEffectPresentationService::Stop_BossOwner(valtan);
-		if (!iter->second.bPresentationIsolated &&
+		if (iter->second.bUsesValtanGhostPool)
+		{
+			if (!Checkin_ValtanGhostPresentation(valtan))
+			{
+				m_strPendingPresentationFailure =
+					"Replicated Valtan ghost could not return to its dormant presentation slot.";
+				return false;
+			}
+		}
+		else if (!iter->second.bPresentationIsolated &&
 			WORLD_ENTITY_DESPAWN_REASON::DEAD == despawned.eReason &&
 			valtan->Begin_NetworkDeathPresentation())
 		{
@@ -2118,6 +2609,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 		}
 		else
 		{
+			CEffectPresentationService::Stop_BossOwner(valtan);
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,
@@ -3095,10 +3587,13 @@ void Client::CClientReplication::Reset_World()
 		if (const std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
 			CEffectPresentationService::Stop_BossOwner(valtan);
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				m_Desc.iLayerLevelIndex,
-				m_Desc.strWorldEntityLayerTag,
-				valtan);
+			if (!presentation.bUsesValtanGhostPool)
+			{
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					m_Desc.iLayerLevelIndex,
+					m_Desc.strWorldEntityLayerTag,
+					valtan);
+			}
 		}
 		if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
 		{
@@ -3109,6 +3604,7 @@ void Client::CClientReplication::Reset_World()
 		}
 	}
 	m_WorldEntities.clear();
+	Clear_ValtanGhostPresentationPool();
 	m_PrimaryValtanJoinedPresentationFreshness.Reject(
 		"Replicated world reset; the next primary Valtan spawn must reload authoring sources for its exact revision.");
 	m_PrimaryValtanCombatObjectSoundFreshness.Reject(

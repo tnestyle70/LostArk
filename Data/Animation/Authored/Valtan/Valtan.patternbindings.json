@@ -4298,7 +4298,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 0,
+        "hiddenToMs": 300
+      }
     },
     {
       "actionId": "valtan.authoring.stagger-slot.channel",

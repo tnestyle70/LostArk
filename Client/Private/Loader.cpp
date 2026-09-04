@@ -1422,10 +1422,22 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 
 HRESULT CLoader::Ready_ValtanPresentation(const uint32_t iLevelIndex)
 {
+	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			"BOSS_VALTAN")))
+	{
+		return E_FAIL;
+	}
+	/* The finale repeatedly checks out the ghost rig.  Register its body and
+	animation-set prototypes while the arena loader still owns the loading
+	window, never on the first visible dependent-boss spawn. */
 	return CValtanPresentationAssetService::Ensure_Prototypes(
 		m_pDevice,
 		m_pContext,
-		iLevelIndex);
+		iLevelIndex,
+		"BOSS_VALTAN_GHOST");
 }
 
 unique_ptr<CLoader> CLoader::Create(

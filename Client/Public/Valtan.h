@@ -206,6 +206,11 @@ public:
 		float3_t vPosition = {};
 		f32_t fScale = {};
 		bool_t isServerAuthoritative = false;
+		/* Replication may construct dependent ghost presentations during the
+		arena admission window.  A dormant clone remains in its Layer but does
+		not update, render, or own an Effect target until a Server spawn checks
+		it out. */
+		bool_t bStartReplicationDormant = false;
 		std::string strArchetypeId = "BOSS_VALTAN";
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
@@ -287,6 +292,19 @@ public:
 		uint32_t iPatternStageIndex,
 		const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose,
 		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute);
+	/* A pool slot copies only the immutable, already exact-admitted joined
+	presentation.  Model/animation compatibility is revalidated against this
+	ghost instance; occurrence cursors and Effect state are never copied. */
+	bool_t Copy_AdmittedPatternPresentationFrom(
+		const CValtan& Source,
+		const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+		const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+		std::string& strOutStatus);
+	bool_t Activate_ReplicatedPoolOccurrence(
+		const float3_t& position, f32_t yawDegrees,
+		bool_t bHoldBodyHiddenUntilPatternSnapshot);
+	bool_t Return_ToReplicatedPool();
+	bool_t Is_ReplicationDormant() const { return m_isReplicationDormant; }
 	/* Animation Tool-only local audition.  It deliberately bypasses network,
 	   Effect, Sound, hit and movement, but samples the same admitted Product
 	   binding through the exact helper Apply_NetworkState uses. */
@@ -410,6 +428,13 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	bool_t m_isReplicationDormant = false;
+	/* A portal runner is born already inside its authored [0, 300ms) hidden
+	window.  Reliable spawn has the action id but no pattern clock, so retain
+	that conservative hidden state until the first exact pattern snapshot. */
+	bool_t m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
+	bool_t m_bGhostPortalRoutePresentationActive = false;
+	f32_t m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
 	std::string m_strArchetypeId = "BOSS_VALTAN";
 	/* Gameplay/network identity stays m_strArchetypeId.  This second ID names
 	   only the atomically committed body/weapon/armour presentation group. */
@@ -697,6 +722,12 @@ private:
 		std::string_view patternId,
 		std::string_view actionId);
 	void Transition_RaidBgm(RAID_BGM_STATE nextState);
+	void Reset_ReplicatedOccurrenceState();
+	void Update_PatternBodyVisibilityAtAge(
+		const std::string& actionId,
+		f32_t actionAgeSeconds,
+		bool_t bGhostPortalRushStage);
+	void Update_GhostPortalRoutePresentation(f32_t fTimeDelta);
 
 public:
 	static unique_ptr<CValtan> Create(ComPtr<ID3D11Device> pDevice,

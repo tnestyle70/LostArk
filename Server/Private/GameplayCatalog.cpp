@@ -4890,7 +4890,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							3u == action.Volley.iCountPerResolvedTarget &&
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 								action.Volley.eLayout &&
-							std::fabs(action.Volley.fRadiusM - 7.f) < 0.0001f &&
+							std::fabs(action.Volley.fRadiusM - 7.5f) < 0.0001f &&
 							30.f == action.Volley.fStartAngleDegrees &&
 							120.f == action.Volley.fAngleStepDegrees &&
 							!action.Volley.bAllowOverlap &&
@@ -4899,10 +4899,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							0u == action.Volley.iFirstSpawnOffsetMs &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
-							std::fabs(combatObject->second.fSpeedMps - 9.32642742537f) <
+							std::fabs(combatObject->second.fSpeedMps - 9.9926008129f) <
 								0.0001f &&
 							std::fabs(combatObject->second.fMaximumDistanceM -
-								12.12435565298f) < 0.0001f &&
+								12.9903810568f) < 0.0001f &&
 							300u == combatObject->second.iMovementStartDelayMs &&
 							!combatObject->second.bExpireOnDistanceEnd &&
 							1900u == combatObject->second.iLifeMs)

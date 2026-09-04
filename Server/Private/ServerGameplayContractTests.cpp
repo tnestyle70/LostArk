@@ -2745,6 +2745,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			bool primaryIdentityStable = true;
 			bool primaryNeverAutoRelocated = true;
 			bool auxiliaryContractExact = true;
+			bool portalRunnerContractExact = true;
 			bool auxiliaryReplacementCadenceExact = true;
 			bool observedAuxiliaryDespawn = false;
 			bool visibleDamageAdmitted = false;
@@ -2769,9 +2770,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				const std::size_t auxiliaryCount = std::count_if(
 					room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 					[](const SERVER_WORLD_ENTITY& entity)
-					{ return INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId; });
+					{
+						return SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
+							entity.eDependentBossRole;
+					});
+				const std::size_t portalRunnerCount = std::count_if(
+					room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+					[](const SERVER_WORLD_ENTITY& entity)
+					{
+						return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+							entity.eDependentBossRole;
+					});
 				primaryIdentityStable = primaryIdentityStable &&
 					1u == primaryCount && auxiliaryCount <= 1u &&
+					(0u == portalRunnerCount || 3u == portalRunnerCount) &&
 					INVALID_NET_ENTITY_ID == primary->iOwnerBossNetEntityId &&
 					"BOSS_VALTAN" == primary->strArchetypeId &&
 					"boss.valtan.center" == primary->strPlacementId;
@@ -2804,15 +2816,43 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					const std::uint32_t expectedSequence =
 						0u == observedPortalSequence ? 1u : observedPortalSequence + 1u;
 					primaryIdentityStable = primaryIdentityStable &&
-						primary->iGhostPortalOccurrenceSequence == expectedSequence;
+						primary->iGhostPortalOccurrenceSequence == expectedSequence &&
+						3u == portalRunnerCount;
 					observedPortalSequence = primary->iGhostPortalOccurrenceSequence;
 					portalSpawnTicks.push_back(tick);
+				}
+				for (const SERVER_WORLD_ENTITY& runner : room->m_WorldEntities)
+				{
+					if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER !=
+						runner.eDependentBossRole)
+					{
+						continue;
+					}
+					portalRunnerContractExact = portalRunnerContractExact &&
+						19100u == runner.iOwnerBossNetEntityId &&
+						"BOSS_VALTAN_GHOST" == runner.strArchetypeId &&
+						"VALTAN_GHOST_PORTAL_ONCE" == runner.strPatternId &&
+						"ACTIVE" == runner.strPatternStageId &&
+						"valtan.ghost.portal-once.active" == runner.strActionId &&
+						SERVER_ENTITY_ACTION::PATTERN_ACTIVE == runner.eAction &&
+						runner.bPortalMotionActive &&
+						runner.bPortalRushTargetLocked &&
+						BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+							runner.ePatternStageMotionKind &&
+						std::fabs(runner.fPortalRushDistanceM - 12.9903810568f) <
+							0.001f &&
+						std::fabs(runner.fPortalRushSpeedMps - 9.9926008129f) <
+							0.001f &&
+						runner.DependentPatternSequence.PatternIds.empty();
 				}
 
 				const auto auxiliary = std::find_if(
 					room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 					[](const SERVER_WORLD_ENTITY& entity)
-					{ return INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId; });
+					{
+						return SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
+							entity.eDependentBossRole;
+					});
 				const bool hasAuxiliary = auxiliary != room->m_WorldEntities.end();
 				if (hasAuxiliary)
 				{
@@ -2824,6 +2864,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 							auxiliary->DependentPatternSequence.PatternIds.front()) !=
 							expectedPrimaryLoop.end();
 					auxiliaryContractExact = auxiliaryContractExact &&
+						SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
+							auxiliary->eDependentBossRole &&
 						19100u == auxiliary->iOwnerBossNetEntityId &&
 						"BOSS_VALTAN_GHOST" == auxiliary->strArchetypeId &&
 						selectedOneUsableSkill &&
@@ -2910,7 +2952,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				portalCadenceExact && index < portalSpawnTicks.size(); ++index)
 			{
 				portalCadenceExact =
-					66u == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
+					147u == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
 			}
 			const auto primary = std::find_if(
 				room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
@@ -2919,7 +2961,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room->Is_Ready() && activated && primaryIdentityStable &&
 				primary != room->m_WorldEntities.end() &&
 				observedPrimaryLoop == expectedTwoPrimaryCycles &&
-				primaryNeverAutoRelocated && portalCadenceExact;
+				primaryNeverAutoRelocated && portalCadenceExact &&
+				portalRunnerContractExact;
 			tests.Require(
 				primaryLoopPassed,
 				"Phase-three respawn keeps one primary Valtan identity visible, never enters the random-relocation lane, and continuously repeats the exact six-pattern loop");
@@ -5234,7 +5277,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7\t30\t120\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t120\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE";
 		std::string wrappingPortalVolleyBootstrap = bootstrapText;
 		const bool madeWrappingPortalVolley = replaceBootstrapRow(
@@ -5242,7 +5285,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7\t30\t121\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t121\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		std::string nonEquilateralPortalVolleyBootstrap = bootstrapText;
 		const bool madeNonEquilateralPortalVolley = replaceBootstrapRow(
@@ -5250,7 +5293,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7\t30\t119\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t119\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		const std::string highJumpVolleyRow =
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t"
@@ -15877,8 +15920,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Skip an unprojectable damaging cover wave atomically, keep the room ready, and do not retry it");
 	}
 	{
-		/* Phase-three portal charges start together at the three authored radial
-		vertices, wait 300 ms, and traverse the radius-7 m triangle together. */
+		/* Phase-three portal charges and their visible runners start together at
+		the three authored radial vertices, wait 300 ms, and traverse the
+		radius-7.5 m triangle without navigation projection. */
 		CGameRoom portalRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
 		const bool initializedPortalRoom = portalRoom.Initialize_WorldEntities();
 		portalRoom.m_ServerNavigation = CServerNavigation{};
@@ -15888,6 +15932,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		portalBoss.iNetEntityId = 8390u;
 		portalBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 		portalBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		portalBoss.strPlacementId = "boss.valtan.center";
 		portalBoss.strArchetypeId = "BOSS_VALTAN";
 		portalBoss.strEncounterId = "ENCOUNTER_VALTAN";
 		portalBoss.iCurrentHp = 60000u;
@@ -15906,7 +15951,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		portalBoss.fYawDegrees = 0.f;
 		portalBoss.iPatternSequence = 17u;
 		portalBoss.strPatternId = "VALTAN_GHOST_PORTAL_ONCE";
-		portalBoss.strPatternStageId = "STEP_01";
+		portalBoss.strPatternStageId = "ACTIVE";
 		portalBoss.strActionId = "valtan.ghost.portal-once.active";
 		portalBoss.PinnedDefinitionRevision =
 			portalRoom.m_GameplayCatalog.Get_ActiveRevision();
@@ -15918,16 +15963,27 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				*livePortalBoss, portalRoom.m_GameplayCatalog, 2100u);
 		const auto& portalObjects =
 			portalRoom.m_CombatObjectRuntime.Get_LiveObjects();
-		bool triangleEdgeRoutesExact = stagedPortal && 3u == portalObjects.size();
+		std::vector<const SERVER_WORLD_ENTITY*> portalRunners;
+		for (const SERVER_WORLD_ENTITY& entity : portalRoom.m_WorldEntities)
+		{
+			if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+				entity.eDependentBossRole)
+			{
+				portalRunners.push_back(&entity);
+			}
+		}
+		bool triangleEdgeRoutesExact = stagedPortal &&
+			3u == portalObjects.size() && 3u == portalRunners.size();
 		std::set<std::pair<int, int>> portalStartPositions;
 		std::set<int> portalUndirectedEdgeHeadings;
 		constexpr float DEGREES_TO_RADIANS_TEST =
 			0.01745329251994329577f;
-		constexpr float PORTAL_CIRCUMRADIUS = 7.f;
+		constexpr float PORTAL_CIRCUMRADIUS = 7.5f;
 		for (std::size_t ordinal = 0u;
 			triangleEdgeRoutesExact && ordinal < portalObjects.size(); ++ordinal)
 		{
 			const SERVER_COMBAT_OBJECT& object = portalObjects[ordinal];
+			const SERVER_WORLD_ENTITY& runner = *portalRunners[ordinal];
 			const float startDegrees = 30.f + 120.f * static_cast<float>(ordinal);
 			const std::size_t nextOrdinal = (ordinal + 1u) % portalObjects.size();
 			const float endDegrees =
@@ -15976,7 +16032,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					portalBoss.fPositionY) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fPositionZ -
 					(portalBoss.fPositionZ + startOffsetZ)) < 0.001f &&
-				std::abs(routeLength - 12.1243557f) < 0.001f &&
+				std::abs(routeLength - 12.9903811f) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionX -
 					expectedDirectionX) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionZ -
@@ -15984,11 +16040,35 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				std::abs(object.LiveState.CurrentPose.fYawDegrees - expectedYaw) <
 					0.001f &&
 				exactUndirectedHeading &&
-				std::abs(object.fSpeedMps - 9.32642743f) < 0.001f &&
-				std::abs(object.fRemainingDistanceM - 12.1243557f) < 0.001f &&
+				std::abs(object.fSpeedMps - 9.99260081f) < 0.001f &&
+				std::abs(object.fRemainingDistanceM - 12.9903811f) < 0.001f &&
 				300u == object.iMovementStartDelayMs &&
 				!object.bExpireOnDistanceEnd &&
-				std::abs(object.fRemainingMilliseconds - 1900.f) < 0.001f;
+				std::abs(object.fRemainingMilliseconds - 1900.f) < 0.001f &&
+				SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+					runner.eDependentBossRole &&
+				8390u == runner.iOwnerBossNetEntityId &&
+				"BOSS_VALTAN_GHOST" == runner.strArchetypeId &&
+				"VALTAN_GHOST_PORTAL_ONCE" == runner.strPatternId &&
+				"ACTIVE" == runner.strPatternStageId &&
+				"valtan.ghost.portal-once.active" == runner.strActionId &&
+				runner.DependentPatternSequence.PatternIds.empty() &&
+				runner.bPortalMotionActive &&
+				runner.bPortalRushTargetLocked &&
+				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+					runner.ePatternStageMotionKind &&
+				std::abs(runner.fPositionX -
+					(portalBoss.fPositionX + startOffsetX)) < 0.001f &&
+				std::abs(runner.fPositionZ -
+					(portalBoss.fPositionZ + startOffsetZ)) < 0.001f &&
+				std::abs(runner.fPortalEndX -
+					(portalBoss.fPositionX + startOffsetX + routeX)) < 0.001f &&
+				std::abs(runner.fPortalEndZ -
+					(portalBoss.fPositionZ + startOffsetZ + routeZ)) < 0.001f &&
+				std::abs(runner.fYawDegrees - expectedYaw) < 0.001f &&
+				300u == runner.iPortalRushRetargetDelayMs &&
+				std::abs(runner.fPortalRushSpeedMps - 9.99260081f) < 0.001f &&
+				std::abs(runner.fPortalRushDistanceM - 12.9903811f) < 0.001f;
 		}
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> portalSpawned;
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
@@ -15998,6 +16078,51 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			portalSpawned, portalPresentation, portalDespawned);
 		const bool exactTriangleHeadings =
 			portalUndirectedEdgeHeadings == std::set<int>{ 0, 60, 120 };
+		const bool runnersHeldThroughDelay =
+			portalRoom.Update_DependentBosses(2109u) &&
+			3u == std::count_if(
+				portalRoom.m_WorldEntities.begin(),
+				portalRoom.m_WorldEntities.end(),
+				[](const SERVER_WORLD_ENTITY& entity)
+				{
+					return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+						entity.eDependentBossRole &&
+						std::abs(entity.fPositionX - entity.fPortalStartX) < 0.001f &&
+						std::abs(entity.fPositionZ - entity.fPortalStartZ) < 0.001f;
+				});
+		const bool runnersAliveBeforeArrival =
+			portalRoom.Update_DependentBosses(2147u) &&
+			3u == std::count_if(
+				portalRoom.m_WorldEntities.begin(),
+				portalRoom.m_WorldEntities.end(),
+				[](const SERVER_WORLD_ENTITY& entity)
+				{
+					return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+						entity.eDependentBossRole;
+				});
+		const bool runnersReachExactEndpoint =
+			portalRoom.Update_DependentBosses(2148u) &&
+			3u == std::count_if(
+				portalRoom.m_WorldEntities.begin(),
+				portalRoom.m_WorldEntities.end(),
+				[](const SERVER_WORLD_ENTITY& entity)
+				{
+					return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+						entity.eDependentBossRole &&
+						std::abs(entity.fPositionX - entity.fPortalEndX) < 0.001f &&
+						std::abs(entity.fPositionZ - entity.fPortalEndZ) < 0.001f &&
+						std::abs(entity.fActionElapsedSeconds - 1.6f) < 0.001f;
+				});
+		const bool runnersDespawnAfterEndpointSnapshot =
+			portalRoom.Update_DependentBosses(2149u) &&
+			std::none_of(
+				portalRoom.m_WorldEntities.begin(),
+				portalRoom.m_WorldEntities.end(),
+				[](const SERVER_WORLD_ENTITY& entity)
+				{
+					return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+						entity.eDependentBossRole;
+				});
 		if (!triangleEdgeRoutesExact || !exactTriangleHeadings ||
 			3u != portalStartPositions.size() || 3u != portalSpawned.size() ||
 			!portalPresentation.empty() ||
@@ -16016,8 +16141,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			exactTriangleHeadings &&
 			3u == portalStartPositions.size() && 3u == portalSpawned.size() &&
 			portalPresentation.empty() &&
-			portalDespawned.empty(),
-			"Spawn three simultaneous delayed phase-three portal charges on a nav-independent closed radius-7m equilateral triangle");
+			portalDespawned.empty() && runnersHeldThroughDelay &&
+			runnersAliveBeforeArrival && runnersReachExactEndpoint &&
+			runnersDespawnAfterEndpointSnapshot,
+			"Spawn three simultaneous delayed phase-three portal charges and visible runners that publish their exact endpoints on a nav-independent closed radius-7.5m equilateral triangle");
 	}
 	{
 		auto phaseRoomStorage = std::make_unique<CGameRoom>(

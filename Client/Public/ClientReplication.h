@@ -12,6 +12,7 @@
 #include "WorldDestructionProjectionRuntime.h"
 #include "ReplicatedPlayerHealth.h"
 #include "CombatDebugVisibility.h"
+#include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
 #include <cstdint>
@@ -467,6 +468,26 @@ namespace Client
 			std::string& strOutStatus) const;
 		void Remove_DependentBossPresentations(
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
+		bool_t Prepare_ValtanGhostPresentationPool(
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+			f32_t collisionRadius,
+			const LostArk::Shared::GameplayDataRevision& revision,
+			const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+			const std::shared_ptr<CValtan>& primaryValtan,
+			std::string& strOutStatus);
+		std::shared_ptr<CValtan> Checkout_ValtanGhostPresentation(
+			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId,
+			f32_t collisionRadius,
+			const LostArk::Shared::GameplayDataRevision& revision,
+			const VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+			const float3_t& position,
+			f32_t yawDegrees,
+			bool_t bHoldBodyHiddenUntilPatternSnapshot);
+		bool_t Checkin_ValtanGhostPresentation(
+			const std::shared_ptr<CValtan>& valtan);
+		bool_t Retry_DeferredValtanGhostPresentationPoolRefresh(
+			std::string& strOutStatus);
+		void Clear_ValtanGhostPresentationPool();
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Apply_CombatObjectPresentationEvent(
@@ -634,6 +655,7 @@ namespace Client
 			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
 			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};
 			bool_t bPresentationIsolated = false;
+			bool_t bUsesValtanGhostPool = false;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
@@ -648,6 +670,33 @@ namespace Client
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
+		static constexpr std::size_t VALTAN_GHOST_PRESENTATION_POOL_CAPACITY = 4u;
+		struct VALTAN_GHOST_PRESENTATION_POOL_SLOT final
+		{
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			f32_t fCollisionRadius = 0.f;
+			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
+			VALTAN_PRESENTATION_GENERATION_RECEIPT AdmittedPresentationReceipt;
+			std::shared_ptr<CValtan> pValtan;
+			bool_t bCheckedOut = false;
+		};
+		std::vector<VALTAN_GHOST_PRESENTATION_POOL_SLOT>
+			m_ValtanGhostPresentationPool;
+		struct DEFERRED_VALTAN_GHOST_PRESENTATION_POOL_REFRESH final
+		{
+			bool_t bPending = false;
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			f32_t fCollisionRadius = 0.f;
+			LostArk::Shared::GameplayDataRevision PresentationRevision{};
+			VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+			std::weak_ptr<CValtan> pPrimaryValtan;
+		};
+		DEFERRED_VALTAN_GHOST_PRESENTATION_POOL_REFRESH
+			m_DeferredValtanGhostPresentationPoolRefresh;
+		VALTAN_PRESENTATION_GENERATION_RECEIPT
+			m_RejectedValtanGhostPoolReceipt;
 		CPrimaryValtanPresentationFreshnessGate
 			m_PrimaryValtanJoinedPresentationFreshness;
 		CPrimaryValtanPresentationFreshnessGate

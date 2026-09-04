@@ -232,7 +232,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         body = _function(
             source,
             "/* Ground Roar owns",
-            "/* Phase-three portal charges start together",
+            "CGameRoom portalRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };",
         )
         for expected in (
             "4u == groundRoarObjects.size()",

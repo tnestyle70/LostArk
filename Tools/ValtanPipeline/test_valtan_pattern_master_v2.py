@@ -4272,12 +4272,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 root / "Data/Effects/V2/Groups",
                 dirs_exist_ok=True,
             )
-            effect_relative = Path(
-                "Data/Effects/Authored/"
-                "effect.valtan.project-tuned.dash-charge.active-shield.effect.json"
+            authored_effect_relatives = (
+                Path(
+                    "Data/Effects/Authored/"
+                    "effect.valtan.project-tuned.dash-charge.active-shield.effect.json"
+                ),
+                Path(
+                    "Data/Effects/Authored/"
+                    "effect.valtan.project-tuned.sequence.warp.portal.effect.json"
+                ),
             )
-            (root / effect_relative).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(self.root / effect_relative, root / effect_relative)
+            for effect_relative in authored_effect_relatives:
+                (root / effect_relative).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(self.root / effect_relative, root / effect_relative)
             self.assertEqual(first, pipeline.project_v2_products(root, projected_docs, staged))
 
         for retired_rows in ([*staged["retiredPatternIds"], retired_id], ["VALTAN_WHIRLWIND"], "not-an-array"):

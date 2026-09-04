@@ -1408,7 +1408,7 @@ namespace
 
 		VerifyMutation("geometry",
 			"\"eventId\": \"event.valtan.ghost.portal-once.volley\"",
-			"\"radiusM\": 7.0", "\"radiusM\": 6.0",
+			"\"radiusM\": 7.5", "\"radiusM\": 6.0",
 			"VALTAN_GHOST_PORTAL_ONCE", "ACTIVE");
 		/* The restored three-wave volley caps at 36 objects; the marker must
 		   match the high-jump event's own field, not a later event's "4". */
