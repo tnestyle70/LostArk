@@ -2727,6 +2727,8 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 	std::string& strOutStatus)
 {
+	const std::string StableOccurrenceId = strOccurrenceId;
+	const std::string StableSoundEvent = strSoundEvent;
 	std::string AuthoringRevision;
 	std::string AuthoringStatus;
 	bool_t bCanonicalDraftDirty = false;
@@ -2741,7 +2743,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 				AuthoringStatus;
 		return false;
 	}
-	if (!m_bValtanPatternSoundCuesReady || strOccurrenceId.empty() ||
+	if (!m_bValtanPatternSoundCuesReady || StableOccurrenceId.empty() ||
 		(eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
 		 eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))
 	{
@@ -2752,7 +2754,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	const std::vector<std::string> Events =
 		Collect_ValtanCompositionPatternSoundEvents();
 	if (Events.end() == std::find(
-			Events.begin(), Events.end(), strSoundEvent))
+			Events.begin(), Events.end(), StableSoundEvent))
 	{
 		strOutStatus =
 			"Pattern Sound patch rejected an event without admitted Valtan assets.";
@@ -2767,7 +2769,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 		m_ValtanPatternSoundCues.Cues.end(),
 		[&](const VALTAN_PATTERN_SOUND_CUE& Cue)
 		{
-			return Cue.strOccurrenceId == strOccurrenceId &&
+			return Cue.strOccurrenceId == StableOccurrenceId &&
 				Cue.strPatternId == Pattern.strPatternId &&
 				Cue.strStageId == Stage.strStageId &&
 				Cue.strActionId == Stage.strActionId;
@@ -2794,9 +2796,9 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
 	VALTAN_PATTERN_SOUND_CUE& Candidate = Staged.Cues[
 		static_cast<std::size_t>(Current - m_ValtanPatternSoundCues.Cues.begin())];
-	Candidate.strSoundEvent = strSoundEvent;
+	Candidate.strSoundEvent = StableSoundEvent;
 	Candidate.strSoundBank = std::string(
-		ValtanSoundBankForEvent(strSoundEvent));
+		ValtanSoundBankForEvent(StableSoundEvent));
 	Candidate.iStartMs = iStartMs;
 	Candidate.eRepeatPolicy = eRepeatPolicy;
 	if (Candidate == *Current)
@@ -2808,7 +2810,7 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	m_bValtanPatternSoundCuesDirty = true;
 	++m_iValtanPatternSoundDraftGeneration;
 	m_strValtanPatternSoundCueStatus =
-		"UNSAVED Pattern Sound occurrence: " + strOccurrenceId + ".";
+		"UNSAVED Pattern Sound occurrence: " + StableOccurrenceId + ".";
 	strOutStatus = m_strValtanPatternSoundCueStatus;
 	return true;
 }

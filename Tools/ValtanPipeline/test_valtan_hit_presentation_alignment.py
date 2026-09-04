@@ -73,7 +73,7 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
             self.assertEqual("VALTAN_STAGGER_SLOT", binding["scope"]["patternId"])
             self.assertEqual("FINAL_ATTACK", binding["scope"]["stageId"])
             self.assertEqual("CLIP_OCCURRENCE", binding["clock"]["basis"])
-            self.assertEqual(2900, binding["clock"]["startMs"])
+            self.assertEqual(1000, binding["clock"]["startMs"])
 
         malformed = copy.deepcopy(self.bindings)
         target = next(
@@ -81,7 +81,7 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
             if row["bindingId"] ==
             "binding.valtan.project-tuned.stagger-slot.final-attack.twohand"
         )
-        target["clock"]["startMs"] = 2800
+        target["clock"]["startMs"] = 900
         with self.assertRaisesRegex(
                 validator.ContractError, "attack binding has no hit"):
             self.validate(bindings=malformed)

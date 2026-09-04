@@ -475,7 +475,7 @@ def _build_project_authored_semantic_cues() -> dict[str, dict]:
         "FINAL_ATTACK",
         "valtan.authoring.stagger-slot.final-attack",
         "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
-        2900,
+        1000,
         "G_Voltan2_Attack25_Shot2",
     )
     for pattern_id, action_prefix in (

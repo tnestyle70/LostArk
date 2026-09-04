@@ -114,7 +114,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             {
                 "kind": "INTERVAL",
                 "count": 1,
-                "firstOffsetMs": 2900,
+                "firstOffsetMs": 1000,
                 "intervalMs": 0,
             },
             final_attack["hit"]["schedule"],

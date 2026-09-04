@@ -444,12 +444,25 @@ strict 검증하지만, Effect V2만 만든 격리 fixture에 문서가 없으�
 이유로 건너뛰면 안 된다. 부재 허용, 정상 owner admission, 존재하지만 invalid인 문서의 fail-close를
 세 개의 회귀 경로로 유지한다.
 
-canonical writer-lock 회귀와 Debug Core는 같은 checkout에서 병렬 실행하지 않는다.
-`test_valtan_pattern_master_v2`의 transaction fixture가
-`out/ValtanPatternTransactions/create-pattern.lock`을 소유하는 동안 Core의 native reader가
-`Create/Project transaction is active (Win32 33)`을 반환하는 것은 정상 transient contention이다.
-이를 source/Product 손상으로 기록하거나 stale 파일을 삭제하지 말고 장기 writer 회귀를 종료한 뒤
-Core를 직렬 재실행한다. 제품 UI는 같은 상태에서 last-good을 보존하고 자동 재시도만 수행한다.
+### FullDiagnostic에 포함된 Valtan master를 중복·병렬 실행하지 않는다
+
+`FullDiagnostic`은 `Test-ValtanPatternMaster.ps1`의 canonical writer/CAS/hard-crash 회귀를 이미
+포함한다. 같은 checkout에서 이 master를 먼저 독립 실행하거나 다른 agent에 병렬 위임하면 전역
+writer lock을 서로 선점해 `CANONICAL_TRANSACTION_BUSY` 또는
+`Create/Project transaction is active (Win32 33)`이 발생한다. 이는 source/Product 손상이나 제품
+회귀가 아니라 검증끼리 만든 transient contention이다. 실패를 없애려고 stale 파일을 삭제하거나
+schema/admission을 완화하지 않는다.
+
+- Effect/Sound occurrence 시간만 바꾸는 반복 작업은 focused validator와
+  `RunFullPipeline.bat -DataOnly`로 확인한다. Workbench의 `Publish after Save`까지 성공했다면 같은
+  DataOnly publish도 다시 돌리지 않는다.
+- C++ 또는 Server 실행 의미가 바뀌어 광역 검증이 필요한 최종 시점에만 `FullDiagnostic`을 한 번
+  실행한다. 직전에 standalone Valtan master, Product, Core를 차례로 예열하지 않는다. 상위 profile이
+  이미 포함하는 build와 domain gate를 중복 실행하지 않는다.
+- canonical writer를 여는 publisher/master와 Core/FullDiagnostic은 같은 checkout에서 병렬 실행하지
+  않는다. 병렬 간섭으로 실패한 실행은 제품 회귀 증거로 세지 말고, 자신이 시작한 정확한 process만
+  종료한 뒤 writer가 없는 상태에서 필요한 최상위 profile을 한 번만 직렬 재실행한다.
+- 제품 UI는 실제 짧은 writer 경합에서는 last-good을 보존하고 자동 재시도만 수행한다.
 
 ### Valtan Composition 확장에서 함께 유지할 저작·투영 계약
 

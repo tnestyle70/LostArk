@@ -189,7 +189,8 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         )
         positions = [typed_commit.index(token) for token in ordered_read_set_cas]
         self.assertEqual(positions, sorted(positions))
-        self.assertIn("Reload before Save", typed_commit)
+        self.assertIn("rebuild and restart the Client", typed_commit)
+        self.assertIn("The draft was preserved", typed_commit)
         self.assertIn("effect_v2_effective_bytes", typed_commit)
         self.assertIn(
             "_read_bytes_or_none(effect_v2_target) != effect_v2_physical_baseline",

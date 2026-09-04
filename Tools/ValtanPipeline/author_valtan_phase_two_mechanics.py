@@ -1892,7 +1892,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                 "shape": {"kind": "CIRCLE", "outerRadiusM": 100.0},
                 "schedule": {
                     "kind": "INTERVAL", "count": 1,
-                    "firstOffsetMs": 2900, "intervalMs": 0,
+                    "firstOffsetMs": 1000, "intervalMs": 0,
                 },
                 "serverDamageProfileId":
                     "damage.valtan.omnidirectional-wipe-130",

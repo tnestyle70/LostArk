@@ -254,20 +254,49 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound("
         )
         patch_end = self.animation_cpp.index(
-            "bool_t Client::CAnimation_Tool::Save_ValtanCompositionPatternSounds(",
+            "bool_t Client::CAnimation_Tool::Add_ValtanCompositionPatternSound(",
             patch_start,
         )
         patch_body = self.animation_cpp[patch_start:patch_end]
         for token in (
-            "Cue.strOccurrenceId == strOccurrenceId",
+            "const std::string StableOccurrenceId = strOccurrenceId;",
+            "const std::string StableSoundEvent = strSoundEvent;",
+            "Cue.strOccurrenceId == StableOccurrenceId",
             "Cue.strPatternId == Pattern.strPatternId",
             "Cue.strStageId == Stage.strStageId",
             "Cue.strActionId == Stage.strActionId",
+            "Candidate.strSoundEvent = StableSoundEvent",
+            "ValtanSoundBankForEvent(StableSoundEvent)",
             "VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged",
             "m_ValtanPatternSoundCues = std::move(Staged)",
             "m_bValtanPatternSoundCuesDirty = true",
         ):
             self.assertIn(token, patch_body)
+
+        occurrence_snapshot_at = patch_body.index(
+            "const std::string StableOccurrenceId = strOccurrenceId;"
+        )
+        sound_event_snapshot_at = patch_body.index(
+            "const std::string StableSoundEvent = strSoundEvent;"
+        )
+        first_owner_access_at = patch_body.index("std::string AuthoringRevision;")
+        owner_commit_at = patch_body.index(
+            "m_ValtanPatternSoundCues = std::move(Staged)"
+        )
+        post_commit_status_at = patch_body.index(
+            '"UNSAVED Pattern Sound occurrence: " + StableOccurrenceId + "."'
+        )
+        self.assertLess(occurrence_snapshot_at, first_owner_access_at)
+        self.assertLess(sound_event_snapshot_at, first_owner_access_at)
+        self.assertLess(owner_commit_at, post_commit_status_at)
+        self.assertEqual(
+            2,
+            len(re.findall(r"(?<![.\w])strOccurrenceId\b", patch_body)),
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"(?<![.\w])strSoundEvent\b", patch_body)),
+        )
 
     def test_detail_exposes_event_start_repeat_and_one_composition_save(self) -> None:
         for token in (

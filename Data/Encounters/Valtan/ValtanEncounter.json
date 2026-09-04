@@ -7273,7 +7273,7 @@
           "hitHalfWidth": 0.0,
           "hitCount": 1,
           "hitIntervalMs": 0,
-          "hitDelayMs": 2900,
+          "hitDelayMs": 1000,
           "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
           "pushRangeM": 0.0,
           "pushMs": 0,

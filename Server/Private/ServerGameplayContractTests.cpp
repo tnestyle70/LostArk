@@ -3733,6 +3733,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		magicFailureValid = magicFailureValid &&
 			advanceStatusOccurrence(*magicFailureRoom, 2360u) &&
 			"FINAL_ATTACK" == magicFailureBoss.strPatternStageId &&
+			0u == magicFailureBoss.iAppliedPatternHitCount &&
 			!magicFailureBoss.bPatternStageVerticalOffsetApplied &&
 			std::abs(magicFailureBoss.fPositionY - failureBaseY) <
 				0.001f;
@@ -3743,11 +3744,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				player.iCurrentHp = player.iMaximumHp = 10000u;
 		}
 		magicFailureValid = magicFailureValid &&
-			advanceStatusOccurrence(*magicFailureRoom, 2447u) &&
+			advanceStatusOccurrence(*magicFailureRoom, 2389u) &&
+			magicFailureRoom->m_TickDamageEvents.empty() &&
+			2u == std::count_if(magicFailureRoom->m_Players.begin(),
+				magicFailureRoom->m_Players.end(), [](const auto& entry)
+				{ return 10000u == entry.second.iCurrentHp; }) &&
+			0u == magicFailureBoss.iAppliedPatternHitCount &&
+			advanceStatusOccurrence(*magicFailureRoom, 2390u) &&
 			2u == magicFailureRoom->m_TickDamageEvents.size() &&
 			std::all_of(magicFailureRoom->m_Players.begin(),
 				magicFailureRoom->m_Players.end(), [](const auto& entry)
 				{ return 0u == entry.second.iCurrentHp; }) &&
+			1u == magicFailureBoss.iAppliedPatternHitCount &&
 			advanceStatusOccurrence(*magicFailureRoom, 2450u) &&
 			!magicFailureBoss.bPatternVerticalOffsetApplied &&
 			!magicFailureBoss.bPatternStageVerticalOffsetApplied &&
@@ -3756,7 +3764,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				magicFailureBoss.PatternTerminalReceipt.eResult;
 		tests.Require(
 			magicFailureValid,
-			"Magic-orb timeout restores the Stage-owned +0.5m offset before its 2900ms final-attack wipe and stays at base Y");
+			"Magic-orb timeout restores the Stage-owned +0.5m offset before its 1000ms final-attack wipe and stays at base Y");
 
 		auto magicAbortRoom = prepareStatusRoom(
 			"VALTAN_STAGGER_SLOT", 19775u);

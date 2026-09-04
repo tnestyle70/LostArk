@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "1e02813f098d85e3e25a12616df0ba271209220cebc10baf8944899c29ca6e8e",
+  "compositionRevision": "54b4a370ea9e4b4663235858fcb9029fed2cee48d9cc041058350dd167e668c5",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "1e02813f098d85e3e25a12616df0ba271209220cebc10baf8944899c29ca6e8e",
+    "sourceManifestId": "54b4a370ea9e4b4663235858fcb9029fed2cee48d9cc041058350dd167e668c5",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -42,7 +42,7 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
-        "sha256": "50d6d689e23479a3e8bbaaaad64f7e71e391c204c56c520e3454628bab740923",
+        "sha256": "23f5099a806dc05545b227c3aade734f29604a0d37da1ec4f3e4296991814d76",
         "bytes": 378081
       },
       {
@@ -502,13 +502,13 @@
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.egg.aura_1.effectv2.json",
-        "sha256": "4d899d32dcb2215a094d7a2c106a3bf77b4d9648be0e217f5c9d21d7677675e6",
-        "bytes": 3969
+        "sha256": "d8b519a2c53c108dc880cc264d012af7f2bf6142178df849268b1506772968c4",
+        "bytes": 3970
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.egg.aura_2.effectv2.json",
-        "sha256": "a8eb814065f4b58ad8ff82da59b0891268b8a2fc920a8104a3b7cc07a4c53d13",
-        "bytes": 3966
+        "sha256": "ef286fcd54e667f67d18e9089ffed5303a9bc21e57e8d14705b9a01f5cf08250",
+        "bytes": 3967
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.egg.black_1.effectv2.json",
@@ -582,13 +582,13 @@
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.portal.black_1.effectv2.json",
-        "sha256": "feddb9e7c4eab791ff6ebadc210146f99aefe4f9238937f66a9e483b21f49452",
-        "bytes": 3916
+        "sha256": "c5bf4e4f4e73ade367c7512bd8169f6ad6c476eca9f60a1373a68b9fdd225fbb",
+        "bytes": 3921
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.portal.cyan_1.effectv2.json",
-        "sha256": "1273362e21102f3cbbd2915bb18cdfe0a054adae6083efb8a075d3bfc5094960",
-        "bytes": 3978
+        "sha256": "389ee034c2d2cd3789ab363faac5df857c4d99c1fb6beb55e1bc194476aa9063",
+        "bytes": 3983
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.project-tuned.sequence.trash.pulse.effectv2.json",
@@ -1042,13 +1042,13 @@
       },
       {
         "path": "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-        "sha256": "4aabc45c9a41c0ec35243f39255d6c9a0624e4211a7e30334350b31178f948ce",
-        "bytes": 88333
+        "sha256": "9a2c55ea906393524aa006067f44da14d133b4abdfdaaf863763a167c77c510b",
+        "bytes": 88970
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json",
-        "sha256": "f7128e3df76088efc128710fee060c8e635cd91712c465766f909e11e3453b7a",
-        "bytes": 4839
+        "sha256": "3f19401261cefccd744d382ed6cf412d77bb132d11ff75db45165e66d7c7d0e3",
+        "bytes": 4871
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.blackhole.effectv2group.json",
@@ -1082,8 +1082,8 @@
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.portal.effectv2group.json",
-        "sha256": "1dd4ed4c6050494a6f67d9c90bf3c3995309f25ef0b2655e4ad59e4f8f84d18e",
-        "bytes": 700
+        "sha256": "47f4dceee72ac752647da588870da46f0b4c0f10732f400d588b9ac5f4767d6e",
+        "bytes": 703
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.pounding.chase.effectv2group.json",
@@ -1132,7 +1132,7 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "d93118c6f00bdce8921ae7f4694211ef407594c7a28e59c7d364a71f9961dc9b",
+        "sha256": "ef5cd84c0daf1b6785fa13255da1538d2eb9a9a427a035b65eec382fae77979c",
         "bytes": 262342
       },
       {
@@ -1147,7 +1147,7 @@
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "d4ef706868cfd8aef56c699d2df4518e40a0a8e3f7106c393b40744fca655ff5",
+        "sha256": "e35b2ab579d49d4e59a0f100cc259393172fcbe36b7ae44a4f710473c37184e9",
         "bytes": 221156
       },
       {
@@ -5994,7 +5994,7 @@
                 "schedule": {
                   "kind": "INTERVAL",
                   "count": 1,
-                  "firstOffsetMs": 2900,
+                  "firstOffsetMs": 1000,
                   "intervalMs": 0
                 },
                 "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
@@ -30203,7 +30203,7 @@
               "schedule": {
                 "kind": "INTERVAL",
                 "count": 1,
-                "firstOffsetMs": 2900,
+                "firstOffsetMs": 1000,
                 "intervalMs": 0
               },
               "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
@@ -30272,7 +30272,7 @@
                 },
                 "clock": {
                   "basis": "STAGE",
-                  "startMs": 2900,
+                  "startMs": 1000,
                   "repeatPolicy": "ONCE",
                   "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01"
                 },
@@ -30308,7 +30308,7 @@
                   "sourceClock": {
                     "basis": "CLIP_OCCURRENCE",
                     "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
-                    "startMs": 2900,
+                    "startMs": 1000,
                     "repeatPolicy": "ONCE"
                   }
                 }
@@ -30323,7 +30323,7 @@
                 },
                 "clock": {
                   "basis": "STAGE",
-                  "startMs": 2900,
+                  "startMs": 1000,
                   "repeatPolicy": "ONCE",
                   "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01"
                 },
@@ -30359,7 +30359,7 @@
                   "sourceClock": {
                     "basis": "CLIP_OCCURRENCE",
                     "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
-                    "startMs": 2900,
+                    "startMs": 1000,
                     "repeatPolicy": "ONCE"
                   }
                 }
@@ -30374,7 +30374,7 @@
                 },
                 "clock": {
                   "basis": "STAGE",
-                  "startMs": 2900,
+                  "startMs": 1000,
                   "repeatPolicy": "ONCE"
                 },
                 "stopPolicy": "STAGE_END",
@@ -30389,7 +30389,7 @@
                   "schedule": {
                     "kind": "INTERVAL",
                     "count": 1,
-                    "firstOffsetMs": 2900,
+                    "firstOffsetMs": 1000,
                     "intervalMs": 0
                   },
                   "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130",
@@ -30409,7 +30409,7 @@
                 },
                 "clock": {
                   "basis": "STAGE",
-                  "startMs": 2900,
+                  "startMs": 1000,
                   "repeatPolicy": "ONCE",
                   "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01"
                 },
@@ -30442,7 +30442,7 @@
                   "soundEvent": "G_Voltan2_Attack25_Shot2",
                   "sourceClock": {
                     "basis": "CLIP_OCCURRENCE",
-                    "startMs": 2900,
+                    "startMs": 1000,
                     "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01"
                   }
                 }
@@ -92400,7 +92400,7 @@
           "soundBank": "S_Mob_G_Voltan2",
           "soundEvent": "G_Voltan2_Attack25_Shot2",
           "repeatPolicy": "once",
-          "startMs": 2900
+          "startMs": 1000
         },
         {
           "bindingId": "cue.sound.valtan.cinematic.entrance.arena-reveal.clip.01.01",
@@ -104330,7 +104330,7 @@
           "clock": {
             "basis": "CLIP_OCCURRENCE",
             "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
-            "startMs": 2900,
+            "startMs": 1000,
             "repeatPolicy": "ONCE"
           },
           "anchor": {
@@ -104371,7 +104371,7 @@
           "clock": {
             "basis": "CLIP_OCCURRENCE",
             "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
-            "startMs": 2900,
+            "startMs": 1000,
             "repeatPolicy": "ONCE"
           },
           "anchor": {

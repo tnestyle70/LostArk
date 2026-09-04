@@ -3533,8 +3533,9 @@ def commit_typed_authoring_patch(
             else:
                 if effect_v2_pair is not None and effect_v2_read_set_path is None:
                     raise PromotionError(
-                        "Effect V2 formatVersion 2 Composition Save requires its "
-                        "resource read-set snapshot; Reload before Save"
+                        "Effect V2 formatVersion 2 Composition Save request omitted its "
+                        "resource read-set snapshot; rebuild and restart the Client so its "
+                        "authoring pipeline matches the writer. The draft was preserved"
                     )
                 effect_v2_document = (
                     _validate_effect_v2_bindings_against_candidate_products(

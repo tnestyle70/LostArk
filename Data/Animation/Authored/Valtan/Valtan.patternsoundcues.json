@@ -2497,7 +2497,7 @@
    "soundBank": "S_Mob_G_Voltan2",
    "soundEvent": "G_Voltan2_Attack25_Shot2",
    "repeatPolicy": "once",
-   "startMs": 2900
+   "startMs": 1000
   },
   {
    "bindingId": "cue.sound.valtan.cinematic.entrance.arena-reveal.clip.01.01",
