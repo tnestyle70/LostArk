@@ -37,22 +37,23 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
             r"(?s)#ifdef _DEBUG.*Render_StagePanel\(\);.*#endif",
         )
 
-        expected = {
-            "Lobby_TestButton": "LOBBY_STAGE::TEST",
-            "Lobby_CreateCharacterButton": "LOBBY_STAGE::CHARACTER_SELECT",
-            "Lobby_ValtanButton": "LOBBY_STAGE::VALTAN",
-            "Lobby_BernButton": "LOBBY_STAGE::BERN",
-        }
         slot_ids = [slot["id"] for slot in layout["slots"]]
-        for slot_id, stage in expected.items():
-            self.assertEqual(slot_ids.count(slot_id), 1)
-            self.assertIn(slot_id, main)
-            self.assertIn(stage, main)
+        self.assertEqual(slot_ids.count("Lobby_JoinButton"), 1)
         self.assertEqual(slot_ids.count("Lobby_StatusText"), 1)
-        self.assertIn("CLevel_Lobby::Submit_ProductCommand", main)
+        self.assertIn("Lobby_JoinButton", main)
+        self.assertIn("CLevel_Lobby::Can_SubmitProductCommand()", main)
+        self.assertIn(
+            "CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT)", main
+        )
         self.assertIn("CLevel_Lobby::Get_ProductStatus", main)
-        self.assertIn("Resolve_LobbyProductButtonRects", main)
-        self.assertIn("Is_ValidProductRect", main)
+        self.assertIn("Get_LobbySlotRect", main)
+        for stage in (
+            "LOBBY_STAGE::TEST",
+            "LOBBY_STAGE::CHARACTER_SELECT",
+            "LOBBY_STAGE::VALTAN",
+            "LOBBY_STAGE::BERN",
+        ):
+            self.assertIn(stage, source)
         self.assertIn("LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE", source)
 
         panel = re.search(
