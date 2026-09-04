@@ -1,0 +1,13 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.valtan.six.sonic.after",
+  "durationMs": 0,
+  "children": [
+    { "childId": "child.authored.00000", "resource": { "kind": "LEAF", "id": "boss.valtan.sw_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, -1.25], "rotation": [0.0, 0.0, 0.0], "scale": [3.0, 1.0, 3.0] } },
+    { "childId": "child.authored.00001", "resource": { "kind": "LEAF", "id": "boss.valtan.six.smoke_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.authored.00002", "resource": { "kind": "LEAF", "id": "boss.valtan.hit_3" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.3, 1.3, 1.3] } },
+    { "childId": "child.authored.00003", "resource": { "kind": "LEAF", "id": "boss.valtan.chase.decal_2" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.3, 1.0, 1.3] } },
+    { "childId": "child.authored.00004", "resource": { "kind": "LEAF", "id": "boss.valtan.blur_5" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+  ]
+}
