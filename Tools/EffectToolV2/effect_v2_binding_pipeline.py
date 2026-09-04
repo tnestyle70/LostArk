@@ -54,7 +54,7 @@ PARTICLE_SPAWN_SHAPES = {"Point", "Sphere", "Ring", "Box"}
 PARTICLE_VELOCITY_MODES = {"Fixed", "Outward", "Cone"}
 PARTICLE_ALIGNMENTS = {"Camera", "Velocity", "Horizontal"}
 TRAIL_EDGE_MODES = {"CenterlineCamera", "CenterlineUp", "LocalOffset"}
-SCREEN_POST_PROFILES = {"ZoomBlur", "RgbNoise", "FilmNoise"}
+SCREEN_POST_PROFILES = {"ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration"}
 ROOT_FIELDS = ("schema", "formatVersion", "archetypeId", "bindings")
 BINDING_FIELDS = (
     "bindingId",

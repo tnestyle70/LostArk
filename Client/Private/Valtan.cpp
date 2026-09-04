@@ -776,29 +776,59 @@ bool_t CValtan::Reload_PlayerHandGripLocalOffsets_WhileAdmitted(
 		return false;
 	}
 
-	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET> staged;
+	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
+		stagedByActionId;
+	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
+		stagedByPatternId;
 	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
 	{
+		bool_t bHasPatternGripLocalOffset = false;
+		PLAYER_HAND_GRIP_LOCAL_OFFSET patternGripLocalOffset{};
 		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
 		{
 			if (!stage.gripLocalOffset.has_value())
 				continue;
-			if (stage.actionId.empty() ||
+			if (pattern.patternId.empty() || stage.actionId.empty() ||
 				!CPlayerHandGripTransform::Is_ValidGripLocalOffset(
 					*stage.gripLocalOffset) ||
-				!staged.emplace(stage.actionId, *stage.gripLocalOffset).second)
+				!stagedByActionId.emplace(
+					stage.actionId, *stage.gripLocalOffset).second)
 			{
 				strOutStatus =
 					"Valtan player hand-grip stable action identity is invalid: " +
 					pattern.patternId + "/" + stage.stageId;
 				return false;
 			}
+			if (!bHasPatternGripLocalOffset)
+			{
+				patternGripLocalOffset = *stage.gripLocalOffset;
+				bHasPatternGripLocalOffset = true;
+			}
+			else if (patternGripLocalOffset != *stage.gripLocalOffset)
+			{
+				strOutStatus =
+					"Valtan player hand-grip Pattern has conflicting CAPTURE gripLocalOffset values: " +
+					pattern.patternId;
+				return false;
+			}
+		}
+		if (bHasPatternGripLocalOffset &&
+			!stagedByPatternId.emplace(
+				pattern.patternId, patternGripLocalOffset).second)
+		{
+			strOutStatus =
+				"Valtan player hand-grip stable Pattern identity is duplicated: " +
+				pattern.patternId;
+			return false;
 		}
 	}
-	m_PlayerHandGripLocalOffsetByActionId = std::move(staged);
+	m_PlayerHandGripLocalOffsetByActionId = std::move(stagedByActionId);
+	m_PlayerHandGripLocalOffsetByPatternId = std::move(stagedByPatternId);
 	strOutStatus = "Reloaded " +
 		std::to_string(m_PlayerHandGripLocalOffsetByActionId.size()) +
-		" Valtan player hand-grip action binding(s).";
+		" Valtan player hand-grip action binding(s) and " +
+		std::to_string(m_PlayerHandGripLocalOffsetByPatternId.size()) +
+		" Pattern binding(s).";
 	return true;
 }
 
@@ -811,6 +841,23 @@ bool_t CValtan::Try_Get_PlayerHandGripLocalOffset(
 	const auto found = m_PlayerHandGripLocalOffsetByActionId.find(
 		std::string(actionId));
 	if (m_PlayerHandGripLocalOffsetByActionId.end() == found ||
+		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(found->second))
+	{
+		return false;
+	}
+	outOffset = found->second;
+	return true;
+}
+
+bool_t CValtan::Try_Get_PlayerHandGripLocalOffsetByPatternId(
+	const std::string_view patternId,
+	Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
+{
+	if (patternId.empty())
+		return false;
+	const auto found = m_PlayerHandGripLocalOffsetByPatternId.find(
+		std::string(patternId));
+	if (m_PlayerHandGripLocalOffsetByPatternId.end() == found ||
 		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(found->second))
 	{
 		return false;
@@ -884,8 +931,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	const auto PreviousBindings = m_PatternClipByActionId;
 	const auto PreviousBodyVisibility =
 		m_PatternBodyVisibilityByActionId;
-	const auto PreviousGripLocalOffsets =
+	const auto PreviousGripLocalOffsetsByActionId =
 		m_PlayerHandGripLocalOffsetByActionId;
+	const auto PreviousGripLocalOffsetsByPatternId =
+		m_PlayerHandGripLocalOffsetByPatternId;
 	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
 	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
 	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
@@ -909,7 +958,8 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	const auto RestorePrevious = [this,
 		&PreviousBindings, &PreviousBodyVisibility,
-		&PreviousGripLocalOffsets,
+		&PreviousGripLocalOffsetsByActionId,
+		&PreviousGripLocalOffsetsByPatternId,
 		&PreviousEffectCues, &PreviousArenaCenters,
 		&PreviousEffectAttempts, PreviousEffectScanValid,
 		PreviousEffectScanAge, &PreviousSoundCues,
@@ -922,7 +972,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		m_PatternClipByActionId = PreviousBindings;
 		m_PatternBodyVisibilityByActionId = PreviousBodyVisibility;
-		m_PlayerHandGripLocalOffsetByActionId = PreviousGripLocalOffsets;
+		m_PlayerHandGripLocalOffsetByActionId =
+			PreviousGripLocalOffsetsByActionId;
+		m_PlayerHandGripLocalOffsetByPatternId =
+			PreviousGripLocalOffsetsByPatternId;
 		m_PatternEffectCuesByActionId = PreviousEffectCues;
 		m_PatternArenaCenterAnchors = PreviousArenaCenters;
 		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
@@ -966,8 +1019,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	auto StagedBindings = std::move(m_PatternClipByActionId);
 	auto StagedBodyVisibility =
 		std::move(m_PatternBodyVisibilityByActionId);
-	auto StagedGripLocalOffsets =
+	auto StagedGripLocalOffsetsByActionId =
 		std::move(m_PlayerHandGripLocalOffsetByActionId);
+	auto StagedGripLocalOffsetsByPatternId =
+		std::move(m_PlayerHandGripLocalOffsetByPatternId);
 	auto StagedEffectCues = std::move(m_PatternEffectCuesByActionId);
 	auto StagedArenaCenters = std::move(m_PatternArenaCenterAnchors);
 	auto StagedSoundCues = std::move(m_PatternSoundCuesByActionId);
@@ -998,7 +1053,9 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	m_PatternBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
 	m_PlayerHandGripLocalOffsetByActionId =
-		std::move(StagedGripLocalOffsets);
+		std::move(StagedGripLocalOffsetsByActionId);
+	m_PlayerHandGripLocalOffsetByPatternId =
+		std::move(StagedGripLocalOffsetsByPatternId);
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
 	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);

@@ -1,5 +1,8 @@
 #include "Loader.h"
 
+#include "GameInstance.h"
+#include "Profiler.h"
+
 #include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
 #include "Camera_Free.h"
@@ -207,10 +210,19 @@ HRESULT CLoader::Initialize(
 
 HRESULT CLoader::Start_Loading()
 {
-	HRESULT result =
-		CLevelRegistry::Execute_Load(m_eNextLevelID, *this);
+	/* Worker-thread scopes: the profiler attributes them to the frame in
+	   which they end, and long ones surface in its Long operations list. */
+	Engine::CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	HRESULT result = S_OK;
+	{
+		Engine::CProfilerScope levelScope(pProfiler, "Loader.LevelLoad");
+		result = CLevelRegistry::Execute_Load(m_eNextLevelID, *this);
+	}
 	if (SUCCEEDED(result) && nullptr != m_pEffectLoadJob)
+	{
+		Engine::CProfilerScope effectScope(pProfiler, "Loader.EffectPreparation");
 		result = Run_EffectLoadPreparation();
+	}
 	m_iResult.store(result, std::memory_order_release);
 	m_eState.store(
 		SUCCEEDED(result) ? STATE::SUCCEEDED : STATE::FAILED,

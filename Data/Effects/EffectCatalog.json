@@ -457,6 +457,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.project-tuned.large-donut",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.large-donut.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"

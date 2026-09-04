@@ -291,15 +291,24 @@ def scripted_sequence_contract_valid(
     gameplay_ids: set[str],
     product_ids: set[str],
 ) -> bool:
-    exact_fields = {
+    required_fields = {
         "sequenceId", "mode", "interStepPursuitMs", "patternIds",
     }
+    allowed_fields = (
+        required_fields,
+        required_fields | {"transitionPursuitMs"},
+    )
 
     def shape_valid(sequence: object, admitted_ids: set[str]) -> bool:
-        if not isinstance(sequence, dict) or set(sequence) != exact_fields:
+        if not isinstance(sequence, dict) or set(sequence) not in allowed_fields:
             return False
         pursuit_ms = sequence.get("interStepPursuitMs")
         pattern_ids = sequence.get("patternIds")
+        transition_pursuit_ms = sequence.get(
+            "transitionPursuitMs",
+            [pursuit_ms] * (len(pattern_ids) - 1)
+            if isinstance(pattern_ids, list) else None,
+        )
         return (
             isinstance(sequence.get("sequenceId"), str)
             and STABLE_TOKEN.fullmatch(sequence["sequenceId"]) is not None
@@ -316,6 +325,19 @@ def scripted_sequence_contract_valid(
                 and pattern_id in admitted_ids
                 for pattern_id in pattern_ids
             )
+            and isinstance(transition_pursuit_ms, list)
+            and len(transition_pursuit_ms) + 1 == len(pattern_ids)
+            and all(
+                type(value) is int and 100 <= value <= 10_000
+                for value in transition_pursuit_ms
+            )
+        )
+
+    def effective_transition_pursuit_ms(sequence: dict) -> list[int]:
+        return sequence.get(
+            "transitionPursuitMs",
+            [sequence["interStepPursuitMs"]]
+            * (len(sequence["patternIds"]) - 1),
         )
 
     if not (
@@ -329,6 +351,8 @@ def scripted_sequence_contract_valid(
         source_sequence["interStepPursuitMs"]
         == product_sequence["interStepPursuitMs"]
         and source_sequence["patternIds"] == product_sequence["patternIds"]
+        and effective_transition_pursuit_ms(source_sequence)
+        == effective_transition_pursuit_ms(product_sequence)
     )
 
 
@@ -580,9 +604,15 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
     def test_inline_scripted_sequence_is_canonical_and_projects_exactly(self) -> None:
         sequence = PHYSICAL_GAMEPLAY["decisionModel"]["scriptedSequence"]
-        self.assertEqual(
-            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+        self.assertIn(
             set(sequence),
+            (
+                {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+                {
+                    "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+                    "transitionPursuitMs",
+                },
+            ),
         )
         self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, sequence)
         self.assertEqual(sequence, self.rotations["scriptedSequence"])
@@ -691,8 +721,13 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         invalid_sources: list[tuple[str, dict, str]] = []
         for entry_id in entry_ids:
             later_entry = copy.deepcopy(self.gameplay)
-            sequence = later_entry["decisionModel"]["scriptedSequence"]["patternIds"]
+            scripted = later_entry["decisionModel"]["scriptedSequence"]
+            sequence = scripted["patternIds"]
             sequence[:] = ["VALTAN_WHIRLWIND", entry_id]
+            if "transitionPursuitMs" in scripted:
+                scripted["transitionPursuitMs"] = (
+                    [scripted["interStepPursuitMs"]] * (len(sequence) - 1)
+                )
             invalid_sources.append((
                 f"{entry_id} is no longer first", later_entry,
                 "optional entry cinematic",
@@ -750,6 +785,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         expected_independent_ids = {
             "valtan.independent-effect.target-axe",
             "valtan.independent-effect.donut-in-out",
+            "valtan.independent-effect.donut-large",
             "valtan.independent-effect.ground-roar-cardinal-rocks",
             "valtan.independent-effect.six-pizza-rock-pillars",
             "valtan.independent-effect.struggling-rock-pillars",
@@ -1767,14 +1803,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             volley for volley in volleys
             if volley["targetingPolicy"] == "PER_ALIVE_PLAYER"
         )
-        self.assertEqual(1, axe_volley["spawnCount"])
+        self.assertEqual(3, axe_volley["spawnCount"])
         self.assertEqual(0, axe_volley["firstSpawnOffsetMs"])
-        self.assertEqual(0, axe_volley["spawnIntervalMs"])
-        self.assertEqual(0, axe_volley["arenaRandomCount"])
-        self.assertEqual(0, axe_volley["arenaRandomRadiusM"])
-        self.assertEqual(0, axe_volley["arenaHeightToleranceM"])
-        self.assertEqual("NONE", axe_volley["arenaAnchorPolicy"])
-        self.assertEqual(4, axe_volley["maximumTotalObjects"])
+        self.assertEqual(1333, axe_volley["spawnIntervalMs"])
+        self.assertEqual(4, axe_volley["arenaRandomCount"])
+        self.assertEqual(14.0, axe_volley["arenaRandomRadiusM"])
+        self.assertEqual(1.0, axe_volley["arenaHeightToleranceM"])
+        self.assertEqual("BOSS_SPAWN_POSITION", axe_volley["arenaAnchorPolicy"])
+        self.assertEqual(36, axe_volley["maximumTotalObjects"])
 
         axe_source = next(
             event
@@ -1793,11 +1829,16 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "maximumTotalObjects",
         }, set(axe_source))
         self.assertEqual(
-            {"kind": "INTERVAL", "count": 1, "firstOffsetMs": 0,
-             "intervalMs": 0},
+            {"kind": "INTERVAL", "count": 3, "firstOffsetMs": 0,
+             "intervalMs": 1333},
             axe_source["spawnSchedule"],
         )
-        self.assertEqual({"kind": "NONE"}, axe_source["arenaRandom"])
+        self.assertEqual(
+            {"kind": "RANDOM_NAVIGABLE_CIRCLE",
+             "anchor": "BOSS_SPAWN_POSITION", "count": 4,
+             "radiusM": 14.0, "heightToleranceM": 1.0},
+            axe_source["arenaRandom"],
+        )
         self.assertEqual([
             {
                 "trigger": "ENTER",

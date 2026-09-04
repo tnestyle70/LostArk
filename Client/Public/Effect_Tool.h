@@ -37,6 +37,7 @@ NS_BEGIN(Client)
 
 class CEffectObject;
 class CEffectThumbnailCache;
+class CBalanceTool;
 class CValtan;
 class EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION;
 struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE;
@@ -543,11 +544,16 @@ public:
     CEffect_Tool(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,
-        shared_ptr<CCharacterPreviewPanel> pCharacterPreviewPanel);
+        shared_ptr<CCharacterPreviewPanel> pCharacterPreviewPanel,
+		CBalanceTool* pBalanceTool = nullptr);
     ~CEffect_Tool();
 
     void Update(f32_t fTimeDelta);
     void Render();
+    /* Composition Save committed a new canonical revision. Queue that exact
+       receipt; Update consumes it even while the Effect window is hidden. */
+    void Request_ValtanGraphRefresh(
+		const std::string& strExpectedSourceRevision);
 	bool_t Open_ValtanAllEffectsWorkspace();
 	bool_t Open_ValtanProductEffect(
 		const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request);
@@ -836,6 +842,16 @@ private:
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
 	bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
+	bool_t Refresh_ValtanPatternTreeForRevision(
+		const std::string& strExpectedSourceRevision);
+	void Process_PendingValtanGraphRefresh();
+	bool_t Observe_ExpectedValtanSourceRevision(
+		const std::string& strExpectedSourceRevision,
+		const char_t* pPhase);
+	void Preserve_ValtanGraphForStaleRevision(
+		const std::string& strExpectedSourceRevision,
+		const char_t* pPhase,
+		const std::string& strDiagnostic);
 	void Schedule_ValtanPatternTreeReloadRetry();
 	bool_t Stage_ValtanProductFallback(
 		const CValtanCanonicalProductReadAdmission& Admission,
@@ -1196,6 +1212,21 @@ private:
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
 	   tree so the window never empties on a transient read error. */
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
+	enum class VALTAN_GRAPH_REFRESH_STATE : uint8_t
+	{
+		IDLE,
+		PENDING,
+		ADMITTED,
+		STALE_REVISION,
+		FAILED,
+	};
+	CBalanceTool* m_pBalanceTool = nullptr;
+	VALTAN_GRAPH_REFRESH_STATE m_eValtanGraphRefreshState =
+		VALTAN_GRAPH_REFRESH_STATE::IDLE;
+	bool_t m_bValtanGraphRefreshRequested = false;
+	std::string m_strPendingValtanGraphRefreshRevision;
+	std::string m_strActiveValtanGraphRefreshRevision;
+	std::string m_strCommittedValtanGraphRevision;
 	CEncounterPatternReference m_ValtanProductFallbackEncounter;
 	CMapEffectDocument m_ValtanAreaMapEffectDocument;
 	std::filesystem::path m_ValtanAreaMapEffectPath;

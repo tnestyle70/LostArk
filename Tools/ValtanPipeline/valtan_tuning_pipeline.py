@@ -67,6 +67,21 @@ BOSS_CATALOG_REL = "Data/Actors/BossCatalog.json"
 BOSS_PROFILES_REL = "Data/Balance/BossProfiles.json"
 DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
+COMBAT_OBJECT_SOUND_CUES_REL = (
+    "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json"
+)
+PATTERN_SOUND_CUES_REL = (
+    "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+)
+EFFECT_V2_BINDINGS_REL = (
+    "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+)
+COMPOSITION_DESCRIPTOR_REL = (
+    "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+)
+EFFECT_V1_ALIASES_REL = (
+    "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+)
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
 GAMEPLAY_BOOTSTRAP_VERSION = 32
@@ -96,6 +111,7 @@ REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS = frozenset(
         "valtan.independent-effect.six-pizza-rock-pillars",
         "valtan.independent-effect.struggling-rock-pillars",
         "valtan.independent-effect.ghost-portal-once",
+        "valtan.independent-effect.donut-large",
     )
 )
 
@@ -109,7 +125,7 @@ REPOSITORY_PRODUCT_ARTIFACTS = (
     PROVENANCE_REL,
 )
 
-AUTHORING_ARTIFACTS = (
+LEGACY_AUTHORING_ARTIFACTS = (
     GAMEPLAY_AUTHORING_REL,
     PRESENTATION_AUTHORING_REL,
     BOSS_PROFILES_REL,
@@ -119,6 +135,8 @@ AUTHORING_ARTIFACTS = (
     LEGACY_REL,
     PROVENANCE_REL,
 )
+AUTHORING_ARTIFACTS = LEGACY_AUTHORING_ARTIFACTS + (BOSS_CATALOG_REL,)
+AUTHORING_MANIFEST_FORMAT_VERSION = 2
 
 WORLD_SET_ID = "worldeventset.valtan.arena-break-109.outer-wall"
 WORLD_PATTERN_ID = "VALTAN_ARENA_BREAK_109"
@@ -623,6 +641,248 @@ def source_text_identity(path: Path) -> tuple[str, int]:
 
 def canonical_hash(value: Any) -> str:
     return sha256_bytes(canonical_bytes(value))
+
+
+def project_valtan_composition_shadow_index(
+    document: Mapping[str, Any],
+    joined: Mapping[str, Any],
+    repository_root: Path | None = None,
+) -> dict[str, Any]:
+    """Refresh only the derived index owned by the SHADOW descriptor.
+
+    The split gameplay/presentation documents remain the writable owners.  A
+    Pattern save therefore updates only coverage and stable Pattern IDs in the
+    composition descriptor, keeping the descriptor in the same atomic commit
+    without copying any Stage or cue payload into a second source owner.
+    """
+
+    if not isinstance(document, dict):
+        raise PipelineError("Valtan composition descriptor must be an object")
+    exact(
+        document,
+        (
+            "schema",
+            "formatVersion",
+            "compositionId",
+            "status",
+            "revision",
+            "displayName",
+            "bossArchetypeId",
+            "encounterId",
+            "areaId",
+            "sourceDocuments",
+            "coverage",
+            "patterns",
+        ),
+        "Valtan composition descriptor",
+    )
+    if document.get("schema") != "lostark.boss-composition":
+        raise PipelineError(
+            "Valtan composition descriptor schema must be lostark.boss-composition"
+        )
+    if document.get("compositionId") != "boss.composition.valtan":
+        raise PipelineError("Valtan composition descriptor has the wrong compositionId")
+    if document.get("status") != "SHADOW":
+        raise PipelineError("Valtan composition descriptor must remain SHADOW")
+    format_version = document.get("formatVersion")
+    if (
+        isinstance(format_version, bool)
+        or not isinstance(format_version, int)
+        or format_version != 1
+    ):
+        raise PipelineError("Valtan composition descriptor formatVersion must be 1")
+    revision = document.get("revision")
+    if (
+        isinstance(revision, bool)
+        or not isinstance(revision, int)
+        or revision < 1
+        or revision > (1 << 32) - 1
+    ):
+        raise PipelineError("Valtan composition descriptor revision must be positive")
+    if not isinstance(document.get("displayName"), str) or not document["displayName"]:
+        raise PipelineError("Valtan composition descriptor displayName is invalid")
+    for field, expected in (
+        ("bossArchetypeId", "BOSS_VALTAN"),
+        ("encounterId", "ENCOUNTER_VALTAN"),
+        ("areaId", "LV_LUT_HEARTRB_ED"),
+    ):
+        if document.get(field) != expected:
+            raise PipelineError(
+                f"Valtan composition descriptor {field} must be {expected}"
+            )
+
+    source_documents = document.get("sourceDocuments")
+    if not isinstance(source_documents, list) or not source_documents:
+        raise PipelineError(
+            "Valtan composition descriptor sourceDocuments must be non-empty"
+        )
+    source_roles: set[str] = set()
+    source_paths: set[str] = set()
+    for ordinal, row in enumerate(source_documents):
+        if not isinstance(row, dict):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}] must be an object"
+            )
+        exact(
+            row,
+            ("role", "path"),
+            f"Valtan composition sourceDocuments[{ordinal}]",
+        )
+        role = row.get("role")
+        path = row.get("path")
+        if not isinstance(role, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", role):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}].role is invalid"
+            )
+        if role in source_roles:
+            raise PipelineError(f"duplicate Valtan composition source role: {role}")
+        source_roles.add(role)
+        if (
+            not isinstance(path, str)
+            or not path
+            or "\\" in path
+            or not path.startswith("Data/")
+            or any(part in {"", ".."} for part in path.split("/"))
+        ):
+            raise PipelineError(
+                f"Valtan composition sourceDocuments[{ordinal}].path is invalid"
+            )
+        if path in source_paths:
+            raise PipelineError(f"duplicate Valtan composition source path: {path}")
+        source_paths.add(path)
+    required_sources = {
+        "GAMEPLAY": GAMEPLAY_AUTHORING_REL,
+        "PRESENTATION": PRESENTATION_AUTHORING_REL,
+        "COMBAT_OBJECTS": COMBAT_AUTHORING_REL,
+        "WORLD_EVENT_SETS": WORLD_SET_REL,
+        "ANIMATION_BINDINGS": BINDINGS_REL,
+        "EFFECT_V1_CUES": CUES_REL,
+        "EFFECT_V1_ALIASES": EFFECT_V1_ALIASES_REL,
+        "EFFECT_V2_BINDINGS": EFFECT_V2_BINDINGS_REL,
+        "PATTERN_SOUND_CUES": PATTERN_SOUND_CUES_REL,
+        "PATTERN_SHAKE_CUES": SHAKE_CUES_REL,
+        "COMBAT_OBJECT_SOUND_CUES": COMBAT_OBJECT_SOUND_CUES_REL,
+    }
+    if source_roles != set(required_sources):
+        raise PipelineError(
+            "Valtan composition descriptor source role closure is invalid: "
+            f"expected={sorted(required_sources)} actual={sorted(source_roles)}"
+        )
+    actual_by_role = {row["role"]: row["path"] for row in source_documents}
+    for role, expected_path in required_sources.items():
+        if actual_by_role[role] != expected_path:
+            raise PipelineError(
+                f"Valtan composition source role {role} must reference {expected_path}"
+            )
+    if repository_root is not None:
+        for role, relative_path in required_sources.items():
+            if not (repository_root / relative_path).is_file():
+                raise PipelineError(
+                    f"Valtan composition source role {role} is missing: {relative_path}"
+                )
+
+    coverage = document.get("coverage")
+    if not isinstance(coverage, dict):
+        raise PipelineError("Valtan composition descriptor coverage must be an object")
+    exact(
+        coverage,
+        (
+            "kind",
+            "expectedPatternCount",
+            "expectedStageCount",
+            "expectedIdentitySha256",
+        ),
+        "Valtan composition descriptor coverage",
+    )
+    if coverage.get("kind") != "VALTAN_SPLIT_JOIN":
+        raise PipelineError("Valtan composition coverage kind must be VALTAN_SPLIT_JOIN")
+    for field in ("expectedPatternCount", "expectedStageCount"):
+        value = coverage.get(field)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < 1
+            or value > (1 << 32) - 1
+        ):
+            raise PipelineError(f"Valtan composition coverage {field} is invalid")
+    digest = coverage.get("expectedIdentitySha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise PipelineError(
+            "Valtan composition coverage expectedIdentitySha256 is invalid"
+        )
+
+    pattern_index = document.get("patterns")
+    if not isinstance(pattern_index, list) or not pattern_index:
+        raise PipelineError("Valtan composition pattern index must be non-empty")
+    indexed_pattern_ids: set[str] = set()
+    for ordinal, row in enumerate(pattern_index):
+        if not isinstance(row, dict):
+            raise PipelineError(
+                f"Valtan composition patterns[{ordinal}] must be an object"
+            )
+        exact(row, ("patternId",), f"Valtan composition patterns[{ordinal}]")
+        pattern_id = row.get("patternId")
+        if not isinstance(pattern_id, str) or not pattern_id:
+            raise PipelineError(
+                f"Valtan composition patterns[{ordinal}].patternId is invalid"
+            )
+        if pattern_id in indexed_pattern_ids:
+            raise PipelineError(
+                f"duplicate Valtan composition patternId: {pattern_id}"
+            )
+        indexed_pattern_ids.add(pattern_id)
+    patterns = joined.get("patterns") if isinstance(joined, dict) else None
+    if not isinstance(patterns, list) or not patterns:
+        raise PipelineError("joined Valtan Pattern graph must be a non-empty array")
+
+    identity: list[dict[str, Any]] = []
+    for pattern_ordinal, pattern in enumerate(patterns):
+        if not isinstance(pattern, dict) or not isinstance(
+            pattern.get("patternId"), str
+        ):
+            raise PipelineError(
+                f"joined Valtan Pattern[{pattern_ordinal}] has no stable patternId"
+            )
+        stages = pattern.get("stages")
+        if not isinstance(stages, list) or not stages:
+            raise PipelineError(
+                f"joined Valtan Pattern {pattern['patternId']} has no stages"
+            )
+        stage_identity: list[dict[str, Any]] = []
+        for stage_ordinal, stage in enumerate(stages):
+            if (
+                not isinstance(stage, dict)
+                or not isinstance(stage.get("stageId"), str)
+                or not isinstance(stage.get("actionId"), str)
+            ):
+                raise PipelineError(
+                    "joined Valtan Stage identity is invalid: "
+                    f"pattern={pattern['patternId']} ordinal={stage_ordinal}"
+                )
+            stage_identity.append(
+                {"stageId": stage["stageId"], "actionId": stage["actionId"]}
+            )
+        identity.append(
+            {"patternId": pattern["patternId"], "stages": stage_identity}
+        )
+
+    candidate = copy.deepcopy(document)
+    candidate["coverage"] = {
+        "kind": "VALTAN_SPLIT_JOIN",
+        "expectedPatternCount": len(identity),
+        "expectedStageCount": sum(len(row["stages"]) for row in identity),
+        "expectedIdentitySha256": canonical_hash(identity),
+    }
+    candidate["patterns"] = [
+        {"patternId": row["patternId"]} for row in identity
+    ]
+    comparable_before = copy.deepcopy(document)
+    comparable_before.pop("revision", None)
+    comparable_after = copy.deepcopy(candidate)
+    comparable_after.pop("revision", None)
+    if comparable_before != comparable_after:
+        candidate["revision"] = revision + 1
+    return candidate
 
 
 def exact(value: Mapping[str, Any], fields: Iterable[str], context: str) -> None:
@@ -1845,6 +2105,8 @@ def _validate_pattern_stage_extensions(
     proxy = stage.get("counterProxy")
     if proxy is None:
         return
+    if stage.get("hit", {}).get("shape", {}).get("kind") != "NONE":
+        raise PipelineError(f"{context} counter proxy must be damage-less")
     if not isinstance(proxy, dict):
         raise PipelineError(f"{context}.counterProxy must be an object")
     is_forward_arc = "kind" in proxy
@@ -3263,11 +3525,15 @@ def _validate_scripted_sequence(
         return ()
     if not isinstance(sequence, dict):
         raise PipelineError("decisionModel.scriptedSequence must be an object or null")
-    exact(
-        sequence,
-        ("sequenceId", "mode", "interStepPursuitMs", "patternIds"),
-        "decisionModel.scriptedSequence",
+    sequence_fields = (
+        "sequenceId",
+        "mode",
+        "interStepPursuitMs",
+        "patternIds",
     )
+    if "transitionPursuitMs" in sequence:
+        sequence_fields += ("transitionPursuitMs",)
+    exact(sequence, sequence_fields, "decisionModel.scriptedSequence")
     stable_id(sequence["sequenceId"], "scriptedSequence.sequenceId")
     if sequence["mode"] != SCRIPTED_SEQUENCE_MODE:
         raise PipelineError(
@@ -3289,6 +3555,23 @@ def _validate_scripted_sequence(
     pattern_ids = tuple(
         stable_id(value, "scriptedSequence.patternId") for value in rows
     )
+    transition_pursuit_ms = sequence.get("transitionPursuitMs")
+    if transition_pursuit_ms is not None:
+        if (
+            not isinstance(transition_pursuit_ms, list)
+            or len(transition_pursuit_ms) + 1 != len(pattern_ids)
+        ):
+            raise PipelineError(
+                "scriptedSequence.transitionPursuitMs must contain one value "
+                "for every adjacent Pattern transition"
+            )
+        for index, pursuit_ms in enumerate(transition_pursuit_ms):
+            integer(
+                pursuit_ms,
+                f"scriptedSequence.transitionPursuitMs[{index}]",
+                100,
+                10000,
+            )
     for pattern_id in pattern_ids:
         if pattern_id not in pattern_by_id:
             raise PipelineError(
@@ -6825,6 +7108,12 @@ def project_v2_products(
     validate_effect_cue_catalog_contract(
         root, master, docs[EFFECT_CATALOG_REL]
     )
+    validate_combat_object_visual_closure(
+        docs[BOSS_CATALOG_REL],
+        docs[COMBAT_AUTHORING_REL],
+        docs[EFFECT_CATALOG_REL],
+        root,
+    )
     if (
         not migration_fixture
         and master["decisionModel"]["scriptedSequence"] is None
@@ -7244,6 +7533,9 @@ def source_manifest(root: Path) -> dict[str, Any]:
         EFFECT_CATALOG_REL,
         DEBUG_PRESENTATION_REL,
         ANIMATION_PROMOTION_MANIFEST_REL,
+        PATTERN_SOUND_CUES_REL,
+        EFFECT_V2_BINDINGS_REL,
+        COMPOSITION_DESCRIPTOR_REL,
     )
 
     def snapshot_entries() -> list[dict[str, Any]]:
@@ -7385,6 +7677,36 @@ DRAFT_PATCH_OPERATIONS = {
         "hitId",
         "innerRadiusM",
         "outerRadiusM",
+    ),
+    "ADD_COMBAT_OBJECT": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "spawnEvent",
+        "definition",
+        "visual",
+    ),
+    "UPDATE_COMBAT_OBJECT": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "eventId",
+        "combatObjectArchetypeId",
+        "clientVisualId",
+        "spawnEvent",
+        "definition",
+        "visual",
+    ),
+    "REMOVE_COMBAT_OBJECT": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "eventId",
+        "combatObjectArchetypeId",
+        "clientVisualId",
     ),
     "SET_STAGE_PORTAL_RUSH_MOTION": (
         "op",
@@ -8380,6 +8702,407 @@ def _validate_volley_layout(layout: Any, count: int, context: str) -> dict[str, 
     return copy.deepcopy(layout)
 
 
+GENERIC_COMBAT_OBJECT_OPERATIONS = frozenset(
+    ("ADD_COMBAT_OBJECT", "UPDATE_COMBAT_OBJECT", "REMOVE_COMBAT_OBJECT")
+)
+HIGH_JUMP_AXE_ARCHETYPE_ID = "combatobject.valtan.high-jump.target-axe"
+
+
+def _valtan_combat_visual_rows(
+    boss_catalog: Mapping[str, Any], context: str
+) -> list[dict[str, Any]]:
+    if not isinstance(boss_catalog, dict) or not isinstance(
+        boss_catalog.get("bosses"), list
+    ):
+        raise PipelineError(f"{context} BossCatalog root is invalid")
+    owners = [
+        row
+        for row in boss_catalog["bosses"]
+        if isinstance(row, dict) and row.get("archetypeId") == "BOSS_VALTAN"
+    ]
+    if len(owners) != 1 or not isinstance(owners[0].get("combatObjectVisuals"), list):
+        raise PipelineError(
+            f"{context} must resolve exactly one BOSS_VALTAN combatObjectVisuals owner"
+        )
+    return owners[0]["combatObjectVisuals"]
+
+
+def _validate_combat_object_visual_row(
+    visual: Any,
+    context: str,
+    effect_catalog: Mapping[str, Any] | None,
+    repository_root: Path | None = None,
+) -> None:
+    if not isinstance(visual, dict):
+        raise PipelineError(f"{context} must be an object")
+    fields = ("combatObjectArchetypeId", "clientVisualId", "effectAssetId")
+    for optional in ("effectV2Group", "hitEffectAssetId", "worldScale"):
+        if optional in visual:
+            fields += (optional,)
+    exact(visual, fields, context)
+    stable_id(visual["combatObjectArchetypeId"], f"{context}.combatObjectArchetypeId")
+    stable_id(visual["clientVisualId"], f"{context}.clientVisualId")
+    effect_ids: set[str] | None = None
+    if effect_catalog is not None:
+        rows = effect_catalog.get("effects")
+        if not isinstance(rows, list):
+            raise PipelineError("EffectCatalog effects must be an array")
+        effect_ids = set()
+        for ordinal, row in enumerate(rows):
+            if not isinstance(row, dict):
+                raise PipelineError(f"EffectCatalog effect[{ordinal}] must be an object")
+            effect_id = stable_id(
+                row.get("effectAssetId"),
+                f"EffectCatalog effect[{ordinal}].effectAssetId",
+            )
+            if effect_id in effect_ids:
+                raise PipelineError(f"duplicate EffectCatalog effectAssetId: {effect_id}")
+            effect_ids.add(effect_id)
+    for field in ("effectAssetId", "hitEffectAssetId"):
+        if field not in visual:
+            continue
+        effect_id = stable_id(visual[field], f"{context}.{field}")
+        if effect_ids is not None and effect_id not in effect_ids:
+            raise PipelineError(f"{context}.{field} does not resolve in EffectCatalog")
+    if "worldScale" in visual:
+        scale = visual["worldScale"]
+        if not isinstance(scale, list) or len(scale) != 3:
+            raise PipelineError(f"{context}.worldScale must contain three numbers")
+        for ordinal, component in enumerate(scale):
+            number(component, f"{context}.worldScale[{ordinal}]", 0.000001, 100.0)
+    if "effectV2Group" in visual:
+        group = visual["effectV2Group"]
+        if not isinstance(group, dict):
+            raise PipelineError(f"{context}.effectV2Group must be an object")
+        has_visual_hit = "visualHitMs" in group
+        has_server_hit = "serverHitId" in group
+        if has_visual_hit != has_server_hit:
+            raise PipelineError(
+                f"{context}.effectV2Group has a partial hit-sync contract"
+            )
+        group_fields = ("groupId", "playbackRate")
+        if has_visual_hit:
+            group_fields += ("visualHitMs", "serverHitId")
+        exact(group, group_fields, f"{context}.effectV2Group")
+        stable_id(group["groupId"], f"{context}.effectV2Group.groupId")
+        number(
+            group["playbackRate"],
+            f"{context}.effectV2Group.playbackRate",
+            0.000001,
+            16.0,
+        )
+        if has_visual_hit:
+            integer(
+                group["visualHitMs"],
+                f"{context}.effectV2Group.visualHitMs",
+                1,
+                60000,
+            )
+            stable_id(
+                group["serverHitId"],
+                f"{context}.effectV2Group.serverHitId",
+            )
+        if repository_root is not None:
+            group_id = group["groupId"]
+            group_path = repo_path(
+                repository_root,
+                f"Data/Effects/V2/Groups/{group_id}.effectv2group.json",
+            )
+            if not group_path.is_file():
+                raise PipelineError(
+                    f"{context}.effectV2Group does not resolve: {group_id}"
+                )
+            group_document = read_json(group_path)
+            if (
+                not isinstance(group_document, dict)
+                or group_document.get("schema") != "lostark.effect-v2-group"
+                or group_document.get("formatVersion") != 2
+                or group_document.get("groupId") != group_id
+                or not isinstance(group_document.get("children"), list)
+            ):
+                raise PipelineError(
+                    f"{context}.effectV2Group document is invalid: {group_id}"
+                )
+            if has_visual_hit and not any(
+                isinstance(child, dict)
+                and child.get("startMs") == group["visualHitMs"]
+                for child in group_document["children"]
+            ):
+                raise PipelineError(
+                    f"{context}.effectV2Group visualHitMs resolves to no child"
+                )
+
+
+def validate_combat_object_visual_closure(
+    boss_catalog: dict[str, Any],
+    combat_authoring: dict[str, Any],
+    effect_catalog: Mapping[str, Any] | None = None,
+    repository_root: Path | None = None,
+) -> None:
+    """Validate the authored definition <-> BossCatalog visual stable-ID join."""
+
+    validate_combat_authoring(combat_authoring)
+    definitions = unique_index(
+        combat_authoring["objects"],
+        "combatObjectArchetypeId",
+        "combat-object definitions",
+    )
+    visuals = _valtan_combat_visual_rows(boss_catalog, "combat-object visual closure")
+    by_archetype: dict[str, dict[str, Any]] = {}
+    client_visual_ids: set[str] = set()
+    for ordinal, visual in enumerate(visuals):
+        context = f"BOSS_VALTAN.combatObjectVisuals[{ordinal}]"
+        _validate_combat_object_visual_row(
+            visual, context, effect_catalog, repository_root
+        )
+        archetype_id = visual["combatObjectArchetypeId"]
+        client_visual_id = visual["clientVisualId"]
+        if archetype_id in by_archetype:
+            raise PipelineError(f"duplicate BossCatalog combat visual: {archetype_id}")
+        if client_visual_id in client_visual_ids:
+            raise PipelineError(
+                f"duplicate BossCatalog combat clientVisualId: {client_visual_id}"
+            )
+        by_archetype[archetype_id] = visual
+        client_visual_ids.add(client_visual_id)
+    if set(by_archetype) != set(definitions):
+        missing = sorted(set(definitions) - set(by_archetype))
+        extra = sorted(set(by_archetype) - set(definitions))
+        raise PipelineError(
+            "BossCatalog/combat-object definition identity sets differ: "
+            f"missingVisuals={missing} danglingVisuals={extra}"
+        )
+    for archetype_id, visual in by_archetype.items():
+        group = visual.get("effectV2Group")
+        if not isinstance(group, dict) or "serverHitId" not in group:
+            continue
+        matching_hits = [
+            hit
+            for hit in definitions[archetype_id]["hits"]
+            if hit.get("hitId") == group["serverHitId"]
+        ]
+        expected_hit_ms = float(group["visualHitMs"]) / float(group["playbackRate"])
+        if (
+            len(matching_hits) != 1
+            or matching_hits[0].get("trigger", {}).get("kind") != "TIMED"
+            or abs(float(matching_hits[0]["trigger"]["atMs"]) - expected_hit_ms)
+            > 0.001
+        ):
+            raise PipelineError(
+                "combat-object Effect V2 visual/server hit timing join is invalid: "
+                + archetype_id
+            )
+
+
+def _validate_generic_combat_object_owner(
+    pattern: Mapping[str, Any],
+    stage: Mapping[str, Any],
+    spawn_event: Mapping[str, Any],
+    definition: Mapping[str, Any],
+) -> None:
+    """Fail closed to topologies implemented by the current Server publisher."""
+
+    event_id = stable_id(spawn_event.get("eventId"), "combat-object spawn eventId")
+    event_kind = spawn_event.get("kind")
+    event_fields = _event_fields(event_kind)
+    if not event_fields or event_kind not in (
+        "SPAWN_COMBAT_OBJECT",
+        "SPAWN_COMBAT_OBJECT_VOLLEY",
+    ):
+        raise PipelineError("generic combat-object writer requires a spawn event")
+    exact(spawn_event, event_fields, f"combat-object spawn event {event_id}")
+    if spawn_event["trigger"] != "ENTER":
+        raise PipelineError("combat-object spawn event must use ENTER")
+    archetype_id = stable_id(
+        spawn_event["combatObjectArchetypeId"],
+        f"combat-object spawn event {event_id}.combatObjectArchetypeId",
+    )
+    if definition.get("combatObjectArchetypeId") != archetype_id:
+        raise PipelineError("spawn event and definition archetype IDs differ")
+    if stage.get("hit", {}).get("shape", {}).get("kind") != "NONE":
+        raise PipelineError("combat-object owner stage must not also own an inline hit")
+    if "lifetimeMs" not in definition:
+        raise PipelineError("generic combat-object definition requires explicit lifetimeMs")
+    lifetime_ms = integer(
+        definition["lifetimeMs"], "combat-object definition lifetimeMs", 1, 600000
+    )
+    if event_kind == "SPAWN_COMBAT_OBJECT":
+        integer(spawn_event["count"], f"event {event_id}.count", 1, 1)
+        required_origin = "BOSS_POSITION"
+    else:
+        if spawn_event["volleyPolicy"] != "PER_ALIVE_PLAYER":
+            raise PipelineError(
+                "generic combat-object writer currently admits only PER_ALIVE_PLAYER volleys"
+            )
+        count = integer(
+            spawn_event["countPerResolvedTarget"], f"event {event_id}.count", 1, 8
+        )
+        _validate_volley_layout(
+            spawn_event["layout"], count, f"event {event_id}.layout"
+        )
+        _validate_volley_spawn_schedule(
+            spawn_event["spawnSchedule"], stage["durationMs"], event_id
+        )
+        random_count = _validate_volley_arena_random(
+            spawn_event["arenaRandom"], event_id
+        )
+        if boolean(spawn_event["allowOverlap"], f"event {event_id}.allowOverlap"):
+            raise PipelineError("current Server volley contract forbids overlap")
+        integer(
+            spawn_event["maximumTotalObjects"],
+            f"event {event_id}.maximumTotalObjects",
+            count + random_count,
+            64,
+        )
+        required_origin = "RESOLVED_VOLLEY_POSITION"
+    spawn = definition.get("spawn")
+    movement = definition.get("movement")
+    if not isinstance(spawn, dict) or not isinstance(movement, dict):
+        raise PipelineError("combat-object spawn/movement definitions must be objects")
+    origin = spawn.get("origin")
+    direction = spawn.get("direction")
+    if not isinstance(origin, dict) or not isinstance(direction, dict):
+        raise PipelineError("combat-object origin/direction definitions must be objects")
+    if origin.get("kind") != required_origin:
+        raise PipelineError("combat-object spawn policy and definition origin differ")
+    kind = definition.get("kind")
+    if kind == "FIXED_AREA":
+        if direction.get("kind") != "NONE" or movement.get("kind") != "STATIC":
+            raise PipelineError("FIXED_AREA must be stationary with direction NONE")
+        if required_origin == "BOSS_POSITION" and (
+            float(origin.get("forwardOffsetM", math.inf)) != 0.0
+            or float(origin.get("rightOffsetM", math.inf)) != 0.0
+        ):
+            raise PipelineError("BOSS_POSITION FIXED_AREA offsets must be zero")
+    elif kind == "MISSILE":
+        if event_kind != "SPAWN_COMBAT_OBJECT":
+            raise PipelineError("PER_ALIVE_PLAYER missile spawning is not supported")
+        if (
+            direction.get("kind") != "PATTERN_FACING_AT_SPAWN"
+            or movement.get("kind") != "LINEAR"
+            or pattern.get("aimPolicy") != "LOCK_FACING_ON_START"
+        ):
+            raise PipelineError(
+                "MISSILE requires BOSS_POSITION, LINEAR, PATTERN_FACING_AT_SPAWN "
+                "and LOCK_FACING_ON_START"
+            )
+        speed = number(movement.get("speedMps"), "combat-object missile speedMps", 0.000001, 1000)
+        distance = number(
+            movement.get("maximumDistanceM"),
+            "combat-object missile maximumDistanceM",
+            0.000001,
+            1000,
+        )
+        if speed * (lifetime_ms / 1000.0) + 0.00001 < distance:
+            raise PipelineError("combat-object missile lifetime cannot cover maximumDistanceM")
+    else:
+        raise PipelineError("generic combat-object kind is unsupported")
+    for hit_ordinal, hit in enumerate(definition.get("hits", [])):
+        trigger_kind = hit.get("trigger", {}).get("kind")
+        if (kind == "FIXED_AREA" and trigger_kind != "TIMED") or (
+            kind == "MISSILE" and trigger_kind != "CONTACT"
+        ):
+            raise PipelineError(
+                f"combat-object hit[{hit_ordinal}] trigger is unsupported for {kind}"
+            )
+        shape = hit.get("shape", {})
+        shape_kind = shape.get("kind")
+        positive_shape = (
+            (shape_kind == "CIRCLE" and float(shape.get("outerRadiusM", 0)) > 0)
+            or (
+                shape_kind == "RING"
+                and float(shape.get("innerRadiusM", 0)) > 0
+                and float(shape.get("outerRadiusM", 0))
+                > float(shape.get("innerRadiusM", 0))
+            )
+            or (
+                shape_kind == "CONE"
+                and 0 < float(shape.get("angleDegrees", 0)) <= 180
+                and float(shape.get("lengthM", 0)) > 0
+            )
+            or (
+                shape_kind in ("BOX", "CROSS", "SIX_DIRECTIONS")
+                and float(shape.get("lengthM", 0)) > 0
+                and float(shape.get("halfWidthM", 0)) > 0
+            )
+        )
+        if not positive_shape:
+            raise PipelineError(
+                f"combat-object hit[{hit_ordinal}] shape is not product-supported"
+            )
+        push_range = float(hit.get("pushRangeM", 0))
+        push_ms = hit.get("pushMs")
+        knockdown = hit.get("knockdown")
+        down_ms = hit.get("downMs")
+        if (push_range == 0.0) != (push_ms == 0):
+            raise PipelineError(
+                f"combat-object hit[{hit_ordinal}] pushRangeM/pushMs contract is invalid"
+            )
+        if (knockdown is True) != (isinstance(down_ms, int) and down_ms > 0):
+            raise PipelineError(
+                f"combat-object hit[{hit_ordinal}] knockdown/downMs contract is invalid"
+            )
+
+
+def _combat_object_spawn_owners(
+    master: Mapping[str, Any],
+) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]:
+    return [
+        (pattern, stage, event)
+        for pattern in master.get("patterns", [])
+        if isinstance(pattern, dict)
+        for stage in pattern.get("stages", [])
+        if isinstance(stage, dict)
+        for event in stage.get("events", [])
+        if isinstance(event, dict)
+        and event.get("kind")
+        in ("SPAWN_COMBAT_OBJECT", "SPAWN_COMBAT_OBJECT_VOLLEY")
+    ]
+
+
+def _assert_combat_object_delete_has_no_external_references(
+    master: Mapping[str, Any],
+    spawn_event_id: str,
+    archetype_id: str,
+    repository_root: Path | None,
+) -> None:
+    references = [
+        row.get("independentEffectId", "<unknown>")
+        for row in master.get("independentEffects", [])
+        if isinstance(row, dict)
+        and isinstance(row.get("source"), dict)
+        and row["source"].get("kind") == "SERVER_COMBAT_OBJECT"
+        and row["source"].get("spawnEventId") == spawn_event_id
+    ]
+    if references:
+        raise PipelineError(
+            "combat-object delete would leave independent effect references: "
+            + ", ".join(sorted(references))
+        )
+    if repository_root is None:
+        raise PipelineError(
+            "combat-object delete requires the repository Data reference set"
+        )
+    sound_path = repo_path(repository_root, COMBAT_OBJECT_SOUND_CUES_REL)
+    if not sound_path.is_file():
+        raise PipelineError("combat-object sound-cue owner is missing")
+    sound = read_json(sound_path)
+    cues = sound.get("cues") if isinstance(sound, dict) else None
+    if not isinstance(cues, list):
+        raise PipelineError("combat-object sound-cue owner is invalid")
+    sound_references = [
+        cue.get("bindingId", "<unknown>")
+        for cue in cues
+        if isinstance(cue, dict)
+        and cue.get("combatObjectArchetypeId") == archetype_id
+    ]
+    if sound_references:
+        raise PipelineError(
+            "combat-object delete would leave sound-cue references: "
+            + ", ".join(sorted(sound_references))
+        )
+
+
 VALTAN_CLIP_SEQUENCE_REL = "Data/Animation/Reference/Valtan/Valtan.clipseq"
 
 
@@ -8887,10 +9610,20 @@ def apply_draft_patch(
     *,
     repository_root: Path | None = None,
     effect_catalog: dict[str, Any] | None = None,
+    boss_catalog: dict[str, Any] | None = None,
     include_combat_authoring: bool = False,
+    include_boss_catalog: bool = False,
 ) -> (
     tuple[dict[str, Any], dict[str, Any], dict[str, Any], int]
     | tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], int]
+    | tuple[
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        int,
+    ]
 ):
     """Apply bounded stable-ID operations to copies of the staged authoring views."""
 
@@ -8918,6 +9651,12 @@ def apply_draft_patch(
     patched_bosses = copy.deepcopy(boss_profiles)
     patched_damage = copy.deepcopy(damage_profiles)
     patched_combat = copy.deepcopy(combat_authoring)
+    patched_boss_catalog = copy.deepcopy(boss_catalog)
+    if include_boss_catalog and not include_combat_authoring:
+        raise _draft_error(
+            "BossCatalog authoring projection requires the combat-object owner",
+            error_code="OWNER_CLOSURE_UNAVAILABLE",
+        )
     validate_balance_documents(patched_bosses, patched_damage)
     boss_by_id = unique_index(patched_bosses["bosses"], "archetypeId", "BossProfiles bosses")
     damage_by_id = unique_index(patched_damage["profiles"], "damageProfileId", "DamageProfiles profiles")
@@ -8926,6 +9665,17 @@ def apply_draft_patch(
         str, list[tuple[int, int, list[str]]]
     ] = {}
     edited_manual_animation_ordinals: dict[str, int] = {}
+    specialized_axe_event_ids = {
+        operation.get("eventId")
+        for operation in operations
+        if isinstance(operation, dict) and operation.get("op") == "SET_AXE_VOLLEY"
+    }
+    specialized_ring_targets = {
+        (operation.get("combatObjectArchetypeId"), operation.get("hitId"))
+        for operation in operations
+        if isinstance(operation, dict)
+        and operation.get("op") == "SET_COMBAT_OBJECT_RING_HIT"
+    }
 
     for ordinal, operation in enumerate(operations):
         if not isinstance(operation, dict):
@@ -8939,6 +9689,8 @@ def apply_draft_patch(
                 field="op",
                 error_code="OPERATION_UNSUPPORTED",
             )
+        if kind == "SET_SCRIPTED_SEQUENCE" and "transitionPursuitMs" in operation:
+            fields = (*fields, "transitionPursuitMs")
         try:
             exact(operation, fields, f"operations[{ordinal}]")
         except PipelineError as exc:
@@ -8985,6 +9737,10 @@ def apply_draft_patch(
                 ),
                 "patternIds": copy.deepcopy(operation["patternIds"]),
             }
+            if "transitionPursuitMs" in operation:
+                candidate_sequence["transitionPursuitMs"] = copy.deepcopy(
+                    operation["transitionPursuitMs"]
+                )
             try:
                 _validate_scripted_sequence(
                     {"scriptedSequence": candidate_sequence},
@@ -9000,6 +9756,14 @@ def apply_draft_patch(
                     operation_ordinal=ordinal,
                     field="patternIds",
                 ) from exc
+            transition_pursuit_ms = candidate_sequence.get("transitionPursuitMs")
+            if transition_pursuit_ms is not None and all(
+                pursuit_ms == candidate_sequence["interStepPursuitMs"]
+                for pursuit_ms in transition_pursuit_ms
+            ):
+                # Keep the legacy/global form canonical when no edge differs.
+                # A non-uniform array is emitted only when it carries information.
+                del candidate_sequence["transitionPursuitMs"]
             patched_master["decisionModel"]["scriptedSequence"] = (
                 candidate_sequence
             )
@@ -9737,6 +10501,352 @@ def apply_draft_patch(
             ):
                 _mark_manual_stage_clock_delta(stage)
                 edited_manual_animation_ordinals[pattern["patternId"]] = ordinal
+        elif kind in GENERIC_COMBAT_OBJECT_OPERATIONS:
+            if (
+                patched_boss_catalog is None
+                or effect_catalog is None
+                or not include_boss_catalog
+            ):
+                raise _draft_error(
+                    "generic combat-object editing requires the BossCatalog/EffectCatalog owner closure",
+                    operation_ordinal=ordinal,
+                    error_code="OWNER_CLOSURE_UNAVAILABLE",
+                )
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            action_id = stable_id(
+                operation["actionId"], f"operations[{ordinal}].actionId"
+            )
+            if stage.get("actionId") != action_id:
+                raise _draft_error(
+                    "Pattern/Stage actionId ownership precondition failed",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="actionId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            visuals = _valtan_combat_visual_rows(
+                patched_boss_catalog, f"operations[{ordinal}]"
+            )
+            owners = _combat_object_spawn_owners(patched_master)
+
+            if kind == "ADD_COMBAT_OBJECT":
+                if len(stage.get("events", [])) >= 8:
+                    raise _draft_error(
+                        "combat-object add would exceed the Product stage action limit",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="spawnEvent",
+                        error_code="CARDINALITY_EXCEEDED",
+                    )
+                spawn_event = copy.deepcopy(operation["spawnEvent"])
+                definition = copy.deepcopy(operation["definition"])
+                visual = copy.deepcopy(operation["visual"])
+                try:
+                    if not isinstance(spawn_event, dict) or not isinstance(
+                        definition, dict
+                    ):
+                        raise PipelineError(
+                            "spawnEvent and definition must be objects"
+                        )
+                    _validate_combat_object_visual_row(
+                        visual,
+                        f"operations[{ordinal}].visual",
+                        effect_catalog,
+                        repository_root,
+                    )
+                    _validate_generic_combat_object_owner(
+                        pattern, stage, spawn_event, definition
+                    )
+                    validate_combat_authoring(
+                        {
+                            "schema": "lostark.valtan-combat-object-authoring",
+                            "formatVersion": 1,
+                            "encounterId": "ENCOUNTER_VALTAN",
+                            "objects": [definition],
+                        }
+                    )
+                except (
+                    AttributeError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    PipelineError,
+                ) as exc:
+                    raise _draft_error(
+                        str(exc),
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        error_code="COMBAT_OBJECT_CONTRACT_INVALID",
+                    ) from exc
+                event_id = spawn_event["eventId"]
+                archetype_id = definition["combatObjectArchetypeId"]
+                client_visual_id = visual["clientVisualId"]
+                if event_id in specialized_axe_event_ids or any(
+                    target_archetype == archetype_id
+                    for target_archetype, _target_hit in specialized_ring_targets
+                ):
+                    raise _draft_error(
+                        "generic and specialized combat-object operations cannot target the same owner",
+                        operation_ordinal=ordinal,
+                        error_code="OPERATION_CONFLICT",
+                    )
+                if visual["combatObjectArchetypeId"] != archetype_id:
+                    raise _draft_error(
+                        "definition and visual archetype IDs differ",
+                        operation_ordinal=ordinal,
+                        field="visual.combatObjectArchetypeId",
+                        error_code="IDENTITY_MISMATCH",
+                    )
+                if any(
+                    candidate_event.get("eventId") == event_id
+                    for candidate_pattern in patched_master["patterns"]
+                    for candidate_stage in candidate_pattern["stages"]
+                    for candidate_event in candidate_stage["events"]
+                ):
+                    raise _draft_error(
+                        f"combat-object spawn eventId already exists: {event_id}",
+                        operation_ordinal=ordinal,
+                        field="spawnEvent.eventId",
+                        error_code="DUPLICATE_STABLE_ID",
+                    )
+                if any(
+                    owner_event.get("combatObjectArchetypeId") == archetype_id
+                    for _owner_pattern, _owner_stage, owner_event in owners
+                ) or any(
+                    row.get("combatObjectArchetypeId") == archetype_id
+                    for row in patched_combat["objects"]
+                ) or any(
+                    row.get("combatObjectArchetypeId") == archetype_id
+                    for row in visuals
+                ):
+                    raise _draft_error(
+                        f"combat-object archetype already exists: {archetype_id}",
+                        operation_ordinal=ordinal,
+                        field="definition.combatObjectArchetypeId",
+                        error_code="DUPLICATE_STABLE_ID",
+                    )
+                if any(
+                    row.get("clientVisualId") == client_visual_id for row in visuals
+                ):
+                    raise _draft_error(
+                        f"combat-object clientVisualId already exists: {client_visual_id}",
+                        operation_ordinal=ordinal,
+                        field="visual.clientVisualId",
+                        error_code="DUPLICATE_STABLE_ID",
+                    )
+                stage["events"].append(spawn_event)
+                patched_combat["objects"].append(definition)
+                visuals.append(visual)
+                target = (
+                    "COMBAT_OBJECT",
+                    event_id,
+                    archetype_id,
+                    client_visual_id,
+                )
+            else:
+                event_id = stable_id(
+                    operation["eventId"], f"operations[{ordinal}].eventId"
+                )
+                archetype_id = stable_id(
+                    operation["combatObjectArchetypeId"],
+                    f"operations[{ordinal}].combatObjectArchetypeId",
+                )
+                client_visual_id = stable_id(
+                    operation["clientVisualId"],
+                    f"operations[{ordinal}].clientVisualId",
+                )
+                owner_matches = [
+                    (owner_pattern, owner_stage, event)
+                    for owner_pattern, owner_stage, event in owners
+                    if event.get("eventId") == event_id
+                ]
+                definition_matches = [
+                    row
+                    for row in patched_combat["objects"]
+                    if row.get("combatObjectArchetypeId") == archetype_id
+                ]
+                visual_matches = [
+                    row
+                    for row in visuals
+                    if row.get("combatObjectArchetypeId") == archetype_id
+                    and row.get("clientVisualId") == client_visual_id
+                ]
+                if (
+                    len(owner_matches) != 1
+                    or len(definition_matches) != 1
+                    or len(visual_matches) != 1
+                ):
+                    raise _draft_error(
+                        "combat-object event/definition/visual stable IDs do not resolve exactly once",
+                        operation_ordinal=ordinal,
+                        field="eventId",
+                        error_code="STABLE_ID_NOT_FOUND",
+                    )
+                owner_pattern, owner_stage, current_event = owner_matches[0]
+                if (
+                    owner_pattern.get("patternId") != pattern["patternId"]
+                    or owner_stage.get("stageId") != stage["stageId"]
+                    or owner_stage.get("actionId") != action_id
+                    or current_event.get("combatObjectArchetypeId") != archetype_id
+                ):
+                    raise _draft_error(
+                        "combat-object stable IDs do not belong to the requested Pattern/Stage/Action",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        error_code="OWNER_MISMATCH",
+                    )
+                if event_id in specialized_axe_event_ids or any(
+                    target_archetype == archetype_id
+                    for target_archetype, _target_hit in specialized_ring_targets
+                ):
+                    raise _draft_error(
+                        "generic and specialized combat-object operations cannot target the same owner",
+                        operation_ordinal=ordinal,
+                        error_code="OPERATION_CONFLICT",
+                    )
+                current_definition = definition_matches[0]
+                current_visual = visual_matches[0]
+                if kind == "REMOVE_COMBAT_OBJECT":
+                    try:
+                        _assert_combat_object_delete_has_no_external_references(
+                            patched_master,
+                            event_id,
+                            archetype_id,
+                            repository_root,
+                        )
+                    except PipelineError as exc:
+                        raise _draft_error(
+                            str(exc),
+                            operation_ordinal=ordinal,
+                            pattern_id=pattern["patternId"],
+                            stage_id=stage["stageId"],
+                            error_code="DANGLING_REFERENCE",
+                        ) from exc
+                    stage["events"] = [
+                        row for row in stage["events"] if row is not current_event
+                    ]
+                    patched_combat["objects"] = [
+                        row
+                        for row in patched_combat["objects"]
+                        if row is not current_definition
+                    ]
+                    visuals[:] = [row for row in visuals if row is not current_visual]
+                else:
+                    spawn_event = copy.deepcopy(operation["spawnEvent"])
+                    definition = copy.deepcopy(operation["definition"])
+                    visual = copy.deepcopy(operation["visual"])
+                    if (
+                        not isinstance(spawn_event, dict)
+                        or not isinstance(definition, dict)
+                        or not isinstance(visual, dict)
+                        or spawn_event.get("eventId") != event_id
+                        or definition.get("combatObjectArchetypeId") != archetype_id
+                        or visual.get("combatObjectArchetypeId") != archetype_id
+                        or visual.get("clientVisualId") != client_visual_id
+                    ):
+                        raise _draft_error(
+                            "UPDATE_COMBAT_OBJECT cannot change stable identities",
+                            operation_ordinal=ordinal,
+                            error_code="IDENTITY_MISMATCH",
+                        )
+                    if (
+                        archetype_id == HIGH_JUMP_AXE_ARCHETYPE_ID
+                        and spawn_event != current_event
+                    ):
+                        raise _draft_error(
+                            "high-jump axe volley edits require SET_AXE_VOLLEY",
+                            operation_ordinal=ordinal,
+                            field="spawnEvent",
+                            error_code="SPECIALIZED_OPERATION_REQUIRED",
+                        )
+                    current_shapes = {
+                        hit.get("hitId"): hit.get("shape")
+                        for hit in current_definition.get("hits", [])
+                        if isinstance(hit, dict)
+                    }
+                    candidate_shapes = {
+                        hit.get("hitId"): hit.get("shape")
+                        for hit in definition.get("hits", [])
+                        if isinstance(hit, dict)
+                    }
+                    if any(
+                        (
+                            isinstance(current_shapes.get(hit_id), dict)
+                            and current_shapes[hit_id].get("kind") == "RING"
+                        )
+                        or (
+                            isinstance(candidate_shapes.get(hit_id), dict)
+                            and candidate_shapes[hit_id].get("kind") == "RING"
+                        )
+                        for hit_id in set(current_shapes) | set(candidate_shapes)
+                        if current_shapes.get(hit_id) != candidate_shapes.get(hit_id)
+                    ):
+                        raise _draft_error(
+                            "RING shape edits require SET_COMBAT_OBJECT_RING_HIT",
+                            operation_ordinal=ordinal,
+                            field="definition.hits",
+                            error_code="SPECIALIZED_OPERATION_REQUIRED",
+                        )
+                    try:
+                        _validate_combat_object_visual_row(
+                            visual,
+                            f"operations[{ordinal}].visual",
+                            effect_catalog,
+                            repository_root,
+                        )
+                        _validate_generic_combat_object_owner(
+                            pattern, stage, spawn_event, definition
+                        )
+                        validate_combat_authoring(
+                            {
+                                "schema": "lostark.valtan-combat-object-authoring",
+                                "formatVersion": 1,
+                                "encounterId": "ENCOUNTER_VALTAN",
+                                "objects": [definition],
+                            }
+                        )
+                    except (
+                        AttributeError,
+                        KeyError,
+                        TypeError,
+                        ValueError,
+                        PipelineError,
+                    ) as exc:
+                        raise _draft_error(
+                            str(exc),
+                            operation_ordinal=ordinal,
+                            pattern_id=pattern["patternId"],
+                            stage_id=stage["stageId"],
+                            error_code="COMBAT_OBJECT_CONTRACT_INVALID",
+                        ) from exc
+                    if any(
+                        row is not current_visual
+                        and row.get("clientVisualId") == client_visual_id
+                        for row in visuals
+                    ):
+                        raise _draft_error(
+                            f"combat-object clientVisualId is duplicated: {client_visual_id}",
+                            operation_ordinal=ordinal,
+                            field="clientVisualId",
+                            error_code="DUPLICATE_STABLE_ID",
+                        )
+                    event_index = stage["events"].index(current_event)
+                    object_index = patched_combat["objects"].index(current_definition)
+                    visual_index = visuals.index(current_visual)
+                    stage["events"][event_index] = spawn_event
+                    patched_combat["objects"][object_index] = definition
+                    visuals[visual_index] = visual
+                target = (
+                    "COMBAT_OBJECT",
+                    event_id,
+                    archetype_id,
+                    client_visual_id,
+                )
         elif kind == "SET_COMBAT_OBJECT_RING_HIT":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -10791,6 +11901,13 @@ def apply_draft_patch(
             validate_effect_cue_catalog_contract(
                 repository_root, patched_master, effect_catalog
             )
+        if patched_boss_catalog is not None:
+            validate_combat_object_visual_closure(
+                patched_boss_catalog,
+                patched_combat,
+                effect_catalog,
+                repository_root,
+            )
         validate_balance_documents(patched_bosses, patched_damage)
         validate_decision_model_against_boss_profiles(
             patched_master, patched_bosses
@@ -10810,10 +11927,32 @@ def apply_draft_patch(
                             f"stage hit references missing DamageProfiles row: "
                             f"{pattern['patternId']}/{stage['stageId']}/{damage_id}"
                         )
+        for definition in patched_combat["objects"]:
+            for hit in definition["hits"]:
+                damage_id = hit["serverDamageProfileId"]
+                if (
+                    not isinstance(damage_id, str)
+                    or not damage_id.startswith("damage.valtan.")
+                    or damage_id not in known_damage
+                ):
+                    raise PipelineError(
+                        "combat-object hit references missing/non-Valtan DamageProfiles row: "
+                        f"{definition['combatObjectArchetypeId']}/{hit['hitId']}/{damage_id}"
+                    )
     except DraftPatchError:
         raise
     except PipelineError as exc:
         raise _draft_error(str(exc), error_code="CANDIDATE_VALIDATION_FAILED") from exc
+    if include_boss_catalog:
+        assert patched_boss_catalog is not None
+        return (
+            patched_master,
+            patched_bosses,
+            patched_damage,
+            patched_combat,
+            patched_boss_catalog,
+            len(operations),
+        )
     if include_combat_authoring:
         return (
             patched_master,
@@ -10878,6 +12017,17 @@ def _receipt_path_value(value: Any, field_path: str) -> Any:
                 raise PipelineError(f"provenance target index does not resolve: {field_path}")
             current = current[index]
     return current
+
+
+def _receipt_value_identity(value: Any) -> str:
+    """Distinguish 1 from 1.0 the way the PowerShell verifier serializes them.
+
+    Python treats int 1 and float 1.0 as equal, so a receipt row that only drifted
+    in numeric representation was never re-synchronized here while
+    Publish-GameplayBalance.ps1 compared the serialized text and rejected it.
+    """
+
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
 def _receipt_entry_value(document: dict[str, Any], entry: dict[str, Any]) -> Any:
@@ -10951,7 +12101,9 @@ def project_provenance_receipt(root: Path, projected_outputs: Mapping[str, str])
         if document is None:
             continue
         result_value = _receipt_entry_value(document, entry)
-        if entry.get("resultValue") == result_value:
+        if _receipt_value_identity(entry.get("resultValue")) == _receipt_value_identity(
+            result_value
+        ):
             continue
         entry["basis"] = "PROJECT_TUNED"
         entry["source"] = {
@@ -11786,9 +12938,15 @@ def _validate_authoring_artifact(directory: Path, revision_id: str) -> dict[str,
         ),
         "recovery authoring manifest",
     )
+    manifest_version = integer(
+        manifest["formatVersion"],
+        "recovery authoring manifest formatVersion",
+        1,
+        AUTHORING_MANIFEST_FORMAT_VERSION,
+    )
     if (
         manifest["schema"] != "lostark.valtan-tuning-authoring-manifest"
-        or manifest["formatVersion"] != 1
+        or manifest_version not in (1, AUTHORING_MANIFEST_FORMAT_VERSION)
         or manifest["revisionId"] != revision_id
     ):
         raise PipelineError("recovery authoring manifest header mismatch")
@@ -11829,10 +12987,19 @@ def _validate_authoring_artifact(directory: Path, revision_id: str) -> dict[str,
         ):
             raise PipelineError("recovery authoring artifact hash/path mismatch")
         paths.add(relative)
-    expected_paths = set(AUTHORING_ARTIFACTS)
+    expected_paths = set(
+        AUTHORING_ARTIFACTS
+        if manifest_version == AUTHORING_MANIFEST_FORMAT_VERSION
+        else LEGACY_AUTHORING_ARTIFACTS
+    )
     if paths != expected_paths or _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("recovery authoring artifact set mismatch")
     validate_gameplay_authoring(read_json(directory / GAMEPLAY_AUTHORING_REL))
+    if manifest_version == AUTHORING_MANIFEST_FORMAT_VERSION:
+        validate_combat_object_visual_closure(
+            read_json(directory / BOSS_CATALOG_REL),
+            read_json(directory / COMBAT_AUTHORING_REL),
+        )
     expected_revision = sha256_bytes(
         (
             manifest["repositorySourceRevision"]
@@ -12213,9 +13380,15 @@ def load_authoring_revision(
         ),
         "saved authoring manifest",
     )
+    manifest_version = integer(
+        manifest["formatVersion"],
+        "saved authoring manifest formatVersion",
+        1,
+        AUTHORING_MANIFEST_FORMAT_VERSION,
+    )
     if (
         manifest["schema"] != "lostark.valtan-tuning-authoring-manifest"
-        or manifest["formatVersion"] != 1
+        or manifest_version not in (1, AUTHORING_MANIFEST_FORMAT_VERSION)
         or manifest["revisionId"] != revision_id
     ):
         raise PipelineError("saved authoring manifest header mismatch")
@@ -12244,7 +13417,12 @@ def load_authoring_revision(
         ):
             raise PipelineError(f"saved authoring artifact hash/size mismatch: {relative}")
         actual_paths.append(relative)
-    if tuple(sorted(actual_paths)) != tuple(sorted(AUTHORING_ARTIFACTS)):
+    expected_artifacts = (
+        AUTHORING_ARTIFACTS
+        if manifest_version == AUTHORING_MANIFEST_FORMAT_VERSION
+        else LEGACY_AUTHORING_ARTIFACTS
+    )
+    if tuple(sorted(actual_paths)) != tuple(sorted(expected_artifacts)):
         raise PipelineError("saved authoring artifact set is incomplete")
     if _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("saved authoring artifact-set hash mismatch")
@@ -12264,11 +13442,28 @@ def load_authoring_revision(
         revision_root / PRESENTATION_AUTHORING_REL
     )
     validate_valtan_native_animation_source(root, revision_presentation)
+    revision_combat = read_json(revision_root / COMBAT_AUTHORING_REL)
     master = join_v2_authoring(
         read_json(revision_root / GAMEPLAY_AUTHORING_REL),
         revision_presentation,
         read_json(revision_root / WORLD_SET_REL),
-        read_json(revision_root / COMBAT_AUTHORING_REL),
+        revision_combat,
+    )
+    # Version-1 revisions predate BossCatalog ownership.  They remain readable
+    # only when their saved combat-object owner still joins exactly to the
+    # repository BossCatalog generation to which the revision is CAS-bound.
+    # This prevents a crafted/downgraded v1 manifest from smuggling a combat
+    # definition add/remove while source-manifest reports it as the live head.
+    revision_boss_catalog = (
+        read_json(revision_root / BOSS_CATALOG_REL)
+        if manifest_version == AUTHORING_MANIFEST_FORMAT_VERSION
+        else docs[BOSS_CATALOG_REL]
+    )
+    validate_combat_object_visual_closure(
+        revision_boss_catalog,
+        revision_combat,
+        docs[EFFECT_CATALOG_REL],
+        root,
     )
     bosses = read_json(revision_root / BOSS_PROFILES_REL)
     damage = read_json(revision_root / DAMAGE_REL)
@@ -12365,6 +13560,48 @@ def resolve_authoring_combat_base(
     return combat
 
 
+def resolve_authoring_boss_catalog_base(
+    root: Path,
+    authoring_root: Path | None,
+    revision_id: str,
+    current_sources: dict[str, Any],
+    docs: dict[str, Any],
+) -> dict[str, Any]:
+    """Resolve the BossCatalog visual owner from the same immutable revision."""
+
+    if revision_id == current_sources["sourceManifestId"]:
+        return copy.deepcopy(docs[BOSS_CATALOG_REL])
+    if authoring_root is None:
+        raise DraftPatchError(
+            "draft sourceRevision is not the repository source; AuthoringRoot is required",
+            document="draftPatch",
+            field="sourceRevision",
+            error_code="SOURCE_REVISION_MISMATCH",
+        )
+    load_authoring_revision(root, authoring_root, revision_id, current_sources, docs)
+    resolved_root = staging_root(root, authoring_root, "AuthoringRoot")
+    saved_catalog_path = (
+        resolved_root / "revisions" / revision_id / BOSS_CATALOG_REL
+    )
+    # Version-1 immutable revisions predate BossCatalog ownership. They cannot
+    # contain generic combat-object edits, so their effective visual owner is
+    # the repository generation to which the revision is already CAS-bound.
+    boss_catalog = (
+        read_json(saved_catalog_path)
+        if saved_catalog_path.is_file()
+        else copy.deepcopy(docs[BOSS_CATALOG_REL])
+    )
+    validate_combat_object_visual_closure(
+        boss_catalog,
+        read_json(
+            resolved_root / "revisions" / revision_id / COMBAT_AUTHORING_REL
+        ),
+        docs[EFFECT_CATALOG_REL],
+        root,
+    )
+    return boss_catalog
+
+
 def save_authoring(
     root: Path,
     authoring_root: Path,
@@ -12414,7 +13651,10 @@ def save_authoring(
         base_combat = resolve_authoring_combat_base(
             root, authoring_root, base_revision, current_sources, docs
         )
-        master, bosses, damage, combat, operation_count = apply_draft_patch(
+        base_boss_catalog = resolve_authoring_boss_catalog_base(
+            root, authoring_root, base_revision, current_sources, docs
+        )
+        master, bosses, damage, combat, boss_catalog, operation_count = apply_draft_patch(
             base_master,
             base_bosses,
             base_damage,
@@ -12424,7 +13664,9 @@ def save_authoring(
             base_combat,
             repository_root=root,
             effect_catalog=docs[EFFECT_CATALOG_REL],
+            boss_catalog=base_boss_catalog,
             include_combat_authoring=True,
+            include_boss_catalog=True,
         )
         gameplay, presentation = split_v2_authoring(
             master, docs[WORLD_SET_REL], combat
@@ -12439,6 +13681,7 @@ def save_authoring(
             BOSS_PROFILES_REL: bosses,
             DAMAGE_REL: damage,
             COMBAT_AUTHORING_REL: combat,
+            BOSS_CATALOG_REL: boss_catalog,
             WORLD_SET_REL: docs[WORLD_SET_REL],
             LEGACY_REL: docs[LEGACY_REL],
         }
@@ -12455,6 +13698,12 @@ def save_authoring(
             read_json(stage / PRESENTATION_AUTHORING_REL),
             read_json(stage / WORLD_SET_REL),
             read_json(stage / COMBAT_AUTHORING_REL),
+        )
+        validate_combat_object_visual_closure(
+            read_json(stage / BOSS_CATALOG_REL),
+            read_json(stage / COMBAT_AUTHORING_REL),
+            docs[EFFECT_CATALOG_REL],
+            root,
         )
         validate_balance_documents(
             read_json(stage / BOSS_PROFILES_REL), read_json(stage / DAMAGE_REL)
@@ -12474,7 +13723,7 @@ def save_authoring(
         )
         manifest = {
             "schema": "lostark.valtan-tuning-authoring-manifest",
-            "formatVersion": 1,
+            "formatVersion": AUTHORING_MANIFEST_FORMAT_VERSION,
             "revisionId": revision_id,
             "baseRevision": base_revision,
             "repositorySourceRevision": current_sources["sourceManifestId"],
@@ -12708,11 +13957,15 @@ def _publish_candidate_under_admission(
             candidate_combat = resolve_authoring_combat_base(
                 root, authoring_root, base_revision, current_sources, docs
             )
+            candidate_boss_catalog = resolve_authoring_boss_catalog_base(
+                root, authoring_root, base_revision, current_sources, docs
+            )
         else:
             v2 = repository_v2
             candidate_bosses = docs[BOSS_PROFILES_REL]
             candidate_damage = docs[DAMAGE_REL]
             candidate_combat = copy.deepcopy(docs[COMBAT_AUTHORING_REL])
+            candidate_boss_catalog = copy.deepcopy(docs[BOSS_CATALOG_REL])
         operation_count = 0
         if draft_patch is not None:
             patch_revision = draft_patch.get("sourceRevision") if isinstance(draft_patch, dict) else ""
@@ -12731,11 +13984,15 @@ def _publish_candidate_under_admission(
                 candidate_combat = resolve_authoring_combat_base(
                     root, authoring_root, base_revision, current_sources, docs
                 )
+                candidate_boss_catalog = resolve_authoring_boss_catalog_base(
+                    root, authoring_root, base_revision, current_sources, docs
+                )
             (
                 v2,
                 candidate_bosses,
                 candidate_damage,
                 candidate_combat,
+                candidate_boss_catalog,
                 operation_count,
             ) = apply_draft_patch(
                 v2,
@@ -12747,7 +14004,9 @@ def _publish_candidate_under_admission(
                 candidate_combat,
                 repository_root=root,
                 effect_catalog=docs[EFFECT_CATALOG_REL],
+                boss_catalog=candidate_boss_catalog,
                 include_combat_authoring=True,
+                include_boss_catalog=True,
             )
         apply_class = classify_candidate_apply_class(
             docs[BOSS_PROFILES_REL], candidate_bosses
@@ -12758,6 +14017,7 @@ def _publish_candidate_under_admission(
         validate_valtan_native_animation_source(root, candidate_presentation)
         candidate_docs = dict(docs)
         candidate_docs[COMBAT_AUTHORING_REL] = candidate_combat
+        candidate_docs[BOSS_CATALOG_REL] = candidate_boss_catalog
         outputs = project_v2_products(root, candidate_docs, v2)
         outputs.update(project_balance_products(root, candidate_bosses, candidate_damage))
         outputs[PROVENANCE_REL] = project_provenance_receipt(root, outputs)
@@ -12776,6 +14036,7 @@ def _publish_candidate_under_admission(
             "Authoring/Valtan.gameplay.json": json_text(candidate_gameplay),
             "Authoring/Valtan.presentation.json": json_text(candidate_presentation),
             "Authoring/Valtan.combatobjects.json": json_text(candidate_combat),
+            "Authoring/BossCatalog.json": json_text(candidate_boss_catalog),
             "Authoring/Valtan.worldeventsets.json": json_text(docs[WORLD_SET_REL]),
             "Authoring/Valtan.legacy-compatibility.json": json_text(docs[LEGACY_REL]),
         }
@@ -12783,11 +14044,15 @@ def _publish_candidate_under_admission(
             authoring_outputs["Authoring/Valtan.tuning-draft-patch.json"] = json_text(draft_patch)
         for relative, text in {**authoring_outputs, **outputs}.items():
             _write_fsync(stage / relative, text.encode("utf-8"))
-        for relative in (CAMERA_REL, EFFECT_CATALOG_REL, BOSS_CATALOG_REL):
+        for relative in (CAMERA_REL, EFFECT_CATALOG_REL):
             _write_fsync(
                 stage / relative,
                 read_text(repo_path(root, relative)).encode("utf-8"),
             )
+        _write_fsync(
+            stage / BOSS_CATALOG_REL,
+            json_text(candidate_boss_catalog).encode("utf-8"),
+        )
         presentation_generation = _stage_presentation_generation_closure(
             root, stage
         )
@@ -13161,11 +14426,15 @@ def validate_draft_patch(
     base_combat = resolve_authoring_combat_base(
         root, authoring_root, base_revision, current_sources, docs
     )
+    base_boss_catalog = resolve_authoring_boss_catalog_base(
+        root, authoring_root, base_revision, current_sources, docs
+    )
     (
         candidate,
         candidate_bosses,
         candidate_damage,
         candidate_combat,
+        candidate_boss_catalog,
         operation_count,
     ) = apply_draft_patch(
         migrated,
@@ -13177,7 +14446,9 @@ def validate_draft_patch(
         base_combat,
         repository_root=root,
         effect_catalog=docs[EFFECT_CATALOG_REL],
+        boss_catalog=base_boss_catalog,
         include_combat_authoring=True,
+        include_boss_catalog=True,
     )
     _, candidate_presentation = split_v2_authoring(
         candidate, docs[WORLD_SET_REL], candidate_combat
@@ -13185,6 +14456,7 @@ def validate_draft_patch(
     validate_valtan_native_animation_source(root, candidate_presentation)
     candidate_docs = dict(docs)
     candidate_docs[COMBAT_AUTHORING_REL] = candidate_combat
+    candidate_docs[BOSS_CATALOG_REL] = candidate_boss_catalog
     projected = project_v2_products(root, candidate_docs, candidate)
     projected.update(project_balance_products(root, candidate_bosses, candidate_damage))
     projected[PROVENANCE_REL] = project_provenance_receipt(root, projected)

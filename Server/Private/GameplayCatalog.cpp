@@ -3199,7 +3199,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		else if (!fields.empty() && "PATTERNSEQUENCESTEP" == fields[0])
 		{
 			std::uint32_t stepIndex = 0u;
-			if (5u != fields.size() || !IsStableId(fields[1]) ||
+			std::uint32_t pursuitAfterMs = 0u;
+			if ((5u != fields.size() && 6u != fields.size()) ||
+				!IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], stepIndex) || !IsStableId(fields[4]))
 			{
@@ -3216,6 +3218,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					{
 						return pattern.strPatternId == fields[4];
 					});
+			const bool hasNextStep =
+				m_BossPatternSequences.end() != sequence &&
+				stepIndex + 1u < sequence->second.iExpectedStepCount;
+			if (6u == fields.size() &&
+				(!ParseNumber(fields[5], pursuitAfterMs) ||
+				 (hasNextStep &&
+				  (pursuitAfterMs < 100u || pursuitAfterMs > 10000u)) ||
+				 (!hasNextStep && 0u != pursuitAfterMs)))
+			{
+				m_strStatus =
+					"Boss pattern sequence transition pursuit is invalid";
+				return false;
+			}
 			if (m_BossPatternSequences.end() == sequence ||
 				sequence->second.strSequenceId != fields[2] ||
 				stepIndex != sequence->second.PatternIds.size() ||
@@ -3227,6 +3242,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			sequence->second.PatternIds.emplace_back(fields[4]);
+			if (hasNextStep)
+			{
+				if (5u == fields.size())
+					pursuitAfterMs = sequence->second.iInterStepPursuitMs;
+				sequence->second.TransitionPursuitMs.push_back(pursuitAfterMs);
+				sequence->second.TransitionPursuitTicks.push_back(
+					static_cast<std::uint32_t>((
+						static_cast<std::uint64_t>(pursuitAfterMs) * 30u + 999u) /
+						1000u));
+			}
 		}
 		else if (!fields.empty() && "PATTERNSTAGEACTION" == fields[0])
 		{
@@ -4485,6 +4510,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					 0.f == stage.fCounterProxyRadiusM &&
 					 0.f == stage.fCounterProxyArcDegrees) ||
 					(stage.bHasCounterProxy &&
+					 BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape &&
 					 std::isfinite(stage.fCounterProxyForwardOffsetM) &&
 					 std::isfinite(stage.fCounterProxyRightOffsetM) &&
 					 std::isfinite(stage.fCounterProxyRadiusM) &&
@@ -4765,14 +4791,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
 								action.Volley.eLayout &&
 							!action.Volley.bAllowOverlap &&
-							4u == action.Volley.iMaximumTotalObjects &&
-							1u == action.Volley.iSpawnCount &&
+							/* Restored 2026-09-03 authoring: three waves 1333 ms
+							   apart, one tracking axe per alive player plus four
+							   arena-random axes around the boss spawn, 36 max. */
+							36u == action.Volley.iMaximumTotalObjects &&
+							3u == action.Volley.iSpawnCount &&
 							0u == action.Volley.iFirstSpawnOffsetMs &&
-							0u == action.Volley.iSpawnIntervalMs &&
-							0u == action.Volley.iArenaRandomCount &&
-							0.f == action.Volley.fArenaRandomRadiusM &&
-							0.f == action.Volley.fArenaHeightToleranceM &&
-							BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE ==
+							1333u == action.Volley.iSpawnIntervalMs &&
+							4u == action.Volley.iArenaRandomCount &&
+							14.f == action.Volley.fArenaRandomRadiusM &&
+							1.f == action.Volley.fArenaHeightToleranceM &&
+							BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION ==
 								action.Volley.eArenaAnchorPolicy)
 						{
 							hasExactValtanHighJumpTypedVolley = true;
@@ -5310,7 +5339,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			sequence.strSequenceId.empty() ||
 			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE !=
 				sequence.eMode ||
-			sequence.PatternIds.size() != sequence.iExpectedStepCount)
+			sequence.PatternIds.size() != sequence.iExpectedStepCount ||
+			sequence.TransitionPursuitMs.size() + 1u !=
+				sequence.PatternIds.size() ||
+			sequence.TransitionPursuitTicks.size() !=
+				sequence.TransitionPursuitMs.size())
 		{
 			m_strStatus = "Boss pattern sequence tagged shape is incomplete";
 			return false;

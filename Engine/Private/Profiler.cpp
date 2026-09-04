@@ -2,12 +2,25 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 
 using namespace Engine;
 
 namespace
 {
     constexpr size_t MAX_SCOPES_PER_FRAME = 4096;
+    constexpr size_t MAX_OPEN_SCOPES_PER_THREAD = 64;
+
+    struct FOpenScope final
+    {
+        uint32_t NameId = 0;
+        uint32_t Depth = 0;
+        uint64_t BeginTick = 0;
+    };
+
+    /* Each thread owns its own nesting stack. A token is the index into this
+       stack on the thread that began the scope. */
+    thread_local std::vector<FOpenScope> t_OpenScopes;
 }
 
 HRESULT CProfiler::Initialize(
@@ -21,6 +34,7 @@ HRESULT CProfiler::Initialize(
 
     m_pDevice = std::move(device);
     m_pContext = std::move(context);
+    m_MainThreadId = GetCurrentThreadId();
     m_GpuQueriesAvailable = Create_GpuQueries();
     return S_OK;
 }
@@ -32,12 +46,13 @@ void CProfiler::Begin_Frame()
 
     m_FrameActive = true;
     ++m_FrameNumber;
+    {
+        std::lock_guard lock(m_Mutex);
+        m_SharedFrameNumber = m_FrameNumber;
+    }
     m_CurrentFrame = {};
     m_CurrentFrame.FrameNumber = m_FrameNumber;
     m_CurrentFrame.GpuLatencyFrames = GPU_READ_LATENCY;
-    m_CurrentFrame.CpuScopes.clear();
-    m_CurrentFrame.CpuScopes.reserve(128);
-    m_OpenScopes.clear();
     m_FrameBeginTick = Query_Tick();
     Begin_GpuFrame(m_FrameNumber);
 }
@@ -48,14 +63,6 @@ void CProfiler::End_Frame()
         return;
     m_FrameActive = false;
 
-    while (!m_OpenScopes.empty())
-    {
-        const uint32_t sampleIndex = m_OpenScopes.back().SampleIndex;
-        m_OpenScopes.pop_back();
-        if (sampleIndex < m_CurrentFrame.CpuScopes.size())
-            m_CurrentFrame.CpuScopes[sampleIndex].EndTick = Query_Tick();
-    }
-
     const uint64_t endTick = Query_Tick();
     m_CurrentFrame.CpuFrameMs =
         static_cast<double>(endTick - m_FrameBeginTick) * 1000.0 /
@@ -65,6 +72,15 @@ void CProfiler::End_Frame()
     {
         m_CurrentFrame.Counters[index] =
             m_AtomicCounters[index].exchange(0, std::memory_order_relaxed);
+    }
+
+    {
+        /* Every scope that ended since the previous frame, on any thread,
+           belongs to this frame. */
+        std::lock_guard lock(m_Mutex);
+        m_CurrentFrame.CpuScopes = std::move(m_PendingScopes);
+        m_PendingScopes.clear();
+        m_PendingScopes.reserve(128);
     }
 
     End_GpuFrame(m_FrameNumber);
@@ -81,8 +97,11 @@ void CProfiler::Set_Enabled(bool enabled) noexcept
 
     for (std::atomic_uint64_t& counter : m_AtomicCounters)
         counter.store(0, std::memory_order_relaxed);
-    if (!m_FrameActive)
-        m_OpenScopes.clear();
+    if (!enabled)
+    {
+        std::lock_guard lock(m_Mutex);
+        m_PendingScopes.clear();
+    }
 }
 
 bool CProfiler::Is_Enabled() const noexcept
@@ -94,46 +113,71 @@ void CProfiler::Reset_History()
 {
     std::lock_guard lock(m_Mutex);
     m_History.clear();
+    m_PendingScopes.clear();
+    m_LongOperations.clear();
     m_DroppedCpuScopes = 0;
     m_DroppedGpuFrames = 0;
 }
 
 uint32_t CProfiler::Begin_Scope(std::string_view name)
 {
-    if (!m_Enabled.load(std::memory_order_relaxed) || !m_FrameActive)
+    if (!m_Enabled.load(std::memory_order_relaxed))
         return UINT32_MAX;
-    if (m_CurrentFrame.CpuScopes.size() >= MAX_SCOPES_PER_FRAME)
+    std::vector<FOpenScope>& openScopes = t_OpenScopes;
+    if (openScopes.size() >= MAX_OPEN_SCOPES_PER_THREAD)
     {
+        std::lock_guard lock(m_Mutex);
         ++m_DroppedCpuScopes;
         return UINT32_MAX;
     }
 
-    FProfilerScopeSample sample{};
-    sample.NameId = Intern_Name(name);
-    sample.Depth = static_cast<uint32_t>(m_OpenScopes.size());
-    sample.BeginTick = Query_Tick();
-    sample.EndTick = sample.BeginTick;
-    const uint32_t token = static_cast<uint32_t>(
-        m_CurrentFrame.CpuScopes.size());
-    m_CurrentFrame.CpuScopes.push_back(sample);
-    m_OpenScopes.push_back({ token, sample.Depth });
-    return token;
+    FOpenScope open{};
+    open.NameId = Intern_Name(name);
+    open.Depth = static_cast<uint32_t>(openScopes.size());
+    open.BeginTick = Query_Tick();
+    openScopes.push_back(open);
+    return static_cast<uint32_t>(openScopes.size() - 1u);
 }
 
 void CProfiler::End_Scope(uint32_t token) noexcept
 {
-    if (!m_Enabled.load(std::memory_order_relaxed) ||
-        !m_FrameActive ||
-        token >= m_CurrentFrame.CpuScopes.size())
+    std::vector<FOpenScope>& openScopes = t_OpenScopes;
+    if (token >= openScopes.size())
         return;
 
-    m_CurrentFrame.CpuScopes[token].EndTick = Query_Tick();
-    const auto iter = std::find_if(
-        m_OpenScopes.rbegin(), m_OpenScopes.rend(),
-        [token](const FOpenScope& scope)
-        { return scope.SampleIndex == token; });
-    if (iter != m_OpenScopes.rend())
-        m_OpenScopes.erase(std::next(iter).base());
+    const uint64_t endTick = Query_Tick();
+    const FOpenScope open = openScopes[token];
+    /* Unwinding to the token also closes any inner scope whose End_Scope was
+       skipped, so a mismatched pair cannot corrupt later depths. */
+    openScopes.resize(token);
+    if (!m_Enabled.load(std::memory_order_relaxed))
+        return;
+
+    FProfilerScopeSample sample{};
+    sample.NameId = open.NameId;
+    sample.Depth = open.Depth;
+    sample.ThreadId = GetCurrentThreadId();
+    sample.BeginTick = open.BeginTick;
+    sample.EndTick = endTick;
+    const double durationMs = Ticks_ToMs(endTick - open.BeginTick);
+
+    std::lock_guard lock(m_Mutex);
+    if (m_PendingScopes.size() < MAX_SCOPES_PER_FRAME)
+        m_PendingScopes.push_back(sample);
+    else
+        ++m_DroppedCpuScopes;
+    if (durationMs >= LONG_OPERATION_THRESHOLD_MS)
+    {
+        FProfilerLongOperation operation{};
+        operation.Sequence = ++m_LongOperationSequence;
+        operation.FrameNumber = m_SharedFrameNumber;
+        operation.NameId = sample.NameId;
+        operation.ThreadId = sample.ThreadId;
+        operation.DurationMs = durationMs;
+        m_LongOperations.push_back(operation);
+        while (m_LongOperations.size() > MAX_LONG_OPERATIONS)
+            m_LongOperations.pop_front();
+    }
 }
 
 void CProfiler::Add_Counter(
@@ -164,6 +208,8 @@ FProfilerCaptureSnapshot CProfiler::Snapshot() const
     snapshot.Frames.assign(m_History.begin(), m_History.end());
     snapshot.DroppedCpuScopes = m_DroppedCpuScopes;
     snapshot.DroppedGpuFrames = m_DroppedGpuFrames;
+    snapshot.MainThreadId = m_MainThreadId;
+    snapshot.TicksPerSecond = static_cast<uint64_t>(m_Frequency.QuadPart);
     return snapshot;
 }
 
@@ -193,6 +239,163 @@ bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
     }
 
     return true;
+}
+
+double CProfiler::Ticks_ToMs(uint64_t ticks) const noexcept
+{
+    if (0 == m_Frequency.QuadPart)
+        return 0.0;
+    return static_cast<double>(ticks) * 1000.0 /
+        static_cast<double>(m_Frequency.QuadPart);
+}
+
+size_t CProfiler::Get_HistoryFrameCount() const
+{
+    std::lock_guard lock(m_Mutex);
+    return m_History.size();
+}
+
+void CProfiler::Get_ScopeNames(std::vector<std::string>& outNames) const
+{
+    std::lock_guard lock(m_Mutex);
+    outNames = m_ScopeNames;
+}
+
+void CProfiler::Get_ScopeAggregates(
+    size_t frameWindow,
+    std::vector<FProfilerScopeAggregate>& outAggregates) const
+{
+    outAggregates.clear();
+    std::lock_guard lock(m_Mutex);
+    if (m_History.empty() || 0 == frameWindow)
+        return;
+
+    const size_t frameCount = (std::min)(frameWindow, m_History.size());
+    std::map<std::pair<uint32_t, uint32_t>, FProfilerScopeAggregate> aggregates;
+    std::vector<size_t> order;
+    std::vector<size_t> parentStack;
+    std::vector<double> selfMs;
+    for (size_t frameIndex = m_History.size() - frameCount;
+        frameIndex < m_History.size(); ++frameIndex)
+    {
+        const FProfilerFrame& frame = m_History[frameIndex];
+        const std::vector<FProfilerScopeSample>& scopes = frame.CpuScopes;
+        if (scopes.empty())
+            continue;
+
+        /* Self time needs the nesting per thread: visit samples in begin
+           order and subtract each child from the innermost open parent. */
+        order.resize(scopes.size());
+        for (size_t index = 0; index < scopes.size(); ++index)
+            order[index] = index;
+        std::sort(order.begin(), order.end(),
+            [&scopes](const size_t left, const size_t right)
+            {
+                const FProfilerScopeSample& a = scopes[left];
+                const FProfilerScopeSample& b = scopes[right];
+                if (a.ThreadId != b.ThreadId)
+                    return a.ThreadId < b.ThreadId;
+                if (a.BeginTick != b.BeginTick)
+                    return a.BeginTick < b.BeginTick;
+                return a.EndTick > b.EndTick;
+            });
+        selfMs.assign(scopes.size(), 0.0);
+        parentStack.clear();
+        uint32_t currentThread = 0;
+        for (const size_t index : order)
+        {
+            const FProfilerScopeSample& sample = scopes[index];
+            if (sample.ThreadId != currentThread)
+            {
+                parentStack.clear();
+                currentThread = sample.ThreadId;
+            }
+            while (!parentStack.empty() &&
+                scopes[parentStack.back()].EndTick <= sample.BeginTick)
+            {
+                parentStack.pop_back();
+            }
+            const double inclusiveMs = Ticks_ToMs(
+                sample.EndTick >= sample.BeginTick ?
+                    sample.EndTick - sample.BeginTick : 0);
+            selfMs[index] += inclusiveMs;
+            if (!parentStack.empty())
+                selfMs[parentStack.back()] -= inclusiveMs;
+            parentStack.push_back(index);
+        }
+        for (size_t index = 0; index < scopes.size(); ++index)
+        {
+            const FProfilerScopeSample& sample = scopes[index];
+            FProfilerScopeAggregate& aggregate =
+                aggregates[{ sample.NameId, sample.ThreadId }];
+            aggregate.NameId = sample.NameId;
+            aggregate.ThreadId = sample.ThreadId;
+            const double inclusiveMs = Ticks_ToMs(
+                sample.EndTick >= sample.BeginTick ?
+                    sample.EndTick - sample.BeginTick : 0);
+            ++aggregate.Calls;
+            aggregate.InclusiveMs += inclusiveMs;
+            aggregate.SelfMs += (std::max)(0.0, selfMs[index]);
+            aggregate.MaxMs = (std::max)(aggregate.MaxMs, inclusiveMs);
+        }
+    }
+
+    outAggregates.reserve(aggregates.size());
+    for (const auto& [key, aggregate] : aggregates)
+        outAggregates.push_back(aggregate);
+    std::sort(outAggregates.begin(), outAggregates.end(),
+        [](const FProfilerScopeAggregate& left, const FProfilerScopeAggregate& right)
+        { return left.InclusiveMs > right.InclusiveMs; });
+}
+
+void CProfiler::Get_WindowFrameStats(
+    size_t frameWindow,
+    double& outCpuAvgMs,
+    double& outCpuMaxMs,
+    double& outGpuAvgMs,
+    double& outGpuMaxMs,
+    size_t& outFrames) const
+{
+    outCpuAvgMs = 0.0;
+    outCpuMaxMs = 0.0;
+    outGpuAvgMs = 0.0;
+    outGpuMaxMs = 0.0;
+    outFrames = 0;
+    std::lock_guard lock(m_Mutex);
+    if (m_History.empty() || 0 == frameWindow)
+        return;
+    const size_t frameCount = (std::min)(frameWindow, m_History.size());
+    size_t gpuFrames = 0;
+    for (size_t frameIndex = m_History.size() - frameCount;
+        frameIndex < m_History.size(); ++frameIndex)
+    {
+        const FProfilerFrame& frame = m_History[frameIndex];
+        outCpuAvgMs += frame.CpuFrameMs;
+        outCpuMaxMs = (std::max)(outCpuMaxMs, frame.CpuFrameMs);
+        if (frame.GpuValid)
+        {
+            outGpuAvgMs += frame.GpuFrameMs;
+            outGpuMaxMs = (std::max)(outGpuMaxMs, frame.GpuFrameMs);
+            ++gpuFrames;
+        }
+    }
+    outFrames = frameCount;
+    outCpuAvgMs /= static_cast<double>(frameCount);
+    if (0 != gpuFrames)
+        outGpuAvgMs /= static_cast<double>(gpuFrames);
+}
+
+void CProfiler::Get_LongOperations(
+    std::vector<FProfilerLongOperation>& outOperations) const
+{
+    std::lock_guard lock(m_Mutex);
+    outOperations.assign(m_LongOperations.begin(), m_LongOperations.end());
+}
+
+void CProfiler::Clear_LongOperations()
+{
+    std::lock_guard lock(m_Mutex);
+    m_LongOperations.clear();
 }
 
 uint64_t CProfiler::Query_Tick() const noexcept

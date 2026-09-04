@@ -58,6 +58,9 @@
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
+#include "ProfilerTool.h"
+#include "RenderingBenchmark.h"
+#include "SequencerTool.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
@@ -990,6 +993,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			fTimeDelta,
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
 	}
+	/* Save and publish jobs are process owners, not window owners. Poll the
+	   immutable Save receipt first, let a hidden Composition caller accept and
+	   reopen its exact local owners, then poll the optional Full DataOnly job. */
+	if (nullptr != m_pBalanceTool)
+		m_pBalanceTool->Update_ValtanSaveJob();
+	if (nullptr != m_pActionCompositionWorkbench)
+		m_pActionCompositionWorkbench->Update_SaveState();
+	if (nullptr != m_pBalanceTool)
+		m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
+	/* Composition Save receipts are delivered independently of both Developer
+	   Tools visibility and the Composition window's Render call. If Effect Tool
+	   does not exist yet, leave the request pending in the Workbench. */
+	if (nullptr != m_pActionCompositionWorkbench && nullptr != m_pEffectTool)
+	{
+		std::string ExpectedValtanSourceRevision;
+		if (m_pActionCompositionWorkbench->Consume_EffectGraphRefreshRequest(
+				ExpectedValtanSourceRevision))
+		{
+			m_pEffectTool->Request_ValtanGraphRefresh(
+				ExpectedValtanSourceRevision);
+		}
+	}
 	if (nullptr != m_pEffectTool)
 	{
 		m_pEffectTool->Update(fTimeDelta);
@@ -1245,8 +1270,12 @@ HRESULT CMainApp::Render()
 			}
 		}
 #ifdef _DEBUG
+		if (nullptr != m_pRenderingBenchmark)
+			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
 		if (m_bDeveloperToolsVisible)
 		{
+			Engine::CProfilerScope developerToolsScope(
+				CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
 			RenderDeveloperTools();
 			/* The authoring workspace is deliberately non-exclusive. Each domain owner
 			   keeps its own window and draft; Resource Files only orchestrates focus and
@@ -1269,6 +1298,32 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::COMPOSITION);
 				m_pActionCompositionWorkbench->Render();
 			}
+			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+				nullptr != m_pSequencerTool)
+			{
+				focusNextWindow(DEBUG_TOOL::SEQUENCER);
+				m_pSequencerTool->Render();
+				if (m_pSequencerTool->Consume_CompositionOpenRequest() &&
+					SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::COMPOSITION)))
+				{
+					m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION;
+				}
+				std::string kakulProfileId;
+				if (m_pSequencerTool->Consume_KakulAnimationOpenRequest(
+						kakulProfileId) &&
+					SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
+					nullptr != m_pAnimationTool)
+				{
+					const bool_t opened =
+						m_pAnimationTool->Open_KakulProfile(kakulProfileId);
+					m_strToolStatus = opened ?
+						"Opened the selected Kakul Composition profile in its Animation authoring owner." :
+						"Animation Tool opened, but the selected Kakul profile was rejected; the current dirty draft was preserved.";
+					m_eDebugWindowFocusPending = DEBUG_TOOL::ANIMATION;
+				}
+				if (!m_pSequencerTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
+			}
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 				nullptr != m_pAnimationTool)
 			{
@@ -1287,6 +1342,14 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::RENDERING);
 				RenderRenderingWorkbench();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::PROFILER) &&
+				nullptr != m_pProfilerTool)
+			{
+				focusNextWindow(DEBUG_TOOL::PROFILER);
+				m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+				if (!m_pProfilerTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
 			}
 			/* Skill Window's slots are still authored by their existing UI owner;
 			   rendering it alongside other tools does not create a second UI runtime. */
@@ -4941,11 +5004,28 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
 				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
 		const bool_t bFirstEffectToolOpen = nullptr == m_pEffectTool;
 		if (nullptr == m_pEffectTool)
 			m_pEffectTool =
 				make_unique<CEffect_Tool>(
-					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
+					m_pDevice, m_pContext, m_pCharacterPreviewPanel,
+					m_pBalanceTool.get());
+		/* A Save may have completed while the Effect owner did not exist. Hand
+		   over its exact receipt before first-open code can perform an unpinned
+		   canonical refresh. */
+		if (nullptr != m_pActionCompositionWorkbench)
+		{
+			std::string ExpectedValtanSourceRevision;
+			if (m_pActionCompositionWorkbench->
+					Consume_EffectGraphRefreshRequest(
+						ExpectedValtanSourceRevision))
+			{
+				m_pEffectTool->Request_ValtanGraphRefresh(
+					ExpectedValtanSourceRevision);
+			}
+		}
 		if (nullptr == m_pEffectToolV2)
 			m_pEffectToolV2 =
 				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
@@ -4972,6 +5052,28 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_strRenderingDraftProfileId = pProfile->strProfileId;
 			m_bRenderQualityDraftInitialized = true;
 		}
+		if (nullptr == m_pRenderingBenchmark)
+			m_pRenderingBenchmark = make_unique<CRenderingBenchmark>();
+		break;
+	case DEBUG_TOOL::PROFILER:
+		if (nullptr == m_pProfilerTool)
+			m_pProfilerTool = make_unique<CProfilerTool>();
+		m_pProfilerTool->Open();
+		if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+			pProfiler->Set_Enabled(true);
+		break;
+	case DEBUG_TOOL::SEQUENCER:
+		/* The Sequencer reads the Composition Workbench's timeline projection,
+		   so that owner must exist first. Its window opens alongside. */
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::COMPOSITION)) ||
+			nullptr == m_pActionCompositionWorkbench)
+		{
+			return E_FAIL;
+		}
+		if (nullptr == m_pSequencerTool)
+			m_pSequencerTool = make_unique<CSequencerTool>(
+				m_pActionCompositionWorkbench.get(), m_pBossTool.get());
+		m_pSequencerTool->Open();
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
@@ -6197,8 +6299,6 @@ void CMainApp::RenderDeveloperTools()
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId &&
 		CMapEditorWorkspaceService::Is_Active();
 	ImGui::Text("Current level id: %u", currentLevelId);
-	ImGui::TextDisabled(
-		"Resizable window: drag any edge or corner; overflowing panels scroll inside this window.");
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
@@ -6253,6 +6353,8 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
+		toolCell("Sequencer", DEBUG_TOOL::SEQUENCER);
+		toolCell("Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
@@ -6260,13 +6362,15 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 10>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 12>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::COMPOSITION, "Action Composition Workbench" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
+			{ DEBUG_TOOL::SEQUENCER, "Sequencer" },
+			{ DEBUG_TOOL::PROFILER, "Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
 			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
 			{ DEBUG_TOOL::BOSS, "Boss Tool" },
@@ -6300,8 +6404,6 @@ void CMainApp::RenderDeveloperTools()
 		}
 		ImGui::EndCombo();
 	}
-	ImGui::TextDisabled(
-		"Open windows keep rendering; only this explicitly selected owner may mutate the world viewport, model preview or preview camera.");
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (!isMapEditorWorkspace && IsDebugToolVisible(DEBUG_TOOL::MAP))
 	{
@@ -6584,6 +6686,20 @@ void CMainApp::RenderRenderingWorkbench()
 		"FP16 Light -> SceneHDR -> Screen Post -> half-res Bloom -> Hable/FXAA -> UI");
 	ImGui::TextDisabled(
 		"Global technical settings and scene artistic multipliers are stored separately.");
+	if (nullptr != m_pRenderingBenchmark)
+	{
+		const RENDER_QUALITY_SETTINGS& Quality =
+			m_RenderingProfiles.Get_GlobalQuality();
+		const string strQualitySummary = "profile=" + m_strRenderingDraftProfileId +
+			" ssao=" + (Quality.bSSAOEnabled ? "on" : "off") +
+			" bloom=" + (Quality.bBloomEnabled ? "on" : "off") +
+			" fxaa=" + (Quality.bFXAAEnabled ? "on" : "off") +
+			" shadow=" + (pActiveProfile->ShadowSettings.bEnabled ? "on" : "off") +
+			" fog=" + (pActiveProfile->Fog.bEnabled ? "on" : "off") +
+			" exposure=" + std::to_string(Quality.fExposure);
+		m_pRenderingBenchmark->Render_Section(
+			CGameInstance::Get().Get_Profiler(), strQualitySummary);
+	}
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	ImGui::SeparatorText("Effect Presentation");
@@ -7011,6 +7127,9 @@ void CMainApp::Free()
 #ifdef _DEBUG
 	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 		pProfiler->Set_Enabled(false);
+	m_pSequencerTool.reset();
+	m_pProfilerTool.reset();
+	m_pRenderingBenchmark.reset();
 	m_pActionCompositionWorkbench.reset();
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();

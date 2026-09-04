@@ -38,12 +38,15 @@ def decrypt(path):
 files=[f for f in os.listdir(MOV) if f.lower().endswith('.ipk')]
 gal=[]; tmp=os.path.join(OUT,'_t.bik')
 for i,f in enumerate(files):
-    try: r=decrypt(os.path.join(MOV,f))
+    fp=os.path.join(MOV,f)
+    if os.path.getsize(fp)>80*1024*1024: continue  # 대형 시네마틱 스킵
+    try: r=decrypt(fp)
     except Exception: r=None
     if not r: continue
     dec,w,h,fr=r
     if w*h<700*400: continue
-    open(tmp,'wb').write(dec)
+    try: open(tmp,'wb').write(dec)
+    except Exception: continue
     png=os.path.join(OUT,f"{f[:20]}_{w}x{h}_f{fr}.png")
     subprocess.run([FF,'-y','-ss',str(fr/2/30.0),'-i',tmp,'-frames:v','1',png],capture_output=True)
     if not os.path.exists(png):

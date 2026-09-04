@@ -30,6 +30,7 @@ $manifest = Read-BuildDomainManifest $manifestPath
 $domainIds = if ($Owner -eq 'Client') {
     @(
         'map.kakul',
+        'composition.presentation',
         'world.gameplay',
         'navigation',
         'valtan.product'

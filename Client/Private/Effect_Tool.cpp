@@ -6,6 +6,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationTargetService.h"
 #include "ActorCatalog.h"
+#include "BalanceTool.h"
 #include "Character.h"
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
@@ -3092,12 +3093,14 @@ namespace
 Client::CEffect_Tool::CEffect_Tool(
     ComPtr<ID3D11Device> pDevice,
     ComPtr<ID3D11DeviceContext> pContext,
-    shared_ptr<CCharacterPreviewPanel> pCharacterPreviewPanel)
+    shared_ptr<CCharacterPreviewPanel> pCharacterPreviewPanel,
+	CBalanceTool* const pBalanceTool)
     : m_pDevice(std::move(pDevice)),
       m_pContext(std::move(pContext)),
       m_pThumbnailCache(std::make_unique<CEffectThumbnailCache>(
           m_pDevice, m_pContext)),
       m_pCharacterPreviewPanel(std::move(pCharacterPreviewPanel)),
+	  m_pBalanceTool(pBalanceTool),
       m_PreviewWorldRoot(Identity_Matrix())
 {
     Copy_Buffer(m_PreviewAnchorBuffer.data(),
@@ -3124,6 +3127,10 @@ Client::CEffect_Tool::~CEffect_Tool()
 bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 {
 	m_bAllEffectsValtanBossSelected = true;
+	const bool_t bHadPendingExactRefresh =
+		m_bValtanGraphRefreshRequested;
+	const std::string PendingExactRevision =
+		m_strPendingValtanGraphRefreshRevision;
 	/* Valtan is an explicit workspace selection, so its saved authored rows
 	   must also become the active Data Files category. Leaving the constructor
 	   default (DimensionMaster) here made the exact Valtan source index ready
@@ -3135,11 +3142,17 @@ bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 	   here made the first visible frame proportional to the complete Effect
 	   corpus.  Exact document decoding remains owned by Open/Play. */
 	Initialize_CatalogMetadataView();
-	const bool_t bResourceCatalogReady =
+	if (bHadPendingExactRefresh)
+		Process_PendingValtanGraphRefresh();
+	const bool_t bResourceCatalogReady = bHadPendingExactRefresh ?
+		Can_DisplayValtanView(m_eValtanEffectResourceAdmission) :
 		Refresh_ValtanEffectResourceSnapshot();
 	const bool_t bExactSourcesReady =
 		!m_ValtanExactAuthoredSources.empty();
-	const bool_t bCanonicalGraphReady = Refresh_ValtanPatternTree();
+	const bool_t bCanonicalGraphReady = bHadPendingExactRefresh ?
+		(m_strCommittedValtanGraphRevision == PendingExactRevision &&
+		 Can_DisplayValtanView(m_eValtanPatternTreeAdmission)) :
+		Refresh_ValtanPatternTree();
 	(void)Refresh_ValtanAreaStaticEffects();
 
 	/* The exact authored source index is the usable fallback inventory.  A
@@ -3366,6 +3379,7 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 {
     ++m_iFrameNumber;
+	Process_PendingValtanGraphRefresh();
 	Update_ValtanServerPatternAudition();
 	Update_ValtanPatternProductEffectUnlink();
     m_pThumbnailCache->Begin_Frame(m_iFrameNumber);
@@ -12845,6 +12859,121 @@ bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(
 	return bAnimationReady;
 }
 
+void Client::CEffect_Tool::Request_ValtanGraphRefresh(
+	const std::string& strExpectedSourceRevision)
+{
+	/* Latest committed Save wins if the Effect window stayed closed across
+	   multiple Saves. The exact receipt remains mandatory; an unavailable
+	   receipt is consumed as a typed stale-revision failure instead of silently
+	   reopening whatever happens to be current later. */
+	m_strPendingValtanGraphRefreshRevision = strExpectedSourceRevision;
+	m_bValtanGraphRefreshRequested = true;
+	m_eValtanGraphRefreshState = VALTAN_GRAPH_REFRESH_STATE::PENDING;
+}
+
+void Client::CEffect_Tool::Process_PendingValtanGraphRefresh()
+{
+	if (!m_bValtanGraphRefreshRequested)
+		return;
+	const std::string ExpectedRevision =
+		std::move(m_strPendingValtanGraphRefreshRevision);
+	m_strPendingValtanGraphRefreshRevision.clear();
+	m_bValtanGraphRefreshRequested = false;
+
+	/* The canonical tree is the revision gate. Do not mutate any of the related
+	   All Effects indexes until its staged read has committed the requested
+	   Save receipt. */
+	if (!Refresh_ValtanPatternTreeForRevision(ExpectedRevision))
+		return;
+	const bool_t bAllEffectsReady = Refresh_AllEffects(true);
+	const bool_t bDataFilesReady = Refresh_DataFiles();
+	const bool_t bResourceSnapshotReady =
+		Refresh_ValtanEffectResourceSnapshot();
+	if (!bAllEffectsReady || !bDataFilesReady || !bResourceSnapshotReady)
+	{
+		m_eValtanGraphRefreshState = VALTAN_GRAPH_REFRESH_STATE::FAILED;
+		m_strValtanPatternTreeStatus +=
+			" | RELATED_REFRESH_FAILED: the exact Pattern tree remains admitted, but one or more Effect indexes preserved their previous snapshot.";
+	}
+}
+
+bool_t Client::CEffect_Tool::Observe_ExpectedValtanSourceRevision(
+	const std::string& strExpectedSourceRevision,
+	const char_t* const pPhase)
+{
+	std::string CurrentRevision;
+	std::string RevisionStatus;
+	const bool_t bMatches = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Get_ValtanPublishSourceRevision(
+			CurrentRevision, RevisionStatus) &&
+		CurrentRevision == strExpectedSourceRevision;
+	if (bMatches)
+		return true;
+
+	const std::string Diagnostic =
+		"Observed " +
+		(CurrentRevision.empty() ? std::string("UNAVAILABLE") :
+			CurrentRevision) + ". " +
+		(nullptr == m_pBalanceTool ?
+			std::string("Balance revision owner is unavailable.") :
+			RevisionStatus);
+	Preserve_ValtanGraphForStaleRevision(
+		strExpectedSourceRevision, pPhase, Diagnostic);
+	return false;
+}
+
+void Client::CEffect_Tool::Preserve_ValtanGraphForStaleRevision(
+	const std::string& strExpectedSourceRevision,
+	const char_t* const pPhase,
+	const std::string& strDiagnostic)
+{
+	m_bValtanPatternTreeLoadAttempted = true;
+	m_bValtanPatternTreeLastRefreshSucceeded = false;
+	m_bValtanPatternTreeReloadRetryPending = false;
+	m_eValtanGraphRefreshState =
+		VALTAN_GRAPH_REFRESH_STATE::STALE_REVISION;
+	m_eValtanPatternTreeAdmission =
+		(m_bValtanPatternTreeLoaded || m_bValtanProductFallbackReady) ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+	m_strValtanPatternTreeStatus =
+		"STALE_REVISION: All Effects refresh preserved the previous Pattern tree at " +
+		std::string(nullptr == pPhase ? "revision check" : pPhase) +
+		"; expected Save receipt " +
+		(strExpectedSourceRevision.empty() ? std::string("NONE") :
+			strExpectedSourceRevision) + ". " + strDiagnostic;
+}
+
+bool_t Client::CEffect_Tool::Refresh_ValtanPatternTreeForRevision(
+	const std::string& strExpectedSourceRevision)
+{
+	if (!Observe_ExpectedValtanSourceRevision(
+			strExpectedSourceRevision, "before parse"))
+	{
+		return false;
+	}
+	m_strActiveValtanGraphRefreshRevision = strExpectedSourceRevision;
+	const bool_t bRefreshed = Refresh_ValtanPatternTree();
+	m_strActiveValtanGraphRefreshRevision.clear();
+	if (!bRefreshed)
+	{
+		/* A guarded Save receipt must never degrade into the ordinary unpinned
+		   automatic retry, which could later commit a different generation. */
+		m_bValtanPatternTreeReloadRetryPending = false;
+		if (VALTAN_GRAPH_REFRESH_STATE::STALE_REVISION !=
+				m_eValtanGraphRefreshState)
+		{
+			m_eValtanGraphRefreshState = VALTAN_GRAPH_REFRESH_STATE::FAILED;
+		}
+		return false;
+	}
+	m_strCommittedValtanGraphRevision = strExpectedSourceRevision;
+	m_eValtanGraphRefreshState = VALTAN_GRAPH_REFRESH_STATE::ADMITTED;
+	m_strValtanPatternTreeStatus +=
+		" | EXACT_SAVE_REVISION " + strExpectedSourceRevision + " admitted.";
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 {
 	/* parse -> validate -> stage -> commit. A failed reload keeps whatever the
@@ -12947,6 +13076,21 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 			(m_bValtanProductFallbackReady ?
 				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict tree generation changed before commit: " + CurrentDiagnostic.strStatus :
 				"Valtan tree generation changed before commit: " + CurrentDiagnostic.strStatus);
+		return false;
+	}
+	std::string ExactRevisionStatus;
+	if (!m_strActiveValtanGraphRefreshRevision.empty() &&
+		(nullptr == m_pBalanceTool ||
+		 !m_pBalanceTool->Verify_ValtanCanonicalSourceRevision_WhileAdmitted(
+			CanonicalAdmission, m_strActiveValtanGraphRefreshRevision,
+			ExactRevisionStatus)))
+	{
+		/* Staged and validated locals fall out of scope. The previously committed
+		   tree, inventory, selection and caches remain byte-for-byte untouched. */
+		Preserve_ValtanGraphForStaleRevision(
+			m_strActiveValtanGraphRefreshRevision, "before commit",
+			nullptr == m_pBalanceTool ?
+				"Balance revision owner is unavailable." : ExactRevisionStatus);
 		return false;
 	}
 	const std::string Status = Diagnostic.strStatus;

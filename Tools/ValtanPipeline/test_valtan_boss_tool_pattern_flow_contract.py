@@ -296,17 +296,29 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_inline_sequence_projects_to_one_deterministic_in_memory_graph(self) -> None:
         sequence = self.gameplay["decisionModel"]["scriptedSequence"]
-        self.assertEqual(
-            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+        self.assertIn(
             set(sequence),
+            (
+                {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+                {
+                    "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+                    "transitionPursuitMs",
+                },
+            ),
         )
         self.assertEqual("ORDERED_ONCE_THEN_IDLE", sequence["mode"])
         projected = make_document(sequence["patternIds"])
         projected["flows"][0]["defaultPursuitMs"] = sequence[
             "interStepPursuitMs"
         ]
-        for edge in projected["flows"][0]["edges"]:
-            edge["pursuitMs"] = sequence["interStepPursuitMs"]
+        transition_pursuit_ms = sequence.get(
+            "transitionPursuitMs",
+            [sequence["interStepPursuitMs"]] * (len(sequence["patternIds"]) - 1),
+        )
+        for edge, pursuit_ms in zip(
+            projected["flows"][0]["edges"], transition_pursuit_ms,
+        ):
+            edge["pursuitMs"] = pursuit_ms
         validate_document(projected, self.inventory)
         flow = projected["flows"][0]
         self.assertEqual(2, projected["formatVersion"])
@@ -773,6 +785,166 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("Canonical source files are not saved again", flow_tab)
         self.assertIn("Retry_FlowProductPublishApply", self.boss_tool)
 
+    def test_save_and_runtime_publish_are_boss_mutation_and_playback_barriers(self) -> None:
+        helper = self.boss_tool[
+            self.boss_tool.index("bool_t Is_RuntimePublishMutationBlocked(") :
+            self.boss_tool.index("bool_t Is_OptionalEntryPatternId(")
+        ]
+        for marker in (
+            "Is_ValtanSaveJobBlockingAuthoring()",
+            "Get_ValtanSaveJobState(",
+            "VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST",
+            "Is_ServerRuntimeSetPublishRunning()",
+            "Get_ServerRuntimeSetPublishState(",
+            "SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST",
+            "will not start a duplicate transaction",
+        ):
+            self.assertIn(marker, helper)
+
+        guarded_entries = (
+            (
+                "bool_t Client::CBossTool::Submit_SelectedPattern()",
+                "bool_t Client::CBossTool::Restart_SelectedPattern()",
+                '"Pattern Play"',
+            ),
+            (
+                "bool_t Client::CBossTool::Restart_SelectedPattern()",
+                "bool_t Client::CBossTool::Restart_ServerPattern(",
+                '"Pattern Restart"',
+            ),
+            (
+                "bool_t Client::CBossTool::Restart_ServerPattern(",
+                "bool_t Client::CBossTool::Queue_NextServerPattern(",
+                '"Pattern Restart"',
+            ),
+            (
+                "bool_t Client::CBossTool::Queue_NextServerPattern(",
+                "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+                '"Queue Next Pattern"',
+            ),
+            (
+                "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+                "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+                '"Pattern Play"',
+            ),
+            (
+                "bool_t Client::CBossTool::Acquire_ServerPlaybackAdmission(",
+                "bool_t Client::CBossTool::Get_ServerPatternOptions(",
+                '"Server Pattern playback"',
+            ),
+            (
+                "bool_t Client::CBossTool::Play_ServerPattern(",
+                "bool_t Client::CBossTool::Get_ServerPatternStatus(",
+                '"Pattern Play"',
+            ),
+            (
+                "bool_t Client::CBossTool::Set_ServerArenaPreset(",
+                "bool_t Client::CBossTool::Get_ServerArenaActiveState(",
+                '"Arena Preset"',
+            ),
+            (
+                "bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()",
+                "bool_t Client::CBossTool::Start_Flow(",
+                '"Flow Isolated Preview"',
+            ),
+            (
+                "bool_t Client::CBossTool::Start_FlowAtSlot(",
+                "bool_t Client::CBossTool::Restart_SavedFlow()",
+                '"Restart Saved Flow"',
+            ),
+            (
+                "bool_t Client::CBossTool::Restart_SavedFlow()",
+                "bool_t Client::CBossTool::Request_RevivePlayer(",
+                '"Restart Saved Flow"',
+            ),
+            (
+                "bool_t Client::CBossTool::Reload_FlowDocument()",
+                "bool_t Client::CBossTool::Save_FlowDocument()",
+                '"Flow Load/Discard"',
+            ),
+            (
+                "bool_t Client::CBossTool::Save_FlowDocument()",
+                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()",
+                '"Flow Save"',
+            ),
+            (
+                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()",
+                "void Client::CBossTool::Synchronize_LiveSelection()",
+                '"Flow Publish Retry"',
+            ),
+            (
+                "bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()",
+                "void Client::CBossTool::Render_ConnectionSummary(",
+                '"Canonical Ring Save"',
+            ),
+        )
+        for start, end, label in guarded_entries:
+            body = self.boss_tool[
+                self.boss_tool.index(start) : self.boss_tool.index(end)
+            ]
+            guard = body.index("Is_RuntimePublishMutationBlocked(")
+            self.assertIn(label, body[guard:])
+            self.assertLess(guard, body.index("return false;", guard))
+
+        flow_tab = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()") :
+            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+        ]
+        self.assertIn("bAuthoringTransactionBlocked", flow_tab)
+        self.assertIn("Has_ValtanAuthoringTransactionBarrier", flow_tab)
+        self.assertIn(
+            "FlowService.Has_PendingStart() || bOtherCommandPending ||\n\t\tbAuthoringTransactionBlocked",
+            flow_tab,
+        )
+        self.assertIn(
+            "PendingFlowStart.eState || bOtherCommandPending ||\n\t\tbAuthoringTransactionBlocked",
+            flow_tab,
+        )
+
+        action_bar = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_ActionBar()") :
+            self.boss_tool.index("void Client::CBossTool::Normalize_CurrentFlowSelection()")
+        ]
+        self.assertIn("Has_ValtanAuthoringTransactionBarrier", action_bar)
+        self.assertIn("!bAuthoringTransactionBlocked", action_bar)
+        self.assertIn("bCanPlay", action_bar)
+        self.assertIn("bCanRestartActivePattern", action_bar)
+        self.assertIn("bCanRetryRestart", action_bar)
+        self.assertIn('ImGui::Button("Stop After Current")', action_bar)
+
+        next_card = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_NextPatternCard()") :
+            self.boss_tool.index("void Client::CBossTool::Render_NextPatternPicker()")
+        ]
+        self.assertIn("bAuthoringTransactionBlocked", next_card)
+        self.assertIn("!bAuthoringTransactionBlocked", next_card)
+        self.assertIn('ImGui::Button("Cancel Reservation")', next_card)
+        self.assertIn('ImGui::Button("Retry Same Next Command")', next_card)
+        next_picker = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_NextPatternPicker()") :
+            self.boss_tool.index("void Client::CBossTool::Render_FlowGraphEditor()")
+        ]
+        self.assertIn("Has_ValtanAuthoringTransactionBarrier", next_picker)
+        ring_editor = self.boss_tool[
+            self.boss_tool.index(
+                "bool_t Client::CBossTool::Render_SelectedPatternRingAuthoring("
+            ) :
+            self.boss_tool.index(
+                "bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()"
+            )
+        ]
+        self.assertIn("bAuthoringTransactionBlocked", ring_editor)
+        self.assertIn(
+            "ImGui::BeginDisabled(bAuthoringTransactionBlocked)",
+            ring_editor,
+        )
+        selected_flow = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_FlowSelectedSlot()") :
+            self.boss_tool.index("void Client::CBossTool::Render_ActionBar()")
+        ]
+        self.assertIn("Stop_AfterCurrent(Status)", selected_flow)
+        self.assertNotIn("Is_RuntimePublishMutationBlocked(", selected_flow)
+
     def test_failed_canonical_reload_keeps_display_rows_but_revokes_mutation(self) -> None:
         header = (ROOT / "Client/Public/BossTool.h").read_text(encoding="utf-8")
         reload_body = self.boss_tool[
@@ -1139,8 +1311,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             '"flow.valtan.boss-tool.default"',
             'pinnedCatalog->Find_BossPatternSequence(boss->strEncounterId)',
             'request.strStartSlotId == request.Slots.front().strSlotId',
-            'savedSequence->iInterStepPursuitMs',
-            'savedSequence->PatternIds.size() == request.Slots.size()',
+            'savedCanonicalSequence->iInterStepPursuitMs',
+            'savedCanonicalSequence->TransitionPursuitMs[index]',
+            'savedCanonicalSequence->PatternIds.size() == request.Slots.size()',
             'patternId == slot.strPatternId',
             'does not match the Server-active canonical scriptedSequence',
         ):
@@ -1154,6 +1327,45 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             'then fresh-resets and starts exact Server-active scriptedSequence Pattern 01',
             self.server_tests,
         )
+
+    def test_selected_transition_wait_persists_without_a_wire_change(self) -> None:
+        legacy_projection = self.source[
+            self.source.index("bool_t Build_LegacyProjection(") :
+            self.source.index("std::vector<std::string> Build_CurrentPatternInventory(")
+        ]
+        self.assertNotIn(
+            "edge->iPursuitMs != flow.iDefaultPursuitMs",
+            legacy_projection,
+        )
+        for marker in (
+            "TransitionPursuitMs.reserve(pFlow->Slots.size() - 1u)",
+            "TransitionPursuitMs.push_back(Edge->iPursuitMs)",
+            "PatternIds, pFlow->iInterStepPursuitMs,",
+            "TransitionPursuitMs, Status",
+        ):
+            self.assertIn(marker, self.boss_tool)
+        for marker in (
+            '"transitionPursuitMs"',
+            "PATTERNSEQUENCESTEP",
+        ):
+            self.assertIn(marker, self.tuning_pipeline + self.gameplay_publisher)
+        for marker in (
+            "TransitionPursuitMs.push_back(pursuitAfterMs)",
+            "TransitionPursuitTicks.push_back(",
+            "ResolveSequencePursuitTicksAfter(",
+            "boss.iAutomaticPatternSequenceInterStepPursuitTicks =",
+            "boss.iAutomaticPatternSequencePursuitTicksRemaining =",
+            "boss.iAutomaticPatternSequenceInterStepPursuitTicks;",
+        ):
+            self.assertIn(
+                marker,
+                self.server_gameplay_catalog + self.server_brain,
+            )
+        start_message = self.packet_messages[
+            self.packet_messages.index("struct C2S_DEBUG_VALTAN_PATTERN_FLOW_START") :
+            self.packet_messages.index("struct C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT")
+        ]
+        self.assertNotIn("TransitionPursuit", start_message)
 
     def test_server_duplicate_identity_stop_hold_and_release_rejection_are_locked(self) -> None:
         for marker in (

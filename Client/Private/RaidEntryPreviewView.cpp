@@ -129,6 +129,11 @@ namespace
 		const char_t*	pEstherPortraits[3];
 		const char_t*	pRewardIcons[8];
 		int32_t			iRewardGrades[8];
+		/* Animated commander-entrance background, decrypted from the client's own Bink movie and
+		   cooked to a DXT1 DDS flipbook, played on the portrait slot. pBgMoviePrefix is the frame
+		   path minus the "_NNN.dds" suffix; nullptr keeps the static key art. */
+		const char_t*	pBgMoviePrefix;
+		int32_t			iBgMovieFrames;
 	};
 	const RAID_DEF RAID_DEFS[] =
 	{
@@ -142,8 +147,8 @@ namespace
 			// "아이템 레벨 1475 미만 매칭 불가"
 			L"\xC544\xC774\xD15C \xB808\xBCA8 1475 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
 			nullptr,
-			"UI/Bern/RaidEntry_BossPortrait.png",
-			"UI/Bern/RaidEntry_LeftPanel_2.png", false,
+			"UI/RaidEntry/RaidEntry_BossPortrait.png",
+			"UI/RaidEntry/RaidEntry_LeftPanel_2.png", false,
 			/* Kakul's three esther skills, in the order the real window lists them.
 			   esther_icon_3/4 are cut from EFUI_ICONATLAS_E/esther_0.dds; only the three
 			   already on disk had names, so the rest keep their atlas index. */
@@ -155,6 +160,7 @@ namespace
 			  "UI/ItemUpgrade/lm_glove_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png",
 			  "UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png" },
 			{ 5, 5, 5, 5, 5, 5, 4, 4 },
+			"UI/RaidEntry/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
 		},
 		{
 			0,
@@ -169,10 +175,13 @@ namespace
 			   only carries frames 3..6 -- but not from the game: EFUI_BACKGROUNDIMG ships it as
 			   lv_lut_commander_valtan_lock at 1200x848, which is this very slot's size. The
 			   package names the two states the movie switches between in
-			   satisfiedChangedHandler: _lock for entry-blocked, _special for the colour art. */
-			"BOSS_VALTAN",
-			"UI/Bern/RaidEntry_BossPortrait_Valtan.png",
-			"UI/Bern/RaidEntry_LeftPanel_0.png", true,
+			   satisfiedChangedHandler: _lock for entry-blocked, _special for the colour art.
+			   The live 3D showcase (BOSS_VALTAN) is bypassed now that the real entrance movie is
+			   decrypted and cooked to pBgMoviePrefix -- set it back to "BOSS_VALTAN" to prefer the
+			   live model over the movie. */
+			nullptr,
+			"UI/RaidEntry/RaidEntry_BossPortrait_Valtan.png",
+			"UI/RaidEntry/RaidEntry_LeftPanel_0.png", true,
 			{ "UI/Esther/esther_portrait_sillian.png",
 			  "UI/Esther/esther_portrait_wei.png",
 			  "UI/Esther/esther_portrait_bahuntur.png" },
@@ -181,6 +190,7 @@ namespace
 			  "UI/ItemUpgrade/lm_shoulder_icon.png", "UI/ItemUpgrade/lm_bottom_icon.png",
 			  "UI/ItemUpgrade/lm_weapon_icon.png", "UI/ItemUpgrade/lm_head_icon.png" },
 			{ 4, 4, 4, 4, 4, 4, 3, 3 },
+			"UI/RaidEntry/RaidEntry_BG_Valtan/RaidEntry_BG_Valtan", 300,
 		},
 	};
 	constexpr int32_t RAID_COUNT = static_cast<int32_t>(sizeof(RAID_DEFS) / sizeof(RAID_DEFS[0]));
@@ -208,10 +218,10 @@ CRaidEntryPreviewView::CRaidEntryPreviewView(
 	uint32_t iOwnerLevelIndex)
 	: m_pView(std::make_unique<CUILayoutRuntime>(
 		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
-		L"UI/Bern/ValtanRaidEntry_Layout.json"))
+		L"UI/RaidEntry/ValtanRaidEntry_Layout.json"))
 	, m_pConfirmView(std::make_unique<CUILayoutRuntime>(
 		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
-		L"UI/Bern/BernValtanEntry_Layout.json"))
+		L"UI/RaidEntry/BernValtanEntry_Layout.json"))
 {
 	/* A CUI_Sprite is visible from construction, unlike the old ImGui path that simply did not
 	   draw while closed -- this popup starts closed. */
@@ -255,7 +265,26 @@ void CRaidEntryPreviewView::Apply_RaidSelection()
 		return;
 
 	const RAID_DEF& Raid = RAID_DEFS[m_iSelectedRaid];
-	m_pView->Set_SlotTexture("RaidEntry_BossPortrait", Raid.pBossPortrait);
+	/* Commander-entrance movie on the portrait slot when this raid has one, else the static key
+	   art. The 30 fps flipbook loops the ~10 s decrypted Bink clip; the frame textures stream in
+	   through the runtime's texture cache and stay resident while the popup is open. */
+	if (nullptr != Raid.pBgMoviePrefix && Raid.iBgMovieFrames > 0)
+	{
+		vector<string> BgFrames;
+		BgFrames.reserve(Raid.iBgMovieFrames);
+		char_t szFrame[256] = {};
+		for (int32_t i = 0; i < Raid.iBgMovieFrames; ++i)
+		{
+			(void)sprintf_s(szFrame, "%s_%03d.dds", Raid.pBgMoviePrefix, i);
+			BgFrames.emplace_back(szFrame);
+		}
+		m_pView->Set_SlotAnimation("RaidEntry_BossPortrait", BgFrames, 30.f, true);
+	}
+	else
+	{
+		m_pView->Set_SlotAnimation("RaidEntry_BossPortrait", {}, 0.f, true);
+		m_pView->Set_SlotTexture("RaidEntry_BossPortrait", Raid.pBossPortrait);
+	}
 	m_pView->Set_SlotTexture("RaidEntry_RaidIconSlot", Raid.pLeftPanel);
 
 	char_t szSlot[64] = {};
@@ -464,7 +493,11 @@ bool_t CRaidEntryPreviewView::Render()
 
 	/* Timer_Default is the frame clock Client.cpp registers at startup; the grow is eased over
 	   real time so it settles the same way regardless of framerate. */
-	Update_TabStrip(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default")));
+	const f32_t fFrameDelta = CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default"));
+	/* Advances the boss-portrait commander-movie flipbook (and any other animation.frames slot);
+	   without this the swapped frame set would just hold on frame 0. */
+	m_pView->Update(fFrameDelta);
+	Update_TabStrip(fFrameDelta);
 
 	/* The live boss render over the portrait area. Requested per frame; silence (popup
 	   closed, other raid selected) lets the service retire itself. */
@@ -498,7 +531,7 @@ bool_t CRaidEntryPreviewView::Render()
 	};
 	static constexpr MODAL_BUTTON BUTTONS[2] =
 	{
-		{ "RaidEntry_EntranceButton", "UI/Bern/RaidEntry_ButtonGoldHover.png", true },
+		{ "RaidEntry_EntranceButton", "UI/RaidEntry/RaidEntry_ButtonGoldHover.png", true },
 		/* The reference has no separate "거절" text button on this screen -- only the
 		   top-right "닫기 (Esc)" X closes it. */
 		{ "RaidEntry_CloseButtonSlot", "", false },
@@ -831,7 +864,7 @@ void CRaidEntryPreviewView::RenderText()
 }
 
 /* Second-step simple confirm dialog opened by the main screen's own Entrance
-   button. Reuses Data/UI/Bern/BernValtanEntry_Layout.json (still on disk,
+   button. Reuses Data/UI/RaidEntry/BernValtanEntry_Layout.json (still on disk,
    pre-dates the rich screen) and the exact same panel/button/icon art as the
    original single-step Bern flow -- this is not a second runtime, just the
    pre-existing simple dialog surfaced one step later. */

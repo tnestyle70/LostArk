@@ -337,9 +337,13 @@ public:
 	{
 		return m_PresentationGenerationReceipt;
 	}
+	const std::string& Get_ServerPatternId() const { return m_strServerPatternId; }
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 	bool_t Try_Get_PlayerHandGripLocalOffset(
 		std::string_view actionId,
+		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const;
+	bool_t Try_Get_PlayerHandGripLocalOffsetByPatternId(
+		std::string_view patternId,
 		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const;
 #ifdef _DEBUG
 	/* Process-local visual A/B only.  Server pattern timing and the Product V0
@@ -491,10 +495,13 @@ private:
 	};
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_PatternBodyVisibilityByActionId;
-	/* Product capture presentation, keyed by the same stable Stage actionId as
-	   the Server snapshot. Missing action IDs retain the legacy wrist origin. */
+	/* Product capture presentation retains action bindings for authoring
+	   diagnostics. Runtime attachment lookup uses the replicated patternId,
+	   which survives a same-tick branch away from the CAPTURE stage. */
 	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
 		m_PlayerHandGripLocalOffsetByActionId;
+	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
+		m_PlayerHandGripLocalOffsetByPatternId;
 	bool_t m_bLocalPatternAuthoringPreview = false;
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>

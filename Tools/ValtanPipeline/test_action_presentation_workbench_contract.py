@@ -533,13 +533,14 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Render_GameplayStageDetails(",
         )
 
+        # Pattern Root shows the whole-pattern clock as an editable table and
+        # keeps only the one authoring limit the lanes cannot show.
         for overview in (
-            '"New Pattern Authoring Coverage"',
-            '"Sequence slots:',
-            '"Internal gap:',
-            '"Server collider:',
-            '"Counter -> Groggy:',
-            '"Grab release action creation: unavailable in this revision.',
+            '"Pattern Timeline"',
+            '"##PatternTimeline"',
+            '"##PatternTimelineDuration"',
+            "ApplyStageClockPolicy(",
+            '"Grab release action creation is unavailable in this revision;',
         ):
             self.assertIn(overview, details)
         for existing_vertical_slice in (
@@ -1249,7 +1250,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in (
             "Patch_ValtanCompositionPatternSound(",
             "Prepare_ValtanCompositionPatternSoundSave(",
-            "Save_ValtanCompositionProduct(",
+            "Begin_ValtanCompositionSave(",
             "Accept_ValtanCompositionPatternSoundSave(",
             "Resolve_ValtanCompositionPatternSoundWindow(",
         ):
@@ -1516,6 +1517,18 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.composition_cpp,
             "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         )
+        save_completion = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+        )
+        owner_accept = function_body(
+            self.composition_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+        )
+        graph_reopen = function_body(
+            self.composition_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+        )
         toolbar = function_body(
             self.composition_cpp,
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
@@ -1550,24 +1563,38 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Apply_ValtanCompositionPatternSoundsToActiveConsumers(",
             sound_retry,
         )
-        transaction_edges = (
+        save_launch_edges = (
             "Prepare_ValtanCompositionPatternSoundSave(",
             "Prepare_BossValtanBindingDraftSave(",
-            "Save_ValtanCompositionProduct(",
+            "Begin_ValtanCompositionSave(",
+        )
+        for token in save_launch_edges:
+            self.assertIn(token, canonical_save)
+        save_launch_positions = [
+            canonical_save.index(token) for token in save_launch_edges
+        ]
+        self.assertEqual(save_launch_positions, sorted(save_launch_positions))
+        self.assertEqual(
+            1, canonical_save.count("Begin_ValtanCompositionSave(")
+        )
+        for token in (
             "Accept_ValtanCompositionPatternSoundSave(",
             "Accept_BossValtanBindingDraftSave(",
-            "Reload_CanonicalGraph(ToolReloadStatus)",
-            "Reload_Canonical()",
+        ):
+            self.assertIn(token, owner_accept)
+        completion_edges = (
+            "Accept_PendingSaveOwners(",
+            "Consume_ValtanSaveJobReceipt(",
+            "Reload_AfterPendingSave(",
         )
-        for token in transaction_edges:
-            self.assertIn(token, canonical_save)
-        transaction_positions = [
-            canonical_save.index(token) for token in transaction_edges
+        completion_positions = [
+            save_completion.index(token) for token in completion_edges
         ]
-        self.assertEqual(transaction_positions, sorted(transaction_positions))
-        self.assertEqual(
-            1, canonical_save.count("Save_ValtanCompositionProduct(")
-        )
+        self.assertEqual(completion_positions, sorted(completion_positions))
+        self.assertIn("Reload_CanonicalGraph(BossStatus)", graph_reopen)
+        self.assertIn("Reload_Canonical()", graph_reopen)
+        self.assertNotIn("Accept_PendingSaveOwners(", canonical_save)
+        self.assertNotIn("Reload_AfterPendingSave(", canonical_save)
         self.assertNotIn("Save_ValtanProduct(", canonical_save)
         self.assertNotIn(
             "Save_ValtanCompositionPatternSounds(", canonical_save
@@ -1900,44 +1927,35 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             for cue in ground_roar
         ))
 
-    def test_six_pizza_reuses_the_shout_groups_on_exact_clip_clocks(self) -> None:
+    def test_six_pizza_keeps_only_the_once_shout_burst(self) -> None:
         bindings = json.loads(read(
             "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
         ))["bindings"]
-        pizza = {
-            row["scope"]["stageId"]: row
+        pizza = [
+            row
             for row in bindings
             if row["scope"]["patternId"] == "VALTAN_SIX_PIZZA_106"
             and row["resource"]["id"]
             in {"boss.valtan.shout", "boss.valtan.shout.burst"}
-        }
-        self.assertEqual({"STEP_06", "STEP_07"}, pizza.keys())
-        loop = pizza["STEP_06"]
-        self.assertEqual("GROUP", loop["resource"]["kind"])
-        self.assertEqual("boss.valtan.shout", loop["resource"]["id"])
-        self.assertEqual("CLIP_OCCURRENCE", loop["clock"]["basis"])
-        self.assertEqual(
-            "valtan.sequence.center-six-pizza-charge.step-06.clip-01",
-            loop["clock"]["clipOccurrenceId"],
-        )
-        self.assertEqual("EACH_LOOP", loop["clock"]["repeatPolicy"])
-        self.assertEqual(0, loop["clock"]["startMs"])
-
-        burst = pizza["STEP_07"]
+        ]
+        self.assertEqual(1, len(pizza))
+        burst = pizza[0]
+        self.assertEqual("STEP_07", burst["scope"]["stageId"])
+        self.assertEqual("GROUP", burst["resource"]["kind"])
         self.assertEqual("boss.valtan.shout.burst", burst["resource"]["id"])
+        self.assertEqual("CLIP_OCCURRENCE", burst["clock"]["basis"])
         self.assertEqual(
             "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
             burst["clock"]["clipOccurrenceId"],
         )
         self.assertEqual("ONCE", burst["clock"]["repeatPolicy"])
         self.assertEqual(733, burst["clock"]["startMs"])
-        for row in pizza.values():
-            self.assertEqual("b_effectroot", row["anchor"]["slotId"])
-            self.assertEqual(
-                "SNAPSHOT_AT_START", row["anchor"]["followPolicy"]
-            )
-            self.assertEqual("TARGET_YAW", row["anchor"]["rotationBasis"])
-            self.assertEqual("NATURAL", row["stopPolicy"])
+        self.assertEqual("b_effectroot", burst["anchor"]["slotId"])
+        self.assertEqual(
+            "SNAPSHOT_AT_START", burst["anchor"]["followPolicy"]
+        )
+        self.assertEqual("TARGET_YAW", burst["anchor"]["rotationBasis"])
+        self.assertEqual("NATURAL", burst["stopPolicy"])
 
     def test_trash_capture_preimpact_has_the_authored_slam_sound(self) -> None:
         sounds = json.loads(read(

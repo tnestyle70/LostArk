@@ -41,6 +41,9 @@ PATTERN_SOUND_REL = (
 EFFECT_V2_BINDINGS_REL = (
     "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 )
+COMPOSITION_DESCRIPTOR_REL = (
+    "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+)
 ROOT_MOTION_REL = "Data/Animation/RootMotion/Valtan.rootmotion.json"
 RECEIPT_REL = "Data/Valtan/Valtan.animation-chain-promotion.receipt.json"
 ANIM_NOTIFY_REL = "Data/Animation/Reference/Valtan/Valtan.animnotify"
@@ -1796,6 +1799,7 @@ def validate_and_project(
     presentation: dict[str, Any],
     *,
     combat_authoring: dict[str, Any] | None = None,
+    boss_catalog: dict[str, Any] | None = None,
     debug_document: dict[str, Any] | None = None,
     promotion_manifest: dict[str, Any] | None = None,
 ) -> dict[str, str]:
@@ -1807,6 +1811,8 @@ def validate_and_project(
         docs[pipeline.PRESENTATION_AUTHORING_REL] = presentation
         if combat_authoring is not None:
             docs[pipeline.COMBAT_AUTHORING_REL] = combat_authoring
+        if boss_catalog is not None:
+            docs[pipeline.BOSS_CATALOG_REL] = boss_catalog
         pipeline.validate_valtan_native_animation_source(
             repo_root, presentation
         )
@@ -2601,6 +2607,7 @@ def prepare_create_pattern_transaction(
             GAMEPLAY_REL,
             PRESENTATION_REL,
             RECEIPT_REL,
+            COMPOSITION_DESCRIPTOR_REL,
         )
     )
     expected_baselines = {
@@ -2615,6 +2622,10 @@ def prepare_create_pattern_transaction(
     )
     presentation = _read_json_bytes(
         expected_baselines[repo_root / PRESENTATION_REL], repo_root / PRESENTATION_REL
+    )
+    composition_descriptor = _read_json_bytes(
+        expected_baselines[repo_root / COMPOSITION_DESCRIPTOR_REL],
+        repo_root / COMPOSITION_DESCRIPTOR_REL,
     )
     current_source_payload = expected_baselines[repo_root / DEBUG_REL]
     if current_source_payload is None:
@@ -2656,6 +2667,25 @@ def prepare_create_pattern_transaction(
         debug_document=staged_debug,
         promotion_manifest=staged_manifest,
     )
+    pipeline = _load_v2_pipeline(repo_root)
+    try:
+        joined = pipeline.join_v2_authoring(
+            staged_gameplay,
+            staged_presentation,
+            pipeline.read_json(repo_root / pipeline.WORLD_SET_REL),
+            pipeline.read_json(repo_root / pipeline.COMBAT_AUTHORING_REL),
+        )
+        staged_composition_descriptor = (
+            pipeline.project_valtan_composition_shadow_index(
+                composition_descriptor,
+                joined,
+                repo_root,
+            )
+        )
+    except pipeline.PipelineError as exc:
+        raise PromotionError(
+            f"cannot project Create New Pattern Composition descriptor: {exc}"
+        ) from exc
     if set(outputs) != set(product_relatives):
         raise PromotionError(
             "Product projection target closure changed during Create New Pattern"
@@ -2666,6 +2696,9 @@ def prepare_create_pattern_transaction(
         repo_root / GAMEPLAY_REL: _json_text(staged_gameplay).encode("utf-8"),
         repo_root / PRESENTATION_REL: _json_text(staged_presentation).encode("utf-8"),
         repo_root / RECEIPT_REL: _json_text(receipt).encode("utf-8"),
+        repo_root / COMPOSITION_DESCRIPTOR_REL: _json_text(
+            staged_composition_descriptor
+        ).encode("utf-8"),
     }
     for relative, text in outputs.items():
         path = repo_root / relative
@@ -3303,8 +3336,9 @@ def commit_typed_authoring_patch(
     presentation bytes.  Action Composition therefore needs a distinct
     repository-authoring transaction: resolve the effective saved authoring
     head, apply the typed patch once, split it back into the gameplay and
-    presentation owners, project every generated Product, and CAS the complete
-    closure under the same writer lock used by Create New Pattern and PublishV2.
+    presentation owners, keep combat-object definitions and BOSS_VALTAN visual
+    rows in the same typed closure, project every generated Product, and CAS all
+    owners under the same writer lock used by Create New Pattern and PublishV2.
 
     Boss-profile and damage-profile edits are excluded here because those
     owners have their own balance publisher/bootstrap transaction.  Pattern,
@@ -3400,11 +3434,19 @@ def commit_typed_authoring_patch(
                 current_sources,
                 docs,
             )
+            committed_boss_catalog = pipeline.resolve_authoring_boss_catalog_base(
+                repo_root,
+                resolved_authoring_root,
+                base_revision,
+                current_sources,
+                docs,
+            )
             (
                 committed_master,
                 committed_bosses,
                 committed_damage,
                 committed_combat,
+                committed_boss_catalog,
                 operation_count,
             ) = (
                 pipeline.apply_draft_patch(
@@ -3417,7 +3459,9 @@ def commit_typed_authoring_patch(
                     committed_combat,
                     repository_root=repo_root,
                     effect_catalog=docs[pipeline.EFFECT_CATALOG_REL],
+                    boss_catalog=committed_boss_catalog,
                     include_combat_authoring=True,
+                    include_boss_catalog=True,
                 )
             )
             if (
@@ -3438,6 +3482,7 @@ def commit_typed_authoring_patch(
                 gameplay,
                 presentation,
                 combat_authoring=committed_combat,
+                boss_catalog=committed_boss_catalog,
             )
             pattern_sound_pair = read_owner_pair(
                 "Pattern Sound",
@@ -3513,7 +3558,25 @@ def commit_typed_authoring_patch(
                 repo_root / pipeline.COMBAT_AUTHORING_REL: _json_text(
                     committed_combat
                 ).encode("utf-8"),
+                repo_root / pipeline.BOSS_CATALOG_REL: _json_text(
+                    committed_boss_catalog
+                ).encode("utf-8"),
             }
+            composition_target = repo_root / pipeline.COMPOSITION_DESCRIPTOR_REL
+            composition_baseline_bytes = _read_bytes_or_none(composition_target)
+            if not composition_baseline_bytes:
+                raise PromotionError("Valtan composition descriptor is missing")
+            composition_baseline = _read_json(composition_target)
+            composition_candidate = (
+                pipeline.project_valtan_composition_shadow_index(
+                    composition_baseline, committed_master, repo_root
+                )
+            )
+            target_payloads[composition_target] = (
+                composition_baseline_bytes
+                if composition_candidate == composition_baseline
+                else _json_text(composition_candidate).encode("utf-8")
+            )
             for relative, text in outputs.items():
                 target_payloads[repo_root / relative] = text.encode("utf-8")
             provided_baselines: dict[Path, bytes] = {}

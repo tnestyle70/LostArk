@@ -2,6 +2,11 @@
 
 #include "ActionCompositionWorkbench.h"
 
+#include "GameInstance.h"
+#include "Profiler.h"
+
+#include <cstdio>
+
 #include "Animation_Tool.h"
 #include "BalanceTool.h"
 #include "BossTool.h"
@@ -158,6 +163,23 @@ namespace
 		if (Branch.strNextActionId.has_value())
 			return *Branch.strNextActionId;
 		return "PATTERN END";
+	}
+
+	std::string BuildBranchStableId(
+		const std::string& stageId, const std::string& outcome)
+	{
+		return stageId + "/branch/" + outcome;
+	}
+
+	std::string NormalizeBranchStableId(
+		const std::string& stageId, const std::string& stableId)
+	{
+		const std::string prefix = stageId + "/branch/";
+		if (0u != stableId.rfind(prefix, 0u))
+			return stableId;
+		const std::size_t targetSeparator = stableId.find('/', prefix.size());
+		return std::string::npos == targetSeparator ?
+			stableId : stableId.substr(0u, targetSeparator);
 	}
 
 	template <typename T>
@@ -1454,6 +1476,86 @@ bool_t Client::CActionCompositionWorkbench::Open_Valtan()
 	return true;
 }
 
+bool_t Client::CActionCompositionWorkbench::Ensure_CanonicalLoaded(
+	std::string& strOutStatus)
+{
+	if (m_bLoadAttempted && Can_MutateValtanView(m_eAdmission))
+		return true;
+	if (!Reload_Canonical())
+	{
+		strOutStatus = m_strStatus;
+		return false;
+	}
+	return true;
+}
+
+std::vector<std::string>
+Client::CActionCompositionWorkbench::Get_PatternIds() const
+{
+	std::vector<std::string> Ids;
+	for (const VALTAN_PATTERN_VIEW* const pPattern : Collect_Patterns())
+		Ids.push_back(pPattern->strPatternId);
+	return Ids;
+}
+
+bool_t Client::CActionCompositionWorkbench::Select_PatternById(
+	const std::string& strPatternId,
+	std::string& strOutStatus)
+{
+	if (nullptr != m_pBalanceTool &&
+		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		 m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()))
+	{
+		strOutStatus =
+			"Pattern selection is blocked until the exact Save/publish receipt is terminal.";
+		return false;
+	}
+	if (!Ensure_CanonicalLoaded(strOutStatus))
+		return false;
+	const VALTAN_PATTERN_VIEW* const pPattern = Find_PatternById(strPatternId);
+	if (nullptr == pPattern)
+	{
+		strOutStatus =
+			"Pattern is not in the playable Composition inventory: " + strPatternId;
+		return false;
+	}
+	if (pPattern->strPatternId != m_strSelectedPatternId)
+	{
+		bool_t bAuthoringDirty = false;
+		std::string Revision;
+		std::string AuthoringStatus;
+		if (nullptr != m_pBalanceTool)
+		{
+			(void)m_pBalanceTool->Get_ValtanAuthoringState(
+				Revision, bAuthoringDirty, AuthoringStatus);
+		}
+		std::string SoundStatus;
+		if (bAuthoringDirty || Is_PatternSoundDraftDirty(SoundStatus) ||
+			CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
+		{
+			strOutStatus =
+				"Save or discard the Composition draft in the Workbench before selecting another Pattern from the Sequencer.";
+			return false;
+		}
+		Select_Pattern(*pPattern);
+	}
+	return Ensure_SelectedTimeline(strOutStatus);
+}
+
+bool_t Client::CActionCompositionWorkbench::Ensure_SelectedTimeline(
+	std::string& strOutStatus)
+{
+	const VALTAN_PATTERN_VIEW* const pPattern =
+		Find_PatternById(m_strSelectedPatternId);
+	if (nullptr == pPattern)
+	{
+		strOutStatus = "No Composition Pattern is selected.";
+		return false;
+	}
+	Ensure_TimelineCache(pPattern);
+	return true;
+}
+
 void Client::CActionCompositionWorkbench::On_LevelChanged()
 {
 	/* Canonical data survives a Level transition, but model pose and Server
@@ -1773,6 +1875,16 @@ void Client::CActionCompositionWorkbench::Normalize_Selection()
 
 bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 {
+	Engine::CProfilerScope reloadScope(
+		CGameInstance::Get().Get_Profiler(), "Tool.Composition.ReloadCanonical");
+	if (nullptr != m_pBalanceTool &&
+		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		 m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()))
+	{
+		m_strStatus =
+			"Canonical reload blocked until the exact Save/publish receipt is terminal; the current snapshot was preserved.";
+		return false;
+	}
 	m_bLoadAttempted = true;
 	m_bCanonicalReloadRetryPending = false;
 	Invalidate_EffectivePatternCache();
@@ -2193,6 +2305,14 @@ void Client::CActionCompositionWorkbench::Request_PatternSelection(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const std::string& strStageId)
 {
+	if (nullptr != m_pBalanceTool &&
+		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		 m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()))
+	{
+		m_strStatus =
+			"Pattern selection is blocked until the exact Save/publish receipt is terminal; the current selection was preserved.";
+		return;
+	}
 	if (Pattern.strPatternId.empty() ||
 		(Pattern.strPatternId == m_strSelectedPatternId &&
 		 strStageId.empty()))
@@ -2229,8 +2349,9 @@ void Client::CActionCompositionWorkbench::Select_Stage(
 	m_strSelectedPatternId = Pattern.strPatternId;
 	m_strSelectedStageId = Stage.strStageId;
 	m_eDetailOwner = eOwner;
-	m_strSelectedStableId = strStableId.empty() ?
-		Stage.strStageId : strStableId;
+	m_strSelectedStableId = NormalizeBranchStableId(
+		Stage.strStageId,
+		strStableId.empty() ? Stage.strStageId : strStableId);
 	m_bDetailFocusRequested = true;
 	m_strSoundAddClipOccurrenceId.clear();
 	m_iSoundAddStartMs = 0u;
@@ -2361,17 +2482,14 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 	std::string FitStatus;
 	const uint64_t iRequestedSequenceMs = std::accumulate(
 		RequestedCutsMs.begin(), RequestedCutsMs.end(), uint64_t{ 0u });
-	if (bAppend && std::any_of(
-			Draft.animationSlots.begin(), Draft.animationSlots.end(),
-			[](const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
-			{
-				return 0u == Slot.playMs || Slot.repeatUntilStageEnd;
-			}))
+	/* Only the final slot can block an append: a slot that loops to the Stage
+	   end or plays its native duration has no fixed end to append after.
+	   Earlier exact slots never prevent adding a Sequence at the end. */
+	if (bAppend && !Draft.animationSlots.empty() &&
+		(0u == Draft.animationSlots.back().playMs ||
+		 Draft.animationSlots.back().repeatUntilStageEnd))
 	{
-		m_strStatus = "Append rejected: the selected Sequence would require at least " +
-			std::to_string(static_cast<uint64_t>(Draft.durationMs) +
-				iRequestedSequenceMs) +
-			" ms. Convert the current looping/native-duration slot to an exact wall-clock first, then append.";
+		m_strStatus = "Append rejected: the last slot loops to the Stage end or uses its native duration, so nothing can follow it. Replace that slot, or turn off Loop to Stage End and give it an exact Play Duration, then append.";
 		return false;
 	}
 	if (!bAppend && iRequestedSequenceMs > Draft.durationMs)
@@ -3311,9 +3429,9 @@ bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(
 	}
 	case DETAIL_OWNER::GAMEPLAY_STAGE:
 	{
-		const std::string CounterPrefix =
-			Stage.strStageId + "/branch/COUNTER_HIT/";
-		if (0u != m_strSelectedStableId.rfind(CounterPrefix, 0u) ||
+		const std::string CounterStableId =
+			BuildBranchStableId(Stage.strStageId, "COUNTER_HIT");
+		if (m_strSelectedStableId != CounterStableId ||
 			nullptr == m_pBalanceTool)
 		{
 			strOutStatus =
@@ -3706,6 +3824,23 @@ uint32_t Client::CActionCompositionWorkbench::Resolve_ClipSourceToStageMs(
 	return 0u;
 }
 
+bool_t Client::CActionCompositionWorkbench::Set_PlayheadMs(
+	const uint32_t iPlayheadMs)
+{
+	m_iPlayheadMs = (std::min)(iPlayheadMs, m_iTimelineDurationMs);
+	const VALTAN_PATTERN_VIEW* const pPattern = Find_SelectedPattern();
+	if (nullptr == pPattern || nullptr == m_pAnimationTool ||
+		!Can_MutateValtanView(m_eAdmission))
+	{
+		return false;
+	}
+	std::string Status;
+	const bool_t bSought = Seek_EffectivePreview(
+		*pPattern, m_iPlayheadMs, true, Status);
+	m_strStatus = std::move(Status);
+	return bSought;
+}
+
 void Client::CActionCompositionWorkbench::Invalidate_TimelineCache()
 {
 	m_strTimelineCachePatternId.clear();
@@ -3900,7 +4035,9 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 				DETAIL_OWNER::GAMEPLAY_STAGE, TIMELINE_LANE::COLLIDER,
 				Pattern.strPatternId, Stage.strStageId,
 				Stage.strStageId + "/collider", {},
-				strEffectiveHitShape + " | " +
+				std::string("CAPTURE" == Stage.strPlayerResponse ?
+					"GRAB " : "DAMAGE ") +
+					strEffectiveHitShape + " | " +
 					(bHasHitActivation ?
 						"active " + std::to_string(iHitActivationLifetimeMs) +
 							" ms" :
@@ -3910,6 +4047,73 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 					iLastHitMs, iStageDurationMs),
 				bHasStageDraft && StageDraft.colliderTuneAdmitted });
 		}
+		/* Every other Server-side judgement that touches players is shown on
+		   the same lane, read-only: the counter hurt proxy that stays open for
+		   the whole Stage, and combat objects (donut, axes, projectiles) whose
+		   own hit clocks are authored by the combat-object pipeline. */
+		if (Stage.CounterProxy.has_value())
+		{
+			const VALTAN_COUNTER_PROXY_VIEW& Proxy = *Stage.CounterProxy;
+			char ProxyLabel[160]{};
+			std::snprintf(ProxyLabel, sizeof(ProxyLabel),
+				"COUNTER proxy | %s r %.2f m%s",
+				Proxy.strKind.c_str(), Proxy.fRadiusM,
+				Proxy.fArcDegrees > 0.f ? " (arc)" : "");
+			m_TimelineItems.push_back({
+				DETAIL_OWNER::GAMEPLAY_STAGE, TIMELINE_LANE::COLLIDER,
+				Pattern.strPatternId, Stage.strStageId,
+				Stage.strStageId + "/counter-proxy", {},
+				ProxyLabel, iStageStartMs, iStageEndMs, false });
+		}
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Object :
+			Stage.CombatObjectEffects)
+		{
+			if (Object.Hits.empty() && Object.HitOffsetsMs.empty())
+				continue;
+			/* One parent row per spawn wave (first offset + interval) and, when
+			   the object owns timed hits, one row per hit offset inside that
+			   wave. Every row keeps the archetype as its stable id so the Combat
+			   Object Detail resolves the same owner. */
+			const uint32_t iWaveCount =
+				(std::max)(Object.iSpawnScheduleCount, 1u);
+			constexpr uint32_t MAX_TIMELINE_WAVES = 8u;
+			const std::string strHitCount = std::to_string((std::max)(
+				Object.Hits.size(), Object.HitOffsetsMs.size())) + " hit(s)";
+			for (uint32_t iWave = 0u;
+				iWave < iWaveCount && iWave < MAX_TIMELINE_WAVES; ++iWave)
+			{
+				const uint32_t iWaveStartMs = static_cast<uint32_t>(
+					SaturatingU32(static_cast<uint64_t>(iStageStartMs) +
+						Object.iFirstSpawnOffsetMs +
+						static_cast<uint64_t>(Object.iSpawnIntervalMs) * iWave));
+				const uint32_t iWaveEndMs = static_cast<uint32_t>(
+					SaturatingU32(static_cast<uint64_t>(iWaveStartMs) +
+						Object.iLifetimeMs));
+				const std::string strWave = iWaveCount > 1u ?
+					" wave " + std::to_string(iWave + 1u) + "/" +
+						std::to_string(iWaveCount) : std::string();
+				m_TimelineItems.push_back({
+					DETAIL_OWNER::COMBAT_OBJECT, TIMELINE_LANE::COLLIDER,
+					Pattern.strPatternId, Stage.strStageId,
+					Object.strCombatObjectArchetypeId, {},
+					"OBJECT " + Object.strCombatObjectArchetypeId + strWave +
+						" | " + strHitCount,
+					iWaveStartMs, iWaveEndMs, false });
+				for (const uint32_t iHitOffsetMs : Object.HitOffsetsMs)
+				{
+					const uint32_t iHitMs = static_cast<uint32_t>(
+						SaturatingU32(static_cast<uint64_t>(iWaveStartMs) +
+							iHitOffsetMs));
+					m_TimelineItems.push_back({
+						DETAIL_OWNER::COMBAT_OBJECT, TIMELINE_LANE::COLLIDER,
+						Pattern.strPatternId, Stage.strStageId,
+						Object.strCombatObjectArchetypeId, {},
+						"HIT " + Object.strCombatObjectArchetypeId + strWave +
+							" @+" + std::to_string(iHitOffsetMs) + " ms",
+						iHitMs, iHitMs, false });
+				}
+			}
+		}
 
 		for (const VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
 		{
@@ -3918,7 +4122,7 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 			m_TimelineItems.push_back({
 				DETAIL_OWNER::GAMEPLAY_STAGE, TIMELINE_LANE::LOGIC,
 				Pattern.strPatternId, Stage.strStageId,
-				Stage.strStageId + "/branch/" + Branch.strOutcome + "/" + strTarget,
+				BuildBranchStableId(Stage.strStageId, Branch.strOutcome),
 				{}, Branch.strOutcome + " -> " + strTarget,
 				iStageStartMs, iStageEndMs,
 				bHasStageDraft && bCounterBranch &&
@@ -4050,9 +4254,12 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 				m_TimelineItems.push_back({
 					DETAIL_OWNER::ANIMATION, TIMELINE_LANE::ANIMATION, Pattern.strPatternId,
 					Stage.strStageId, Slot.clipOccurrenceId, Slot.clip,
-					Slot.clip, iStartMs,
+					Slot.repeatUntilStageEnd ?
+						Slot.clip + " [loop to Stage end]" : Slot.clip,
+					iStartMs,
 					static_cast<uint32_t>(SaturatingU32(iAnimationCursorMs)),
-					StageDraft.animationEditable && !Slot.repeatUntilStageEnd });
+					StageDraft.animationEditable });
+				m_TimelineItems.back().bLoopsToStageEnd = Slot.repeatUntilStageEnd;
 			}
 		}
 		else
@@ -4102,12 +4309,24 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 			const std::string& strTimelineResource =
 				Object.strEffectV2GroupId.empty() ? Object.strEffectAssetId :
 					Object.strEffectV2GroupId;
+			std::string strSpawnSummary = " x" +
+				std::to_string(Object.iSpawnValue);
+			if (!Object.strVolleyPolicy.empty())
+			{
+				strSpawnSummary += " | waves " +
+					std::to_string(Object.iSpawnScheduleCount) + " every " +
+					std::to_string(Object.iSpawnIntervalMs) + "ms";
+				if (0u != Object.iArenaRandomCount)
+				{
+					strSpawnSummary += " | arena random " +
+						std::to_string(Object.iArenaRandomCount);
+				}
+			}
 			m_TimelineItems.push_back({
 				DETAIL_OWNER::COMBAT_OBJECT, TIMELINE_LANE::EFFECT, Pattern.strPatternId,
 				Stage.strStageId, Object.strCombatObjectArchetypeId,
 				strTimelineResource,
-				"Server Combat Object (read-only) x" +
-					std::to_string(Object.iSpawnValue) +
+				"Server Combat Object (read-only)" + strSpawnSummary +
 					" @+" + std::to_string(Object.iFirstSpawnOffsetMs) +
 					"ms | " +
 					(Object.strEffectV2GroupId.empty() ? "V1 " : "V2 Group ") +
@@ -4457,6 +4676,14 @@ bool_t Client::CActionCompositionWorkbench::Has_UnsavedCompositionDrafts(
 bool_t Client::CActionCompositionWorkbench::
 Discard_CompositionDraftsAndReload()
 {
+	if (nullptr != m_pBalanceTool &&
+		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		 m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()))
+	{
+		m_strStatus =
+			"Composition discard is blocked until the exact Save/publish receipt is terminal; every draft was preserved.";
+		return false;
+	}
 	if (nullptr == m_pBalanceTool || nullptr == m_pAnimationTool)
 	{
 		m_strStatus =
@@ -4548,15 +4775,26 @@ void Client::CActionCompositionWorkbench::Resolve_PendingPatternSelection()
 	std::string CompletionPrefix;
 	if (PENDING_PATTERN_SELECTION_DECISION::SAVE_AND_SELECT == Decision)
 	{
-		m_bPatternSaveSucceeded = Save_Reload();
-		m_bPatternSaveResultAvailable = true;
+		const bool_t bSaveStarted = Save_Reload();
 		m_strPatternSaveStatus = m_strStatus;
-		if (!m_bPatternSaveSucceeded)
+		if (!bSaveStarted)
 		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
 			PreservePendingFailure(m_strPatternSaveStatus);
 			return;
 		}
-		CompletionPrefix = "Saved every staged Composition owner and switched to Pattern ";
+		if (0u != m_iPendingSaveJobId)
+		{
+			/* Selection is a continuation of the exact terminal receipt, not of
+			   successful process launch. Keep both stable IDs pinned until owner
+			   accept + canonical reload complete on a later frame. */
+			m_bSelectAfterPendingSave = true;
+			m_bPatternSaveResultAvailable = false;
+			return;
+		}
+		CompletionPrefix =
+			"No Composition owner remained dirty; switched to Pattern ";
 	}
 	else if (PENDING_PATTERN_SELECTION_DECISION::DISCARD_AND_SELECT == Decision)
 	{
@@ -4673,11 +4911,21 @@ Validate_ManualStageTopologySoundDependencies(
 
 bool_t Client::CActionCompositionWorkbench::Save_Reload()
 {
+	Engine::CProfilerScope Profile(
+		CGameInstance::Get().Get_Profiler(), "Tool.Composition.SaveReload");
 	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pBalanceTool)
 	{
 		m_strStatus =
 			"[Pattern] Save is not ready. Reload the Pattern list and try again; no file was changed.";
+		return false;
+	}
+	if (0u != m_iPendingSaveJobId ||
+		m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		m_pBalanceTool->Is_ServerRuntimeSetPublishRunning())
+	{
+		m_strStatus =
+			"[Pipeline] Save is blocked while an earlier Save or full DataOnly publish receipt is unresolved; no file was changed.";
 		return false;
 	}
 	std::string CurrentAuthoringRevision;
@@ -4835,68 +5083,474 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 		OwnerDrafts.effectV2BaselineBytes = std::move(EffectV2BaselineBytes);
 		OwnerDrafts.effectV2CandidateBytes = EffectV2CandidateBytes;
 	}
+	std::uint64_t iSaveJobId = 0u;
 	std::string SaveStatus;
-	if (!m_pBalanceTool->Save_ValtanCompositionProduct(
-			OwnerDrafts, SaveStatus))
+	if (!m_pBalanceTool->Begin_ValtanCompositionSave(
+			OwnerDrafts, m_bAutoPublishAfterSave,
+			iSaveJobId, SaveStatus))
 	{
 		m_strStatus = "[Pipeline] Nothing was saved. " +
 			SaveStatus;
 		return false;
 	}
-	bool_t bLocalReopenSucceeded = true;
-	std::string LocalReopenStatus;
-	if (bPreparedPatternSoundDirty &&
-		!m_pAnimationTool->Accept_ValtanCompositionPatternSoundSave(
-			iPatternSoundDraftGeneration, PatternSoundCandidateBytes,
-			SoundStatus))
-	{
-		bLocalReopenSucceeded = false;
-		LocalReopenStatus =
-			"[Sound] Pattern Sound reopen failed: " + SoundStatus;
-	}
-	if (bEffectV2Dirty &&
-		!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(
-			iEffectV2DraftRevision, EffectV2CandidateBytes,
-			EffectV2Status))
-	{
-		bLocalReopenSucceeded = false;
-		if (LocalReopenStatus.empty())
-			LocalReopenStatus =
-				"[EffectV2] Effect V2 reopen failed: " + EffectV2Status;
-		else
-			LocalReopenStatus +=
-				" [EffectV2] Effect V2 reopen failed: " + EffectV2Status;
-	}
-	if (bPreparedPatternSoundDirty)
-		m_LastPatternSoundAutoApplyRevision = {};
-	std::string ToolReloadStatus;
-	if (!m_pBossTool->Reload_CanonicalGraph(ToolReloadStatus))
-	{
-		const bool_t bWorkbenchReloaded = Reload_Canonical();
-		m_strStatus =
-			"[Pipeline] Saved the canonical files. Boss Tool could not reopen the new revision; " +
-			std::string(bWorkbenchReloaded ?
-				"this Workbench did reload it. " :
-				"this Workbench also remains on its preserved snapshot. ") +
-			"Close and reopen the affected editor before Server Replay. " +
-			ToolReloadStatus;
-		return true;
-	}
-	if (!Reload_Canonical())
-	{
-		m_strStatus = "[Pipeline] Saved the canonical files. Close and reopen this Workbench. " +
-			m_strStatus;
-		return true;
-	}
-	if (!bLocalReopenSucceeded)
-	{
-		m_strStatus = LocalReopenStatus +
-			" Saved every staged owner in one transaction, but an editor-local reopen failed. Close and reopen the Workbench.";
-		return true;
-	}
-	m_strStatus =
-		"Saved every dirty Composition owner (Pattern, Sound, and/or Effect V2) and reloaded the saved data.";
+	m_iPendingSaveJobId = iSaveJobId;
+	m_iPendingPatternSoundDraftGeneration =
+		iPatternSoundDraftGeneration;
+	m_iPendingEffectV2DraftRevision = iEffectV2DraftRevision;
+	m_strPendingPatternSoundCandidateBytes =
+		std::move(PatternSoundCandidateBytes);
+	m_strPendingEffectV2CandidateBytes =
+		std::move(EffectV2CandidateBytes);
+	m_bPendingPatternSoundOwner = bPreparedPatternSoundDirty;
+	m_bPendingEffectV2Owner = bEffectV2Dirty;
+	m_bPendingSavePublishesRuntime = m_bAutoPublishAfterSave;
+	m_bPatternSaveResultAvailable = false;
+	m_bPatternSaveSucceeded = false;
+	m_ePostSaveState = POST_SAVE_STATE::IDLE;
+	m_strPostSaveRevision.clear();
+	m_strPostSaveApplyStatus.clear();
+	m_strStatus = "[Pipeline] " + SaveStatus;
 	return true;
+}
+
+void Client::CActionCompositionWorkbench::Mark_SourceCommitted(
+	const std::string& strExactSourceRevision)
+{
+	m_ePostSaveState = POST_SAVE_STATE::SOURCE_COMMITTED;
+	m_strPostSaveRevision = strExactSourceRevision;
+	m_strEffectGraphRefreshRevision = m_strPostSaveRevision;
+	m_bEffectGraphRefreshRequested = true;
+}
+
+void Client::CActionCompositionWorkbench::Clear_PendingSaveOwnerReceipt()
+{
+	m_iPendingPatternSoundDraftGeneration = 0u;
+	m_iPendingEffectV2DraftRevision = 0u;
+	m_strPendingPatternSoundCandidateBytes.clear();
+	m_strPendingEffectV2CandidateBytes.clear();
+	m_bPendingPatternSoundOwner = false;
+	m_bPendingEffectV2Owner = false;
+}
+
+bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(
+	std::string& strOutStatus)
+{
+	bool_t bAccepted = true;
+	std::string OwnerStatus;
+	if (m_bPendingPatternSoundOwner)
+	{
+		if (nullptr == m_pAnimationTool ||
+			!m_pAnimationTool->Accept_ValtanCompositionPatternSoundSave(
+				m_iPendingPatternSoundDraftGeneration,
+				m_strPendingPatternSoundCandidateBytes, OwnerStatus))
+		{
+			bAccepted = false;
+			strOutStatus =
+				"[Sound] The durable Save completed, but the exact local Pattern Sound generation was not reopened: " +
+				(nullptr == m_pAnimationTool ?
+					std::string("owner unavailable.") : OwnerStatus);
+		}
+		else
+		{
+			m_bPendingPatternSoundOwner = false;
+			m_strPendingPatternSoundCandidateBytes.clear();
+			m_iPendingPatternSoundDraftGeneration = 0u;
+			m_LastPatternSoundAutoApplyRevision = {};
+		}
+	}
+	if (m_bPendingEffectV2Owner)
+	{
+		OwnerStatus.clear();
+		if (!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(
+				m_iPendingEffectV2DraftRevision,
+				m_strPendingEffectV2CandidateBytes, OwnerStatus))
+		{
+			bAccepted = false;
+			if (!strOutStatus.empty())
+				strOutStatus += " ";
+			strOutStatus +=
+				"[EffectV2] The durable Save completed, but the exact local binding generation was not reopened: " +
+				OwnerStatus;
+		}
+		else
+		{
+			m_bPendingEffectV2Owner = false;
+			m_strPendingEffectV2CandidateBytes.clear();
+			m_iPendingEffectV2DraftRevision = 0u;
+		}
+	}
+	return bAccepted;
+}
+
+bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pBossTool)
+	{
+		strOutStatus =
+			"Boss Tool is unavailable; the previous editor snapshots were preserved.";
+		return false;
+	}
+	std::string BossStatus;
+	const bool_t bBossReloaded =
+		m_pBossTool->Reload_CanonicalGraph(BossStatus);
+	const bool_t bWorkbenchReloaded = Reload_Canonical();
+	if (bBossReloaded && bWorkbenchReloaded)
+		return true;
+	strOutStatus =
+		std::string(bBossReloaded ? "" :
+			"[Boss] exact canonical graph reopen failed: " + BossStatus + " ") +
+		(bWorkbenchReloaded ? std::string{} :
+			"[Composition] exact canonical reopen failed: " + m_strStatus);
+	return false;
+}
+
+void Client::CActionCompositionWorkbench::Publish_AfterSave()
+{
+	if (nullptr == m_pBalanceTool)
+	{
+		m_ePostSaveState = POST_SAVE_STATE::APPLY_FAILED;
+		m_strPostSaveApplyStatus =
+			"Balance Tool is unavailable; publish the committed revision from the Balance Tool.";
+		return;
+	}
+	if (0u != m_iPendingSaveJobId ||
+		m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		m_pBalanceTool->Is_ServerRuntimeSetPublishRunning())
+	{
+		m_strPostSaveApplyStatus =
+			"A Save or runtime publish receipt is still unresolved; Retry Publish once it finishes.";
+		return;
+	}
+	/* The Workbench receipt is the authority for this continuation.  Another
+	   owner may have committed/reloaded a newer revision while this window was
+	   hidden.  Reject that drift before PublishCandidate/Apply can produce any
+	   side effect for the newer owner, then verify it again after the candidate
+	   step because that step also crosses a process boundary. */
+	std::string PublishableRevision;
+	std::string RevisionStatus;
+	if (!m_pBalanceTool->Get_ValtanPublishSourceRevision(
+			PublishableRevision, RevisionStatus) ||
+		PublishableRevision != m_strPostSaveRevision)
+	{
+		m_ePostSaveState = POST_SAVE_STATE::PUBLISH_FAILED;
+		m_strPostSaveApplyStatus =
+			"[Apply] STALE_REVISION: the committed Save receipt no longer matches the publishable canonical source. " +
+			RevisionStatus;
+		return;
+	}
+	std::uint64_t iSaveJobId = 0u;
+	std::string BeginStatus;
+	if (!m_pBalanceTool->Begin_ValtanProductPublishRetry(
+			true, iSaveJobId, BeginStatus))
+	{
+		m_ePostSaveState = POST_SAVE_STATE::APPLY_FAILED;
+		m_strPostSaveApplyStatus = "[Apply] FAILED: " + BeginStatus;
+		return;
+	}
+	m_iPendingSaveJobId = iSaveJobId;
+	m_bPendingSavePublishesRuntime = true;
+	m_strPostSaveApplyStatus = "[Apply] " + BeginStatus;
+}
+
+void Client::CActionCompositionWorkbench::Update_SaveState()
+{
+	if (nullptr == m_pBalanceTool)
+		return;
+	if (0u != m_iPendingSaveJobId)
+	{
+		CBalanceTool::VALTAN_SAVE_JOB_RECEIPT Observed;
+		const CBalanceTool::VALTAN_SAVE_JOB_STATE State =
+			m_pBalanceTool->Get_ValtanSaveJobState(Observed);
+		if (Observed.jobId != m_iPendingSaveJobId)
+		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
+			m_strPatternSaveStatus =
+				"SAVE_RECEIPT_MISMATCH: the active Balance Save job no longer matches this Composition request; local drafts and selection were preserved.";
+			m_strStatus = m_strPatternSaveStatus;
+			return;
+		}
+		if (CBalanceTool::VALTAN_SAVE_JOB_STATE::RUNNING == State)
+		{
+			m_strPatternSaveStatus = Observed.status;
+			return;
+		}
+		if (CBalanceTool::VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST == State)
+		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
+			m_strPatternSaveStatus = Observed.status;
+			m_strStatus = Observed.status;
+			return;
+		}
+		if (CBalanceTool::VALTAN_SAVE_JOB_STATE::IDLE == State)
+		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
+			m_strPatternSaveStatus =
+				"SAVE_RECEIPT_MISSING: Composition retained a pending job ID after the Balance owner returned to IDLE; local drafts were preserved.";
+			m_strStatus = m_strPatternSaveStatus;
+			return;
+		}
+
+		const bool_t bTerminalSucceeded =
+			CBalanceTool::VALTAN_SAVE_JOB_STATE::SUCCEEDED == State;
+		const bool_t bExactRevision =
+			64u == Observed.committedSourceRevision.size();
+		std::string PublishableRevision;
+		std::string RevisionStatus;
+		const bool_t bExactPublishable = bExactRevision &&
+			m_pBalanceTool->Get_ValtanPublishSourceRevision(
+				PublishableRevision, RevisionStatus) &&
+			PublishableRevision == Observed.committedSourceRevision;
+
+		std::string LocalOwnerStatus;
+		bool_t bLocalOwnersAccepted = true;
+		if ((bTerminalSucceeded || Observed.canonicalCommitted) &&
+			bExactRevision)
+		{
+			bLocalOwnersAccepted =
+				Accept_PendingSaveOwners(LocalOwnerStatus);
+		}
+		CBalanceTool::VALTAN_SAVE_JOB_RECEIPT Receipt;
+		std::string ConsumeStatus;
+		if (!m_pBalanceTool->Consume_ValtanSaveJobReceipt(
+				m_iPendingSaveJobId, Receipt, ConsumeStatus))
+		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
+			m_strPatternSaveStatus = ConsumeStatus;
+			m_strStatus = ConsumeStatus;
+			return;
+		}
+		m_iPendingSaveJobId = 0u;
+		bool_t bGraphsReopened = false;
+		std::string GraphStatus;
+		if (bTerminalSucceeded && bExactPublishable &&
+			bLocalOwnersAccepted)
+		{
+			/* Consume returns the Balance owner to IDLE. Canonical graph reloads
+			   are intentionally after that boundary because normal readers fail
+			   closed while any Save receipt is still active. */
+			bGraphsReopened = Reload_AfterPendingSave(GraphStatus);
+		}
+
+		if ((Receipt.canonicalCommitted ||
+			 (!m_strPostSaveRevision.empty() &&
+			  m_strPostSaveRevision == Receipt.committedSourceRevision)) &&
+			64u == Receipt.committedSourceRevision.size())
+		{
+			Mark_SourceCommitted(Receipt.committedSourceRevision);
+		}
+
+		if (!bTerminalSucceeded || !bExactPublishable)
+		{
+			m_bPatternSaveSucceeded = false;
+			m_bPatternSaveResultAvailable = true;
+			m_ePostSaveState = Receipt.canonicalCommitted ?
+				POST_SAVE_STATE::APPLY_FAILED : POST_SAVE_STATE::IDLE;
+			m_strPostSaveApplyStatus = Receipt.status;
+			if (!bExactPublishable && bExactRevision)
+			{
+				m_strPostSaveApplyStatus +=
+					" STALE_REVISION: the terminal Save receipt is not the current durable publish source. " +
+					RevisionStatus;
+			}
+			if (!LocalOwnerStatus.empty())
+				m_strPostSaveApplyStatus += " " + LocalOwnerStatus;
+			m_strPatternSaveStatus = m_strPostSaveApplyStatus;
+			m_strStatus = m_strPatternSaveStatus;
+			if (!Receipt.canonicalCommitted)
+				Clear_PendingSaveOwnerReceipt();
+			if (m_bSelectAfterPendingSave)
+			{
+				m_bSelectAfterPendingSave = false;
+				m_bPendingPatternSelectionModalRequested = true;
+			}
+			m_bPendingSavePublishesRuntime = false;
+			return;
+		}
+
+		m_strPostSaveApplyStatus = Receipt.status;
+		if (!LocalOwnerStatus.empty())
+			m_strPostSaveApplyStatus += " " + LocalOwnerStatus;
+		if (!GraphStatus.empty())
+			m_strPostSaveApplyStatus += " " + GraphStatus;
+		const bool_t bEditorReopened =
+			bLocalOwnersAccepted && bGraphsReopened;
+		m_bPatternSaveSucceeded = bEditorReopened;
+		m_bPatternSaveResultAvailable = true;
+		m_strPatternSaveStatus = bEditorReopened ?
+			"Saved every staged Composition owner and reopened the exact committed revision." :
+			"The canonical Save committed, but one editor-local exact reopen failed; the previous snapshot and any newer draft were preserved. " +
+			m_strPostSaveApplyStatus;
+		m_strStatus = m_strPatternSaveStatus;
+
+		const bool_t bPublishRuntime =
+			m_bPendingSavePublishesRuntime &&
+			Receipt.runtimePublishRequested;
+		if (bPublishRuntime && !bEditorReopened)
+		{
+			m_ePostSaveState = POST_SAVE_STATE::PUBLISH_FAILED;
+			m_strPostSaveApplyStatus +=
+				" [Publish] NOT_STARTED: exact editor graph reopen must succeed before Full DataOnly can consume this revision.";
+		}
+		else if (bPublishRuntime)
+		{
+			std::string PublishStatus;
+			if (m_pBalanceTool->Publish_ServerRuntimeSet(
+					Receipt.committedSourceRevision, PublishStatus))
+			{
+				m_ePostSaveState = POST_SAVE_STATE::PUBLISH_RUNNING;
+				m_strPostSaveApplyStatus += " [Publish] " + PublishStatus;
+			}
+			else
+			{
+				m_ePostSaveState = POST_SAVE_STATE::PUBLISH_FAILED;
+				m_strPostSaveApplyStatus +=
+					" [Publish] FAILED: " + PublishStatus;
+			}
+		}
+		else
+		{
+			m_ePostSaveState = POST_SAVE_STATE::SOURCE_COMMITTED;
+		}
+
+		if (m_bSelectAfterPendingSave)
+		{
+			m_bSelectAfterPendingSave = false;
+			if (bEditorReopened)
+			{
+				m_ePendingPatternSelectionDecision =
+					PENDING_PATTERN_SELECTION_DECISION::SELECT;
+			}
+			else
+			{
+				m_bPendingPatternSelectionModalRequested = true;
+			}
+		}
+		Clear_PendingSaveOwnerReceipt();
+		m_bPendingSavePublishesRuntime = false;
+	}
+	Update_PostSaveState();
+}
+
+void Client::CActionCompositionWorkbench::Update_PostSaveState()
+{
+	if (POST_SAVE_STATE::PUBLISH_RUNNING != m_ePostSaveState ||
+		nullptr == m_pBalanceTool)
+	{
+		return;
+	}
+	std::string JobStatus;
+	double fElapsedSeconds = 0.0;
+	std::string JobRevision;
+	switch (m_pBalanceTool->Get_ServerRuntimeSetPublishState(
+		JobStatus, fElapsedSeconds, &JobRevision))
+	{
+	case CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::SUCCEEDED:
+		if (JobRevision != m_strPostSaveRevision)
+		{
+			m_ePostSaveState = POST_SAVE_STATE::PUBLISH_FAILED;
+			m_strPostSaveApplyStatus +=
+				" [Publish] STALE_REVISION: the completed runtime job belongs to a different Save receipt.";
+		}
+		else
+		{
+			m_ePostSaveState = POST_SAVE_STATE::PUBLISHED_RESTART_REQUIRED;
+			m_strPostSaveApplyStatus += " [Publish] " + JobStatus;
+		}
+		break;
+	case CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::FAILED:
+	case CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST:
+		m_ePostSaveState = POST_SAVE_STATE::PUBLISH_FAILED;
+		m_strPostSaveApplyStatus += " [Publish] FAILED: " + JobStatus;
+		break;
+	default:
+		break;
+	}
+}
+
+void Client::CActionCompositionWorkbench::Render_PostSaveState()
+{
+	if (0u != m_iPendingSaveJobId && nullptr != m_pBalanceTool)
+	{
+		CBalanceTool::VALTAN_SAVE_JOB_RECEIPT Receipt;
+		const CBalanceTool::VALTAN_SAVE_JOB_STATE State =
+			m_pBalanceTool->Get_ValtanSaveJobState(Receipt);
+		const bool_t bObservationLost =
+			CBalanceTool::VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST == State;
+		ImGui::TextColored(
+			bObservationLost ? ImVec4(1.f, 0.45f, 0.35f, 1.f) :
+				ImVec4(1.f, 0.72f, 0.25f, 1.f),
+			"Save job: %s | id %llu",
+			bObservationLost ? "OBSERVATION_LOST" : "RUNNING",
+			static_cast<unsigned long long>(m_iPendingSaveJobId));
+		if (!Receipt.status.empty())
+			ImGui::TextWrapped("%s", Receipt.status.c_str());
+	}
+	if (POST_SAVE_STATE::IDLE == m_ePostSaveState)
+		return;
+	const char* pStateName = "";
+	ImVec4 Color(0.8f, 0.8f, 0.8f, 1.f);
+	switch (m_ePostSaveState)
+	{
+	case POST_SAVE_STATE::SOURCE_COMMITTED:
+		pStateName = "SOURCE_COMMITTED / PUBLISH_PENDING";
+		Color = ImVec4(1.f, 0.72f, 0.25f, 1.f);
+		break;
+	case POST_SAVE_STATE::APPLY_FAILED:
+		pStateName = "APPLY_FAILED";
+		Color = ImVec4(1.f, 0.45f, 0.35f, 1.f);
+		break;
+	case POST_SAVE_STATE::PUBLISH_RUNNING:
+		pStateName = "PUBLISH_RUNNING";
+		Color = ImVec4(1.f, 0.72f, 0.25f, 1.f);
+		break;
+	case POST_SAVE_STATE::PUBLISH_FAILED:
+		pStateName = "PUBLISH_FAILED";
+		Color = ImVec4(1.f, 0.45f, 0.35f, 1.f);
+		break;
+	case POST_SAVE_STATE::PUBLISHED_RESTART_REQUIRED:
+		pStateName = "PUBLISHED / SERVER_RESTART_REQUIRED";
+		Color = ImVec4(0.35f, 0.86f, 0.45f, 1.f);
+		break;
+	default:
+		break;
+	}
+	ImGui::TextColored(Color, "Save receipt: %s | revision %s", pStateName,
+		m_strPostSaveRevision.empty() ? "(unknown)" : m_strPostSaveRevision.c_str());
+	if (POST_SAVE_STATE::PUBLISH_RUNNING == m_ePostSaveState &&
+		nullptr != m_pBalanceTool)
+	{
+		std::string JobStatus;
+		double fElapsedSeconds = 0.0;
+		(void)m_pBalanceTool->Get_ServerRuntimeSetPublishState(
+			JobStatus, fElapsedSeconds);
+		ImGui::SameLine();
+		ImGui::Text("(%.0f s)", fElapsedSeconds);
+	}
+	const bool_t bRetryable =
+		POST_SAVE_STATE::SOURCE_COMMITTED == m_ePostSaveState ||
+		POST_SAVE_STATE::APPLY_FAILED == m_ePostSaveState ||
+		POST_SAVE_STATE::PUBLISH_FAILED == m_ePostSaveState;
+	if (bRetryable)
+	{
+		ImGui::SameLine();
+		ImGui::BeginDisabled(nullptr == m_pBalanceTool ||
+			m_pBalanceTool->Is_ServerRuntimeSetPublishRunning());
+		if (ImGui::SmallButton("Retry Publish##CompositionPostSave"))
+			Publish_AfterSave();
+		ImGui::EndDisabled();
+	}
+	if (!m_strPostSaveApplyStatus.empty())
+		ImGui::TextWrapped("%s", m_strPostSaveApplyStatus.c_str());
+	if (POST_SAVE_STATE::PUBLISHED_RESTART_REQUIRED == m_ePostSaveState)
+	{
+		ImGui::TextDisabled(
+			"Restart Server.exe on the server host, re-enter the arena, then Restart Saved Flow on this exact revision.");
+	}
 }
 
 bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
@@ -5122,6 +5776,10 @@ Render_PendingPatternSelectionModal()
 			"No owner currently reports dirty; retry the requested switch or Cancel.");
 	}
 
+	const bool_t bTransactionBlocked = nullptr != m_pBalanceTool &&
+		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+		 m_pBalanceTool->Is_ServerRuntimeSetPublishRunning());
+	ImGui::BeginDisabled(bTransactionBlocked);
 	if (ImGui::Button("Save All & Switch"))
 	{
 		m_ePendingPatternSelectionDecision =
@@ -5135,6 +5793,7 @@ Render_PendingPatternSelectionModal()
 			PENDING_PATTERN_SELECTION_DECISION::DISCARD_AND_SELECT;
 		ImGui::CloseCurrentPopup();
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Cancel"))
 	{
@@ -5921,18 +6580,17 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		strStageDetailPrefix + "collider", 0u);
 	const auto SelectedBranch = std::find_if(
 		Stage.Branches.begin(), Stage.Branches.end(),
-		[this, &strStageDetailPrefix](const VALTAN_STAGE_BRANCH_VIEW& Branch)
+		[this, &Stage](const VALTAN_STAGE_BRANCH_VIEW& Branch)
 		{
-			const std::string strTarget = BuildBranchTargetLabel(Branch);
-			return m_strSelectedStableId == strStageDetailPrefix + "branch/" +
-				Branch.strOutcome + "/" + strTarget;
+			return m_strSelectedStableId ==
+				BuildBranchStableId(Stage.strStageId, Branch.strOutcome);
 		});
-	const bool_t bCounterAuthoringRequested = 0u == m_strSelectedStableId.rfind(
-		strStageDetailPrefix + "branch/COUNTER_HIT/", 0u);
+	const bool_t bCounterAuthoringRequested = m_strSelectedStableId ==
+		BuildBranchStableId(Stage.strStageId, "COUNTER_HIT");
 	const bool_t bFocusCounterBranch = bCounterAuthoringRequested ||
 		(SelectedBranch != Stage.Branches.end() &&
 			"COUNTER_HIT" == SelectedBranch->strOutcome);
-	const bool_t bFocusReadOnlyBranch = SelectedBranch != Stage.Branches.end() &&
+	const bool_t bFocusNonCounterBranch = SelectedBranch != Stage.Branches.end() &&
 		!bFocusCounterBranch;
 	const bool_t bFocusAction = 0u == m_strSelectedStableId.rfind(
 		strStageDetailPrefix + "action/", 0u);
@@ -6142,8 +6800,6 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			Draft.stageKind = StageKinds[iStageKind];
 			bChanged = true;
 		}
-		ImGui::TextDisabled(
-			"Manual Pattern only: retag this existing stable Stage here, or add a dedicated WINDUP/GROGGY/WAIT node in Composition Boss Pattern.");
 	}
 	else
 	{
@@ -6175,8 +6831,6 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				bChanged = true;
 			}
 		}
-		ImGui::TextDisabled(
-			"EXACT means 0 ms gap; a positive gap holds the final pose. A true clip-between-clip blank is authored as its own WAIT/HOLD Stage.");
 	}
 	else if (!bWarpLegClockOwned)
 	{
@@ -6210,8 +6864,6 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		ImGui::TextDisabled("Stage duration is locked by its typed gameplay policy.");
 
 	ImGui::SeparatorText("Status & Gauge (Non-spatial)");
-	ImGui::TextDisabled(
-		"Stage ENTER/EXIT state owned by Server gameplay. It has no overlap shape or Effect-derived collision authority.");
 	if (SelectedStatusAction != Draft.actions.end())
 	{
 		VALTAN_STAGE_ACTION_VIEW& StatusAction = *SelectedStatusAction;
@@ -6971,15 +7623,80 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		ImGui::TextDisabled(
 			"This selected leg's portal motion is owned by Warp Rush - All 8 Legs above.");
 
-	if (SelectedBranch != Stage.Branches.end() && bFocusReadOnlyBranch)
+	if (SelectedBranch != Stage.Branches.end() && bFocusNonCounterBranch)
 	{
 		ImGui::SeparatorText("Selected Logic Branch");
 		FocusDetailSection(true);
 		ImGui::Text("Outcome: %s", SelectedBranch->strOutcome.c_str());
 		ImGui::Text("Target: %s",
 			BuildBranchTargetLabel(*SelectedBranch).c_str());
-		ImGui::TextDisabled(
-			"This admitted branch is read-only here. Counter authoring uses the typed COUNTER_HIT editor below.");
+		std::vector<CBalanceTool::VALTAN_STAGE_BRANCH_EDIT> BranchDrafts;
+		std::vector<std::string> TargetActionIds;
+		std::string BranchStatus;
+		const bool_t bBranchDraftReady = bMutationAdmitted &&
+			nullptr != m_pBalanceTool &&
+			m_pBalanceTool->Get_ValtanStageBranchDrafts(
+				Pattern.strPatternId, Stage.strStageId, BranchDrafts,
+				TargetActionIds, BranchStatus);
+		const auto BranchDraft = std::find_if(
+			BranchDrafts.begin(), BranchDrafts.end(),
+			[&SelectedBranch](
+				const CBalanceTool::VALTAN_STAGE_BRANCH_EDIT& Candidate)
+			{ return Candidate.outcome == SelectedBranch->strOutcome; });
+		if (!bBranchDraftReady || BranchDrafts.end() == BranchDraft)
+		{
+			ImGui::TextDisabled("%s", BranchStatus.empty() ?
+				"Branch retarget requires an admitted, mutable Pattern draft." :
+				BranchStatus.c_str());
+		}
+		else if (BranchDraft->crossPattern)
+		{
+			ImGui::TextDisabled(
+				"Cross-pattern follow-up branches are read-only here.");
+		}
+		else if ("TIMEOUT" == BranchDraft->outcome)
+		{
+			ImGui::TextDisabled(
+				"TIMEOUT is owned by the typed Counter or Stage topology editor.");
+		}
+		else
+		{
+			/* Retarget only: the outcome set stays Server-owned. Cycles and
+			   dangling targets are rejected by Save validation. */
+			const std::string strCurrentTarget = BranchDraft->nextActionId.empty() ?
+				"(pattern end)" : BranchDraft->nextActionId;
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::BeginCombo("##LogicBranchTarget", strCurrentTarget.c_str()))
+			{
+				auto Retarget = [&](const std::string& strTarget)
+				{
+					CBalanceTool::VALTAN_STAGE_BRANCH_EDIT Edit = *BranchDraft;
+					Edit.nextActionId = strTarget;
+					std::string RetargetStatus;
+					m_strStatus = m_pBalanceTool->Set_ValtanStageBranchDraft(
+						Pattern.strPatternId, Stage.strStageId, Edit,
+						RetargetStatus) ?
+						RetargetStatus : "Branch retarget rejected: " + RetargetStatus;
+					Invalidate_TimelineCache();
+				};
+				if (ImGui::Selectable("(pattern end)",
+						BranchDraft->nextActionId.empty()))
+				{
+					Retarget(std::string());
+				}
+				for (const std::string& strTargetActionId : TargetActionIds)
+				{
+					if (ImGui::Selectable(strTargetActionId.c_str(),
+							strTargetActionId == BranchDraft->nextActionId))
+					{
+						Retarget(strTargetActionId);
+					}
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::TextDisabled(
+				"Counter authoring uses the typed COUNTER_HIT editor below.");
+		}
 	}
 
 	ImGui::SeparatorText("Counter Hurt Proxy (Player -> Boss)");
@@ -7582,8 +8299,6 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			pStage->CameraInvocations.front().strCameraInvocationId);
 	if (DETAIL_OWNER::PATTERN == m_eDetailOwner || nullptr == pStage)
 	{
-		ImGui::TextDisabled(
-			"Pattern Root is whole-pattern metadata and flow context. Edit branches and typed actions from Logic lane blocks.");
 		ImGui::TextWrapped("%s", pPattern->strDisplayName.c_str());
 		ImGui::TextDisabled("%s", pPattern->strPatternId.c_str());
 		ImGui::Text("Category: %s", pPattern->strCategory.c_str());
@@ -7594,20 +8309,97 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			pPattern->fMinimumRange, pPattern->fMaximumRange);
 		ImGui::Text("Stages: %zu | Source Sequence: %u",
 			pPattern->Stages.size(), pPattern->iSourceSequenceIndex);
+		ImGui::SeparatorText("Pattern Timeline");
+		constexpr ImGuiTableFlags PATTERN_TIMELINE_FLAGS =
+			ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_SizingStretchProp;
+		if (ImGui::BeginTable("##PatternTimeline", 6, PATTERN_TIMELINE_FLAGS))
+		{
+			ImGui::TableSetupColumn("Stage", ImGuiTableColumnFlags_WidthStretch, 2.f);
+			ImGui::TableSetupColumn("Role", ImGuiTableColumnFlags_WidthStretch, 1.2f);
+			ImGui::TableSetupColumn("Start", ImGuiTableColumnFlags_WidthStretch, 1.f);
+			ImGui::TableSetupColumn("End", ImGuiTableColumnFlags_WidthStretch, 1.f);
+			ImGui::TableSetupColumn("Duration (ms)", ImGuiTableColumnFlags_WidthStretch, 1.4f);
+			ImGui::TableSetupColumn("Collider", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+			ImGui::TableHeadersRow();
+			uint64_t iCursorMs = 0u;
+			for (const VALTAN_STAGE_VIEW& Row : pPattern->Stages)
+			{
+				ImGui::PushID(Row.strStageId.c_str());
+				CBalanceTool::PATTERN_STAGE_EDIT RowDraft;
+				std::string RowDraftStatus;
+				const bool_t bRowDraft = bPatternMutationAdmitted &&
+					nullptr != m_pBalanceTool &&
+					m_pBalanceTool->Get_ValtanStageDraft(
+						pPattern->strPatternId, Row.strStageId,
+						RowDraft, RowDraftStatus);
+				const uint32_t iRowDurationMs =
+					bRowDraft ? RowDraft.durationMs : Row.iDurationMs;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				const bool_t bRowSelected = nullptr != pStage &&
+					pStage->strStageId == Row.strStageId;
+				if (ImGui::Selectable(Row.strStageId.c_str(), bRowSelected))
+					Select_Stage(*pPattern, Row);
+				ImGui::TableNextColumn();
+				const std::string RowRole = StageSequenceRoleLabel(Row);
+				ImGui::TextUnformatted(RowRole.c_str());
+				ImGui::TableNextColumn();
+				ImGui::Text("%llu", static_cast<unsigned long long>(iCursorMs));
+				ImGui::TableNextColumn();
+				ImGui::Text("%llu",
+					static_cast<unsigned long long>(iCursorMs + iRowDurationMs));
+				ImGui::TableNextColumn();
+				if (bRowDraft && RowDraft.durationEditable &&
+					!RowDraft.portalRushMotionEditable)
+				{
+					int32_t iDurationInput = static_cast<int32_t>((std::min)(
+						iRowDurationMs, static_cast<uint32_t>(INT32_MAX)));
+					ImGui::SetNextItemWidth(-1.f);
+					if (ImGui::DragInt("##PatternTimelineDuration", &iDurationInput,
+							10.f, 1, 120000, "%d", ImGuiSliderFlags_AlwaysClamp))
+					{
+						std::string ClockStatus;
+						if (ApplyStageClockPolicy(
+								RowDraft, static_cast<uint32_t>(iDurationInput),
+								ClockStatus) &&
+							SetValtanStageDraftWithSoundDependencyAdmission(
+								m_pAnimationTool, m_pBalanceTool,
+								m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+								*pPattern, Row, RowDraft, ClockStatus))
+						{
+							Invalidate_TimelineCache();
+						}
+						m_strStatus = std::move(ClockStatus);
+					}
+				}
+				else
+				{
+					ImGui::Text("%u", iRowDurationMs);
+				}
+				ImGui::TableNextColumn();
+				std::string ColliderSummary;
+				if (Row.Has_HitShape())
+				{
+					ColliderSummary = std::string(
+						"CAPTURE" == Row.strPlayerResponse ? "GRAB " : "DAMAGE ") +
+						Row.strHitShape;
+				}
+				if (Row.CounterProxy.has_value())
+					ColliderSummary += ColliderSummary.empty() ? "COUNTER" : " + COUNTER";
+				ImGui::TextUnformatted(
+					ColliderSummary.empty() ? "-" : ColliderSummary.c_str());
+				iCursorMs += iRowDurationMs;
+				ImGui::PopID();
+			}
+			ImGui::EndTable();
+			ImGui::Text("Total: %llu ms", static_cast<unsigned long long>(iCursorMs));
+		}
 		if (pPattern->bManualServerAudition)
 		{
-			ImGui::SeparatorText("New Pattern Authoring Coverage");
-			ImGui::BulletText(
-				"Sequence slots: select a Stage, open Animation Detail, then Replace/Append an exact source Sequence.");
-			ImGui::BulletText(
-				"Internal gap: add a WAIT / GAP node in Composition Boss Pattern, or tune the selected Stage's trailing gap in Details.");
-			ImGui::BulletText(
-				"Server collider: open a non-WAIT Stage's Gameplay Detail and Add Server Collider; Effect geometry is never copied into hit authority.");
-			ImGui::BulletText(
-				"Counter -> Groggy: insert/select WINDUP and a later GROGGY Stage, then enable the typed edge in Gameplay Detail.");
-			ImGui::TextColored(
-				ImVec4(1.f, 0.70f, 0.25f, 1.f),
-				"Grab release action creation: unavailable in this revision. The typed Balance owner keeps joined action inventory read-only; Workbench can tune mode, velocity, duration and yaw only after a RELEASE_GRABBED_PLAYERS action is admitted by a dedicated gameplay transaction.");
+			/* The one authoring limit that is not visible from the lanes. */
+			ImGui::TextDisabled(
+				"Grab release action creation is unavailable in this revision; release mode/velocity/duration/yaw become editable once a RELEASE_GRABBED_PLAYERS action is admitted.");
 		}
 		ImGui::SeparatorText("Sequence Sources");
 		for (const VALTAN_PRESENTATION_SOURCE_VIEW& Source :
@@ -8733,6 +9525,84 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			ImGui::Text("Motion %s | %.2f m/s | %.2f m | life %u ms",
 				Found->strKind.c_str(), Found->fSpeedMps,
 				Found->fMaximumDistanceM, Found->iLifetimeMs);
+			ImGui::Text("Waves %u | interval %u ms | hit offsets %u",
+				(std::max)(Found->iSpawnScheduleCount, 1u),
+				Found->iSpawnIntervalMs,
+				static_cast<uint32_t>(Found->HitOffsetsMs.size()));
+			if (bPatternMutationAdmitted && nullptr != m_pBalanceTool &&
+				nullptr != pPattern)
+			{
+				for (const VALTAN_COMBAT_OBJECT_HIT_VIEW& Hit : Found->Hits)
+				{
+					if ("RING" != Hit.strHitShape)
+						continue;
+					CBalanceTool::VALTAN_COMBAT_OBJECT_RING_HIT_EDIT RingDraft;
+					std::string RingStatus;
+					if (!m_pBalanceTool->Get_ValtanCombatObjectRingHitDraft(
+							pPattern->strPatternId, pStage->strStageId,
+							Found->strCombatObjectArchetypeId, Hit.strHitId,
+							RingDraft, RingStatus))
+					{
+						ImGui::TextDisabled("%s", RingStatus.c_str());
+						continue;
+					}
+					ImGui::PushID(Hit.strHitId.c_str());
+					f32_t fInner = static_cast<f32_t>(RingDraft.innerRadiusM);
+					f32_t fOuter = static_cast<f32_t>(RingDraft.outerRadiusM);
+					bool_t bRingChanged = false;
+					ImGui::SetNextItemWidth(140.f);
+					bRingChanged |= ImGui::DragFloat("Ring inner (m)", &fInner,
+						0.1f, 0.f, 80.f, "%.2f");
+					ImGui::SetNextItemWidth(140.f);
+					bRingChanged |= ImGui::DragFloat("Ring outer (m)", &fOuter,
+						0.1f, 0.f, 80.f, "%.2f");
+					if (bRingChanged)
+					{
+						RingDraft.innerRadiusM = fInner;
+						RingDraft.outerRadiusM = fOuter;
+						m_strStatus =
+							m_pBalanceTool->Set_ValtanCombatObjectRingHitDraft(
+								pPattern->strPatternId, pStage->strStageId,
+								RingDraft, RingStatus) ?
+							RingStatus : "Ring edit rejected: " + RingStatus;
+						Invalidate_TimelineCache();
+					}
+					ImGui::PopID();
+				}
+				if ("combatobject.valtan.high-jump.target-axe" ==
+					Found->strCombatObjectArchetypeId)
+				{
+					uint32_t iDraftCount = 0u;
+					uint32_t iSavedCount = 0u;
+					uint32_t iArenaRandomCount = 0u;
+					uint32_t iMaximumTotalObjects = 0u;
+					std::string AxeStatus;
+					if (m_pBalanceTool->Get_ValtanHighJumpAxeCountDraft(
+							iDraftCount, iSavedCount, iArenaRandomCount,
+							iMaximumTotalObjects, AxeStatus))
+					{
+						int32_t iCount = static_cast<int32_t>(iDraftCount);
+						ImGui::SetNextItemWidth(160.f);
+						if (ImGui::SliderInt("Axes per alive player", &iCount,
+								1, 8))
+						{
+							m_strStatus =
+								m_pBalanceTool->Set_ValtanHighJumpAxeCountDraft(
+									static_cast<uint32_t>(iCount), AxeStatus) ?
+								AxeStatus : "Axe edit rejected: " + AxeStatus;
+							Invalidate_TimelineCache();
+						}
+						ImGui::TextDisabled(
+							"saved %u | arena random %u | capacity %u",
+							iSavedCount, iArenaRandomCount,
+							iMaximumTotalObjects);
+					}
+					else
+					{
+						ImGui::TextDisabled("%s", AxeStatus.c_str());
+					}
+				}
+			}
 			ImGui::TextDisabled(
 				"Collider and hit clocks are Server combat-object owner data; Effect visibility does not become hit authority.");
 		}
@@ -9057,12 +9927,23 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	const bool_t bHasUnsavedChanges =
 		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty ||
 		bEffectV2OwnerDirty;
-	const bool_t bCanSave = nullptr != pPattern && bPatternMutationAdmitted &&
+	const bool_t bPublishRunning = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Is_ServerRuntimeSetPublishRunning();
+	const bool_t bSaveJobBlocking = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring();
+	const bool_t bCanSave = !bPublishRunning && !bSaveJobBlocking &&
+		nullptr != pPattern && bPatternMutationAdmitted &&
 		bHasUnsavedChanges && nullptr != m_pBalanceTool;
 	ImGui::BeginDisabled(!bCanSave);
 	if (ImGui::Button("Save##CompositionSequencer"))
 		m_bSavePatternRequested = true;
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(bSaveJobBlocking);
+	ImGui::Checkbox("Publish after Save##CompositionAutoPublish",
+		&m_bAutoPublishAfterSave);
+	ImGui::EndDisabled();
+	Render_PostSaveState();
 	const bool_t bPatternOwnerReady =
 		VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission &&
 		nullptr != m_pBalanceTool;
@@ -9728,8 +10609,8 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		const bool_t bCounterLogic =
 			DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
 			TIMELINE_LANE::LOGIC == Item.eLane &&
-			std::string::npos != Item.strStableId.find(
-				"/branch/COUNTER_HIT/");
+			Item.strStableId == BuildBranchStableId(
+				Item.strStageId, "COUNTER_HIT");
 		const bool_t bColliderSchedule =
 			DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
 			TIMELINE_LANE::COLLIDER == Item.eLane && Item.bEditable &&
@@ -9775,6 +10656,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		const bool_t bAnimationMove =
 			DETAIL_OWNER::ANIMATION == Item.eOwner &&
 			TIMELINE_LANE::ANIMATION == Item.eLane && Item.bEditable &&
+			!Item.bLoopsToStageEnd &&
 			ItemStage != pPattern->Stages.end();
 		const bool_t bMoveOwner = bAnimationMove || bColliderSchedule ||
 			Item.bEffectV2Binding ||
@@ -9969,6 +10851,44 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 							static_cast<uint32_t>((std::clamp)(
 								iSourcePlayMs, uint64_t{ 1u }, uint64_t{ 600000u })),
 							Status);
+					}
+					else if (Draft.animationSlots.end() != Slot &&
+						Slot->repeatUntilStageEnd)
+					{
+						/* A loop slot ends at the Server Stage clock, so dragging its
+						   right edge edits the Stage duration through the same clock
+						   policy the Stage box uses. */
+						const TIMELINE_ITEM* pStageItem = nullptr;
+						for (const TIMELINE_ITEM& Candidate : TimelineItems)
+						{
+							if (TIMELINE_LANE::STAGE == Candidate.eLane &&
+								DETAIL_OWNER::GAMEPLAY_STAGE == Candidate.eOwner &&
+								Candidate.strPatternId == Item.strPatternId &&
+								Candidate.strStageId == Item.strStageId)
+							{
+								pStageItem = &Candidate;
+								break;
+							}
+						}
+						const uint32_t iSlotStageLocalStartMs =
+							nullptr == pStageItem ||
+							Item.iStartMs < pStageItem->iStartMs ?
+							0u : Item.iStartMs - pStageItem->iStartMs;
+						const uint64_t iRequestedStageMs =
+							static_cast<uint64_t>(iSlotStageLocalStartMs) + iNewWallMs;
+						bApplied = Draft.durationEditable &&
+							iRequestedStageMs >= 1u && iRequestedStageMs <= 600000u &&
+							ApplyStageClockPolicy(
+								Draft, static_cast<uint32_t>(iRequestedStageMs), Status) &&
+							SetValtanStageDraftWithSoundDependencyAdmission(
+								m_pAnimationTool, m_pBalanceTool,
+								m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+								*pPattern, *ItemStage, Draft, Status);
+						if (!bApplied && Status.empty())
+						{
+							Status =
+								"Loop slot right-edge trim requires an editable Stage clock.";
+						}
 					}
 					else
 					{
@@ -10901,7 +11821,7 @@ void Client::CActionCompositionWorkbench::Request_LaneAuthoring(
 		m_bDetailsWindowVisible = true;
 		Select_Stage(
 			Pattern, Stage, DETAIL_OWNER::GAMEPLAY_STAGE,
-			Stage.strStageId + "/branch/COUNTER_HIT/authoring");
+			BuildBranchStableId(Stage.strStageId, "COUNTER_HIT"));
 		m_strStatus =
 			"Counter Box Detail opened for this Stage.";
 		break;
@@ -11520,6 +12440,7 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 
 void Client::CActionCompositionWorkbench::Render()
 {
+	Update_SaveState();
 	m_bApplyResetLayoutThisFrame = m_bResetLayoutRequested;
 	m_bResetLayoutRequested = false;
 	if (!m_bLoadAttempted)
@@ -11660,7 +12581,10 @@ void Client::CActionCompositionWorkbench::Render()
 	const bool_t bLocalPreviewAdmitted = nullptr != pPattern &&
 		Can_DisplayValtanView(m_eAdmission);
 	const bool_t bMutationAdmitted =
-		Can_MutateValtanView(m_eAdmission) && bEffectivePatternReady;
+		Can_MutateValtanView(m_eAdmission) && bEffectivePatternReady &&
+		(nullptr == m_pBalanceTool ||
+		 (!m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() &&
+		  !m_pBalanceTool->Is_ServerRuntimeSetPublishRunning()));
 	std::string SoundDependencyStatus;
 	m_bPatternSoundDependencyDirty = false;
 	if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission)
@@ -11694,8 +12618,9 @@ void Client::CActionCompositionWorkbench::Render()
 		   frame's immutable Pattern/Stage views before a successful save reloads
 		   and replaces the canonical storage. */
 		m_bSavePatternRequested = false;
-		m_bPatternSaveSucceeded = Save_Reload();
-		m_bPatternSaveResultAvailable = true;
+		const bool_t bSaveStarted = Save_Reload();
+		m_bPatternSaveSucceeded = false;
+		m_bPatternSaveResultAvailable = !bSaveStarted;
 		m_strPatternSaveStatus = m_strStatus;
 	}
 	/* Pattern browser requests retain only stable IDs.  Resolve them after every

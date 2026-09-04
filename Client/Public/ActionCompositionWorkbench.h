@@ -43,7 +43,7 @@ struct COMPOSITION_RESOURCE_TREE_NODE final
    existing owner tools. */
 class CActionCompositionWorkbench final
 {
-private:
+public:
 	enum class DETAIL_OWNER : uint8_t
 	{
 		PATTERN,
@@ -106,6 +106,9 @@ private:
 		   the exact binding key remains clip-qualified. */
 		std::string strEffectV2ClipOccurrenceId;
 		f32_t fEffectV2ClipPlayRate = 1.f;
+		/* A loop slot ends exactly at the Server Stage clock, so its right
+		   edge is the Stage duration and it never moves across Stages. */
+		bool_t bLoopsToStageEnd = false;
 	};
 
 	/* Cached reverse projection from an exact PRIMARY source Sequence to the
@@ -144,18 +147,53 @@ public:
 		CBossTool* pBossTool);
 
 	bool_t Open_Valtan();
+	/* Sibling-view API for the Sequencer: the same canonical load, selection,
+	   draft and timeline cache without requiring the Workbench windows to be
+	   visible. Selection changes are refused while any owner draft is dirty so
+	   the Workbench modal stays the only discard path. */
+	bool_t Ensure_CanonicalLoaded(std::string& strOutStatus);
+	std::vector<std::string> Get_PatternIds() const;
+	bool_t Select_PatternById(
+		const std::string& strPatternId,
+		std::string& strOutStatus);
+	bool_t Ensure_SelectedTimeline(std::string& strOutStatus);
 	[[nodiscard]] bool_t Has_DisplaySnapshot() const
 	{
 		return 0u != m_CanonicalView.Get_PatternCount();
+	}
+	/* Monotonic identity of the immutable canonical display snapshot. Sibling
+	   views may use it only to invalidate their own read-only projections; it
+	   is not a source or Product revision. */
+	[[nodiscard]] std::uint64_t Get_CanonicalDisplayGeneration() const noexcept
+	{
+		return m_iCanonicalDisplayGeneration;
 	}
 	[[nodiscard]] bool_t Is_FullyAdmitted() const
 	{
 		return Can_MutateValtanView(m_eAdmission);
 	}
 	void On_LevelChanged();
+	/* Advances and consumes only this Workbench's exact asynchronous Save
+	   receipt. MainApp calls this every frame so a hidden Composition window
+	   still completes owner reopen, graph refresh, and runtime publication. */
+	void Update_SaveState();
 	void Render();
 	bool_t Consume_EffectToolOpenRequest(
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& OutRequest);
+	/* Set by a committed Save so All Effects reopens exactly that durable
+	   source receipt. MainApp consumes this independently of window visibility;
+	   if the Effect owner has not been constructed yet, the request remains
+	   pending here. */
+	bool_t Consume_EffectGraphRefreshRequest(
+		std::string& strOutExpectedSourceRevision)
+	{
+		if (!m_bEffectGraphRefreshRequested)
+			return false;
+		strOutExpectedSourceRevision = m_strEffectGraphRefreshRevision;
+		m_bEffectGraphRefreshRequested = false;
+		m_strEffectGraphRefreshRevision.clear();
+		return true;
+	}
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& OutRequest);
 	bool_t Consume_AnimationToolOpenRequest();
@@ -164,6 +202,32 @@ public:
 	{
 		m_bPreviewOwnerActive = bActive;
 	}
+	/* Read-only timeline projection for the Sequencer window: the last
+	   Build_Timeline result for Get_TimelineCachePatternId(). */
+	[[nodiscard]] const std::vector<TIMELINE_ITEM>& Get_TimelineItems() const
+	{
+		return m_TimelineItems;
+	}
+	[[nodiscard]] const std::string& Get_TimelineCachePatternId() const
+	{
+		return m_strTimelineCachePatternId;
+	}
+	[[nodiscard]] const std::string& Get_SelectedPatternId() const
+	{
+		return m_strSelectedPatternId;
+	}
+	[[nodiscard]] uint32_t Get_PlayheadMs() const
+	{
+		return m_iPlayheadMs;
+	}
+	[[nodiscard]] uint32_t Get_TimelineDurationMs() const
+	{
+		return m_iTimelineDurationMs;
+	}
+	/* Seeks the shared playhead and the effective preview through the same
+	   path the Workbench ruler uses. Returns false when no admitted preview
+	   could be sought; the playhead value is still updated. */
+	bool_t Set_PlayheadMs(uint32_t iPlayheadMs);
 
 private:
 	bool_t Reload_Canonical();
@@ -171,6 +235,31 @@ private:
 		const CValtanCanonicalProductReadAdmission& Admission,
 		const std::string& strStrictFailure);
 	bool_t Save_Reload();
+	void Publish_AfterSave();
+	/* Save receipt. Every committed Save (including the reopen-failure
+	   returns) records SOURCE_COMMITTED so the runtime-set publish can never be
+	   skipped silently; Retry Publish continues from the same committed
+	   revision without writing source again. */
+	enum class POST_SAVE_STATE : uint8_t
+	{
+		IDLE,
+		SOURCE_COMMITTED,
+		APPLY_FAILED,
+		PUBLISH_RUNNING,
+		PUBLISH_FAILED,
+		PUBLISHED_RESTART_REQUIRED,
+	};
+	POST_SAVE_STATE m_ePostSaveState = POST_SAVE_STATE::IDLE;
+	std::string m_strPostSaveRevision;
+	std::string m_strPostSaveApplyStatus;
+	bool_t m_bEffectGraphRefreshRequested = false;
+	std::string m_strEffectGraphRefreshRevision;
+	void Mark_SourceCommitted(const std::string& strExactSourceRevision);
+	void Clear_PendingSaveOwnerReceipt();
+	bool_t Accept_PendingSaveOwners(std::string& strOutStatus);
+	bool_t Reload_AfterPendingSave(std::string& strOutStatus);
+	void Update_PostSaveState();
+	void Render_PostSaveState();
 	bool_t Is_PatternSoundDraftDirty(std::string& strOutStatus) const;
 	bool_t Has_UnsavedCompositionDrafts(std::string& strOutStatus) const;
 	bool_t Discard_CompositionDraftsAndReload();
@@ -436,6 +525,9 @@ private:
 	std::uint64_t m_iPreviewDraftGeneration = 0u;
 	bool_t m_bPreviewOwnerClaimRequested = false;
 	bool_t m_bPreviewOwnerActive = false;
+	/* After a fully reloaded Save: publish the candidate/apply it to the live
+	   Server (Boss Tool Flow Save path) and refresh the on-disk runtime set. */
+	bool_t m_bAutoPublishAfterSave = true;
 	bool_t m_bOpenAnimationToolRequested = false;
 	bool_t m_bEffectToolOpenRequested = false;
 	bool_t m_bCameraToolOpenRequested = false;
@@ -514,6 +606,19 @@ private:
 	bool_t m_bSavePatternRequested = false;
 	bool_t m_bPatternSaveResultAvailable = false;
 	bool_t m_bPatternSaveSucceeded = false;
+	/* Immutable caller-side half of one BalanceTool Save job. The child owns
+	   copies under Intermediate; these values are retained only so each local
+	   Sound/Effect owner can accept the exact generation after the durable
+	   receipt arrives. */
+	std::uint64_t m_iPendingSaveJobId = 0u;
+	std::uint64_t m_iPendingPatternSoundDraftGeneration = 0u;
+	std::uint64_t m_iPendingEffectV2DraftRevision = 0u;
+	std::string m_strPendingPatternSoundCandidateBytes;
+	std::string m_strPendingEffectV2CandidateBytes;
+	bool_t m_bPendingPatternSoundOwner = false;
+	bool_t m_bPendingEffectV2Owner = false;
+	bool_t m_bPendingSavePublishesRuntime = false;
+	bool_t m_bSelectAfterPendingSave = false;
 
 	std::vector<TIMELINE_ITEM> m_TimelineItems;
 	std::array<std::size_t, 7u> m_TimelineLaneSubrowCounts{};

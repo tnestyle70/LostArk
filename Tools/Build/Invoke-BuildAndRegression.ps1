@@ -6,7 +6,9 @@ param(
     [string]$Profile = 'Core',
     [switch]$SkipBuild,
     [string]$ResourceRoot = '',
-    [switch]$AllowLocalEffectResources
+    [switch]$AllowLocalEffectResources,
+    [ValidatePattern('^(?:[0-9a-f]{64})?$')]
+    [string]$ExpectedValtanSourceRevision = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +43,8 @@ $domainPipelinePath = Join-Path $PSScriptRoot 'BuildDomainPipeline.psm1'
 $productOutputGuardPath = Join-Path $PSScriptRoot 'ProductOutputGuard.psm1'
 $buildReceiptRoot = Join-Path $repoRoot 'out\BuildPipeline\receipts'
 $buildEvidenceRoot = Join-Path $repoRoot 'out\BuildPipeline\runs'
+$valtanPipeline = Join-Path $repoRoot `
+    'Tools\ValtanPipeline\valtan_tuning_pipeline.py'
 Import-Module $domainPipelinePath -Force
 Import-Module $productOutputGuardPath -Force
 $buildDomainManifest = Read-BuildDomainManifest $domainManifestPath
@@ -50,6 +54,35 @@ $script:buildStartedUtc = [DateTime]::UtcNow.ToString('o')
 $script:buildRunTimer = [Diagnostics.Stopwatch]::StartNew()
 $script:buildStartGitIdentity = $null
 $script:buildStartProductSourceInputSha256 = ''
+
+function Get-ValtanRepositorySourceRevision {
+    $manifestText = (& python $valtanPipeline --repository-root $repoRoot `
+        source-manifest --repository-only | Out-String).Trim()
+    if ($global:LASTEXITCODE -ne 0 -or
+        [string]::IsNullOrWhiteSpace($manifestText)) {
+        throw 'STALE_REVISION: Valtan exact source revision could not be read.'
+    }
+    $manifestResult = $manifestText | ConvertFrom-Json
+    [string]$revision = $manifestResult.payload.sourceManifestId
+    if (-not [bool]$manifestResult.ok -or
+        [string]$manifestResult.command -cne 'SOURCE_MANIFEST' -or
+        $revision -cnotmatch '^[0-9a-f]{64}$') {
+        throw 'STALE_REVISION: Valtan exact source revision result is invalid.'
+    }
+    return $revision
+}
+
+function Assert-ExpectedValtanSourceRevision {
+    param([Parameter(Mandatory = $true)][string]$Phase)
+
+    # Keep direct/legacy calls compatible. Run-FullPipeline always supplies the
+    # pin and therefore takes the strict branch at every mutation boundary.
+    if ([string]::IsNullOrWhiteSpace($ExpectedValtanSourceRevision)) { return }
+    [string]$actual = Get-ValtanRepositorySourceRevision
+    if ($actual -cne $ExpectedValtanSourceRevision) {
+        throw "STALE_REVISION: Valtan source revision mismatch at ${Phase}: expected $ExpectedValtanSourceRevision, actual $actual."
+    }
+}
 
 function Add-BuildStepRecord {
     param(
@@ -200,8 +233,10 @@ function Invoke-SelectedBuildDomains {
         $timer = [Diagnostics.Stopwatch]::StartNew()
         $result = 'FAIL'
         try {
+            Assert-ExpectedValtanSourceRevision "domain $($domain.id) start"
             $domainResult = Invoke-BuildDomain $repoRoot $domain `
                 $runtimeResourceRoot $buildReceiptRoot
+            Assert-ExpectedValtanSourceRevision "domain $($domain.id) completion"
             $script:buildDomainResults.Add($domainResult) | Out-Null
             $result = if ($domainResult.reused) { 'REUSED' } else { 'PASS' }
             Write-Host "Build domain $($domainResult.domainId): $result"
@@ -218,8 +253,10 @@ function Write-CurrentProductReceipt {
     $timer = [Diagnostics.Stopwatch]::StartNew()
     $result = 'FAIL'
     try {
+        Assert-ExpectedValtanSourceRevision 'product receipt start'
         $path = Write-BuildProductReceipt $repoRoot $buildDomainManifest `
             $Configuration $buildReceiptRoot
+        Assert-ExpectedValtanSourceRevision 'product receipt completion'
         $result = 'PASS'
         Write-Host "Product build receipt: $path"
     }
@@ -238,6 +275,7 @@ function Capture-BuildStartIdentity {
 }
 
 function Write-CurrentBuildEvidence {
+    Assert-ExpectedValtanSourceRevision 'final evidence start'
     $stability = Assert-BuildRunStability $repoRoot $buildDomainManifest `
         $Configuration $runtimeResourceRoot $buildReceiptRoot `
         $script:buildStartGitIdentity `
@@ -248,6 +286,7 @@ function Write-CurrentBuildEvidence {
         ([bool]$SkipBuild) @($script:buildStepRecords) `
         @($script:buildDomainResults) $buildEvidenceRoot $stability `
         $script:buildStartedUtc $script:buildRunTimer.ElapsedMilliseconds
+    Assert-ExpectedValtanSourceRevision 'final evidence completion'
     Write-Host "Build evidence: $path"
 }
 
@@ -261,6 +300,8 @@ $previousResourceRoot = [Environment]::GetEnvironmentVariable(
 try {
     [Environment]::SetEnvironmentVariable(
         'LOSTARK_RESOURCE_ROOT', $runtimeResourceRoot, 'Process')
+
+    Assert-ExpectedValtanSourceRevision 'build runner admission'
 
     # This is deliberately unconditional.  Build-domain publishers mutate shared
     # Data even for -SkipBuild, and either Debug or Release may still be running.

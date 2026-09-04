@@ -183,6 +183,7 @@ private:
 	void Render_GroupWindow();
 	void Scan_Groups();
 	bool_t Load_Group(const std::string& strGroupId);
+	std::string Make_GroupChildId() const;
 	bool_t Save_Group();
 	bool_t Play_GroupPreview();
 	void Stop_GroupPreview();

@@ -222,6 +222,40 @@
           "atMs": 5000
         }
       ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut-large",
+      "clientVisualId": "combatobject.visual.valtan.fist-in-out.donut-large.v1",
+      "ownerPatternId": "VALTAN_FIST_IN_OUT_LARGE",
+      "ownerStageActionId": "valtan.attack.fist-in-out-large.inner",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 2600,
+      "hits": [
+        {
+          "hitShape": "RING",
+          "hitOuterRadius": 24.0,
+          "hitInnerRadius": 16.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.fist-in-out.donut-large.01",
+          "trigger": "TIMED",
+          "atMs": 1600,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.fist-in-out",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ]
     }
   ]
 }

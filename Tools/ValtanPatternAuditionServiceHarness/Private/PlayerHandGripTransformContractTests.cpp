@@ -99,11 +99,11 @@ namespace
 			const matrix_t hand = DirectX::XMLoadFloat4x4(&handWorld);
 			const vector_t displacement =
 				DirectX::XMVector3Normalize(hand.r[0]) *
-					(grip.fRightM * 100.f) +
+					grip.fRightM +
 				DirectX::XMVector3Normalize(hand.r[1]) *
-					(grip.fUpM * 100.f) +
+					grip.fUpM +
 				DirectX::XMVector3Normalize(hand.r[2]) *
-					(grip.fForwardM * 100.f);
+					grip.fForwardM;
 			float3_t expectedDisplacement{};
 			DirectX::XMStoreFloat3(&expectedDisplacement, displacement);
 			Require(std::abs(attached._41 -
@@ -113,6 +113,8 @@ namespace
 				std::abs(attached._43 -
 					(handWorld._43 + expectedDisplacement.z)) <= EPSILON,
 				"authored metre offset was not applied in normalized hand axes");
+			Require(std::abs(attached._42 - (handWorld._42 - 0.9f)) <= EPSILON,
+				"authored -0.9 metre grip moved by a non-metre world distance");
 			if (!hasReference)
 			{
 				reference = attached;

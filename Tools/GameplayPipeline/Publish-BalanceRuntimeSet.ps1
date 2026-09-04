@@ -4,7 +4,9 @@ param(
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles',
     [ValidateRange(0, 7)]
-    [int]$FailureAfterPromote = 0
+    [int]$FailureAfterPromote = 0,
+    [ValidatePattern('^(?:[0-9a-f]{64})?$')]
+    [string]$ExpectedValtanSourceRevision = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +18,34 @@ Import-Module $writerAdmissionModule -Force
 $gameplayPublisher = Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1'
 $worldPublisher = Join-Path $repoRoot 'Tools\WorldPipeline\Publish-WorldGameplay.ps1'
 $itemPublisher = Join-Path $PSScriptRoot 'Publish-ItemCatalog.ps1'
+$valtanPipeline = Join-Path $repoRoot `
+    'Tools\ValtanPipeline\valtan_tuning_pipeline.py'
+
+function Get-ValtanRepositorySourceRevision {
+    $manifestText = (& python $valtanPipeline --repository-root $repoRoot `
+        source-manifest --repository-only | Out-String).Trim()
+    if ($global:LASTEXITCODE -ne 0 -or
+        [string]::IsNullOrWhiteSpace($manifestText)) {
+        throw 'STALE_REVISION: could not read the canonical Valtan source identity.'
+    }
+    $manifestResult = $manifestText | ConvertFrom-Json
+    [string]$revision = $manifestResult.payload.sourceManifestId
+    if (-not [bool]$manifestResult.ok -or
+        [string]$manifestResult.command -cne 'SOURCE_MANIFEST' -or
+        $revision -cnotmatch '^[0-9a-f]{64}$') {
+        throw 'STALE_REVISION: canonical Valtan source identity result is invalid.'
+    }
+    return $revision
+}
+
+function Assert-ValtanSourceRevision(
+    [Parameter(Mandatory = $true)][string]$Expected,
+    [Parameter(Mandatory = $true)][string]$Phase) {
+    [string]$actual = Get-ValtanRepositorySourceRevision
+    if ($actual -cne $Expected) {
+        throw "STALE_REVISION: expected Valtan source $Expected at $Phase, actual $actual."
+    }
+}
 
 & $gameplayPublisher -Mode Validate
 & $worldPublisher -Mode Validate
@@ -45,6 +75,12 @@ $canonicalWriterAdmission = Enter-ValtanCanonicalWriterAdmission `
     -RepositoryRoot $repoRoot -TimeoutSeconds 30.0
 
 try {
+	[string]$publishSourceRevision = Get-ValtanRepositorySourceRevision
+	if (-not [string]::IsNullOrWhiteSpace($ExpectedValtanSourceRevision)) {
+		Assert-ValtanSourceRevision `
+			-Expected $ExpectedValtanSourceRevision -Phase 'job start'
+		$publishSourceRevision = $ExpectedValtanSourceRevision
+	}
     [IO.Directory]::CreateDirectory($stagedGameplayRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedWorldRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedItemsRoot) | Out-Null
@@ -115,12 +151,15 @@ try {
             throw "Injected balance runtime set failure after promotion $promotedCount."
         }
     }
+	Assert-ValtanSourceRevision `
+		-Expected $publishSourceRevision -Phase 'job completion'
 
     foreach ($promotion in $promotions) {
         if ([IO.File]::Exists($promotion.Rollback)) {
             [IO.File]::Delete($promotion.Rollback)
         }
     }
+	Write-Output "BALANCE_RUNTIME_SET_REVISION`t$publishSourceRevision"
     Write-Output 'Balance runtime set Publish succeeded: gameplay + 4 worlds + items.'
 }
 catch {

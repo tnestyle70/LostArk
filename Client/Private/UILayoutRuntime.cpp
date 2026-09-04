@@ -856,3 +856,24 @@ void Client::CUILayoutRuntime::Set_Animation_Frame(const string& strId, int32_t 
 		return;
 	}
 }
+
+void Client::CUILayoutRuntime::Set_SlotAnimation(const string& strId,
+	const vector<string>& Frames, f32_t fFps, bool_t bLoop)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		Slot.AnimationFramePaths = Frames;
+		if (fFps > 0.f)
+			Slot.fAnimationFPS = fFps;
+		Slot.bAnimationLoop = bLoop;
+		Slot.fAnimationElapsed = 0.f;
+		Slot.iAnimationFrame = 0;
+		/* Show frame 0 immediately so the swap doesn't flash the previous boss's last frame for
+		one tick before Update() advances. A cleared list leaves the static texture untouched. */
+		if (nullptr != Slot.pSprite && !Frames.empty())
+			Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(Frames[0]));
+		return;
+	}
+}

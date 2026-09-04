@@ -58,8 +58,9 @@ namespace Client
 
 		/* Transitional read-only projection for the existing Boss Tool and
 		   ordered Server audition command. It is populated only when the v2
-		   graph is one acyclic COMPLETED chain whose edge pursuit values all
-		   equal defaultPursuitMs. It is never serialized. */
+		   graph is one acyclic COMPLETED chain. Per-transition pursuit remains
+		   owned by Edges and is projected into the canonical scriptedSequence.
+		   This adapter is never a second serialized owner. */
 		std::uint64_t iNextSlotOrdinal = 1u;
 		std::uint32_t iInterStepPursuitMs = 1000u;
 		std::vector<VALTAN_PATTERN_FLOW_SLOT> Slots;
@@ -120,6 +121,7 @@ namespace Client
 			std::string_view sequenceId,
 			std::string_view mode,
 			std::uint32_t interStepPursuitMs,
+			const std::vector<std::uint32_t>& transitionPursuitMs,
 			const std::vector<std::string>& patternIds,
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);

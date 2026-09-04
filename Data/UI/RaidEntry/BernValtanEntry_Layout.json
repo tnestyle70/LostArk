@@ -77,7 +77,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/Accept.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Common/Accept.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -90,7 +90,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/Decline.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Common/Decline.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }

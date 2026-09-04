@@ -529,6 +529,7 @@ finally:
                 "VALTAN_WHIRLWIND",
                 "VALTAN_FOUR_SLASH",
             ],
+            "transitionPursuitMs": [100, 900],
         }
         patch_path = self.write_patch(
             "sequence.json",
@@ -544,6 +545,7 @@ finally:
             **expected,
             "interStepPursuitMs": 100,
             "patternIds": ["VALTAN_WHIRLWIND"],
+            "transitionPursuitMs": [],
         }
         rotations_path.write_text(
             json.dumps(stale_rotations, ensure_ascii=False, indent=2) + "\n",
@@ -583,12 +585,15 @@ finally:
             "sequenceId": "sequence.valtan.server-authored.v1",
             "mode": "ORDERED_ONCE_THEN_IDLE",
             "interStepPursuitMs": 900,
-            "patternIds": ["VALTAN_WHIRLWIND"],
+            "patternIds": ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"],
+            "transitionPursuitMs": [100],
         }
         cases = (
             ("identity", {**valid, "sequenceId": "sequence.other"}),
             ("mode", {**valid, "mode": "ORDERED_REPEAT"}),
             ("pursuit", {**valid, "interStepPursuitMs": 0}),
+            ("transition-count", {**valid, "transitionPursuitMs": []}),
+            ("transition-range", {**valid, "transitionPursuitMs": [0]}),
             ("unknown", {**valid, "patternIds": ["VALTAN_UNKNOWN"]}),
             ("malformed", {**valid, "patternIds": ["../invalid"]}),
             (
@@ -962,15 +967,80 @@ finally:
         self.assertIn("EXACT animation budget mismatch", result["errors"][0]["message"])
         self.assertEqual(baseline, self.data_manifest())
 
+    def test_malformed_composition_descriptor_rejects_without_changing_data(self) -> None:
+        descriptor_path = (
+            self.root / "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+        )
+        descriptor = self.read_json(descriptor_path)
+        descriptor["unexpected"] = True
+        descriptor_path.write_text(
+            json.dumps(descriptor, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        baseline = self.data_manifest()
+        malformed_revision = self.source_manifest()["sourceRevision"]
+        patch_path = self.write_patch(
+            "malformed-composition.json", malformed_revision, []
+        )
+        completed, result = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            patch_path,
+        )
+        self.assertNotEqual(0, completed.returncode)
+        self.assertFalse(result["ok"])
+        self.assertIn("fields mismatch", result["errors"][0]["message"])
+        self.assertEqual(baseline, self.data_manifest())
+
+    def test_noncanonical_composition_source_path_rejects_without_changing_data(
+        self,
+    ) -> None:
+        descriptor_path = (
+            self.root / "Data/Compositions/Bosses/Valtan.bosscomposition.json"
+        )
+        descriptor = self.read_json(descriptor_path)
+        gameplay = next(
+            row
+            for row in descriptor["sourceDocuments"]
+            if row["role"] == "GAMEPLAY"
+        )
+        gameplay["path"] = "Data/does-not-exist.json"
+        descriptor_path.write_text(
+            json.dumps(descriptor, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        baseline = self.data_manifest()
+        malformed_revision = self.source_manifest()["sourceRevision"]
+        patch_path = self.write_patch(
+            "noncanonical-composition-source.json", malformed_revision, []
+        )
+        completed, result = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            patch_path,
+        )
+        self.assertNotEqual(0, completed.returncode)
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "source role GAMEPLAY must reference",
+            result["errors"][0]["message"],
+        )
+        self.assertEqual(baseline, self.data_manifest())
+
     def test_sound_owner_changed_after_preflight_blocks_removed_occurrence_without_writes(
         self,
     ) -> None:
-        """The locked backend must not trust a stale Workbench preflight.
+        """The aggregate source revision rejects a changed Sound owner first.
 
         This writes a valid separate-owner Sound row after the hypothetical UI
         preflight. The candidate Pattern patch then removes the referenced
-        occurrence. Canonical commit must re-read the physical Sound owner
-        under writer admission and reject before replacing any Data target.
+        occurrence. Pattern Sound is part of source_manifest, so canonical
+        commit rejects the stale aggregate revision before replacing any Data
+        target or evaluating a candidate dependency against the wrong owner.
         """
 
         encounter = self.read_json(
@@ -1031,7 +1101,7 @@ finally:
         self.assertNotEqual(0, completed.returncode)
         self.assertFalse(result["ok"])
         self.assertIn(
-            "Pattern Sound dependency does not resolve candidate clip occurrence",
+            "typed Pattern draft source revision is not the current authoring head",
             result["errors"][0]["message"],
         )
         self.assertEqual(baseline, self.data_manifest())
@@ -1083,10 +1153,9 @@ finally:
         self.assertNotEqual(0, completed.returncode)
         self.assertFalse(result["ok"])
         self.assertIn(
-            "Pattern Sound each_loop dependency targets a non-loop clip",
+            "typed Pattern draft source revision is not the current authoring head",
             result["errors"][0]["message"],
         )
-        self.assertIn(changed_occurrence_id, result["errors"][0]["message"])
         self.assertEqual(baseline, self.data_manifest())
 
     def test_injected_midcommit_failure_restores_every_data_byte(self) -> None:
@@ -1156,12 +1225,14 @@ finally:
         self.assertEqual(
             len(absorbed_paths), absorbed["payload"]["changedCount"]
         )
+        # A gameplay-only overlay leaves the presentation source byte-identical,
+        # so only the gameplay owner and the projected Product are rewritten.
         self.assertTrue(
             {
                 "Valtan/Valtan.gameplay.json",
-                "Valtan/Valtan.presentation.json",
                 "Encounters/Valtan/ValtanEncounter.json",
-            }.issubset(absorbed_paths)
+            }.issubset(absorbed_paths),
+            sorted(absorbed_paths),
         )
         self.assertEqual("NOT_ACTIVATED", absorbed["payload"]["runtimeActivation"])
         product_stage = self.stage(
@@ -1561,13 +1632,17 @@ finally:
         seed_sound_candidate_path = self.root / "dash-charge-seed-sound-candidate.json"
         seed_sound_baseline_path.write_bytes(sound_target.read_bytes())
         seed_sound_candidate = self.read_json(sound_target)
-        self.assertFalse(
-            any(
+        # The repository may already carry authored sounds for the replacement
+        # Groggy chain.  Build the legacy seed deterministically by removing
+        # that stage's current rows inside the same atomic owner candidate.
+        seed_sound_candidate["cues"] = [
+            cue
+            for cue in seed_sound_candidate["cues"]
+            if not (
                 cue.get("patternId") == "VALTAN_DASH_CHARGE"
                 and cue.get("stageId") == "GROGGY"
-                for cue in seed_sound_candidate["cues"]
             )
-        )
+        ]
         seed_sound_candidate["cues"].append(
             {
                 "bindingId": (

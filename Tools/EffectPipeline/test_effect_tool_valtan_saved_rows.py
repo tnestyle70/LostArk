@@ -1819,14 +1819,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "startAngleDegrees": 0,
                     "angleStepDegrees": 0,
                     "allowOverlap": False,
-                    "maximumTotalObjects": 4,
-                    "spawnCount": 1,
+                    # Restored 2026-09-03: three waves 1333 ms apart, each with
+                    # one tracking axe per alive player plus four arena-random
+                    # axes around the boss spawn (36 objects max).
+                    "maximumTotalObjects": 36,
+                    "spawnCount": 3,
                     "firstSpawnOffsetMs": 0,
-                    "spawnIntervalMs": 0,
-                    "arenaRandomCount": 0,
-                    "arenaRandomRadiusM": 0.0,
-                    "arenaHeightToleranceM": 0.0,
-                    "arenaAnchorPolicy": "NONE",
+                    "spawnIntervalMs": 1333,
+                    "arenaRandomCount": 4,
+                    "arenaRandomRadiusM": 14.0,
+                    "arenaHeightToleranceM": 1.0,
+                    "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
                 }
             ],
             stages["AIRBORNE"]["actions"],

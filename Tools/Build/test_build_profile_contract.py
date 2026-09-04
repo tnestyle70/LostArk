@@ -294,6 +294,8 @@ class BuildProfileContractTests(unittest.TestCase):
         self.assertNotIn("EffectRenderContractHarness", runner)
         self.assertNotIn("EffectRenderContractHarness", shader_closure)
         self.assertIn("Invoke-ProductEffectShaderWarpProbe", shader_closure)
+        self.assertNotIn("Get-FileHash -LiteralPath", shader_closure)
+        self.assertIn("[System.Security.Cryptography.SHA256]::Create()", shader_closure)
 
     def test_action_presentation_harness_is_partitioned_and_physically_retired(self) -> None:
         for relative in (
@@ -361,6 +363,7 @@ class BuildProfileContractTests(unittest.TestCase):
             "ValtanPatternTree.cpp",
             "ActionCompositionGraphModel.cpp",
             "BossLogicFlowViewModel.cpp",
+            "BossCompositionDocument.cpp",
             "ValtanPresentationGenerationAdmission.cpp",
             "EffectV2_Document.cpp",
             "ValtanPatternFlowDocument.cpp",

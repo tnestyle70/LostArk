@@ -245,6 +245,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             [
                 "valtan.independent-effect.target-axe",
                 "valtan.independent-effect.donut-in-out",
+                "valtan.independent-effect.donut-large",
                 "valtan.independent-effect.ground-roar-cardinal-rocks",
                 "valtan.independent-effect.six-pizza-rock-pillars",
                 "valtan.independent-effect.struggling-rock-pillars",
@@ -561,9 +562,11 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()",
         )
         self.assertIn(
-            '"Server Combat Object (read-only) x" +',
+            '"Server Combat Object (read-only)" + strSpawnSummary',
             timeline,
         )
+        self.assertIn('" | waves "', timeline)
+        self.assertIn('" | arena random "', timeline)
         self.assertIn("Object.iLifetimeMs", timeline)
         self.assertNotIn(
             "(std::min)(Object.iLifetimeMs, iStageDurationMs)", timeline

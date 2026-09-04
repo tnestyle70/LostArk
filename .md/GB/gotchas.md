@@ -505,6 +505,12 @@ Core를 직렬 재실행한다. 제품 UI는 같은 상태에서 last-good을 �
   전달한다. worktree 삭제, clone, `git lfs pull`로 이 파일들이 복구된다고 가정하거나 force-add하지
   않는다. 누락 시 model-view/FullDiagnostic 차단을 코드 회귀와 구분하고 Drive 전달 prerequisite와
   exact 상대 경로를 보고한다.
+- 임시 worktree, fixture, baseline 비교 폴더 안에 실제 `Client/Bin/Resources`를 가리키는 junction이나
+  symlink를 만들지 않는다. `git worktree remove --force`, `Remove-Item -Recurse`, `rm -rf`는 연결된
+  Git 비추적 Drive 폴더까지 순회해 원본 pack을 지울 수 있다. 별도 tree에서 물리 Resources가 필요하면
+  `LOSTARK_RESOURCE_ROOT`/`LOSTARK_SHARED_ASSET_ROOT`로 실제 루트를 읽기 전용 지정하거나 검사에 필요한
+  최소 파일만 복사한다. worktree 삭제 전에는 reparse point를 전수 확인하고, 발견된 link는 target을
+  순회하지 않는 unlink 명령으로 먼저 분리한다.
 - 이 절의 source/Product validate, native harness, Product/Core/FullDiagnostic PASS는 화면 품질 PASS가
   아니다. Effect 반복·위치·색, collider wire, Ghost body와 Sound timing의 최종 판정은 0절의 사용자
   전용 경계를 그대로 적용하며, 사용자의 서면 관찰 전에는 first pixel, eye smoke, visual PASS를
@@ -610,6 +616,16 @@ V1 authored 문서는 `elements[]` 전체가 하나의 원자적 composition이�
   boss yaw 0도 기준 각 root는 X/Z `(3.5,3.5)`, `(3.5,-3.5)`, `(-3.5,-3.5)`,
   `(-3.5,3.5)`이며 boss yaw를 따라 함께 회전한다. element 복제와 root instancing을 동시에 적용하면
   16배 occurrence가 생기므로 회귀가 두 계약을 함께 검사해야 한다.
+- 피해 없는 boss-relative four-rock owner를 새로 추가할 때는 `GameRoom`의 off-navigation exact owner
+  집합도 같은 변경에서 갱신한다. `FIXED_AREA + direction NONE + hits=[] + presentation pulse + count=4`
+  의미 조건과 `(combatObject, pattern, action)` 튜플을 모두 만족할 때만 authored root가 navgrid 밖에
+  놓이는 것을 허용한다. 모든 visual object를 포괄 허용하거나 좌표를 project/clamp하지 않는다.
+- `firstSpawnOffsetMs`가 있는 volley는 ENTER 테스트만으로 검증되지 않는다. 실제
+  `Apply_BossPatternScheduledSpawnWave`에서 due 직전 no-op, due tick atomic spawn, 다음 tick 중복 없음과
+  damage hit 주입 시 live/pending lifecycle 0개인 strict reject를 함께 검사한다. 이 경로의 실패는
+  room을 not-ready로 만들고 다음 정상 입력에서 session FIN으로 이어져 Client에는
+  `Valtan replication observed a disconnected Server session.`, Lobby에는 공통
+  `Server entry failed.`로 보일 수 있다.
 
 Save/Restart 진단에서는 한 문장인 `SAVED`를 다음 상태로 나눠 확인한다.
 

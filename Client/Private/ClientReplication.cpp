@@ -1,5 +1,7 @@
 #include "ClientReplication.h"
 
+#include "Profiler.h"
+
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
 #include "Character.h"
@@ -222,6 +224,8 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 
 bool Client::CClientReplication::Update()
 {
+	Engine::CProfilerScope updateScope(
+		CGameInstance::Get().Get_Profiler(), "Replication.Update");
 	if (!m_isInitialized)
 		return false;
 #ifdef _DEBUG
@@ -2203,13 +2207,22 @@ void Client::CClientReplication::Update_PlayerAttachmentPresentations()
 				++attachment;
 				continue;
 			}
+			attachment->second.GripLocalOffset = {};
+			attachment->second.bHasGripLocalOffset =
+				valtan->Try_Get_PlayerHandGripLocalOffsetByPatternId(
+				valtan->Get_ServerPatternId(),
+				attachment->second.GripLocalOffset);
+			if (!attachment->second.bHasGripLocalOffset)
+			{
+				m_strPendingPresentationFailure =
+					"Valtan left-hand attachment retained its Server fallback because the replicated Pattern has no admitted gripLocalOffset: " +
+					(valtan->Get_ServerPatternId().empty() ?
+						std::string("<empty>") : valtan->Get_ServerPatternId());
+				++attachment;
+				continue;
+			}
 			attachment->second.LocalOffset = localOffset;
 			attachment->second.bHasLocalOffset = true;
-			attachment->second.GripLocalOffset = {};
-			(void)valtan->Try_Get_PlayerHandGripLocalOffset(
-				valtan->Get_ServerActionId(),
-				attachment->second.GripLocalOffset);
-			attachment->second.bHasGripLocalOffset = true;
 		}
 
 		/* The authored correction moves the character's feet-origin to the palm

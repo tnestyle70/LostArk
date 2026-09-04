@@ -13,6 +13,7 @@
 int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
+int Run_BossCompositionDocumentContractTests();
 int Run_ActionCompositionGraphModelContractTests();
 int Run_BossLogicFlowViewModelContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
@@ -1422,6 +1423,8 @@ int main()
 		Run_ValtanEncounterReferenceContractTests();
 	const int CanonicalGraphFailures =
 		Run_ValtanCanonicalGraphContractTests();
+	const int BossCompositionDocumentFailures =
+		Run_BossCompositionDocumentContractTests();
 	const int CompositionGraphFailures =
 		Run_ActionCompositionGraphModelContractTests();
 	const int BossLogicFlowFailures =
@@ -1441,6 +1444,7 @@ int main()
 	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
 		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
 		0 == CanonicalGraphFailures &&
+		0 == BossCompositionDocumentFailures &&
 		0 == CompositionGraphFailures &&
 		0 == BossLogicFlowFailures &&
 		0 == PatternSoundCueFailures &&

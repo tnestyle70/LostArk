@@ -195,8 +195,7 @@ namespace
 				Find_CompletedEdge(flow, currentNodeId);
 			if (nullptr == edge)
 				break;
-			if (edge->iMaxTraversals.has_value() ||
-				edge->iPursuitMs != flow.iDefaultPursuitMs)
+			if (edge->iMaxTraversals.has_value())
 			{
 				flow.Slots.clear();
 				return false;
@@ -283,11 +282,11 @@ namespace
 				}
 				edge.strEdgeId = Build_OrdinalId(
 					flow.strFlowId, "edge", flow.iNextEdgeOrdinal++);
+				edge.iPursuitMs = flow.iDefaultPursuitMs;
 			}
 			edge.strFromNodeId = fromNodeId;
 			edge.eOutcome = VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED;
 			edge.strToNodeId = orderedNodes[index + 1u].strNodeId;
-			edge.iPursuitMs = flow.iDefaultPursuitMs;
 			edge.iMaxTraversals.reset();
 			edges.push_back(std::move(edge));
 		}
@@ -882,6 +881,7 @@ bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
 	const std::string_view sequenceId,
 	const std::string_view mode,
 	const std::uint32_t interStepPursuitMs,
+	const std::vector<std::uint32_t>& transitionPursuitMs,
 	const std::vector<std::string>& patternIds,
 	const std::vector<std::string>& admittedPatternIds,
 	std::string& outStatus)
@@ -891,7 +891,15 @@ bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
 		"ORDERED_ONCE_THEN_IDLE" != mode || patternIds.empty() ||
 		patternIds.size() > MAX_NODES ||
 		interStepPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
-		interStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS)
+		interStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
+		transitionPursuitMs.size() + 1u != patternIds.size() ||
+		!std::all_of(
+			transitionPursuitMs.begin(), transitionPursuitMs.end(),
+			[](const std::uint32_t pursuitMs)
+			{
+				return pursuitMs >= MIN_INTER_STEP_PURSUIT_MS &&
+					pursuitMs <= MAX_INTER_STEP_PURSUIT_MS;
+			}))
 	{
 		outStatus =
 			"Canonical gameplay scriptedSequence identity, mode, size, or pursuit interval is invalid.";
@@ -919,14 +927,26 @@ bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
 	}
 	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
 		return false;
+	for (std::size_t index = 0u; index < transitionPursuitMs.size(); ++index)
+		flow.Edges[index].iPursuitMs = transitionPursuitMs[index];
+	if (!Build_LegacyProjection(flow))
+	{
+		outStatus =
+			"Canonical gameplay scriptedSequence could not project its transition pursuit intervals.";
+		return false;
+	}
 	staged.Flows.push_back(std::move(flow));
 	if (!Validate(staged, admittedPatternIds, outStatus))
 		return false;
 
 	std::ostringstream identity;
 	identity << sequenceId << '\n' << mode << '\n' << interStepPursuitMs << '\n';
-	for (const std::string& patternId : patternIds)
-		identity << patternId << '\n';
+	for (std::size_t index = 0u; index < patternIds.size(); ++index)
+	{
+		identity << patternIds[index] << '\n';
+		if (index < transitionPursuitMs.size())
+			identity << transitionPursuitMs[index] << '\n';
+	}
 	std::string revision;
 	if (!Build_Revision(identity.str(), revision))
 	{
@@ -1158,7 +1178,7 @@ bool_t Client::CValtanPatternFlowDocument::Set_InterStepPursuitMs(
 	if (!Validate(staged, admitted, outStatus))
 		return false;
 	m_Draft = std::move(staged);
-	outStatus = "Updated Valtan Boss Flow default pursuit interval.";
+	outStatus = "Updated every Valtan Boss Flow transition pursuit interval.";
 	return true;
 }
 

@@ -237,6 +237,17 @@ Animation Tool은 이 세 파일 중 Group body나 V2 binding을 편집하지 �
 공유하는 것은 선택 clip occurrence와 Stage-local clock뿐이며, Product 판정은 계속 Server Pattern
 action과 fixed tick이 소유한다.
 
+Boss Composition source는 이 owner들을 대체하지 않는다. `Data/Compositions/Bosses`의 manifest는
+animation occurrence, V1 `effectAssetId`, V2 `groupId`/leaf reference, Sound와 Camera owner의 경로와
+coverage만 stable ID로 묶는다. resolved Product에서 이 값들이 한 Stage의 `scope`, `clock`,
+`stopPolicy`, `anchor`, `payload`로 함께 보이는 것은 파생 read model이며 정본 이동이 아니다.
+Composition은 Effect 연결·시간·배치 reference를 다루고 Effect Tool은 asset/group body를,
+Animation owner는 clip occurrence를, gameplay owner는 Stage/branch/hit를 계속 소유한다.
+
+현재 Valtan manifest는 `SHADOW`이고 Sequencer는 source inspection 뒤 기존 Action Composition
+Workbench로 진입한다. 상세 box 편집, Play와 Save도 기존 Workbench/split writer가 담당한다. generated
+resolved Product를 재생하는 generic Composition player나 여러 owner를 직접 저장하는 새 writer는 아직 없다.
+
 ## 8. Character Preview Panel이 소유하는 것
 
 공용 Character Preview Panel은 다음을 소유한다.
@@ -890,3 +901,9 @@ policy가 있으면 현재 admitted draft와 destination을 유지한다.
 Animation Tool의 `Create Pattern`은 로컬 동작 조합과 검토만 제공하며 Server 실행, damage, collider,
 Effect cue를 만들거나 publish하지 않는다. 제품 Pattern 승격은 별도 Data → Shared → Server → Client
 수직 슬라이스와 publisher/harness가 생긴 뒤에만 진행한다.
+
+`Data/Compositions/Bosses/KakulSaydon.bosscomposition.json`도 이 경계를 바꾸지 않는
+`REFERENCE_ONLY` manifest다. 네 profile의 reference/action/pattern-binding owner를
+`sourceActionId + stageId + slotId + referenceRevision` identity와 coverage로 검증할 뿐 boss/encounter
+ID, gameplay Pattern, collider, Effect 또는 Sound를 생성하지 않는다. KakulSaydon Arena Sequencer는
+현재 authored world/camera track inspection만 제공하며 unified Save/Play나 Server scene runtime이 아니다.

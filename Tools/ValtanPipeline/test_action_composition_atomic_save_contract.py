@@ -26,13 +26,22 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         )[1].split(
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar", 1
         )[0]
-        self.assertIn("Save_ValtanCompositionProduct", save)
+        accept = source.split(
+            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            1,
+        )[1].split(
+            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            1,
+        )[0]
+        self.assertEqual(save.count("Begin_ValtanCompositionSave("), 1)
         self.assertNotIn("Save_ValtanProduct", save)
+        self.assertNotIn("Save_ValtanCompositionProduct", save)
         self.assertNotIn("Save_ValtanCompositionPatternSounds", save)
         self.assertIn("Prepare_ValtanCompositionPatternSoundSave", save)
         self.assertIn("Prepare_BossValtanBindingDraftSave", save)
-        self.assertIn("Accept_ValtanCompositionPatternSoundSave", save)
-        self.assertIn("Accept_BossValtanBindingDraftSave", save)
+        self.assertIn("Accept_ValtanCompositionPatternSoundSave", accept)
+        self.assertIn("Accept_BossValtanBindingDraftSave", accept)
+        self.assertIn("Accept_PendingSaveOwners(LocalOwnerStatus)", source)
 
         for staged_api in (
             "Stage_AppendBossValtanStageBinding",
@@ -50,6 +59,13 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Save_Reload()", 1
         )[1].split(
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar", 1
+        )[0]
+        accept = source.split(
+            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            1,
+        )[1].split(
+            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            1,
         )[0]
 
         self.assertIn(
@@ -91,15 +107,13 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
             save[effect_stage_start:effect_stage_end],
         )
         self.assertIn(
-            "if (bPreparedPatternSoundDirty &&\n"
-            "\t\t!m_pAnimationTool->Accept_ValtanCompositionPatternSoundSave(",
-            save,
+            "m_bPendingPatternSoundOwner = bPreparedPatternSoundDirty", save
         )
-        self.assertIn(
-            "if (bEffectV2Dirty &&\n"
-            "\t\t!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(",
-            save,
-        )
+        self.assertIn("m_bPendingEffectV2Owner = bEffectV2Dirty", save)
+        self.assertIn("if (m_bPendingPatternSoundOwner)", accept)
+        self.assertIn("Accept_ValtanCompositionPatternSoundSave(", accept)
+        self.assertIn("if (m_bPendingEffectV2Owner)", accept)
+        self.assertIn("Accept_BossValtanBindingDraftSave(", accept)
         self.assertNotIn("Camera", save)
 
     def test_all_owner_sidecars_reach_the_shared_generation_commit(self) -> None:

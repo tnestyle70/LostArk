@@ -50,6 +50,7 @@ public:
 		ZOOM_BLUR,
 		RGB_NOISE,
 		FILM_NOISE,
+		CHROMATIC_ABERRATION,
 		END
 	};
 
@@ -443,6 +444,7 @@ private:
 		0.f, 0.f, 0.f, 1.f };
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
+	bool_t m_bFirstUpdatePending = true;
 	bool_t m_bEmissionStopped = false;
 	bool_t m_bHidden = false;
 	bool_t m_bSkinned = false;

@@ -7,6 +7,8 @@
 #include "ValtanViewAdmission.h"
 
 #include <cstdint>
+#include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -150,6 +152,7 @@ public:
 	};
 
 	CBalanceTool();
+	~CBalanceTool();
 	void Open();
 	void Open_Valtan();
 	/* Re-stage the exact split Valtan source after another typed authoring
@@ -219,10 +222,12 @@ public:
 	bool Get_ValtanScriptedSequenceDraft(
 		std::vector<std::string>& patternIds,
 		std::uint32_t& interStepPursuitMs,
+		std::vector<std::uint32_t>& transitionPursuitMs,
 		std::string& status) const;
 	bool Set_ValtanScriptedSequenceDraft(
 		const std::vector<std::string>& patternIds,
 		std::uint32_t interStepPursuitMs,
+		const std::vector<std::uint32_t>& transitionPursuitMs,
 		std::string& status);
 	bool Get_ValtanCanonicalSourceRevision(
 		std::string& repositoryRevision,
@@ -354,6 +359,27 @@ public:
 		const std::string& stageId,
 		const VALTAN_COUNTER_WINDOW_EDIT& counter,
 		std::string& status);
+	/* Ordinary branch retarget: an existing outcome of one Stage points at a
+	   forward same-pattern Stage action or at the pattern end. Save emits
+	   SET_STAGE_BRANCH. COUNTER_HIT/TIMEOUT keep their typed Counter/topology
+	   owners and cross-pattern follow-ups stay read-only. */
+	struct VALTAN_STAGE_BRANCH_EDIT final
+	{
+		std::string outcome;
+		std::string nextActionId;
+		bool crossPattern = false;
+	};
+	bool Get_ValtanStageBranchDrafts(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::vector<VALTAN_STAGE_BRANCH_EDIT>& branches,
+		std::vector<std::string>& targetActionIds,
+		std::string& status) const;
+	bool Set_ValtanStageBranchDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const VALTAN_STAGE_BRANCH_EDIT& branch,
+		std::string& status);
 	bool Get_ValtanCounterProxyDraft(
 		const std::string& patternId,
 		const std::string& stageId,
@@ -379,6 +405,50 @@ public:
 	   request the existing two-phase live apply when it is currently safe.
 	   Internal stages remain explicit for rollback and diagnostics. */
 	bool Save_ValtanProduct(std::string& status);
+	/* Publish/apply-only continuation for a clean, already committed Valtan
+	   source: validate, publish the candidate, record the activation
+	   expectation and live-apply when the change class allows. Never writes
+	   source. Composition Save calls this after its own single commit edge. */
+	bool Apply_CommittedValtanProduct(std::string& status);
+
+	/* Canonical data publish job (Run-FullPipeline.ps1 -DataOnly): every Save
+	   uses the same receipt-based domain executor as the manual full pipeline,
+	   pinned to the exact committed Valtan source revision. It runs as a
+	   detached child process polled once per frame so a Save never stalls the
+	   Client tick, and it is never terminated by a timeout because each domain
+	   transaction must finish or roll back on its own. One job at a time. */
+	enum class SERVER_RUNTIME_PUBLISH_STATE : std::uint8_t
+	{
+		IDLE,
+		RUNNING,
+		SUCCEEDED,
+		FAILED,
+		/* WaitForSingleObject failed, so the child may still own the
+		   transaction. Keep authoring locked and never start a second job. */
+		OBSERVATION_LOST,
+	};
+	/* Publish is always bound to one immutable canonical source receipt. The
+	   child verifies this revision while holding the canonical writer admission
+	   both before staging and immediately before commit completion. */
+	bool Publish_ServerRuntimeSet(
+		const std::string& expectedValtanSourceRevision,
+		std::string& status);
+	void Update_ServerRuntimeSetPublishJob();
+	SERVER_RUNTIME_PUBLISH_STATE Get_ServerRuntimeSetPublishState(
+		std::string& status,
+		double& elapsedSeconds,
+		std::string* expectedValtanSourceRevision = nullptr) const;
+	bool Is_ServerRuntimeSetPublishRunning() const
+	{
+		return SERVER_RUNTIME_PUBLISH_STATE::RUNNING == m_publishJobState ||
+			SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST == m_publishJobState;
+	}
+	/* Returns the exact durable receipt eligible for Product/runtime publish.
+	   After COMMIT_SUCCEEDED_REOPEN_FAILED this is the pending commit receipt,
+	   not the last successfully displayed editor revision. */
+	bool Get_ValtanPublishSourceRevision(
+		std::string& sourceRevision,
+		std::string& status) const;
 	struct VALTAN_COMPOSITION_OWNER_DRAFTS final
 	{
 		std::string patternSoundBaselineBytes;
@@ -386,6 +456,62 @@ public:
 		std::string effectV2BaselineBytes;
 		std::string effectV2CandidateBytes;
 	};
+	/* Save is a durable asynchronous transaction. The immutable request is
+	   staged before the child starts; callers observe one job id and consume its
+	   terminal receipt exactly once on the main thread. */
+	enum class VALTAN_SAVE_JOB_STATE : std::uint8_t
+	{
+		IDLE,
+		RUNNING,
+		SUCCEEDED,
+		FAILED,
+		/* The child may still own the canonical writer. This state deliberately
+		   remains authoring-blocking and cannot be consumed in-process. */
+		OBSERVATION_LOST,
+	};
+	struct VALTAN_SAVE_JOB_RECEIPT final
+	{
+		std::uint64_t jobId = 0u;
+		VALTAN_SAVE_JOB_STATE state = VALTAN_SAVE_JOB_STATE::IDLE;
+		bool canonicalCommitted = false;
+		bool runtimePublishRequested = false;
+		std::string expectedSourceRevision;
+		std::string committedSourceRevision;
+		std::string candidateRevision;
+		std::string applyClass;
+		std::string status;
+		std::vector<std::string> durableLogs;
+	};
+	/* Balance/Boss Save commits the dirty canonical draft, or publishes the
+	   already-clean exact source when no write is needed. Full DataOnly starts
+	   only after the caller consumes this receipt and reopens its local owners. */
+	bool Begin_ValtanProductSave(
+		std::uint64_t& jobId, std::string& status);
+	/* Composition uses the same transaction and may add immutable Sound/Effect
+	   owner pairs to the single canonical commit. */
+	bool Begin_ValtanCompositionSave(
+		const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
+		bool publishAfterSave,
+		std::uint64_t& jobId, std::string& status);
+	/* Post-commit retry never repeats a source write. */
+	bool Begin_ValtanProductPublishRetry(
+		bool publishAfterSave,
+		std::uint64_t& jobId, std::string& status);
+	void Update_ValtanSaveJob();
+	VALTAN_SAVE_JOB_STATE Get_ValtanSaveJobState(
+		VALTAN_SAVE_JOB_RECEIPT& receipt) const;
+	/* SUCCEEDED consumer order, within one main-thread callback, is exact-
+	   revision check -> local owner byte accept -> Consume (returns IDLE) ->
+	   Workbench/Boss graph reopen -> optional Publish_ServerRuntimeSet with the
+	   same committedSourceRevision. A FAILED committed receipt must use
+	   Begin_ValtanProductPublishRetry instead. */
+	bool Consume_ValtanSaveJobReceipt(
+		std::uint64_t jobId, VALTAN_SAVE_JOB_RECEIPT& receipt,
+		std::string& status);
+	bool Is_ValtanSaveJobBlockingAuthoring() const
+	{
+		return VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState;
+	}
 	/* Commits the Pattern split source/Product closure and optional independent
 	   Sound/V2 owners through the existing shared Valtan writer generation.
 	   Every candidate is staged and validated before one rollback-safe commit. */
@@ -516,22 +642,22 @@ private:
 		std::string stageId = "AIRBORNE";
 		std::string eventId =
 			"event.valtan.high-jump.airborne.spawn-target-axe";
-		std::uint32_t countPerResolvedTarget = 1u;
-		std::string layoutKind = "TARGET_CENTER";
+		std::uint32_t countPerResolvedTarget = 0u;
+		std::string layoutKind;
 		double radiusM = 0.0;
 		double startAngleDegrees = 0.0;
 		double angleStepDegrees = 0.0;
 		bool allowOverlap = false;
-		std::uint32_t maximumTotalObjects = 36u;
-		std::string spawnScheduleKind = "INTERVAL";
-		std::uint32_t spawnCount = 3u;
+		std::uint32_t maximumTotalObjects = 0u;
+		std::string spawnScheduleKind;
+		std::uint32_t spawnCount = 0u;
 		std::uint32_t spawnFirstOffsetMs = 0u;
-		std::uint32_t spawnIntervalMs = 1333u;
-		std::string arenaRandomKind = "RANDOM_NAVIGABLE_CIRCLE";
-		std::string arenaAnchor = "BOSS_SPAWN_POSITION";
-		std::uint32_t arenaRandomCount = 4u;
-		double arenaRandomRadiusM = 14.0;
-		double arenaHeightToleranceM = 1.0;
+		std::uint32_t spawnIntervalMs = 0u;
+		std::string arenaRandomKind;
+		std::string arenaAnchor;
+		std::uint32_t arenaRandomCount = 0u;
+		double arenaRandomRadiusM = 0.0;
+		double arenaHeightToleranceM = 0.0;
 	};
 
 	struct PATTERN_EDIT
@@ -625,6 +751,63 @@ private:
 	static void NormalizePatternStagePush(PATTERN_STAGE_EDIT& stage);
 	bool RunPipeline(const wchar_t* scriptName, const wchar_t* arguments,
 		std::string& status, std::string* capturedOutput = nullptr) const;
+	bool LaunchPipelineProcess(const wchar_t* scriptName,
+		const wchar_t* arguments, void*& outProcessHandle,
+		std::filesystem::path& outOutputPath, std::string& status) const;
+	void* m_publishJobProcess = nullptr;
+	std::filesystem::path m_publishJobOutputPath;
+	std::string m_publishJobExpectedRevision;
+	std::uint64_t m_publishJobStartTick = 0u;
+	bool m_publishJobWarned = false;
+	SERVER_RUNTIME_PUBLISH_STATE m_publishJobState =
+		SERVER_RUNTIME_PUBLISH_STATE::IDLE;
+	std::string m_publishJobStatus;
+	enum class VALTAN_SAVE_JOB_PHASE : std::uint8_t
+	{
+		NONE,
+		SAVE_COMMAND_RUNNING,
+		WAITING_RELOAD_MANIFEST_ADMISSION,
+		RELOAD_MANIFEST_RUNNING,
+	};
+	bool Begin_ValtanSaveJob(bool commitCanonical, bool publishAfterSave,
+		const VALTAN_COMPOSITION_OWNER_DRAFTS* ownerDrafts,
+		std::uint64_t& jobId, std::string& status);
+	bool Launch_ValtanSaveCommand(bool commitCanonical,
+		const VALTAN_COMPOSITION_OWNER_DRAFTS* ownerDrafts,
+		std::string& status);
+	bool TryLaunch_ValtanSaveReloadManifest(std::string& status);
+	void Fail_ValtanSaveJob(std::string status, bool observationLost = false);
+	void Reset_ValtanSaveJob();
+	bool Complete_ValtanCandidateActivation(std::string& status);
+	void* m_valtanSaveJobProcess = nullptr;
+	std::unique_ptr<CValtanCanonicalProductReadAdmission>
+		m_valtanSaveJobReadAdmission;
+	std::filesystem::path m_valtanSaveJobDirectory;
+	std::filesystem::path m_valtanSaveJobResultPath;
+	std::filesystem::path m_valtanSaveJobCurrentOutputPath;
+	std::vector<std::filesystem::path> m_valtanSaveJobOutputPaths;
+	std::uint64_t m_valtanSaveJobNextId = 1u;
+	std::uint64_t m_valtanSaveJobId = 0u;
+	std::uint64_t m_valtanSaveJobDraftGeneration = 0u;
+	std::uint64_t m_valtanSaveJobStartTick = 0u;
+	bool m_valtanSaveJobWarned = false;
+	bool m_valtanSaveJobCommitCanonicalRequested = false;
+	bool m_valtanSaveJobCanonicalCommitted = false;
+	bool m_valtanSaveJobPublishAfterSave = true;
+	std::string m_valtanSaveJobExpectedSourceRevision;
+	std::string m_valtanSaveJobCommittedSourceRevision;
+	std::string m_valtanSaveJobCandidateRevision;
+	std::string m_valtanSaveJobApplyClass;
+	std::string m_valtanSaveJobStatus;
+	VALTAN_SAVE_JOB_STATE m_valtanSaveJobState =
+		VALTAN_SAVE_JOB_STATE::IDLE;
+	VALTAN_SAVE_JOB_PHASE m_valtanSaveJobPhase =
+		VALTAN_SAVE_JOB_PHASE::NONE;
+	/* Non-empty only while Update_ValtanSaveJob performs a verified, shared-lock
+	   canonical reload. Normal Reload still obtains its identity from the
+	   source-manifest command. */
+	std::string m_valtanVerifiedReloadSourceRevision;
+	VALTAN_SOURCE_JOIN_STATUS m_valtanVerifiedReloadSourceJoin;
 	bool QueryValtanSourceRevision(
 		std::string& sourceRevision,
 		std::string& authoringRevision,

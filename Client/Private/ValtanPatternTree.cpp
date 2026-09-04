@@ -1748,6 +1748,7 @@ namespace
 		std::string strMode;
 		uint32_t iInterStepPursuitMs = 0u;
 		std::vector<std::string> PatternIds;
+		std::vector<uint32_t> TransitionPursuitMs;
 	};
 
 	struct MASTER_VOLLEY_PROJECTION final
@@ -4549,9 +4550,15 @@ namespace
 		const DATA_JSON_VALUE* pScriptedPatterns = nullptr == pScriptedSequence ?
 			nullptr : Required(*pScriptedSequence,
 				"patternIds", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pScriptedTransitionPursuit =
+			nullptr == pScriptedSequence ? nullptr :
+				pScriptedSequence->Find("transitionPursuitMs");
 		if (nullptr == pScriptedSequence ||
-			!Has_ExactProperties(*pScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) ||
+			(!Has_ExactProperties(*pScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) &&
+			 !Has_ExactProperties(*pScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+				  "transitionPursuitMs" })) ||
 			!Is_StableToken(Read_String(*pScriptedSequence, "sequenceId")) ||
 			"ORDERED_ONCE_THEN_IDLE" !=
 				Read_String(*pScriptedSequence, "mode") ||
@@ -4583,6 +4590,37 @@ namespace
 				return false;
 			}
 			ScriptedSequence.PatternIds.push_back(PatternId.Get_String());
+		}
+		if (nullptr == pScriptedTransitionPursuit)
+		{
+			ScriptedSequence.TransitionPursuitMs.assign(
+				ScriptedSequence.PatternIds.size() - 1u,
+				ScriptedSequence.iInterStepPursuitMs);
+		}
+		else
+		{
+			if (DATA_JSON_TYPE::ARRAY != pScriptedTransitionPursuit->Get_Type() ||
+				pScriptedTransitionPursuit->Get_Array().size() + 1u !=
+					ScriptedSequence.PatternIds.size())
+			{
+				strOutError =
+					"split gameplay scriptedSequence transition pursuits are invalid";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& PursuitMs :
+				pScriptedTransitionPursuit->Get_Array())
+			{
+				if (!Is_NonNegativeInteger(&PursuitMs) ||
+					PursuitMs.Get_Number() < 100.0 ||
+					PursuitMs.Get_Number() > 10000.0)
+				{
+					strOutError =
+						"split gameplay scriptedSequence transition pursuit is invalid";
+					return false;
+				}
+				ScriptedSequence.TransitionPursuitMs.push_back(
+					static_cast<uint32_t>(PursuitMs.Get_Number()));
+			}
 		}
 		if (nullptr == pSets || pSets->Get_Array().empty() ||
 			nullptr == pWindows || pWindows->Get_Array().empty() ||
@@ -6732,6 +6770,9 @@ namespace
 		const DATA_JSON_VALUE* pProductScriptedPatterns =
 			nullptr == pProductScriptedSequence ? nullptr : Required(
 				*pProductScriptedSequence, "patternIds", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pProductTransitionPursuit =
+			nullptr == pProductScriptedSequence ? nullptr :
+				pProductScriptedSequence->Find("transitionPursuitMs");
 		const DATA_JSON_VALUE* pRotationRows = Required(
 			PatternRotations, "rotations", DATA_JSON_TYPE::ARRAY);
 		if (!Has_ExactProperties(PatternRotations,
@@ -6744,8 +6785,11 @@ namespace
 			!Is_NonNegativeInteger(PatternRotations.Find("formatVersion")) ||
 			4.0 != PatternRotations.Find("formatVersion")->Get_Number() ||
 			nullptr == pProductScriptedSequence ||
-			!Has_ExactProperties(*pProductScriptedSequence,
-				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) ||
+			(!Has_ExactProperties(*pProductScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds" }) &&
+			 !Has_ExactProperties(*pProductScriptedSequence,
+				{ "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+				  "transitionPursuitMs" })) ||
 			!Is_StableToken(Read_String(
 				*pProductScriptedSequence, "sequenceId")) ||
 			"ORDERED_ONCE_THEN_IDLE" != Read_String(
@@ -6782,6 +6826,39 @@ namespace
 			}
 			ProductScriptedPatternIds.push_back(PatternId.Get_String());
 		}
+		std::vector<uint32_t> ProductTransitionPursuitMs;
+		if (nullptr == pProductTransitionPursuit)
+		{
+			ProductTransitionPursuitMs.assign(
+				ProductScriptedPatternIds.size() - 1u,
+				static_cast<uint32_t>(pProductScriptedSequence->Find(
+					"interStepPursuitMs")->Get_Number()));
+		}
+		else
+		{
+			if (DATA_JSON_TYPE::ARRAY != pProductTransitionPursuit->Get_Type() ||
+				pProductTransitionPursuit->Get_Array().size() + 1u !=
+					ProductScriptedPatternIds.size())
+			{
+				strOutError =
+					"Valtan scripted-sequence Product transition pursuits are invalid";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& PursuitMs :
+				pProductTransitionPursuit->Get_Array())
+			{
+				if (!Is_NonNegativeInteger(&PursuitMs) ||
+					PursuitMs.Get_Number() < 100.0 ||
+					PursuitMs.Get_Number() > 10000.0)
+				{
+					strOutError =
+						"Valtan scripted-sequence Product transition pursuit is invalid";
+					return false;
+				}
+				ProductTransitionPursuitMs.push_back(
+					static_cast<uint32_t>(PursuitMs.Get_Number()));
+			}
+		}
 		/* The gameplay scriptedSequence is the editable order authority and the
 		   rotations document is its generated Product.  An admitted canonical
 		   generation must therefore contain exact sequence identity, timing and
@@ -6795,7 +6872,9 @@ namespace
 					"interStepPursuitMs")->Get_Number()) !=
 					Master.ScriptedSequence.iInterStepPursuitMs ||
 				 ProductScriptedPatternIds !=
-					Master.ScriptedSequence.PatternIds))
+					Master.ScriptedSequence.PatternIds ||
+				 ProductTransitionPursuitMs !=
+					Master.ScriptedSequence.TransitionPursuitMs))
 		{
 			return RejectStaleProjection(
 				"Valtan scripted-sequence Product parity drifted");
@@ -6805,6 +6884,8 @@ namespace
 		View.iScriptedSequenceInterStepPursuitMs =
 			Master.ScriptedSequence.iInterStepPursuitMs;
 		View.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
+		View.ScriptedSequenceTransitionPursuitMs =
+			Master.ScriptedSequence.TransitionPursuitMs;
 		std::map<std::string, const Client::VALTAN_SELECTION_WINDOW_VIEW*,
 			std::less<>> WindowByRotation;
 		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
@@ -8900,8 +8981,27 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 								Read_Number(Action, "startAngleDegrees"));
 							View.fVolleyAngleStepDegrees = static_cast<f32_t>(
 								Read_Number(Action, "angleStepDegrees"));
+							View.bVolleyAllowOverlap =
+								Action.Find("allowOverlap")->Get_Boolean();
+							View.iVolleyMaximumTotalObjects = static_cast<uint32_t>(
+								Read_Number(Action, "maximumTotalObjects"));
+							View.iSpawnScheduleCount = static_cast<uint32_t>(
+								Read_Number(Action, "spawnCount"));
 							View.iFirstSpawnOffsetMs = static_cast<uint32_t>(
 								Read_Number(Action, "firstSpawnOffsetMs"));
+							View.iSpawnIntervalMs = static_cast<uint32_t>(
+								Read_Number(Action, "spawnIntervalMs"));
+							View.iArenaRandomCount = static_cast<uint32_t>(
+								Read_Number(Action, "arenaRandomCount"));
+							View.fArenaRandomRadiusM = static_cast<f32_t>(
+								Read_Number(Action, "arenaRandomRadiusM"));
+							View.fArenaHeightToleranceM = static_cast<f32_t>(
+								Read_Number(Action, "arenaHeightToleranceM"));
+							View.strArenaAnchor = Read_String(
+								Action, "arenaAnchorPolicy");
+							View.strArenaRandomKind =
+								0u == View.iArenaRandomCount ?
+									"NONE" : "RANDOM_NAVIGABLE_CIRCLE";
 						}
 						View.strKind = Reference->second.strKind;
 						View.strOriginPolicy =

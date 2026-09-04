@@ -220,6 +220,40 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
             self.assertEqual(1, action["spawnCount"])
             self.assertEqual(0, action["spawnIntervalMs"])
 
+    def test_server_off_navigation_admission_covers_both_delayed_visual_sets(self) -> None:
+        source = (ROOT / "Server/Private/GameRoom.cpp").read_text(encoding="utf-8")
+        start = source.index(
+            "const bool visualCardinalRocksMayStartOffNavigation ="
+        )
+        end = source.index(
+            "const bool authoredVolleyMayStartOffNavigation =", start
+        )
+        admission = source[start:end]
+        for required_guard in (
+            "BOSS_COMBAT_OBJECT_KIND::FIXED_AREA",
+            "BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE",
+            "definition->Hits.empty()",
+            "!definition->PresentationPulses.empty()",
+            "4u == count",
+        ):
+            self.assertIn(required_guard, admission)
+        for object_id, pattern_id, action_id in (
+            (
+                "combatobject.valtan.six-pizza.rock-pillar",
+                "VALTAN_SIX_PIZZA_106",
+                "valtan.sequence.center-six-pizza-charge.step-01",
+            ),
+            (
+                "combatobject.valtan.struggling.rock-pillar",
+                "VALTAN_STRUGGLING",
+                "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
+            ),
+        ):
+            with self.subTest(pattern_id=pattern_id):
+                self.assertIn(object_id, admission)
+                self.assertIn(pattern_id, admission)
+                self.assertIn(action_id, admission)
+
     def test_live_v2_group_never_layers_the_v1_terminal_fallback(self) -> None:
         source = (ROOT / "Client/Private/Valtan.cpp").read_text(encoding="utf-8-sig")
         function = source[source.index("bool_t CValtan::Apply_CombatObjectPresentationEvent("):]
