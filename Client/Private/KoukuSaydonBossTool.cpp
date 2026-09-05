@@ -320,14 +320,14 @@ void Client::CKoukuSaydonBossTool::Render()
 		!m_bHasSavedComposition || nullptr == Find_SelectedPattern() ||
 		!Find_SelectedPattern()->strLoadError.empty() ||
 		audition.Is_InFlight());
-	if (ImGui::Button("Play Selected"))
+	if (ImGui::Button("Play Isolated"))
 		(void)Play_Selected(m_strStatus);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
 		!m_bHasSavedComposition ||
 		m_PlayAllPatternIds.empty() || audition.Is_InFlight());
-	if (ImGui::Button("Play All"))
+	if (ImGui::Button("Start Full Pattern"))
 		(void)Play_All(m_strStatus);
 	ImGui::EndDisabled();
 

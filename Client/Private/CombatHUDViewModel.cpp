@@ -207,6 +207,9 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.iCurrentIdentity = snapshot.iCurrentIdentity;
 	m_Player.iMaximumIdentity = snapshot.iMaximumIdentity;
+	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
+	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
+	m_Player.eMadnessForm = snapshot.eMadnessForm;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;
@@ -274,11 +277,36 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 		{ return left.strInputSlot < right.strInputSlot; });
 }
 
+void Client::CCombatHUDViewModel::Set_BossFocusArchetype(
+	const std::string& archetypeId)
+{
+	if (m_strBossFocusArchetype == archetypeId)
+		return;
+	m_strBossFocusArchetype = archetypeId;
+	if (m_Boss.isValid && !archetypeId.empty() &&
+		m_Boss.strArchetypeId != archetypeId)
+	{
+		m_Boss = {};
+	}
+}
+
+void Client::CCombatHUDViewModel::Clear_BossIfArchetype(
+	const std::string& archetypeId)
+{
+	if (m_Boss.isValid && m_Boss.strArchetypeId == archetypeId)
+		m_Boss = {};
+}
+
 void Client::CCombatHUDViewModel::Apply_Boss(
 	const std::uint32_t serverTick,
 	const std::string& archetypeId,
 	const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
 {
+	if (m_bBossHidden || (!m_strBossFocusArchetype.empty() &&
+		archetypeId != m_strBossFocusArchetype))
+	{
+		return;
+	}
 	m_Boss.isValid = true;
 	m_Boss.strArchetypeId = archetypeId;
 	const auto profile = m_BossProfiles.find(archetypeId);

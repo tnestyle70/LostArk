@@ -105,6 +105,11 @@ HRESULT CCharacter::Initialize(void* pArg)
 	const auto pDesc = static_cast<CHARACTER_DESC*>(pArg);
 
 	m_pSpec = pDesc->pSpec;
+	m_eCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END != pDesc->eCharacterClass ?
+			pDesc->eCharacterClass :
+			(nullptr != m_pSpec ? m_pSpec->eCharacterClass :
+				LostArk::Shared::CHARACTER_CLASS_ID::END);
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
 	m_fMoveSpeed = pDesc->fSpeedPerSec > 0.f ?
 		pDesc->fSpeedPerSec : 5.f;

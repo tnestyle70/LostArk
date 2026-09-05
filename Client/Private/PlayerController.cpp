@@ -564,8 +564,10 @@ void Client::CPlayerController::Poll_SkillSlots(
 		}
 
 		/* An unbound slot is normal: a class simply has no skill there. */
+		/* The replicated class, not the spec's: a clown avatar spec carries no
+		class of its own and must keep resolving the wearer's skills. */
 		const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-			pSpec->eCharacterClass, slot.pInputSlot, stance, isKnockedDown);
+			character->Get_CharacterClass(), slot.pInputSlot, stance, isKnockedDown);
 		if (nullptr != pSkill)
 		{
 			outSkillId = pSkill->iSkillId;
@@ -598,11 +600,12 @@ void Client::CPlayerController::Poll_SkillSlots(
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 		m_wasKeyDown[SlotKeys[index].byKeyCode] = isDown[index];
 
-	Poll_BasicAttack(pSpec, stance, outSkillId, isKeyboardBlocked);
+	Poll_BasicAttack(nullptr != character ? character->Get_CharacterClass() :
+		LostArk::Shared::CHARACTER_CLASS_ID::END, stance, outSkillId, isKeyboardBlocked);
 }
 
 void Client::CPlayerController::Poll_BasicAttack(
-	const CHARACTER_SPEC* pSpec,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const LostArk::Shared::PLAYER_STANCE_ID stance,
 	LostArk::Shared::SKILL_ID& outSkillId,
 	const bool_t commandSuppressed)
@@ -623,10 +626,10 @@ void Client::CPlayerController::Poll_BasicAttack(
 	}
 
 	const PLAYER_SKILL_DEFINITION* pSkill = nullptr;
-	if (nullptr != pSpec)
+	if (LostArk::Shared::CHARACTER_CLASS_ID::END != characterClass)
 	{
 		pSkill = CPlayerSkillCatalog::Find_BySlot(
-			pSpec->eCharacterClass, "LMB", stance);
+			characterClass, "LMB", stance);
 	}
 	const bool_t commandEligible =
 		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE) &&
@@ -686,7 +689,10 @@ void Client::CPlayerController::Set_CommandSink(
 	{
 		Cancel_DebugPlayerPlacement();
 		m_pendingDebugPlacementSequence = 0u;
+		m_debugPlacementSucceeded = false;
 		m_debugPlacementStatus.clear();
+		m_pendingDebugMadnessFormSequence = 0u;
+		m_debugMadnessFormStatus.clear();
 	}
 #endif
 	m_pCommandSink = commandSink;
@@ -753,6 +759,62 @@ void Client::CPlayerController::Cancel_DebugPlayerPlacement()
 	m_debugPlacementArmed = false;
 }
 
+bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
+	const LostArk::Shared::WORLD_ID worldId,
+	const f32_t x, const f32_t y, const f32_t z)
+{
+	using LostArk::Shared::WORLD_ID;
+	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() ||
+		nullptr == m_pCommandSink ||
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId) ||
+		!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+	{
+		if (!Is_DebugPlayerPlacementPending())
+			m_debugPlacementStatus = "Gate placement requires a live player connection.";
+		return false;
+	}
+	Cancel_DebugPlayerPlacement();
+	m_debugPlacementWorld = worldId;
+	m_debugPlacementSucceeded = false;
+	// Only submit intent. The server owns floor projection, reset and the snapshot.
+	if (!m_pCommandSink->Request_DebugTeleportToPosition(
+		m_nextDebugPlacementSequence, x, y, z))
+	{
+		m_debugPlacementStatus = "Could not send gate placement request.";
+		return false;
+	}
+	m_pendingDebugPlacementSequence = m_nextDebugPlacementSequence;
+	if (0u == ++m_nextDebugPlacementSequence)
+		m_nextDebugPlacementSequence = 1u;
+	m_debugPlacementSentAt = std::chrono::steady_clock::now();
+	m_debugPlacementReplyDelayed = false;
+	m_debugPlacementStatus = "Waiting for Server gate placement approval...";
+	return true;
+}
+
+bool_t Client::CPlayerController::Request_DebugMadnessForm(
+	const LostArk::Shared::PLAYER_MADNESS_FORM form)
+{
+	if (Is_DebugMadnessFormPending() || m_pLocalCharacter.expired() ||
+		nullptr == m_pCommandSink || !LostArk::Shared::Is_Valid_PlayerMadnessForm(form))
+	{
+		if (!Is_DebugMadnessFormPending())
+			m_debugMadnessFormStatus = "Avatar change requires a live player connection.";
+		return false;
+	}
+	// Only submit intent. The Server owns the form and the snapshot swaps the body.
+	if (!m_pCommandSink->Request_DebugMadnessForm(m_nextDebugMadnessFormSequence, form))
+	{
+		m_debugMadnessFormStatus = "Could not send the avatar change request.";
+		return false;
+	}
+	m_pendingDebugMadnessFormSequence = m_nextDebugMadnessFormSequence;
+	if (0u == ++m_nextDebugMadnessFormSequence)
+		m_nextDebugMadnessFormSequence = 1u;
+	m_debugMadnessFormStatus = "Waiting for the Server avatar verdict...";
+	return true;
+}
+
 void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled)
 {
 	using namespace LostArk::Shared;
@@ -773,6 +835,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 				continue;
 			m_pendingDebugPlacementSequence = 0u;
 			m_debugPlacementReplyDelayed = false;
+			m_debugPlacementSucceeded = DEBUG_TELEPORT_RESULT::ACCEPTED == result.eResult;
 			switch (result.eResult)
 			{
 			case DEBUG_TELEPORT_RESULT::ACCEPTED:
@@ -803,6 +866,39 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 				m_debugPlacementStatus = "Server rejected placement: player would overlap a blocker."; break;
 			default:
 				m_debugPlacementStatus = "Server returned an unsupported placement result."; break;
+			}
+		}
+	}
+	{
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT formResult{};
+		while (nullptr != m_pCommandSink &&
+			m_pCommandSink->Consume_DebugMadnessFormResult(formResult))
+		{
+			if (0u == m_pendingDebugMadnessFormSequence ||
+				formResult.iRequestSequence != m_pendingDebugMadnessFormSequence)
+				continue;
+			m_pendingDebugMadnessFormSequence = 0u;
+			const char* pForm = PLAYER_MADNESS_FORM::CLOWN == formResult.eActiveForm ?
+				"clown" : "player";
+			switch (formResult.eResult)
+			{
+			case DEBUG_MADNESS_FORM_RESULT::ACCEPTED:
+				m_debugMadnessFormStatus = std::string("Server switched the avatar to ") +
+					pForm + "; the next snapshot swaps the body."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_DISABLED:
+				m_debugMadnessFormStatus = "Avatar change requires a Debug Server."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_SESSION:
+				m_debugMadnessFormStatus = "Server rejected the avatar change: player session is unavailable."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_WRONG_WORLD:
+				m_debugMadnessFormStatus = "Server rejected the avatar change: the current world changed."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_STALE_SEQUENCE:
+				m_debugMadnessFormStatus = "Server rejected an old or duplicate avatar request."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_PLAYER_STATE:
+				m_debugMadnessFormStatus = "Server rejected the avatar change: player is dead, falling, captured or pattern-bound."; break;
+			case DEBUG_MADNESS_FORM_RESULT::REJECTED_SAME_FORM:
+				m_debugMadnessFormStatus = std::string("Server kept the avatar: already ") + pForm + "."; break;
+			default:
+				m_debugMadnessFormStatus = "Server returned an unsupported avatar result."; break;
 			}
 		}
 	}

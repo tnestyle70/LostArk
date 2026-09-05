@@ -200,11 +200,15 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
 	const shared_ptr<Engine::CModel>& expectedModel, const f32_t multiplier)
 {
+	if (!std::isfinite(multiplier) || multiplier <= 0.f)
+	{
+		m_Status = "Preview scale is unavailable from BossCatalog; previous preview scale preserved.";
+		return false;
+	}
 	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
 	if (nullptr == body || nullptr == expectedModel || nullptr == m_pPreviewAsset ||
 		body->Get_Model() != expectedModel ||
-		CAnimationTargetService::Resolve_Model() != expectedModel ||
-		!std::isfinite(multiplier) || multiplier <= 0.f)
+		CAnimationTargetService::Resolve_Model() != expectedModel)
 		return false;
 	auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
 	XMStoreFloat4x4(&root, XMMatrixScaling(multiplier, multiplier, multiplier) *
@@ -337,7 +341,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) && !bRaidCompositionPreview)
 	{
-		m_Status = "Character previews are admitted in Character Select or Development; raid arenas also admit the six Composition animation bodies.";
+		m_Status = "Character previews are admitted in Character Select or Development; raid arenas also admit the registered Composition animation bodies.";
 		return false;
 	}
 	if (m_iPreparedGenericPreviewLevelIndex != currentLevel)
@@ -670,8 +674,24 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			{
 				const auto path = CRuntimeAssetRoot::Resolve(SAYDON_HAMMER_ASSET);
 				unique_ptr<CModel> model;
+				/* The hammer previews with the pre-scale and socket rotation the
+				running exe admitted for the big Saydon boss, so the Workbench
+				shows the same hammer the spawned boss holds. Missing catalog input
+				preserves the previous preview instead of using raw asset units. */
+				const BOSS_ACTOR_ENTRY* pBigSaydon =
+					CActorCatalog::Find_Boss("BOSS_KAKULSAYDON_G2_BIG_SAYDON");
+				if (nullptr == pBigSaydon || pBigSaydon->weaponModel != SAYDON_HAMMER_ASSET ||
+					!std::isfinite(pBigSaydon->weaponModelPreScale) || pBigSaydon->weaponModelPreScale <= 0.f)
+					return rejectHammer("BossCatalog big Saydon hammer is unavailable: " + CActorCatalog::Get_Status());
+				const f32_t hammerScale = pBigSaydon->weaponModelPreScale;
+				const float3_t hammerRotation = pBigSaydon->weaponModelPreRotationDegrees;
 				if (!path.empty() && std::filesystem::is_regular_file(path))
-					model = CModel::Create(m_pDevice, m_pContext, MODEL::ANIM, path.string().c_str(), XMMatrixIdentity());
+					model = CModel::Create(m_pDevice, m_pContext, MODEL::ANIM, path.string().c_str(),
+						XMMatrixRotationRollPitchYaw(
+							XMConvertToRadians(hammerRotation.x),
+							XMConvertToRadians(hammerRotation.y),
+							XMConvertToRadians(hammerRotation.z)) *
+						XMMatrixScaling(hammerScale, hammerScale, hammerScale));
 				if (nullptr == model || FAILED(CGameInstance::Get().Add_Prototype(currentLevel,
 					SAYDON_HAMMER_PROTOTYPE, std::move(model))))
 					return rejectHammer(SAYDON_HAMMER_ASSET);

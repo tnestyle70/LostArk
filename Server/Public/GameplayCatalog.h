@@ -840,6 +840,11 @@ namespace LostArk::Server
 		std::uint32_t iSourceApproachUnits = 0;
 		std::uint32_t iSourceTurnDegrees = 0;
 		std::uint32_t iExpectedStageCount = 0;
+		/* KoukuSaydon audition only: the arena boss archetypes whose body owns
+		this pattern's clips (PATTERNBOSS rows). A Debug audition may target any
+		live boss listed here; an empty list keeps the legacy Gate 1 Kouku
+		target. Valtan patterns never carry it. */
+		std::vector<std::string> AuditionBossArchetypeIds;
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
 	};
 

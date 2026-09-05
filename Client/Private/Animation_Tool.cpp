@@ -4,6 +4,7 @@
 #include "Animation.h"
 
 #include "ActionPresentationTimeline.h"
+#include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "BalanceTool.h"
@@ -61,17 +62,40 @@ namespace
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
 	constexpr f32_t DEFAULT_TICK_RATE = 30.f;
-	// User-requested authoring override. No original Unreal actor scale has
-	// been verified in the extracted Action/mesh sources.
+	/* Large-named Saydon actions preview at the size the running exe admitted
+	for the big Saydon boss: the catalog bodyModelPreScale over the MN_RPCT_06
+	preview admission scale, so the preview matches the spawned boss. The
+	catalog is required; invalid input preserves the current preview scale. */
+	f32_t Large_SaydonPreviewMultiplier()
+	{
+		const Client::BOSS_ACTOR_ENTRY* pBigSaydon =
+			Client::CActorCatalog::Find_Boss("BOSS_KAKULSAYDON_G2_BIG_SAYDON");
+		const auto asset = std::find_if(
+			Client::ANIMATION_PREVIEW_ASSETS.begin(), Client::ANIMATION_PREVIEW_ASSETS.end(),
+			[](const Client::ANIMATION_PREVIEW_ASSET& candidate)
+			{
+				return nullptr != candidate.pAssetName &&
+					std::string_view(candidate.pAssetName) == "MN_RPCT_06";
+			});
+		if (nullptr == pBigSaydon || asset == Client::ANIMATION_PREVIEW_ASSETS.end() ||
+			!std::isfinite(pBigSaydon->bodyModelPreScale) ||
+			pBigSaydon->bodyModelPreScale <= 0.f || asset->fPreviewScale <= 0.f)
+		{
+			OutputDebugStringA("[KoukuPreview] Big Saydon catalog scale is unavailable; preview scale preserved.\n");
+			return 0.f;
+		}
+		return pBigSaydon->bodyModelPreScale / asset->fPreviewScale;
+	}
+
 	f32_t Resolve_LargeNamePreviewScale(const std::string_view name)
 	{
 		if (name.find("\xEB\x8C\x80\xED\x98\x95") != std::string_view::npos)
-			return 100.f;
+			return Large_SaydonPreviewMultiplier();
 		std::string lower(name);
 		std::transform(lower.begin(), lower.end(), lower.begin(), [](const char c) {
 			return c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a' - 'A')) : c;
 		});
-		return lower.find("large") != std::string::npos ? 100.f : 1.f;
+		return lower.find("large") != std::string::npos ? Large_SaydonPreviewMultiplier() : 1.f;
 	}
 
 	f32_t Resolve_ActionPreviewScale(
@@ -3270,14 +3294,15 @@ bool_t Client::CAnimation_Tool::Open_KoukuSaydonProfile(
 {
 	const KOUKU_SAYDON_ACTION_PROFILE_CONTRACT* pProfile =
 		Find_KoukuSaydonActionProfile(profileId);
-	const bool_t bClipOnlyDonor = "MN_RPCT_00" == profileId;
+	const bool_t bClipOnlyDonor =
+		"MN_RPCT_00" == profileId || "MN_RPCT_03" == profileId;
 	if (nullptr == pProfile && !bClipOnlyDonor)
 	{
 		m_Status = "KoukuSaydon action profile is not admitted: " + profileId;
 		return false;
 	}
 	const char_t* pPreviewAsset = bClipOnlyDonor ?
-		"MN_RPCT_00" : pProfile->pPreviewAssetName;
+		profileId.c_str() : pProfile->pPreviewAssetName;
 
 	if (Is_AnyDocumentDirty() && !m_strKoukuSaydonProfileId.empty() &&
 		m_strKoukuSaydonProfileId != profileId)
@@ -3315,7 +3340,8 @@ bool_t Client::CAnimation_Tool::Open_KoukuSaydonProfile(
 	m_bValtanDataWorkspaceRequested = false;
 	m_strKoukuSaydonProfileId = profileId;
 	m_Status = bClipOnlyDonor ?
-		"Opened MN_RPCT_00 as a local clip donor preview; action profiles 05/07 consume this clip vocabulary." :
+		("Opened " + profileId +
+		 " as a local clip donor preview; action profiles 05/07 consume this clip vocabulary.") :
 		("Opened KoukuSaydon extracted action profile " + profileId +
 		 " as a local REFERENCE_ONLY preview.");
 	return true;
@@ -3594,9 +3620,9 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	{
 		strNextKoukuSaydonProfile = pDefault->pProfileId;
 	}
-	else if ("MN_RPCT_00" == assetName)
+	else if ("MN_RPCT_00" == assetName || "MN_RPCT_03" == assetName)
 	{
-		strNextKoukuSaydonProfile = "MN_RPCT_00";
+		strNextKoukuSaydonProfile = assetName;
 	}
 	const std::uint32_t iRequestedKoukuSaydonSourceActionId =
 		m_iRequestedKoukuSaydonSourceActionId;
@@ -4189,13 +4215,14 @@ void Client::CAnimation_Tool::Render()
 		{
 			Render_KoukuSaydonActionBindings(pModel);
 		}
-		else if ("MN_RPCT_00" == m_AssetName)
+		else if ("MN_RPCT_00" == m_AssetName || "MN_RPCT_03" == m_AssetName)
 		{
 			ImGui::SeparatorText("KoukuSaydon Clip Donor");
 			ImGui::TextWrapped(
-				"MN_RPCT_00 exposes its physical clips for local preview. Select the "
+				"%s exposes its physical clips for local preview. Select the "
 				"MN_RPCT_05 or MN_RPCT_07 action profile in Resource Files to edit "
-				"an extracted sequence; no Server Product pattern is inferred here.");
+				"an extracted sequence; no Server Product pattern is inferred here.",
+				m_AssetName.c_str());
 		}
 		else if (nullptr != Find_CustomChainProfile(m_AssetName))
 		{
@@ -12043,9 +12070,15 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 		}
 		m_KoukuCompositionPreviewScales.push_back(scale);
 	}
-	if (std::find(m_KoukuCompositionPreviewScales.begin(), m_KoukuCompositionPreviewScales.end(), 100.f) !=
-		m_KoukuCompositionPreviewScales.end())
-		diagnostics += "Large-named actions use the requested 100x local preview multiplier; original actor scale is unverified. ";
+	if (std::any_of(m_KoukuCompositionPreviewScales.begin(), m_KoukuCompositionPreviewScales.end(),
+			[](const f32_t scale) { return scale != 1.f; }))
+	{
+		char scaleNote[160]{};
+		sprintf_s(scaleNote,
+			"Large-named actions preview at the catalog big Saydon scale (x%.2f of the Saydon preview body). ",
+			Large_SaydonPreviewMultiplier());
+		diagnostics += scaleNote;
+	}
 	m_strKoukuSaydonPatternPreviewId = previewPatternId;
 	m_iKoukuSaydonPatternPreviewClip = m_KoukuCompositionPreviewRows.size();
 	m_iKoukuCompositionPreviewDurationMs = durationMs;
@@ -12072,7 +12105,8 @@ void Client::CAnimation_Tool::Apply_KoukuSaydonPreviewScale(
 {
 	const std::string asset = CAnimationTargetService::Resolve_AssetName();
 	if (nullptr != pModel && nullptr != m_pPreviewPanel &&
-		(asset == "MN_RPCZ_00" || asset == "MN_RPCT_00" || asset == "MN_RPCT_05" || asset == "MN_RPCT_06") &&
+		(asset == "MN_RPCZ_00" || asset == "MN_RPCT_00" || asset == "MN_RPCT_03" ||
+		 asset == "MN_RPCT_05" || asset == "MN_RPCT_06") &&
 		m_pPreviewPanel->Set_PreviewScaleMultiplier(pModel, multiplier) && multiplier != 1.f)
 		m_KoukuScaledPreviewModel = pModel;
 	else if (multiplier == 1.f)
@@ -12426,7 +12460,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 		"it never creates a Server Product boss pattern.");
 
 	ImGui::TextDisabled(
-		"Categories use exact physical models. Large-named actions use the requested 100x local preview multiplier; original actor scale is unverified. MN_RPCT_07 shares the MN_RPCT_05 body:");
+		"Categories use exact physical models. Large-named actions use the loaded BossCatalog body scale and hammer transform. MN_RPCT_07 shares the MN_RPCT_05 body:");
 	for (std::size_t iProfile = 0u;
 		iProfile < KOUKU_SAYDON_ACTION_PROFILES.size(); ++iProfile)
 	{

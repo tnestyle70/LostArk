@@ -337,7 +337,7 @@ class EffectV2ValidatorTests(unittest.TestCase):
             self.root / "Data/Actors/BossCatalog.json",
             {
                 "schema": "lostark.boss-catalog",
-                "formatVersion": 7,
+                "formatVersion": 8,
                 "bosses": [
                     {
                         "archetypeId": "BOSS_VALTAN",
@@ -371,7 +371,7 @@ class EffectV2ValidatorTests(unittest.TestCase):
             self.root / "Data/Actors/BossCatalog.json",
             {
                 "schema": "lostark.boss-catalog",
-                "formatVersion": 7,
+                "formatVersion": 8,
                 "bosses": [
                     {
                         "archetypeId": "BOSS_VALTAN",
@@ -402,7 +402,7 @@ class EffectV2ValidatorTests(unittest.TestCase):
             self.root / "Data/Actors/BossCatalog.json",
             {
                 "schema": "lostark.boss-catalog",
-                "formatVersion": 7,
+                "formatVersion": 8,
                 "bosses": [
                     {
                         "archetypeId": "BOSS_VALTAN",

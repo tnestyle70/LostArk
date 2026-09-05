@@ -180,8 +180,14 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	staged.reserve(4u + armorAssets.size());
 	staged.emplace_back(bodyTag, std::move(bodyModel));
+	/* v8 catalog rows carry a socket pre-rotation; Valtan's is zero today. */
+	const float3_t& weaponRotation = pActor->weaponModelPreRotationDegrees;
 	staged.emplace_back(weaponTag,
 		CModel::Create(pDevice, pContext, MODEL::NONANIM, weaponPath.string().c_str(),
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(weaponRotation.x),
+				XMConvertToRadians(weaponRotation.y),
+				XMConvertToRadians(weaponRotation.z)) *
 			XMMatrixScaling(weaponScale, weaponScale, weaponScale)));
 	for (const auto& [stateMask, armorPath] : armorAssets)
 	{

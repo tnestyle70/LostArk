@@ -333,7 +333,7 @@ def _effect_v2_artifact_paths(
     if (
         boss_catalog.get("schema") != "lostark.boss-catalog"
         or type(boss_catalog.get("formatVersion")) is not int
-        or boss_catalog["formatVersion"] != 7
+        or boss_catalog["formatVersion"] != 8
         or not isinstance(boss_catalog.get("bosses"), list)
     ):
         raise PresentationGenerationError("BossCatalog Effect V2 owner header is invalid")

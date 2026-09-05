@@ -1,3 +1,5 @@
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -30,10 +32,91 @@ def unique(rows, field: str, value: str):
 
 
 class KoukuSaydonRuntimeInputTests(unittest.TestCase):
+    def run_publisher_fragment(self, script):
+        powershell = shutil.which("powershell") or shutil.which("pwsh")
+        if not powershell:
+            self.skipTest("PowerShell is required for publisher consumer checks")
+        result = subprocess.run(
+            [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+            cwd=ROOT, capture_output=True, text=True, errors="replace", timeout=30,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_world_publisher_accepts_raw_kouku_but_keeps_valtan_source_ids(self):
+        # Execute the real consumer functions without publishing or modifying
+        # tracked inputs. RAW clips deliberately have no extracted action IDs.
+        self.run_publisher_fragment(r"""
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Get-Location).Path
+$stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
+$ast = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path $repoRoot 'Tools/WorldPipeline/Publish-WorldGameplay.ps1'),
+    [ref]$null, [ref]$null)
+$names = @('Assert-ExactProperties','Assert-StableId','Assert-JsonInteger',
+    'Assert-JsonNumber','Assert-JsonString','Get-EncounterProfiles')
+foreach ($function in $ast.FindAll({param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+}, $false)) {
+    if ($function.Name -in $names) { Invoke-Expression $function.Extent.Text }
+}
+$emptyEncounter = 'ENCOUNTER_KAKULSAYDON_G1'
+function Read-ProjectJson {
+    param([string]$RelativePath)
+    $document = Get-Content -LiteralPath (Join-Path $repoRoot $RelativePath) `
+        -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($document.encounterId -eq $emptyEncounter) {
+        $document.patterns[0].sourceActionIds = @()
+    }
+    return $document
+}
+$profiles = Get-EncounterProfiles
+if (-not $profiles.ContainsKey('ENCOUNTER_KAKULSAYDON_G1')) {
+    throw 'RAW-only Kouku Product was not admitted.'
+}
+$emptyEncounter = (Get-Content -LiteralPath `
+    (Join-Path $repoRoot 'Data/Encounters/Valtan/ValtanEncounter.json') `
+    -Raw -Encoding UTF8 | ConvertFrom-Json).encounterId
+$rejected = $false
+try { $null = Get-EncounterProfiles }
+catch { $rejected = $_.Exception.Message -like 'Encounter pattern timing or range is invalid:*' }
+if (-not $rejected) { throw 'Valtan must still require extracted source action IDs.' }
+""")
+
+    def test_balance_publisher_accepts_referenced_zero_and_rejects_invalid_ids(self):
+        # Exercise the publisher's actual foreach block, including its numeric
+        # range and duplicate checks, rather than duplicating those rules here.
+        self.run_publisher_fragment(r"""
+$ErrorActionPreference = 'Stop'
+$ast = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path (Get-Location) 'Tools/GameplayPipeline/Publish-GameplayBalance.ps1'),
+    [ref]$null, [ref]$null)
+$validator = $ast.Find({param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+    $node.Name -eq 'Assert-JsonInteger'
+}, $true)
+Invoke-Expression $validator.Extent.Text
+$loop = $ast.Find({param($node)
+    $node -is [System.Management.Automation.Language.ForEachStatementAst] -and
+    $node.Condition.Extent.Text -eq '@($koukuPattern.sourceActionIds)'
+}, $true)
+if ($null -eq $loop) { throw 'Kouku source action consumer was not found.' }
+$koukuPattern = [pscustomobject]@{patternId='REFERENCE_ZERO'; sourceActionIds=@(0,4219714)}
+$koukuSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
+Invoke-Expression $loop.Extent.Text
+foreach ($invalidIds in @(@(-1), @(0,0))) {
+    $koukuPattern.sourceActionIds = $invalidIds
+    $koukuSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
+    $rejected = $false
+    try { Invoke-Expression $loop.Extent.Text }
+    catch { $rejected = $true }
+    if (-not $rejected) { throw 'Invalid source action IDs were admitted.' }
+}
+""")
+
     def test_boss_catalog_admits_only_kouku_without_a_weapon(self):
         catalog = load("Data/Actors/BossCatalog.json")
         self.assertEqual("lostark.boss-catalog", catalog["schema"])
-        self.assertEqual(7, catalog["formatVersion"])
+        self.assertEqual(8, catalog["formatVersion"])
 
         kouku = unique(catalog["bosses"], "archetypeId", KOUKU_BOSS_ID)
         self.assertEqual(
@@ -61,8 +144,9 @@ class KoukuSaydonRuntimeInputTests(unittest.TestCase):
                     "patternRecovery": "rpcz00_att_battle_3_09",
                     "dead": "rpcz00_dead_1",
                 },
-                "bodyModelPreScale": 0.02,
+                "bodyModelPreScale": 0.017,
                 "weaponModelPreScale": None,
+                "weaponModelPreRotationDegrees": None,
             },
             {key: value for key, value in kouku.items() if key != "archetypeId"},
         )
@@ -83,10 +167,31 @@ class KoukuSaydonRuntimeInputTests(unittest.TestCase):
             self.assertGreater(row["bodyModelPreScale"], 0.0)
             self.assertGreater(row["weaponModelPreScale"], 0.0)
         self.assertEqual(
-            [KOUKU_BOSS_ID],
+            [
+                KOUKU_BOSS_ID,
+                "BOSS_KAKULSAYDON_G1_SAYDON",
+                "BOSS_KAKULSAYDON_G2_KOUKU",
+                "BOSS_KAKULSAYDON_G3_SAYDON",
+            ],
             [row["archetypeId"] for row in catalog["bosses"]
              if row["weaponModel"] is None],
         )
+        # The bingo Saydon and the big Saydon both hold the hammer. The big
+        # body is admitted at 0.1 (not 0.017), so its hammer keeps its own
+        # pre-scale; both values are tuned from the F1 slice.
+        hammer = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel"
+        bingo = unique(
+            catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
+        self.assertEqual(hammer, bingo["weaponModel"])
+        self.assertGreater(bingo["weaponModelPreScale"], 0.0)
+        big_saydon = unique(
+            catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+        self.assertEqual(hammer, big_saydon["weaponModel"])
+        self.assertGreater(big_saydon["weaponModelPreScale"], 0.0)
+        for row in catalog["bosses"]:
+            if row["archetypeId"].startswith("BOSS_KAKULSAYDON_"):
+                self.assertTrue(
+                    row["bodyModel"].startswith("Character/KoukuSaton/"))
 
     def test_boss_profile_is_explicitly_non_final_audition_tuning(self):
         profiles = load("Data/Balance/BossProfiles.json")
@@ -119,7 +224,7 @@ class KoukuSaydonRuntimeInputTests(unittest.TestCase):
         ]
         self.assertEqual(set(kouku), {row["targetField"] for row in receipt_rows})
         self.assertEqual(len(receipt["entries"]), receipt["coverage"]["fieldEntryCount"])
-        self.assertEqual(3, receipt["coverage"]["bossProfileCount"])
+        self.assertEqual(8, receipt["coverage"]["bossProfileCount"])
         for row in receipt_rows:
             field = row["targetField"]
             self.assertEqual("PROJECT_TUNED", row["basis"])
@@ -136,7 +241,7 @@ class KoukuSaydonRuntimeInputTests(unittest.TestCase):
         self.assertEqual("lostark.world-gameplay", world["schema"])
         self.assertEqual(6, world["formatVersion"])
         self.assertEqual("LV_LUT_MIDNIGHTC_ED", world["areaId"])
-        self.assertEqual(1788, world["revision"])
+        self.assertEqual(1868, world["revision"])
         self.assertEqual(
             {
                 "placementId": KOUKU_PLACEMENT_ID,

@@ -2231,6 +2231,61 @@ namespace
 			"Teleport packet identities append without renumbering peers");
 	}
 
+	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_DEBUG_SET_MADNESS_FORM request{};
+		request.iRequestSequence = 11u;
+		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		request.eForm = PLAYER_MADNESS_FORM::CLOWN;
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) &&
+			writer.Get_Buffer().size() == 7u,
+			"Madness form intent carries exact sequence, world and typed form");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_DEBUG_SET_MADNESS_FORM decoded{};
+		testRunner.Require(Read_Message(reader, decoded) &&
+			decoded.iRequestSequence == 11u && decoded.eWorldId == request.eWorldId &&
+			decoded.eForm == PLAYER_MADNESS_FORM::CLOWN && 0u == reader.Get_RemainingSize(),
+			"Madness form intent round trip");
+		auto bytes = writer.Get_Buffer();
+		bytes.back() = static_cast<std::uint8_t>(PLAYER_MADNESS_FORM::END);
+		CPacketReader unknownForm{ bytes };
+		decoded.iRequestSequence = 99u;
+		testRunner.Require(!Read_Message(unknownForm, decoded) &&
+			decoded.iRequestSequence == 99u,
+			"Madness form intent refuses an unknown form and preserves caller output");
+		request.iRequestSequence = 0u;
+		CPacketWriter invalid;
+		testRunner.Require(!Write_Message(invalid, request),
+			"Madness form intent refuses the reserved zero sequence");
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(DEBUG_MADNESS_FORM_RESULT::END); ++reason)
+		{
+			S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
+			result.iRequestSequence = 11u;
+			result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			result.eResult = static_cast<DEBUG_MADNESS_FORM_RESULT>(reason);
+			result.eActiveForm = PLAYER_MADNESS_FORM::CLOWN;
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				8u == resultWriter.Get_Buffer().size(),
+				"Madness form verdict writer accepts every exact typed reason");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_DEBUG_SET_MADNESS_FORM_RESULT read{};
+			testRunner.Require(Read_Message(resultReader, read) &&
+				read.iRequestSequence == 11u && read.eWorldId == result.eWorldId &&
+				read.eResult == result.eResult &&
+				read.eActiveForm == PLAYER_MADNESS_FORM::CLOWN &&
+				0u == resultReader.Get_RemainingSize(),
+				"Madness form verdict echoes correlation, reason and active form");
+		}
+		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT) + 1u,
+			"Madness form packet identities append without renumbering peers");
+	}
+
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2344,8 +2399,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(58u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 58");
+			testRunner.Require(59u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 59");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2610,6 +2665,9 @@ namespace
 		first.iMaximumHp = 1000;
 		first.iCurrentResource = 80;
 		first.iMaximumResource = 100;
+		first.iCurrentMadness = 35u;
+		first.iMaximumMadness = 100u;
+		first.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 		first.iSilenceEndTick = 180u;
 		first.iSilenceDurationTicks = 150u;
 		first.iComboStage = 3;
@@ -2698,9 +2756,13 @@ namespace
 		/* Protocol 51 adds the typed Pattern bind bit/deadline and the Silence
 		deadline plus original duration to every player row. */
 		constexpr std::size_t playerPatternStatusBytes = 1 + (4 * 3);
+		/* Protocol 59 adds the KoukuSaydon madness gauge pair and the typed
+		avatar form to every player row. */
+		constexpr std::size_t playerMadnessBytes = 4 + 4 + 1;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
-			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes;
+			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
+			playerMadnessBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -2764,6 +2826,13 @@ namespace
 			!Build_WorldSnapshotPayload(overfullGauge, overfullPayload),
 			"Reject Esther Gauge Above Maximum");
 
+		S2C_WORLD_SNAPSHOT overfullMadness = source;
+		overfullMadness.Players[0].iCurrentMadness = 101u;
+		std::vector<std::uint8_t> overfullMadnessPayload;
+		testRunner.Require(
+			!Build_WorldSnapshotPayload(overfullMadness, overfullMadnessPayload),
+			"Reject Madness Gauge Above Maximum");
+
 		S2C_WORLD_SNAPSHOT gaugeWithoutRoster = source;
 		gaugeWithoutRoster.iEstherGaugeMaximum = 0;
 		gaugeWithoutRoster.iEstherGauge = 1;
@@ -2793,6 +2862,11 @@ namespace
 			decoded.Players[0].fSkillTargetY == 0.25f &&
 			decoded.Players[0].fSkillTargetZ == -3.f &&
 			decoded.Players[0].iCurrentHp == 875 &&
+			decoded.Players[0].iCurrentMadness == 35u &&
+			decoded.Players[0].iMaximumMadness == 100u &&
+			decoded.Players[0].eMadnessForm == PLAYER_MADNESS_FORM::CLOWN &&
+			decoded.Players[1].iMaximumMadness == 0u &&
+			decoded.Players[1].eMadnessForm == PLAYER_MADNESS_FORM::NORMAL &&
 			decoded.Players[0].iSilenceEndTick == 180u &&
 			decoded.Players[0].iSilenceDurationTicks == 150u &&
 			decoded.Players[0].Cooldowns.size() == 1 &&
@@ -5464,8 +5538,8 @@ namespace
 		}
 
 		testRunner.Require(
-			58u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 58");
+			59u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 59");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5492,8 +5566,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			58u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 58");
+			59u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 59");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6750,6 +6824,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_KakulAuthoringCommandProtocol(testRunner);
 	Test_DebugTeleportPositionProtocol(testRunner);
+	Test_DebugMadnessFormProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);

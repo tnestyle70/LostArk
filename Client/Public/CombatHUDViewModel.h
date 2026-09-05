@@ -41,6 +41,12 @@ namespace Client
 		HUD draws nothing for it. */
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
+		/* KoukuSaydon madness gauge and the avatar form the Server replicates
+		for it. A maximum of 0 means no Saydon encounter owns the gauge. */
+		std::uint32_t iCurrentMadness = 0;
+		std::uint32_t iMaximumMadness = 0;
+		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
+			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown
@@ -184,6 +190,16 @@ namespace Client
 		bar HUD never disappeared. CClientReplication::Apply_WorldEntityDespawn calls this
 		explicitly for a despawned BOSS-kind entity instead. */
 		void Clear_Boss() { m_Boss = {}; }
+		/* Debug arena focus. While a focus archetype is set, Apply_Boss keeps only
+		that boss, so a room holding several primary bosses shows the one the F1
+		gate button chose. An empty focus restores "last primary boss wins". */
+		void Set_BossFocusArchetype(const std::string& archetypeId);
+		void Clear_BossFocus() { m_strBossFocusArchetype.clear(); m_bBossHidden = false; }
+		void Set_BossHidden(bool hidden) { m_bBossHidden = hidden; if (hidden) m_Boss = {}; }
+		const std::string& Get_BossFocusArchetype() const { return m_strBossFocusArchetype; }
+		/* Despawn edge of a non-Valtan primary boss: drops the bar only when the
+		bar currently shows that archetype. */
+		void Clear_BossIfArchetype(const std::string& archetypeId);
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
@@ -312,6 +328,8 @@ namespace Client
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
 		bool m_bBossDeadRaw = false;
+		std::string m_strBossFocusArchetype;
+		bool m_bBossHidden = false;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;

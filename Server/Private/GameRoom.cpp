@@ -694,6 +694,9 @@ namespace
 		player.iResourceAccumulator = 0u;
 		player.iCurrentIdentity = player.iMaximumIdentity;
 		player.iIdentityAccumulator = 0u;
+		player.iCurrentMadness = 0u;
+		player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
+		player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iActionStartTick = actionTick;
 		player.isCombatReady = true;
@@ -1800,6 +1803,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_DebugTeleportToPosition(
 				command.iSessionId, command.DebugTeleportToPosition);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM:
+			Handle_DebugSetMadnessForm(
+				command.iSessionId, command.DebugSetMadnessForm);
+			break;
 		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
 			Handle_ChangeCharacterClass(
 				command.iSessionId, command.ChangeCharacterClass);
@@ -2267,6 +2274,9 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iCurrentResource = player.iMaximumResource = profile->iMaximumResource;
 	player.fMoveSpeed = profile->fMoveSpeed;
 	player.iCurrentIdentity = player.iMaximumIdentity = profile->iMaximumIdentity;
+	player.iCurrentMadness = 0u;
+	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
+	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
 	if (m_ServerNavigation.Is_Loaded())
 	{
@@ -3047,6 +3057,9 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iResourceAccumulator = 0u;
 	player.iCurrentIdentity = player.iMaximumIdentity;
 	player.iIdentityAccumulator = 0u;
+	player.iCurrentMadness = 0u;
+	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
+	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
@@ -3236,6 +3249,82 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	player.fPositionZ = ground.z;
 	player.fYawDegrees = waypoint->fYawDegrees;
 	Reset_PlayerForDebugTeleport(player);
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugSetMadnessForm(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	result.eResult = DEBUG_MADNESS_FORM_RESULT::REJECTED_SESSION;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(binding->second);
+	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+		result = Apply_DebugMadnessForm(player->second, request);
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(
+		PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT, writer.Get_Buffer()))
+	{
+		session->Request_Close();
+	}
+}
+
+LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT
+LostArk::Server::CGameRoom::Apply_DebugMadnessForm(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	result.eActiveForm = player.eMadnessForm;
+#ifndef _DEBUG
+	result.eResult = DEBUG_MADNESS_FORM_RESULT::REJECTED_DISABLED;
+	return result;
+#else
+	if (request.eWorldId != m_eWorldId)
+	{
+		result.eResult = DEBUG_MADNESS_FORM_RESULT::REJECTED_WRONG_WORLD;
+		return result;
+	}
+	const auto& previous = player.LastDebugMadnessFormResult;
+	if (0u != request.iRequestSequence &&
+		request.iRequestSequence == previous.iRequestSequence)
+		return previous;
+	if (!Is_NewerSequence(request.iRequestSequence, previous.iRequestSequence))
+	{
+		result.eResult = DEBUG_MADNESS_FORM_RESULT::REJECTED_STALE_SEQUENCE;
+		return result;
+	}
+	const auto reject = [&player, &result](const DEBUG_MADNESS_FORM_RESULT reason)
+	{
+		result.eResult = reason;
+		player.LastDebugMadnessFormResult = result;
+		return result;
+	};
+	/* The form only swaps the presented body. A dead, falling, grabbed or
+	pattern-bound player keeps the body its current action was authored on. */
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound ||
+		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
+		return reject(DEBUG_MADNESS_FORM_RESULT::REJECTED_PLAYER_STATE);
+	if (request.eForm == player.eMadnessForm)
+		return reject(DEBUG_MADNESS_FORM_RESULT::REJECTED_SAME_FORM);
+	player.eMadnessForm = request.eForm;
+	result.eResult = DEBUG_MADNESS_FORM_RESULT::ACCEPTED;
+	result.eActiveForm = player.eMadnessForm;
+	player.LastDebugMadnessFormResult = result;
+	return result;
 #endif
 }
 
@@ -3669,6 +3758,9 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iCurrentResource = profile->iMaximumResource;
 	staged.iMaximumResource = profile->iMaximumResource;
 	staged.iResourceAccumulator = 0u;
+	staged.iCurrentMadness = 0u;
+	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
+	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
 	staged.eStance = profile->eDefaultStance;
 	staged.iCurrentSkillId = INVALID_SKILL_ID;
@@ -3849,10 +3941,22 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	using namespace LostArk::Shared;
 	(void)request;
 	// Same room gating as Handle_SpawnWorldEntity -- this debug revert only makes
-	// sense for the Character Select Arena's own spawn buttons.
-	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId ||
+	// sense for the Character Select Arena's own spawn buttons and the
+	// KoukuSaydon arena's Debug gate buttons.
+#ifdef _DEBUG
+	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+#else
+	const bool koukuGateWorld = false;
+#endif
+	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !koukuGateWorld) ||
 		!m_PlayerIdBySessionId.contains(sessionId))
 	{
+		return;
+	}
+	if (koukuGateWorld)
+	{
+		if (!Despawn_KoukuSaydonArenaDebugEntities())
+			Mark_RuntimeFailure("despawn-all.koukusaydon-arena");
 		return;
 	}
 
@@ -3887,6 +3991,79 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	std::string resetStatus;
 	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, resetStatus))
 		m_strStatus = std::move(resetStatus);
+}
+
+bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities()
+{
+	/* The KoukuSaydon arena keeps its statically enabled Gate 1 Kouku and any
+	Esther summon. Only entities raised from a disabled bootstrap placement
+	(the Debug gate buttons) and the dependents they own are removed. An
+	audition owned by one of those removed bosses is aborted explicitly. */
+	std::vector<LostArk::Shared::NET_ENTITY_ID> removedIds;
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (entity.isEstherSummon)
+			continue;
+		const WORLD_BOOTSTRAP_PLACEMENT* placement =
+			Find_Placement(entity.strPlacementId);
+		const bool debugActivated =
+			nullptr == placement || !placement->isEnabled;
+		const bool ownedByRemoved =
+			LostArk::Shared::INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId &&
+			removedIds.end() != std::find(removedIds.begin(), removedIds.end(),
+				entity.iOwnerBossNetEntityId);
+		if (debugActivated || ownedByRemoved)
+			removedIds.push_back(entity.iNetEntityId);
+	}
+	const std::uint32_t despawnTick =
+		0u == m_iServerTick ? 1u : m_iServerTick;
+	for (auto id = removedIds.rbegin(); id != removedIds.rend(); ++id)
+	{
+		const auto entity = std::find_if(
+			m_WorldEntities.begin(), m_WorldEntities.end(),
+			[removedId = *id](const SERVER_WORLD_ENTITY& candidate)
+			{
+				return candidate.iNetEntityId == removedId;
+			});
+		if (m_WorldEntities.end() == entity)
+			continue;
+		if (WORLD_BOOTSTRAP_KIND::BOSS == entity->eKind)
+		{
+			(void)Release_PlayerAttachments(
+				entity->iNetEntityId, 0.f, 0u, false, 0u, despawnTick);
+#ifdef _DEBUG
+			/* A gate change while this boss runs an audition closes that
+			audition as ABORTED so the Client never waits on a removed boss. */
+			if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
+					m_KoukuSaydonPatternAudition.ePhase &&
+				m_KoukuSaydonPatternAudition.iBossEntityId == entity->iNetEntityId)
+			{
+				const std::uint32_t occurrenceSequence = entity->iPatternSequence;
+				const std::uint32_t stageIndex = entity->iPatternStageIndex;
+				if (!entity->strPatternId.empty())
+					m_KoukuSaydonBrain.Abort_Pattern(*entity, despawnTick);
+				Queue_KoukuSaydonPatternAuditionLifecycle(
+					m_KoukuSaydonPatternAudition.PatternIds.empty() ?
+						std::string{ "KAKULSAYDON_G1_INVALID" } :
+						m_KoukuSaydonPatternAudition.PatternIds[
+							(std::min)(m_KoukuSaydonPatternAudition.iPatternIndex,
+								m_KoukuSaydonPatternAudition.PatternIds.size() - 1u)],
+					occurrenceSequence, stageIndex,
+					LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED,
+					"KoukuSaydon audition boss was despawned by a gate change");
+				Clear_KoukuSaydonPatternAudition();
+			}
+#endif
+		}
+		m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);
+		if (!Broadcast_CombatObjectLifecycle())
+			return false;
+		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
+		m_WorldEntities.erase(entity);
+	}
+	m_strStatus = "KoukuSaydon arena Debug entities despawned: " +
+		std::to_string(removedIds.size());
+	return true;
 }
 
 void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
@@ -4917,7 +5094,19 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 {
 	using namespace LostArk::Shared;
 	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
-	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId ||
+	/* Character Select owns the monster/mini-boss/Valtan audition buttons; the
+	KoukuSaydon arena owns the Debug gate buttons that raise its disabled gate
+	bosses. The gate buttons share the Debug-only boundary of the Debug
+	teleport they pair with, so a Release Server refuses them the same way.
+	Product worlds never accept a client-chosen spawn. */
+#ifdef _DEBUG
+	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+#else
+	const bool koukuGateWorld = false;
+#endif
+	const bool debugSpawnWorld =
+		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId || koukuGateWorld;
+	if (!debugSpawnWorld ||
 		!m_PlayerIdBySessionId.contains(sessionId) || nullptr == session)
 	{
 		Send_WorldEntitySpawnResult(
@@ -4932,6 +5121,15 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		Find_Placement(request.strPlacementId);
 	if (nullptr == placement)
 	{
+		if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId)
+		{
+			Send_WorldEntitySpawnResult(
+				session,
+				request.strPlacementId,
+				WORLD_ENTITY_SPAWN_RESULT::REJECTED,
+				INVALID_NET_ENTITY_ID);
+			return;
+		}
 		const auto group = std::find_if(
 			m_SpawnGroupBootstrap.Get_Groups().begin(),
 			m_SpawnGroupBootstrap.Get_Groups().end(),
@@ -4981,9 +5179,13 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		return;
 	}
 
-	if (placement->isEnabled ||
-		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind ||
-		placement->strArchetypeId != "BOSS_VALTAN")
+	const bool admittedPlacement =
+		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId ?
+			(!placement->isEnabled &&
+			 WORLD_BOOTSTRAP_KIND::BOSS == placement->eKind &&
+			 placement->strArchetypeId == "BOSS_VALTAN") :
+			CKoukuSaydonBrain::Is_ArenaBossPlacement(m_eWorldId, *placement);
+	if (!admittedPlacement)
 	{
 		Send_WorldEntitySpawnResult(
 			session,
@@ -5054,6 +5256,22 @@ LostArk::Server::CGameRoom::Find_KoukuSaydonAuditionBoss()
 		[this](const SERVER_WORLD_ENTITY& entity)
 		{
 			return CKoukuSaydonBrain::Is_GateOneBoss(m_eWorldId, entity);
+		});
+	return m_WorldEntities.end() == found ? nullptr : &*found;
+}
+
+LostArk::Server::SERVER_WORLD_ENTITY*
+LostArk::Server::CGameRoom::Find_KoukuSaydonArenaBoss(
+	const std::string& placementId,
+	const std::string& archetypeId)
+{
+	const auto found = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[this, &placementId, &archetypeId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, entity) &&
+				entity.strPlacementId == placementId &&
+				entity.strArchetypeId == archetypeId;
 		});
 	return m_WorldEntities.end() == found ? nullptr : &*found;
 }
@@ -5137,18 +5355,28 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			"KoukuSaydon audition request sequence is stale or reused");
 	}
 
+	/* The scope names one arena boss placement: the enabled Gate 1 Kouku or
+	a gate boss placement the Debug buttons can raise. Any other tuple is a
+	scope mismatch; a valid placement that is not live is "no boss". */
+	const WORLD_BOOTSTRAP_PLACEMENT* scopePlacement =
+		Find_Placement(request.Scope.strBossPlacementId);
+	const bool scopePlacementIsArenaBoss = nullptr != scopePlacement &&
+		WORLD_BOOTSTRAP_KIND::BOSS == scopePlacement->eKind &&
+		KOUKUSAYDON_G1_ENCOUNTER_ID == scopePlacement->strEncounterId &&
+		scopePlacement->strArchetypeId == request.Scope.strBossArchetypeId &&
+		(CKoukuSaydonBrain::Is_ArenaBossPlacement(m_eWorldId, *scopePlacement) ||
+		 (scopePlacement->isEnabled &&
+		  KOUKUSAYDON_G1_BOSS_PLACEMENT_ID == scopePlacement->strPlacementId &&
+		  KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID == scopePlacement->strArchetypeId));
 	const bool exactScope =
 		WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
 		WORLD_ID::KAKULSAYDON_ARENA == request.Scope.eWorldId &&
 		KOUKUSAYDON_G1_ENCOUNTER_ID == request.Scope.strEncounterId &&
-		KOUKUSAYDON_G1_BOSS_PLACEMENT_ID ==
-			request.Scope.strBossPlacementId &&
-		KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID ==
-			request.Scope.strBossArchetypeId;
+		scopePlacementIsArenaBoss;
 	if (!exactScope)
 		return reject(
 			KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH,
-			"KoukuSaydon audition scope does not match the Gate 1 boss tuple");
+			"KoukuSaydon audition scope does not name an arena boss placement");
 	if (request.Scope.ExpectedGameplayRevision !=
 		m_GameplayCatalog.Get_ActiveRevision())
 	{
@@ -5164,19 +5392,31 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 				REJECTED_SOURCE_REVISION_MISMATCH,
 			"KoukuSaydon audition expected Product source revision is not active");
 	}
-	SERVER_WORLD_ENTITY* boss = Find_KoukuSaydonAuditionBoss();
+	SERVER_WORLD_ENTITY* boss = Find_KoukuSaydonArenaBoss(
+		request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
 	if (nullptr == boss)
 		return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_NO_BOSS,
-			"KoukuSaydon Gate 1 boss is not spawned");
+			"KoukuSaydon target boss placement is not spawned");
 	if (0u == boss->iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss->eAction)
 		return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BOSS_DEAD,
-			"KoukuSaydon Gate 1 boss is dead");
+			"KoukuSaydon target boss is dead");
 	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
 		m_KoukuSaydonPatternAudition.ePhase || !boss->strPatternId.empty())
 	{
 		return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BUSY,
-			"KoukuSaydon Gate 1 boss already owns a pattern occurrence");
+			"KoukuSaydon target boss already owns a pattern occurrence");
 	}
+	/* A pattern's clips belong to one body. Product rows name the arena boss
+	archetypes that own that body; a Product without rows keeps the legacy
+	Gate 1 Kouku target only. */
+	const auto patternAdmitsBoss = [boss](const BOSS_PATTERN_DEFINITION& pattern)
+	{
+		if (pattern.AuditionBossArchetypeIds.empty())
+			return KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID == boss->strArchetypeId;
+		return pattern.AuditionBossArchetypeIds.end() != std::find(
+			pattern.AuditionBossArchetypeIds.begin(),
+			pattern.AuditionBossArchetypeIds.end(), boss->strArchetypeId);
+	};
 
 	std::vector<std::string> patternIds;
 	std::vector<std::uint32_t> transitionTicks;
@@ -5203,6 +5443,13 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::
 				REJECTED_UNSUPPORTED_PATTERN, std::move(patternStatus));
 		}
+		if (!patternAdmitsBoss(*found))
+		{
+			return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+				REJECTED_UNSUPPORTED_PATTERN,
+				"KoukuSaydon pattern body does not match the target boss: " +
+					boss->strArchetypeId);
+		}
 		patternIds.push_back(request.strPatternId);
 	}
 	else
@@ -5221,17 +5468,19 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 				REJECTED_NO_PRODUCT_SEQUENCE,
 				"KoukuSaydon Product pattern sequence is unavailable");
 		}
-		for (const std::string& patternId : sequence->PatternIds)
+		const auto* definitions = m_GameplayCatalog.Active().Find_BossPatterns(
+			std::string{ KOUKUSAYDON_G1_ENCOUNTER_ID });
+		if (nullptr == definitions ||
+			!CKoukuSaydonBrain::Select_AnimationOnlySequence(
+				*definitions, *sequence, boss->strArchetypeId,
+				patternIds, transitionTicks, patternStatus))
 		{
-			if (nullptr == CKoukuSaydonBrain::Find_AnimationOnlyPattern(
-				m_GameplayCatalog.Active(), patternId, patternStatus))
-			{
-				return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::
-					REJECTED_UNSUPPORTED_PATTERN, std::move(patternStatus));
-			}
+			return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+				REJECTED_UNSUPPORTED_PATTERN,
+				patternStatus.empty() ?
+					"KoukuSaydon Product patterns are unavailable" :
+					std::move(patternStatus));
 		}
-		patternIds = sequence->PatternIds;
-		transitionTicks = sequence->TransitionPursuitTicks;
 	}
 
 	m_KoukuSaydonPatternAudition = {};
@@ -9514,6 +9763,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumResource = player.iMaximumResource;
 		snapshot.iCurrentIdentity = player.iCurrentIdentity;
 		snapshot.iMaximumIdentity = player.iMaximumIdentity;
+		snapshot.iCurrentMadness = player.iCurrentMadness;
+		snapshot.iMaximumMadness = player.iMaximumMadness;
+		snapshot.eMadnessForm = player.eMadnessForm;
 		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.isPatternBound = player.bPatternBound;
 		snapshot.iPatternBindEndTick = player.iPatternBindEndTick;
@@ -9920,18 +10172,33 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		}
 		if (m_ServerNavigation.Is_Loaded())
 		{
+			/* An authored placement on a walkable cell keeps its exact XZ and
+			only takes the grid height. Snapping it to the cell centre moved the
+			KoukuSaydon gate bosses up to 2.8 m on that area's 4 m grid, onto
+			the fixed player position the gate teleports to. Off-grid or
+			blocked placements still project to the nearest walkable cell. */
 			SERVER_NAV_POINT projected{};
-			if (!m_ServerNavigation.Project_Point(
+			if (m_ServerNavigation.Is_PointWalkableExact(
+					staged.fPositionX, staged.fPositionZ) &&
+				m_ServerNavigation.Sample_Position(
+					staged.fPositionX, staged.fPositionZ, projected))
+			{
+				staged.fPositionY = projected.y;
+			}
+			else if (m_ServerNavigation.Project_Point(
 				staged.fPositionX,
 				staged.fPositionZ,
 				projected))
 			{
+				staged.fPositionX = projected.x;
+				staged.fPositionY = projected.y;
+				staged.fPositionZ = projected.z;
+			}
+			else
+			{
 				m_strStatus = "Boss placement is outside server navigation";
 				return false;
 			}
-			staged.fPositionX = projected.x;
-			staged.fPositionY = projected.y;
-			staged.fPositionZ = projected.z;
 		}
 	}
 	staged.fSpawnPositionX = staged.fPositionX;
@@ -14485,11 +14752,29 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 			m_ServerNavigation.Is_Loaded() &&
-			CKoukuSaydonBrain::Is_GateOneBoss(m_eWorldId, entity))
+			CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, entity))
 		{
+			/* Every arena boss, including the enabled starting Kouku, waits
+			where it spawned until an audition names it. It never enters the Valtan brain, so the gate
+			button that activated it cannot start a pattern by itself. While an
+			audition owns another arena boss this one only keeps its pin. */
+#ifdef _DEBUG
+			const bool auditionOwnsAnotherBoss =
+				KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
+					m_KoukuSaydonPatternAudition.ePhase &&
+				m_KoukuSaydonPatternAudition.iBossEntityId != entity.iNetEntityId;
+#else
+			const bool auditionOwnsAnotherBoss = false;
+#endif
+			if (auditionOwnsAnotherBoss)
+			{
+				entity.PinnedDefinitionRevision =
+					m_GameplayCatalog.Get_ActiveRevision();
+				continue;
+			}
 			if (!Update_KoukuSaydonBoss(entity, updateTick))
 			{
-				Mark_RuntimeFailure("world-update.koukusaydon-brain");
+				Mark_RuntimeFailure("world-update.koukusaydon-arena-boss");
 				return;
 			}
 			continue;

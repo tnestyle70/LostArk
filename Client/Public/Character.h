@@ -74,6 +74,11 @@ public:
 	{
 		uint32_t iPrototypeLevelIndex = {};
 		const CHARACTER_SPEC* pSpec = { nullptr };
+		/* The replicated class this Character stands for. END keeps the spec's
+		own class; a class-less avatar spec (the KoukuSaydon clown) needs the
+		wearer's class here so quick slots and skill documents keep resolving. */
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		const tchar_t* pNavigationPrototypeTag = { nullptr };
 		float3_t vPosition = {};
 
@@ -92,6 +97,10 @@ public:
 public:
 	const CHARACTER_SPEC* Get_Spec() const {
 		return m_pSpec;
+	}
+	/* The replicated class: the spec's unless the desc overrode it. */
+	LostArk::Shared::CHARACTER_CLASS_ID Get_CharacterClass() const {
+		return m_eCharacterClass;
 	}
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
 	uint32_t Get_PrototypeLevelIndex() const
@@ -220,6 +229,8 @@ public:
 
 private:
 	const CHARACTER_SPEC* m_pSpec = { nullptr };
+	LostArk::Shared::CHARACTER_CLASS_ID m_eCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	unique_ptr<ICharacterLogic> m_pLogic;
 	shared_ptr<Engine::CModel> m_pBodyModel = { nullptr };
 	shared_ptr<Engine::CNavigation> m_pNavigationCom = { nullptr };

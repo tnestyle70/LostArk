@@ -29,6 +29,7 @@
 #include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
+#include "Npc.h"
 #include "PartyWindowView.h"
 #include "PlayerSkillCatalog.h"
 #include "Profiler.h"
@@ -45,6 +46,7 @@
 #include "UILayoutRuntime.h"
 
 #ifdef _DEBUG
+#include "ActorCatalog.h"
 #include "Animation_Tool.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "KoukuSaydonBossTool.h"
@@ -1735,6 +1737,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	const bool_t isSupportedLevel =
 		currentLevel == ETOUI(LEVEL::BERN) ||
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
 	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
@@ -3784,6 +3787,7 @@ void CMainApp::Update_BossHealthBar()
 	const bool_t isSupportedLevel =
 		currentLevel == ETOUI(LEVEL::BERN) ||
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
 	const bool_t skillWindowOpen =
@@ -4031,6 +4035,7 @@ void CMainApp::RenderBossHealthBarText()
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
@@ -4062,17 +4067,20 @@ void CMainApp::RenderBossHealthBarText()
 	}
 	const bool_t isMultiBar = boss.iMaximumHealthBars > 1u;
 
-	/* Boss title, positioned via its own hand-placed slot ("Boss_TitleText"). No real per-boss
-	title field exists in BossProfiles.json/HUD_BOSS_STATE yet (only strDisplayName="발탄") -- this
-	project currently only has Valtan configured, so the full real title seen on-screen
-	("마수군단장 발탄") is spelled out directly here instead of a data-driven prefix + name, same
-	caveat as the earlier "보스" grade label attempt: this needs a real title field once a second
-	boss exists, not a hardcoded string that only happens to be right for one archetype. */
+	/* Boss title, positioned via its own hand-placed slot ("Boss_TitleText"). Valtan keeps the
+	full on-screen title ("마수군단장 발탄") because no title field exists in BossProfiles.json;
+	every other boss shows its BossProfiles.json displayName, which is what HUD_BOSS_STATE
+	already carries (KoukuSaydon gate bosses: "세이튼", "쿠크", "앵콜을 외친 쿠크세이튼"). */
 	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
 	if (m_pBossUIView->Get_SlotRect(
 		"Boss_TitleText", fTitleX, fTitleY, fTitleWidth, fTitleHeight))
 	{
-		const wstring strBossTitle = L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4";
+		wstring strBossTitle;
+		if ("BOSS_VALTAN" == boss.strArchetypeId)
+			strBossTitle = L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4";
+		else if (!ConvertUtf8ToWide(boss.strDisplayName, strBossTitle) ||
+			strBossTitle.empty())
+			strBossTitle = L"BOSS";
 		/* Text draw scale is derived from the slot's own box height (measured at scale=1 via
 		Measure_Text) instead of a hand-picked constant, so resizing the slot in the HUD Layout
 		Tool is what actually controls the rendered text size -- no more guessing pixel scales. */
@@ -4788,6 +4796,7 @@ void CMainApp::RenderCombatHUDText()
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
@@ -6016,151 +6025,6 @@ void CMainApp::RenderDebugLevelNavigation()
 	}
 }
 
-void CMainApp::RefreshDebugAuthoringSources()
-{
-	const filesystem::path dataRoot = CProjectDataRoot::Get();
-	auto addSource = [this](
-		const char_t* domain,
-		const char_t* displayName,
-		const char_t* canonicalPath,
-		const char_t* description,
-		const char_t* actionLabel,
-		const DEBUG_TOOL tool,
-		const size_t documentCount,
-		const bool_t sourceReady,
-		const bool_t openValtanWorkspace,
-		const bool_t openValtanEffectWorkspace)
-	{
-		DEBUG_AUTHORING_SOURCE source;
-		source.strDomain = domain;
-		source.strDisplayName = displayName;
-		source.strCanonicalPath = canonicalPath;
-		source.strDescription = description;
-		source.strActionLabel = actionLabel;
-		source.eTool = tool;
-		source.iDocumentCount = documentCount;
-		source.bCanonicalSourceReady = sourceReady;
-		source.bOpenValtanWorkspace = openValtanWorkspace;
-		source.bOpenValtanEffectWorkspace = openValtanEffectWorkspace;
-		m_DebugAuthoringSources.push_back(std::move(source));
-	};
-	auto sourceExists = [&dataRoot](const filesystem::path& relative)
-	{
-		std::error_code error;
-		return filesystem::exists(dataRoot / relative, error) && !error;
-	};
-
-	m_bDebugAuthoringSourceRefreshAttempted = true;
-	m_DebugAuthoringSources.clear();
-
-	addSource(
-		"Boss / Pattern", "Valtan Action Composition",
-		"Data/Valtan/Valtan.gameplay.json",
-		"Canonical gameplay source joined with Valtan.presentation.json into the Server and presentation Products.",
-		"Open Action Workbench (Valtan)", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
-		2u,
-		sourceExists(L"Valtan/Valtan.gameplay.json") &&
-			sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
-	addSource(
-		"Character / Animation", "Valtan Animation & Sequence Source",
-		"Data/Valtan/Valtan.presentation.json",
-		"Writable Pattern animation occurrences, Effect invocations and camera edges. Generated bindings remain read-only Product.",
-		"Open Composition Detail", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
-		1u,
-		sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
-	addSource(
-		"Effect Resource", "Valtan Effect Resources",
-		"Data/Effects",
-		"One Effect Resource entry joins direct-authored effect.valtan.* documents with typed boss.valtan.* leaves, groups and BOSS_VALTAN bindings.",
-		"Open Effect Tool", DEBUG_TOOL::EFFECT,
-		2u,
-		sourceExists(L"Effects/EffectCatalog.json") &&
-			sourceExists(L"Effects/V2/Authored") &&
-			sourceExists(L"Effects/V2/Groups") &&
-			sourceExists(L"Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"),
-		false, true);
-	addSource(
-		"Sound", "Valtan Pattern Sound Cues",
-		"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
-		"Sound cues joined to stable Pattern and Sequence slots; edited from the integrated Valtan Detail.",
-		"Open Sound Cue Detail", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
-		1u,
-		sourceExists(L"Animation/Authored/Valtan/Valtan.patternsoundcues.json"), true, false);
-	addSource(
-		"Gameplay", "Valtan Gameplay & Balance",
-		"Data/Balance/BossProfiles.json",
-		"Server-owned boss HP, stagger and damage tuning. Pattern presentation never overrides these values.",
-		"Open Balance Tool", DEBUG_TOOL::BALANCE,
-		1u,
-		sourceExists(L"Balance/BossProfiles.json"), false, false);
-	addSource(
-		"Encounter", "Valtan Encounter Runtime",
-		"Data/Encounters/Valtan/ValtanEncounter.json",
-		"Server arena, walls, world events, flow and Complete Play admission documents.",
-		"Open Boss Verification", DEBUG_TOOL::VALTAN_BOSS,
-		1u,
-		sourceExists(L"Encounters/Valtan/ValtanEncounter.json"), false, false);
-	addSource(
-		"Character / Animation", "All Authored Character Bindings",
-		"Data/Animation/Authored",
-		"Character skill/action bindings only. Extracted clips and reference timing stay read-only intake data.",
-		"Open Animation Intake", DEBUG_TOOL::ANIMATION,
-		1u,
-		sourceExists(L"Animation/Authored"), false, false);
-}
-
-void CMainApp::OpenDebugAuthoringSource(const size_t iSource)
-{
-	if (iSource >= m_DebugAuthoringSources.size())
-		return;
-	const DEBUG_AUTHORING_SOURCE& source = m_DebugAuthoringSources[iSource];
-	if (!source.bCanonicalSourceReady)
-	{
-		m_strToolStatus = "Canonical source is unavailable; no owner was opened: " +
-			source.strCanonicalPath;
-		return;
-	}
-	if (FAILED(EnsureDebugTool(source.eTool)))
-	{
-		m_strToolStatus = "Canonical source is ready, but its owner Tool failed to initialize: " +
-			source.strCanonicalPath;
-		return;
-	}
-	if (source.bOpenValtanWorkspace)
-	{
-		(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH);
-		if (nullptr == m_pValtanActionWorkbench)
-		{
-			m_strToolStatus =
-				"Valtan sources are present, but Valtan Action Workbench is unavailable.";
-			return;
-		}
-		const bool_t bFullyAdmitted =
-			m_pValtanActionWorkbench->Open_Valtan();
-		if (!bFullyAdmitted)
-		{
-			if (!m_pValtanActionWorkbench->Has_DisplaySnapshot())
-			{
-				m_strToolStatus =
-					"Valtan Action Workbench opened, but canonical Product admission was rejected; inspect its diagnostic banner.";
-				return;
-			}
-			m_strToolStatus =
-				"Valtan Action Workbench opened with a canonical Product snapshot in read-only mode; typed source join needs attention before Save or Server playback.";
-			return;
-		}
-	}
-	if (source.bOpenValtanEffectWorkspace &&
-		(nullptr == m_pEffectTool ||
-		!m_pEffectTool->Open_ValtanAllEffectsWorkspace()))
-	{
-		m_strToolStatus = "Valtan Effect Resource is ready, but its direct-authored workspace could not be opened.";
-		return;
-	}
-	m_strToolStatus = "Opened " + source.strDisplayName + " from " +
-		source.strCanonicalPath + ". Select its semantic row to edit in Detail; this F1 summary never edits or republishes files directly.";
-}
-
 void CMainApp::RefreshDebugResourceFiles()
 {
 	struct RESOURCE_ROOT
@@ -6415,7 +6279,7 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 	{
 		constexpr const char_t* profiles[] =
 		{
-			"MN_RPCT_00", "MN_RPCT_05", "MN_RPCT_06",
+			"MN_RPCT_00", "MN_RPCT_03", "MN_RPCT_05", "MN_RPCT_06",
 			"MN_RPCT_07", "MN_RPCZ_00"
 		};
 		for (const char_t* pProfile : profiles)
@@ -6452,65 +6316,804 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 			". Opened its domain owner only; this arbitrary file was not loaded or presented as an editable canonical document.");
 }
 
-void CMainApp::RenderDebugResourceFiles()
+void CMainApp::RenderKoukuSaydonArenaControls()
 {
-	ImGui::SeparatorText("Authoring Sources");
+	if (!ImGui::CollapsingHeader("KoukuSaydon Arena", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
 	ImGui::TextDisabled(
-		"Canonical owner entry points only. Detailed Pattern, Sequence, Effect, Sound and Resource rows load inside the selected Tool, never in F1.");
-	if (!m_bDebugAuthoringSourceRefreshAttempted)
-		RefreshDebugAuthoringSources();
-	if (ImGui::SmallButton("Refresh Canonical Sources"))
-		RefreshDebugAuthoringSources();
-	ImGui::SameLine();
-	ImGui::TextDisabled("%zu meaningful entry points", m_DebugAuthoringSources.size());
-
-	if (ImGui::BeginChild(
-		"CanonicalAuthoringSources", ImVec2(0.f, 300.f), true))
+		"Each gate asks the Server to raise its disabled boss placements, moves only your player, and points the boss HUD at that gate's boss.");
+	ImGui::TextDisabled(
+		"Spawned bosses wait idle. The Boss Tool (Play Isolated / Start Full Pattern) and Complete Play target the raised gate boss; a pattern plays only when the Product lists that boss body.");
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 	{
-		if (ImGui::BeginTable(
-			"CanonicalAuthoringSourceTable", 3,
-			ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
-			ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
-		{
-			ImGui::TableSetupColumn("Workbench", ImGuiTableColumnFlags_WidthFixed, 185.f);
-			ImGui::TableSetupColumn("Canonical source / role", ImGuiTableColumnFlags_WidthStretch);
-			ImGui::TableSetupColumn("State / action", ImGuiTableColumnFlags_WidthFixed, 155.f);
-			ImGui::TableHeadersRow();
-			for (size_t iSource = 0u;
-				iSource < m_DebugAuthoringSources.size(); ++iSource)
-			{
-				const DEBUG_AUTHORING_SOURCE& source =
-					m_DebugAuthoringSources[iSource];
-				ImGui::PushID(static_cast<int32_t>(iSource));
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::TextUnformatted(source.strDisplayName.c_str());
-				ImGui::TextDisabled("%s", source.strDomain.c_str());
-				ImGui::TableSetColumnIndex(1);
-				ImGui::TextWrapped("%s", source.strCanonicalPath.c_str());
-				ImGui::TextDisabled(
-					"%zu canonical owner document%s",
-					source.iDocumentCount,
-					1u == source.iDocumentCount ? "" : "s");
-				if (ImGui::IsItemHovered())
-					ImGui::SetTooltip("%s", source.strDescription.c_str());
-				ImGui::TableSetColumnIndex(2);
-				if (source.bCanonicalSourceReady)
-					ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.45f, 1.f), "READY");
-				else
-					ImGui::TextColored(ImVec4(0.95f, 0.35f, 0.3f, 1.f), "MISSING");
-				ImGui::BeginDisabled(!source.bCanonicalSourceReady);
-				if (ImGui::SmallButton(source.strActionLabel.c_str()))
-					OpenDebugAuthoringSource(iSource);
-				ImGui::EndDisabled();
-				ImGui::PopID();
-			}
-			ImGui::EndTable();
-		}
+		ImGui::TextDisabled(
+			"Enter KoukuSaydon Arena through Lobby Server admission first.");
+		return;
 	}
-	ImGui::EndChild();
+	CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	if (nullptr == pArena)
+	{
+		ImGui::TextDisabled("KoukuSaydon Arena Level instance is unavailable.");
+		return;
+	}
+	const auto& gates = CLevel_KakulSaydonArena::Get_DebugGates();
+	/* No gate may be pressed while the previous player move is unanswered:
+	   the Server would replace the bosses but refuse the second move, leaving
+	   the player on the old gate. The raised gate cannot be re-pressed. */
+	const bool_t placementPending = pArena->Is_DebugGatePending() ||
+		pArena->Get_DebugPlayerController().Is_DebugPlayerPlacementPending();
+	for (size_t iGate = 0u; iGate < gates.size(); ++iGate)
+	{
+		const CLevel_KakulSaydonArena::KAKUL_DEBUG_GATE& gate = gates[iGate];
+		ImGui::PushID(static_cast<int32_t>(iGate));
+		const bool_t deferred = nullptr != gate.pDeferredReason;
+		const bool_t active = iGate == pArena->Get_ActiveDebugGate();
+		ImGui::BeginDisabled(deferred || active || placementPending);
+		if (ImGui::Button(gate.pLabel, ImVec2(260.f, 0.f)))
+		{
+			std::string status;
+			(void)pArena->Debug_ActivateGate(iGate, status);
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		if (deferred)
+		{
+			ImGui::TextDisabled("%s", gate.pDeferredReason);
+		}
+		else if (active)
+		{
+			ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.45f, 1.f),
+				"active | player (%.2f, %.2f, %.2f) | HUD %s",
+				gate.vPlayerPosition.x, gate.vPlayerPosition.y, gate.vPlayerPosition.z,
+				nullptr != gate.pHudFocusArchetypeId ?
+					gate.pHudFocusArchetypeId : "(none)");
+		}
+		else
+		{
+			ImGui::TextDisabled("player (%.2f, %.2f, %.2f) | HUD %s",
+				gate.vPlayerPosition.x, gate.vPlayerPosition.y, gate.vPlayerPosition.z,
+				nullptr != gate.pHudFocusArchetypeId ?
+					gate.pHudFocusArchetypeId : "(none)");
+		}
+		ImGui::PopID();
+	}
+	ImGui::BeginDisabled(placementPending);
+	if (ImGui::SmallButton("Despawn Arena Bosses"))
+	{
+		std::string status;
+		(void)pArena->Debug_DespawnArenaBosses(status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	const std::string& focus = CCombatHUDViewModel::Get().Get_BossFocusArchetype();
+	ImGui::TextDisabled("HUD focus: %s",
+		focus.empty() ? "(last primary boss)" : focus.c_str());
+	ImGui::TextDisabled("Pattern audition target: %s (%s)",
+		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossPlacementId().c_str(),
+		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossArchetypeId().c_str());
+	if (placementPending)
+		ImGui::TextDisabled("Gate controls wait for all boss-spawn and player-move replies.");
+	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
+	ImGui::TextWrapped("%s",
+		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
+
+	/* Madness avatar: the Server owns the form and the snapshot swaps the
+	   body, so the buttons only submit intent and follow the replicated form. */
+	ImGui::SeparatorText("Madness Avatar");
+	const HUD_PLAYER_STATE& hudPlayer = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t isClown =
+		LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN == hudPlayer.eMadnessForm;
+	CPlayerController& controller = pArena->Get_DebugPlayerController();
+	ImGui::BeginDisabled(isClown || controller.Is_DebugMadnessFormPending());
+	if (ImGui::Button("Change to Clown", ImVec2(160.f, 0.f)))
+		(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!isClown || controller.Is_DebugMadnessFormPending());
+	if (ImGui::Button("Return to Player", ImVec2(160.f, 0.f)))
+		(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("Madness %u / %u | form: %s",
+		hudPlayer.iCurrentMadness, hudPlayer.iMaximumMadness,
+		isClown ? "clown" : "player");
+	if (!controller.Get_DebugMadnessFormStatus().empty())
+		ImGui::TextWrapped("%s", controller.Get_DebugMadnessFormStatus().c_str());
+	RenderKoukuSaydonBossTuningControls();
+}
+
+namespace
+{
+	/* Temporary tuning helpers: number patching keeps the authored JSON text
+	   intact except for the one value being saved, so the files stay diffable
+	   and their CRLF/indent style survives. Remove with the tuning slice. */
+	bool_t Read_ProjectTextFile(
+		const wchar_t* pRelativePath, std::string& outText, std::filesystem::path& outPath)
+	{
+		outPath = CProjectDataRoot::Resolve(pRelativePath);
+		std::ifstream input(outPath, std::ios::binary);
+		if (!input)
+			return false;
+		outText.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+		return !input.bad() && !outText.empty();
+	}
+
+	bool_t Read_TuningFile(const std::filesystem::path& path, std::string& text)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+			return false;
+		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+		return !input.bad();
+	}
+
+	/* Stage both documents before replacing either. Backups survive a failed
+	   rollback; stale authoring bytes never get silently overwritten. */
+	bool_t Commit_TuningFiles(
+		const std::array<std::filesystem::path, 2>& paths,
+		const std::array<std::string, 2>& expected,
+		const std::array<std::string, 2>& replacements,
+		std::string& status)
+	{
+		status.clear();
+		const std::wstring suffix = L".kouku-tuning." +
+			std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
+		std::array<std::filesystem::path, 2> staged, backups;
+		std::size_t promoted = 0u;
+		auto cleanup = [&]()
+		{
+			for (const auto& path : staged)
+			{
+				std::error_code error;
+				if (!path.empty()) std::filesystem::remove(path, error);
+			}
+		};
+		for (std::size_t i = 0u; i < paths.size(); ++i)
+		{
+			std::string current;
+			if (!Read_TuningFile(paths[i], current) || current != expected[i])
+			{
+				status = "Tuning source changed; Reload Baseline before saving. Nothing was written.";
+				cleanup();
+				return false;
+			}
+			staged[i] = paths[i]; staged[i] += suffix + L".tmp";
+			backups[i] = paths[i]; backups[i] += suffix + L".rollback";
+			const HANDLE file = CreateFileW(staged[i].c_str(), GENERIC_WRITE, 0,
+				nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+			DWORD written = 0u;
+			const bool_t durable = INVALID_HANDLE_VALUE != file &&
+				WriteFile(file, replacements[i].data(),
+					static_cast<DWORD>(replacements[i].size()), &written, nullptr) &&
+				written == replacements[i].size() && FlushFileBuffers(file);
+			if (INVALID_HANDLE_VALUE != file) CloseHandle(file);
+			std::string verified;
+			if (!durable || !Read_TuningFile(staged[i], verified) || verified != replacements[i])
+			{
+				status = "Could not stage tuning files; original files are unchanged.";
+				cleanup();
+				return false;
+			}
+		}
+		for (std::size_t i = 0u; i < paths.size(); ++i)
+		{
+			std::string current;
+			if (!Read_TuningFile(paths[i], current) || current != expected[i])
+			{
+				status = "Tuning source changed during save; reverting committed files.";
+				break;
+			}
+			if (!ReplaceFileW(paths[i].c_str(), staged[i].c_str(), backups[i].c_str(), 0, nullptr, nullptr))
+			{
+				const DWORD error = GetLastError();
+				status = "Tuning file replacement failed (" + std::to_string(error) +
+					"); reverting committed files.";
+				// ReplaceFile may move the original to the backup before failing.
+				// Restore that exact source without replacing a concurrent writer.
+				if (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 == error &&
+					(!Read_TuningFile(backups[i], current) || current != expected[i] ||
+					 !MoveFileExW(backups[i].c_str(), paths[i].c_str(), MOVEFILE_WRITE_THROUGH)))
+					status += " Recovery copy retained at " + backups[i].string();
+				break;
+			}
+			++promoted;
+			// The atomic replace captures the source it actually replaced. A
+			// writer between our read and replace must be restored, not lost.
+			if (!Read_TuningFile(backups[i], current) || current != expected[i])
+			{
+				status = "Tuning source changed at replacement; reverting committed files.";
+				break;
+			}
+			if (!Read_TuningFile(paths[i], current) || current != replacements[i])
+			{
+				status = "Tuning write verification failed; reverting committed files.";
+				break;
+			}
+		}
+		if (promoted != paths.size() || !status.empty())
+		{
+			while (promoted > 0u)
+			{
+				const std::size_t i = --promoted;
+				std::string current;
+				if (!Read_TuningFile(paths[i], current) || current != replacements[i] ||
+					!MoveFileExW(backups[i].c_str(), paths[i].c_str(),
+						MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+				{
+					status += " Recovery copy retained at " + backups[i].string();
+				}
+			}
+			cleanup();
+			return false;
+		}
+		for (const auto& path : backups)
+		{
+			std::error_code error;
+			std::filesystem::remove(path, error);
+		}
+		cleanup();
+		return true;
+	}
+
+	std::string Format_TuningNumber(const double value)
+	{
+		char_t buffer[64]{};
+		sprintf_s(buffer, "%.6g", value);
+		std::string text = buffer;
+		if (std::string::npos == text.find('.') && std::string::npos == text.find('e'))
+			text += ".0";
+		return text;
+	}
+
+	bool_t Is_JsonNumberChar(const char_t c)
+	{
+		return ('0' <= c && c <= '9') || '-' == c || '+' == c || '.' == c || 'e' == c || 'E' == c;
+	}
+
+	/* Replaces the number after `key` inside the row that starts at `anchor`.
+	The row ends where the next row's identity key (`nextRowKey`) begins, so a
+	key placed after a nested object such as presentationClips is still found. */
+	bool_t Patch_JsonNumberAfter(
+		std::string& text, const std::string_view anchor, const std::string_view key,
+		const double value, const std::string_view nextRowKey)
+	{
+		const size_t anchorPos = text.find(anchor);
+		if (std::string::npos == anchorPos)
+			return false;
+		const size_t keyPos = text.find(key, anchorPos);
+		const size_t rowEnd = text.find(nextRowKey, anchorPos + anchor.size());
+		if (std::string::npos == keyPos || keyPos >= rowEnd || !std::isfinite(value))
+			return false;
+		const size_t begin = keyPos + key.size();
+		size_t end = begin;
+		while (end < text.size() && Is_JsonNumberChar(text[end]))
+			++end;
+		if (end == begin)
+			return false;
+		text.replace(begin, end - begin, Format_TuningNumber(value));
+		return true;
+	}
+
+	bool_t Patch_JsonPositionAfter(
+		std::string& text, const std::string_view anchor, const float3_t& position)
+	{
+		const size_t anchorPos = text.find(anchor);
+		if (std::string::npos == anchorPos)
+			return false;
+		const std::string_view key = "\"position\": [";
+		const size_t keyPos = text.find(key, anchorPos);
+		if (std::string::npos == keyPos || keyPos >= text.find('}', anchorPos))
+			return false;
+		const size_t begin = keyPos + key.size();
+		const size_t end = text.find(']', begin);
+		if (std::string::npos == end)
+			return false;
+		const std::string newline = std::string::npos != text.find("\r\n") ? "\r\n" : "\n";
+		const std::string replacement = newline + "        " + Format_TuningNumber(position.x) +
+			"," + newline + "        " + Format_TuningNumber(position.y) +
+			"," + newline + "        " + Format_TuningNumber(position.z) + newline + "      ";
+		text.replace(begin, end - begin, replacement);
+		return true;
+	}
+
+	const DATA_JSON_VALUE* Find_ArrayObjectByString(
+		const DATA_JSON_VALUE& root, const char_t* pArrayName,
+		const char_t* pKey, const std::string_view value)
+	{
+		const DATA_JSON_VALUE* pArray = root.Find(pArrayName);
+		if (nullptr == pArray || !pArray->Is_Array())
+			return nullptr;
+		for (const DATA_JSON_VALUE& entry : pArray->Get_Array())
+		{
+			const DATA_JSON_VALUE* pField = entry.Is_Object() ? entry.Find(pKey) : nullptr;
+			if (nullptr != pField && pField->Is_String() && pField->Get_String() == value)
+				return &entry;
+		}
+		return nullptr;
+	}
+
+	constexpr const wchar_t* KOUKU_TUNE_CATALOG_PATH = L"Actors/BossCatalog.json";
+	constexpr const wchar_t* KOUKU_TUNE_WORLD_PATH = L"Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json";
+	constexpr const char_t* KOUKU_TUNE_BIG_SAYDON = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+	constexpr const char_t* KOUKU_TUNE_BIG_SAYDON_PLACEMENT = "boss.kakulsaydon.g2.big-saydon";
+	/* Every arena boss placement the slice can yaw. The two Saydon bodies
+	whose catalog row declares the hammer also expose hammer scale/rotation. */
+	struct KOUKU_TUNE_BOSS
+	{
+		const char_t* pLabel;
+		const char_t* pArchetypeId;
+		const char_t* pPlacementId;
+	};
+	constexpr KOUKU_TUNE_BOSS KOUKU_TUNE_BOSSES[] = {
+		{ "G1 Saydon", "BOSS_KAKULSAYDON_G1_SAYDON", "boss.kakulsaydon.g1.saydon" },
+		{ "G2 Big Saydon", KOUKU_TUNE_BIG_SAYDON, KOUKU_TUNE_BIG_SAYDON_PLACEMENT },
+		{ "G2 Kouku", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku" },
+		{ "G3 Saydon", "BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon" },
+		{ "Bingo Saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON", "boss.kakulsaydon.bingo.saydon" },
+	};
+	static_assert(std::size(KOUKU_TUNE_BOSSES) == 5u,
+		"CMainApp::m_KoukuTuneBosses holds one row per KOUKU_TUNE_BOSSES entry");
+
+	/* [0, 360) for a placement yawDegrees; (-360, 360) keeps the sign of a
+	catalog rotation axis so a tuned -30 is saved as -30. */
+	double Wrap_YawDegrees(const double degrees)
+	{
+		double wrapped = std::fmod(degrees, 360.0);
+		return wrapped < 0.0 ? wrapped + 360.0 : wrapped;
+	}
+	f32_t Wrap_RotationDegrees(const f32_t degrees)
+	{
+		return static_cast<f32_t>(std::fmod(static_cast<double>(degrees), 360.0));
+	}
+
+	/* Replaces the three numbers of an inline `[x, y, z]` after `key` inside
+	the row that starts at `anchor`, bounded like Patch_JsonNumberAfter. */
+	bool_t Patch_JsonInlineVector3After(
+		std::string& text, const std::string_view anchor, const std::string_view key,
+		const float3_t& value, const std::string_view nextRowKey)
+	{
+		const size_t anchorPos = text.find(anchor);
+		if (std::string::npos == anchorPos)
+			return false;
+		const size_t keyPos = text.find(key, anchorPos);
+		const size_t rowEnd = text.find(nextRowKey, anchorPos + anchor.size());
+		if (std::string::npos == keyPos || keyPos >= rowEnd)
+			return false;
+		const size_t begin = keyPos + key.size();
+		const size_t end = text.find(']', begin);
+		if (std::string::npos == end || end >= rowEnd ||
+			!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z))
+			return false;
+		text.replace(begin, end - begin,
+			Format_TuningNumber(value.x) + ", " + Format_TuningNumber(value.y) + ", " +
+			Format_TuningNumber(value.z));
+		return true;
+	}
+}
+
+void CMainApp::Load_KoukuTuningBaseline()
+{
+	m_bKoukuTuneLoaded = true;
+	m_bKoukuTuneBaselineValid = false;
+	std::string catalogText, worldText;
+	std::filesystem::path catalogPath, worldPath;
+	DATA_JSON_VALUE catalogRoot, worldRoot;
+	std::string parseError;
+	if (!Read_ProjectTextFile(KOUKU_TUNE_CATALOG_PATH, catalogText, catalogPath) ||
+		!CDataJson::Parse(catalogText, catalogRoot, parseError) ||
+		!Read_ProjectTextFile(KOUKU_TUNE_WORLD_PATH, worldText, worldPath) ||
+		!CDataJson::Parse(worldText, worldRoot, parseError))
+	{
+		m_strKoukuTuneStatus = "Tuning baseline could not be read: " + parseError;
+		return;
+	}
+	const auto isScale = [](const DATA_JSON_VALUE* pValue)
+	{
+		return nullptr != pValue && pValue->Is_Number() && std::isfinite(pValue->Get_Number()) &&
+			pValue->Get_Number() > 0.0 && pValue->Get_Number() <= 100.0;
+	};
+	const auto isDegrees = [](const DATA_JSON_VALUE* pValue)
+	{
+		return nullptr != pValue && pValue->Is_Number() && std::isfinite(pValue->Get_Number()) &&
+			std::fabs(pValue->Get_Number()) <= 360.0;
+	};
+	const DATA_JSON_VALUE* pBigSaydon = Find_ArrayObjectByString(
+		catalogRoot, "bosses", "archetypeId", KOUKU_TUNE_BIG_SAYDON);
+	const DATA_JSON_VALUE* pBigPlacement = Find_ArrayObjectByString(
+		worldRoot, "placements", "placementId", KOUKU_TUNE_BIG_SAYDON_PLACEMENT);
+	const DATA_JSON_VALUE* pBodyScale = nullptr == pBigSaydon ? nullptr : pBigSaydon->Find("bodyModelPreScale");
+	const DATA_JSON_VALUE* pPosition = nullptr == pBigPlacement ? nullptr : pBigPlacement->Find("position");
+	const BOSS_ACTOR_ENTRY* pLiveBig = CActorCatalog::Find_Boss(KOUKU_TUNE_BIG_SAYDON);
+	if (!isScale(pBodyScale) || nullptr == pLiveBig || pLiveBig->bodyModelPreScale <= 0.f ||
+		nullptr == pPosition || !pPosition->Is_Array() || 3u != pPosition->Get_Array().size() ||
+		!std::all_of(pPosition->Get_Array().begin(), pPosition->Get_Array().end(),
+			[](const DATA_JSON_VALUE& value) { return value.Is_Number() &&
+				std::isfinite(value.Get_Number()) && std::fabs(value.Get_Number()) <= 1'000'000.0; }))
+	{
+		m_strKoukuTuneStatus = "Tuning baseline rows are missing in the catalog or world JSON.";
+		return;
+	}
+	KOUKU_TUNE_BOSS_ROW rows[std::size(KOUKU_TUNE_BOSSES)]{};
+	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
+	{
+		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
+		const DATA_JSON_VALUE* pRow = Find_ArrayObjectByString(
+			catalogRoot, "bosses", "archetypeId", boss.pArchetypeId);
+		const DATA_JSON_VALUE* pPlacement = Find_ArrayObjectByString(
+			worldRoot, "placements", "placementId", boss.pPlacementId);
+		const DATA_JSON_VALUE* pYaw = nullptr == pPlacement ? nullptr : pPlacement->Find("yawDegrees");
+		const BOSS_ACTOR_ENTRY* pLive = CActorCatalog::Find_Boss(boss.pArchetypeId);
+		if (nullptr == pRow || nullptr == pLive || !isDegrees(pYaw))
+		{
+			m_strKoukuTuneStatus = std::string("Tuning baseline row is missing for ") + boss.pArchetypeId + ".";
+			return;
+		}
+		KOUKU_TUNE_BOSS_ROW& row = rows[i];
+		row.fBaselineYawDegrees = static_cast<f32_t>(pYaw->Get_Number());
+		row.bHasWeapon = !pLive->weaponModel.empty();
+		if (!row.bHasWeapon)
+			continue;
+		const DATA_JSON_VALUE* pWeaponScale = pRow->Find("weaponModelPreScale");
+		const DATA_JSON_VALUE* pRotation = pRow->Find("weaponModelPreRotationDegrees");
+		if (!isScale(pWeaponScale) || pLive->weaponModelPreScale <= 0.f ||
+			nullptr == pRotation || !pRotation->Is_Array() || 3u != pRotation->Get_Array().size() ||
+			!isDegrees(&pRotation->Get_Array()[0]) || !isDegrees(&pRotation->Get_Array()[1]) ||
+			!isDegrees(&pRotation->Get_Array()[2]))
+		{
+			m_strKoukuTuneStatus = std::string("Tuning baseline hammer values are invalid for ") + boss.pArchetypeId + ".";
+			return;
+		}
+		row.fHammerCatalogScale = pLive->weaponModelPreScale;
+		row.vHammerCatalogRotation = pLive->weaponModelPreRotationDegrees;
+		row.fHammerScaleMultiplier = static_cast<f32_t>(
+			pWeaponScale->Get_Number() / row.fHammerCatalogScale);
+		row.vHammerRotationBaseline = float3_t(
+			static_cast<f32_t>(pRotation->Get_Array()[0].Get_Number()),
+			static_cast<f32_t>(pRotation->Get_Array()[1].Get_Number()),
+			static_cast<f32_t>(pRotation->Get_Array()[2].Get_Number()));
+	}
+	// Multipliers are relative to the prototypes loaded by this Client, even
+	// after Save/Reload. Saving never changes that live reference scale.
+	m_fKoukuTuneBigSaydonCatalogScale = pLiveBig->bodyModelPreScale;
+	const auto& position = pPosition->Get_Array();
+	m_vKoukuTuneBigSaydonPlacement = float3_t(
+		static_cast<f32_t>(position[0].Get_Number()),
+		static_cast<f32_t>(position[1].Get_Number()),
+		static_cast<f32_t>(position[2].Get_Number()));
+	m_fKoukuTuneBigSaydonScaleMultiplier = static_cast<f32_t>(
+		pBodyScale->Get_Number() / m_fKoukuTuneBigSaydonCatalogScale);
+	m_vKoukuTuneBigSaydonOffset = {};
+	std::copy(std::begin(rows), std::end(rows), std::begin(m_KoukuTuneBosses));
+	m_strKoukuTuneCatalogBaseline = catalogText;
+	m_strKoukuTuneWorldBaseline = worldText;
+	m_bKoukuTuneBaselineValid = true;
+	m_strKoukuTuneStatus = "Baseline loaded: big Saydon scale " +
+		Format_TuningNumber(m_fKoukuTuneBigSaydonCatalogScale) + ", position (" +
+		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.x) + ", " +
+		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.y) + ", " +
+		Format_TuningNumber(m_vKoukuTuneBigSaydonPlacement.z) +
+		"); yaw and hammer rows for " + std::to_string(std::size(KOUKU_TUNE_BOSSES)) + " arena bosses.";
+}
+
+void CMainApp::Save_KoukuTuning()
+{
+	if (!m_bKoukuTuneBaselineValid)
+	{
+		m_strKoukuTuneStatus = "Load a valid tuning baseline before saving.";
+		return;
+	}
+	std::string catalogText, worldText;
+	std::filesystem::path catalogPath, worldPath;
+	if (!Read_ProjectTextFile(KOUKU_TUNE_CATALOG_PATH, catalogText, catalogPath) ||
+		!Read_ProjectTextFile(KOUKU_TUNE_WORLD_PATH, worldText, worldPath))
+	{
+		m_strKoukuTuneStatus = "Tuning save could not read the catalog or world JSON.";
+		return;
+	}
+	if (catalogText != m_strKoukuTuneCatalogBaseline || worldText != m_strKoukuTuneWorldBaseline)
+	{
+		m_strKoukuTuneStatus = "Tuning source changed; Reload Baseline before saving. Nothing was written.";
+		return;
+	}
+	const double bodyScale = static_cast<double>(m_fKoukuTuneBigSaydonCatalogScale) *
+		static_cast<double>(m_fKoukuTuneBigSaydonScaleMultiplier);
+	const float3_t position(
+		m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x,
+		m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y,
+		m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z);
+	if (!std::isfinite(bodyScale) || bodyScale <= 0.0 || bodyScale > 100.0 ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+		std::fabs(position.x) > 1'000'000.f || std::fabs(position.y) > 1'000'000.f || std::fabs(position.z) > 1'000'000.f)
+	{
+		m_strKoukuTuneStatus = "Tuning values are outside the catalog/world limits; nothing was written.";
+		return;
+	}
+	const std::string bigSaydonRow = std::string("\"archetypeId\": \"") + KOUKU_TUNE_BIG_SAYDON + "\"";
+	const std::string bigPlacementRow =
+		std::string("\"placementId\": \"") + KOUKU_TUNE_BIG_SAYDON_PLACEMENT + "\"";
+	if (!Patch_JsonNumberAfter(catalogText, bigSaydonRow,
+			"\"bodyModelPreScale\": ", bodyScale, "\"archetypeId\":") ||
+		!Patch_JsonPositionAfter(worldText, bigPlacementRow, position))
+	{
+		m_strKoukuTuneStatus = "Tuning save could not locate the big Saydon catalog or placement rows; nothing was written.";
+		return;
+	}
+	std::string summary;
+	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
+	{
+		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
+		const KOUKU_TUNE_BOSS_ROW& row = m_KoukuTuneBosses[i];
+		const double yaw = Wrap_YawDegrees(
+			static_cast<double>(row.fBaselineYawDegrees) + static_cast<double>(row.fYawOffset));
+		const std::string placementRow = std::string("\"placementId\": \"") + boss.pPlacementId + "\"";
+		if (!std::isfinite(yaw) || !Patch_JsonNumberAfter(worldText, placementRow,
+				"\"yawDegrees\": ", yaw, "\"placementId\":"))
+		{
+			m_strKoukuTuneStatus = std::string("Tuning save could not write yawDegrees for ") +
+				boss.pPlacementId + "; nothing was written.";
+			return;
+		}
+		summary += std::string(boss.pLabel) + " yaw " + Format_TuningNumber(yaw);
+		if (row.bHasWeapon)
+		{
+			const double hammerScale = static_cast<double>(row.fHammerCatalogScale) *
+				static_cast<double>(row.fHammerScaleMultiplier);
+			const float3_t rotation(
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z));
+			const std::string catalogRow = std::string("\"archetypeId\": \"") + boss.pArchetypeId + "\"";
+			if (!std::isfinite(hammerScale) || hammerScale <= 0.0 || hammerScale > 100.0 ||
+				!Patch_JsonNumberAfter(catalogText, catalogRow,
+					"\"weaponModelPreScale\": ", hammerScale, "\"archetypeId\":") ||
+				!Patch_JsonInlineVector3After(catalogText, catalogRow,
+					"\"weaponModelPreRotationDegrees\": [", rotation, "\"archetypeId\":"))
+			{
+				m_strKoukuTuneStatus = std::string("Tuning save could not write the hammer values for ") +
+					boss.pArchetypeId + "; nothing was written.";
+				return;
+			}
+			summary += ", hammer scale " + Format_TuningNumber(hammerScale) + " rotation (" +
+				Format_TuningNumber(rotation.x) + ", " + Format_TuningNumber(rotation.y) + ", " +
+				Format_TuningNumber(rotation.z) + ")";
+		}
+		summary += "; ";
+	}
+	DATA_JSON_VALUE verify;
+	std::string parseError;
+	if (!CDataJson::Parse(catalogText, verify, parseError) ||
+		!CDataJson::Parse(worldText, verify, parseError))
+	{
+		m_strKoukuTuneStatus = "Tuning save produced invalid JSON; nothing was written: " + parseError;
+		return;
+	}
+	std::string saveError;
+	if (!Commit_TuningFiles({ catalogPath, worldPath },
+		{ m_strKoukuTuneCatalogBaseline, m_strKoukuTuneWorldBaseline },
+		{ catalogText, worldText }, saveError))
+	{
+		m_strKoukuTuneStatus = saveError;
+		return;
+	}
+	// Keep the edit origin and live multipliers unchanged: repeated Save is
+	// idempotent and the drawn scale/offset does not jump after writing.
+	m_strKoukuTuneCatalogBaseline = catalogText;
+	m_strKoukuTuneWorldBaseline = worldText;
+	m_strKoukuTuneStatus = "Saved bodyModelPreScale " + Format_TuningNumber(bodyScale) +
+		" (big Saydon), position (" + Format_TuningNumber(position.x) + ", " +
+		Format_TuningNumber(position.y) + ", " + Format_TuningNumber(position.z) + "); " + summary +
+		"Scale/rotation apply on the next Client run; position/yaw after Publish-WorldGameplay + Server restart. The live offsets stay until Reload.";
+}
+
+void CMainApp::RenderKoukuSaydonBossTuningControls()
+{
+	CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	if (nullptr == pArena)
+		return;
+	ImGui::SeparatorText("Arena Boss Tuning (temporary)");
 	ImGui::TextDisabled(
-		"F1 does not build a raw physical-file index. Open the owning Tool to enumerate and edit its admitted resources.");
+		"Live values are Client-side multipliers/offsets on the spawned bodies. Save writes catalog scale/rotation (next Client run) and world position/yaw (world publish + Server restart). Remove this slice once tuned.");
+	if (!m_bKoukuTuneLoaded)
+		Load_KoukuTuningBaseline();
+	if (ImGui::SmallButton("Reload Baseline##KoukuTune"))
+		Load_KoukuTuningBaseline();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bKoukuTuneBaselineValid);
+	if (ImGui::SmallButton("Save Tuning##KoukuTune"))
+		Save_KoukuTuning();
+	ImGui::EndDisabled();
+	if (!m_bKoukuTuneBaselineValid)
+	{
+		ImGui::TextWrapped("%s", m_strKoukuTuneStatus.c_str());
+		return;
+	}
+	const std::shared_ptr<CNpc> bigSaydon =
+		pArena->Debug_FindArenaBossNpc(KOUKU_TUNE_BIG_SAYDON);
+	ImGui::TextDisabled("Big Saydon body: %s", nullptr != bigSaydon ? "spawned" : "not spawned");
+	ImGui::SetNextItemWidth(260.f);
+	ImGui::SliderFloat("Big Saydon scale x##KoukuTune", &m_fKoukuTuneBigSaydonScaleMultiplier,
+		0.05f, 20.f, "%.3f", ImGuiSliderFlags_Logarithmic);
+	ImGui::SetNextItemWidth(260.f);
+	ImGui::DragFloat3("Big Saydon offset (m)##KoukuTune", &m_vKoukuTuneBigSaydonOffset.x,
+		0.05f, -50.f, 50.f, "%.2f");
+	if (nullptr != bigSaydon)
+	{
+		bigSaydon->Set_DebugPresentationScale(m_fKoukuTuneBigSaydonScaleMultiplier);
+		const float3_t& serverPosition = bigSaydon->Get_DebugUnadjustedPosition();
+		bigSaydon->Set_DebugPresentationOffset(float3_t(
+			m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x - serverPosition.x,
+			m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y - serverPosition.y,
+			m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z - serverPosition.z));
+	}
+	ImGui::Text("-> bodyModelPreScale %s | position (%.2f, %.2f, %.2f)",
+		Format_TuningNumber(static_cast<double>(m_fKoukuTuneBigSaydonCatalogScale) *
+			static_cast<double>(m_fKoukuTuneBigSaydonScaleMultiplier)).c_str(),
+		m_vKoukuTuneBigSaydonPlacement.x + m_vKoukuTuneBigSaydonOffset.x,
+		m_vKoukuTuneBigSaydonPlacement.y + m_vKoukuTuneBigSaydonOffset.y,
+		m_vKoukuTuneBigSaydonPlacement.z + m_vKoukuTuneBigSaydonOffset.z);
+	for (size_t i = 0u; i < std::size(KOUKU_TUNE_BOSSES); ++i)
+	{
+		const KOUKU_TUNE_BOSS& boss = KOUKU_TUNE_BOSSES[i];
+		KOUKU_TUNE_BOSS_ROW& row = m_KoukuTuneBosses[i];
+		const std::shared_ptr<CNpc> npc = pArena->Debug_FindArenaBossNpc(boss.pArchetypeId);
+		ImGui::PushID(static_cast<int32_t>(i));
+		ImGui::SeparatorText(boss.pLabel);
+		ImGui::TextDisabled("%s | saved yawDegrees %.1f", nullptr != npc ? "spawned" : "not spawned",
+			row.fBaselineYawDegrees);
+		ImGui::SetNextItemWidth(260.f);
+		ImGui::DragFloat("yaw offset (deg)##KoukuTune", &row.fYawOffset, 0.5f, -360.f, 360.f, "%.1f");
+		if (row.bHasWeapon)
+		{
+			ImGui::SetNextItemWidth(260.f);
+			ImGui::SliderFloat("hammer scale x##KoukuTune", &row.fHammerScaleMultiplier,
+				0.01f, 100.f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::SetNextItemWidth(260.f);
+			ImGui::DragFloat3("hammer rotation offset (deg)##KoukuTune", &row.vHammerRotationOffset.x,
+				0.5f, -360.f, 360.f, "%.1f");
+		}
+		if (nullptr != npc)
+		{
+			const f32_t targetYaw = static_cast<f32_t>(Wrap_YawDegrees(
+				static_cast<double>(row.fBaselineYawDegrees) + static_cast<double>(row.fYawOffset)));
+			npc->Set_DebugPresentationYawOffset(targetYaw - npc->Get_DebugUnadjustedYawDegrees());
+			if (row.bHasWeapon)
+			{
+				npc->Set_DebugWeaponScale(row.fHammerScaleMultiplier);
+				npc->Set_DebugWeaponRotation(row.vHammerCatalogRotation, float3_t(
+					Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
+					Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
+					Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z)));
+			}
+		}
+		const double yaw = Wrap_YawDegrees(
+			static_cast<double>(row.fBaselineYawDegrees) + static_cast<double>(row.fYawOffset));
+		if (row.bHasWeapon)
+		{
+			ImGui::Text("-> yawDegrees %.1f | weaponModelPreScale %s | weaponModelPreRotationDegrees (%.1f, %.1f, %.1f)",
+				yaw,
+				Format_TuningNumber(static_cast<double>(row.fHammerCatalogScale) *
+					static_cast<double>(row.fHammerScaleMultiplier)).c_str(),
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.x + row.vHammerRotationOffset.x),
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.y + row.vHammerRotationOffset.y),
+				Wrap_RotationDegrees(row.vHammerRotationBaseline.z + row.vHammerRotationOffset.z));
+		}
+		else
+		{
+			ImGui::Text("-> yawDegrees %.1f", yaw);
+		}
+		ImGui::PopID();
+	}
+	ImGui::TextWrapped("%s", m_strKoukuTuneStatus.c_str());
+}
+
+void CMainApp::RenderKoukuSaydonCompletePlayControls()
+{
+	if (!ImGui::CollapsingHeader(
+		"KoukuSaydon Complete Play (Server Boss Replay)"))
+	{
+		return;
+	}
+	ImGui::TextDisabled(
+		"Saved PRODUCT patterns of the KoukuSaydon composition, filtered by gate. Complete Play submits the pattern audition to the Server.");
+	ImGui::TextDisabled("Audition target: %s (%s). Raise a gate in KoukuSaydon Arena to retarget; a pattern plays only on a boss body its Product lists.",
+		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossPlacementId().c_str(),
+		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossArchetypeId().c_str());
+	if (nullptr == m_pKoukuSaydonBossTool)
+		m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+	if (ImGui::SmallButton(
+		m_bKoukuCompletePlayLoadAttempted ?
+			"Reload KoukuSaydon Inventory" :
+			"Load KoukuSaydon Inventory"))
+	{
+		std::string status;
+		(void)m_pKoukuSaydonBossTool->Reload(status);
+		m_bKoukuCompletePlayLoadAttempted = true;
+		m_strKoukuCompletePlayStatus = status;
+	}
+	if (!m_bKoukuCompletePlayLoadAttempted)
+	{
+		ImGui::TextDisabled(
+			"Inventory is loaded only on request so opening F1 never parses the KoukuSaydon Product.");
+		return;
+	}
+	/* Only the Gate 1 composition is projected as a Product today; the other
+	   gates list nothing until their compositions exist. */
+	static const char_t* const GATE_LABELS[] =
+	{
+		"1" "\xEA\xB4\x80\xEB\xAC\xB8",
+		"2" "\xEA\xB4\x80\xEB\xAC\xB8",
+		"3" "\xEA\xB4\x80\xEB\xAC\xB8",
+		"\xEB\xB9\x99\xEA\xB3\xA0",
+	};
+	constexpr int32_t GATE_COUNT = static_cast<int32_t>(std::size(GATE_LABELS));
+	m_iKoukuCompletePlayGate = (std::clamp)(m_iKoukuCompletePlayGate, 0, GATE_COUNT - 1);
+	ImGui::SetNextItemWidth(160.f);
+	if (ImGui::BeginCombo("Gate##KoukuCompletePlayGate", GATE_LABELS[m_iKoukuCompletePlayGate]))
+	{
+		for (int32_t iGate = 0; iGate < GATE_COUNT; ++iGate)
+		{
+			if (ImGui::Selectable(GATE_LABELS[iGate], iGate == m_iKoukuCompletePlayGate))
+				m_iKoukuCompletePlayGate = iGate;
+		}
+		ImGui::EndCombo();
+	}
+	const bool_t gateHasProduct = 0 == m_iKoukuCompletePlayGate &&
+		m_pKoukuSaydonBossTool->Has_SavedComposition();
+	const auto& patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
+	if (!gateHasProduct)
+	{
+		ImGui::TextDisabled("No saved PRODUCT composition for this gate yet.");
+	}
+	else
+	{
+		ImGui::Text("Saved Patterns (%zu)", patterns.size());
+		if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0.f, 180.f), true))
+		{
+			for (const CKoukuSaydonBossTool::PRODUCT_PATTERN& pattern : patterns)
+			{
+				const std::string label = pattern.strPatternId + " | " +
+					pattern.strDisplayName +
+					(pattern.strLoadError.empty() ? "" : " [Error]");
+				if (ImGui::Selectable(label.c_str(),
+					pattern.strPatternId == m_strKoukuCompletePlayPatternId))
+				{
+					m_strKoukuCompletePlayPatternId = pattern.strPatternId;
+				}
+			}
+		}
+		ImGui::EndChild();
+	}
+	const bool_t isKoukuArena = ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+		CGameInstance::Get().Get_CurrentLevelID();
+	const KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT& audition =
+		CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+	ImGui::BeginDisabled(!isKoukuArena || !gateHasProduct ||
+		m_strKoukuCompletePlayPatternId.empty() || audition.Is_InFlight());
+	if (ImGui::Button("Complete Play##KoukuServerPattern"))
+	{
+		(void)m_pKoukuSaydonBossTool->Play_PatternById(
+			m_strKoukuCompletePlayPatternId,
+			m_pKoukuSaydonBossTool->Get_SourceRevision(),
+			m_strKoukuCompletePlayStatus);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!isKoukuArena || !gateHasProduct ||
+		m_pKoukuSaydonBossTool->Get_PlayAllPatternIds().empty() ||
+		audition.Is_InFlight());
+	if (ImGui::Button("Complete Play All##KoukuServerPatternAll"))
+		(void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
+	ImGui::EndDisabled();
+	if (!isKoukuArena)
+	{
+		ImGui::TextDisabled(
+			"Complete Play requires Lobby -> KoukuSaydon Server admission.");
+	}
+	ImGui::TextDisabled("Server: %s",
+		Describe_KoukuSaydonPatternAuditionState(audition.eState));
+	if (!audition.strStatus.empty())
+		ImGui::TextWrapped("%s", audition.strStatus.c_str());
+	ImGui::TextWrapped("%s", m_strKoukuCompletePlayStatus.c_str());
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -7058,8 +7661,9 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
-	RenderDebugResourceFiles();
+	RenderKoukuSaydonArenaControls();
 	RenderCompletePlayControls();
+	RenderKoukuSaydonCompletePlayControls();
 	RenderServerArenaActiveControls();
 
 	ImGui::SeparatorText("Diagnostics");

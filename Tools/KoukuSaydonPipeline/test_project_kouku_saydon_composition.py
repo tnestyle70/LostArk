@@ -372,14 +372,40 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         stage["animationOccurrences"][0]["profileId"] = "MN_RPCT_07"
         self.validate(document)
 
-    def test_non_kouku_actor_cannot_publish_as_gate1_boss(self):
+    def test_actor_without_arena_boss_body_cannot_publish(self):
+        # Pure validation accepts any physical actor; publish joins the actor body
+        # against Data/Actors/BossCatalog.json, so a body no arena boss presents
+        # on is refused only there.
         document = copy.deepcopy(self.document)
         pattern = self.pizza(document)
         pattern["actorProfileId"] = "MN_RPCT_05"
         for stage in pattern["stages"]:
             stage["animationOccurrences"][0]["profileId"] = "MN_RPCT_05"
-        with self.assertRaisesRegex(subject.CompositionError, "PRODUCT actorProfileId"):
-            self.validate(document)
+        self.validate(document)
+        catalog = subject.load_json(ROOT / subject.BOSS_CATALOG_PATH)
+        self.assertIn("MN_RPCT_05", subject.arena_boss_archetypes_by_profile(ROOT))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_path = root / subject.BOSS_CATALOG_PATH
+            catalog_path.parent.mkdir(parents=True)
+            catalog["bosses"] = [
+                boss for boss in catalog["bosses"]
+                if boss["archetypeId"] == subject.BOSS_ARCHETYPE_ID
+            ]
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            self.assertEqual(
+                {"MN_RPCZ_00": [subject.BOSS_ARCHETYPE_ID]},
+                subject.arena_boss_archetypes_by_profile(root),
+            )
+            with self.assertRaisesRegex(subject.CompositionError, "PRODUCT actorProfileId"):
+                subject.validate_publishable(document, root)
+            encounter = subject.project_encounter(document, root)
+            self.assertEqual([], encounter["patterns"][0]["bossArchetypeIds"])
+        encounter = subject.project_encounter(document, ROOT)
+        self.assertEqual(
+            subject.arena_boss_archetypes_by_profile(ROOT)["MN_RPCT_05"],
+            encounter["patterns"][0]["bossArchetypeIds"],
+        )
 
     def test_legacy_owner_derivation_accepts_alias_and_rejects_mixed_models(self):
         document = copy.deepcopy(self.document)
@@ -439,6 +465,9 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             root = Path(directory)
             source = root / subject.SOURCE_PATH
             source.parent.mkdir(parents=True)
+            catalog = root / subject.BOSS_CATALOG_PATH
+            catalog.parent.mkdir(parents=True)
+            shutil.copy2(ROOT / subject.BOSS_CATALOG_PATH, catalog)
             document = copy.deepcopy(self.document)
             document["patterns"][0] = {"authoringStatus": "DRAFT", "stages": "broken"}
             source.write_text(json.dumps(document), encoding="utf-8")
@@ -759,9 +788,12 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 ROOT / subject.REFERENCE_ROOT / "MN_RPCZ_00.actionreference.json",
                 reference,
             )
+            catalog = root / subject.BOSS_CATALOG_PATH
+            catalog.parent.mkdir(parents=True)
+            shutil.copy2(ROOT / subject.BOSS_CATALOG_PATH, catalog)
             result = subject.run(root, "publish")
             self.assertEqual(2, result["outputCount"])
-            expected = subject.projected_outputs(subject.load_and_validate(root))
+            expected = subject.projected_outputs(subject.load_and_validate(root), root)
             subject.validate_outputs(root, expected)
             encounter = root / subject.ENCOUNTER_PATH
             encounter.write_text("{}\n", encoding="utf-8")

@@ -269,7 +269,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 7.0 ||
+			pVersion->Get_Number() != 8.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
 			3u != root.Get_Object().size())
 		{
@@ -280,7 +280,7 @@ namespace
 		std::vector<BOSS_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 15u != value.Get_Object().size())
+			if (!value.Is_Object() || 16u != value.Get_Object().size())
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -290,6 +290,8 @@ namespace
 				value.Find("combatObjectVisuals");
 			const DATA_JSON_VALUE* pWeaponModel = value.Find("weaponModel");
 			const DATA_JSON_VALUE* pWeaponScale = value.Find("weaponModelPreScale");
+			const DATA_JSON_VALUE* pWeaponRotation =
+				value.Find("weaponModelPreRotationDegrees");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredNumber(
@@ -333,17 +335,43 @@ namespace
 			const bool_t hasSeparateWeapon = nullptr != pWeaponModel &&
 				pWeaponModel->Is_String() && nullptr != pWeaponScale &&
 				pWeaponScale->Is_Number();
+			/* Every KoukuSaydon arena boss (BOSS_KAKULSAYDON_* with a
+			boss.kakulsaydon.*.client.v1 contract) may present an embedded body
+			without a separate weapon; CKoukuSaydonPresentationAssetService owns
+			that shape. Valtan rows stay body-and-weapon exact. */
+			const bool_t isKoukuSaydonFamily =
+				entry.archetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+				entry.clientPresentationId.starts_with("boss.kakulsaydon.") &&
+				entry.clientPresentationId.ends_with(".client.v1");
 			const bool_t hasEmbeddedBodyOnly = nullptr != pWeaponModel &&
 				pWeaponModel->Is_Null() && nullptr != pWeaponScale &&
-				pWeaponScale->Is_Null() &&
-				entry.archetypeId == "BOSS_KAKULSAYDON_G1_KOUKU" &&
-				entry.clientPresentationId ==
-					"boss.kakulsaydon.g1.kouku.client.v1";
+				pWeaponScale->Is_Null() && nullptr != pWeaponRotation &&
+				pWeaponRotation->Is_Null() && isKoukuSaydonFamily;
 			if (hasSeparateWeapon)
 			{
 				entry.weaponModel = pWeaponModel->Get_String();
 				entry.weaponModelPreScale =
 					static_cast<f32_t>(pWeaponScale->Get_Number());
+				/* Three finite degrees; the weapon rows always carry them so
+				a saved socket rotation is never silently dropped. */
+				if (nullptr == pWeaponRotation || !pWeaponRotation->Is_Array() ||
+					3u != pWeaponRotation->Get_Array().size())
+				{
+					return false;
+				}
+				f32_t rotation[3]{};
+				for (size_t axis = 0u; axis < 3u; ++axis)
+				{
+					const DATA_JSON_VALUE& degrees = pWeaponRotation->Get_Array()[axis];
+					if (!degrees.Is_Number() || !std::isfinite(degrees.Get_Number()) ||
+						std::fabs(degrees.Get_Number()) > 360.0)
+					{
+						return false;
+					}
+					rotation[axis] = static_cast<f32_t>(degrees.Get_Number());
+				}
+				entry.weaponModelPreRotationDegrees =
+					float3_t(rotation[0], rotation[1], rotation[2]);
 				if (!IsResourceId(entry.weaponModel) ||
 					!std::isfinite(entry.weaponModelPreScale) ||
 					entry.weaponModelPreScale <= 0.f ||

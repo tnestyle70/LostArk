@@ -366,7 +366,7 @@ def _load_boss_combat_object_groups(
     document = _require_object(_read_json(path), path.as_posix())
     if (
         document.get("schema") != "lostark.boss-catalog"
-        or not binding_v2._is_format_version(document.get("formatVersion"), 7)
+        or not binding_v2._is_format_version(document.get("formatVersion"), 8)
         or not isinstance(document.get("bosses"), list)
     ):
         raise ContractError(f"unsupported BossCatalog Effect V2 owner: {path}")

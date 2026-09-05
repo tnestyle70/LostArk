@@ -141,6 +141,7 @@ namespace LostArk::Server
 		std::uint32_t iLastClassChangeSequence = 0;
 		/* One idempotent Debug verdict belongs to this player in this room. */
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT LastDebugTeleportResult;
+		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
 		float fMoveSpeed = 6.f;
@@ -185,6 +186,15 @@ namespace LostArk::Server
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
 		std::uint32_t iIdentityAccumulator = 0;
+		/* KoukuSaydon madness gauge and the avatar it drives. The maximum is a
+		fixed first value until the encounter owns it; nothing raises the
+		current value yet. The form is Server truth the Client presents; today
+		only the Debug F1 toggle changes it. */
+		static constexpr std::uint32_t MADNESS_GAUGE_MAXIMUM = 10000u;
+		std::uint32_t iCurrentMadness = 0;
+		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
+		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
+			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
