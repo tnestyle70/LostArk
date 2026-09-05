@@ -798,15 +798,16 @@ namespace
 }
 
 int LostArk::Server::Run_ServerGameplayContractTests(
-	const bool dimensionMasterGroundTargetOnly)
+	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly)
 {
 	struct CONTRACT_TEST_RUN_CONTEXT final
 	{
 		bool dimensionMasterGroundTargetOnly = false;
+		bool debugTeleportOnly = false;
 		int result = 1;
 	};
 
-	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, 1 };
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, 1 };
 	const auto runContract = [](void* opaque)
 	{
 		CONTRACT_TEST_RUN_CONTEXT& context =
@@ -817,6 +818,110 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
+	/* The existing contract executable can exercise this transport mutation
+	without running unrelated encounter simulations. */
+	if (context.debugTeleportOnly)
+	{
+		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		{
+			auto room = std::make_unique<CGameRoom>(world);
+			const auto* spawn = room->Find_AvailablePlayerSpawn();
+			SERVER_NAV_POINT ground{};
+			const bool ready = room->Is_Ready() && nullptr != spawn &&
+				room->m_ServerNavigation.Sample_Position(spawn->fPositionX, spawn->fPositionZ, ground);
+			tests.Require(ready, "Teleport loads current world navigation and authored spawn");
+			if (!ready) continue;
+			auto storage = std::make_unique<SERVER_PLAYER>();
+			auto& player = *storage;
+			player.iPlayerId = 123u;
+			player.iNetEntityId = 456u;
+			player.iCurrentHp = player.iMaximumHp = 100u;
+			player.fPositionX = ground.x + 10.f;
+			player.fPositionY = ground.y;
+			player.fPositionZ = ground.z;
+			player.hasMoveGoal = true;
+			player.MovePath.push_back(ground);
+			player.iCurrentSkillId = 34010u;
+			player.eAction = PLAYER_ACTION_STATE::SKILL;
+			C2S_DEBUG_TELEPORT_TO_POSITION request{};
+			request.iRequestSequence = 1u;
+			request.eWorldId = world;
+			request.fPositionX = ground.x;
+			request.fPositionY = ground.y + 100.f;
+			request.fPositionZ = ground.z;
+			auto verdict = room->Apply_DebugTeleportToPosition(player, request);
+#ifndef _DEBUG
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_DISABLED &&
+				player.hasMoveGoal && player.iCurrentSkillId == 34010u,
+				"Release refuses teleport without changing player actions");
+#else
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT &&
+				player.hasMoveGoal && player.MovePath.size() == 1u &&
+				player.iCurrentSkillId == 34010u && player.fPositionX == ground.x + 10.f,
+				"Wrong picked deck preserves transform, skill and path");
+			request.iRequestSequence = 2u;
+			request.fPositionY = ground.y + 0.1f;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::ACCEPTED &&
+				verdict.iRequestSequence == 2u && verdict.eWorldId == world &&
+				verdict.fPositionY == ground.y && player.fPositionX == ground.x &&
+				player.fPositionY == ground.y && player.fPositionZ == ground.z &&
+				!player.hasMoveGoal && player.MovePath.empty() &&
+				player.iCurrentSkillId == INVALID_SKILL_ID && player.iCurrentHp == 100u,
+				"Accepted teleport uses Server ground and clears only own transient action");
+			player.fPositionX += 2.f;
+			const auto duplicate = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(duplicate.eResult == DEBUG_TELEPORT_RESULT::ACCEPTED &&
+				duplicate.fPositionX == ground.x && player.fPositionX == ground.x + 2.f,
+				"Duplicate request replays verdict without applying teleport twice");
+			request.iRequestSequence = 1u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_STALE_SEQUENCE &&
+				player.fPositionX == ground.x + 2.f,
+				"Stale sequence cannot reset position");
+			request.iRequestSequence = 3u;
+			request.eWorldId = WORLD_ID::BERN;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD,
+				"Cross-world teleport intent is refused");
+			request.eWorldId = world;
+			request.fPositionX = 100001.f;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION,
+				"Invalid coordinates rejected before navigation cell conversion");
+			request.iRequestSequence = 4u;
+			request.fPositionX = ground.x;
+			player.iCurrentHp = 0u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE &&
+				player.iCurrentHp == 0u, "Debug movement cannot revive a dead player");
+			player.iCurrentHp = 100u;
+			request.iRequestSequence = 5u;
+			player.bPatternBound = true;
+			player.hasMoveGoal = true;
+			player.iCurrentSkillId = 34010u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE &&
+				player.bPatternBound && player.hasMoveGoal && player.iCurrentSkillId == 34010u,
+				"Bound player cannot bypass capture by sending a teleport packet");
+			player.bPatternBound = false;
+			request.iRequestSequence = 6u;
+			SERVER_WORLD_ENTITY blocker{};
+			blocker.iNetEntityId = 789u;
+			blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+			blocker.fPositionX = ground.x;
+			blocker.fPositionY = ground.y;
+			blocker.fPositionZ = ground.z;
+			room->m_WorldEntities.push_back(blocker);
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_COLLISION &&
+				player.fPositionX == ground.x + 2.f,
+				"Destination overlap refuses teleport into current world entity");
+#endif
+		}
+		std::cout << "failures : " << tests.failures << '\n';
+		return 0 == tests.failures ? 0 : 1;
+	}
 	CGameplayCatalog catalog;
 	const bool catalogLoaded = catalog.Load();
 	if (!catalogLoaded)

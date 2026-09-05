@@ -2069,7 +2069,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 57;",
+            "NETWORK_PROTOCOL_VERSION = 58;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (

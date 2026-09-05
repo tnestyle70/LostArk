@@ -353,6 +353,7 @@ private:
 	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
+	void RenderArenaCameraAndPlayerControls();
 	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
 	void RefreshDebugAuthoringSources();
 	void RefreshDebugResourceFiles();

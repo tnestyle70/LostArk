@@ -73,7 +73,7 @@ namespace LostArk::Server
 
 	class CClientSession final
 	{
-		friend int Run_ServerGameplayContractTests(bool);
+		friend int Run_ServerGameplayContractTests(bool, bool);
 	public:
 		// 수신 스레드가 완성한 한 프레임을 ServerApp에 전달하는 계약이다.
 		using FRAME_HANDLER = std::function<void(

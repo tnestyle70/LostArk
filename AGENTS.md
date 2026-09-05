@@ -139,7 +139,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
 - 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
-- 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다.
+- 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 정확히 일곱 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.

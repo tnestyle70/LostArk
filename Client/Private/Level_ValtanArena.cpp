@@ -45,6 +45,8 @@ below is a real Release-build feature, so the include is no longer guarded. */
 
 namespace
 {
+	// Each arena remembers its own chosen speed for this process session.
+	f32_t g_ValtanFreeCameraSpeed = CCamera_Free::DEFAULT_ARENA_MOVE_SPEED;
 	constexpr std::string_view VALTAN_PILLAR_SET_ID =
 		"encounterprop.valtan.four-pillars";
 	constexpr std::string_view VALTAN_STAGE_TWO_PLACEMENT_PREFIX =
@@ -616,7 +618,16 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
-	m_PlayerController.Update(cameraAcceptsGameplay && !isRaidClearActive);
+	bool_t debugPlacementEnabled =
+		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+		!m_pCamera->Is_PresentationOverrideActive() &&
+		!m_bCinematicCameraApplied && !isRaidClearActive;
+#ifdef _DEBUG
+	debugPlacementEnabled = debugPlacementEnabled &&
+		!m_bReferenceCameraApplied;
+#endif
+	m_PlayerController.Update(
+		cameraAcceptsGameplay && !isRaidClearActive, debugPlacementEnabled);
 	Update_DeadScene(isRaidClearActive, fTimeDelta);
 	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
@@ -2041,6 +2052,16 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);
 }
 
+#ifdef _DEBUG
+bool_t CLevel_ValtanArena::Set_DebugCameraSpeed(const f32_t metersPerSecond)
+{
+	if (nullptr == m_pCamera || !m_pCamera->Set_FreeMoveSpeed(metersPerSecond))
+		return false;
+	g_ValtanFreeCameraSpeed = metersPerSecond;
+	return true;
+}
+#endif
+
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(
 	const wstring_t& strLayerTag)
 {
@@ -2057,7 +2078,7 @@ HRESULT CLevel_ValtanArena::Ready_Layer_Camera(
 	cameraDesc.fFovy = 60.f;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar = (std::max)(2000.f, span * 8.f);
-	cameraDesc.fSpeedPerSec = (std::max)(20.f, span * 0.08f);
+	cameraDesc.fSpeedPerSec = g_ValtanFreeCameraSpeed;
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;
 

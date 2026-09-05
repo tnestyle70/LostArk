@@ -201,6 +201,10 @@ public:
 	/* Debug-only authoring commands. Both remain requests: Server transfer and
 	Server snapshots are the only accepted world/position results. */
 	bool Send_DebugEnterKakulSaydonArena(std::uint32_t requestSequence);
+	bool Send_DebugTeleportToPosition(
+		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ);
+	bool Try_Consume_DebugTeleportResult(
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
 		std::uint32_t requestSequence,
 		std::string_view placementId);
@@ -485,6 +489,8 @@ private:
 
 	//Handle Frame�� �Һ��� ��� main thread�̴�.
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
+	std::deque<LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT>
+		m_DebugTeleportResults;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>

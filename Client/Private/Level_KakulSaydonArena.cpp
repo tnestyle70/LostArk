@@ -25,6 +25,8 @@
 
 namespace
 {
+	// Each arena remembers its own chosen speed for this process session.
+	f32_t g_KakulSaydonFreeCameraSpeed = CCamera_Free::DEFAULT_ARENA_MOVE_SPEED;
 	constexpr std::string_view KAKULSAYDON_AREA_ID =
 		"LV_LUT_MIDNIGHTC_ED";
 	/* Runtime placement IDs from the authored deploy placements. Rows 1 and 4
@@ -636,7 +638,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
+		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
+		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+		!m_pCamera->Is_PresentationOverrideActive());
 
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
@@ -1073,6 +1077,16 @@ bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t Client::CLevel_KakulSaydonArena::Set_DebugCameraSpeed(const f32_t metersPerSecond)
+{
+	if (nullptr == m_pCamera || !m_pCamera->Set_FreeMoveSpeed(metersPerSecond))
+		return false;
+	g_KakulSaydonFreeCameraSpeed = metersPerSecond;
+	return true;
+}
+#endif
+
 HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	const wstring_t& strLayerTag)
 {
@@ -1117,7 +1131,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	cameraDesc.fFovy = 60.f;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar = (std::max)(2000.f, span * 8.f);
-	cameraDesc.fSpeedPerSec = (std::max)(20.f, span * 0.08f);
+	cameraDesc.fSpeedPerSec = g_KakulSaydonFreeCameraSpeed;
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;
 	cameraDesc.pFollowTarget = nullptr;

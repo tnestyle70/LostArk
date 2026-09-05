@@ -52,6 +52,7 @@
 #include "BalanceTool.h"
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
+#include "Camera_Free.h"
 #include "CharacterPreviewPanel.h"
 #include "ClientReplication.h"
 #include "Effect_Tool.h"
@@ -5784,6 +5785,69 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 	return false;
 }
 
+void CMainApp::RenderArenaCameraAndPlayerControls()
+{
+	const LEVEL level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+	CLevel_ValtanArena* valtan = LEVEL::VALTAN_ARENA == level ?
+		CLevel_ValtanArena::Get_Active() : nullptr;
+	CLevel_KakulSaydonArena* kouku = LEVEL::KAKULSAYDON_ARENA == level ?
+		CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	shared_ptr<CCamera_Free> camera;
+	CPlayerController* controller = nullptr;
+	if (nullptr != valtan)
+	{
+		camera = valtan->Get_DebugCamera();
+		controller = &valtan->Get_DebugPlayerController();
+	}
+	else if (nullptr != kouku)
+	{
+		camera = kouku->Get_DebugCamera();
+		controller = &kouku->Get_DebugPlayerController();
+	}
+	if (nullptr == camera || nullptr == controller)
+		return;
+	const auto setSpeed = [valtan, kouku](const f32_t speed)
+	{
+		if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
+		else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
+	};
+	ImGui::SeparatorText("Arena Camera / Player");
+	ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : "KoukuSaydon");
+	f32_t speed = camera->Get_FreeMoveSpeed();
+	if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
+		CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
+		"%.1f", ImGuiSliderFlags_AlwaysClamp))
+		setSpeed(speed);
+	if (ImGui::Button("Reset speed to 20 m/s"))
+		setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
+	ImGui::TextDisabled("Shift: x%.0f (%.1f m/s). Saved per arena for this session.",
+		CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
+		camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
+
+	const bool_t freeCamera = !camera->Is_FollowRequested() &&
+		!camera->Is_PresentationOverrideActive();
+	ImGui::BeginDisabled(!freeCamera || controller->Is_DebugPlayerPlacementPending() ||
+		controller->Is_DebugPlayerPlacementArmed());
+	if (ImGui::Button("Move Player"))
+	{
+		const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
+			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+		if (controller->Begin_DebugPlayerPlacement(world))
+			camera->Set_MouseLookEnabled(false);
+	}
+	ImGui::EndDisabled();
+	if (controller->Is_DebugPlayerPlacementArmed())
+	{
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel Pick"))
+			controller->Cancel_DebugPlayerPlacement();
+	}
+	ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
+	ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
+	if (!controller->Get_DebugPlayerPlacementStatus().empty())
+		ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
+}
+
 void CMainApp::RenderDebugLevelNavigation()
 {
 	auto levelName = [](const LEVEL level) -> const char_t*
@@ -6910,6 +6974,7 @@ void CMainApp::RenderDeveloperTools()
 	}
 
 	RenderDebugLevelNavigation();
+	RenderArenaCameraAndPlayerControls();
 	RenderDebugResourceFiles();
 	RenderCompletePlayControls();
 	RenderServerArenaActiveControls();

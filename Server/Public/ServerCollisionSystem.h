@@ -66,6 +66,11 @@ namespace LostArk::Server
 			std::string& outStatus);
 		bool Is_PlayerSpawnClear(
 			const WORLD_BOOTSTRAP_PLACEMENT& spawn) const;
+		/* Destination-only overlap test for authoritative placement. A zero-step
+		move sweep deliberately permits escaping an existing overlap, so it is
+		not a valid admission test for teleporting into a body. */
+		bool Is_PlayerPositionClear(float x, float y, float z,
+			LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const;
 		void Set_BlockingBodies(std::vector<SERVER_BLOCKING_BODY> bodies);
 		bool Update_BlockingBody(
 			LostArk::Shared::NET_ENTITY_ID netEntityId,

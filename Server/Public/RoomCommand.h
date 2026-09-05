@@ -25,6 +25,7 @@ namespace LostArk::Server
 		DEBUG_KILL_SELF,
 		DEBUG_ENTER_KAKULSAYDON_ARENA,
 		DEBUG_TELEPORT_TO_PLACEMENT,
+		DEBUG_TELEPORT_TO_POSITION,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
@@ -77,6 +78,7 @@ namespace LostArk::Server
 			DebugEnterKakulSaydonArena;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT
 			DebugTeleportToPlacement;
+		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION DebugTeleportToPosition;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;

@@ -534,6 +534,53 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT& message);
 
+	/* The picked point is intent. The current room owns navigation, height,
+	collision and the eventual replicated player transform. */
+	struct C2S_DEBUG_TELEPORT_TO_POSITION
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+	};
+
+	enum class DEBUG_TELEPORT_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_DISABLED,
+		REJECTED_SESSION,
+		REJECTED_WRONG_WORLD,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_PLAYER_STATE,
+		REJECTED_INVALID_POSITION,
+		REJECTED_NAVIGATION,
+		REJECTED_HEIGHT,
+		REJECTED_COLLISION,
+		END
+	};
+
+	struct S2C_DEBUG_TELEPORT_TO_POSITION_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_TELEPORT_RESULT eResult = DEBUG_TELEPORT_RESULT::REJECTED_SESSION;
+		/* Nonzero positions are meaningful only for ACCEPTED. Rejection has no
+		position side effect; the ordinary snapshot remains the state authority. */
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_TELEPORT_TO_POSITION& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_TELEPORT_TO_POSITION& message);
+	bool Write_Message(CPacketWriter& writer,
+		const S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message);
+	bool Read_Message(CPacketReader& reader,
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message);
+
 	struct C2S_CHANGE_CHARACTER_CLASS
 	{
 		std::uint32_t iClientSequence = 0;

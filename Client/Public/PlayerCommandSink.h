@@ -16,6 +16,11 @@ class IPlayerCommandSink
 public:
 	virtual ~IPlayerCommandSink() = default;
 
+	virtual bool Request_DebugTeleportToPosition(
+		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) = 0;
+	virtual bool Consume_DebugTeleportResult(
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) = 0;
+
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
