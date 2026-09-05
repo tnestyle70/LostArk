@@ -205,7 +205,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
             raise ValueError("dangling")
         if edge["fromNodeId"] in outgoing:
             raise ValueError("deterministic")
-        if type(edge["pursuitMs"]) is not int or not 100 <= edge["pursuitMs"] <= 10_000:
+        if type(edge["pursuitMs"]) is not int or not 0 <= edge["pursuitMs"] <= 10_000:
             raise ValueError("edge pursuit")
         if "maxTraversals" in edge and (
             type(edge["maxTraversals"]) is not int

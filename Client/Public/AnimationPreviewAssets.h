@@ -161,9 +161,8 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true
 	},
-	/* KoukuSaydon extracted bodies are Development authoring references only.
-	   They intentionally have no bossArchetypeId until a Server Product world,
-	   encounter and pattern contract admits a concrete subset. */
+	/* Registered local preview bodies for Character Select, Development and both raid arenas.
+	   These descriptors do not supply a Server entity or boss archetype identity. */
 	ANIMATION_PREVIEW_ASSET
 	{
 		"kakulsaydon.mn-rpct-00",
@@ -223,12 +222,13 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		0.0001f,
 		-90.f,
 		true,
-		"BOSS_VALTAN"
+		"BOSS_VALTAN",
+		"Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan.ghost",
-		"[Boss] Ghost Valtan - MN_RPBF_02 (140 clips)",
+		"[Boss] Ghost Valtan - MN_RPBF_02 + AnimSet (286 clips)",
 		"Valtan_Ghost_MN_RPBF_02",
 		"Character/Valtan/Ghost/MN_RPBF_02.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan_Ghost",

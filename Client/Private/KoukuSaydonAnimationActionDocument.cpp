@@ -322,7 +322,8 @@ Client::CKoukuSaydonAnimationActionDocument::Resolve_AuthoredPath(
 bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	const std::string_view text,
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& outDocument,
-	std::string& outStatus)
+	std::string& outStatus,
+	const bool_t allowPartial)
 {
 	DATA_JSON_VALUE root;
 	std::string parseError;
@@ -378,6 +379,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	staged.strAuthority = authority->Get_String();
 	staged.Actions.reserve(actions->Get_Array().size());
 
+	std::size_t skippedRows = 0u;
 	for (const DATA_JSON_VALUE& actionValue : actions->Get_Array())
 	{
 		if (!Has_ExactProperties(actionValue,
@@ -385,6 +387,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				  "authority", "stages" }))
 		{
 			outStatus = "KoukuSaydon action reference row has unexpected properties.";
+			if (allowPartial) { ++skippedRows; continue; }
 			return false;
 		}
 		const DATA_JSON_VALUE* actionId = Required(
@@ -413,6 +416,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 			stages->Get_Array().size() > MAX_STAGES_PER_ACTION)
 		{
 			outStatus = "KoukuSaydon action reference row is invalid.";
+			if (allowPartial) { ++skippedRows; continue; }
 			return false;
 		}
 		stagedAction.strDisplayName = displayName->Get_String();
@@ -426,7 +430,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 					{ "stageId", "stageOrdinal", "holdoutClipNames", "slots" }))
 			{
 				outStatus = "KoukuSaydon action stage has unexpected properties.";
-				return false;
+				if (allowPartial) { ++skippedRows; continue; }
+			return false;
 			}
 			const DATA_JSON_VALUE* stageId = Required(
 				stageValue, "stageId", DATA_JSON_TYPE::STRING);
@@ -448,7 +453,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				nullptr == slots || slots->Get_Array().size() > MAX_SLOTS_PER_STAGE)
 			{
 				outStatus = "KoukuSaydon action stage is invalid.";
-				return false;
+				if (allowPartial) { ++skippedRows; continue; }
+			return false;
 			}
 			stagedStage.strStageId = stageId->Get_String();
 			stagedStage.HoldoutClipNames.reserve(holdouts->Get_Array().size());
@@ -457,7 +463,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				if (!holdout.Is_String() || !Is_StableToken(holdout.Get_String()))
 				{
 					outStatus = "KoukuSaydon action holdout clip name is invalid.";
-					return false;
+					if (allowPartial) { ++skippedRows; continue; }
+			return false;
 				}
 				stagedStage.HoldoutClipNames.push_back(holdout.Get_String());
 			}
@@ -471,7 +478,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 						  "mappingBasis", "authority" }))
 				{
 					outStatus = "KoukuSaydon action slot has unexpected properties.";
-					return false;
+					if (allowPartial) { ++skippedRows; continue; }
+			return false;
 				}
 				const DATA_JSON_VALUE* slotId = Required(
 					slotValue, "slotId", DATA_JSON_TYPE::STRING);
@@ -511,7 +519,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 					slotAuthority->Get_String() != REFERENCE_ONLY)
 				{
 					outStatus = "KoukuSaydon action slot is invalid.";
-					return false;
+					if (allowPartial) { ++skippedRows; continue; }
+			return false;
 				}
 				stagedSlot.strSlotId = slotId->Get_String();
 				stagedSlot.strExtractedClip = extractedClip->Get_String();
@@ -527,7 +536,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	}
 
 	outDocument = std::move(staged);
-	outStatus = "Parsed KoukuSaydon animation action reference.";
+	outStatus = "Parsed KoukuSaydon animation reference; skipped invalid rows: " + std::to_string(skippedRows);
 	return true;
 }
 
@@ -982,4 +991,19 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		" sparse KoukuSaydon animation action override(s) to " +
 		destination.string();
 	return true;
+}
+
+const char_t* Client::CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(
+	const std::string_view profileId,
+	const std::string_view displayName)
+{
+	/* UTF-8 bytes of the authored large-Kouku prefix so this rule compares the
+	   same bytes the reference JSON carries under every source charset. */
+	constexpr std::string_view LARGE_KOUKU_PREFIX =
+		"\xEB\x8C\x80\xED\x98\x95 \xEC\xBF\xA0\xED\x81\xAC_";
+	if ("MN_RPCZ_00" == profileId && 0u == displayName.find(LARGE_KOUKU_PREFIX))
+		return "Large Kouku";
+	if ("MN_RPCZ_00" == profileId || "MN_RPCT_07" == profileId)
+		return "Kouku";
+	return "Saydon";
 }

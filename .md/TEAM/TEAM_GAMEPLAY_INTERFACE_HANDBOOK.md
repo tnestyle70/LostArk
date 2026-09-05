@@ -29,7 +29,9 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
-Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern` 다섯 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+
+Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 경로로 입장하며, 선택 class와 created/audition nickname을 발탄과 같은 규칙으로 사용한다. Character Select ImGui의 `Enter KoukuSaydon Arena`는 현재 session의 기존 typed world transfer를 사용한다.
 
 `CHARACTER_SELECT_ARENA`의 gameplay authority는 Server에 남지만 simulation ownership은 session-private이다. 각 session은 자기 `CGameRoom`의 player, audition entity, HP와 damage event만 snapshot으로 받고 다른 Character Select session과 만나지 않는다. 퇴장한 session의 private room은 queued `LEAVE`와 reset을 처리한 뒤 폐기한다. Bern, Valtan, Training Ground는 기존처럼 world별 shared room이므로 그 안에서는 여러 player가 같은 authoritative 상태를 본다.
 
@@ -324,7 +326,8 @@ Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결
 
 Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만 저장할 수 있다. 작업자는 key/skill row에서 ACTIVE의 순차 clip 또는 COMBO의 BA1/BA2/BA3/BA4 clip을 지정하고 atomic Save한다. `inputSlot`, `skillId`, `skillKind`, timing, damage와 combo 단계 수는 Tool에서 바꾸지 않는다. `.skilltiming/.clipmap/.animnotify/.clipseq` 및 `Data/Animation/Reference`는 read-only 참고 자료다.
 
-F1 진입 이름은 `Valtan Action Workbench`다. 기존 Animation Clip Tool과 독립된 resizable 창에서
+F1 진입 이름은 `Action Workbench`다. Boss 선택에 따라 동일한 Sequencer/Resources/Patterns/Box Detail 창이
+Valtan/KoukuSaydon의 독립된 문서·draft·저장 session을 연결한다. 아래 split-owner 계약은 Valtan session에 적용한다.
 Valtan의 Server stage, animation occurrence, Effect, Pattern Sound, Shake/Camera와 world/combat-object를
 stable action·occurrence ID로 join한다. Workbench는 새 Product JSON이나 두 번째 runtime을 소유하지 않는다.
 stage·release·Counter/Groggy·Collider는 `CBalanceTool`의 joined gameplay draft를, animation slot과 Effect
@@ -562,11 +565,16 @@ Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFile
 실행 중 boss pattern이 한 플레이어를 잠그면 Server의 stable `NetEntityId`가
 `WORLD_ENTITY_SNAPSHOT::iPatternTargetNetEntityId`로 복제된다. 일반 NPC와 monster는 이
 필드를 반드시 invalid로 둔다. Client는 이 target을 다시 고르지 않는다. 별도로 player가 `GRABBED`인 동안
-`PLAYER_SNAPSHOT`의 attachment owner/slot과 Server가 매 tick 계산한 world position/yaw가 포획 계약의
-정본이다. `CCharacter::Update_NetworkTransform`이 같은 authoritative snapshot 경로를 보간하며 Client는
-`BOSS_LEFT_HAND`를 model bone으로 해석하거나 Character transform을 다시 덮어쓰지 않는다. release 뒤에도
-같은 snapshot 경로가 이어진다. `gripLocalOffset`은 parser/publisher/Tool validation용 authoring metadata로
-유지하지만 runtime transform에는 적용하지 않는다.
+`PLAYER_SNAPSHOT`의 attachment owner/slot과 Server가 매 tick 계산한 world position/yaw가 포획 판정·release·
+ejection의 정본이다. Server는 capture 순간의
+boss-local 상대 위치와 yaw offset을 저장해 매 tick `boss pos + yaw 회전(offset)`을 플레이어 위치로 복제하고,
+이 위치가 판정·release·ejection의 정본이다. Client `CCharacter::Update`는 `Update_NetworkTransform`이 그
+값을 보간한 직후, 파츠가 world를 합성하기 전에 owner `CValtan`의 `bip001-l-hand` socket(bone × presentation
+root)과 admitted `gripLocalOffset`(boss yaw frame forward/right, world up)으로 발 원점 POSITION만 교체한다.
+따라서 본체·장비·collider wire·nameplate가 같은 손 위치를 따르고, release 뒤 0.2초 동안 마지막 손 위치에서
+Server 경로로 합류한다. `gripLocalOffset`은 `ValtanEncounter.json`의 모든 CAPTURE hit에서 같아야 하며 다르면
+joined presentation admission이 실패한다. Server가 보는 잡힌 플레이어 위치는 계속 capture 지점 기준이므로
+다른 플레이어 skill 판정과 던지기 시작점은 손 위치와 다를 수 있다.
 
 ```text
 CGameRoom::Tick
@@ -609,16 +617,23 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 | 화면/런타임 | 현재 역할 |
 |---|---|
 | Valtan Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
-| Composition/Sequencer | Boss/Arena source manifest와 track inspection, 기존 Valtan joined timeline 진입 |
-| Valtan Action Workbench | 기존 Valtan split owner의 상세 box 편집, Play와 Save |
+| Action Workbench | Boss 선택과 공용 Sequencer/Resources/Patterns/Box Detail; Valtan split owner 또는 Kouku Composition의 편집·Preview·Save |
 | Effect Tool | V1 Effect asset과 V2 leaf/group body 편집 |
 | Server | branch, motion, hit, combat object, phase의 gameplay 권위 |
 
 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은 `REFERENCE_ONLY`,
-`ValtanArena.sequencer.json`과 `KoukuSaydonArena.sequencer.json`은 `SHADOW`다. 현재 Sequencer는 source
-manifest를 staged load해 inspection만 제공하며 generated resolved
-Product를 timeline runtime으로 읽지 않는다. KoukuSaydon은 reference inventory와 authored arena track만
-보이며 generic Composition Save/Play, arena scene runner와 Server encounter는 아직 없다.
+`ValtanArena.sequencer.json`과 `KoukuSaydonArena.sequencer.json`은 `SHADOW`다. 공용 Workbench는 이 source
+manifest의 admission을 편집 진입 조건으로 사용하지 않는다. generated resolved Product를 timeline runtime으로
+읽지 않는다. 이 SHADOW/REFERENCE_ONLY 문서와 별도로
+`Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`은 쿠크 Stage/Animation 저작 정본이며
+Action Workbench의 KoukuSaydon session이 DRAFT/PRODUCT 전체를 편집하고 단일 파일 CAS Save한다. K Boss Tool은 명시 publish된
+`Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json`의 PRODUCT를, Server는 그 bootstrap을 소비한다.
+K Resource는 실제 `MN_RPCZ_00` 모델 clip 전체를 읽고 action reference는 참고 트리로만 사용한다.
+reference에 없는 물리 clip은 `sourceActionId=0`, `sourceStageId=RAW`, 빈 `referenceRevision`으로 저장한다.
+PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE 행을 생략한다.
+현재 Resource/Animation family preview는 기존 collision-off 로컬 preview actor에서 실행한다.
+Server boss raw audition, 다중 family 공용 Sequencer와 arena scene runner는 아직 미구현이다.
+기존 Valtan Sequencer의 Sound/Effect/Logic/Collider/Camera 편집 기능은 기존 경로에 남아 있다.
 
 `Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
 Preview가 함께 소비하는 Client actor scale이다. 일반 `BOSS_VALTAN.maximumHp`는 `600000`, 종속

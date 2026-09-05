@@ -30,6 +30,7 @@ namespace LostArk::Server
 		VALTAN_AUDITION,
 		VALTAN_PATTERN_FLOW_START,
 		VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+		KOUKUSAYDON_PATTERN_AUDITION,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
@@ -85,6 +86,8 @@ namespace LostArk::Server
 			ValtanPatternFlowStart;
 		LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT
 			ValtanPatternFlowStopAfterCurrent;
+		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST
+			KoukuSaydonPatternAudition;
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;

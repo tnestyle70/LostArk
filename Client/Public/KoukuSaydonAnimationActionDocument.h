@@ -102,11 +102,20 @@ namespace Client
 			std::string_view profileId);
 		static std::filesystem::path Resolve_AuthoredPath(
 			std::string_view profileId);
+		/* Designer-facing browse category shared by the Animation Tool catalog
+		   and every Composition Workbench. RPCZ mixes ordinary and explicitly
+		   labelled large Kouku actions; RPCT_07 is the combined planner body
+		   and stays under Kouku; the 05/06 bodies carry Saydon names. The rule
+		   reads authored names only and never scans a model file. */
+		static const char_t* Resolve_ActionCategory(
+			std::string_view profileId,
+			std::string_view displayName);
 
 		static bool_t Parse_ReferenceText(
 			std::string_view text,
 			KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& outDocument,
-			std::string& outStatus);
+			std::string& outStatus,
+			bool_t allowPartial = false);
 		static bool_t Parse_AuthoredText(
 			std::string_view text,
 			KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT& outDocument,

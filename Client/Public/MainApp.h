@@ -20,10 +20,12 @@ class CEffect_Tool;
 class CEffect_Tool_V2;
 class CAnimation_Tool;
 class CValtanActionWorkbench;
+class CKoukuSaydonActionWorkbench;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
 class CBalanceTool;
 class CValtanBossTool;
+class CKoukuSaydonBossTool;
 class CCameraTool;
 class CCharacterPreviewPanel;
 class CEquipmentAuthoringTool;
@@ -47,6 +49,7 @@ private:
 		NONE,
 		MAP,
 		VALTAN_ACTION_WORKBENCH,
+		KOUKU_SAYDON_ACTION_WORKBENCH,
 		ANIMATION,
 		EFFECT,
 		/* Compatibility-only route. MainApp canonicalizes it to EFFECT so old
@@ -56,6 +59,7 @@ private:
 		UI,
 		BALANCE,
 		VALTAN_BOSS,
+		KOUKU_SAYDON_BOSS,
 		VALTAN_LOGIC_PATTERN,
 		CAMERA,
 		EQUIPMENT,
@@ -344,6 +348,7 @@ private:
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();
 	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
+	HRESULT EnsureAnimationPreviewBackend();
 	bool_t IsDebugToolVisible(DEBUG_TOOL eTool) const;
 	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);
 	void CloseAllDebugTools();
@@ -575,11 +580,14 @@ private:
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
 	unique_ptr<CValtanActionWorkbench> m_pValtanActionWorkbench =
 		{ nullptr };
+	unique_ptr<CKoukuSaydonActionWorkbench> m_pKoukuSaydonActionWorkbench =
+		{ nullptr };
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CEquipmentAuthoringTool> m_pEquipmentAuthoringTool = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
 	unique_ptr<CValtanBossTool> m_pValtanBossTool = { nullptr };
+	unique_ptr<CKoukuSaydonBossTool> m_pKoukuSaydonBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
 	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
 	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };

@@ -8,6 +8,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "EstherActionSoundCueDocument.h"
 #include "NavPathFollower.h"
+#include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
 
 NS_BEGIN(Engine)
@@ -139,6 +140,14 @@ public:
 	}
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
+	/* Replication hands over the replicated owner presentation while the Server
+	   reports GRABBED. The character keeps only a weak reference and the admitted
+	   grip; every Update re-resolves the socket so a vanished owner falls back to
+	   the Server transform instead of a stale matrix. */
+	bool_t Apply_NetworkAttachment(
+		const std::shared_ptr<const IPlayerHandGripSocketSource>& pSource,
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot);
+	void Clear_NetworkAttachment();
 	/* A Model View clone may mirror the live scene stance, but only after that
 	   scene Character has consumed an authoritative snapshot. Before then its
 	   NONE member is initialization state, not a valid Lance stance. */
@@ -295,6 +304,18 @@ private:
 	/* Follows the network yaw at TURN_DEGREES_PER_SECOND instead of jumping to
 	it. Presentation only: the server's value stays the one gameplay reads. */
 	f32_t m_fPresentationYawDegrees = { 0.f };
+	/* Presentation attachment while the Server reports GRABBED. The Server
+	   position stays in m_NetworkSamples; the socket only replaces the rendered
+	   feet position before the parts compose their world matrices, so body,
+	   equipment, collider wire and nameplate all read the same value. */
+	std::weak_ptr<const IPlayerHandGripSocketSource> m_pAttachmentSocketSource;
+	LostArk::Shared::PLAYER_ATTACHMENT_SLOT m_eAttachmentSlot =
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+	PLAYER_HAND_GRIP_LOCAL_OFFSET m_AttachmentGripLocalOffset{};
+	bool_t m_bAttachmentPresented = { false };
+	float3_t m_LastAttachedPosition{};
+	/* Negative when no release blend is running. */
+	f32_t m_fAttachmentReleaseBlendSeconds = { -1.f };
 	CBoneChainSimulation m_BoneChains;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
@@ -344,6 +365,11 @@ private:
 
 	//server snapshot interpolation
 	void Update_NetworkTransform(f32_t fTimeDelta);
+	/* Runs after Update_NetworkTransform and before the parts compose: while
+	   GRABBED it replaces the interpolated position with the owner socket, and
+	   for ATTACHMENT_RELEASE_BLEND_SECONDS after release it eases from the last
+	   socket position onto the Server knockback path. */
+	void Update_NetworkAttachmentTransform(f32_t fTimeDelta);
 #ifdef _DEBUG
 	void Draw_SkillHitAreaDebug() const;
 	void Update_SkillProjectileDebug(f32_t fTimeDelta);

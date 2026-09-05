@@ -1,11 +1,13 @@
 #include "imgui.h"
 
 #include "Animation_Tool.h"
+#include "Animation.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "BalanceTool.h"
+#include "BinaryAsset/WModelDecoder.h"
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
 #include "Character.h"
@@ -257,52 +259,36 @@ namespace
 		std::unordered_map<std::string, VALTAN_NATIVE_CLIP_TIMING>;
 
 	bool_t BuildStrictValtanNativeClipInventory(
-		const shared_ptr<Engine::CModel>& pModel,
+		const std::vector<Client::COMPOSITION_ANIMATION_RESOURCE>& resources,
 		VALTAN_NATIVE_CLIP_INVENTORY& Out,
 		std::string& Status)
 	{
 		Out.clear();
-		if (nullptr == pModel || 0u == pModel->Get_NumAnimations())
+		for (const auto& resource : resources)
 		{
-			Status = "The admitted Valtan CModel has no native Animation inventory.";
-			return false;
+			if (resource.strTargetAssetName != "Valtan") continue;
+			uint32_t roundedDurationMs = 0u;
+			if (!Is_StablePatternAuthoringId(resource.strRuntimeClip) ||
+				!Client::CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+					resource.fDurationTicks, resource.fTicksPerSecond,
+					0u, 0u, 1.f, roundedDurationMs) || roundedDurationMs == 0u)
+			{
+				Status = "Valtan physical Animation metadata is invalid: " + resource.strRuntimeClip + ".";
+				Out.clear();
+				return false;
+			}
+			if (!Out.emplace(resource.strRuntimeClip, VALTAN_NATIVE_CLIP_TIMING{
+				resource.fDurationTicks, resource.fTicksPerSecond }).second)
+			{
+				Status = "Valtan physical Animation metadata has an ambiguous clip: " + resource.strRuntimeClip + ".";
+				Out.clear();
+				return false;
+			}
 		}
-		Out.reserve(pModel->Get_NumAnimations());
-		for (uint32_t iAnimation = 0u;
-			iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+		if (Out.empty())
 		{
-			const char_t* const pClipName =
-				pModel->Get_AnimationName(iAnimation);
-			const f32_t fTicksPerSecond =
-				pModel->Get_AnimationTickPerSecond(iAnimation);
-			f32_t fPositionTicks = 0.f;
-			f32_t fDurationTicks = 0.f;
-			uint32_t iRoundedDurationMs = 0u;
-			if (nullptr == pClipName ||
-				!Is_StablePatternAuthoringId(pClipName) ||
-				!pModel->Get_AnimationProgress(
-					iAnimation, fPositionTicks, fDurationTicks) ||
-				!Client::CActionPresentationTimeline::
-					Validate_AuthoredSourceWindow(
-						fDurationTicks, fTicksPerSecond,
-						0u, 0u, 1.f, iRoundedDurationMs) ||
-				0u == iRoundedDurationMs)
-			{
-				Status = "The admitted Valtan CModel contains malformed native Animation metadata at index " +
-					std::to_string(iAnimation) + ".";
-				Out.clear();
-				return false;
-			}
-			if (!Out.emplace(
-					pClipName,
-					VALTAN_NATIVE_CLIP_TIMING{
-						fDurationTicks, fTicksPerSecond }).second)
-			{
-				Status = "The admitted Valtan CModel contains a duplicate Animation clip: " +
-					std::string(pClipName) + ".";
-				Out.clear();
-				return false;
-			}
+			Status = "Valtan physical Animation metadata is unavailable; refresh Animation Resources.";
+			return false;
 		}
 		return true;
 	}
@@ -371,7 +357,7 @@ namespace
 			if (Native == Inventory.end())
 			{
 				Status = "Animation Stage " + Stage.strStageId +
-					" references a clip absent from the admitted Valtan CModel: " +
+					" references a clip absent from the physical Valtan Animation catalog: " +
 					Occurrence.strClipName + ".";
 				return false;
 			}
@@ -1027,14 +1013,8 @@ namespace
 		   Kouku actions. RPCT_07 is the Kouku/Saydon combined planner body and
 		   remains under Kouku; the 05/06 bodies carry Saydon and large-Saydon
 		   authored names. Never infer a category from a model file scan. */
-		if ("MN_RPCZ_00" == strProfileId &&
-			0u == strDisplayName.find("대형 쿠크_"))
-		{
-			return "Large Kouku";
-		}
-		if ("MN_RPCZ_00" == strProfileId || "MN_RPCT_07" == strProfileId)
-			return "Kouku";
-		return "Saydon";
+		return Client::CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(
+			strProfileId, strDisplayName);
 	}
 
 	bool_t Load_KoukuSaydonCompositionSequenceLibrary(
@@ -1288,6 +1268,31 @@ void Client::CAnimation_Tool::Update(
 	const bool_t bIsActiveTool)
 {
 	Poll_ValtanPatternCreateCommand();
+
+	if (m_bKoukuSaydonCompositionAnimationPreviewPending || m_bKoukuSaydonCompositionPatternPreviewPending)
+		(void)Start_PendingKoukuSaydonCompositionPreview(CAnimationTargetService::Resolve_Model());
+	if (m_bKoukuCompositionTimelinePlaying)
+	{
+		const auto model = m_KoukuSaydonPatternPreviewModel.lock();
+		if (!bIsActiveTool || nullptr == model || CAnimationTargetService::Resolve_Model() != model ||
+			m_iKoukuSaydonPatternPreviewTargetGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+		{
+			Stop_KoukuSaydonPatternPreview(model, "Composition preview stopped; target or tool changed.");
+			return;
+		}
+		if (!m_bKoukuSaydonPatternPreviewPaused && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+			m_fKoukuCompositionPreviewClockMs += static_cast<double>(fTimeDelta) * 1000.0;
+		if (!m_bKoukuSaydonPatternPreviewPaused &&
+			m_fKoukuCompositionPreviewClockMs >= m_iKoukuCompositionPreviewDurationMs)
+		{
+			m_fKoukuCompositionPreviewClockMs = m_iKoukuCompositionPreviewDurationMs;
+			m_bKoukuSaydonPatternPreviewPaused = true;
+			m_Status = m_strKoukuSaydonPatternStatus =
+				"Composition preview completed; end pose held. Resume restarts from zero.";
+		}
+		Sample_KoukuSaydonCompositionPreview(model);
+		return;
+	}
 
 	if (m_bValtanPatternMasterPlaying)
 	{
@@ -1862,23 +1867,23 @@ bool_t Client::CAnimation_Tool::Get_ActionCompositionSequenceCatalog(
 	return true;
 }
 
-bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeModel(
-	shared_ptr<Engine::CModel>& pOutModel,
+bool_t Client::CAnimation_Tool::Ensure_ValtanCompositionNativeResources(
 	std::string& strOutStatus) const
 {
-	pOutModel.reset();
-	const std::string strAssetName =
-		CAnimationTargetService::Resolve_AssetName();
-	const shared_ptr<CValtan> pBoss = CAnimationTargetService::Resolve_Boss();
-	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
-	if ("Valtan" != strAssetName || nullptr == pBoss || nullptr == pModel ||
-		pBoss->Get_BodyModel() != pModel)
+	if (!m_bCompositionResourcesReadAttempted)
 	{
-		strOutStatus =
-			"Native Animation authoring is blocked until the dedicated admitted Valtan Model View is staged; no unrelated scene model is substituted.";
+		std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
+		(void)Read_CompositionAnimationResources(resources, strOutStatus);
+	}
+	if (std::none_of(m_CompositionAnimationResources.begin(),
+		m_CompositionAnimationResources.end(), [](const auto& resource) {
+			return resource.strTargetAssetName == "Valtan";
+		}))
+	{
+		strOutStatus = "Valtan physical Animation metadata is unavailable. " +
+			m_strCompositionAnimationResourceStatus;
 		return false;
 	}
-	pOutModel = pModel;
 	return true;
 }
 
@@ -1888,12 +1893,11 @@ bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeClipDurationMs(
 	std::string& strOutStatus) const
 {
 	iOutRoundedDurationMs = 0u;
-	shared_ptr<Engine::CModel> pModel;
-	if (!Resolve_ValtanCompositionNativeModel(pModel, strOutStatus))
+	if (!Ensure_ValtanCompositionNativeResources(strOutStatus))
 		return false;
 	VALTAN_NATIVE_CLIP_INVENTORY Inventory;
 	if (!BuildStrictValtanNativeClipInventory(
-			pModel, Inventory, strOutStatus))
+			m_CompositionAnimationResources, Inventory, strOutStatus))
 	{
 		return false;
 	}
@@ -1901,7 +1905,7 @@ bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeClipDurationMs(
 	if (Found == Inventory.end())
 	{
 		strOutStatus =
-			"The selected Sequence clip is absent from the admitted Valtan CModel: " +
+			"The selected Sequence clip is absent from the physical Valtan Animation catalog: " +
 			strClipName + ".";
 		return false;
 	}
@@ -1937,10 +1941,9 @@ Validate_ValtanCompositionAnimationStageMutation(
 	if (!CandidateStage.bSuppressAnimation &&
 		"WAIT" != CandidateStage.strSequenceRole)
 	{
-		shared_ptr<Engine::CModel> pModel;
-		if (!Resolve_ValtanCompositionNativeModel(pModel, strOutStatus) ||
+		if (!Ensure_ValtanCompositionNativeResources(strOutStatus) ||
 			!BuildStrictValtanNativeClipInventory(
-				pModel, Inventory, strOutStatus))
+				m_CompositionAnimationResources, Inventory, strOutStatus))
 		{
 			return false;
 		}
@@ -1994,11 +1997,9 @@ Validate_ValtanCompositionAnimationGraphMutations(
 				"WAIT" != CandidateStage.strSequenceRole &&
 				!bInventoryReady)
 			{
-				shared_ptr<Engine::CModel> pModel;
-				if (!Resolve_ValtanCompositionNativeModel(
-						pModel, strOutStatus) ||
+				if (!Ensure_ValtanCompositionNativeResources(strOutStatus) ||
 					!BuildStrictValtanNativeClipInventory(
-						pModel, Inventory, strOutStatus))
+						m_CompositionAnimationResources, Inventory, strOutStatus))
 				{
 					return false;
 				}
@@ -3313,6 +3314,184 @@ bool_t Client::CAnimation_Tool::Open_KoukuSaydonAction(
 		m_iRequestedKoukuSaydonSourceActionId = 0u;
 	}
 	return true;
+}
+
+bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
+	std::vector<COMPOSITION_ANIMATION_RESOURCE>& outResources,
+	std::string& outStatus) const
+{
+	m_bCompositionResourcesReadAttempted = true;
+	std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
+	std::string diagnostics;
+	bool_t succeeded = true;
+	for (const char* targetName : COMPOSITION_ANIMATION_TARGET_ASSET_NAMES)
+	{
+		const auto asset = std::find_if(ANIMATION_PREVIEW_ASSETS.begin(),
+			ANIMATION_PREVIEW_ASSETS.end(), [targetName](const auto& candidate) {
+				return std::string_view{ targetName } == candidate.pAssetName;
+			});
+		if (asset == ANIMATION_PREVIEW_ASSETS.end())
+		{
+			succeeded = false;
+			diagnostics += std::string(targetName) + ": preview descriptor is missing. ";
+			for (const auto& previous : m_CompositionAnimationResources)
+				if (previous.strTargetAssetName == targetName) resources.push_back(previous);
+			continue;
+		}
+		for (const char* source : { asset->pModelAssetId, asset->pAnimationSetAssetId })
+		{
+			if (nullptr == source) continue;
+			std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> clips;
+			std::string status;
+			const std::filesystem::path path = CRuntimeAssetRoot::Resolve(source);
+			if (path.empty() || !Engine::CWModelDecoder::Read_AnimationCatalog(path, clips, status))
+			{
+				succeeded = false;
+				diagnostics += std::string(source) + ": " +
+					(path.empty() ? "invalid Resources-relative path" : status) +
+					"; previous rows retained. ";
+				for (const auto& previous : m_CompositionAnimationResources)
+					if (previous.strTargetAssetName == targetName && previous.strSourceAssetId == source)
+						resources.push_back(previous);
+				continue;
+			}
+			for (const auto& clip : clips)
+			{
+				COMPOSITION_ANIMATION_RESOURCE resource;
+				resource.strTargetAssetName = targetName;
+				resource.strModelAssetId = asset->pModelAssetId;
+				resource.strSourceAssetId = source;
+				resource.strProfileId = targetName;
+				resource.strRuntimeClip = clip.name;
+				resource.fDurationTicks = clip.durationTicks;
+				// Match CAnimation's cooked clock, not the package import rate.
+				resource.fTicksPerSecond = Engine::CAnimation::COOKED_TICK_RATE;
+				resource.iDurationMs = static_cast<std::uint32_t>(std::clamp(
+					std::round(static_cast<double>(resource.fDurationTicks) / resource.fTicksPerSecond * 1000.0),
+					1.0, static_cast<double>((std::numeric_limits<std::uint32_t>::max)())));
+				resources.push_back(std::move(resource));
+			}
+		}
+	}
+	std::sort(resources.begin(), resources.end(), [](const auto& left, const auto& right) {
+		return std::tie(left.strTargetAssetName, left.strRuntimeClip, left.strSourceAssetId) <
+			std::tie(right.strTargetAssetName, right.strRuntimeClip, right.strSourceAssetId);
+	});
+	m_CompositionAnimationResources = std::move(resources);
+	outResources = m_CompositionAnimationResources;
+	outStatus = std::to_string(outResources.size()) +
+		" physical animation clips / 6 model targets. " + diagnostics;
+	m_strCompositionAnimationResourceStatus = outStatus;
+	return succeeded;
+}
+
+bool_t Client::CAnimation_Tool::Preview_CompositionAnimationResource(
+	const COMPOSITION_ANIMATION_RESOURCE& resource,
+	std::string& strOutStatus)
+{
+	if (resource.strRuntimeClip.empty() || resource.iDurationMs == 0u ||
+		resource.iDurationMs > 600000u)
+	{
+		strOutStatus = m_Status = m_strKoukuSaydonPatternStatus =
+			"Resource preview requires a clip and a playback window within 600 seconds.";
+		return false;
+	}
+	KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
+	occurrence.strOccurrenceId = "resource.animation.1";
+	occurrence.strProfileId = resource.strProfileId;
+	occurrence.strSourceStageId = "RAW";
+	occurrence.strSourceSlotId = resource.strRuntimeClip;
+	occurrence.strRuntimeClip = resource.strRuntimeClip;
+	occurrence.iPlayMs = resource.iDurationMs;
+	occurrence.strEndPolicy = resource.strEndPolicy;
+	KOUKU_SAYDON_COMPOSITION_STAGE stage;
+	stage.strStageId = "RESOURCE_STAGE_1";
+	stage.strStageKind = "ACTIVE";
+	stage.iDurationMs = resource.iDurationMs;
+	stage.AnimationOccurrences.push_back(std::move(occurrence));
+	KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+	pattern.strPatternId = "RESOURCE_PREVIEW";
+	pattern.strDisplayName = resource.strRuntimeClip;
+	pattern.Stages.push_back(std::move(stage));
+	return Preview_CompositionResourcePattern(pattern,
+		resource.strTargetAssetName, strOutStatus);
+}
+
+bool_t Client::CAnimation_Tool::Preview_KoukuSaydonCompositionAnimation(
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence,
+	std::string& strOutStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_STAGE stage;
+	stage.iDurationMs = occurrence.iPlayMs;
+	stage.AnimationOccurrences.push_back(occurrence);
+	stage.AnimationOccurrences.front().iStartOffsetMs = 0u;
+	KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+	pattern.Stages.push_back(std::move(stage));
+	return Preview_KoukuSaydonCompositionPattern(pattern, strOutStatus);
+}
+
+bool_t Client::CAnimation_Tool::Preview_KoukuSaydonCompositionPattern(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+	std::string& strOutStatus,
+	const std::uint32_t startClockMs,
+	const bool_t startPaused)
+{
+	for (const auto& stage : pattern.Stages)
+	{
+		if (stage.AnimationOccurrences.empty()) continue;
+		const auto& first = stage.AnimationOccurrences.front();
+		const auto* profile = Find_KoukuSaydonActionProfile(first.strProfileId);
+		if (nullptr != profile || first.strProfileId == "MN_RPCT_00")
+			return Preview_CompositionResourcePattern(pattern,
+				nullptr != profile ? profile->pPreviewAssetName : "MN_RPCT_00",
+				strOutStatus, startClockMs, startPaused);
+		strOutStatus = "KoukuSaydon composition preview has an unknown profile: " + first.strProfileId;
+		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+		return false;
+	}
+	strOutStatus = "Composition Pattern preview has no animation occurrence.";
+	m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+	return false;
+}
+
+bool_t Client::CAnimation_Tool::Preview_CompositionResourcePattern(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+	const std::string& targetAssetName,
+	std::string& strOutStatus,
+	const std::uint32_t startClockMs,
+	const bool_t startPaused)
+{
+	const auto reject = [&](const std::string& reason) {
+		strOutStatus = m_Status = m_strKoukuSaydonPatternStatus = reason;
+		return false;
+	};
+	if (!Is_CompositionAnimationTargetAsset(targetAssetName))
+		return reject("Composition preview target is not registered: " + targetAssetName);
+	if (std::none_of(pattern.Stages.begin(), pattern.Stages.end(), [](const auto& stage) {
+		return !stage.AnimationOccurrences.empty(); }))
+		return reject("Composition Pattern preview has no animation occurrence.");
+	if (Is_AnyDocumentDirty() && !m_AssetName.empty() && m_AssetName != targetAssetName)
+		return reject("Save or discard the current Animation document before changing its preview body.");
+	if (nullptr == m_pPreviewPanel)
+		return reject("Composition preview panel is unavailable.");
+	if (!m_pPreviewPanel->Select_TargetAsset(targetAssetName))
+		return reject("Composition preview body could not open: " + m_pPreviewPanel->Get_Status());
+	if (!Sync_AssetName())
+		return reject(m_Status);
+
+	// Target identity is explicit for Resources; profile aliases are checked
+	// per row against this body instead of entering a boss-specific workspace.
+	m_strPendingCompositionPreviewTargetAssetName = targetAssetName;
+	m_PendingKoukuSaydonCompositionPatternPreview = pattern;
+	m_PendingKoukuSaydonCompositionAnimationPreview = {};
+	m_bKoukuSaydonCompositionPatternPreviewPending = true;
+	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+	m_iPendingKoukuCompositionStartClockMs = startClockMs;
+	m_bPendingKoukuCompositionStartPaused = startPaused;
+	const bool_t started = Start_PendingKoukuSaydonCompositionPreview(
+		CAnimationTargetService::Resolve_Model());
+	strOutStatus = m_strKoukuSaydonPatternStatus;
+	return started;
 }
 
 bool_t Client::CAnimation_Tool::Sync_AssetName()
@@ -11626,6 +11805,278 @@ bool_t Client::CAnimation_Tool::Build_KoukuSaydonPatternFromAction(
 	return true;
 }
 
+Client::CAnimation_Tool::KOUKU_COMPOSITION_PREVIEW_STATE
+Client::CAnimation_Tool::Get_KoukuCompositionPreviewState() const
+{
+	KOUKU_COMPOSITION_PREVIEW_STATE state;
+	state.strPatternId = m_strKoukuSaydonPatternPreviewId;
+	state.strStatus = m_strKoukuSaydonPatternStatus;
+	state.bPlaying = m_bKoukuCompositionTimelinePlaying;
+	state.bPaused = m_bKoukuCompositionTimelinePlaying &&
+		m_bKoukuSaydonPatternPreviewPaused;
+	state.iDurationMs = m_iKoukuCompositionPreviewDurationMs;
+	state.iClockMs = static_cast<std::uint32_t>(std::clamp(
+		m_fKoukuCompositionPreviewClockMs, 0.0,
+		static_cast<double>(m_iKoukuCompositionPreviewDurationMs)));
+	return state;
+}
+
+bool_t Client::CAnimation_Tool::Set_KoukuCompositionPreviewPaused(
+	const bool_t bPaused,
+	std::string& strOutStatus)
+{
+	const auto model = m_KoukuSaydonPatternPreviewModel.lock();
+	if (!m_bKoukuCompositionTimelinePlaying || nullptr == model ||
+		CAnimationTargetService::Resolve_Model() != model ||
+		m_iKoukuSaydonPatternPreviewTargetGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+	{
+		strOutStatus = "No current KoukuSaydon composition preview is staged.";
+		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+		return false;
+	}
+	if (!bPaused && m_fKoukuCompositionPreviewClockMs >= m_iKoukuCompositionPreviewDurationMs)
+		m_fKoukuCompositionPreviewClockMs = 0.0;
+	m_bKoukuSaydonPatternPreviewPaused = bPaused;
+	Sample_KoukuSaydonCompositionPreview(model);
+	strOutStatus = bPaused ?
+		"Composition preview paused." : "Composition preview resumed.";
+	m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Seek_KoukuCompositionPreview(
+	const std::uint32_t iClockMs,
+	std::string& strOutStatus)
+{
+	const auto pModel = m_KoukuSaydonPatternPreviewModel.lock();
+	if (!m_bKoukuCompositionTimelinePlaying || nullptr == pModel ||
+		0u == m_iKoukuCompositionPreviewDurationMs ||
+		CAnimationTargetService::Resolve_Model() != pModel ||
+		m_iKoukuSaydonPatternPreviewTargetGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+	{
+		strOutStatus = "No current KoukuSaydon composition preview is staged.";
+		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+		return false;
+	}
+	m_fKoukuCompositionPreviewClockMs = static_cast<double>((std::min)(
+		iClockMs, m_iKoukuCompositionPreviewDurationMs));
+	if (m_fKoukuCompositionPreviewClockMs >= m_iKoukuCompositionPreviewDurationMs)
+		m_bKoukuSaydonPatternPreviewPaused = true;
+	Sample_KoukuSaydonCompositionPreview(pModel);
+	strOutStatus = "Composition preview seeked to " + std::to_string(
+		static_cast<std::uint32_t>(m_fKoukuCompositionPreviewClockMs)) + " ms.";
+	m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Stop_KoukuCompositionPreview(
+	std::string& strOutStatus)
+{
+	const bool_t hadPending = m_bKoukuSaydonCompositionAnimationPreviewPending ||
+		m_bKoukuSaydonCompositionPatternPreviewPending;
+	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+	m_bKoukuSaydonCompositionPatternPreviewPending = false;
+	m_PendingKoukuSaydonCompositionAnimationPreview = {};
+	m_PendingKoukuSaydonCompositionPatternPreview = {};
+	if (!m_bKoukuCompositionTimelinePlaying)
+	{
+		strOutStatus = hadPending ? "Composition preview request cancelled." :
+			"No KoukuSaydon composition preview is playing.";
+		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
+		return hadPending;
+	}
+	Stop_KoukuSaydonPatternPreview(
+		m_KoukuSaydonPatternPreviewModel.lock(), "Composition preview stopped.");
+	strOutStatus = m_strKoukuSaydonPatternStatus;
+	m_Status = strOutStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!m_bKoukuSaydonCompositionAnimationPreviewPending && !m_bKoukuSaydonCompositionPatternPreviewPending)
+		return true;
+	const std::string targetAssetName = m_strPendingCompositionPreviewTargetAssetName;
+	if (nullptr == pModel || !Is_CompositionAnimationTargetAsset(targetAssetName) ||
+		CAnimationTargetService::Resolve_Model() != pModel ||
+		CAnimationTargetService::Resolve_AssetName() != targetAssetName)
+	{
+		m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+		m_bKoukuSaydonCompositionPatternPreviewPending = false;
+		m_Status = m_strKoukuSaydonPatternStatus = "Composition preview target is unavailable.";
+		return false;
+	}
+
+	const std::string previewPatternId = m_bKoukuSaydonCompositionPatternPreviewPending ?
+		m_PendingKoukuSaydonCompositionPatternPreview.strPatternId : std::string{};
+	const std::uint32_t startClockMs = m_iPendingKoukuCompositionStartClockMs;
+	const bool_t startPaused = m_bPendingKoukuCompositionStartPaused;
+	std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> rows;
+	std::uint32_t durationMs = 0u;
+	std::string diagnostics;
+	const auto append = [&](KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE row,
+		const std::uint32_t stageStart, const std::uint32_t stageDuration)
+	{
+		std::uint32_t index = 0u;
+		for (; index < pModel->Get_NumAnimations(); ++index)
+		{
+			const char* name = pModel->Get_AnimationName(index);
+			if (nullptr != name && row.strRuntimeClip == name) break;
+		}
+		f32_t position = 0.f, ticks = 0.f;
+		const f32_t tps = index < pModel->Get_NumAnimations() ? pModel->Get_AnimationTickPerSecond(index) : 0.f;
+		const auto* rowProfile = Find_KoukuSaydonActionProfile(row.strProfileId);
+		const std::string_view rowTarget = nullptr != rowProfile ?
+			std::string_view{ rowProfile->pPreviewAssetName } : std::string_view{ row.strProfileId };
+		const bool valid = rowTarget == targetAssetName &&
+			row.iPlayMs > 0u && std::isfinite(row.fPlayRate) && row.fPlayRate >= 0.01f && row.fPlayRate <= 16.f &&
+			static_cast<std::uint64_t>(row.iStartOffsetMs) + row.iPlayMs <= stageDuration &&
+			(row.strEndPolicy == "EXACT" || row.strEndPolicy == "HOLD_LAST_POSE" || row.strEndPolicy == "LOOP_TO_WINDOW") &&
+			std::isfinite(tps) && tps > 0.f && pModel->Get_AnimationProgress(index, position, ticks) &&
+			std::isfinite(ticks) && ticks > 0.f &&
+			(row.strEndPolicy == "HOLD_LAST_POSE" || row.iSourceStartMs * tps * 0.001 < ticks);
+		if (!valid)
+		{
+			diagnostics += "Skipped " + row.strRuntimeClip + ": wrong body, missing clip, or invalid timing. ";
+			return;
+		}
+		/* An EXACT window that outruns the native clip is still the box the
+		   designer drew: Sample clamps the source clock, so the remainder holds
+		   the last pose and the Details panel reports the same overrun. */
+		const double sourceEndMs = row.iSourceStartMs + static_cast<double>(row.iPlayMs) * row.fPlayRate;
+		if (row.strEndPolicy == "EXACT" && sourceEndMs > ticks / tps * 1000.0 + 1.0)
+			diagnostics += row.strRuntimeClip + " holds its last pose past the native clip end. ";
+		row.iStartOffsetMs += stageStart;
+		rows.push_back(std::move(row));
+	};
+	if (m_bKoukuSaydonCompositionAnimationPreviewPending)
+	{
+		auto row = m_PendingKoukuSaydonCompositionAnimationPreview;
+		row.iStartOffsetMs = 0u;
+		durationMs = row.iPlayMs;
+		append(std::move(row), 0u, durationMs);
+	}
+	else
+	{
+		for (const auto& stage : m_PendingKoukuSaydonCompositionPatternPreview.Stages)
+		{
+			if (stage.iDurationMs > 600000u || durationMs > 600000u - stage.iDurationMs)
+			{
+				diagnostics += "Pattern duration exceeds 600 seconds. ";
+				rows.clear();
+				break;
+			}
+			for (const auto& row : stage.AnimationOccurrences) append(row, durationMs, stage.iDurationMs);
+			durationMs += stage.iDurationMs;
+		}
+	}
+	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+	m_bKoukuSaydonCompositionPatternPreviewPending = false;
+	if (rows.empty())
+	{
+		m_Status = m_strKoukuSaydonPatternStatus = "No playable Animation rows. " + diagnostics;
+		return false;
+	}
+	std::sort(rows.begin(), rows.end(), [](const auto& left, const auto& right) {
+		if (left.iStartOffsetMs != right.iStartOffsetMs) return left.iStartOffsetMs < right.iStartOffsetMs;
+		return left.strOccurrenceId < right.strOccurrenceId;
+	});
+	Reset_ValtanPatternPreviewState({});
+	Reset_ValtanPatternMasterPreviewState({});
+	Reset_KoukuSaydonPatternPreviewState({});
+	m_KoukuCompositionPreviewRows = std::move(rows);
+	m_strKoukuSaydonPatternPreviewId = previewPatternId;
+	m_iKoukuSaydonPatternPreviewClip = m_KoukuCompositionPreviewRows.size();
+	m_iKoukuCompositionPreviewDurationMs = durationMs;
+	m_iKoukuCompositionInitialAnimation = pModel->Get_CurrentAnimIndex();
+	f32_t initialDuration = 0.f;
+	m_fKoukuCompositionInitialTrackTicks = 0.f;
+	(void)pModel->Get_AnimationProgress(m_iKoukuCompositionInitialAnimation,
+		m_fKoukuCompositionInitialTrackTicks, initialDuration);
+	m_fKoukuCompositionPreviewClockMs = (std::min)(startClockMs, durationMs);
+	m_bKoukuSaydonPatternPreviewPaused = startPaused || startClockMs >= durationMs;
+	m_KoukuSaydonPatternPreviewModel = pModel;
+	m_iKoukuSaydonPatternPreviewTargetGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+	m_bKoukuSaydonPatternPreviewPlaying = true;
+	m_bKoukuCompositionTimelinePlaying = true;
+	m_Status = m_strKoukuSaydonPatternStatus =
+		(previewPatternId.empty() ? "Animation row/resource preview. " : "Animation family preview. ") + diagnostics;
+	if (!diagnostics.empty()) OutputDebugStringA(("[KoukuPreview] " + diagnostics + "\n").c_str());
+	Sample_KoukuSaydonCompositionPreview(pModel);
+	return true;
+}
+
+void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (nullptr == pModel)
+		return;
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* selected = nullptr;
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* previous = nullptr;
+	double previousEndMs = 0.0;
+	for (const auto& row : m_KoukuCompositionPreviewRows)
+	{
+		const double endMs = static_cast<double>(row.iStartOffsetMs) + row.iPlayMs;
+		if (m_fKoukuCompositionPreviewClockMs >= row.iStartOffsetMs &&
+			m_fKoukuCompositionPreviewClockMs < endMs)
+			selected = &row;
+		if (endMs <= m_fKoukuCompositionPreviewClockMs && endMs >= previousEndMs)
+		{
+			previous = &row;
+			previousEndMs = endMs;
+		}
+	}
+	// Reconstruct a gap from its preceding row, rather than retaining whatever
+	// later pose happened to be visible before a backward seek.
+	double sampleClockMs = m_fKoukuCompositionPreviewClockMs;
+	if (nullptr == selected)
+	{
+		selected = previous;
+		sampleClockMs = previousEndMs;
+	}
+	if (nullptr == selected)
+	{
+		// The leading gap has the immutable pose captured when this preview began.
+		if (m_iKoukuCompositionInitialAnimation < pModel->Get_NumAnimations())
+		{
+			if (pModel->Get_CurrentAnimIndex() != m_iKoukuCompositionInitialAnimation || pModel->Is_AnimLoop())
+				(void)pModel->Start_Animation(m_iKoukuCompositionInitialAnimation, false);
+			pModel->Set_AnimPaused(true);
+			(void)pModel->Set_AnimTrackPosition(
+				m_iKoukuCompositionInitialAnimation, m_fKoukuCompositionInitialTrackTicks);
+			(void)pModel->Play_Animation(0.f);
+		}
+		m_iKoukuSaydonPatternPreviewClip = m_KoukuCompositionPreviewRows.size();
+		return;
+	}
+	std::uint32_t index = 0u;
+	for (; index < pModel->Get_NumAnimations(); ++index)
+	{
+		const char* name = pModel->Get_AnimationName(index);
+		if (nullptr != name && selected->strRuntimeClip == name) break;
+	}
+	if (index >= pModel->Get_NumAnimations()) return;
+	f32_t position = 0.f, duration = 0.f;
+	const f32_t tps = pModel->Get_AnimationTickPerSecond(index);
+	if (!pModel->Get_AnimationProgress(index, position, duration) ||
+		!std::isfinite(tps) || tps <= 0.f || !std::isfinite(duration) || duration <= 0.f)
+		return;
+	const std::size_t rowIndex = static_cast<std::size_t>(selected - m_KoukuCompositionPreviewRows.data());
+	if (m_iKoukuSaydonPatternPreviewClip != rowIndex || pModel->Get_CurrentAnimIndex() != index)
+	{
+		if (!Start_PreviewClip(pModel, selected->strRuntimeClip.c_str(), false, 0.f)) return;
+		m_iKoukuSaydonPatternPreviewClip = rowIndex;
+	}
+	double sourceTicks = (selected->iSourceStartMs +
+		(sampleClockMs - selected->iStartOffsetMs) * selected->fPlayRate) * tps * 0.001;
+	if (selected->strEndPolicy == "LOOP_TO_WINDOW") sourceTicks = std::fmod(sourceTicks, duration);
+	sourceTicks = std::clamp(sourceTicks, 0.0, static_cast<double>(duration));
+	pModel->Set_AnimPaused(true);
+	(void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
+	(void)pModel->Play_Animation(0.f);
+}
+
 bool_t Client::CAnimation_Tool::Start_KoukuSaydonPatternPreview(
 	const shared_ptr<Engine::CModel>& pModel,
 	const KOUKU_SAYDON_ANIMATION_PATTERN& Pattern,
@@ -11834,11 +12285,22 @@ void Client::CAnimation_Tool::Stop_KoukuSaydonPatternPreview(
 	if (nullptr != pModel)
 	{
 		pModel->Set_AnimationSpeed(1.f);
-		const std::string strIdleClip = Resolve_KoukuSaydonIdleClip();
-		if (strIdleClip.empty() ||
-			!pModel->Start_Animation(strIdleClip.c_str(), true))
+		if (m_bKoukuCompositionTimelinePlaying)
 		{
+			if (m_iKoukuCompositionInitialAnimation < pModel->Get_NumAnimations())
+			{
+				(void)pModel->Start_Animation(m_iKoukuCompositionInitialAnimation, false);
+				(void)pModel->Set_AnimTrackPosition(
+					m_iKoukuCompositionInitialAnimation, m_fKoukuCompositionInitialTrackTicks);
+			}
 			pModel->Set_AnimPaused(true);
+			(void)pModel->Play_Animation(0.f);
+		}
+		else
+		{
+			const std::string strIdleClip = Resolve_KoukuSaydonIdleClip();
+			if (strIdleClip.empty() || !pModel->Start_Animation(strIdleClip.c_str(), true))
+				pModel->Set_AnimPaused(true);
 		}
 	}
 	m_bLoop = true;
@@ -11848,6 +12310,13 @@ void Client::CAnimation_Tool::Stop_KoukuSaydonPatternPreview(
 void Client::CAnimation_Tool::Reset_KoukuSaydonPatternPreviewState(
 	const std::string& strStatus)
 {
+	m_bKoukuCompositionTimelinePlaying = false;
+	m_strPendingCompositionPreviewTargetAssetName.clear();
+	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+	m_bKoukuSaydonCompositionPatternPreviewPending = false;
+	m_KoukuCompositionPreviewRows.clear();
+	m_fKoukuCompositionPreviewClockMs = 0.0;
+	m_iKoukuCompositionPreviewDurationMs = 0u;
 	m_KoukuSaydonPatternPreviewClips.clear();
 	m_strKoukuSaydonPatternPreviewId.clear();
 	m_strKoukuSaydonPatternPreviewLabel.clear();
@@ -11899,6 +12368,11 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 	{
 		m_bKoukuSaydonActionLoadAttempted = true;
 		(void)Load_KoukuSaydonActionBindings(pModel);
+	}
+	if (m_bKoukuSaydonCompositionAnimationPreviewPending ||
+		m_bKoukuSaydonCompositionPatternPreviewPending)
+	{
+		(void)Start_PendingKoukuSaydonCompositionPreview(pModel);
 	}
 	if (m_KoukuSaydonActionReference.Actions.empty())
 	{

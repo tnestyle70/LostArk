@@ -4,11 +4,6 @@
 
 #include <cmath>
 
-namespace
-{
-	constexpr f32_t COOKED_TICK_RATE = 30.f;
-}
-
 CAnimation::CAnimation()
 {
 }

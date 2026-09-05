@@ -374,6 +374,17 @@ void Client::CValtanActionWorkbench::Render_BossPatternWindow(
 	}
 	Render_WindowMenu();
 
+	Render_BossPatternPane(
+		pPattern, iPatternViewDraftGeneration, bMutationAdmitted, bPatternMutationAdmitted);
+	ImGui::End();
+}
+
+void Client::CValtanActionWorkbench::Render_BossPatternPane(
+	const VALTAN_PATTERN_VIEW* const pPattern,
+	const std::uint64_t iPatternViewDraftGeneration,
+	const bool_t bMutationAdmitted,
+	const bool_t bPatternMutationAdmitted)
+{
 	ImGui::TextUnformatted("Pattern branches = where / Sequencer lanes = when");
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Open Sequencer"))
@@ -397,7 +408,6 @@ void Client::CValtanActionWorkbench::Render_BossPatternWindow(
 	{
 		ImGui::SeparatorText("Boss Pattern Graph");
 		ImGui::TextDisabled("Select one admitted Pattern in Composition Patterns.");
-		ImGui::End();
 		return;
 	}
 
@@ -477,7 +487,6 @@ void Client::CValtanActionWorkbench::Render_BossPatternWindow(
 	}
 	if (!bCanDrawSnapshot)
 	{
-		ImGui::End();
 		return;
 	}
 
@@ -772,5 +781,4 @@ void Client::CValtanActionWorkbench::Render_BossPatternWindow(
 		"Left click node/edge: select + preview route | wheel: zoom | right/middle drag: pan. Effect/Animation/Sound/Camera stay on Sequencer lanes instead of becoming graph wires.");
 	if (!bMutationAdmitted)
 		ImGui::TextDisabled("Graph is inspection-only until the canonical join is admitted.");
-	ImGui::End();
 }

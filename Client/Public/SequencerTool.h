@@ -1,80 +1,89 @@
 #pragma once
 
 #include "Client_Defines.h"
-#include "ValtanActionWorkbench.h"
-#include "BossCompositionDocument.h"
+#include "Engine_Defines.h"
+#include "CompositionWorkbenchSession.h"
 
-#include <cstdint>
+#include <array>
+#include <cstddef>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
 
-class CValtanBossTool;
-
-/* Sequencer: one playhead over every lane of the Composition Workbench's
-   selected Pattern (Stage, Animation, Collider, Effect, Sound, Logic, Camera).
-   Valtan editing still goes through that single admitted Workbench session;
-   the Boss Composition and Arena Sequencer documents are a read-only
-   authoring facade over the same typed owners, not a second runtime/writer. */
+// One Workbench shell over independent boss authoring sessions. It owns window
+// placement, visibility and raw animation browsing; no descriptor or publisher is loaded
+// to decide whether a pane can be shown.
 class CSequencerTool final
 {
 public:
-	CSequencerTool(
-		CValtanActionWorkbench* pValtanWorkbench,
-		CValtanBossTool* pValtanBossTool);
+    enum class ANIMATION_PREVIEW_TRANSPORT : std::uint8_t { NONE, PAUSE, RESUME, STOP };
+    struct ANIMATION_PREVIEW_STATE final
+    {
+        std::string strPatternId;
+        std::string strStatus;
+        bool bPlaying = false;
+        bool bPaused = false;
+        std::uint32_t iClockMs = 0u;
+        std::uint32_t iDurationMs = 0u;
+    };
 
-	void Open() { m_bOpen = true; }
-	[[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
-	void Render();
-	bool_t Consume_CompositionOpenRequest();
-	bool_t Consume_KoukuSaydonAnimationOpenRequest(std::string& outProfileId);
+    CSequencerTool(
+        ICompositionWorkbenchSession* pValtanSession,
+        ICompositionWorkbenchSession* pKoukuSaydonSession);
+
+    void Open() { m_bOpen = true; }
+    void Open(COMPOSITION_WORKBENCH_BOSS boss) {
+        m_eSelectedBoss = boss;
+        m_bOpen = true;
+    }
+    [[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
+    [[nodiscard]] COMPOSITION_WORKBENCH_BOSS Get_SelectedBoss() const noexcept {
+        return m_eSelectedBoss;
+    }
+    void Render();
+    void Set_AnimationResources(std::vector<COMPOSITION_ANIMATION_RESOURCE> resources,
+        std::string status);
+    bool Consume_ResourceRefreshRequest();
+    bool Consume_AnimationPreviewRequest(COMPOSITION_ANIMATION_RESOURCE& resource);
+    void Set_AnimationPreviewStatus(std::string status);
+    bool Consume_AnimationPreviewTransportRequest(ANIMATION_PREVIEW_TRANSPORT& transport);
+    void Set_AnimationPreviewState(ANIMATION_PREVIEW_STATE state);
 
 private:
-	enum class SOURCE_BOSS : uint8_t
-	{
-		VALTAN,
-		KOUKU_SAYDON,
-	};
+    void Render_WindowMenu();
+    void Render_BossSelector();
+    void Render_PhysicalAnimationBrowser(ICompositionWorkbenchSession& session);
+    void Queue_AnimationPreview(const COMPOSITION_ANIMATION_RESOURCE& resource);
+    void Apply_ViewRequest(ICompositionWorkbenchSession& session);
+    void Render_Pane(
+        ICompositionWorkbenchSession& session,
+        COMPOSITION_WORKBENCH_PANE pane);
+    [[nodiscard]] ICompositionWorkbenchSession* Selected_Session() const noexcept;
 
-	static const char_t* Lane_Label(CValtanActionWorkbench::TIMELINE_LANE eLane);
-	static uint32_t Lane_Color(CValtanActionWorkbench::TIMELINE_LANE eLane);
-	static const char_t* SourceBoss_Label(SOURCE_BOSS boss);
-	void Reload_SourceDocuments();
-	void Synchronize_SourceDocumentsWithCanonicalGeneration();
-	void Render_SourceDocumentHeader();
-	void Render_AdvancedSourceInspector();
-	void Render_SourcePatternSummary();
-	void Render_ArenaSequencerSummary() const;
-	void Render_Transport(uint32_t iDurationMs);
-	void Render_Lanes(
-		const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items,
-		uint32_t iDurationMs);
-	void Render_Selection(
-		const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items) const;
-
-private:
-	CValtanActionWorkbench* m_pValtanWorkbench = nullptr;
-	CValtanBossTool* m_pValtanBossTool = nullptr;
-	bool_t m_bOpen = true;
-	bool_t m_bCompositionOpenRequested = false;
-	std::string m_strKoukuSaydonAnimationOpenProfileId;
-	bool_t m_bSourceDocumentsLoaded = false;
-	bool_t m_bSourceDocumentsParsed = false;
-	SOURCE_BOSS m_eSourceBoss = SOURCE_BOSS::VALTAN;
-	std::uint64_t m_iObservedCanonicalDisplayGeneration =
-		~std::uint64_t{ 0u };
-	CCompositionDocumentCatalog m_SourceCatalog;
-	CBossCompositionDocument m_BossComposition;
-	CArenaSequencerDocument m_ArenaSequencer;
-	std::string m_strSourceDocumentStatus;
-	std::string m_strSourcePatternId;
-	std::string m_strStatus;
-	float m_fPixelsPerSecond = 160.f;
-	std::string m_strSelectedStableId;
-	std::string m_strSelectedStageId;
-	CValtanActionWorkbench::TIMELINE_LANE m_eSelectedLane =
-		CValtanActionWorkbench::TIMELINE_LANE::STAGE;
+    ICompositionWorkbenchSession* m_pValtanSession = nullptr;
+    ICompositionWorkbenchSession* m_pKoukuSaydonSession = nullptr;
+    COMPOSITION_WORKBENCH_BOSS m_eSelectedBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
+    bool_t m_bOpen = true;
+    bool_t m_bResetLayoutRequested = false;
+    bool_t m_bApplyResetLayoutThisFrame = false;
+    bool_t m_bSequencerMaximized = false;
+    bool_t m_bExpandResourcesRequested = false;
+    bool_t m_bFocusResourcesRequested = false;
+    bool_t m_bFocusPatternsRequested = false;
+    bool m_bResourceRefreshRequested = true;
+    bool m_bHasSelectedAnimationResource = false;
+    bool m_bAnimationPreviewPending = false;
+    std::array<char, 160u> m_AnimationResourceSearch{};
+    std::vector<COMPOSITION_ANIMATION_RESOURCE> m_AnimationResources;
+    COMPOSITION_ANIMATION_RESOURCE m_SelectedAnimationResource;
+    COMPOSITION_ANIMATION_RESOURCE m_PendingAnimationPreview;
+    std::string m_strAnimationResourceStatus;
+    std::string m_strAnimationBrowserStatus;
+    ANIMATION_PREVIEW_TRANSPORT m_eAnimationPreviewTransport = ANIMATION_PREVIEW_TRANSPORT::NONE;
+    ANIMATION_PREVIEW_STATE m_AnimationPreviewState;
+    std::array<bool, static_cast<std::size_t>(COMPOSITION_WORKBENCH_PANE::COUNT)>
+        m_PaneVisible = { true, true, true, true, true, false, true };
 };
 
 NS_END

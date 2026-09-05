@@ -593,7 +593,7 @@ finally:
             ("mode", {**valid, "mode": "ORDERED_REPEAT"}),
             ("pursuit", {**valid, "interStepPursuitMs": 0}),
             ("transition-count", {**valid, "transitionPursuitMs": []}),
-            ("transition-range", {**valid, "transitionPursuitMs": [0]}),
+            ("transition-range", {**valid, "transitionPursuitMs": [10001]}),
             ("unknown", {**valid, "patternIds": ["VALTAN_UNKNOWN"]}),
             ("malformed", {**valid, "patternIds": ["../invalid"]}),
             (

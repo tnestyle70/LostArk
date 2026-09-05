@@ -6,8 +6,10 @@
 #include "AnimationTargetService.h"
 #include "ActorCatalog.h"
 #include "Character.h"
+#include "CompositionAnimationResource.h"
 #include "GameInstance.h"
 #include "Level_ValtanArena.h"
+#include "Level_KakulSaydonArena.h"
 #include "Model.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
@@ -23,6 +25,26 @@
 #include <filesystem>
 #include <string_view>
 #include <utility>
+
+namespace
+{
+	bool_t Try_ResolveRaidPreviewPlacement(const uint32_t currentLevel,
+		float3_t& position, std::string& status)
+	{
+		if (currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
+		{
+			const auto* arena = Client::CLevel_ValtanArena::Get_Active();
+			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(position, status);
+		}
+		else if (currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		{
+			const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active();
+			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(position, status);
+		}
+		status = "active raid arena placement owner is unavailable";
+		return false;
+	}
+}
 
 Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
 {
@@ -107,42 +129,45 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		m_Status = "Preview target is not admitted: " + strAnimationAssetName;
 		return false;
 	}
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (nullptr != m_pPreviewAsset &&
 		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
-		!m_pPreviewObject.expired())
+		!m_pPreviewObject.expired() && m_iPreviewLevelIndex == currentLevel)
 	{
-		/* Auto-staging can happen before the first replicated arena player
-		   arrives. Re-selecting from Composition therefore recenters the already
-		   admitted clone instead of returning success for an off-screen origin
-		   model. */
-		const uint32_t iCurrentLevel =
-			CGameInstance::Get().Get_CurrentLevelID();
-		const bool_t bArenaValtan =
-			iCurrentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
-			nullptr != asset->pBossArchetypeId &&
-			std::string_view{ asset->pBossArchetypeId } == "BOSS_VALTAN";
-		if (!bArenaValtan)
-			return true;
+		const bool_t raidCompositionPreview =
+			(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			 currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
+			Is_CompositionAnimationTargetAsset(strAnimationAssetName);
+		if (!raidCompositionPreview) return true;
 
-		CLevel_ValtanArena* const pArena = CLevel_ValtanArena::Get_Active();
-		float3_t Placement{};
-		std::string strPlacementSource;
-		const shared_ptr<CValtan> pPreview =
-			dynamic_pointer_cast<CValtan>(m_pPreviewObject.lock());
-		if (nullptr == pArena ||
-			!pArena->Try_Get_AuthoringPreviewPlacement(
-				Placement, strPlacementSource) ||
-			nullptr == pPreview || nullptr == pPreview->Get_Transform())
+		// Recenter an existing clone using the level's replication owner too;
+		// AnimationTargetService's optional scene binding is not a raid roster.
+		float3_t placement{};
+		std::string placementSource;
+		if (!Try_ResolveRaidPreviewPlacement(currentLevel, placement, placementSource))
 		{
-			m_Status = "Arena Clone placement unavailable: " +
-				strPlacementSource + ".";
+			m_Status = "Arena preview placement unavailable: " + placementSource + ".";
 			return false;
 		}
-		pPreview->Get_Transform()->Set_State(
-			STATE::POSITION,
-			XMVectorSetW(XMLoadFloat3(&Placement), 1.f));
-		m_Status = "Target=ARENA CLONE | anchor=" + strPlacementSource +
-			" | collision=OFF | Server Valtan=UNCHANGED.";
+		const shared_ptr<CValtan> previewBoss =
+			dynamic_pointer_cast<CValtan>(m_pPreviewObject.lock());
+		if (nullptr != previewBoss && nullptr != previewBoss->Get_Transform())
+			previewBoss->Get_Transform()->Set_State(STATE::POSITION,
+				XMVectorSetW(XMLoadFloat3(&placement), 1.f));
+		else
+		{
+			const shared_ptr<CPart_Body> body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+			if (nullptr == body || nullptr == body->Get_Model())
+			{
+				m_Status = "Arena preview body is unavailable.";
+				return false;
+			}
+			float4x4_t& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
+			XMStoreFloat4x4(&root, XMMatrixTranslation(placement.x, placement.y, placement.z));
+			CAnimationTargetService::Bind_Preview(body->Get_Model(), asset->pAssetName, root);
+		}
+		m_Status = "Target=LOCAL ARENA PREVIEW | anchor=" + placementSource +
+			" | collision=OFF | Server boss=UNCHANGED.";
 		return true;
 	}
 	for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
@@ -213,16 +238,14 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 {
 	const uint32_t currentLevel =
 		CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t bValtanArenaBossPreview =
-		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
-		nullptr != asset.pBossArchetypeId &&
-		std::string_view{ asset.pBossArchetypeId } == "BOSS_VALTAN";
+	const bool_t bRaidCompositionPreview =
+		(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		 currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
+		nullptr != asset.pAssetName && Is_CompositionAnimationTargetAsset(asset.pAssetName);
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		!bValtanArenaBossPreview)
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) && !bRaidCompositionPreview)
 	{
-		m_Status =
-			"Character previews are admitted in Character Select or Development; Valtan Arena admits only the dedicated Valtan boss Model View.";
+		m_Status = "Character previews are admitted in Character Select or Development; raid arenas also admit the six Composition animation bodies.";
 		return false;
 	}
 	if (m_iPreparedGenericPreviewLevelIndex != currentLevel)
@@ -235,19 +258,15 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	std::string strPlacementSource = "scene character / world-right";
 	const shared_ptr<CCharacter> character =
 		CAnimationTargetService::Resolve_SceneCharacter();
-	if (bValtanArenaBossPreview)
+	if (bRaidCompositionPreview)
 	{
-		CLevel_ValtanArena* const pArena = CLevel_ValtanArena::Get_Active();
-		float3_t Placement{};
-		if (nullptr == pArena ||
-			!pArena->Try_Get_AuthoringPreviewPlacement(
-				Placement, strPlacementSource))
+		float3_t placement{};
+		if (!Try_ResolveRaidPreviewPlacement(currentLevel, placement, strPlacementSource))
 		{
-			m_Status = "Arena Clone placement unavailable: " +
-				strPlacementSource + ".";
+			m_Status = "Arena preview placement unavailable: " + strPlacementSource + ".";
 			return false;
 		}
-		previewPosition = XMVectorSetW(XMLoadFloat3(&Placement), 1.f);
+		previewPosition = XMVectorSetW(XMLoadFloat3(&placement), 1.f);
 	}
 	else if (nullptr != character && nullptr != character->Get_Transform())
 	{
@@ -408,7 +427,8 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	}
 	else
 	{
-		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
+		if ((currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+			 bRaidCompositionPreview) &&
 			!m_PreparedGenericPreviewAssetIds.contains(asset.pId))
 		{
 			const std::filesystem::path modelPath =
@@ -622,7 +642,10 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			stagedBody->Get_Model(),
 			asset.pAssetName,
 			stagedParentMatrix);
-		m_Status = string("Previewing ") + asset.pLabel +
+		m_Status = bRaidCompositionPreview ?
+			string("Target=LOCAL ARENA REFERENCE | ") + asset.pLabel +
+			" | anchor=" + strPlacementSource + " | collision=OFF | Server boss=UNCHANGED." :
+			string("Previewing ") + asset.pLabel +
 			(nullptr != stagedWeapon ? " and its socketed weapon" : "") +
 			" 2.5 m to the right of the scene character.";
 	}

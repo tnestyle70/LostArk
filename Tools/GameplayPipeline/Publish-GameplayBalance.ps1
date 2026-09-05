@@ -49,7 +49,13 @@ if (-not $hasExplicitOverlay -and -not $SkipValtanSplitProjection) {
     & $valtanProjector -Mode Validate -RepositoryRoot $repoRoot
     if ($LASTEXITCODE -ne 0) {
         throw 'Valtan split Product validation failed.'
-    }
+	}
+}
+$koukuProjector = Join-Path $repoRoot `
+	'Tools\KoukuSaydonPipeline\project_kouku_saydon_composition.py'
+& python -B $koukuProjector --repository-root $repoRoot --mode validate
+if ($LASTEXITCODE -ne 0) {
+	throw 'KoukuSaydon composition Product validation failed.'
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 $maximumValtanPatternFlowSlots = 255
@@ -1235,6 +1241,18 @@ foreach ($boss in @($bossDocument.bosses)) {
 			[uint32]$plate.durability, [uint32]$plate.defense) -join "`t"))
 	}
 }
+$koukuBossProfiles = @($bossDocument.bosses | Where-Object {
+	[string]$_.archetypeId -ceq 'BOSS_KAKULSAYDON_G1_KOUKU'
+})
+if ($koukuBossProfiles.Count -ne 1) {
+	throw 'KoukuSaydon Gate 1 requires exactly one boss profile.'
+}
+$koukuBossProfile = $koukuBossProfiles[0]
+if ([string]$koukuBossProfile.encounterId -cne 'ENCOUNTER_KAKULSAYDON_G1' -or
+	[string]$koukuBossProfile.phasePolicy.kind -cne 'AUTHORED_PATTERN_EVENT' -or
+	@($koukuBossProfile.armorPlates).Count -ne 0) {
+	throw 'KoukuSaydon animation-audition identity, phase policy, or part contract is invalid.'
+}
 
 $bossPartDocument = Read-JsonDocument 'Data/Balance/ValtanBossParts.json'
 Assert-ExactProperties $bossPartDocument @(
@@ -1298,9 +1316,9 @@ Assert-ExactProperties $bossCatalogDocument @(
 	'schema','formatVersion','bosses') 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
-	'boss presentation catalog formatVersion' 6 6
+	'boss presentation catalog formatVersion' 7 7
 if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
-	[uint32]$bossCatalogDocument.formatVersion -ne 6 -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 7 -or
 	$bossCatalogDocument.bosses -isnot [Array]) {
 	throw 'Boss presentation catalog header is invalid.'
 }
@@ -1321,10 +1339,46 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	if ($presentationScale -le 0.0 -or $presentationScale -gt 100.0) {
 		throw "Boss presentation scale is out of range: $($presentationBoss.archetypeId)"
 	}
-	foreach ($field in @('bodyModelPreScale','weaponModelPreScale')) {
-		Assert-JsonNumber $presentationBoss.$field "boss presentation $field"
-		if ([double]$presentationBoss.$field -le 0.0 -or [double]$presentationBoss.$field -gt 100.0) {
-			throw "Boss model admission scale is out of range: $field"
+	Assert-JsonNumber $presentationBoss.bodyModelPreScale `
+		'boss presentation bodyModelPreScale'
+	if ([double]$presentationBoss.bodyModelPreScale -le 0.0 -or
+		[double]$presentationBoss.bodyModelPreScale -gt 100.0) {
+		throw 'Boss body model admission scale is out of range.'
+	}
+	$isWeaponlessKouku = [string]$presentationBoss.archetypeId -ceq
+		'BOSS_KAKULSAYDON_G1_KOUKU'
+	if ($isWeaponlessKouku) {
+		if ($null -ne $presentationBoss.weaponModel -or
+			$null -ne $presentationBoss.weaponModelPreScale -or
+			[string]$presentationBoss.clientPresentationId -cne
+				'boss.kakulsaydon.g1.kouku.client.v1' -or
+			[string]$presentationBoss.serverProfileId -cne
+				'boss.kakulsaydon.g1.kouku.server.v1') {
+			throw 'The KoukuSaydon presentation must keep its unverified weapon model nullable.'
+		}
+		if ([string]$presentationBoss.bodyModel -cne
+			'Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel' -or
+			[string]$presentationBoss.animationSetId -cne
+			'Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel' -or
+			[double]$presentationBoss.presentationScale -ne 1.0 -or
+			[double]$presentationBoss.bodyModelPreScale -ne 0.01 -or
+			@($presentationBoss.armorModels).Count -ne 0 -or
+			@($presentationBoss.armorParts).Count -ne 0 -or
+			@($presentationBoss.combatObjectVisuals).Count -ne 0 -or
+			[string]$presentationBoss.presentationClips.idle -cne
+			'rpcz00_idle_battle_1') {
+			throw 'The KoukuSaydon body-only presentation admission is invalid.'
+		}
+	}
+	else {
+		Assert-JsonString $presentationBoss.weaponModel `
+			'boss presentation weaponModel'
+		Assert-JsonNumber $presentationBoss.weaponModelPreScale `
+			'boss presentation weaponModelPreScale'
+		if ([string]::IsNullOrWhiteSpace([string]$presentationBoss.weaponModel) -or
+			[double]$presentationBoss.weaponModelPreScale -le 0.0 -or
+			[double]$presentationBoss.weaponModelPreScale -gt 100.0) {
+			throw 'A non-Kouku boss must retain a body-and-weapon presentation.'
 		}
 	}
 	Assert-ExactProperties $presentationBoss.presentationClips @(
@@ -2937,6 +2991,239 @@ elseif ($gameplayPhaseActionCount -ne 0) {
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 
+# KoukuSaydon keeps one directly-authored composition and projects only its
+# PRODUCT patterns into this existing v33 row grammar.  This block is purposely
+# separate from the Valtan-only source timing, combat object, rotation and oracle
+# checks above: K's first slice owns animation clocks, not inferred combat data.
+$koukuEncounterDocument = Read-JsonDocument `
+	'Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json'
+Assert-ExactProperties $koukuEncounterDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','authority',
+	'fixedTickHz','sourceRevision','playAllPatternIds','patterns') `
+	'KoukuSaydon encounter Product'
+foreach ($field in @('schema','encounterId','bossArchetypeId','authority')) {
+	Assert-JsonString $koukuEncounterDocument.$field `
+		"KoukuSaydon encounter $field"
+}
+Assert-JsonInteger $koukuEncounterDocument.formatVersion `
+	'KoukuSaydon encounter formatVersion' 4 4
+Assert-JsonInteger $koukuEncounterDocument.fixedTickHz `
+	'KoukuSaydon encounter fixedTickHz' 30 30
+Assert-JsonInteger $koukuEncounterDocument.sourceRevision `
+	'KoukuSaydon encounter sourceRevision' 1 ([uint32]::MaxValue)
+if ([string]$koukuEncounterDocument.schema -cne 'lostark.encounter-profile' -or
+	[string]$koukuEncounterDocument.encounterId -cne
+		'ENCOUNTER_KAKULSAYDON_G1' -or
+	[string]$koukuEncounterDocument.bossArchetypeId -cne
+		'BOSS_KAKULSAYDON_G1_KOUKU' -or
+	[string]$koukuEncounterDocument.authority -cne 'server' -or
+	[uint32]$koukuEncounterDocument.fixedTickHz -ne 30 -or
+	-not $bossIds.Contains([string]$koukuEncounterDocument.bossArchetypeId) -or
+	$koukuEncounterDocument.patterns -isnot [Array] -or
+	@($koukuEncounterDocument.patterns).Count -lt 1 -or
+	@($koukuEncounterDocument.patterns).Count -gt 64 -or
+	$koukuEncounterDocument.playAllPatternIds -isnot [Array]) {
+	throw 'KoukuSaydon encounter Product header is invalid.'
+}
+$koukuEncounterBosses = @($bossDocument.bosses | Where-Object {
+	[string]$_.archetypeId -ceq
+		[string]$koukuEncounterDocument.bossArchetypeId -and
+	[string]$_.encounterId -ceq [string]$koukuEncounterDocument.encounterId
+})
+if ($koukuEncounterBosses.Count -ne 1) {
+	throw 'KoukuSaydon encounter does not exact-join its boss profile.'
+}
+$koukuPatternIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$koukuPatternActionIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$koukuProductOrder = [Collections.Generic.List[string]]::new()
+$patternRows.Add((@(
+	'KOUKUSAYDONPRODUCTREVISION', $koukuEncounterDocument.encounterId,
+	$koukuEncounterDocument.bossArchetypeId,
+	[uint32]$koukuEncounterDocument.sourceRevision) -join "`t"))
+foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
+	Assert-ExactProperties $koukuPattern @(
+		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
+		'aimPolicy','displayName','actionId','sourceActionIds','selectionMode',
+		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
+		'armorRequirement','phaseRequirement','invulnerableWhileRunning',
+		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
+		'stages') 'KoukuSaydon encounter pattern'
+	foreach ($field in @(
+		'patternId','category','targetPolicy','aimPolicy','displayName','actionId',
+		'selectionMode','armorRequirement','phaseRequirement')) {
+		Assert-JsonString $koukuPattern.$field `
+			"KoukuSaydon pattern $field"
+	}
+	foreach ($field in @(
+		'minimumPhase','maximumPhase','minimumHealthBar','maximumHealthBar',
+		'triggerHealthBar','triggerOrder','selectionWeight',
+		'maximumConsecutiveUses')) {
+		Assert-JsonInteger $koukuPattern.$field `
+			"KoukuSaydon pattern $field" 0 ([uint32]::MaxValue)
+	}
+	Assert-JsonNumber $koukuPattern.minimumRange `
+		'KoukuSaydon pattern minimumRange'
+	Assert-JsonNumber $koukuPattern.maximumRange `
+		'KoukuSaydon pattern maximumRange'
+	Assert-StableId $koukuPattern.patternId 'KoukuSaydon patternId'
+	Assert-StableId $koukuPattern.actionId 'KoukuSaydon pattern actionId'
+	if ($koukuPattern.invulnerableWhileRunning -isnot [bool] -or
+		-not $koukuPatternIds.Add([string]$koukuPattern.patternId) -or
+		-not $koukuPatternActionIds.Add([string]$koukuPattern.actionId) -or
+		[string]$koukuPattern.category -cne 'MECHANIC' -or
+		[string]$koukuPattern.selectionMode -cne 'AUDITION_ONLY' -or
+		[string]$koukuPattern.targetPolicy -cne 'NONE' -or
+		[string]$koukuPattern.aimPolicy -cne 'NONE' -or
+		[string]$koukuPattern.armorRequirement -cne 'ANY' -or
+		[string]$koukuPattern.phaseRequirement -cne 'ANY' -or
+		[bool]$koukuPattern.invulnerableWhileRunning -or
+		[uint32]$koukuPattern.minimumPhase -ne 1 -or
+		[uint32]$koukuPattern.maximumPhase -ne 1 -or
+		[uint32]$koukuPattern.minimumHealthBar -ne 0 -or
+		[uint32]$koukuPattern.maximumHealthBar -ne 0 -or
+		[uint32]$koukuPattern.triggerHealthBar -ne 0 -or
+		[uint32]$koukuPattern.triggerOrder -ne 0 -or
+		[uint32]$koukuPattern.selectionWeight -ne 0 -or
+		[uint32]$koukuPattern.maximumConsecutiveUses -ne 0 -or
+		[double]$koukuPattern.minimumRange -ne 0.0 -or
+		[double]$koukuPattern.maximumRange -ne 1.0 -or
+		$koukuPattern.sourceActionIds -isnot [Array] -or
+		@($koukuPattern.sourceActionIds).Count -gt 64 -or
+		$koukuPattern.stages -isnot [Array] -or
+		@($koukuPattern.stages).Count -lt 1 -or
+		@($koukuPattern.stages).Count -gt 64) {
+		throw "KoukuSaydon animation-audition pattern is invalid: $($koukuPattern.patternId)"
+	}
+	$koukuProductOrder.Add([string]$koukuPattern.patternId)
+	$koukuSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
+	foreach ($sourceActionId in @($koukuPattern.sourceActionIds)) {
+		Assert-JsonInteger $sourceActionId `
+			"KoukuSaydon $($koukuPattern.patternId) sourceActionId" `
+			1 ([uint32]::MaxValue)
+		if (-not $koukuSourceActionIds.Add([uint32]$sourceActionId)) {
+			throw "KoukuSaydon pattern sourceActionId is duplicated: $($koukuPattern.patternId)"
+		}
+	}
+	$patternRows.Add((@(
+		'PATTERN', $koukuEncounterDocument.encounterId,
+		$koukuPattern.patternId, $koukuPattern.actionId,
+		$koukuPattern.selectionMode, 0, 0, 0, 0, 0, 0,
+		(Format-InvariantFloat $koukuPattern.minimumRange `
+			'KoukuSaydon pattern minimumRange'),
+		(Format-InvariantFloat $koukuPattern.maximumRange `
+			'KoukuSaydon pattern maximumRange'),
+		@($koukuPattern.stages).Count, 'ANY', 'ANY', 0) -join "`t"))
+	$patternRows.Add((@(
+		'PATTERNPOLICY', $koukuEncounterDocument.encounterId,
+		$koukuPattern.patternId, $koukuPattern.category, 1, 1,
+		'NONE', 'NONE') -join "`t"))
+	# Action reference supplies identity and animation duration only.  The v33
+	# timing columns remain neutral instead of inventing hit/range/cooldown data.
+	if (@($koukuPattern.sourceActionIds).Count -gt 0) {
+	$patternRows.Add((@(
+		'PATTERNSOURCE', $koukuEncounterDocument.encounterId,
+		$koukuPattern.patternId, [uint32]$koukuPattern.sourceActionIds[0],
+		0, 0, 0, 0, 0, 0) -join "`t"))
+	}
+
+	$koukuStageIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$koukuStageActionIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	for ($stageIndex = 0;
+		$stageIndex -lt @($koukuPattern.stages).Count; ++$stageIndex) {
+		$koukuStage = $koukuPattern.stages[$stageIndex]
+		Assert-ExactProperties $koukuStage @(
+			'stageId','actionId','stageKind','durationMs','hitShape',
+			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
+			'hitHalfWidth','hitCount','hitIntervalMs','hitDelayMs',
+			'serverDamageProfileId','pushRangeM','pushMs','knockdown','downMs') `
+			'KoukuSaydon encounter pattern stage'
+		foreach ($field in @(
+			'stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
+			Assert-JsonString $koukuStage.$field `
+				"KoukuSaydon stage $field"
+		}
+		foreach ($field in @(
+			'durationMs','hitCount','hitIntervalMs','hitDelayMs','pushMs','downMs')) {
+			Assert-JsonInteger $koukuStage.$field `
+				"KoukuSaydon stage $field" 0 ([uint32]::MaxValue)
+		}
+		foreach ($field in @(
+			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
+			'hitHalfWidth','pushRangeM')) {
+			Assert-JsonNumber $koukuStage.$field `
+				"KoukuSaydon stage $field"
+		}
+		Assert-StableId $koukuStage.stageId 'KoukuSaydon stageId'
+		Assert-StableId $koukuStage.actionId 'KoukuSaydon stage actionId'
+		if ($koukuStage.knockdown -isnot [bool] -or
+			-not $koukuStageIds.Add([string]$koukuStage.stageId) -or
+			-not $koukuStageActionIds.Add([string]$koukuStage.actionId) -or
+			[string]$koukuStage.stageKind -cnotin @(
+				'WINDUP','ACTIVE','RECOVERY') -or
+			[uint32]$koukuStage.durationMs -eq 0 -or
+			[string]$koukuStage.hitShape -cne 'NONE' -or
+			[double]$koukuStage.hitOuterRadius -ne 0.0 -or
+			[double]$koukuStage.hitInnerRadius -ne 0.0 -or
+			[double]$koukuStage.hitAngleDegrees -ne 0.0 -or
+			[double]$koukuStage.hitLength -ne 0.0 -or
+			[double]$koukuStage.hitHalfWidth -ne 0.0 -or
+			[uint32]$koukuStage.hitCount -ne 0 -or
+			[uint32]$koukuStage.hitIntervalMs -ne 0 -or
+			[uint32]$koukuStage.hitDelayMs -ne 0 -or
+			-not [string]::IsNullOrEmpty(
+				[string]$koukuStage.serverDamageProfileId) -or
+			[double]$koukuStage.pushRangeM -ne 0.0 -or
+			[uint32]$koukuStage.pushMs -ne 0 -or
+			[bool]$koukuStage.knockdown -or
+			[uint32]$koukuStage.downMs -ne 0) {
+			throw "KoukuSaydon stage must remain animation-only: $($koukuPattern.patternId)/$($koukuStage.stageId)"
+		}
+		$patternRows.Add((@(
+			'PATTERNSTAGE', $koukuEncounterDocument.encounterId,
+			$koukuPattern.patternId, $stageIndex, $koukuStage.stageId,
+			$koukuStage.actionId, $koukuStage.stageKind,
+			[uint32]$koukuStage.durationMs, 'NONE', '0', '0', '0', '0',
+			'0', 0, 0, 0, '-', '0', 0, 0, 0) -join "`t"))
+		$nextActionId = if ($stageIndex + 1 -lt @($koukuPattern.stages).Count) {
+			[string]$koukuPattern.stages[$stageIndex + 1].actionId
+		}
+		else { '-' }
+		$patternRows.Add((@(
+			'PATTERNSTAGEBRANCH', $koukuEncounterDocument.encounterId,
+			$koukuPattern.patternId, $koukuStage.actionId, 'TIMEOUT',
+			$nextActionId) -join "`t"))
+	}
+}
+if (@($koukuEncounterDocument.playAllPatternIds).Count -ne
+	$koukuProductOrder.Count) {
+	throw 'KoukuSaydon playAllPatternIds count differs from Product patterns.'
+}
+for ($playAllIndex = 0; $playAllIndex -lt $koukuProductOrder.Count;
+	++$playAllIndex) {
+	Assert-JsonString $koukuEncounterDocument.playAllPatternIds[$playAllIndex] `
+		'KoukuSaydon playAll patternId'
+	if ([string]$koukuEncounterDocument.playAllPatternIds[$playAllIndex] -cne
+		[string]$koukuProductOrder[$playAllIndex]) {
+		throw 'KoukuSaydon playAllPatternIds must preserve Product order.'
+	}
+	$pursuitAfterMs = if ($playAllIndex + 1 -lt $koukuProductOrder.Count) {
+		100
+	}
+	else { 0 }
+	$patternRows.Add((@(
+		'PATTERNSEQUENCESTEP', $koukuEncounterDocument.encounterId,
+		'KAKULSAYDON_G1_PLAY_ALL', $playAllIndex,
+		$koukuProductOrder[$playAllIndex], $pursuitAfterMs) -join "`t"))
+}
+$patternRows.Add((@(
+	'PATTERNSEQUENCE', $koukuEncounterDocument.encounterId,
+	'KAKULSAYDON_G1_PLAY_ALL', 'ORDERED_ONCE_THEN_IDLE', 100,
+	$koukuProductOrder.Count) -join "`t"))
+
 # Pattern/action/branch rows are projected directly from the current Source.
 # Specific historical rows are not an admission contract: adding a Stage or
 # tuning one value must not require editing a second hard-coded snapshot.
@@ -3883,7 +4170,7 @@ if ($hasTransitionPursuit) {
 	foreach ($transitionPursuitValue in @(
 		$scriptedSequence.transitionPursuitMs)) {
 		Assert-JsonInteger $transitionPursuitValue `
-			'Valtan scripted transition pursuit milliseconds' 100 10000
+			'Valtan scripted transition pursuit milliseconds' 0 10000
 		$transitionPursuitMs += [uint32]$transitionPursuitValue
 	}
 }
@@ -4960,7 +5247,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 32 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 33 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

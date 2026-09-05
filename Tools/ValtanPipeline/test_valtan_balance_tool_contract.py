@@ -744,7 +744,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         construct_balance = function_body(
             self.balance_cpp,
-            "Client::CBalanceTool::CBalanceTool()",
+            "Client::CBalanceTool::CBalanceTool(const bool loadImmediately)",
         )
 
         self.assertEqual(
@@ -770,8 +770,13 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("no admitted Product candidate", exact_activation_gate)
         self.assertIn("Has_GameplaySourceActivationExpectation", reload_balance)
         self.assertIn("A saved Valtan authoring head was resumed", reload_balance)
-        self.assertIn("if (!Reload()", construct_balance)
-        self.assertIn("Record_GameplaySourceActivationExpectation", construct_balance)
+        self.assertIn("if (loadImmediately)", construct_balance)
+        self.assertIn("Ensure_Initialized()", construct_balance)
+        self.assertNotIn("Reload()", construct_balance)
+        initialize_balance = function_body(
+            self.balance_cpp, "bool Client::CBalanceTool::Ensure_Initialized()")
+        self.assertIn("if (!Reload()", initialize_balance)
+        self.assertIn("Record_GameplaySourceActivationExpectation", initialize_balance)
         self.assertIn("Runtime active pointer is unchanged", self.balance_cpp)
         self.assertIn("m_valtanAuthoringRevision", self.balance_h)
         self.assertIn("m_valtanCandidateRevision", self.balance_h)

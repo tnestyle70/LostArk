@@ -337,6 +337,10 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outWorldId = WORLD_ID::VALTAN_ARENA;
 		outTargetLevel = LEVEL::VALTAN_ARENA;
 		return true;
+	case LOBBY_STAGE::KOUKU_SAYDON:
+		outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		outTargetLevel = LEVEL::KAKULSAYDON_ARENA;
+		return true;
 	case LOBBY_STAGE::BERN:
 		outWorldId = WORLD_ID::BERN;
 		outTargetLevel = LEVEL::BERN;
@@ -499,6 +503,9 @@ void CLevel_Lobby::Render_StagePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Valtan"))
 		CLobbyCommandService::Request(LOBBY_STAGE::VALTAN);
+	ImGui::SameLine();
+	if (ImGui::Button("KoukuSaydon"))
+		CLobbyCommandService::Request(LOBBY_STAGE::KOUKU_SAYDON);
 	ImGui::SameLine();
 	if (ImGui::Button("Bern"))
 		CLobbyCommandService::Request(LOBBY_STAGE::BERN);

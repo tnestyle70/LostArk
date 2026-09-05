@@ -675,6 +675,70 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 	return true;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Try_Get_AuthoringPreviewPlacement(
+	float3_t& outPosition, std::string& outStatus) const
+{
+	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		outStatus = "Waiting for the replicated local player in the KoukuSaydon arena.";
+		return false;
+	}
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+	{
+		outStatus = "The replicated local player has no transform for preview placement.";
+		return false;
+	}
+	const vector_t playerPosition = transform->Get_State(STATE::POSITION);
+	float3_t position{};
+	XMStoreFloat3(&position, playerPosition);
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z))
+	{
+		outStatus = "The replicated local player position is not finite.";
+		return false;
+	}
+
+	vector_t screenRight = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	if (nullptr != m_pCamera)
+	{
+		const shared_ptr<CTransform> cameraTransform = dynamic_pointer_cast<CTransform>(
+			m_pCamera->Get_Component(g_strTransformComTag));
+		if (nullptr != cameraTransform)
+		{
+			vector_t candidate = cameraTransform->Get_State(STATE::RIGHT);
+			candidate = XMVectorSetW(XMVectorSetY(candidate, 0.f), 0.f);
+			const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(candidate));
+			if (std::isfinite(lengthSquared) && lengthSquared > 0.000001f)
+				screenRight = XMVector3Normalize(candidate);
+		}
+	}
+
+	constexpr f32_t PREVIEW_OFFSET_METERS = 3.25f;
+	for (const f32_t direction : std::array<f32_t, 2>{ 1.f, -1.f })
+	{
+		float3_t candidate{};
+		XMStoreFloat3(&candidate,
+			playerPosition + screenRight * (PREVIEW_OFFSET_METERS * direction));
+		float3_t sampled{};
+		if (localCharacter->Try_SampleTargetGround(candidate.x, candidate.z, sampled) &&
+			std::isfinite(sampled.x) && std::isfinite(sampled.y) && std::isfinite(sampled.z))
+		{
+			outPosition = sampled;
+			outStatus = direction > 0.f ?
+				"replicated local player / camera-right / Navigation" :
+				"replicated local player / camera-left / Navigation";
+			return true;
+		}
+	}
+
+	// Navigation is optional for this collision-off view; retain the player's height.
+	XMStoreFloat3(&outPosition, playerPosition + screenRight * PREVIEW_OFFSET_METERS);
+	outStatus = "replicated local player / camera-right / unclamped";
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 	const std::uint32_t requestSequence,
 	const std::string_view placementId,

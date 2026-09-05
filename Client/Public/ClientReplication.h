@@ -644,6 +644,8 @@ namespace Client
 			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
+			std::uint32_t iPatternSequence = 0u;
+			std::uint32_t iPatternStageIndex = 0u;
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
 			/* The Server occurrence pin and the R -> M generation admitted by the

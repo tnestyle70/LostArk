@@ -72,12 +72,17 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
             "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
             build_domains,
         )
-        self.assertIn(
+        # These checks remain available by explicit invocation. Canonical names
+        # do not make their source oracles prerequisites of a product build.
+        for explicit_check in (
             "Tools/KoukuSaydonPipeline/test_kouku_saydon_naming_boundary.py",
-            runner,
-        )
+            "Tools/LevelPlacementExtractor/test_placement_transform.py",
+        ):
+            self.assertTrue((ROOT / explicit_check).is_file(), explicit_check)
+            self.assertNotIn(explicit_check, runner)
         self.assertIn(
-            "Tools/LevelPlacementExtractor/test_placement_transform.py", runner
+            "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+            build_domains,
         )
         self.assertIn('"id": "map.kakulsaydon"', build_domains)
         self.assertIn("'map.kakulsaydon'", domain_owner)

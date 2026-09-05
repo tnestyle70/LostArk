@@ -6,6 +6,7 @@
 #include "ContainerObject.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
+#include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -185,7 +187,7 @@ inline bool_t Resolve_ValtanPatternEffectOccurrenceScan(
 	return true;
 }
 
-class CValtan final : public CContainerObject
+class CValtan final : public CContainerObject, public IPlayerHandGripSocketSource
 {
 public:
 	static constexpr const tchar_t* BODY_PART_TAG = TEXT("Part_Body");
@@ -276,6 +278,15 @@ public:
 	coalesced Stage snapshot is first applied. */
 	bool_t Try_Get_PortalRushAnchorMatrices(
 		float4x4_t* pStartOut, float4x4_t* pEndOut) const;
+	/* IPlayerHandGripSocketSource: the replicated BOSS_LEFT_HAND slot is the
+	   bip001-l-hand bone composed with the same presentation root the weapon
+	   socket and Effect V2 anchors use. Dormant pool slots answer false. */
+	bool_t Try_Get_PlayerHandGripSocketView(
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const override;
+	bool_t Try_Get_PlayerHandGripLocalOffset(
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const override;
 	/* The world entity snapshot reports a plate that lost its durability as
 	   one bit per authored plate index, and presentation only has to hide
 	   the part wearing that index. */
@@ -519,6 +530,10 @@ private:
 	};
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_PatternBodyVisibilityByActionId;
+	/* One encounter-wide CAPTURE grip admitted with the joined presentation
+	   generation. Every authored CAPTURE hit must agree, so a same-tick branch
+	   from the CAPTURE stage into a catch tail keeps the same displacement. */
+	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> m_PlayerHandGripLocalOffset;
 	bool_t m_bLocalPatternAuthoringPreview = false;
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
@@ -680,6 +695,8 @@ private:
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	bool_t Reload_PatternBindings_WhileAdmitted(std::string& strOutStatus);
+	bool_t Reload_PlayerHandGripLocalOffset_WhileAdmitted(
+		std::string& strOutStatus);
 	bool_t Apply_PatternPresentationSample(
 		std::string_view actionId,
 		std::string_view fallbackClipName,

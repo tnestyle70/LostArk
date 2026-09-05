@@ -27,6 +27,7 @@
 #include "Navigation.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
@@ -743,6 +744,8 @@ HRESULT CLoader::Ready_For_ValtanArena()
 
 HRESULT CLoader::Ready_For_KakulSaydonArena()
 {
+	CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	CNpcPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
@@ -783,6 +786,18 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),
 		selectedClass)))
 	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("KoukuSaydon: Server boss presentation"));
+	if (FAILED(CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
+		m_pDevice,
+		m_pContext,
+		ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		"BOSS_KAKULSAYDON_G1_KOUKU")))
+	{
+		OutputDebugStringA(("[Loader][KoukuSaydonPresentation] " +
+			CKoukuSaydonPresentationAssetService::Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
 

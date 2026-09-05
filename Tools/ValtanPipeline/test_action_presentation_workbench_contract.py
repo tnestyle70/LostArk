@@ -81,6 +81,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.main_h = read("Client/Public/MainApp.h")
+        cls.sequencer_cpp = read("Client/Private/SequencerTool.cpp")
         cls.packet_h = read("Shared/Public/Network/PacketMessages.h")
         cls.packet_cpp = read("Shared/Private/Network/PacketMessages.cpp")
         cls.packet_type_h = read("Shared/Public/Network/PacketType.h")
@@ -104,26 +105,18 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
     def test_primary_window_has_one_workbench_identity(self) -> None:
         developer_tools = function_body(
-            self.main_cpp,
-            "void CMainApp::RenderDeveloperTools()",
-        )
-        composition = function_body(
-            self.composition_cpp,
-            "void Client::CValtanActionWorkbench::Render()",
+            self.main_cpp, "void CMainApp::RenderDeveloperTools()",
         )
         animation = function_body(
-            self.animation_cpp,
-            "void Client::CAnimation_Tool::Render()",
+            self.animation_cpp, "void Client::CAnimation_Tool::Render()",
         )
         self.assertRegex(
             developer_tools,
-            r'toolCell\(\s*"Valtan Action Workbench"\s*,\s*'
-            r"DEBUG_TOOL::VALTAN_ACTION_WORKBENCH",
+            r'toolCell\(\s*"Action Workbench"\s*,\s*DEBUG_TOOL::SEQUENCER',
         )
         self.assertRegex(
             developer_tools,
-            r'toolCell\(\s*"Animation Clip Tool"\s*,\s*'
-            r"DEBUG_TOOL::ANIMATION",
+            r'toolCell\(\s*"Animation Clip Tool"\s*,\s*DEBUG_TOOL::ANIMATION',
         )
         self.assertIn('"##DeveloperToolLaunchGrid"', developer_tools)
         self.assertIn("iToolButtonColumns", developer_tools)
@@ -133,25 +126,22 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
             '"Box Detail###CompositionDetailsWindow"',
             '"Composition Resources###CompositionResourcesWindowResizableV2"',
-            '"Server Replay###CompositionSessionWindow"',
+            '"Action Workbench###CompositionSessionWindow"',
         ):
-            self.assertIn(window, self.composition_cpp)
+            self.assertIn(window, self.sequencer_cpp)
+        for token in ("Selected_Session()", "Begin_WorkbenchFrame()",
+                      "Render_WorkbenchPane(", "End_WorkbenchFrame()"):
+            self.assertIn(token, self.sequencer_cpp)
         self.assertIn(
-            '"Animation Clip Tool###AnimationClipToolResizableV1"',
-            animation,
-        )
-        self.assertRegex(
-            self.main_h,
-            r"enum class DEBUG_TOOL[\s\S]*?VALTAN_ACTION_WORKBENCH,"
-            r"[\s\S]*?ANIMATION,",
+            '"Animation Clip Tool###AnimationClipToolResizableV1"', animation,
         )
         self.assertNotRegex(
             developer_tools,
-            r'"Valtan Action Workbench"\s*,\s*DEBUG_TOOL::ANIMATION',
+            r'toolCell\(\s*"(?:Valtan|KoukuSaydon) Action Workbench"',
         )
         self.assertNotRegex(
             developer_tools,
-            r'"Animation Clip Tool"\s*,\s*DEBUG_TOOL::VALTAN_ACTION_WORKBENCH',
+            r'"Action Workbench"\s*,\s*DEBUG_TOOL::ANIMATION',
         )
 
     def test_f1_has_no_hard_bounds_and_owner_windows_keep_layout_contracts(
@@ -887,8 +877,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CCharacterPreviewPanel::Select_Asset(",
         )
         for token in (
-            "bValtanArenaBossPreview",
-            'asset.pBossArchetypeId } == "BOSS_VALTAN"',
+            "bRaidCompositionPreview",
+            "Is_CompositionAnimationTargetAsset(asset.pAssetName)",
+            "Try_ResolveRaidPreviewPlacement(",
             "CValtanPresentationAssetService::Ensure_Prototypes(",
             "CAnimationTargetService::Bind_Preview(",
             'TEXT("Layer_AnimationPreview")',
@@ -915,9 +906,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.character_preview_cpp,
             "bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(",
         )
-        self.assertIn("Try_Get_AuthoringPreviewPlacement(", select_target)
-        self.assertIn("Target=ARENA CLONE", select_target)
-        self.assertIn("Server Valtan=UNCHANGED", select_target)
+        self.assertIn("Try_ResolveRaidPreviewPlacement(", select_target)
+        self.assertIn("Target=LOCAL ARENA PREVIEW", select_target)
+        self.assertIn("Server boss=UNCHANGED", select_target)
 
         sequence_preview = function_body(
             self.animation_cpp,
@@ -2078,7 +2069,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 55;",
+            "NETWORK_PROTOCOL_VERSION = 57;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (

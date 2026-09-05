@@ -5,7 +5,7 @@
     {
       "id": "valtan.product",
       "kind": "validation",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Valtan/**",
         "Data/Encounters/Valtan/**",
@@ -42,9 +42,41 @@
       }
     },
     {
+      "id": "koukusaydon.product",
+      "kind": "publisher",
+      "profiles": ["Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/KoukuSaydon/**",
+        "Data/Animation/Reference/KoukuSaydon/**"
+      ],
+      "tools": [
+        "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
+        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py"
+      ],
+      "outputs": [
+        "Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
+        "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json"
+      ],
+      "requiredOutputPatterns": [
+        "Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
+        "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json"
+      ],
+      "action": {
+        "executable": "python",
+        "arguments": [
+          "-B",
+          "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+          "--repository-root",
+          "{repositoryRoot}",
+          "--mode",
+          "publish"
+        ]
+      }
+    },
+    {
       "id": "composition.presentation",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Compositions/**",
         "Data/Valtan/**",
@@ -104,7 +136,7 @@
     {
       "id": "map.kakulsaydon",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/**",
         "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/**",
@@ -180,12 +212,13 @@
     {
       "id": "world.gameplay",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Worlds/**",
         "Data/Actors/**",
         "Data/Balance/MonsterProfiles.json",
         "Data/Encounters/Valtan/ValtanEncounter.json",
+        "Data/Encounters/KoukuSaydon/**",
         "Data/Maps/Authoring/**/*.deployplacements"
       ],
       "tools": ["Tools/WorldPipeline/Publish-WorldGameplay.ps1"],
@@ -220,7 +253,7 @@
     {
       "id": "navigation",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": ["Data/Navigation/**", "Data/Worlds/**"],
       "tools": ["Tools/NavigationPipeline/Publish-ServerNavigation.ps1"],
       "outputs": [
@@ -253,7 +286,7 @@
     {
       "id": "world.destruction",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Encounters/Valtan/**",
         "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/**",
@@ -291,7 +324,7 @@
     {
       "id": "gameplay.balance",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Balance/**",
         "Data/Actors/BossCatalog.json",
@@ -304,8 +337,12 @@
         "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
         "Data/Sound/CharacterSoundCatalog.json",
         "Data/Animation/Reference/Valtan/**",
+        "Data/Animation/Reference/KoukuSaydon/**",
         "Data/Animation/RootMotion/**",
         "Data/Encounters/Valtan/**",
+        "Data/Encounters/KoukuSaydon/**",
+        "Data/KoukuSaydon/**",
+        "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json",
         "Data/Valtan/**",
         "Data/Effects/EffectCatalog.json",
         "Data/Effects/V2/**",
@@ -315,6 +352,8 @@
       "tools": [
         "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
         "Tools/GameplayPipeline/valtan_presentation_generation.py",
+        "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
+        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
         "Tools/ValtanPipeline/ValtanCanonicalWriterAdmission.psm1",
         "Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py",
         "Tools/GameplayPipeline/Publish-FileTransaction.ps1"
@@ -344,7 +383,7 @@
     {
       "id": "items.catalog",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": ["Data/Items/ItemCatalog.json"],
       "tools": [
         "Tools/GameplayPipeline/Publish-ItemCatalog.ps1",
@@ -368,7 +407,7 @@
     {
       "id": "valtan.rewards",
       "kind": "publisher",
-      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/Valtan/Valtan.clearrewards.json",
         "Data/Items/ItemCatalog.json"

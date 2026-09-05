@@ -4,6 +4,8 @@
 #include "Engine_Defines.h"
 #include "ActionCompositionGraphModel.h"
 #include "Animation_Tool.h"
+#include "CompositionResourceTree.h"
+#include "CompositionWorkbenchSession.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -24,24 +26,12 @@ class CValtanBossTool;
 struct CAMERA_TOOL_OPEN_REQUEST;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 
-/* Cached in-memory hierarchy for one explicitly loaded resource catalog.
-   Leaves are stable indices into that catalog snapshot; rebuilding the tree
-   never performs file I/O and happens only after Reload or search changes. */
-struct COMPOSITION_RESOURCE_TREE_NODE final
-{
-	std::string strSegment;
-	std::string strStablePath;
-	std::vector<std::size_t> LeafIndices;
-	std::vector<COMPOSITION_RESOURCE_TREE_NODE> Children;
-	std::size_t iRecursiveLeafCount = 0u;
-};
-
 /* One upper-level authoring surface over existing typed domain owners.  It
    owns no runtime or generated Product document: CValtanPatternTree provides
    the canonical read model, CBalanceTool owns gameplay drafts, Animation Tool
    owns model pose preview, and Effect/Camera requests deep-link to their
    existing owner tools. */
-class CValtanActionWorkbench final
+class CValtanActionWorkbench final : public ICompositionWorkbenchSession
 {
 public:
 	enum class DETAIL_OWNER : uint8_t
@@ -178,6 +168,14 @@ public:
 	   still completes owner reopen, graph refresh, and runtime publication. */
 	void Update_SaveState();
 	void Render();
+	void Begin_WorkbenchFrame() override;
+	void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
+	void End_WorkbenchFrame() override;
+	COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
+	bool Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
+		bool asNewStage, std::string& status) const override;
+	bool Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
+		bool asNewStage, std::string& status) override;
 	bool_t Consume_EffectToolOpenRequest(
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& OutRequest);
 	/* Set by a committed Save so All Effects reopens exactly that durable
@@ -230,6 +228,18 @@ public:
 	bool_t Set_PlayheadMs(uint32_t iPlayheadMs);
 
 private:
+	struct PENDING_RESOURCE_APPEND final
+	{
+		COMPOSITION_ANIMATION_RESOURCE Resource;
+		bool bAsNewStage = false;
+		std::string strPatternId;
+		std::string strStageId;
+	};
+	bool Apply_CompositionResourceAppend(const PENDING_RESOURCE_APPEND& command,
+		std::string& status);
+	std::optional<PENDING_RESOURCE_APPEND> m_PendingResourceAppend;
+	bool_t m_bCompositionResourceDraftReady = false;
+	bool_t m_bWorkbenchBossLoadAttempted = false;
 	bool_t Reload_Canonical();
 	bool_t Stage_ProductFallback(
 		const CValtanCanonicalProductReadAdmission& Admission,
@@ -437,6 +447,10 @@ private:
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
 		bool_t bPatternMutationAdmitted);
+	void Render_PatternsPane(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		const VALTAN_STAGE_VIEW* pStage,
+		bool_t bPatternMutationAdmitted);
 	void Render_PreviewWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		bool_t bLocalPreviewAdmitted);
@@ -455,7 +469,17 @@ private:
 		const VALTAN_STAGE_VIEW* pStage,
 		bool_t bMutationAdmitted,
 		bool_t bPatternMutationAdmitted);
+	void Render_ResourcesPane(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		const VALTAN_STAGE_VIEW* pStage,
+		bool_t bMutationAdmitted,
+		bool_t bPatternMutationAdmitted);
 	void Render_BossPatternWindow(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		std::uint64_t iPatternViewDraftGeneration,
+		bool_t bMutationAdmitted,
+		bool_t bPatternMutationAdmitted);
+	void Render_BossPatternPane(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		std::uint64_t iPatternViewDraftGeneration,
 		bool_t bMutationAdmitted,
@@ -475,6 +499,19 @@ private:
 	static uint32_t Lane_Color(TIMELINE_LANE eLane);
 
 private:
+	// Shared shell panes consume one immutable view until End_WorkbenchFrame.
+	const VALTAN_PATTERN_VIEW* m_pWorkbenchFramePattern = nullptr;
+	const VALTAN_STAGE_VIEW* m_pWorkbenchFrameStage = nullptr;
+	std::uint64_t m_iWorkbenchFrameDraftGeneration = 0u;
+	bool_t m_bWorkbenchFrameLocalPreviewAdmitted = false;
+	bool_t m_bWorkbenchFrameMutationAdmitted = false;
+	bool_t m_bWorkbenchFramePatternMutationAdmitted = false;
+	bool_t m_bWorkbenchFrameActive = false;
+	bool_t m_bWorkbenchReloadRequested = false;
+	bool_t m_bSharedPaneRendering = false;
+	int32_t m_iWorkbenchReportedPatternTab = -1;
+	bool_t m_bWorkbenchReportedTimelineMaximized = false;
+
 	CAnimation_Tool* m_pAnimationTool = nullptr;
 	CBalanceTool* m_pBalanceTool = nullptr;
 	CValtanBossTool* m_pValtanBossTool = nullptr;
@@ -528,7 +565,7 @@ private:
 	bool_t m_bPreviewOwnerActive = false;
 	/* After a fully reloaded Save: publish the candidate/apply it to the live
 	   Server (Valtan Boss Tool Flow Save path) and refresh the on-disk runtime set. */
-	bool_t m_bAutoPublishAfterSave = true;
+	bool_t m_bAutoPublishAfterSave = false;
 	bool_t m_bOpenAnimationToolRequested = false;
 	bool_t m_bEffectToolOpenRequested = false;
 	bool_t m_bCameraToolOpenRequested = false;

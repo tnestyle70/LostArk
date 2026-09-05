@@ -3498,7 +3498,7 @@ void Client::CValtanBossTool::Render_FlowSelectedSlot()
 		int32_t EdgePursuitMs = static_cast<int32_t>(pEdge->iPursuitMs);
 		ImGui::SetNextItemWidth(230.f);
 		if (ImGui::SliderInt(
-			"Wait before next (ms)", &EdgePursuitMs, 100, 10000,
+			"Wait before next (ms)", &EdgePursuitMs, 0, 10000,
 			"%d ms", ImGuiSliderFlags_AlwaysClamp))
 		{
 			std::string Status;

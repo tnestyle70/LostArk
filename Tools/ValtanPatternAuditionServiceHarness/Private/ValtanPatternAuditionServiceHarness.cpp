@@ -21,6 +21,7 @@ int Run_ValtanPatternAnimationBindingDocumentContractTests();
 int Run_ValtanPatternEffectCueAuthoringContractTests();
 int Run_ValtanPresentationGenerationAdmissionContractTests();
 int Run_CombatDebugVisibilityContractTests();
+int Run_PlayerHandGripTransformContractTests();
 
 using namespace Client;
 using namespace LostArk::Shared;
@@ -1438,6 +1439,8 @@ int main()
 		Run_ValtanPresentationGenerationAdmissionContractTests();
 	const int CombatDebugVisibilityFailures =
 		Run_CombatDebugVisibilityContractTests();
+	const int PlayerHandGripTransformFailures =
+		Run_PlayerHandGripTransformContractTests();
 	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
 		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
 		0 == CanonicalGraphFailures &&
@@ -1448,5 +1451,6 @@ int main()
 		0 == AnimationBindingDocumentFailures &&
 		0 == EffectCueAuthoringFailures &&
 		0 == PresentationGenerationAdmissionFailures &&
-		0 == CombatDebugVisibilityFailures ? 0 : 1;
+		0 == CombatDebugVisibilityFailures &&
+		0 == PlayerHandGripTransformFailures ? 0 : 1;
 }

@@ -1720,6 +1720,28 @@ bool CNetworkManager::Send_ValtanNextPatternCommand(
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_KoukuSaydonPatternAudition(
+	const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST&
+		message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		(message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
+		 message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL))
+	{
+		return false;
+	}
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ValtanPatternFlowStart(
 	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
 {
@@ -1902,6 +1924,26 @@ bool CNetworkManager::Try_Consume_ValtanAuditionLifecycle(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionResult(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message)
+{
+	if (m_KoukuSaydonPatternAuditionResults.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionResults.front());
+	m_KoukuSaydonPatternAuditionResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionLifecycle(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message)
+{
+	if (m_KoukuSaydonPatternAuditionLifecycleEvents.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionLifecycleEvents.front());
+	m_KoukuSaydonPatternAuditionLifecycleEvents.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_ValtanPatternFlowResult(
 	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
 {
@@ -2022,6 +2064,8 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_ValtanAuditionResults.clear();
 	m_ValtanPatternAuditionByIdResults.clear();
 	m_ValtanAuditionLifecycleEvents.clear();
+	m_KoukuSaydonPatternAuditionResults.clear();
+	m_KoukuSaydonPatternAuditionLifecycleEvents.clear();
 	m_ValtanPatternFlowResults.clear();
 	m_ValtanPatternFlowLifecycleEvents.clear();
 	m_pStagedPresentationAdmission.reset();
@@ -3233,6 +3277,41 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_ValtanAuditionLifecycleEvents.push_back(std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionResults.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_KoukuSaydonPatternAuditionResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_KoukuSaydonPatternAuditionLifecycleEvents.push_back(
+			std::move(lifecycle));
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:

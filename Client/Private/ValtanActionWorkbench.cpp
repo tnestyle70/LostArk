@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "ValtanActionWorkbench.h"
+#include "CompositionTimeline.h"
 
 #include "GameInstance.h"
 #include "Profiler.h"
@@ -8,6 +9,7 @@
 #include <cstdio>
 
 #include "Animation_Tool.h"
+#include "AnimationPreviewAssets.h"
 #include "BalanceTool.h"
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
@@ -236,71 +238,6 @@ namespace
 			iStart = i + 1u;
 		}
 		return Segments;
-	}
-
-	void InsertResourceTree(
-		Client::COMPOSITION_RESOURCE_TREE_NODE& Root,
-		const std::vector<std::string>& CategorySegments,
-		const std::size_t iLeafIndex)
-	{
-		Client::COMPOSITION_RESOURCE_TREE_NODE* pNode = &Root;
-		std::string strPath;
-		for (const std::string& Segment : CategorySegments)
-		{
-			if (Segment.empty())
-				continue;
-			if (!strPath.empty())
-				strPath += '/';
-			strPath += Segment;
-			auto Child = std::find_if(
-				pNode->Children.begin(), pNode->Children.end(),
-				[&Segment](const Client::COMPOSITION_RESOURCE_TREE_NODE& Candidate)
-				{ return Candidate.strSegment == Segment; });
-			if (pNode->Children.end() == Child)
-			{
-				Client::COMPOSITION_RESOURCE_TREE_NODE NewChild;
-				NewChild.strSegment = Segment;
-				NewChild.strStablePath = strPath;
-				pNode->Children.push_back(std::move(NewChild));
-				Child = std::prev(pNode->Children.end());
-			}
-			pNode = &*Child;
-		}
-		pNode->LeafIndices.push_back(iLeafIndex);
-	}
-
-	std::size_t FinalizeResourceTree(
-		Client::COMPOSITION_RESOURCE_TREE_NODE& Node)
-	{
-		std::sort(
-			Node.Children.begin(), Node.Children.end(),
-			[](const Client::COMPOSITION_RESOURCE_TREE_NODE& Left,
-				const Client::COMPOSITION_RESOURCE_TREE_NODE& Right)
-			{ return Left.strSegment < Right.strSegment; });
-		Node.iRecursiveLeafCount = Node.LeafIndices.size();
-		for (Client::COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
-			Node.iRecursiveLeafCount += FinalizeResourceTree(Child);
-		return Node.iRecursiveLeafCount;
-	}
-
-	void RenderResourceTree(
-		const Client::COMPOSITION_RESOURCE_TREE_NODE& Node,
-		const std::function<void(std::size_t)>& RenderLeaf)
-	{
-		for (const Client::COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
-		{
-			ImGui::PushID(Child.strStablePath.c_str());
-			const std::string Label = Child.strSegment + " (" +
-				std::to_string(Child.iRecursiveLeafCount) + ")";
-			if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
-			{
-				RenderResourceTree(Child, RenderLeaf);
-				ImGui::TreePop();
-			}
-			ImGui::PopID();
-		}
-		for (const std::size_t iLeafIndex : Node.LeafIndices)
-			RenderLeaf(iLeafIndex);
 	}
 
 	const char_t* EffectV2TypeLabel(const int32_t iType)
@@ -1544,6 +1481,8 @@ bool_t Client::CValtanActionWorkbench::Ensure_SelectedTimeline(
 
 void Client::CValtanActionWorkbench::On_LevelChanged()
 {
+	m_bWorkbenchBossLoadAttempted = false;
+	m_PendingResourceAppend.reset();
 	/* Canonical data survives a Level transition, but model pose and Server
 	   occurrence do not.  Keep semantic selection and re-query preview state. */
 	m_iPlayheadMs = 0u;
@@ -3831,6 +3770,7 @@ void Client::CValtanActionWorkbench::Invalidate_TimelineCache()
 
 void Client::CValtanActionWorkbench::Invalidate_EffectivePatternCache()
 {
+	m_bCompositionResourceDraftReady = false;
 	m_EffectivePatternCache = {};
 	m_strEffectivePatternCachePatternId.clear();
 	m_strEffectivePatternCacheCanonicalRevision.clear();
@@ -6976,7 +6916,7 @@ void Client::CValtanActionWorkbench::Render_GameplayStageDetails(
 		{
 			ImGui::SeparatorText("Left-hand Grip");
 			ImGui::TextDisabled(
-				"Authored CAPTURE metadata retained for schema validation. Runtime placement uses the Server-authoritative boss-local attachment snapshot; the Client does not compose a hand bone.");
+				"Authored CAPTURE grip in metres. The Client composes it onto the owner's bip001-l-hand socket in the owner's yaw frame (forward/right) and world up for presentation only; the Server keeps its boss-local anchor for judgement, release and ejection.");
 			constexpr double fMinimumGripOffset =
 				-Client::CPlayerHandGripTransform::MAX_GRIP_OFFSET_COMPONENT_M;
 			constexpr double fMaximumGripOffset =
@@ -10019,17 +9959,20 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		Pack_TimelineSubrows();
 	}
 	ImGui::EndDisabled();
-	ImGui::SameLine();
-	if (ImGui::Button(
-		m_bTimelineMaximized ? "Restore Timeline" : "Maximize Timeline"))
+	if (!m_bSharedPaneRendering)
 	{
-		if (m_bTimelineMaximized)
+		ImGui::SameLine();
+		if (ImGui::Button(
+			m_bTimelineMaximized ? "Restore Timeline" : "Maximize Timeline"))
 		{
-			m_bTimelineMaximized = false;
-		}
-		else
-		{
-			m_bTimelineMaximized = true;
+			if (m_bTimelineMaximized)
+			{
+				m_bTimelineMaximized = false;
+			}
+			else
+			{
+				m_bTimelineMaximized = true;
+			}
 		}
 	}
 	if (nullptr == pPattern)
@@ -10302,19 +10245,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const ImVec2 RulerMin = ImGui::GetItemRectMin();
 	const ImVec2 RulerMax = ImGui::GetItemRectMax();
 	ImDrawList* const pDrawList = ImGui::GetWindowDrawList();
-	pDrawList->AddRectFilled(RulerMin, RulerMax, IM_COL32(31, 34, 40, 255));
-	const uint32_t iTickMs = m_fTimelinePixelsPerSecond >= 180.f ? 500u : 1000u;
-	for (uint64_t iMs = 0u; iMs <= iRenderDurationMs; iMs += iTickMs)
-	{
-		const float fX = RulerMin.x +
-			static_cast<float>(iMs) * m_fTimelinePixelsPerSecond * 0.001f;
-		pDrawList->AddLine(
-			ImVec2(fX, RulerMin.y), ImVec2(fX, RulerMax.y),
-			IM_COL32(91, 96, 108, 255));
-		const std::string Label = std::to_string(iMs) + " ms";
-		pDrawList->AddText(ImVec2(fX + 3.f, RulerMin.y + 3.f),
-			IM_COL32(200, 204, 212, 255), Label.c_str());
-	}
+	CompositionTimeline::DrawRuler(
+		pDrawList, RulerMin, RulerMax, iRenderDurationMs, m_fTimelinePixelsPerSecond);
 	if (ImGui::IsItemActive() &&
 		ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{
@@ -10492,29 +10424,11 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		const ImVec2 HitMax(
 			(std::min)(fEndX, RowMax.x),
 			fSubrowY + TIMELINE_ROW_HEIGHT);
-		pDrawList->AddRectFilled(
-			BlockMin, BlockMax, Lane_Color(Item.eLane), 3.f);
 		const bool_t bSelectedBlock =
 			Item.strPatternId == m_strSelectedPatternId &&
 			Item.strStageId == m_strSelectedStageId &&
 			Item.eOwner == m_eDetailOwner &&
 			Item.strStableId == m_strSelectedStableId;
-		if (bSelectedBlock)
-		{
-			pDrawList->AddRect(
-				BlockMin, BlockMax, IM_COL32(255, 224, 92, 255),
-				3.f, 0, 2.f);
-		}
-		const ImVec4 TextClipRect(
-			BlockMin.x, BlockMin.y, BlockMax.x, BlockMax.y);
-		const float fBlockTextY = BlockMin.y + (std::max)(
-			1.f,
-			(BlockMax.y - BlockMin.y - ImGui::GetTextLineHeight()) * 0.5f);
-		pDrawList->AddText(
-			nullptr, 0.f,
-			ImVec2(BlockMin.x + 4.f, fBlockTextY),
-			IM_COL32(247, 247, 249, 255), Item.strLabel.c_str(),
-			nullptr, 0.f, &TextClipRect);
 		const bool_t bBlockHovered = bLaneRowHovered &&
 			ImGui::IsMouseHoveringRect(HitMin, HitMax, true);
 		if (bBlockHovered)
@@ -10583,28 +10497,22 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			DETAIL_OWNER::ANIMATION == Item.eOwner || bEffectRightTrim;
 		const bool_t bTrimMutationAdmitted = bPatternMutationAdmitted &&
 			nullptr != m_pBalanceTool;
+		CompositionTimeline::DrawBox(pDrawList, BlockMin, BlockMax,
+			Lane_Color(Item.eLane), bSelectedBlock, Item.strLabel.c_str(),
+			bColliderCanResize && bTrimMutationAdmitted,
+			Item.bEditable && bTrimOwner && bTrimMutationAdmitted);
 		const float fEndTrimHandleX = bColliderSchedule ?
 			(std::min)(fSemanticEndX, RowMax.x) : BlockMax.x;
-		const float fStartTrimDistance =
-			std::abs(ImGui::GetIO().MousePos.x - BlockMin.x);
-		const float fEndTrimDistance =
-			std::abs(ImGui::GetIO().MousePos.x - fEndTrimHandleX);
-		const bool_t bStartTrimCandidate = bLaneRowHovered && bColliderCanResize &&
-			fStartTrimDistance <= 7.f &&
+		const bool_t bTrimRowHovered = bLaneRowHovered &&
 			ImGui::GetIO().MousePos.y >= BlockMin.y &&
 			ImGui::GetIO().MousePos.y <= BlockMax.y;
-		const bool_t bEndTrimCandidate = bLaneRowHovered &&
-			Item.bEditable && bTrimOwner &&
-			fEndTrimDistance <= 7.f &&
-			ImGui::GetIO().MousePos.y >= BlockMin.y &&
-			ImGui::GetIO().MousePos.y <= BlockMax.y;
-		/* Very short multi-pulse schedules can put both 7 px grips under the
-		   cursor.  The nearest semantic endpoint wins so the right edge remains
-		   reachable instead of always collapsing to the left-edge branch. */
-		const bool_t bStartTrimHandleHovered = bStartTrimCandidate &&
-			(!bEndTrimCandidate || fStartTrimDistance < fEndTrimDistance);
-		const bool_t bEndTrimHandleHovered = bEndTrimCandidate &&
-			(!bStartTrimCandidate || fEndTrimDistance <= fStartTrimDistance);
+		const CompositionTimeline::BoxGesture gesture = CompositionTimeline::HitBoxGesture(
+			ImGui::GetIO().MousePos.x, BlockMin.x, fEndTrimHandleX, 7.f,
+			bColliderCanResize, Item.bEditable && bTrimOwner);
+		const bool_t bStartTrimHandleHovered = bTrimRowHovered &&
+			CompositionTimeline::BoxGesture::TRIM_START == gesture;
+		const bool_t bEndTrimHandleHovered = bTrimRowHovered &&
+			CompositionTimeline::BoxGesture::TRIM_END == gesture;
 		const bool_t bTrimHandleHovered =
 			bStartTrimHandleHovered || bEndTrimHandleHovered;
 		const bool_t bThisTrimActive = m_bTimelineTrimActive &&
@@ -11561,10 +11469,19 @@ void Client::CValtanActionWorkbench::Render_PatternsWindow(
 		return;
 	}
 	Render_WindowMenu();
+	Render_PatternsPane(pPattern, nullptr, bPatternMutationAdmitted);
+	ImGui::End();
+}
+
+void Client::CValtanActionWorkbench::Render_PatternsPane(
+	const VALTAN_PATTERN_VIEW* const pPattern,
+	const VALTAN_STAGE_VIEW* const,
+	const bool_t bPatternMutationAdmitted)
+{
 	ImGui::TextDisabled("Canonical admission: %s", Admission_Label());
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Reload Canonical"))
-		(void)Reload_Canonical();
+		m_bWorkbenchReloadRequested = true;
 	if (!m_strStatus.empty())
 		ImGui::TextWrapped("Canonical status: %s", m_strStatus.c_str());
 	ImGui::Separator();
@@ -11594,7 +11511,6 @@ void Client::CValtanActionWorkbench::Render_PatternsWindow(
 		ImGui::EndTabBar();
 		m_iRequestedPatternTab = -1;
 	}
-	ImGui::End();
 }
 
 void Client::CValtanActionWorkbench::Render_PreviewWindow(
@@ -11922,6 +11838,16 @@ void Client::CValtanActionWorkbench::Render_ResourcesWindow(
 		return;
 	}
 	Render_WindowMenu();
+	Render_ResourcesPane(pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
+	ImGui::End();
+}
+
+void Client::CValtanActionWorkbench::Render_ResourcesPane(
+	const VALTAN_PATTERN_VIEW* const pPattern,
+	const VALTAN_STAGE_VIEW* const pStage,
+	const bool_t bMutationAdmitted,
+	const bool_t bPatternMutationAdmitted)
+{
 	const VALTAN_PATTERN_VIEW* pResourcePattern = pPattern;
 	if (!m_strResourceTargetPatternId.empty() &&
 		(nullptr == pResourcePattern ||
@@ -12426,11 +12352,18 @@ void Client::CValtanActionWorkbench::Render_ResourcesWindow(
 	}
 	if (bResourceSelectionConsumed)
 		m_bResourceDomainSelectionRequested = false;
-	ImGui::End();
 }
 
-void Client::CValtanActionWorkbench::Render()
+void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()
 {
+	if (m_bWorkbenchFrameActive)
+		return;
+	if (!m_bWorkbenchBossLoadAttempted && nullptr != m_pValtanBossTool)
+	{
+		m_bWorkbenchBossLoadAttempted = true;
+		std::string status;
+		(void)m_pValtanBossTool->Reload_CanonicalGraph(status);
+	}
 	Update_SaveState();
 	m_bApplyResetLayoutThisFrame = m_bResetLayoutRequested;
 	m_bResetLayoutRequested = false;
@@ -12539,6 +12472,14 @@ void Client::CValtanActionWorkbench::Render()
 		}
 		bEffectivePatternReady = m_bEffectivePatternCacheReady;
 	}
+	if (!bEffectivePatternReady && m_bCompositionResourceDraftReady &&
+		m_bEffectivePatternCacheReady && nullptr != m_pBalanceTool &&
+		m_strEffectivePatternCachePatternId == m_strSelectedPatternId &&
+		m_iEffectivePatternCacheDraftGeneration == m_pBalanceTool->Get_ValtanDraftGeneration())
+	{
+		bEffectivePatternReady = true;
+		m_bAuthoringDraftDirty = m_pBalanceTool->Is_ValtanDraftDirty();
+	}
 	const VALTAN_PATTERN_VIEW* const pPattern = bEffectivePatternReady ?
 		&m_EffectivePatternCache : pSavedPattern;
 	/* This generation belongs to the immutable pPattern selected above.  A
@@ -12587,6 +12528,223 @@ void Client::CValtanActionWorkbench::Render()
 		m_strSoundStatus = SoundDependencyStatus;
 	const bool_t bPatternMutationAdmitted = bMutationAdmitted;
 
+	m_pWorkbenchFramePattern = pPattern;
+	m_pWorkbenchFrameStage = pStage;
+	m_iWorkbenchFrameDraftGeneration = iPatternViewDraftGeneration;
+	m_bWorkbenchFrameLocalPreviewAdmitted = bLocalPreviewAdmitted;
+	m_bWorkbenchFrameMutationAdmitted = bMutationAdmitted;
+	m_bWorkbenchFramePatternMutationAdmitted = bPatternMutationAdmitted;
+	m_bWorkbenchFrameActive = true;
+}
+
+void Client::CValtanActionWorkbench::Render_WorkbenchPane(
+	const COMPOSITION_WORKBENCH_PANE pane)
+{
+	if (!m_bWorkbenchFrameActive)
+		return;
+	m_bSharedPaneRendering = true;
+	switch (pane)
+	{
+	case COMPOSITION_WORKBENCH_PANE::TOOLBAR:
+		(void)Render_Toolbar(m_pWorkbenchFramePattern,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::SEQUENCER:
+		Render_Timeline(m_pWorkbenchFramePattern,
+			m_bWorkbenchFrameLocalPreviewAdmitted,
+			m_bWorkbenchFrameMutationAdmitted,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::PATTERNS:
+		Render_PendingPatternSelectionModal();
+		Render_PatternsPane(m_pWorkbenchFramePattern, m_pWorkbenchFrameStage,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::RESOURCES:
+		Render_ResourcesPane(m_pWorkbenchFramePattern, m_pWorkbenchFrameStage,
+			m_bWorkbenchFrameMutationAdmitted,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::DETAILS:
+		Render_Details(m_pWorkbenchFramePattern, m_pWorkbenchFrameStage,
+			m_bWorkbenchFrameMutationAdmitted,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::PREVIEW:
+		Render_Preview(m_pWorkbenchFramePattern,
+			m_bWorkbenchFrameLocalPreviewAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::BOSS_PATTERN:
+		Render_BossPatternPane(m_pWorkbenchFramePattern,
+			m_iWorkbenchFrameDraftGeneration, m_bWorkbenchFrameMutationAdmitted,
+			m_bWorkbenchFramePatternMutationAdmitted);
+		break;
+	case COMPOSITION_WORKBENCH_PANE::COUNT:
+		break;
+	}
+	m_bSharedPaneRendering = false;
+}
+
+COMPOSITION_WORKBENCH_VIEW_REQUEST
+Client::CValtanActionWorkbench::Consume_WorkbenchViewRequest()
+{
+	COMPOSITION_WORKBENCH_VIEW_REQUEST request;
+	request.showResources = m_bResourcesWindowFocusRequested || m_bResourcesWindowExpandRequested;
+	request.focusResources = m_bResourcesWindowFocusRequested;
+	request.expandResources = m_bResourcesWindowExpandRequested;
+	m_bResourcesWindowFocusRequested = false;
+	m_bResourcesWindowExpandRequested = false;
+	if (m_iRequestedPatternTab >= 0 &&
+		m_iRequestedPatternTab != m_iWorkbenchReportedPatternTab)
+	{
+		request.showPatterns = true;
+		request.focusPatterns = true;
+	}
+	m_iWorkbenchReportedPatternTab = m_iRequestedPatternTab;
+	if (m_bTimelineMaximized != m_bWorkbenchReportedTimelineMaximized)
+	{
+		request.maximizeSequencer = m_bTimelineMaximized;
+		request.restoreSequencer = !m_bTimelineMaximized;
+		m_bWorkbenchReportedTimelineMaximized = m_bTimelineMaximized;
+	}
+	request.resetLayout = m_bResetLayoutRequested || m_bApplyResetLayoutThisFrame;
+	m_bResetLayoutRequested = false;
+	m_bApplyResetLayoutThisFrame = false;
+	return request;
+}
+
+bool Client::CValtanActionWorkbench::Can_AppendCompositionAnimationResource(
+	const COMPOSITION_ANIMATION_RESOURCE& resource, const bool asNewStage,
+	std::string& status) const
+{
+	if (resource.strTargetAssetName != "Valtan")
+	{
+		status = "Valtan Patterns store clips for the Valtan body. Other models remain available for Preview.";
+		return false;
+	}
+	const auto asset = std::find_if(ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),
+		[](const auto& candidate) { return std::string_view("Valtan") == candidate.pAssetName; });
+	if (asset == ANIMATION_PREVIEW_ASSETS.end() || resource.strModelAssetId != asset->pModelAssetId ||
+		(resource.strSourceAssetId != asset->pModelAssetId &&
+		 (nullptr == asset->pAnimationSetAssetId || resource.strSourceAssetId != asset->pAnimationSetAssetId)))
+	{
+		status = "The physical clip does not belong to the Valtan body or its animation package.";
+		return false;
+	}
+	if (m_PendingResourceAppend.has_value())
+	{
+		status = "An animation append is already queued for the end of this frame.";
+		return false;
+	}
+	if (nullptr == m_pBalanceTool)
+	{
+		status = "The Valtan source document owner is unavailable.";
+		return false;
+	}
+	std::string authoringRevision, sourceRevision, revisionStatus;
+	bool dirty = false;
+	if (!m_pBalanceTool->Get_ValtanAuthoringState(authoringRevision, dirty, revisionStatus) ||
+		!m_pBalanceTool->Get_ValtanCanonicalSourceRevision(sourceRevision, revisionStatus) ||
+		authoringRevision != m_strPinnedAuthoringSourceRevision ||
+		sourceRevision != m_strPinnedCanonicalSourceRevision)
+	{
+		status = "The selected Pattern and Balance draft belong to different source revisions. Reload the Valtan session before appending. " + revisionStatus;
+		return false;
+	}
+	return m_pBalanceTool->Can_AppendValtanAnimationClip(m_strSelectedPatternId,
+		m_strSelectedStageId, resource.strRuntimeClip, resource.iDurationMs, asNewStage, status);
+}
+
+bool Client::CValtanActionWorkbench::Append_CompositionAnimationResource(
+	const COMPOSITION_ANIMATION_RESOURCE& resource, const bool asNewStage,
+	std::string& status)
+{
+	if (!Can_AppendCompositionAnimationResource(resource, asNewStage, status))
+		return false;
+	PENDING_RESOURCE_APPEND command{ resource, asNewStage, m_strSelectedPatternId, m_strSelectedStageId };
+	if (m_bWorkbenchFrameActive)
+	{
+		m_PendingResourceAppend = std::move(command);
+		status = "Animation append queued; the draft updates after the current panes finish.";
+		return true;
+	}
+	return Apply_CompositionResourceAppend(command, status);
+}
+
+bool Client::CValtanActionWorkbench::Apply_CompositionResourceAppend(
+	const PENDING_RESOURCE_APPEND& command, std::string& status)
+{
+	if (!Can_AppendCompositionAnimationResource(command.Resource, command.bAsNewStage, status))
+		return false;
+	VALTAN_PATTERN_VIEW pattern;
+	std::string stageId;
+	std::string occurrenceId;
+	if (nullptr == m_pBalanceTool || !m_pBalanceTool->Append_ValtanAnimationClip(
+		command.strPatternId, command.strStageId, command.Resource.strRuntimeClip,
+		command.Resource.iDurationMs, command.bAsNewStage, pattern, stageId, occurrenceId, status))
+		return false;
+	m_EffectivePatternCache = std::move(pattern);
+	m_strEffectivePatternCachePatternId = command.strPatternId;
+	m_strEffectivePatternCacheCanonicalRevision = m_strPinnedCanonicalSourceRevision;
+	m_iEffectivePatternCacheDraftGeneration = m_pBalanceTool->Get_ValtanDraftGeneration();
+	m_bEffectivePatternCacheReady = true;
+	m_bCompositionResourceDraftReady = true;
+	m_bAuthoringDraftDirty = true;
+	m_strSelectedPatternId = command.strPatternId;
+	m_strSelectedStageId = stageId;
+	m_strSelectedStableId = occurrenceId;
+	m_eDetailOwner = DETAIL_OWNER::ANIMATION;
+	Invalidate_TimelineCache();
+	m_strStatus = status;
+	return true;
+}
+
+void Client::CValtanActionWorkbench::End_WorkbenchFrame()
+{
+	if (!m_bWorkbenchFrameActive)
+		return;
+	// No pane may retain a pointer when Save or Reload replaces canonical storage.
+	m_bWorkbenchFrameActive = false;
+	m_pWorkbenchFramePattern = nullptr;
+	m_pWorkbenchFrameStage = nullptr;
+	if (m_PendingResourceAppend.has_value())
+	{
+		const PENDING_RESOURCE_APPEND command = std::move(*m_PendingResourceAppend);
+		m_PendingResourceAppend.reset();
+		(void)Apply_CompositionResourceAppend(command, m_strStatus);
+	}
+	if (m_bSavePatternRequested)
+	{
+		/* Details only queues this command.  All windows finish using this
+		   frame's immutable Pattern/Stage views before a successful save reloads
+		   and replaces the canonical storage. */
+		m_bSavePatternRequested = false;
+		const bool_t bSaveStarted = Save_Reload();
+		m_bPatternSaveSucceeded = false;
+		m_bPatternSaveResultAvailable = !bSaveStarted;
+		m_strPatternSaveStatus = m_strStatus;
+	}
+	/* Pattern browser requests retain only stable IDs.  Resolve them after every
+	   window and the ordinary deferred Save edge have released this frame's
+	   immutable Pattern/Stage pointers. */
+	Resolve_PendingPatternSelection();
+	m_bApplyResetLayoutThisFrame = false;
+	if (m_bWorkbenchReloadRequested)
+	{
+		m_bWorkbenchReloadRequested = false;
+		(void)Reload_Canonical();
+	}
+}
+
+void Client::CValtanActionWorkbench::Render()
+{
+	Begin_WorkbenchFrame();
+	const VALTAN_PATTERN_VIEW* const pPattern = m_pWorkbenchFramePattern;
+	const VALTAN_STAGE_VIEW* const pStage = m_pWorkbenchFrameStage;
+	const std::uint64_t iPatternViewDraftGeneration = m_iWorkbenchFrameDraftGeneration;
+	const bool_t bLocalPreviewAdmitted = m_bWorkbenchFrameLocalPreviewAdmitted;
+	const bool_t bMutationAdmitted = m_bWorkbenchFrameMutationAdmitted;
+	const bool_t bPatternMutationAdmitted = m_bWorkbenchFramePatternMutationAdmitted;
 	/* MainApp's tool-level focus request is consumed by the first top-level
 	   Composition window. Keep the Sequencer first because it is the primary
 	   editing surface; all windows share this frame's immutable Pattern view. */
@@ -12606,22 +12764,7 @@ void Client::CValtanActionWorkbench::Render()
 		Render_ResourcesWindow(
 			pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
 	}
-	if (m_bSavePatternRequested)
-	{
-		/* Details only queues this command.  All windows finish using this
-		   frame's immutable Pattern/Stage views before a successful save reloads
-		   and replaces the canonical storage. */
-		m_bSavePatternRequested = false;
-		const bool_t bSaveStarted = Save_Reload();
-		m_bPatternSaveSucceeded = false;
-		m_bPatternSaveResultAvailable = !bSaveStarted;
-		m_strPatternSaveStatus = m_strStatus;
-	}
-	/* Pattern browser requests retain only stable IDs.  Resolve them after every
-	   window and the ordinary deferred Save edge have released this frame's
-	   immutable Pattern/Stage pointers. */
-	Resolve_PendingPatternSelection();
-	m_bApplyResetLayoutThisFrame = false;
+	End_WorkbenchFrame();
 }
 
 bool_t Client::CValtanActionWorkbench::Consume_EffectToolOpenRequest(

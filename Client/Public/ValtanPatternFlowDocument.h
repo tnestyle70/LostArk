@@ -90,6 +90,10 @@ namespace Client
 		static constexpr std::size_t MAX_SLOTS = MAX_NODES;
 		static constexpr std::uint32_t MIN_INTER_STEP_PURSUIT_MS = 100u;
 		static constexpr std::uint32_t MAX_INTER_STEP_PURSUIT_MS = 10000u;
+		/* A Flow edge may wait zero ticks (death -> respawn). The global default
+		   keeps the 100 ms floor so an unauthored edge never becomes a same-tick
+		   chain by accident. */
+		static constexpr std::uint32_t MIN_EDGE_PURSUIT_MS = 0u;
 		static constexpr std::uint32_t MIN_NODE_WATCHDOG_MS = 1000u;
 		static constexpr std::uint32_t MAX_NODE_WATCHDOG_MS = 300000u;
 		static constexpr std::uint32_t DEFAULT_NODE_WATCHDOG_MS = 0u;

@@ -244,9 +244,12 @@ coverage만 stable ID로 묶는다. resolved Product에서 이 값들이 한 Sta
 Composition은 Effect 연결·시간·배치 reference를 다루고 Effect Tool은 asset/group body를,
 Animation owner는 clip occurrence를, gameplay owner는 Stage/branch/hit를 계속 소유한다.
 
-현재 Valtan manifest는 `SHADOW`이고 Sequencer는 source inspection 뒤 `Valtan Action Workbench`로
-진입한다. 상세 box 편집, Play와 Save도 `CValtanActionWorkbench`/split writer가 담당한다. generated
-resolved Product를 재생하는 generic Composition player나 여러 owner를 직접 저장하는 새 writer는 아직 없다.
+현재 Valtan manifest는 `SHADOW`이며 공용 `Action Workbench` 진입의 선행조건이 아니다.
+Boss 선택은 Valtan/KoukuSaydon session을 같은 창에 연결한다. Valtan 상세 box 편집·Play·Save는
+`CValtanActionWorkbench`/split writer, 쿠크는 독립 Composition session이 담당한다. Resources의 여섯 몸체
+Animation inventory는 WModel metadata를 읽고 기존 CharacterPreviewPanel에서 플레이어 주변 모델을 생성한다.
+clip 클릭은 Animation Tool의 창 열기 요청을 보내지 않는다. generated resolved Product를 재생하는 두 번째
+runtime이나 모든 보스/owner를 저장하는 거대 writer를 추가하지 않는다.
 
 ## 8. Character Preview Panel이 소유하는 것
 

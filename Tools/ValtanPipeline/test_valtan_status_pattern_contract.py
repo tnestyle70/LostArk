@@ -603,7 +603,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertIn('"player.status.silence" == targetId', catalog)
         self.assertIn("writer.Write_U8(player.isPatternBound ? 1u : 0u)", packet_cpp)
         self.assertIn("player.isPatternBound = 0u != rawPatternBound", packet_cpp)
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 55", protocol)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 57", protocol)
         self.assertIn("Pattern-Bound Player Snapshot Round Trip", harness)
         self.assertIn("iSilenceDurationTicks", harness)
         skill_build = hud[

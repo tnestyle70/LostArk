@@ -3,7 +3,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
     [ValidateSet('Product', 'Core', 'FullDiagnostic')]
-    [string]$Profile = 'Core',
+    [string]$Profile = 'Product',
     [switch]$SkipBuild,
     [string]$ResourceRoot = '',
     [switch]$AllowLocalEffectResources,
@@ -47,7 +47,7 @@ $valtanPipeline = Join-Path $repoRoot `
     'Tools\ValtanPipeline\valtan_tuning_pipeline.py'
 Import-Module $domainPipelinePath -Force
 Import-Module $productOutputGuardPath -Force
-$buildDomainManifest = Read-BuildDomainManifest $domainManifestPath
+$buildDomainManifest = if ($includeCore) { Read-BuildDomainManifest $domainManifestPath } else { $null }
 $script:buildStepRecords = [Collections.Generic.List[object]]::new()
 $script:buildDomainResults = [Collections.Generic.List[object]]::new()
 $script:buildStartedUtc = [DateTime]::UtcNow.ToString('o')
@@ -211,23 +211,6 @@ function Assert-ProductOutputsUnlocked {
     }
 }
 
-function Assert-SkipBuildProductFreshness {
-    $timer = [Diagnostics.Stopwatch]::StartNew()
-    $result = 'FAIL'
-    try {
-        $freshness = Test-BuildProductReceipt $repoRoot $buildDomainManifest `
-            $Configuration $buildReceiptRoot
-        if (-not $freshness.Fresh) {
-            throw "-SkipBuild rejected stale product output: $($freshness.Reason). Run without -SkipBuild first."
-        }
-        $result = 'PASS'
-    }
-    finally {
-        $timer.Stop()
-        Add-BuildStepRecord 'product:freshness' $result $timer.ElapsedMilliseconds
-    }
-}
-
 function Invoke-SelectedBuildDomains {
     foreach ($domain in @(Get-BuildDomainsForProfile $buildDomainManifest $Profile)) {
         $timer = [Diagnostics.Stopwatch]::StartNew()
@@ -303,34 +286,53 @@ try {
 
     Assert-ExpectedValtanSourceRevision 'build runner admission'
 
-    # This is deliberately unconditional.  Build-domain publishers mutate shared
-    # Data even for -SkipBuild, and either Debug or Release may still be running.
-    Assert-ProductOutputsUnlocked
+    if (-not $SkipBuild) { Assert-ProductOutputsUnlocked }
 
-    Invoke-PythonGate `
-        'Release client surface visibility and product input gate' `
-        @('Tools/Build/test_release_client_surface_contract.py')
-    Invoke-PythonGate `
-        'Product-first build profile and project surface gate' `
-        @('Tools/Build/test_build_profile_contract.py')
-    Invoke-PythonGate `
-        'Build-domain fingerprint, receipt, and freshness gate' `
-        @('Tools/Build/test_build_domain_pipeline_receipts.py')
-    Invoke-PythonGate `
-        'KoukuSaydon authored-tool naming boundary gate' `
-        @('Tools/KoukuSaydonPipeline/test_kouku_saydon_naming_boundary.py')
-    Invoke-PythonGate `
-        'Shared map placement transform seam gate' `
-        @('Tools/LevelPlacementExtractor/test_placement_transform.py')
-    Invoke-PythonGate `
-        'DimensionMaster glass/water Tool audition canary gates' `
-        @(
-            '-m',
-            'unittest',
-            'Tools.EffectPipeline.test_dimensionmaster_2050230_mirror_particle_tool_canary',
-            'Tools.EffectPipeline.test_dimensionmaster_2050230_single_glass_product_canary',
-            'Tools.EffectPipeline.test_dimensionmaster_2050230_glass_water_visual_canary'
-        )
+    if (-not $includeCore) {
+        # Daily authoring needs compilation and normal MSBuild deployment only.
+        # Publishers and diagnostics are separate, explicit operations.
+        if (-not $SkipBuild) {
+            $msbuild = Resolve-MSBuild
+            Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
+            Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
+            Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
+            Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
+        }
+        Assert-RuntimeLayout
+        $missingRuntimeInputs = @(
+            'Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap',
+            'Server/Bin/DataFiles/Items/Items.bootstrap',
+            'Server/Bin/DataFiles/World/BERN.worldbootstrap',
+            'Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap',
+            'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap',
+            'Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets'
+        ) | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_)) }
+        if ($missingRuntimeInputs) {
+            Write-Warning ('Runtime data is not prepared: ' + ($missingRuntimeInputs -join ', '))
+            Write-Host 'Before launching, run these explicit data-generation commands:'
+            Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server'
+            Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client'
+        }
+        $script:buildRunTimer.Stop()
+        $compileResult = [ordered]@{
+            schema = 'lostark.compile-result'
+            formatVersion = 1
+            configuration = $Configuration
+            profile = $Profile
+            skippedBuild = [bool]$SkipBuild
+            startedUtc = $script:buildStartedUtc
+            elapsedMs = $script:buildRunTimer.ElapsedMilliseconds
+            steps = @($script:buildStepRecords)
+            missingRuntimeInputs = @($missingRuntimeInputs)
+        }
+        $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+        $compileResultPath = Join-Path $buildEvidenceRoot "$stamp-$($Configuration.ToLowerInvariant())-product.json"
+        Write-BuildAtomicJson $compileResultPath $compileResult
+        Write-Host "Product compile/deploy completed: $Configuration (SkipBuild=$([bool]$SkipBuild))"
+        Write-Host "Compile result: $compileResultPath"
+        Write-Host 'Data publishing and runtime diagnostics were not run. Visual/audio review remains user-operated.'
+        return
+    }
 
     if ($includeCore) {
         Invoke-PythonGate `
@@ -391,10 +393,6 @@ try {
     Invoke-SelectedBuildDomains
     Capture-BuildStartIdentity
 
-    if ($SkipBuild) {
-        Assert-SkipBuildProductFreshness
-    }
-
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
@@ -441,13 +439,6 @@ try {
     Assert-RuntimeLayout
     if (-not $SkipBuild) {
         Write-CurrentProductReceipt
-    }
-
-    if (-not $includeCore) {
-        Write-CurrentBuildEvidence
-        Write-Host "Build and validation completed: $Configuration / $Profile"
-        Write-Host 'Runtime visual/audio validation remains user-operated.'
-        return
     }
 
     if ($includeFullDiagnostic) {

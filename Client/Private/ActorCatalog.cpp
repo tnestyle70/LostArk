@@ -269,7 +269,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 6.0 ||
+			pVersion->Get_Number() != 7.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
 			3u != root.Get_Object().size())
 		{
@@ -288,14 +288,14 @@ namespace
 			const DATA_JSON_VALUE* pArmorParts = value.Find("armorParts");
 			const DATA_JSON_VALUE* pCombatObjectVisuals =
 				value.Find("combatObjectVisuals");
+			const DATA_JSON_VALUE* pWeaponModel = value.Find("weaponModel");
+			const DATA_JSON_VALUE* pWeaponScale = value.Find("weaponModelPreScale");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredNumber(
 					value, "presentationScale", entry.presentationScale) ||
 				!ReadRequiredNumber(value, "bodyModelPreScale", entry.bodyModelPreScale) ||
-				!ReadRequiredNumber(value, "weaponModelPreScale", entry.weaponModelPreScale) ||
 				!ReadRequiredString(value, "bodyModel", entry.bodyModel) ||
-				!ReadRequiredString(value, "weaponModel", entry.weaponModel) ||
 				!ReadRequiredString(value, "animationSetId", entry.animationSetId) ||
 				!ReadRequiredString(value, "serverProfileId", entry.serverProfileId) ||
 				!ReadRequiredString(value, "clientPresentationId", entry.clientPresentationId) ||
@@ -310,14 +310,11 @@ namespace
 				!ReadRequiredString(*pClips, "dead", entry.presentationClips.dead) ||
 				!IsStableId(entry.archetypeId) ||
 				!IsResourceId(entry.bodyModel) ||
-				!IsResourceId(entry.weaponModel) ||
 				!IsResourceId(entry.animationSetId) ||
 				entry.presentationScale <= 0.f ||
 				entry.presentationScale > 100.f ||
 				!std::isfinite(entry.bodyModelPreScale) ||
 				entry.bodyModelPreScale <= 0.f || entry.bodyModelPreScale > 100.f ||
-				!std::isfinite(entry.weaponModelPreScale) ||
-				entry.weaponModelPreScale <= 0.f || entry.weaponModelPreScale > 100.f ||
 				nullptr == pArmor || !pArmor->Is_Array() ||
 				pArmor->Get_Array().size() > 4u ||
 				pArmor->Get_Array().size() > MAX_BOSS_ARMOR_PARTS ||
@@ -330,6 +327,37 @@ namespace
 				!archetypes.insert(entry.archetypeId).second ||
 				(entry.presentationStatus != "complete" &&
 				 entry.presentationStatus != "fallback"))
+			{
+				return false;
+			}
+			const bool_t hasSeparateWeapon = nullptr != pWeaponModel &&
+				pWeaponModel->Is_String() && nullptr != pWeaponScale &&
+				pWeaponScale->Is_Number();
+			const bool_t hasEmbeddedBodyOnly = nullptr != pWeaponModel &&
+				pWeaponModel->Is_Null() && nullptr != pWeaponScale &&
+				pWeaponScale->Is_Null() &&
+				entry.archetypeId == "BOSS_KAKULSAYDON_G1_KOUKU" &&
+				entry.clientPresentationId ==
+					"boss.kakulsaydon.g1.kouku.client.v1";
+			if (hasSeparateWeapon)
+			{
+				entry.weaponModel = pWeaponModel->Get_String();
+				entry.weaponModelPreScale =
+					static_cast<f32_t>(pWeaponScale->Get_Number());
+				if (!IsResourceId(entry.weaponModel) ||
+					!std::isfinite(entry.weaponModelPreScale) ||
+					entry.weaponModelPreScale <= 0.f ||
+					entry.weaponModelPreScale > 100.f)
+				{
+					return false;
+				}
+			}
+			else if (!hasEmbeddedBodyOnly)
+			{
+				return false;
+			}
+			if (entry.clientPresentationId == "boss.valtan.client.v1" &&
+				!hasSeparateWeapon)
 			{
 				return false;
 			}

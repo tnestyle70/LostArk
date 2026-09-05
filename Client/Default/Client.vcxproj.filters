@@ -55,6 +55,9 @@
     <Filter Include="03. Tools\10. Rendering">
       <UniqueIdentifier>{712047c8-13b6-47cf-9076-061b23819598}</UniqueIdentifier>
     </Filter>
+    <Filter Include="03. Tools\11. KoukuSaydon">
+      <UniqueIdentifier>{66029b30-ef31-4639-b647-bd5ddb807f03}</UniqueIdentifier>
+    </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
@@ -114,6 +117,15 @@
     </Filter>
     <Filter Include="96.DataFiles\Encounters">
       <UniqueIdentifier>{b09ba3ed-3f63-4c04-a1f7-05080a2f25e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Encounters\KoukuSaydon">
+      <UniqueIdentifier>{9f3df192-58a1-4b80-b52d-7ca642a46851}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\KoukuSaydon">
+      <UniqueIdentifier>{2bb764e5-1e54-408d-89c0-ec87e9b9a695}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\KoukuSaydon\Gate1">
+      <UniqueIdentifier>{ef775ba4-8f38-4133-8919-c94857ce0d06}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Levels">
       <UniqueIdentifier>{336b076d-6971-435f-81f2-998308e2a98d}</UniqueIdentifier>
@@ -251,6 +263,18 @@
 	</ClCompile>
 	<ClCompile Include="..\Private\KoukuSaydonAnimationPatternDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonCompositionDocument.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonActionWorkbench.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonBossTool.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonPatternAuditionService.cpp">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
 	  <Filter>03. Tools\01. Boss</Filter>
@@ -507,6 +531,9 @@
 	<ClCompile Include="..\Private\ValtanActionWorkbench.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\CompositionResourceTree.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\ValtanActionWorkbench_Blueprint.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
@@ -736,6 +763,9 @@
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
@@ -943,6 +973,18 @@
 	<ClInclude Include="..\Public\ValtanActionWorkbench.h">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\CompositionResourceTree.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\CompositionAnimationResource.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\CompositionWorkbenchSession.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\CompositionTimeline.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
@@ -957,6 +999,18 @@
 	</ClInclude>
 	<ClInclude Include="..\Public\KoukuSaydonAnimationPatternDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonCompositionDocument.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonActionWorkbench.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonBossTool.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonPatternAuditionService.h">
+	  <Filter>03. Tools\11. KoukuSaydon</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
 	  <Filter>03. Tools\01. Boss</Filter>
@@ -1260,6 +1314,9 @@
 	  <Filter>04. Network</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationContract.h">
@@ -1671,6 +1728,15 @@
     </None>
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json">
       <Filter>96.DataFiles\Encounters</Filter>
+    </None>
+    <None Include="..\..\Data\Encounters\KoukuSaydon\KoukuSaydonEncounter.json">
+      <Filter>96.DataFiles\Encounters\KoukuSaydon</Filter>
+    </None>
+    <None Include="..\..\Data\KoukuSaydon\Gate1\KoukuSaydonComposition.json">
+      <Filter>96.DataFiles\KoukuSaydon\Gate1</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json">
+      <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>

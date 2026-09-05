@@ -32,6 +32,10 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\KoukuSaydonAnimationActionDocument.h" />
 	<ClInclude Include="..\Public\KoukuSaydonAnimationPatternDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonCompositionDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonActionWorkbench.h" />
+	<ClInclude Include="..\Public\KoukuSaydonBossTool.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPatternAuditionService.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
@@ -49,6 +53,10 @@
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\Public\BossLogicFlowView.h" />
 	<ClInclude Include="..\Public\ValtanActionWorkbench.h" />
+	<ClInclude Include="..\Public\CompositionResourceTree.h" />
+	<ClInclude Include="..\Public\CompositionAnimationResource.h" />
+	<ClInclude Include="..\Public\CompositionWorkbenchSession.h" />
+	<ClInclude Include="..\Public\CompositionTimeline.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
@@ -98,6 +106,7 @@
 	<ClInclude Include="..\Public\NpcPlacementPresentationService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationContract.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
@@ -223,6 +232,7 @@
 	<ClCompile Include="..\Private\ValtanActionWorkbench.cpp" />
 	<ClCompile Include="..\Private\ValtanActionWorkbench_Blueprint.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
+	<ClCompile Include="..\Private\CompositionResourceTree.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowRenderer.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
@@ -238,6 +248,10 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonAnimationActionDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonAnimationPatternDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonCompositionDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonActionWorkbench.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonBossTool.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPatternAuditionService.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
@@ -289,6 +303,7 @@
 	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp" />
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
@@ -519,7 +534,10 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
-    <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
+	<None Include="..\..\Data\Encounters\KoukuSaydon\KoukuSaydonEncounter.json" />
+	<None Include="..\..\Data\KoukuSaydon\Gate1\KoukuSaydonComposition.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
@@ -835,7 +853,7 @@
     <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
     <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
   </PropertyGroup>
-  <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+  <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Client -ResourceRoot &quot;$(ProjectDir)..\Bin\Resources&quot;" />
   </Target>
   <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">

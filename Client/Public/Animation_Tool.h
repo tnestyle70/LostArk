@@ -5,6 +5,8 @@
 #include "AnimationSkillBindingDocument.h"
 #include "KoukuSaydonAnimationActionDocument.h"
 #include "KoukuSaydonAnimationPatternDocument.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "CompositionAnimationResource.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
@@ -316,6 +318,51 @@ public:
 	bool_t Open_KoukuSaydonAction(
 		const std::string& profileId,
 		std::uint32_t iSourceActionId);
+	/* K Composition Workbench hands off value snapshots only. This remains the
+	   sole owner of the staged physical CModel and never mutates either source
+	   document when servicing a preview request. */
+	// Metadata-only refresh. A failed package keeps its previous clip rows.
+	bool_t Read_CompositionAnimationResources(
+		std::vector<COMPOSITION_ANIMATION_RESOURCE>& outResources,
+		std::string& outStatus) const;
+	bool_t Preview_CompositionAnimationResource(
+		const COMPOSITION_ANIMATION_RESOURCE& resource,
+		std::string& strOutStatus);
+	bool_t Preview_CompositionResourcePattern(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		const std::string& targetAssetName,
+		std::string& strOutStatus,
+		std::uint32_t startClockMs = 0u,
+		bool_t startPaused = false);
+	bool_t Preview_KoukuSaydonCompositionAnimation(
+		const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence,
+		std::string& strOutStatus);
+	bool_t Preview_KoukuSaydonCompositionPattern(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		std::string& strOutStatus,
+		std::uint32_t startClockMs = 0u,
+		bool_t startPaused = false);
+	/* Transport over the running composition preview clock. The K Workbench
+	   never touches the model: MainApp forwards one typed request per frame
+	   and hands back this immutable snapshot for the playhead. */
+	struct KOUKU_COMPOSITION_PREVIEW_STATE final
+	{
+		std::string strPatternId;
+		std::string strStatus;
+		bool_t bPlaying = false;
+		bool_t bPaused = false;
+		std::uint32_t iClockMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+	};
+	[[nodiscard]] KOUKU_COMPOSITION_PREVIEW_STATE
+		Get_KoukuCompositionPreviewState() const;
+	bool_t Set_KoukuCompositionPreviewPaused(
+		bool_t bPaused,
+		std::string& strOutStatus);
+	bool_t Seek_KoukuCompositionPreview(
+		std::uint32_t iClockMs,
+		std::string& strOutStatus);
+	bool_t Stop_KoukuCompositionPreview(std::string& strOutStatus);
 	bool_t Stage_ValtanCompositionPreview(std::string& strOutStatus);
 	bool_t Play_ValtanCompositionPattern(
 		const std::string& strPatternId,
@@ -345,9 +392,9 @@ public:
 	bool_t Get_ActionCompositionSequenceCatalog(
 		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
 		std::string& strOutStatus);
-	/* Native source-window admission uses the exact body + attached AnimSet
-	   CModel already staged for Valtan.  It never substitutes a scene model and
-	   never treats the extracted .clipcuts wall duration as source play time. */
+	/* Native source-window admission reads exact body + AnimSet metadata. It is
+	   independent of the selected preview and never treats a .clipcuts wall
+	   duration as the native source play time. */
 	bool_t Resolve_ValtanCompositionNativeClipDurationMs(
 		const std::string& strClipName,
 		uint32_t& iOutRoundedDurationMs,
@@ -484,9 +531,7 @@ public:
 	bool_t Save_ValtanCompositionPatternSounds(std::string& strOutStatus);
 
 private:
-	bool_t Resolve_ValtanCompositionNativeModel(
-		shared_ptr<Engine::CModel>& pOutModel,
-		std::string& strOutStatus) const;
+	bool_t Ensure_ValtanCompositionNativeResources(std::string& strOutStatus) const;
 	bool_t Apply_ValtanCompositionPatternSoundsToActiveConsumers(
 		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus);
@@ -690,6 +735,10 @@ private:
 		const std::string& strPatternId,
 		KOUKU_SAYDON_ANIMATION_PATTERN& outPattern,
 		std::string& strOutStatus) const;
+	void Sample_KoukuSaydonCompositionPreview(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Start_PendingKoukuSaydonCompositionPreview(
+		const shared_ptr<Engine::CModel>& pModel);
 	bool_t Start_KoukuSaydonPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		const KOUKU_SAYDON_ANIMATION_PATTERN& Pattern,
@@ -995,6 +1044,16 @@ private:
 	char m_KoukuSaydonPatternFilter[128]{};
 	std::string m_strKoukuSaydonActionStatus;
 	std::string m_strKoukuSaydonPatternStatus;
+	mutable std::vector<COMPOSITION_ANIMATION_RESOURCE> m_CompositionAnimationResources;
+	mutable bool_t m_bCompositionResourcesReadAttempted = false;
+	mutable std::string m_strCompositionAnimationResourceStatus;
+	std::string m_strPendingCompositionPreviewTargetAssetName;
+	std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> m_KoukuCompositionPreviewRows;
+	double m_fKoukuCompositionPreviewClockMs = 0.0;
+	std::uint32_t m_iKoukuCompositionPreviewDurationMs = 0u;
+	std::uint32_t m_iKoukuCompositionInitialAnimation = 0u;
+	f32_t m_fKoukuCompositionInitialTrackTicks = 0.f;
+	bool_t m_bKoukuCompositionTimelinePlaying = false;
 	std::vector<KOUKU_SAYDON_ANIMATION_PATTERN_CLIP> m_KoukuSaydonPatternPreviewClips;
 	std::string m_strKoukuSaydonPatternPreviewId;
 	std::string m_strKoukuSaydonPatternPreviewLabel;
@@ -1005,6 +1064,14 @@ private:
 	f32_t m_fKoukuSaydonPatternPreviewClipDurationSeconds = 0.f;
 	bool_t m_bKoukuSaydonPatternPreviewPlaying = false;
 	bool_t m_bKoukuSaydonPatternPreviewPaused = false;
+	KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE
+		m_PendingKoukuSaydonCompositionAnimationPreview;
+	KOUKU_SAYDON_COMPOSITION_PATTERN
+		m_PendingKoukuSaydonCompositionPatternPreview;
+	bool_t m_bKoukuSaydonCompositionAnimationPreviewPending = false;
+	bool_t m_bKoukuSaydonCompositionPatternPreviewPending = false;
+	std::uint32_t m_iPendingKoukuCompositionStartClockMs = 0u;
+	bool_t m_bPendingKoukuCompositionStartPaused = false;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand
 	rows, so being able to pull in just hits and cancels matters. */
 	bool_t m_bImportKind[ETOI(EVENT_KIND::END)]{};

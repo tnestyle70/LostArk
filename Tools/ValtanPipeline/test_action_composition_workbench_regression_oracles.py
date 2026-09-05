@@ -425,7 +425,7 @@ class ValtanActionWorkbenchRegressionOracles(unittest.TestCase):
                 "Collect_CanonicalPatternsForDependencyValidation()", body
             )
 
-    def test_native_model_window_admission_precedes_every_animation_mutation(self) -> None:
+    def test_native_metadata_window_admission_precedes_every_animation_mutation(self) -> None:
         for token in (
             "Resolve_ValtanCompositionNativeClipDurationMs",
             "Validate_ValtanCompositionAnimationStageMutation",
@@ -433,6 +433,23 @@ class ValtanActionWorkbenchRegressionOracles(unittest.TestCase):
         ):
             self.assertIn(token, self.animation_h)
             self.assertIn(token, self.animation_cpp)
+        # Save must work after previewing another boss or the ghost rig. It
+        # reads Valtan's physical metadata and retains native timing precision.
+        ensure = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Ensure_ValtanCompositionNativeResources(",
+        )
+        self.assertIn("Read_CompositionAnimationResources(", ensure)
+        self.assertIn('resource.strTargetAssetName == "Valtan"', ensure)
+        for forbidden in ("Resolve_Model(", "Resolve_Boss(", "Select_TargetAsset("):
+            self.assertNotIn(forbidden, ensure)
+        inventory = function_body(
+            self.animation_cpp, "bool_t BuildStrictValtanNativeClipInventory(",
+        )
+        self.assertIn('resource.strTargetAssetName != "Valtan"', inventory)
+        self.assertIn("resource.fDurationTicks, resource.fTicksPerSecond", inventory)
+        self.assertNotIn("Get_NumAnimations", inventory)
+        self.assertNotIn("Resolve_ValtanCompositionNativeModel", self.animation_cpp)
         self.assertIn("Validate_AuthoredSourceWindow", self.timeline_h)
         strict = function_body(
             self.timeline_cpp,

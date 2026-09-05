@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -55,16 +57,33 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         self.document = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.domains = {row["id"]: row for row in self.document["domains"]}
 
-    def test_graph_has_one_cached_valtan_validator_and_preserves_effect_v2(self) -> None:
+    def test_diagnostic_graph_excludes_product_and_preserves_domain_validators(self) -> None:
         self.assertEqual(self.document["schema"], "lostark.build-domain-graph")
         self.assertEqual(self.document["formatVersion"], 1)
         self.assertEqual(len(self.domains), len(self.document["domains"]))
 
+        for domain_id, domain in self.domains.items():
+            self.assertEqual(domain["profiles"], ["Core", "FullDiagnostic"], domain_id)
+        # Exercise the real selector without executing a publisher or diagnostic.
+        module_path = str(MODULE).replace("'", "''")
+        manifest_path = str(MANIFEST).replace("'", "''")
+        selected = json.loads(powershell(
+            f"Import-Module '{module_path}' -Force -WarningAction SilentlyContinue; "
+            f"$manifest = Read-BuildDomainManifest '{manifest_path}'; "
+            "$selected = @{}; "
+            "foreach ($profile in @('Product', 'Core', 'FullDiagnostic')) { "
+            "$selected[$profile] = @(Get-BuildDomainsForProfile $manifest $profile | "
+            "ForEach-Object { $_.id }) }; "
+            "$selected | ConvertTo-Json -Compress",
+            ROOT,
+        ))
+        self.assertEqual(selected["Product"], [])
+        for profile in ("Core", "FullDiagnostic"):
+            self.assertEqual(set(selected[profile]), set(self.domains), profile)
+            self.assertEqual(selected[profile].count("valtan.product"), 1)
+
         valtan = self.domains["valtan.product"]
         self.assertEqual(valtan["kind"], "validation")
-        self.assertEqual(
-            valtan["profiles"], ["Product", "Core", "FullDiagnostic"]
-        )
         self.assertEqual(
             valtan["action"]["arguments"].count("Validate"), 1
         )
@@ -96,6 +115,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             publishers,
             {
                 "map.kakulsaydon",
+                "koukusaydon.product",
                 "composition.presentation",
                 "world.gameplay",
                 "navigation",
@@ -109,7 +129,27 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             domain = self.domains[domain_id]
             self.assertTrue(domain["outputs"], domain_id)
             self.assertTrue(domain["requiredOutputPatterns"], domain_id)
-            self.assertIn("Publish", domain["action"]["arguments"])
+            self.assertIn(
+                "publish",
+                [str(argument).casefold() for argument in domain["action"]["arguments"]],
+            )
+
+        kouku = self.domains["koukusaydon.product"]
+        self.assertEqual(
+            kouku["outputs"],
+            [
+                "Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
+                "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json",
+            ],
+        )
+        self.assertEqual(kouku["outputs"], kouku["requiredOutputPatterns"])
+        self.assertIn("Data/KoukuSaydon/**", kouku["inputs"])
+        self.assertIn(
+            "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
+            kouku["tools"],
+        )
+        self.assertIn("--mode", kouku["action"]["arguments"])
+        self.assertIn("publish", kouku["action"]["arguments"])
 
         gameplay = self.domains["gameplay.balance"]
         self.assertIn("-SkipValtanSplitProjection", gameplay["action"]["arguments"])
@@ -122,6 +162,24 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "Data/Compositions/Bosses/Valtan.bosscomposition.json",
             gameplay["inputs"],
         )
+        for kouku_input in (
+            "Data/KoukuSaydon/**",
+            "Data/Encounters/KoukuSaydon/**",
+            "Data/Animation/Reference/KoukuSaydon/**",
+            "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json",
+        ):
+            self.assertIn(kouku_input, gameplay["inputs"])
+        self.assertIn(
+            "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+            gameplay["tools"],
+        )
+        self.assertIn(
+            "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
+            gameplay["tools"],
+        )
+
+        world = self.domains["world.gameplay"]
+        self.assertIn("Data/Encounters/KoukuSaydon/**", world["inputs"])
 
         composition = self.domains["composition.presentation"]
         self.assertIn("Data/Compositions/**", composition["inputs"])
@@ -146,7 +204,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
     def test_kouku_saydon_map_publisher_has_exact_clean_checkout_closure(self) -> None:
         domain = self.domains["map.kakulsaydon"]
         self.assertEqual(domain["kind"], "publisher")
-        self.assertEqual(domain["profiles"], ["Product", "Core", "FullDiagnostic"])
+        self.assertEqual(domain["profiles"], ["Core", "FullDiagnostic"])
         self.assertEqual(
             domain["inputs"],
             [
@@ -175,24 +233,34 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         ):
             self.assertIn(token, arguments)
 
-    def test_client_owner_materializes_kouku_saydon_map_world_and_navigation(self) -> None:
+    def test_explicit_owners_select_only_their_runtime_publishers(self) -> None:
         owner = (ROOT / "Tools/Build/Invoke-BuildDomainOwner.ps1").read_text(
             encoding="utf-8-sig"
         )
-        client_block = owner.split("if ($Owner -eq 'Client') {", 1)[1].split(
-            "else {", 1
-        )[0]
-        for domain_id in (
-            "map.kakulsaydon",
-            "composition.presentation",
-            "world.gameplay",
-            "navigation",
-            "valtan.product",
-        ):
-            self.assertIn(f"'{domain_id}'", client_block)
-
-        server_block = owner.split("else {", 1)[1].split("}", 1)[0]
-        self.assertNotIn("'map.kakulsaydon'", server_block)
+        selection = re.search(
+            r"\$domainIds\s*=\s*if\s*\(\$Owner -eq 'Client'\)\s*\{(?P<Client>.*?)\}"
+            r"\s*elseif\s*\(\$Owner -eq 'KoukuSaydon'\)\s*\{(?P<KoukuSaydon>.*?)\}"
+            r"\s*else\s*\{(?P<Server>.*?)\}",
+            owner,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(selection)
+        expected = {
+            "Client": [
+                "koukusaydon.product", "map.kakulsaydon", "composition.presentation",
+                "world.gameplay", "navigation",
+            ],
+            "KoukuSaydon": ["koukusaydon.product", "gameplay.balance"],
+            "Server": [
+                "koukusaydon.product", "world.gameplay", "navigation",
+                "world.destruction", "gameplay.balance", "items.catalog", "valtan.rewards",
+            ],
+        }
+        for owner_name, domain_ids in expected.items():
+            actual = re.findall(r"'([^']+)'", selection.group(owner_name))
+            self.assertEqual(actual, domain_ids, owner_name)
+            for domain_id in actual:
+                self.assertEqual(self.domains[domain_id]["kind"], "publisher", domain_id)
 
     def test_client_project_exposes_kouku_saydon_world_and_navigation_authoring(self) -> None:
         project = (ROOT / "Client/Default/Client.vcxproj").read_text(
@@ -242,7 +310,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(product["deploymentPairs"]), 9)
 
-    def test_project_hooks_use_the_same_receipt_owner_without_boolean_bypass(self) -> None:
+    def test_project_publisher_hooks_require_explicit_runtime_data_opt_in(self) -> None:
         server = (ROOT / "Server/Default/Server.vcxproj").read_text(
             encoding="utf-8-sig"
         )
@@ -256,8 +324,28 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         self.assertIn("-Owner Client", client)
         self.assertNotIn("LostArkCentralBuildReceiptsVerified", server)
         self.assertNotIn("LostArkCentralBuildReceiptsVerified", client)
+        namespace = {"msbuild": "http://schemas.microsoft.com/developer/msbuild/2003"}
+        for project, target_name, owner_name in (
+            (server, "PublishServerBuildDomains", "Server"),
+            (client, "ValidateClientBuildDomains", "Client"),
+        ):
+            document = ET.fromstring(project)
+            target = document.find(f"msbuild:Target[@Name='{target_name}']", namespace)
+            self.assertIsNotNone(target)
+            self.assertEqual(target.get("BeforeTargets"), "ClCompile")
+            self.assertEqual(
+                target.get("Condition"),
+                "'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'",
+            )
+            commands = target.findall("msbuild:Exec", namespace)
+            self.assertEqual(len(commands), 1)
+            self.assertIn(helper, commands[0].get("Command", ""))
+            self.assertIn(f"-Owner {owner_name}", commands[0].get("Command", ""))
+            # A project must not opt itself into publishing on every compilation.
+            for value in document.findall(".//msbuild:LostArkPublishRuntimeData", namespace):
+                self.assertNotEqual((value.text or "").strip().casefold(), "true")
 
-    def test_runner_owns_domains_freshness_evidence_and_client_sdk_copy(self) -> None:
+    def test_runner_separates_product_compile_from_diagnostic_receipts(self) -> None:
         runner = (ROOT / "Tools/Build/Invoke-BuildAndRegression.ps1").read_text(
             encoding="utf-8-sig"
         )
@@ -265,13 +353,55 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "BuildDomainPipeline.psm1",
             "BuildDomains.json",
             "Invoke-SelectedBuildDomains",
-            "Test-BuildProductReceipt",
             "Write-BuildProductReceipt",
             "Write-BuildRunEvidence",
             "Enter-BuildExclusiveLock",
             "Assert-BuildRunStability",
         ):
             self.assertIn(token, runner)
+        self.assertIn("[string]$Profile = 'Product'", runner)
+        self.assertIn("$includeCore = $Profile -in @('Core', 'FullDiagnostic')", runner)
+        self.assertIn(
+            "$buildDomainManifest = if ($includeCore) { Read-BuildDomainManifest "
+            "$domainManifestPath } else { $null }",
+            runner,
+        )
+        product_start = runner.index("    if (-not $includeCore) {")
+        diagnostic_start = runner.index("\n    if ($includeCore) {", product_start)
+        product = runner[product_start:diagnostic_start]
+        self.assertEqual(
+            re.findall(r"Invoke-MSBuildProject \$msbuild '([^']+)'", product),
+            [
+                r"Engine\Default\Engine.vcxproj", r"Shared\Default\Shared.vcxproj",
+                r"Server\Default\Server.vcxproj", r"Client\Default\Client.vcxproj",
+            ],
+        )
+        for token in (
+            "Assert-RuntimeLayout", "Test-Path -LiteralPath", "$missingRuntimeInputs",
+            "schema = 'lostark.compile-result'", "Write-BuildAtomicJson",
+        ):
+            self.assertIn(token, product)
+        for owner_name in ("Server", "Client"):
+            self.assertIn(
+                "Write-Host 'powershell -ExecutionPolicy Bypass -File "
+                f"Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner {owner_name}'",
+                product,
+            )
+        for diagnostic in (
+            "Invoke-PythonGate", "Invoke-SelectedBuildDomains", "Capture-BuildStartIdentity",
+            "Write-CurrentProductReceipt", "Write-CurrentBuildEvidence",
+            "Test-CompiledShaderClosure", "Get-BuildProductSourceFingerprint",
+            "Assert-BuildRunStability",
+        ):
+            self.assertNotIn(diagnostic, product)
+        self.assertRegex(product, r"return\s*\}\s*$")
+        self.assertNotIn("Test-BuildProductReceipt", runner)
+        for diagnostic in (
+            "Invoke-SelectedBuildDomains", "Capture-BuildStartIdentity",
+            "Test-CompiledShaderClosure", "Write-CurrentProductReceipt",
+            "Write-CurrentBuildEvidence",
+        ):
+            self.assertIn(diagnostic, runner[diagnostic_start:])
         self.assertNotIn("LostArkCentralBuildReceiptsVerified", runner)
         self.assertIn(
             "-SkipBuild is supported only for Product",
