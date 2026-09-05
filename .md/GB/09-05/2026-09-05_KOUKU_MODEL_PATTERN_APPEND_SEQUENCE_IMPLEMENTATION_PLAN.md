@@ -53,3 +53,22 @@ batch delete, Save/reload, 잘못된 owner·선택·CAS 실패 보존을 검사�
 변경한 C++ 최소 컴파일, 해당 publisher 검사, JSON/XML parse와 `git diff --check`를 수행한다.
 Client/UI의 실행·화면 확인은 사용자가 한다. 에이전트는 PR/merge/pull과 실행 준비를 완료하고
 현재 프로세스 상태와 사용자가 누를 경로를 보고한다.
+
+## G04. 병합 후 Client Product 컴파일 복구
+
+PR #318 병합 기준 `955f7971`의 Client Debug 빌드에서
+`KoukuSaydonActionWorkbench.cpp:3080`의 `ImVec2 max(...)` 선언이 C2440을,
+뒤의 `AddRectFilled`와 `AddRect` 호출이 C2664를 발생시킨다.
+후속 수정은 `codex/kouku-shield-stagger`에서 수행한다.
+Client의 Windows include 경로에서는 `max(a, b)` 매크로가 같은 이름의
+직접 초기화 선언에 확장된다. 기존 native harness에는 `NOMINMAX`가 정의되어 있으므로
+그 컴파일 성공만으로 Product 설정의 오류를 검출할 수 없다.
+
+`CKoukuSaydonActionWorkbench::Render_Timeline`의 사각 선택 좌표 지역 변수
+`min`과 `max`를 `marqueeMin`과 `marqueeMax`로 바꾼다. 두 그리기 호출과
+hit box 교차 검사도 같은 이름으로 연결한다. 좌표 계산식과 선택 상태 변경은 유지한다.
+새 C++ 파일, public 선언, project/filter 등록, JSON/XML 변경은 없다.
+
+검증은 실제 Client 설정을 사용하는 Debug Product compile/link와 `git diff --check`다.
+UI 사각 선택의 직접 조작과 화면 확인은 사용자가 수행한다. 이 수정의 코드와 대응 PLAN/RESULT만
+PR에 포함하고 기존 미커밋 조사 문서 및 SHIELD_STAGGER 구현 계획서는 보존한다.
