@@ -123,6 +123,10 @@
 
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
+    <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
+    <ClInclude Include="..\Public\CharacterPortraitRenderer.h" />
+    <ClInclude Include="..\Public\AvatarBookWindowView.h" />
+    <ClInclude Include="..\Public\UILabelFont.h" />
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
@@ -315,6 +319,9 @@
 
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
+    <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
+    <ClCompile Include="..\Private\CharacterPortraitRenderer.cpp" />
+    <ClCompile Include="..\Private\AvatarBookWindowView.cpp" />
     <ClCompile Include="..\Private\SkillWindowView.cpp" />
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
@@ -620,6 +627,10 @@
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
+    <None Include="..\..\Data\UI\CharacterInfo\CharacterInfo_Layout.json" />
+    <None Include="..\..\Data\UI\CharacterInfo\CharacterInfoDisplay.json" />
+    <None Include="..\..\Data\UI\AvatarBook\AvatarBook_Layout.json" />
+    <None Include="..\..\Data\UI\AvatarBook\AvatarBookDisplay.json" />
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />

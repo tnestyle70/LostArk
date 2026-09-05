@@ -151,6 +151,12 @@ public:
 	bool_t Is_DebugRaidEntryPreviewOpen() const;
 #endif
 	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
+	/* The replicated local player (nullptr until the entry snapshot spawned it) -- read-only
+	   presentation access for the character info window's live portrait. */
+	shared_ptr<CCharacter> Get_LocalCharacter() const
+	{
+		return m_Replication.Get_LocalCharacter();
+	}
 	/* Authored and Debug Create Character buttons only stage this request. The common hidden
 	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
 	ID stack, so Release does not need the visible Character Select diagnostic window. */

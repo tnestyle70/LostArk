@@ -95,6 +95,14 @@ void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 
 HRESULT CPart_Equipment::Render()
 {
+	return Render_Pass(0u, 0u);
+}
+
+HRESULT CPart_Equipment::Render_Pass(
+	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
+{
+	const uint32_t iPassIndex =
+		m_strSocketBoneName.empty() ? iSkinnedPassIndex : iSocketedPassIndex;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -117,7 +125,7 @@ HRESULT CPart_Equipment::Render()
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, Profile,
 				m_pEmissiveOverride)) ||
-			FAILED(m_pShaderCom->Begin(0)) ||
+			FAILED(m_pShaderCom->Begin(iPassIndex)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

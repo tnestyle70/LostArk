@@ -62,6 +62,17 @@ public:
 	BeginPopupModal's own behavior. */
 	void Claim_Mouse_This_Frame();
 	bool_t Is_MouseClaimedThisFrame() const { return m_bMouseClaimedThisFrame; }
+	/* True if anything claimed the mouse last frame. CMainApp::Update applies its per-frame
+	SetInputBlocked before the windows that only get to hover-claim during Render (party, chat),
+	so a claim made there still blocks the following frame's gameplay mouse commands. */
+	bool_t Was_MouseClaimedLastFrame() const { return m_bMouseClaimedLastFrame; }
+	/* Screen-pixel rect of the runtime window drawn over every other runtime window this frame
+	(the character info window registers it each frame while open). LOA-font text has no depth
+	and every window's text pass runs after all sprites, so the windows underneath skip glyphs
+	whose anchor falls inside this rect instead of bleeding through the panel. Cleared in
+	End_Frame. */
+	void Set_TopWindowRect(f32_t fScreenX, f32_t fScreenY, f32_t fScreenWidth, f32_t fScreenHeight);
+	bool_t Is_UnderTopWindow(f32_t fScreenX, f32_t fScreenY) const;
 	/* Text-input capture for a runtime UI text field (the Create Character nickname box) -- the
 	WM_CHAR half of what ImGui::InputText provided. While active, WndProc (Client.cpp) feeds every
 	committed WM_CHAR UTF-16 unit into a queue the owning screen drains once per frame via
@@ -86,6 +97,12 @@ private:
 
 private:
 	bool_t	m_bMouseClaimedThisFrame = false;
+	bool_t	m_bMouseClaimedLastFrame = false;
+	bool_t	m_bHasTopWindow = false;
+	f32_t	m_fTopWindowX = 0.f;
+	f32_t	m_fTopWindowY = 0.f;
+	f32_t	m_fTopWindowWidth = 0.f;
+	f32_t	m_fTopWindowHeight = 0.f;
 	/* Left-button down-edge is computed once in Begin_Frame (not per Is_Clicked call, since a
 	caller may test several candidate widgets in one frame) and rolled forward in End_Frame. */
 	bool_t	m_bLeftDownThisFrame = false;

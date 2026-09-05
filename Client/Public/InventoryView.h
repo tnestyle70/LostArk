@@ -77,6 +77,11 @@ private:
 		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items) const;
 	/* Every slot this view owns, moved together while dragging the title bar. */
 	void Update_Drag();
+	/* Shifts every panel slot (chrome, category tabs, item slots + icons). */
+	void Move_Panel(f32_t fDeltaX, f32_t fDeltaY);
+	/* Keeps the whole panel inside the reference resolution -- a title drag could otherwise park
+	it off screen, where I still toggles it but nothing is seen. */
+	void Clamp_ToScreen();
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pBackgroundView;
