@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 2,
+  "sourceRevision": 17,
   "playAllPatternIds": [
     "KAKULSAYDON_G1_PIZZA"
   ],
