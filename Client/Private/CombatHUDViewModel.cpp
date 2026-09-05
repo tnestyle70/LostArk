@@ -391,5 +391,6 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_DeadSceneTextRects = {};
 	m_RaidClearTextRects = {};
 	m_ItemAnnounceTextRects = {};
+	m_KoukuGimmick = {};
 	m_Inventory = {};
 }

@@ -5,6 +5,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "KakulArenaHiddenPlacements.h"
+#include "KoukuMadnessGaugeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
@@ -580,6 +581,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
 		L"UI/KakulFade/KakulFadeUI.json");
 	m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
+	m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -674,6 +677,11 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CutsceneBossRetire(targets);
 	Update_CameraShots(fTimeDelta);
 	Update_TriggerMoveFade(fTimeDelta);
+	if (nullptr != m_pMadnessGaugeView)
+	{
+		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
+			CCombatHUDViewModel::Get().Get_KoukuGimmick());
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(

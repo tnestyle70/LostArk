@@ -39,6 +39,10 @@ namespace
 		/* Top-right area minimap frame/markers (retail EFUI_MAP minimap.gfx). Map images and
 		markers are placed at runtime; the palette root is deliberately the small control set. */
 		{ "Minimap",        "UI/Minimap/Minimap_Layout.json", "UI/Minimap/", false },
+		/* KoukuSaydon madness gauge (retail indicator.gfx madnessGauge). Authored around
+		the Madness_Anchor slot; CKoukuMadnessGaugeView moves the whole group to the local
+		character's head point at runtime, so only the offsets between slots matter here. */
+		{ "Kouku Madness",  "UI/KoukuSaydon/MadnessGauge_Layout.json", "UI/KoukuSaydon/Madness/", false },
 		/* Target/boss status display -- not the local player's own class (Combat HUD) and not the
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */

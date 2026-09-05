@@ -723,6 +723,9 @@
     <ClCompile Include="..\Private\MinimapView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1244,6 +1247,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MinimapView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\KoukuMadnessGaugeView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -2021,6 +2027,12 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Minimap\Minimap_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\KoukuSaydon\MadnessGauge_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\KoukuSaydon\KoukuHudModes.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Minimap\MinimapAreas.json">

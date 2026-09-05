@@ -26,6 +26,7 @@ class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
 class CUILayoutRuntime;
+class CKoukuMadnessGaugeView;
 
 class CLevel_KakulSaydonArena final : public CLevel
 {
@@ -198,6 +199,9 @@ private:
 	/* One full-screen slot, black, whose alpha is the whole effect. Built
 	   hidden so the first rendered frame after activation cannot flash it. */
 	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;
+	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
+	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
+	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;
 	f32_t m_fTriggerMoveFadeAlpha = 0.f;
 	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
 	   transition, so the fade arms only once the character is seen moving
