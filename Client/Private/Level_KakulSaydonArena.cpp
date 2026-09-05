@@ -12,6 +12,8 @@
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
+#include "CombatHUDViewModel.h"
+#include "UILayoutRuntime.h"
 #include "Transform.h"
 
 #include <algorithm>
@@ -569,6 +571,14 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		return E_FAIL;
 
 	CClientReplication::DESC replicationDesc{};
+	/* Built here rather than on first use so a trigger move never waits on a
+	   JSON load, and hidden immediately because Render() can run before the
+	   first Update() on the frame this Level is activated. */
+	m_pTriggerMoveFadeView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+		L"UI/KakulFade/KakulFadeUI.json");
+	m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
+
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex =
@@ -659,6 +669,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	m_SequencePlayer.Update(fTimeDelta, targets);
 	Update_CutsceneBossRetire(targets);
 	Update_CameraShots(fTimeDelta);
+	Update_TriggerMoveFade(fTimeDelta);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
@@ -1344,6 +1355,71 @@ void Client::CLevel_KakulSaydonArena::Release_CameraShot()
 	m_strActiveCameraShotId.clear();
 	m_fCameraBlendSeconds = 0.f;
 	m_fCameraBlendElapsed = 0.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
+	const f32_t fTimeDelta)
+{
+	if (nullptr == m_pTriggerMoveFadeView)
+		return;
+
+	using LostArk::Shared::PLAYER_ACTION_STATE;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t isMoving = player.isValid &&
+		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction;
+
+	/* Every movePlayer trigger uses TRIGGER_MOVE, hops and stage transition
+	   alike, so speed is what tells them apart: a 4-6 m hop stays under
+	   15 m/s even with its arc, the 1.2 km transition runs at hundreds. */
+	constexpr f32_t TRANSITION_SPEED_METRES_PER_SECOND = 40.f;
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	const shared_ptr<CTransform> transform =
+		nullptr != localCharacter ? localCharacter->Get_Transform() : nullptr;
+	if (nullptr == transform)
+	{
+		m_bTriggerMoveFadeHasLastPosition = false;
+		m_bTriggerMoveFadeArmed = false;
+	}
+	else
+	{
+		float3_t position{};
+		XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));
+		if (m_bTriggerMoveFadeHasLastPosition && isMoving &&
+			fTimeDelta > 0.f)
+		{
+			const f32_t dx = position.x - m_vTriggerMoveFadeLastPosition.x;
+			const f32_t dy = position.y - m_vTriggerMoveFadeLastPosition.y;
+			const f32_t dz = position.z - m_vTriggerMoveFadeLastPosition.z;
+			const f32_t speed =
+				std::sqrt(dx * dx + dy * dy + dz * dz) / fTimeDelta;
+			if (speed > TRANSITION_SPEED_METRES_PER_SECOND)
+				m_bTriggerMoveFadeArmed = true;
+		}
+		m_vTriggerMoveFadeLastPosition = position;
+		m_bTriggerMoveFadeHasLastPosition = true;
+	}
+	if (!isMoving)
+		m_bTriggerMoveFadeArmed = false;
+
+	/* Darkening is near-instant so the first frames of the transition are
+	   covered; the arrival is revealed gently instead of snapping. */
+	constexpr f32_t DARKEN_SECONDS = 0.08f;
+	constexpr f32_t BRIGHTEN_SECONDS = 0.4f;
+	const f32_t fStep = m_bTriggerMoveFadeArmed
+		? fTimeDelta / DARKEN_SECONDS
+		: -fTimeDelta / BRIGHTEN_SECONDS;
+	m_fTriggerMoveFadeAlpha =
+		std::clamp(m_fTriggerMoveFadeAlpha + fStep, 0.f, 1.f);
+
+	const bool_t bVisible = m_fTriggerMoveFadeAlpha > 0.f;
+	m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", bVisible);
+	if (!bVisible)
+		return;
+	/* Set_SlotAlpha would rewrite RGB to white, which is the opposite of a
+	   blackout, so the tint is written whole. */
+	m_pTriggerMoveFadeView->Set_SlotTint("KakulFade_Screen",
+		float4_t(0.f, 0.f, 0.f, m_fTriggerMoveFadeAlpha));
 }
 
 void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)

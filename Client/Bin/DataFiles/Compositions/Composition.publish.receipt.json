@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "882fab7a7abcb906a6289bd1e60867fef9fc9917717d506618f4b53f3a2bc90d",
+    "sourceManifestId": "a27b457f247bbcc0a42f5231dc252291dd16873119d9b2fbff2980f7680d6693",
     "files": [
       {
         "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_05.actionbindings.json",
@@ -1263,8 +1263,8 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "65b850392ea0356131a3a065906eb0768dd963a01fda832cdcd5d85f959ad98a",
-        "bytes": 5621100
+        "sha256": "8d5eed797dfdd6aa4eecdd25e3514678682255ee27deb6c9da4caf4fa3507009",
+        "bytes": 5298102
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
@@ -1316,7 +1316,7 @@
     },
     {
       "path": "Sequences/KakulSaydonArena.sequencer.json",
-      "sha256": "ca309bdb49840a4fec557a4fff4475716178e9ca9147b4d5ee23c477b6f54612",
+      "sha256": "4968d08f96d6be1d467bcf1607070894741363ef5543f359afac3f6e6a5ba78c",
       "bytes": 2123
     },
     {

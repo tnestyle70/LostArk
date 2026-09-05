@@ -331,6 +331,14 @@ function Convert-NavigationAuthoringGrid {
             }
             $explicitHeight = [single]0
             if ($hasExplicitHeight) {
+                # A WALKABLE row that carries its own height authors floor where
+                # the bake produced none, so it is the one case allowed to name
+                # an unresolved cell. An isolated platform - a floating card in
+                # the maze, a prop the bake ray missed - has no ring of baked
+                # neighbours to borrow a level from, so the seam median can
+                # never reach it and the hand-written height is the only way to
+                # place it. HEIGHT stays a correction for a surface the bake
+                # already found and still requires a resolved cell.
                 if (-not [single]::TryParse(
                     $tokens[3],
                     [Globalization.NumberStyles]::Float,
@@ -338,7 +346,7 @@ function Convert-NavigationAuthoringGrid {
                     [ref]$explicitHeight) -or
                     [single]::IsNaN($explicitHeight) -or
                     [single]::IsInfinity($explicitHeight) -or
-                    $resolved[$index] -eq 0) {
+                    ($resolved[$index] -eq 0 -and $paintState -ne 'WALKABLE')) {
                     throw "Navigation paint height override is invalid: $paintPath"
                 }
             }
@@ -381,6 +389,11 @@ function Convert-NavigationAuthoringGrid {
             }
             if ($hasExplicitHeight) {
                 $heights[$index] = $explicitHeight
+                # Only a WALKABLE row reaches here unresolved; the validation
+                # above rejects every other state. Marking it resolved is what
+                # makes the authored cell survive into the runtime grid, whose
+                # writer drops any cell the bake never resolved.
+                $resolved[$index] = 1
             }
             elseif ($resolved[$index] -eq 0) {
                 if ($null -eq $seamHeight) {

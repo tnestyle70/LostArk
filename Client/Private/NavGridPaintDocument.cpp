@@ -670,7 +670,8 @@ bool_t Client::CNavGridPaintDocument::Paint(
 	int32_t cellX,
 	int32_t cellZ,
 	uint32_t brushRadius,
-	NAVGRID_PAINT_OVERRIDE overrideState)
+	NAVGRID_PAINT_OVERRIDE overrideState,
+	f32_t authoredHeight)
 {
 	if (!m_isReady ||
 		brushRadius > MAX_BRUSH_RADIUS ||
@@ -698,12 +699,26 @@ bool_t Client::CNavGridPaintDocument::Paint(
 				continue;
 
 			const uint32_t index = To_Index(targetX, targetZ);
-			if (!Has_ResolvedHeight(index))
+			/* Authoring floor is the one stroke allowed to reach a cell the
+			   bake never resolved: a FORCE_WALKABLE brush that carries the
+			   world height the user picked. An isolated platform - a floating
+			   card, a prop the bake ray missed - has no ring of baked
+			   neighbours, so the publisher's seam median can never rescue it
+			   and this is the only way to place it. Every other stroke still
+			   edits baked ground only, so a brush cannot invent surfaces by
+			   accident. */
+			const bool_t alreadyResolved = Has_ResolvedHeight(index);
+			const bool_t authorsSurface =
+				!alreadyResolved &&
+				NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE == overrideState &&
+				std::isfinite(authoredHeight);
+			if (!alreadyResolved && !authorsSurface)
 				continue;
 
 			const bool_t hasHeightOverride =
 				std::isfinite(m_CellHeightOverrides[index]);
-			if (m_CellOverrides[index] == overrideState &&
+			if (!authorsSurface &&
+				m_CellOverrides[index] == overrideState &&
 				!(NAVGRID_PAINT_OVERRIDE::INHERIT == overrideState &&
 					hasHeightOverride))
 				continue;
@@ -714,6 +729,17 @@ bool_t Client::CNavGridPaintDocument::Paint(
 				m_CellHeightOverrides[index] =
 					(std::numeric_limits<f32_t>::quiet_NaN)();
 				m_SourceCells[index] = m_BakedSourceCells[index];
+			}
+			else if (authorsSurface)
+			{
+				/* The height override is what Save_Paint writes beside the
+				   WALKABLE row, and the publisher turns that pair back into a
+				   resolved cell. Mirroring it into the source cell keeps the
+				   editor overlay and Has_ResolvedHeight honest right away. */
+				m_CellHeightOverrides[index] = authoredHeight;
+				m_SourceCells[index].surfaceResolved = true;
+				m_SourceCells[index].baseWalkable = true;
+				m_SourceCells[index].height = authoredHeight;
 			}
 			changed = true;
 		}

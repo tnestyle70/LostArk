@@ -25,6 +25,8 @@ class CCharacter;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
+class CUILayoutRuntime;
+
 class CLevel_KakulSaydonArena final : public CLevel
 {
 public:
@@ -130,6 +132,11 @@ private:
 	bool_t Load_StageMarkers(std::string& outStatus);
 	bool_t Load_CameraShots(std::string& outStatus);
 	void Update_CameraShots(f32_t fTimeDelta);
+	/* The arena and the Mario gimmick are more than a kilometre apart, so a
+	   trigger move between them is hidden behind a black screen instead of
+	   letting the camera travel that distance on screen. Server owns the
+	   move; this only reads the action state it already replicates. */
+	void Update_TriggerMoveFade(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;
 	void Release_CameraShot();
@@ -172,6 +179,16 @@ private:
 	f32_t m_fCameraBlendElapsed = 0.f;
 	bool_t m_bCameraShotHeld = false;
 	std::string m_strCameraShotStatus;
+	/* One full-screen slot, black, whose alpha is the whole effect. Built
+	   hidden so the first rendered frame after activation cannot flash it. */
+	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;
+	f32_t m_fTriggerMoveFadeAlpha = 0.f;
+	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
+	   transition, so the fade arms only once the character is seen moving
+	   far faster than any hop can. */
+	float3_t m_vTriggerMoveFadeLastPosition = {};
+	bool_t m_bTriggerMoveFadeHasLastPosition = false;
+	bool_t m_bTriggerMoveFadeArmed = false;
 	static CLevel_KakulSaydonArena* s_pActiveInstance;
 
 public:

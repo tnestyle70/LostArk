@@ -315,9 +315,14 @@ private:
 	bool_t Save_CameraShots();
 	void Render_CameraShotSection();
 	void End_CameraShotPreview();
+	/* outWorldY is the height of the surface the ray actually hit, which is the
+	   height a Force Walkable stroke authors when the cell has no baked
+	   surface. The pick no longer requires a resolved cell, so a platform the
+	   bake missed can still be selected. */
 	bool_t Try_PickNavigationCell(
 		int32_t& outCellX,
-		int32_t& outCellZ) const;
+		int32_t& outCellZ,
+		f32_t& outWorldY) const;
 	bool_t Try_PaintNavigation();
 	bool_t Try_PlaceNavigationBounds();
 	bool_t Bake_Navigation();
