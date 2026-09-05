@@ -90,6 +90,12 @@ void Client::CUI_Sprite::Set_ArcRatio(f32_t fArcRatio)
 	m_fArcRatio = fArcRatio;
 }
 
+void Client::CUI_Sprite::Set_UVWindow(const float2_t& vOffset, const float2_t& vScale)
+{
+	m_vUVOffset = vOffset;
+	m_vUVScale = vScale;
+}
+
 void Client::CUI_Sprite::Set_Rotation(f32_t fDegrees)
 {
 	if (m_fRotationDeg == fDegrees)
@@ -192,6 +198,12 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 		return E_FAIL;
 
 	if (FAILED(m_pShaderCom->Bind_RawValue("g_ArcRatio", &m_fArcRatio, sizeof(m_fArcRatio))))
+		return E_FAIL;
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_UVOffset", &m_vUVOffset, sizeof(m_vUVOffset))))
+		return E_FAIL;
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_UVScale", &m_vUVScale, sizeof(m_vUVScale))))
 		return E_FAIL;
 
 	return S_OK;

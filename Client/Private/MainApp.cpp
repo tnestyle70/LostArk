@@ -4,6 +4,7 @@
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
+#include "MinimapView.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -750,6 +751,7 @@ HRESULT CMainApp::Initialize()
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
+	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -819,6 +821,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
+	Update_Minimap(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
@@ -1667,6 +1670,7 @@ HRESULT CMainApp::Render()
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
 	RenderCharacterSelectWindowText();
+	RenderMinimapText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -2367,6 +2371,52 @@ void CMainApp::RenderCharacterSelectWindowText()
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	m_pCharacterSelectWindowView->RenderText();
+}
+
+void CMainApp::Update_Minimap(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pMinimapView)
+		return;
+	/* Each level owns its own CClientReplication, so the active one is asked for the marker
+	snapshot the same way the party window reaches Get_PartyRoster(). */
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	CClientReplication::MINIMAP_MARKER_SNAPSHOT Snapshot{};
+	LEVEL eLevel = LEVEL::END;
+	bool_t bHasSnapshot = false;
+	if (ETOUI(LEVEL::BERN) == iLevel)
+	{
+		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		{
+			pBern->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::BERN;
+			bHasSnapshot = true;
+		}
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == iLevel)
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+		{
+			pValtanArena->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::VALTAN_ARENA;
+			bHasSnapshot = true;
+		}
+	}
+	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == iLevel)
+	{
+		if (CLevel_KakulSaydonArena* pKakulSaydonArena = CLevel_KakulSaydonArena::Get_Active())
+		{
+			pKakulSaydonArena->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::KAKULSAYDON_ARENA;
+			bHasSnapshot = true;
+		}
+	}
+	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+}
+
+void CMainApp::RenderMinimapText()
+{
+	if (nullptr != m_pMinimapView)
+		m_pMinimapView->RenderText();
 }
 
 void CMainApp::RenderLobbyButtonText()
@@ -4787,7 +4837,18 @@ void CMainApp::RenderDamageNumbers()
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = 1.1;
+	/* Retail damagetext.gfx (EFUI_DAMAGE, class DamageTextCBT2): $YoonGasiIIM 32px centered text
+	on the 1080p stage, driven by two linear tweens. The native side passes the tween values and
+	no shipped data table carries them, so the factory defaults in the decompiled AS3 are the
+	evidence used here: phase 0 (450 ms) holds 32px and drifts 15px up; phase 1 (70 ms) shrinks
+	to 19px, drifts on to 100px up and fades to 0. Stage pixels scale with the viewport height. */
+	constexpr f64_t DAMAGE_PHASE0_SECONDS = 0.45;
+	constexpr f64_t DAMAGE_PHASE1_SECONDS = 0.07;
+	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = DAMAGE_PHASE0_SECONDS + DAMAGE_PHASE1_SECONDS;
+	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
+	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
+	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
+	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
 	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 48u;
 
 	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
@@ -4796,9 +4857,13 @@ void CMainApp::RenderDamageNumbers()
 	the buffer trims from the front. */
 	const std::vector<HUD_DAMAGE_EVENT>& damageEvents =
 		CCombatHUDViewModel::Get().Get_DamageEvents();
+	/* Compare against the cursor as it was before this pass: one snapshot batches every hit of
+	that tick under the same serverTick, so advancing the cursor inside the loop would drop all
+	but the first number of a multi-target hit. */
+	const uint32_t iSpawnedUpToTick = m_iLastRenderedDamageServerTick;
 	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
 	{
-		if (damageEvent.iServerTick <= m_iLastRenderedDamageServerTick)
+		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
 		FLOATING_DAMAGE_NUMBER number{};
 		number.dSpawnSeconds = Product_Now_Seconds();
@@ -4809,7 +4874,8 @@ void CMainApp::RenderDamageNumbers()
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		m_FloatingDamageNumbers.push_back(number);
-		m_iLastRenderedDamageServerTick = damageEvent.iServerTick;
+		m_iLastRenderedDamageServerTick =
+			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
 	}
 	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
@@ -4835,33 +4901,50 @@ void CMainApp::RenderDamageNumbers()
 		return;
 	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	const f32_t textScale = (std::min)(viewportSize.x / 1280.f, viewportSize.y / 720.f);
+	const f32_t stageScale = viewportSize.y / 1080.f;
 
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
-		const f32_t fLifeRatio = (std::clamp)(
-			static_cast<f32_t>((dNow - number.dSpawnSeconds) / DAMAGE_NUMBER_LIFETIME_SECONDS),
-			0.f, 1.f);
-		/* Rises above the real hit position and fades out over the back half of its lifetime,
-		instead of sitting flat on the hit point the whole time. */
+		const f64_t dAge = dNow - number.dSpawnSeconds;
+		f32_t fFontPx = DAMAGE_FONT_PX_START;
+		f32_t fRisePx = 0.f;
+		f32_t fAlpha = 1.f;
+		if (dAge < DAMAGE_PHASE0_SECONDS)
+		{
+			fRisePx = DAMAGE_RISE_PX_PHASE0 * static_cast<f32_t>(dAge / DAMAGE_PHASE0_SECONDS);
+		}
+		else
+		{
+			const f32_t t = (std::clamp)(
+				static_cast<f32_t>((dAge - DAMAGE_PHASE0_SECONDS) / DAMAGE_PHASE1_SECONDS), 0.f, 1.f);
+			fFontPx = DAMAGE_FONT_PX_START + (DAMAGE_FONT_PX_END - DAMAGE_FONT_PX_START) * t;
+			fRisePx = DAMAGE_RISE_PX_PHASE0 + (DAMAGE_RISE_PX_END - DAMAGE_RISE_PX_PHASE0) * t;
+			fAlpha = 1.f - t;
+		}
+		/* Anchored a little above the hit point (the event carries the target's ground position);
+		the tween moves it in screen space from there, like retail's canvas does. */
 		const vector_t vProjected = XMVector3Project(
 			XMVectorSet(
 				number.vWorldPosition.x,
-				number.vWorldPosition.y + 0.4f + 0.6f * fLifeRatio,
+				number.vWorldPosition.y + 1.f,
 				number.vWorldPosition.z,
 				1.f),
 			0.f, 0.f, viewportSize.x, viewportSize.y, 0.f, 1.f,
 			projection, view, XMMatrixIdentity());
 		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
 			continue;
-		const f32_t fAlpha = fLifeRatio < 0.6f ? 1.f : 1.f - (fLifeRatio - 0.6f) / 0.4f;
 		const wstring strAmount = Format_ThousandsSeparated(number.iAmount);
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
+		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
+		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
+		hit by project decision, incoming hits the enemy red (0xFF0000). */
 		const fvector_t vColor = number.isOutgoing ?
-			XMVectorSet(1.f, 0.86f, 0.24f, fAlpha) :
-			XMVectorSet(1.f, 0.28f, 0.22f, fAlpha);
+			XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
+			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
-			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected)),
-			vColor, 0.f, float2_t(0.5f, 0.5f), 0.6f * textScale);
+			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
 	}
 }
 

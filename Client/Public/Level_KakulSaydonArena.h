@@ -86,6 +86,11 @@ public:
 	{
 		return s_pActiveInstance;
 	}
+	void Collect_MinimapMarkers(
+		CClientReplication::MINIMAP_MARKER_SNAPSHOT& outSnapshot) const
+	{
+		m_Replication.Collect_MinimapMarkers(outSnapshot);
+	}
 
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }

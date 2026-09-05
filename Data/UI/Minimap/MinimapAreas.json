@@ -1,0 +1,60 @@
+{
+  "schema": "lostark.minimap-areas",
+  "formatVersion": 1,
+  "areas": [
+    {
+      "level": "BERN",
+      "areaName": "베른 성",
+      "image": "UI/Minimap/Maps/BernCastle.png",
+      "imageSize": [
+        1280,
+        1280
+      ],
+      "worldMinCm": [
+        1472,
+        -3552
+      ],
+      "worldMaxCm": [
+        27072,
+        22048
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "VALTAN_ARENA",
+      "areaName": "부활한 마수의 심장",
+      "image": "UI/Minimap/Maps/ValtanArena.png",
+      "imageSize": [
+        768,
+        1024
+      ],
+      "worldMinCm": [
+        -1309,
+        -3
+      ],
+      "worldMaxCm": [
+        19171,
+        15357
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    },
+    {
+      "level": "KAKULSAYDON_ARENA",
+      "areaName": "쿠크세이튼 레이드",
+      "image": "UI/Minimap/Maps/KakulSaydonArena.png",
+      "imageSize": [
+        512,
+        512
+      ],
+      "worldMinCm": [
+        -1792,
+        768
+      ],
+      "worldMaxCm": [
+        8448,
+        11008
+      ],
+      "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
+    }
+  ]
+}
