@@ -2033,7 +2033,26 @@ bool CNetworkManager::Enqueue_ReplicationEvent(
 		Client::Can_CoalesceAdjacentReplicationEvents(
 			m_ReplicationEvents.back().eType, event.eType))
 	{
-		m_ReplicationEvents.back() = std::move(event);
+		/* A snapshot's entity/player state is a full state, so the newest wins, but its
+		   DamageEvents/BossCombatEvents are that one tick's events and exist nowhere else.
+		   Carry the replaced snapshot's events ahead of the newer ones (bounded) so a
+		   coalesce never silently drops a hit. */
+		Client::CLIENT_REPLICATION_EVENT& replaced = m_ReplicationEvents.back();
+		constexpr std::size_t MAX_CARRIED_TICK_EVENTS = 256u;
+		const auto carry = [](auto& older, auto& newer)
+		{
+			if (older.empty())
+				return;
+			newer.insert(newer.begin(),
+				std::make_move_iterator(older.begin()),
+				std::make_move_iterator(older.end()));
+			if (newer.size() > MAX_CARRIED_TICK_EVENTS)
+				newer.erase(newer.begin(),
+					newer.begin() + (newer.size() - MAX_CARRIED_TICK_EVENTS));
+		};
+		carry(replaced.WorldSnapshot.DamageEvents, event.WorldSnapshot.DamageEvents);
+		carry(replaced.WorldSnapshot.BossCombatEvents, event.WorldSnapshot.BossCombatEvents);
+		replaced = std::move(event);
 		m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
 		return true;
 	}
@@ -2849,7 +2868,13 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				   worker boundary as well as the parsed-event boundary so that cold
 				   loading cannot exhaust the raw frame queue.  Any lifecycle or
 				   destruction frame remains an ordering barrier. */
-				if (!m_InboundFrames.empty() &&
+				/* Raw frames are not decoded here, so a replaced snapshot frame loses its
+				   DamageEvents/BossCombatEvents for good. Normal play delivers one or two
+				   snapshots per main-thread drain (TCP batching), so coalesce only once a
+				   real backlog has built up -- a cold level load -- and let the parsed-event
+				   queue carry events forward for the short bursts. */
+				constexpr std::size_t INBOUND_SNAPSHOT_COALESCE_DEPTH = 30u;
+				if (m_InboundFrames.size() >= INBOUND_SNAPSHOT_COALESCE_DEPTH &&
 					Client::Can_CoalesceAdjacentInboundFrames(
 						m_InboundFrames.back().ePacketType,
 						frame.ePacketType))

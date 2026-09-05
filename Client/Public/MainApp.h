@@ -37,6 +37,7 @@ class CInventoryView;
 class CChatWindowView;
 class CPartyWindowView;
 class CCharacterSelectWindowView;
+class CMinimapView;
 class CEstherCutinPresentationService;
 
 
@@ -196,6 +197,10 @@ private:
 	/* 게임 시작/서버 선택/카드 라벨 -- after EndFrame(), same reasoning as
 	RenderLobbyButtonText. */
 	void RenderCharacterSelectWindowText();
+	/* Top-right area minimap: fed from the active Bern/Valtan/KakulSaydon level's replication
+	marker snapshot; hidden everywhere else. */
+	void Update_Minimap(f32_t fTimeDelta);
+	void RenderMinimapText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from
 	UI/Lobby/create_character_button.png), text drawn separately on top. */
@@ -553,6 +558,9 @@ private:
 	Lobby's "게임 시작" product button over the Lobby. Sprites under LEVEL::STATIC like the
 	Lobby view; Update_CharacterSelectWindow drives it and consumes its intents. */
 	unique_ptr<CCharacterSelectWindowView> m_pCharacterSelectWindowView = { nullptr };
+	/* Retail-style area minimap (Data/UI/Minimap), sprites under LEVEL::STATIC like the other
+	product views; Update_Minimap drives it from the active level's replication. */
+	unique_ptr<CMinimapView> m_pMinimapView = { nullptr };
 	/* Intentionally never constructed anymore -- the K keybind that opened it was removed by
 	product decision, so the window can never open; see the constructor comment. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };

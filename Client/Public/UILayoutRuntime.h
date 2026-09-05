@@ -71,6 +71,10 @@ public:
 	that fraction of a full turn clockwise from 12 o'clock -- the skill-cooldown sweep overlay
 	(CUI_Sprite::Set_ArcRatio). */
 	void Set_SlotArcRatio(const string& strId, f32_t fArcRatio);
+	/* Texture window sampled by the slot's base sprite (CUI_Sprite::Set_UVWindow) -- the
+	minimap's map slot scrolls/zooms across its area image this way. */
+	void Set_SlotUVWindow(const string& strId, f32_t fOffsetU, f32_t fOffsetV,
+		f32_t fScaleU, f32_t fScaleV);
 	/* Overrides a slot's authored "rotation" (screen-space clockwise degrees about its own rect
 	center) at runtime -- for continuous data-driven rotation (DimensionMaster's clock hands and
 	gear ornaments). Applies to every layer sprite of the slot. */

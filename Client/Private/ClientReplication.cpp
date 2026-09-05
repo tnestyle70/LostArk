@@ -1494,6 +1494,66 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 	return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED;
 }
 
+void Client::CClientReplication::Collect_MinimapMarkers(
+	MINIMAP_MARKER_SNAPSHOT& outSnapshot) const
+{
+	outSnapshot = {};
+	const std::shared_ptr<CCharacter> localCharacter =
+		m_Registry.Resolve(m_LocalCharacterHandle);
+	const auto ReadGroundXZ = [](const std::shared_ptr<Engine::CTransform>& pTransform,
+		f32_t& outX, f32_t& outZ) -> bool_t
+	{
+		if (nullptr == pTransform)
+			return false;
+		float4_t vPosition{};
+		XMStoreFloat4(&vPosition, pTransform->Get_State(STATE::POSITION));
+		outX = vPosition.x;
+		outZ = vPosition.z;
+		return true;
+	};
+
+	if (nullptr != localCharacter &&
+		ReadGroundXZ(localCharacter->Get_Transform(), outSnapshot.fLocalX, outSnapshot.fLocalZ))
+	{
+		outSnapshot.hasLocal = true;
+		float4_t vLook{};
+		XMStoreFloat4(&vLook, localCharacter->Get_Transform()->Get_State(STATE::LOOK));
+		outSnapshot.fLocalYawDegrees =
+			XMConvertToDegrees(std::atan2(vLook.x, vLook.z));
+	}
+
+	for (const LIVE_NET_PLAYER& player : m_Registry.Get_LivePlayers())
+	{
+		if (nullptr == player.pCharacter || player.pCharacter == localCharacter)
+			continue;
+		MINIMAP_MARKER marker{};
+		if (!ReadGroundXZ(player.pCharacter->Get_Transform(), marker.fX, marker.fZ))
+			continue;
+		marker.bParty = std::any_of(
+			m_PartyRoster.Members.begin(), m_PartyRoster.Members.end(),
+			[&](const LostArk::Shared::PARTY_ROSTER_MEMBER& member)
+			{
+				return member.iNetEntityId == player.Record.iNetEntityId;
+			});
+		outSnapshot.Players.push_back(marker);
+	}
+
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS != presentation.eKind)
+			continue;
+		std::shared_ptr<Engine::CTransform> pTransform;
+		if (const std::shared_ptr<CValtan> pValtan = presentation.pValtan.lock())
+			pTransform = pValtan->Get_Transform();
+		else if (const std::shared_ptr<CNpc> pNpc = presentation.pNpc.lock())
+			pTransform = pNpc->Get_Transform();
+		MINIMAP_MARKER marker{};
+		if (ReadGroundXZ(pTransform, marker.fX, marker.fZ))
+			outSnapshot.Bosses.push_back(marker);
+	}
+}
+
 void Client::CClientReplication::Collect_PlayerViews(
 	std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const
 {

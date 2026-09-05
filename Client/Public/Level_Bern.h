@@ -69,6 +69,11 @@ public:
 	{
 		return m_Replication.Get_PlayerHealth();
 	}
+	void Collect_MinimapMarkers(
+		CClientReplication::MINIMAP_MARKER_SNAPSHOT& outSnapshot) const
+	{
+		m_Replication.Collect_MinimapMarkers(outSnapshot);
+	}
 	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
 	{
 		return m_pPlayerCommandSink;

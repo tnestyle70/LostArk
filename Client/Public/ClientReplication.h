@@ -342,6 +342,25 @@ namespace Client
 			Commit_DeferredLocalCharacterClassReplacement();
 		void Collect_PlayerViews(
 			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
+		/* Minimap read model (CMinimapView): the local character's ground position and facing,
+		   every other live player flagged by local party membership, and every live BOSS
+		   entity. Client meters; yaw is clockwise degrees from +Z. Presentation only. */
+		struct MINIMAP_MARKER
+		{
+			f32_t fX = 0.f;
+			f32_t fZ = 0.f;
+			bool_t bParty = false;
+		};
+		struct MINIMAP_MARKER_SNAPSHOT
+		{
+			bool_t hasLocal = false;
+			f32_t fLocalX = 0.f;
+			f32_t fLocalZ = 0.f;
+			f32_t fLocalYawDegrees = 0.f;
+			std::vector<MINIMAP_MARKER> Players;
+			std::vector<MINIMAP_MARKER> Bosses;
+		};
+		void Collect_MinimapMarkers(MINIMAP_MARKER_SNAPSHOT& outSnapshot) const;
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
 		{
 			return m_ValtanPresentationState;

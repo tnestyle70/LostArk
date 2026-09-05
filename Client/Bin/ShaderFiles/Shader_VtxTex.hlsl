@@ -23,6 +23,12 @@ the same shrinking clockwise cooldown pie ImGui's PathArcTo+PathFillConvex(clipp
 rect) drew, since angle-testing the square quad directly IS the "radius past the corners then
 clip to rect" construction. */
 float g_ArcRatio = 1.f;
+/* CUI_Sprite's own runtime UV window (the minimap's scrolling/zooming map view): the quad's
+0..1 texcoord samples g_UVOffset + texcoord * g_UVScale instead of the whole image. The defaults
+draw the whole texture, so every existing caller is unaffected. Texels that land outside 0..1 are
+discarded -- the map's edge shows nothing rather than a clamped/wrapped smear. */
+float2 g_UVOffset = float2(0.f, 0.f);
+float2 g_UVScale = float2(1.f, 1.f);
 
 /* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
 this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
@@ -127,7 +133,11 @@ PS_OUT PS_MAIN_UI(PS_IN In)
         clip(g_ArcRatio * 6.28318530f - fAngle);
     }
 
-    Out.vColor = g_Texture.Sample(UISampler, vTexcoord) * g_TintColor;
+    float2 vSampleTexcoord = g_UVOffset + vTexcoord * g_UVScale;
+    if (any(vSampleTexcoord < 0.f) || any(vSampleTexcoord > 1.f))
+        discard;
+
+    Out.vColor = g_Texture.Sample(UISampler, vSampleTexcoord) * g_TintColor;
 
     return Out;
 }

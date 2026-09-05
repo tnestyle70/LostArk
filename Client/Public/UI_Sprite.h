@@ -55,6 +55,10 @@ public:
 	that fraction of a full turn clockwise from 12 o'clock about the sprite's own center -- the
 	skill-cooldown sweep. */
 	void Set_ArcRatio(f32_t fArcRatio);
+	/* The quad's own 0..1 texcoords sample the texture window [vOffset, vOffset + vScale]
+	instead of the whole image, so one sprite scrolls/zooms across a large map texture (the
+	minimap). (0,0)/(1,1) (default) is the whole texture. */
+	void Set_UVWindow(const float2_t& vOffset, const float2_t& vScale);
 	/* Degrees, clockwise on screen, about the sprite's own rect center -- same convention as
 	HUD_Layout.json's authored "rotation" and the HUD Layout Tool's preview. 0 (default) keeps
 	the axis-aligned quad every existing caller expects. */
@@ -83,6 +87,8 @@ private:
 	bool_t							m_bAdditive = false;
 	f32_t							m_fFillRatio = 1.f;
 	f32_t							m_fArcRatio = 1.f;
+	float2_t						m_vUVOffset = float2_t(0.f, 0.f);
+	float2_t						m_vUVScale = float2_t(1.f, 1.f);
 	f32_t							m_fRotationDeg = 0.f;
 	bool_t							m_bVisible = true;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
