@@ -916,3 +916,46 @@ Effect cue를 만들거나 publish하지 않는다. 제품 Pattern 승격은 별
 ID, gameplay Pattern, collider, Effect 또는 Sound를 생성하지 않는다.
 `Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json`은
 현재 authored world/camera track inspection만 제공하며 unified Save/Play나 Server scene runtime이 아니다.
+
+
+### 17.4 Composition의 모델별 Pattern과 Sequence 저장
+
+Composition의 `KoukuSaydon` 아래 Pattern은 `Kouku (MN_RPCZ_00)`,
+`Saydon (MN_RPCT_05)`, `Large Saydon (MN_RPCT_06)` 모델별로 나눈다.
+`MN_RPCT_07` 액션은 실제 몸체가 같은 Saydon Pattern에 넣으며 occurrence의 원래
+`profileId`는 `MN_RPCT_07`로 보존한다. 다른 몸체의 Pattern에는 붙이지 않는다.
+
+Resources의 기획 Action을 Sequence에 붙이면 원본 slot의 clip, source timing과 순서를
+복사한다. 모델에 Pattern이 없으면 첫 Append가 같은 모델의 DRAFT Pattern을 만든다.
+Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 Selected Box의 `Delete` 또는
+Delete 키로 제거한다. `Duplicate`는 새 stable ID를 발급하여 선택한 Stage/box를 복제한다.
+Stage와 그 자식을 동시에 선택해도 자식은 한 번만 복제한다. 단독 box 복제는 같은 time window에 놓인다.
+Sequencer의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다. `Play/Stop`은 로컬
+Animation preview를 제어한다. Zoom 아래 Full lifetime ms/Apply는 마지막 Stage clock을 조절하며
+기존 box가 끝나는 시간보다 짧은 값과 전체 600초 초과는 거절한다.
+입력 또는 저장 검증이 실패하면 기존 Pattern과 파일을 보존한다.
+
+정본은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`이다. formatVersion 2의
+각 Pattern은 물리 모델 ID인 `actorProfileId`를 명시한다. version 1은 읽을 때 occurrence의
+모델로 owner를 유도하며, 빈 기존 Gate 1 Pattern은 `MN_RPCZ_00`으로 옮긴다. 서로 다른
+모델이 섞였거나 모르는 프로필이 있는 기존 Pattern은 오류 항목으로 격리하고 원문을 보존한다.
+저장은 version 2로 수행한다. 별도의 `*.patternbindings.json` 로컬 Pattern 저장과는 다른
+Composition 저작 문서다.
+
+`sourceActionId = 0`도 유효한 기획 액션이다. 물리 RAW clip은 `sourceActionId = 0`과
+`sourceStageId = RAW`의 조합으로 구별한다. 참조 파일의 누락이나 최신 여부는 Composition
+Save를 막지 않으며 저장된 source ID와 revision 문자열을 보존한다.
+
+DRAFT Pattern은 원본의 긴 기획 Action을 담을 수 있도록 최대 1,024 Stage를 허용하며
+Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한을 유지한다.
+
+`PRODUCT` 투영과 Server 재생은 현재 Gate 1 몸체 `MN_RPCZ_00` Pattern만 지원한다.
+Saydon과 Large Saydon의 DRAFT 저장이 Gate 1 boss를 다른 모델로 바꾸지는 않는다.
+기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.
+
+대형 이름 Action의 로컬 preview는 요청 배율 100배를 사용하고 일반 동작/정지 시 기준 크기로
+복원한다. 원본 Unreal Actor 배율로 검증된 값은 아니다. Large Saydon의 오른손 `b_wp_1`에는
+기존 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 부착한다.
+무기 자체 skeleton과 대응 clip을 source seconds로 동기화하고, 대응이 없으면 bind pose를 쓴다.
+필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며
+모델과 인접 texture는 팀 Drive Resources 입력으로 전달한다. preview는 Server boss를 바꾸지 않는다.

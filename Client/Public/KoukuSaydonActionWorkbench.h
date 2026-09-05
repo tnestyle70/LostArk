@@ -45,6 +45,7 @@ namespace Client
 		~CKoukuSaydonActionWorkbench();
 
 		void Open();
+		bool_t Select_ActorProfile(std::string_view actorProfileId, std::string& outStatus);
 		[[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
 		void Render();
 		void Begin_WorkbenchFrame() override;
@@ -104,6 +105,9 @@ namespace Client
 			std::string& outStatus);
 		bool_t Consume_AnimationPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& outRequest);
+		// Preview the current draft at its cursor; a cursor at/past the end restarts at zero.
+		bool_t Request_PatternPreview(std::string_view patternId,
+			std::uint32_t startClockMs, std::string& outStatus);
 		bool_t Consume_PatternPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_PATTERN& outPattern,
 			std::uint32_t& outStartClockMs,
@@ -165,6 +169,21 @@ namespace Client
 			std::string_view patternId,
 			std::string_view stageId,
 			std::string& outStatus);
+		// Validate every stable ID before deleting the selection in one draft commit.
+		bool_t Delete_TimelineSelection(
+			std::string_view patternId,
+			const std::vector<std::string>& stageIds,
+			const std::vector<std::string>& occurrenceIds,
+			std::string& outStatus);
+		// Copy selected parents once; standalone boxes keep their Stage and time window.
+		bool_t Duplicate_TimelineSelection(
+			std::string_view patternId,
+			const std::vector<std::string>& stageIds,
+			const std::vector<std::string>& occurrenceIds,
+			std::string& outStatus);
+		// Total lifetime is the sum of Stage clocks; only the final Stage is resized.
+		bool_t Set_PatternDuration(std::string_view patternId,
+			std::uint32_t durationMs, std::string& outStatus);
 		bool_t Move_Stage(
 			std::string_view patternId,
 			std::string_view stageId,
@@ -273,7 +292,11 @@ namespace Client
 		void Render_ResourceTree();
 		void Render_ResourcesWindow();
 		void Render_Timeline();
+		void Clear_TimelineSelection();
+		void Select_TimelineBox(const std::string& stageId,
+			const std::string& occurrenceId, bool_t toggle);
 		void Render_Transport();
+		void Stop_Preview();
 		void Render_Details();
 		void Render_ReloadConfirmation();
 		void Poll_PublishProcess();
@@ -303,6 +326,7 @@ namespace Client
 
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		std::string m_strSelectedPatternId;
+		std::string m_strSelectedActorProfileId = "MN_RPCZ_00";
 		std::string m_strSelectedStageId;
 		std::string m_strSelectedOccurrenceId;
 		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE m_SelectedResource;
@@ -327,9 +351,16 @@ namespace Client
 		std::uint32_t m_iDragOriginSourceMs = 0u;
 		std::uint32_t m_iDragOriginPlayMs = 0u;
 		int m_iTimelineDragMode = 0;
+		std::string m_strTimelineSelectionPatternId;
+		std::vector<std::string> m_TimelineSelectedStageIds;
+		std::vector<std::string> m_TimelineSelectedOccurrenceIds;
+		bool_t m_bTimelineMarqueeActive = false;
+		f32_t m_fTimelineMarqueeStartX = 0.f;
+		f32_t m_fTimelineMarqueeStartY = 0.f;
 		f32_t m_fPixelsPerSecond = 90.f;
 		char_t m_PatternName[256]{};
 		char_t m_NewPatternName[256]{};
+		int32_t m_iPatternDurationMs = 0;
 		int32_t m_iNewStageDurationMs = 1000;
 		int32_t m_iOccurrenceStartOffsetMs = 0;
 		int32_t m_iOccurrenceSourceStartMs = 0;

@@ -6,9 +6,11 @@
 #include <array>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CGameObject;
+class CModel;
 NS_END
 
 NS_BEGIN(Client)
@@ -66,6 +68,13 @@ public:
 	// Effect Tool uses this to replace a retained preview-only prop (for example
 	// Dimension Core) with the playable class body that owns the loaded skill.
 	bool_t Select_TargetAsset(const string& strAnimationAssetName);
+	// Changes only this panel's selected generic preview root. The multiplier
+	// always starts from the selected/recentered baseline, never the last scale.
+	bool_t Set_PreviewScaleMultiplier(
+		const shared_ptr<Engine::CModel>& expectedModel, f32_t multiplier);
+	// Samples the selected animated hammer from the body's current source time
+	// and exact right-hand socket. Called after body playback/seek has settled.
+	void Synchronize_PreviewWeapon();
 
 	void Release(bool_t removeFromLayer);
 
@@ -99,6 +108,9 @@ private:
 	   is staged first and becomes active only after the new object validates, so
 	   a failed selection cannot move the previously committed body/root apart. */
 	array<float4x4_t, 2u> m_PreviewParentMatrices{};
+	float4x4_t m_PreviewUnscaledParentMatrix{};
+	array<float4x4_t, 2u> m_PreviewWeaponParentMatrices{};
+	std::vector<float4x4_t> m_PreviewWeaponRestPose;
 	size_t m_iPreviewParentMatrixIndex = 0u;
 	uint32_t m_iPreparedGenericPreviewLevelIndex = UINT32_MAX;
 	std::unordered_set<string> m_PreparedGenericPreviewAssetIds;

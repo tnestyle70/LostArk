@@ -25,7 +25,7 @@ namespace
 
 	constexpr std::string_view COMPOSITION_SCHEMA =
 		"lostark.kouku-saydon-composition";
-	constexpr std::uint32_t FORMAT_VERSION = 1u;
+	constexpr std::uint32_t FORMAT_VERSION = 2u;
 	constexpr std::uint32_t FIXED_TICK_HZ = 30u;
 	constexpr std::string_view COMPOSITION_ID =
 		"boss.composition.kakulsaydon.gate1";
@@ -44,7 +44,8 @@ namespace
 	constexpr std::uint32_t MAX_NEXT_ORDINAL = 1000000u;
 	constexpr std::uint32_t MAX_TIME_MS = 600000u;
 	constexpr std::size_t MAX_PATTERNS = 4096u;
-	constexpr std::size_t MAX_STAGES_PER_PATTERN = 64u;
+	constexpr std::size_t MAX_STAGES_PER_PATTERN = 1024u;
+	constexpr std::size_t MAX_PRODUCT_STAGES_PER_PATTERN = 64u;
 	constexpr std::size_t MAX_OCCURRENCES_PER_STAGE = 4096u;
 	constexpr std::size_t MAX_DOCUMENT_OCCURRENCES = 65536u;
 	constexpr std::uintmax_t MAX_COMPOSITION_BYTES = 16u * 1024u * 1024u;
@@ -288,6 +289,9 @@ namespace
 				!patternIds.insert(pattern.strPatternId).second ||
 				!Try_ParseGeneratedOrdinal(pattern.strPatternId,
 					GENERATED_PATTERN_PREFIX, document.iNextPatternOrdinal) ||
+				pattern.strActorProfileId.empty() ||
+				CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(pattern.strActorProfileId) != pattern.strActorProfileId ||
+				(pattern.strAuthoringStatus == "PRODUCT" && pattern.strActorProfileId != "MN_RPCZ_00") ||
 				!Is_DisplayName(pattern.strDisplayName) ||
 				!Is_AuthoringStatus(pattern.strAuthoringStatus) ||
 				!Is_Category(pattern.strCategory) ||
@@ -295,7 +299,9 @@ namespace
 				pattern.iNextStageOrdinal > MAX_NEXT_ORDINAL ||
 				pattern.iNextAnimationOrdinal < 1u ||
 				pattern.iNextAnimationOrdinal > MAX_NEXT_ORDINAL ||
-				pattern.Stages.size() > MAX_STAGES_PER_PATTERN)
+				pattern.Stages.size() > MAX_STAGES_PER_PATTERN ||
+				(pattern.strAuthoringStatus == "PRODUCT" &&
+				 pattern.Stages.size() > MAX_PRODUCT_STAGES_PER_PATTERN))
 			{
 				outStatus = "KoukuSaydon Pattern identity, state, counter, or Stage count is invalid: " +
 					pattern.strPatternId;
@@ -336,11 +342,11 @@ namespace
 						!occurrenceIds.insert(occurrence.strOccurrenceId).second ||
 						!Try_ParseGeneratedOrdinal(occurrence.strOccurrenceId,
 							occurrencePrefix, pattern.iNextAnimationOrdinal) ||
-						nullptr == Find_Profile(occurrence.strProfileId) ||
-						(0u == occurrence.iSourceActionId && occurrence.strSourceStageId != "RAW") ||
+						CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(occurrence.strProfileId) != pattern.strActorProfileId ||
+						(occurrence.strSourceStageId == "RAW" && 0u != occurrence.iSourceActionId) ||
 						!Is_StableId(occurrence.strSourceStageId) ||
 						!Is_StableId(occurrence.strSourceSlotId) ||
-						(occurrence.iSourceActionId != 0u && !Is_LowerSha256(occurrence.strReferenceRevision)) ||
+						(occurrence.strSourceStageId != "RAW" && !Is_LowerSha256(occurrence.strReferenceRevision)) ||
 						!Is_StableId(occurrence.strRuntimeClip) ||
 						occurrence.iStartOffsetMs > MAX_TIME_MS ||
 						occurrence.iSourceStartMs > MAX_TIME_MS ||
@@ -468,6 +474,21 @@ std::filesystem::path Client::CKoukuSaydonCompositionDocument::Resolve_Path()
 		std::filesystem::path(L"KoukuSaydon/Gate1/KoukuSaydonComposition.json"));
 }
 
+bool_t Client::CKoukuSaydonCompositionDocument::Is_KnownProfile(
+	const std::string_view profileId)
+{
+	return nullptr != Find_Profile(profileId);
+}
+
+std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(
+	const std::string_view sourceProfileId)
+{
+	const auto* const profile = Find_Profile(sourceProfileId);
+	if (nullptr == profile)
+		return {};
+	return sourceProfileId == "MN_RPCT_07" ? "MN_RPCT_05" : profile->pProfileId;
+}
+
 bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	const std::string_view text,
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument,
@@ -509,7 +530,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	if (nullptr == schema || schema->Get_String() != COMPOSITION_SCHEMA ||
 		nullptr == version ||
 		!Try_ParseUnsigned(*version, FORMAT_VERSION, staged.iFormatVersion) ||
-		staged.iFormatVersion != FORMAT_VERSION ||
+		(staged.iFormatVersion != 1u && staged.iFormatVersion != FORMAT_VERSION) ||
 		nullptr == revision || !Try_ParseUnsigned(*revision, MAX_REVISION, staged.iRevision) ||
 		0u == staged.iRevision ||
 		nullptr == compositionId || nullptr == encounterId || nullptr == archetypeId ||
@@ -527,6 +548,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		outStatus = "KoukuSaydon composition root value or type is invalid.";
 		return false;
 	}
+	const bool_t legacyFormat = 1u == staged.iFormatVersion;
+	staged.iFormatVersion = FORMAT_VERSION;
 	staged.strCompositionId = compositionId->Get_String();
 	staged.strEncounterId = encounterId->Get_String();
 	staged.strBossArchetypeId = archetypeId->Get_String();
@@ -554,21 +577,27 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		KOUKU_SAYDON_COMPOSITION_PATTERN stagedPattern;
 		const auto parsePattern = [&]() -> bool_t
 		{
-		if (!Has_ExactProperties(patternValue,
+		const bool_t validProperties = legacyFormat ?
+			Has_ExactProperties(patternValue,
 				{ "patternId", "displayName", "authoringStatus", "category",
-				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" }))
+				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" }) :
+			Has_ExactProperties(patternValue,
+				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
+				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" });
+		if (!validProperties)
 		{
 			outStatus = "KoukuSaydon Pattern has unexpected properties.";
 			return false;
 		}
 		const DATA_JSON_VALUE* const patternId = Required(patternValue, "patternId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* const actorProfileId = Required(patternValue, "actorProfileId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* const displayName = Required(patternValue, "displayName", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* const authoringStatus = Required(patternValue, "authoringStatus", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* const category = Required(patternValue, "category", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* const nextStageOrdinal = Required(patternValue, "nextStageOrdinal", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* const nextAnimationOrdinal = Required(patternValue, "nextAnimationOrdinal", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* const stages = Required(patternValue, "stages", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == patternId || nullptr == displayName ||
+		if (nullptr == patternId || (!legacyFormat && nullptr == actorProfileId) || nullptr == displayName ||
 			nullptr == authoringStatus || nullptr == category ||
 			nullptr == nextStageOrdinal ||
 			!Try_ParseUnsigned(*nextStageOrdinal, MAX_NEXT_ORDINAL,
@@ -583,6 +612,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			return false;
 		}
 		stagedPattern.strPatternId = patternId->Get_String();
+		if (!legacyFormat)
+			stagedPattern.strActorProfileId = actorProfileId->Get_String();
 		stagedPattern.strDisplayName = displayName->Get_String();
 		stagedPattern.strAuthoringStatus = authoringStatus->Get_String();
 		stagedPattern.strCategory = category->Get_String();
@@ -677,6 +708,23 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				stagedStage.AnimationOccurrences.push_back(std::move(stagedOccurrence));
 			}
 			stagedPattern.Stages.push_back(std::move(stagedStage));
+		}
+		if (legacyFormat)
+		{
+			for (const auto& stage : stagedPattern.Stages)
+				for (const auto& row : stage.AnimationOccurrences)
+				{
+					const auto actor = Resolve_ActorProfileId(row.strProfileId);
+					if (actor.empty() || (!stagedPattern.strActorProfileId.empty() &&
+						stagedPattern.strActorProfileId != actor))
+					{
+						outStatus = "Legacy KoukuSaydon Pattern has unknown or mixed actor profiles.";
+						return false;
+					}
+					stagedPattern.strActorProfileId = actor;
+				}
+			if (stagedPattern.strActorProfileId.empty())
+				stagedPattern.strActorProfileId = "MN_RPCZ_00";
 		}
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = validationHeader;
 		candidate.Patterns.push_back(stagedPattern);
@@ -810,6 +858,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		}
 		output << "    {\n"
 			<< "      \"patternId\": \"" << CDataJson::Escape(pattern.strPatternId) << "\",\n"
+			<< "      \"actorProfileId\": \"" << CDataJson::Escape(pattern.strActorProfileId) << "\",\n"
 			<< "      \"displayName\": \"" << CDataJson::Escape(pattern.strDisplayName) << "\",\n"
 			<< "      \"authoringStatus\": \"" << CDataJson::Escape(pattern.strAuthoringStatus) << "\",\n"
 			<< "      \"category\": \"" << CDataJson::Escape(pattern.strCategory) << "\",\n"

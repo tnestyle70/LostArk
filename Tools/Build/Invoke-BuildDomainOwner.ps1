@@ -44,7 +44,7 @@ function Assert-KoukuSaydonSourceRevision([string]$Phase) {
         throw "STALE_REVISION: KoukuSaydon source is unreadable during ${Phase}: $($_.Exception.Message)"
     }
     if ([string]$source.schema -cne 'lostark.kouku-saydon-composition' -or
-        [uint32]$source.formatVersion -ne 1 -or
+        [uint32]$source.formatVersion -notin @(1, 2) -or
         [uint32]$source.revision -ne $ExpectedKoukuSaydonSourceRevision) {
         throw "STALE_REVISION: expected KoukuSaydon source revision $ExpectedKoukuSaydonSourceRevision during ${Phase}, found $($source.revision)."
     }

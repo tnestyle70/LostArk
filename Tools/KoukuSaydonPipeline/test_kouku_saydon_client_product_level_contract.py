@@ -97,11 +97,11 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         for forbidden in (
             "Prototype_GameObject_Character",
             "Prototype_GameObject_Valtan",
-            "CValtan",
             "ValtanBossTool",
             "Play_Pattern",
         ):
             self.assertNotIn(forbidden, self.level_cpp)
+        self.assertNotRegex(self.level_cpp, r"\bCValtan\b")
 
     def test_stage_teleport_is_typed_and_fail_closed_without_markers(self) -> None:
         self.assertIn("shared_ptr<IWorldEntityCommandSink>", self.level_h)
@@ -351,10 +351,8 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         self.assertIn("Try_SampleTargetGround(", placement)
         self.assertNotIn("Resolve_SceneCharacter", placement)
         self.assertNotIn("Set_State(", placement)
-        self.assertIn(
-            'constexpr const char_t* BOSS_BODY_PROFILE_ID = "MN_RPCZ_00";',
-            self.workbench_cpp,
-        )
+        self.assertIn("CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(", self.workbench_cpp)
+        self.assertNotIn("BOSS_BODY_PROFILE_ID", self.workbench_cpp)
         self.assertIn("Is_AppendAdmitted(source, outStatus)", self.workbench_cpp)
 
 
@@ -433,7 +431,7 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
             self.assertIn("CompositionTimeline::DrawBox(", source)
             self.assertIn("CompositionTimeline::HitBoxGesture(", source)
 
-    def test_kouku_resources_browse_every_profile_but_bind_only_the_boss_body(self) -> None:
+    def test_kouku_resources_append_to_matching_actor_patterns(self) -> None:
         rebuild = _region(
             self.workbench_cpp,
             "void Client::CKoukuSaydonActionWorkbench::Rebuild_ResourceTree()",
@@ -443,16 +441,19 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
             "CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(", rebuild
         )
         self.assertNotIn('"MN_RPCZ_00"', rebuild)
-        self.assertIn(
-            'constexpr const char_t* BOSS_BODY_PROFILE_ID = "MN_RPCZ_00";',
-            self.workbench_cpp,
-        )
+        self.assertIn("CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(", self.workbench_cpp)
+        self.assertNotIn("BOSS_BODY_PROFILE_ID", self.workbench_cpp)
         admitted = _region(
             self.workbench_cpp,
             "bool_t Client::CKoukuSaydonActionWorkbench::Is_AppendAdmitted(",
             "bool_t Client::CKoukuSaydonActionWorkbench::Resolve_NativeClipMs(",
         )
-        self.assertIn("BOSS_BODY_PROFILE_ID", admitted)
+        self.assertIn("CKoukuSaydonCompositionDocument::Is_KnownProfile(source.strProfileId)", admitted)
+        self.assertIn('0u == source.iSourceActionId && "RAW" == source.strSourceStageId', admitted)
+        self.assertIn("pattern->strActorProfileId != actor", self.workbench_cpp)
+        self.assertIn("created.strActorProfileId = std::string(actor)", self.workbench_cpp)
+        self.assertIn("Delete_TimelineSelection(", self.workbench_cpp)
+        self.assertIn('ImGui::Button("Save##KoukuSequencer")', self.workbench_cpp)
         for token in (
             '"Composition Resources###KoukuCompositionResources"',
             'ImGui::Button("Preview Action")',

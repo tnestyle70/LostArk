@@ -37,7 +37,7 @@ REFERENCE_MODEL_ASSET_IDS = {
 }
 
 SCHEMA = "lostark.kouku-saydon-composition"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 COMPOSITION_ID = "boss.composition.kakulsaydon.gate1"
 ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1"
 BOSS_ARCHETYPE_ID = "BOSS_KAKULSAYDON_G1_KOUKU"
@@ -61,6 +61,7 @@ ROOT_KEYS = {
 }
 PATTERN_KEYS = {
     "patternId",
+    "actorProfileId",
     "displayName",
     "authoringStatus",
     "category",
@@ -112,7 +113,8 @@ MAX_ORDINAL = 1_000_000
 MAX_TIMELINE_MS = 600_000
 MAX_PATTERNS = 4096
 MAX_PRODUCT_PATTERNS = 64
-MAX_STAGES = 64
+MAX_DRAFT_STAGES = 1024
+MAX_PRODUCT_STAGES = 64
 MAX_OCCURRENCES = 4096
 
 
@@ -197,13 +199,19 @@ def _array(value: Any, context: str, maximum: int) -> list[Any]:
     return value
 
 
+def resolve_actor_profile_id(source_profile_id: str) -> str:
+    if source_profile_id not in REFERENCE_MODEL_ASSET_IDS:
+        return ""
+    return "MN_RPCT_05" if source_profile_id == "MN_RPCT_07" else source_profile_id
+
+
 def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
     _exact_keys(document, ROOT_KEYS, "composition")
+    version = _integer(document["formatVersion"], "composition formatVersion", 1, FORMAT_VERSION)
     exact_values = {
         "schema": SCHEMA,
-        "formatVersion": FORMAT_VERSION,
         "compositionId": COMPOSITION_ID,
         "encounterId": ENCOUNTER_ID,
         "bossArchetypeId": BOSS_ARCHETYPE_ID,
@@ -234,7 +242,12 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
 
     for pattern_index, pattern in enumerate(patterns):
         context = f"patterns[{pattern_index}]"
-        _exact_keys(pattern, PATTERN_KEYS, context)
+        _exact_keys(pattern, PATTERN_KEYS - {"actorProfileId"} if version == 1 else PATTERN_KEYS, context)
+        actor_profile_id = ""
+        if version == FORMAT_VERSION:
+            actor_profile_id = _stable_id(pattern["actorProfileId"], f"{context} actorProfileId")
+            if resolve_actor_profile_id(actor_profile_id) != actor_profile_id:
+                raise CompositionError(f"unknown physical actorProfileId: {actor_profile_id}")
         pattern_id = _stable_id(pattern["patternId"], f"{context} patternId")
         if pattern_id in pattern_ids:
             raise CompositionError(f"duplicate patternId: {pattern_id}")
@@ -257,8 +270,11 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             1,
             MAX_ORDINAL,
         )
-        stages = _array(pattern["stages"], f"{context} stages", MAX_STAGES)
+        stages = _array(pattern["stages"], f"{context} stages",
+                        MAX_PRODUCT_STAGES if status == "PRODUCT" else MAX_DRAFT_STAGES)
         if status == "PRODUCT":
+            if actor_profile_id and actor_profile_id != "MN_RPCZ_00":
+                raise CompositionError(f"PRODUCT actorProfileId must use MN_RPCZ_00: {pattern_id}")
             product_ids.append(pattern_id)
             if pattern["category"] != "MECHANIC":
                 raise CompositionError(
@@ -340,16 +356,24 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     raise CompositionError(
                         f"PRODUCT boss animation must use MN_RPCZ_00: {occurrence_id}"
                     )
-                if profile_id not in REFERENCE_MODEL_ASSET_IDS:
+                occurrence_actor = resolve_actor_profile_id(profile_id)
+                if not occurrence_actor:
                     raise CompositionError(f"unknown animation profile: {profile_id}")
+                if version == 1 and not actor_profile_id:
+                    actor_profile_id = occurrence_actor
+                if occurrence_actor != actor_profile_id:
+                    raise CompositionError(f"animation profile does not match Pattern actorProfileId: {occurrence_id}")
                 source_action_id = _integer(occurrence["sourceActionId"], f"{occurrence_context} sourceActionId", 0, 2**32 - 1)
                 _stable_id(occurrence["runtimeClip"], f"{occurrence_context} runtimeClip")
                 _stable_id(occurrence["sourceStageId"], f"{occurrence_context} sourceStageId")
                 _stable_id(occurrence["sourceSlotId"], f"{occurrence_context} sourceSlotId")
-                if source_action_id == 0 and occurrence["sourceStageId"] != "RAW":
-                    raise CompositionError("sourceActionId 0 is reserved for physical RAW clips")
+                # Referenced default action 0 is distinct from a physical RAW clip.
+                if occurrence["sourceStageId"] == "RAW" and source_action_id != 0:
+                    raise CompositionError("physical RAW clips must use sourceActionId 0")
                 if not isinstance(occurrence["referenceRevision"], str):
                     raise CompositionError("referenceRevision must be text")
+                if occurrence["sourceStageId"] != "RAW" and not SHA256_RE.fullmatch(occurrence["referenceRevision"]):
+                    raise CompositionError("referenced animation revision must be a lowercase SHA-256")
                 start_offset = _integer(
                     occurrence["startOffsetMs"],
                     f"{occurrence_context} startOffsetMs",
@@ -456,7 +480,7 @@ def project_encounter(document: dict[str, Any]) -> dict[str, Any]:
                 occurrence["sourceActionId"]
                 for stage in source["stages"]
                 for occurrence in stage["animationOccurrences"]
-                if occurrence["sourceActionId"] != 0
+                if not (occurrence["sourceActionId"] == 0 and occurrence["sourceStageId"] == "RAW")
             )
         )
         patterns.append(

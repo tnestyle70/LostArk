@@ -1,6 +1,6 @@
 {
   "schema": "lostark.kouku-saydon-composition",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "revision": 2,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
@@ -15,6 +15,7 @@
   "patterns": [
     {
       "patternId": "KAKULSAYDON_G1_SHIELD_STAGGER",
+      "actorProfileId": "MN_RPCZ_00",
       "displayName": "1관문 / 방패 무력화 패턴",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -24,6 +25,7 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_FIND_TRUE_KOUKU",
+      "actorProfileId": "MN_RPCZ_00",
       "displayName": "1관문 / 진짜 쿠크세이튼 찾기 패턴",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -33,6 +35,7 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_DANCE_TIME",
+      "actorProfileId": "MN_RPCZ_00",
       "displayName": "1관문 / 댄스타임",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -42,6 +45,7 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_PIZZA",
+      "actorProfileId": "MN_RPCZ_00",
       "displayName": "1관문 / 피자(룰렛) 패턴",
       "authoringStatus": "PRODUCT",
       "category": "MECHANIC",
@@ -184,6 +188,7 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_CARD_MATCH",
+      "actorProfileId": "MN_RPCZ_00",
       "displayName": "1관문 / 카드 맞추기 패턴",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
