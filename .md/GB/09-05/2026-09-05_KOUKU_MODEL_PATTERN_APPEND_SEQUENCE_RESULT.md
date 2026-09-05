@@ -114,3 +114,29 @@ profile을 사용자가 Ctrl+F5로 실행한다. F1 → Action Workbench → Kou
 Sequencer의 Play/Stop → Full lifetime ms/Apply → 사각 선택/Delete/Duplicate → Save → Reload를 확인한다.
 대형 이름 Action의 100배 크기와 망치 손 정렬은 사용자가 재실행 후 직접 관찰한다.
 실행 중인 원본 프로그램은 새 소스를 자동으로 반영하지 않는다.
+
+## G04. 병합 후 Client Product 컴파일 복구
+
+PR #318 병합 기준 `955f7971`의 Client Debug에서
+`KoukuSaydonActionWorkbench.cpp:3080`은 C2440, 뒤의 두 그리기 호출은 C2664로 실패했다.
+Windows의 `max(a, b)` 매크로가 `ImVec2 max(...)` 지역 변수 선언을 확장한 것이 원인이다.
+Assimp include는 `min`만 해제하므로 `max` 오류만 드러났으며, 기존 native harness의
+`NOMINMAX` 설정에서는 재현되지 않았다.
+
+`Render_Timeline`의 지역 좌표를 `marqueeMin`/`marqueeMax`로 바꾸고 그리기와 교차 검사
+소비부를 연결했다. C++ diff는 6줄 교체이며 좌표식, 선택 상태, public 계약과 데이터는 같다.
+기존 UTF-8 BOM 없음과 CRLF를 유지했고 새 파일이나 project/filter 등록은 없다.
+
+실행한 검증:
+
+- 정본 Debug Product 빌드: Engine → Shared → Server → Client compile/link 및 MSBuild 배포 성공, 종료 코드 0.
+- 명령: `powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`.
+- 로그: `out/KoukuCompileFix/debug-product-fixed.log`.
+- 결과: `out/BuildPipeline/runs/20260905T064850387Z-debug-product.json`.
+- `git diff --check`: 통과. C4819/C4828 코드 페이지와 외부 library PDB 관련 기존 경고는 남는다.
+- 변경 JSON/XML 없음. publisher, 광역 하네스, Client/UI 실행과 입력·저장·화면 검증은 수행하지 않았다.
+
+이 수정은 컴파일 복구이며 사각 선택의 최종 화면 판정을 대신하지 않는다. 사용자는
+`Server + Client` profile을 Ctrl+F5로 실행한 뒤 F1 → Action Workbench → KoukuSaydon →
+Sequencer에서 사각 선택을 확인한다. 기존 미커밋 조사 문서와 SHIELD_STAGGER 구현 계획서는
+이 수정 커밋에 포함하지 않는다.

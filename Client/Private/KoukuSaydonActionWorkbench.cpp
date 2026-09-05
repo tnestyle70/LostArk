@@ -3076,15 +3076,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		const ImVec2 start(origin.x + m_fTimelineMarqueeStartX, origin.y + m_fTimelineMarqueeStartY);
 		const ImVec2 cursor = ImGui::GetIO().MousePos;
-		const ImVec2 min((std::min)(start.x, cursor.x), (std::min)(start.y, cursor.y));
-		const ImVec2 max((std::max)(start.x, cursor.x), (std::max)(start.y, cursor.y));
-		draw->AddRectFilled(min, max, IM_COL32(90, 160, 240, 35));
-		draw->AddRect(min, max, IM_COL32(110, 185, 255, 230));
+		const ImVec2 marqueeMin((std::min)(start.x, cursor.x), (std::min)(start.y, cursor.y));
+		const ImVec2 marqueeMax((std::max)(start.x, cursor.x), (std::max)(start.y, cursor.y));
+		draw->AddRectFilled(marqueeMin, marqueeMax, IM_COL32(90, 160, 240, 35));
+		draw->AddRect(marqueeMin, marqueeMax, IM_COL32(110, 185, 255, 230));
 		const bool_t released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 		for (const auto& box : hitBoxes)
 		{
-			if (max.x <= box.min.x || min.x >= box.max.x ||
-				max.y <= box.min.y || min.y >= box.max.y)
+			if (marqueeMax.x <= box.min.x || marqueeMin.x >= box.max.x ||
+				marqueeMax.y <= box.min.y || marqueeMin.y >= box.max.y)
 				continue;
 			draw->AddRect(box.min, box.max, IM_COL32(255, 224, 92, 255), 3.f, 0, 2.f);
 			if (released)
