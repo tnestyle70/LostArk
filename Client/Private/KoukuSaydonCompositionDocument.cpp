@@ -17,6 +17,7 @@
 #include <iterator>
 #include <limits>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -39,6 +40,12 @@ namespace
 	constexpr std::string_view GENERATED_PATTERN_PREFIX =
 		"KAKULSAYDON_G1_PATTERN_";
 	constexpr std::string_view GENERATED_STAGE_PREFIX = "STAGE_";
+	constexpr std::string_view GENERATED_LOGIC_PREFIX = "kakulsaydon.g1.logic.";
+	constexpr std::size_t MAX_LOGICS = 4096u;
+	constexpr std::size_t MAX_LOGIC_OCCURRENCES_PER_PATTERN = 1024u;
+	constexpr std::string_view GENERATED_SUMMON_PREFIX = "kakulsaydon.g1.summon.";
+	constexpr std::size_t MAX_SUMMONS = 4096u;
+	constexpr std::size_t MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024u;
 	constexpr std::uint32_t MAX_REVISION =
 		(std::numeric_limits<std::uint32_t>::max)() - 1u;
 	constexpr std::uint32_t MAX_NEXT_ORDINAL = 1000000u;
@@ -85,6 +92,33 @@ namespace
 			{
 				return nullptr != object.Find(name);
 			});
+	}
+
+	/* Optional properties may be absent in an older file but never unknown, so
+	   a document written before the Logic catalog existed still opens. */
+	bool_t Has_Properties(
+		const DATA_JSON_VALUE& object,
+		const std::initializer_list<std::string_view> required,
+		const std::initializer_list<std::string_view> optional)
+	{
+		if (!object.Is_Object())
+			return false;
+		for (const std::string_view name : required)
+		{
+			if (nullptr == object.Find(name))
+				return false;
+		}
+		for (const auto& [key, value] : object.Get_Object())
+		{
+			(void)value;
+			const std::string_view name = key;
+			const bool_t known =
+				std::find(required.begin(), required.end(), name) != required.end() ||
+				std::find(optional.begin(), optional.end(), name) != optional.end();
+			if (!known)
+				return false;
+		}
+		return true;
 	}
 
 	bool_t Is_StableId(const std::string_view value)
@@ -189,6 +223,15 @@ namespace
 			value == "LOOP_TO_WINDOW";
 	}
 
+	bool_t Is_LogicType(const std::string_view value)
+	{
+		return std::any_of(KOUKU_SAYDON_LOGIC_TYPES.begin(), KOUKU_SAYDON_LOGIC_TYPES.end(),
+			[value](const char_t* const type)
+			{
+				return value == type;
+			});
+	}
+
 	const ACTION_PROFILE_CONTRACT* Find_Profile(const std::string_view profileId)
 	{
 		const auto found = std::find_if(ACTION_PROFILES.begin(), ACTION_PROFILES.end(),
@@ -259,11 +302,62 @@ namespace
 			document.iFixedTickHz != FIXED_TICK_HZ ||
 			document.iNextPatternOrdinal < 1u ||
 			document.iNextPatternOrdinal > MAX_NEXT_ORDINAL ||
+			document.iNextLogicOrdinal < 1u ||
+			document.iNextLogicOrdinal > MAX_NEXT_ORDINAL ||
+			document.Logics.size() > MAX_LOGICS ||
+			document.iNextSummonOrdinal < 1u ||
+			document.iNextSummonOrdinal > MAX_NEXT_ORDINAL ||
+			document.Summons.size() > MAX_SUMMONS ||
 			document.Patterns.size() > MAX_PATTERNS ||
 			document.PlayAllPatternIds.size() > MAX_PATTERNS)
 		{
 			outStatus = "KoukuSaydon composition header or bounded collection size is invalid.";
 			return false;
+		}
+
+		std::unordered_set<std::string> logicIds;
+		std::unordered_map<std::string, std::string> logicTypes;
+		for (const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic : document.Logics)
+		{
+			if (!Is_StableId(logic.strLogicId) ||
+				!logic.strLogicId.starts_with(GENERATED_LOGIC_PREFIX) ||
+				!Try_ParseGeneratedOrdinal(logic.strLogicId,
+					GENERATED_LOGIC_PREFIX, document.iNextLogicOrdinal) ||
+				!logicIds.insert(logic.strLogicId).second ||
+				!Is_DisplayName(logic.strDisplayName) ||
+				!Is_LogicType(logic.strLogicType))
+			{
+				outStatus = "KoukuSaydon Logic definition identity, name, or type is invalid: " +
+					logic.strLogicId;
+				return false;
+			}
+			logicTypes.emplace(logic.strLogicId, logic.strLogicType);
+		}
+		/* An outcome slot is empty or names a RESULT Logic, and only a DURATION
+		   box may own outcomes: a judgement window is the only thing that ends
+		   in success or timeout. */
+		const auto isResultReference = [&logicTypes](const std::string& logicId)
+		{
+			if (logicId.empty())
+				return true;
+			const auto found = logicTypes.find(logicId);
+			return found != logicTypes.end() && "RESULT" == found->second;
+		};
+
+		std::unordered_set<std::string> summonIds;
+		for (const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon : document.Summons)
+		{
+			if (!Is_StableId(summon.strSummonId) ||
+				!summon.strSummonId.starts_with(GENERATED_SUMMON_PREFIX) ||
+				!Try_ParseGeneratedOrdinal(summon.strSummonId,
+					GENERATED_SUMMON_PREFIX, document.iNextSummonOrdinal) ||
+				!summonIds.insert(summon.strSummonId).second ||
+				!Is_DisplayName(summon.strDisplayName))
+			{
+				outStatus = "KoukuSaydon Summon definition identity or name is invalid: " +
+					summon.strSummonId;
+				return false;
+			}
 		}
 
 		std::unordered_set<std::string> patternIds;
@@ -299,6 +393,12 @@ namespace
 				pattern.iNextStageOrdinal > MAX_NEXT_ORDINAL ||
 				pattern.iNextAnimationOrdinal < 1u ||
 				pattern.iNextAnimationOrdinal > MAX_NEXT_ORDINAL ||
+				pattern.iNextLogicOccurrenceOrdinal < 1u ||
+				pattern.iNextLogicOccurrenceOrdinal > MAX_NEXT_ORDINAL ||
+				pattern.LogicOccurrences.size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN ||
+				pattern.iNextSummonOccurrenceOrdinal < 1u ||
+				pattern.iNextSummonOccurrenceOrdinal > MAX_NEXT_ORDINAL ||
+				pattern.SummonOccurrences.size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN ||
 				pattern.Stages.size() > MAX_STAGES_PER_PATTERN ||
 				(pattern.strAuthoringStatus == "PRODUCT" &&
 				 pattern.Stages.size() > MAX_PRODUCT_STAGES_PER_PATTERN))
@@ -360,6 +460,91 @@ namespace
 							occurrence.strOccurrenceId;
 						return false;
 					}
+				}
+			}
+		}
+
+		/* Logic boxes are pattern-relative, so their window is checked against the
+		   whole Stage clock sum. A PRODUCT Pattern may not own any until the
+		   Server consumer exists; the projector applies the same rule. */
+		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
+		{
+			if (!pattern.strLoadError.empty())
+				continue;
+			if ("PRODUCT" == pattern.strAuthoringStatus && !pattern.LogicOccurrences.empty())
+			{
+				outStatus = "KoukuSaydon PRODUCT Pattern cannot own Logic boxes until the Server consumer exists: " +
+					pattern.strPatternId;
+				return false;
+			}
+			std::uint64_t lifetimeMs = 0u;
+			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern.Stages)
+				lifetimeMs += stage.iDurationMs;
+			std::unordered_set<std::string> logicBoxIds;
+			const std::string logicPrefix = pattern.strPatternId + ".logic.";
+			for (const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box : pattern.LogicOccurrences)
+			{
+				const std::uint64_t boxEndMs =
+					static_cast<std::uint64_t>(box.iStartMs) + box.iDurationMs;
+				if (!Is_StableId(box.strOccurrenceId) ||
+					!box.strOccurrenceId.starts_with(logicPrefix) ||
+					!Try_ParseGeneratedOrdinal(box.strOccurrenceId, logicPrefix,
+						pattern.iNextLogicOccurrenceOrdinal) ||
+					!logicBoxIds.insert(box.strOccurrenceId).second ||
+					!logicIds.contains(box.strLogicId) ||
+					box.iStartMs > MAX_TIME_MS || 0u == box.iDurationMs ||
+					boxEndMs > MAX_TIME_MS || boxEndMs > lifetimeMs)
+				{
+					outStatus = "KoukuSaydon Logic box identity, Logic reference, or window exceeds the Pattern lifetime: " +
+						box.strOccurrenceId;
+					return false;
+				}
+				const bool_t hasOutcome = !box.strOnSuccessLogicId.empty() ||
+					!box.strOnTimeoutLogicId.empty();
+				if (!isResultReference(box.strOnSuccessLogicId) ||
+					!isResultReference(box.strOnTimeoutLogicId) ||
+					(hasOutcome && "DURATION" != logicTypes.at(box.strLogicId)))
+				{
+					outStatus = "KoukuSaydon Logic box outcomes must name RESULT Logics on a DURATION box: " +
+						box.strOccurrenceId;
+					return false;
+				}
+			}
+		}
+
+		/* Summon boxes follow the Logic box rules: pattern-relative window inside
+		   the Stage clock sum, and no PRODUCT ownership before a Server consumer. */
+		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
+		{
+			if (!pattern.strLoadError.empty())
+				continue;
+			if ("PRODUCT" == pattern.strAuthoringStatus && !pattern.SummonOccurrences.empty())
+			{
+				outStatus = "KoukuSaydon PRODUCT Pattern cannot own Summon boxes until the Server consumer exists: " +
+					pattern.strPatternId;
+				return false;
+			}
+			std::uint64_t lifetimeMs = 0u;
+			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern.Stages)
+				lifetimeMs += stage.iDurationMs;
+			std::unordered_set<std::string> summonBoxIds;
+			const std::string summonPrefix = pattern.strPatternId + ".summon.";
+			for (const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box : pattern.SummonOccurrences)
+			{
+				const std::uint64_t boxEndMs =
+					static_cast<std::uint64_t>(box.iStartMs) + box.iDurationMs;
+				if (!Is_StableId(box.strOccurrenceId) ||
+					!box.strOccurrenceId.starts_with(summonPrefix) ||
+					!Try_ParseGeneratedOrdinal(box.strOccurrenceId, summonPrefix,
+						pattern.iNextSummonOccurrenceOrdinal) ||
+					!summonBoxIds.insert(box.strOccurrenceId).second ||
+					!summonIds.contains(box.strSummonId) ||
+					box.iStartMs > MAX_TIME_MS || 0u == box.iDurationMs ||
+					boxEndMs > MAX_TIME_MS || boxEndMs > lifetimeMs)
+				{
+					outStatus = "KoukuSaydon Summon box identity, Summon reference, or window exceeds the Pattern lifetime: " +
+						box.strOccurrenceId;
+					return false;
 				}
 			}
 		}
@@ -503,10 +688,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	if (!CDataJson::Parse(text, root, parseError) ||
-		!Has_ExactProperties(root,
+		!Has_Properties(root,
 			{ "schema", "formatVersion", "revision", "compositionId",
 			  "encounterId", "bossArchetypeId", "bossPlacementId", "areaId",
-			  "fixedTickHz", "nextPatternOrdinal", "playAllPatternIds", "patterns" }))
+			  "fixedTickHz", "nextPatternOrdinal", "playAllPatternIds", "patterns" },
+			{ "nextLogicOrdinal", "logics", "nextSummonOrdinal", "summons" }))
 	{
 		outStatus = "KoukuSaydon composition JSON is malformed or has unexpected root properties: " +
 			parseError;
@@ -566,6 +752,80 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		staged.PlayAllPatternIds.push_back(value.Get_String());
 	}
 
+	/* The Logic catalog is parsed before any Pattern so a per-Pattern candidate
+	   can resolve the logicId a box references. */
+	const DATA_JSON_VALUE* const nextLogicOrdinal = root.Find("nextLogicOrdinal");
+	const DATA_JSON_VALUE* const logics = root.Find("logics");
+	if ((nullptr != nextLogicOrdinal &&
+		 (!Try_ParseUnsigned(*nextLogicOrdinal, MAX_NEXT_ORDINAL, staged.iNextLogicOrdinal) ||
+		  0u == staged.iNextLogicOrdinal)) ||
+		(nullptr != logics &&
+		 (!logics->Is_Array() || logics->Get_Array().size() > MAX_LOGICS)))
+	{
+		outStatus = "KoukuSaydon composition Logic catalog header is invalid.";
+		return false;
+	}
+	if (nullptr != logics)
+	{
+		staged.Logics.reserve(logics->Get_Array().size());
+		for (const DATA_JSON_VALUE& logicValue : logics->Get_Array())
+		{
+			if (!Has_ExactProperties(logicValue, { "logicId", "displayName", "logicType" }))
+			{
+				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
+				return false;
+			}
+			const DATA_JSON_VALUE* const logicId = Required(logicValue, "logicId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const logicName = Required(logicValue, "displayName", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const logicType = Required(logicValue, "logicType", DATA_JSON_TYPE::STRING);
+			if (nullptr == logicId || nullptr == logicName || nullptr == logicType)
+			{
+				outStatus = "KoukuSaydon Logic definition value or type is invalid.";
+				return false;
+			}
+			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION stagedLogic;
+			stagedLogic.strLogicId = logicId->Get_String();
+			stagedLogic.strDisplayName = logicName->Get_String();
+			stagedLogic.strLogicType = logicType->Get_String();
+			staged.Logics.push_back(std::move(stagedLogic));
+		}
+	}
+
+	const DATA_JSON_VALUE* const nextSummonOrdinal = root.Find("nextSummonOrdinal");
+	const DATA_JSON_VALUE* const summons = root.Find("summons");
+	if ((nullptr != nextSummonOrdinal &&
+		 (!Try_ParseUnsigned(*nextSummonOrdinal, MAX_NEXT_ORDINAL, staged.iNextSummonOrdinal) ||
+		  0u == staged.iNextSummonOrdinal)) ||
+		(nullptr != summons &&
+		 (!summons->Is_Array() || summons->Get_Array().size() > MAX_SUMMONS)))
+	{
+		outStatus = "KoukuSaydon composition Summon catalog header is invalid.";
+		return false;
+	}
+	if (nullptr != summons)
+	{
+		staged.Summons.reserve(summons->Get_Array().size());
+		for (const DATA_JSON_VALUE& summonValue : summons->Get_Array())
+		{
+			if (!Has_ExactProperties(summonValue, { "summonId", "displayName" }))
+			{
+				outStatus = "KoukuSaydon Summon definition has unexpected properties.";
+				return false;
+			}
+			const DATA_JSON_VALUE* const summonId = Required(summonValue, "summonId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const summonName = Required(summonValue, "displayName", DATA_JSON_TYPE::STRING);
+			if (nullptr == summonId || nullptr == summonName)
+			{
+				outStatus = "KoukuSaydon Summon definition value or type is invalid.";
+				return false;
+			}
+			KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION stagedSummon;
+			stagedSummon.strSummonId = summonId->Get_String();
+			stagedSummon.strDisplayName = summonName->Get_String();
+			staged.Summons.push_back(std::move(stagedSummon));
+		}
+	}
+
 	staged.Patterns.reserve(patterns->Get_Array().size());
 	std::size_t parsedOccurrences = 0u;
 	const auto validationHeader = staged;
@@ -578,12 +838,16 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		const auto parsePattern = [&]() -> bool_t
 		{
 		const bool_t validProperties = legacyFormat ?
-			Has_ExactProperties(patternValue,
+			Has_Properties(patternValue,
 				{ "patternId", "displayName", "authoringStatus", "category",
-				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" }) :
-			Has_ExactProperties(patternValue,
+				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
+				{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
+				  "nextSummonOccurrenceOrdinal", "summonOccurrences" }) :
+			Has_Properties(patternValue,
 				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
-				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" });
+				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
+				{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
+				  "nextSummonOccurrenceOrdinal", "summonOccurrences" });
 		if (!validProperties)
 		{
 			outStatus = "KoukuSaydon Pattern has unexpected properties.";
@@ -709,6 +973,105 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			}
 			stagedPattern.Stages.push_back(std::move(stagedStage));
 		}
+		const DATA_JSON_VALUE* const nextLogicOccurrenceOrdinal =
+			patternValue.Find("nextLogicOccurrenceOrdinal");
+		const DATA_JSON_VALUE* const logicOccurrences = patternValue.Find("logicOccurrences");
+		if ((nullptr != nextLogicOccurrenceOrdinal &&
+			 (!Try_ParseUnsigned(*nextLogicOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+				stagedPattern.iNextLogicOccurrenceOrdinal) ||
+			  0u == stagedPattern.iNextLogicOccurrenceOrdinal)) ||
+			(nullptr != logicOccurrences &&
+			 (!logicOccurrences->Is_Array() ||
+			  logicOccurrences->Get_Array().size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN)))
+		{
+			outStatus = "KoukuSaydon Pattern Logic counter or box list is invalid.";
+			return false;
+		}
+		if (nullptr != logicOccurrences)
+		{
+			stagedPattern.LogicOccurrences.reserve(logicOccurrences->Get_Array().size());
+			for (const DATA_JSON_VALUE& boxValue : logicOccurrences->Get_Array())
+			{
+				if (!Has_Properties(boxValue,
+						{ "occurrenceId", "logicId", "startMs", "durationMs" },
+						{ "onSuccessLogicId", "onTimeoutLogicId" }))
+				{
+					outStatus = "KoukuSaydon Logic box has unexpected properties.";
+					return false;
+				}
+				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const boxLogicId = Required(boxValue, "logicId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+				const DATA_JSON_VALUE* const onSuccess = boxValue.Find("onSuccessLogicId");
+				const DATA_JSON_VALUE* const onTimeout = boxValue.Find("onTimeoutLogicId");
+				KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE stagedBox;
+				if (nullptr == boxId || nullptr == boxLogicId ||
+					nullptr == boxStart ||
+					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+					nullptr == boxDuration ||
+					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+					0u == stagedBox.iDurationMs ||
+					(nullptr != onSuccess && !onSuccess->Is_String()) ||
+					(nullptr != onTimeout && !onTimeout->Is_String()))
+				{
+					outStatus = "KoukuSaydon Logic box value or type is invalid.";
+					return false;
+				}
+				stagedBox.strOccurrenceId = boxId->Get_String();
+				stagedBox.strLogicId = boxLogicId->Get_String();
+				if (nullptr != onSuccess)
+					stagedBox.strOnSuccessLogicId = onSuccess->Get_String();
+				if (nullptr != onTimeout)
+					stagedBox.strOnTimeoutLogicId = onTimeout->Get_String();
+				stagedPattern.LogicOccurrences.push_back(std::move(stagedBox));
+			}
+		}
+		const DATA_JSON_VALUE* const nextSummonOccurrenceOrdinal =
+			patternValue.Find("nextSummonOccurrenceOrdinal");
+		const DATA_JSON_VALUE* const summonOccurrences = patternValue.Find("summonOccurrences");
+		if ((nullptr != nextSummonOccurrenceOrdinal &&
+			 (!Try_ParseUnsigned(*nextSummonOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+				stagedPattern.iNextSummonOccurrenceOrdinal) ||
+			  0u == stagedPattern.iNextSummonOccurrenceOrdinal)) ||
+			(nullptr != summonOccurrences &&
+			 (!summonOccurrences->Is_Array() ||
+			  summonOccurrences->Get_Array().size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN)))
+		{
+			outStatus = "KoukuSaydon Pattern Summon counter or box list is invalid.";
+			return false;
+		}
+		if (nullptr != summonOccurrences)
+		{
+			stagedPattern.SummonOccurrences.reserve(summonOccurrences->Get_Array().size());
+			for (const DATA_JSON_VALUE& boxValue : summonOccurrences->Get_Array())
+			{
+				if (!Has_ExactProperties(boxValue,
+						{ "occurrenceId", "summonId", "startMs", "durationMs" }))
+				{
+					outStatus = "KoukuSaydon Summon box has unexpected properties.";
+					return false;
+				}
+				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const boxSummonId = Required(boxValue, "summonId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+				KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE stagedBox;
+				if (nullptr == boxId || nullptr == boxSummonId ||
+					nullptr == boxStart ||
+					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+					nullptr == boxDuration ||
+					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+					0u == stagedBox.iDurationMs)
+				{
+					outStatus = "KoukuSaydon Summon box value or type is invalid.";
+					return false;
+				}
+				stagedBox.strOccurrenceId = boxId->Get_String();
+				stagedBox.strSummonId = boxSummonId->Get_String();
+				stagedPattern.SummonOccurrences.push_back(std::move(stagedBox));
+			}
+		}
 		if (legacyFormat)
 		{
 			for (const auto& stage : stagedPattern.Stages)
@@ -739,6 +1102,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				if (parsedOccurrenceIds.contains(row.strOccurrenceId))
 				{ outStatus = "Duplicate animation ID: " + row.strOccurrenceId; return false; }
 		}
+		for (const auto& box : stagedPattern.LogicOccurrences)
+			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+			{ outStatus = "Duplicate Logic box ID: " + box.strOccurrenceId; return false; }
+		for (const auto& box : stagedPattern.SummonOccurrences)
+			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+			{ outStatus = "Duplicate Summon box ID: " + box.strOccurrenceId; return false; }
 		return true;
 		};
 		if (!parsePattern())
@@ -773,6 +1142,10 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			parsedActionIds.insert(stage.strActionId);
 			for (const auto& row : stage.AnimationOccurrences) parsedOccurrenceIds.insert(row.strOccurrenceId);
 		}
+		for (const auto& box : stagedPattern.LogicOccurrences)
+			parsedOccurrenceIds.insert(box.strOccurrenceId);
+		for (const auto& box : stagedPattern.SummonOccurrences)
+			parsedOccurrenceIds.insert(box.strOccurrenceId);
 		staged.Patterns.push_back(std::move(stagedPattern));
 	}
 
@@ -840,13 +1213,34 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		<< "  \"areaId\": \"" << CDataJson::Escape(document.strAreaId) << "\",\n"
 		<< "  \"fixedTickHz\": " << document.iFixedTickHz << ",\n"
 		<< "  \"nextPatternOrdinal\": " << document.iNextPatternOrdinal << ",\n"
+		<< "  \"nextLogicOrdinal\": " << document.iNextLogicOrdinal << ",\n"
+		<< "  \"nextSummonOrdinal\": " << document.iNextSummonOrdinal << ",\n"
 		<< "  \"playAllPatternIds\": [";
 	for (std::size_t index = 0u; index < document.PlayAllPatternIds.size(); ++index)
 	{
 		output << (0u == index ? "" : ", ") << "\""
 			<< CDataJson::Escape(document.PlayAllPatternIds[index]) << "\"";
 	}
-	output << "],\n  \"patterns\": [\n";
+	output << "],\n  \"logics\": [\n";
+	for (std::size_t logicIndex = 0u; logicIndex < document.Logics.size(); ++logicIndex)
+	{
+		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic = document.Logics[logicIndex];
+		output << "    {\n"
+			<< "      \"logicId\": \"" << CDataJson::Escape(logic.strLogicId) << "\",\n"
+			<< "      \"displayName\": \"" << CDataJson::Escape(logic.strDisplayName) << "\",\n"
+			<< "      \"logicType\": \"" << CDataJson::Escape(logic.strLogicType) << "\"\n"
+			<< "    }" << (logicIndex + 1u < document.Logics.size() ? "," : "") << "\n";
+	}
+	output << "  ],\n  \"summons\": [\n";
+	for (std::size_t summonIndex = 0u; summonIndex < document.Summons.size(); ++summonIndex)
+	{
+		const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon = document.Summons[summonIndex];
+		output << "    {\n"
+			<< "      \"summonId\": \"" << CDataJson::Escape(summon.strSummonId) << "\",\n"
+			<< "      \"displayName\": \"" << CDataJson::Escape(summon.strDisplayName) << "\"\n"
+			<< "    }" << (summonIndex + 1u < document.Summons.size() ? "," : "") << "\n";
+	}
+	output << "  ],\n  \"patterns\": [\n";
 	for (std::size_t patternIndex = 0u; patternIndex < document.Patterns.size(); ++patternIndex)
 	{
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern = document.Patterns[patternIndex];
@@ -864,6 +1258,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"category\": \"" << CDataJson::Escape(pattern.strCategory) << "\",\n"
 			<< "      \"nextStageOrdinal\": " << pattern.iNextStageOrdinal << ",\n"
 			<< "      \"nextAnimationOrdinal\": " << pattern.iNextAnimationOrdinal << ",\n"
+			<< "      \"nextLogicOccurrenceOrdinal\": " << pattern.iNextLogicOccurrenceOrdinal << ",\n"
+			<< "      \"nextSummonOccurrenceOrdinal\": " << pattern.iNextSummonOccurrenceOrdinal << ",\n"
 			<< "      \"stages\": [\n";
 		for (std::size_t stageIndex = 0u; stageIndex < pattern.Stages.size(); ++stageIndex)
 		{
@@ -896,6 +1292,30 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			}
 			output << "          ]\n        }"
 				<< (stageIndex + 1u < pattern.Stages.size() ? "," : "") << "\n";
+		}
+		output << "      ],\n      \"logicOccurrences\": [\n";
+		for (std::size_t boxIndex = 0u; boxIndex < pattern.LogicOccurrences.size(); ++boxIndex)
+		{
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box = pattern.LogicOccurrences[boxIndex];
+			output << "        {\n"
+				<< "          \"occurrenceId\": \"" << CDataJson::Escape(box.strOccurrenceId) << "\",\n"
+				<< "          \"logicId\": \"" << CDataJson::Escape(box.strLogicId) << "\",\n"
+				<< "          \"startMs\": " << box.iStartMs << ",\n"
+				<< "          \"durationMs\": " << box.iDurationMs << ",\n"
+				<< "          \"onSuccessLogicId\": \"" << CDataJson::Escape(box.strOnSuccessLogicId) << "\",\n"
+				<< "          \"onTimeoutLogicId\": \"" << CDataJson::Escape(box.strOnTimeoutLogicId) << "\"\n"
+				<< "        }" << (boxIndex + 1u < pattern.LogicOccurrences.size() ? "," : "") << "\n";
+		}
+		output << "      ],\n      \"summonOccurrences\": [\n";
+		for (std::size_t boxIndex = 0u; boxIndex < pattern.SummonOccurrences.size(); ++boxIndex)
+		{
+			const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box = pattern.SummonOccurrences[boxIndex];
+			output << "        {\n"
+				<< "          \"occurrenceId\": \"" << CDataJson::Escape(box.strOccurrenceId) << "\",\n"
+				<< "          \"summonId\": \"" << CDataJson::Escape(box.strSummonId) << "\",\n"
+				<< "          \"startMs\": " << box.iStartMs << ",\n"
+				<< "          \"durationMs\": " << box.iDurationMs << "\n"
+				<< "        }" << (boxIndex + 1u < pattern.SummonOccurrences.size() ? "," : "") << "\n";
 		}
 		output << "      ]\n    }"
 			<< (patternIndex + 1u < document.Patterns.size() ? "," : "") << "\n";

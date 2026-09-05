@@ -498,6 +498,252 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         )
         self.assertEqual(6, len(presentation["bindings"]))
 
+    @staticmethod
+    def without_catalog_boxes(document):
+        """Drop live Logic/Summon boxes so a test-owned catalog stays self-consistent."""
+        for pattern in document["patterns"]:
+            for key in ("logicOccurrences", "nextLogicOccurrenceOrdinal",
+                        "summonOccurrences", "nextSummonOccurrenceOrdinal"):
+                pattern.pop(key, None)
+        return document
+
+    def test_logic_catalog_is_optional_on_read_and_never_reaches_product(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        document["nextLogicOrdinal"] = 2
+        document["logics"] = [
+            {
+                "logicId": "kakulsaydon.g1.logic.1",
+                "displayName": "방패 무력화",
+                "logicType": "DURATION",
+            }
+        ]
+        self.validate(copy.deepcopy(document))
+        self.assertEqual(
+            subject.project_encounter(copy.deepcopy(self.document)),
+            subject.project_encounter(copy.deepcopy(document)),
+        )
+
+        pizza = self.pizza(document)
+        pizza["nextLogicOccurrenceOrdinal"] = 2
+        pizza["logicOccurrences"] = [
+            {
+                "occurrenceId": "KAKULSAYDON_G1_PIZZA.logic.1",
+                "logicId": "kakulsaydon.g1.logic.1",
+                "startMs": 0,
+                "durationMs": 1000,
+            }
+        ]
+        with self.assertRaisesRegex(subject.CompositionError, "Server consumer"):
+            self.validate(copy.deepcopy(document))
+
+        draft = copy.deepcopy(document)
+        self.pizza(draft)["authoringStatus"] = "DRAFT"
+        draft["playAllPatternIds"] = []
+        self.validate(copy.deepcopy(draft))
+
+        unknown_type = copy.deepcopy(draft)
+        unknown_type["logics"][0]["logicType"] = "WINDOW"
+        with self.assertRaisesRegex(subject.CompositionError, "logicType"):
+            self.validate(unknown_type)
+        ahead = copy.deepcopy(draft)
+        ahead["nextLogicOrdinal"] = 1
+        with self.assertRaisesRegex(subject.CompositionError, "nextLogicOrdinal"):
+            self.validate(ahead)
+        dangling = copy.deepcopy(draft)
+        self.pizza(dangling)["logicOccurrences"][0]["logicId"] = "kakulsaydon.g1.logic.9"
+        with self.assertRaisesRegex(subject.CompositionError, "unknown logicId"):
+            self.validate(dangling)
+        foreign_box = copy.deepcopy(draft)
+        self.pizza(foreign_box)["logicOccurrences"][0]["occurrenceId"] = "KAKULSAYDON_G1_PIZZA.animation.9"
+        with self.assertRaisesRegex(subject.CompositionError, r"\.logic\.<N>"):
+            self.validate(foreign_box)
+
+    def draft_with_logic_box(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.pizza(document)
+        document["patterns"] = [pattern]
+        document["playAllPatternIds"] = []
+        document["nextLogicOrdinal"] = 2
+        document["logics"] = [{
+            "logicId": "kakulsaydon.g1.logic.1",
+            "displayName": "Logic window",
+            "logicType": "DURATION",
+        }]
+        pattern["authoringStatus"] = "DRAFT"
+        pattern["nextLogicOccurrenceOrdinal"] = 2
+        pattern["logicOccurrences"] = [{
+            "occurrenceId": pattern["patternId"] + ".logic.1",
+            "logicId": "kakulsaydon.g1.logic.1",
+            "startMs": 0,
+            "durationMs": 1000,
+        }]
+        return document, pattern
+
+    def test_logic_occurrences_reject_duplicate_and_invalid_ordinals(self):
+        document, pattern = self.draft_with_logic_box()
+        self.validate(copy.deepcopy(document))
+        duplicate = copy.deepcopy(document)
+        duplicate_pattern = self.pizza(duplicate)
+        duplicate_pattern["logicOccurrences"].append(
+            copy.deepcopy(duplicate_pattern["logicOccurrences"][0])
+        )
+        with self.assertRaisesRegex(subject.CompositionError, "duplicate Logic occurrenceId"):
+            self.validate(duplicate)
+
+        for ordinal in (0, 2, subject.MAX_ORDINAL):
+            with self.subTest(ordinal=ordinal):
+                invalid = copy.deepcopy(document)
+                self.pizza(invalid)["logicOccurrences"][0]["occurrenceId"] = (
+                    pattern["patternId"] + f".logic.{ordinal}"
+                )
+                with self.assertRaises(subject.CompositionError):
+                    self.validate(invalid)
+        for counter in (0, 1, subject.MAX_ORDINAL + 1):
+            with self.subTest(counter=counter):
+                invalid = copy.deepcopy(document)
+                self.pizza(invalid)["nextLogicOccurrenceOrdinal"] = counter
+                with self.assertRaisesRegex(subject.CompositionError, "nextLogicOccurrenceOrdinal"):
+                    self.validate(invalid)
+
+    def test_logic_windows_use_pattern_lifetime_and_bounded_stage_clock(self):
+        document, pattern = self.draft_with_logic_box()
+        lifetime_ms = sum(stage["durationMs"] for stage in pattern["stages"])
+        pattern["logicOccurrences"][0].update(startMs=lifetime_ms - 1, durationMs=1)
+        self.validate(copy.deepcopy(document))
+        beyond_lifetime = copy.deepcopy(document)
+        self.pizza(beyond_lifetime)["logicOccurrences"][0]["durationMs"] = 2
+        with self.assertRaisesRegex(subject.CompositionError, "Pattern lifetime"):
+            self.validate(beyond_lifetime)
+
+        pattern["stages"] = pattern["stages"][:1]
+        pattern["stages"][0]["durationMs"] = subject.MAX_TIMELINE_MS
+        pattern["logicOccurrences"][0].update(
+            startMs=subject.MAX_TIMELINE_MS - 1, durationMs=1
+        )
+        self.validate(copy.deepcopy(document))
+        beyond_limit = copy.deepcopy(document)
+        self.pizza(beyond_limit)["logicOccurrences"][0]["durationMs"] = 2
+        with self.assertRaisesRegex(subject.CompositionError, "Logic box exceeds 600 seconds"):
+            self.validate(beyond_limit)
+
+        oversized, oversized_pattern = self.draft_with_logic_box()
+        oversized_pattern["stages"][0]["durationMs"] = subject.MAX_TIMELINE_MS
+        with self.assertRaisesRegex(subject.CompositionError, "Pattern exceeds 600 seconds"):
+            self.validate(oversized)
+        empty = copy.deepcopy(document)
+        self.pizza(empty)["stages"] = []
+        with self.assertRaisesRegex(subject.CompositionError, "Pattern lifetime"):
+            self.validate(empty)
+
+    def test_logic_occurrence_capacity_matches_client_1024_boxes(self):
+        document, pattern = self.draft_with_logic_box()
+        pattern["logicOccurrences"] = [{
+            "occurrenceId": pattern["patternId"] + f".logic.{ordinal}",
+            "logicId": "kakulsaydon.g1.logic.1",
+            "startMs": 0,
+            "durationMs": 1,
+        } for ordinal in range(1, 1025)]
+        pattern["nextLogicOccurrenceOrdinal"] = 1025
+        self.validate(copy.deepcopy(document))
+        extra = copy.deepcopy(pattern["logicOccurrences"][-1])
+        extra["occurrenceId"] = pattern["patternId"] + ".logic.1025"
+        pattern["logicOccurrences"].append(extra)
+        pattern["nextLogicOccurrenceOrdinal"] = 1026
+        with self.assertRaisesRegex(subject.CompositionError, "1024"):
+            self.validate(document)
+
+    def test_logic_box_outcomes_name_result_logics_on_duration_boxes_only(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        document["nextLogicOrdinal"] = 4
+        document["logics"] = [
+            {"logicId": "kakulsaydon.g1.logic.1", "displayName": "방패 무력화", "logicType": "DURATION"},
+            {"logicId": "kakulsaydon.g1.logic.2", "displayName": "그로기 패턴", "logicType": "RESULT"},
+            {"logicId": "kakulsaydon.g1.logic.3", "displayName": "전원 전멸", "logicType": "RESULT"},
+        ]
+        pizza = self.pizza(document)
+        pizza["authoringStatus"] = "DRAFT"
+        document["playAllPatternIds"] = []
+        pizza["nextLogicOccurrenceOrdinal"] = 2
+        pizza["logicOccurrences"] = [
+            {
+                "occurrenceId": "KAKULSAYDON_G1_PIZZA.logic.1",
+                "logicId": "kakulsaydon.g1.logic.1",
+                "startMs": 0,
+                "durationMs": 1000,
+                "onSuccessLogicId": "kakulsaydon.g1.logic.2",
+                "onTimeoutLogicId": "kakulsaydon.g1.logic.3",
+            }
+        ]
+        self.validate(copy.deepcopy(document))
+
+        unwired = copy.deepcopy(document)
+        box = self.pizza(unwired)["logicOccurrences"][0]
+        del box["onSuccessLogicId"]
+        box["onTimeoutLogicId"] = ""
+        self.validate(unwired)
+
+        not_result = copy.deepcopy(document)
+        self.pizza(not_result)["logicOccurrences"][0]["onSuccessLogicId"] = "kakulsaydon.g1.logic.1"
+        with self.assertRaisesRegex(subject.CompositionError, "RESULT logic"):
+            self.validate(not_result)
+        dangling = copy.deepcopy(document)
+        self.pizza(dangling)["logicOccurrences"][0]["onTimeoutLogicId"] = "kakulsaydon.g1.logic.9"
+        with self.assertRaisesRegex(subject.CompositionError, "RESULT logic"):
+            self.validate(dangling)
+        on_result_box = copy.deepcopy(document)
+        self.pizza(on_result_box)["logicOccurrences"][0]["logicId"] = "kakulsaydon.g1.logic.2"
+        with self.assertRaisesRegex(subject.CompositionError, "DURATION logic box"):
+            self.validate(on_result_box)
+        wrong_type = copy.deepcopy(document)
+        self.pizza(wrong_type)["logicOccurrences"][0]["onSuccessLogicId"] = 7
+        with self.assertRaisesRegex(subject.CompositionError, "must be text"):
+            self.validate(wrong_type)
+
+    def test_summon_catalog_and_boxes_follow_the_logic_rules(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        document["nextSummonOrdinal"] = 2
+        document["summons"] = [
+            {"summonId": "kakulsaydon.g1.summon.1", "displayName": "가짜 세이튼 3"}
+        ]
+        self.validate(copy.deepcopy(document))
+        self.assertEqual(
+            subject.project_encounter(copy.deepcopy(self.document)),
+            subject.project_encounter(copy.deepcopy(document)),
+        )
+        pizza = self.pizza(document)
+        pizza["nextSummonOccurrenceOrdinal"] = 2
+        pizza["summonOccurrences"] = [
+            {
+                "occurrenceId": "KAKULSAYDON_G1_PIZZA.summon.1",
+                "summonId": "kakulsaydon.g1.summon.1",
+                "startMs": 0,
+                "durationMs": 16334,
+            }
+        ]
+        with self.assertRaisesRegex(subject.CompositionError, "Server consumer"):
+            self.validate(copy.deepcopy(document))
+        draft = copy.deepcopy(document)
+        self.pizza(draft)["authoringStatus"] = "DRAFT"
+        draft["playAllPatternIds"] = []
+        self.validate(copy.deepcopy(draft))
+
+        ahead = copy.deepcopy(draft)
+        ahead["nextSummonOrdinal"] = 1
+        with self.assertRaisesRegex(subject.CompositionError, "nextSummonOrdinal"):
+            self.validate(ahead)
+        dangling = copy.deepcopy(draft)
+        self.pizza(dangling)["summonOccurrences"][0]["summonId"] = "kakulsaydon.g1.summon.9"
+        with self.assertRaisesRegex(subject.CompositionError, "unknown summonId"):
+            self.validate(dangling)
+        foreign_box = copy.deepcopy(draft)
+        self.pizza(foreign_box)["summonOccurrences"][0]["occurrenceId"] = "KAKULSAYDON_G1_PIZZA.logic.9"
+        with self.assertRaisesRegex(subject.CompositionError, r"\.summon\.<N>"):
+            self.validate(foreign_box)
+        typed = copy.deepcopy(draft)
+        typed["summons"][0]["summonType"] = "SPAWN"
+        with self.assertRaisesRegex(subject.CompositionError, "summons\\[0\\]"):
+            self.validate(typed)
+
     def test_publish_is_deterministic_and_validate_detects_stale_product(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

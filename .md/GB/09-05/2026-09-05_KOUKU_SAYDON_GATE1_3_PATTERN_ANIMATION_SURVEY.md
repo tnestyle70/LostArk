@@ -820,3 +820,55 @@ clip 길이는 0.667s인데 particle/material/Paralyzation은 2.6s까지 이어�
 - MN_RPCT_05: model=Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05 actions=115 referenceRevision=86692c07ed13…
 - MN_RPCT_06: model=Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06 actions=47 referenceRevision=1a9f70ab5bd4…
 - MN_RPCT_07: model=Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05 actions=102 referenceRevision=6c04775d1325…
+## 7. 추가 실측 — `Large Kouku` 표시와 쿠크 무기(뿅망치·바주카·나팔)
+
+09-03 인벤토리 §1.1의 미확인 항목(“바주카포·뿅망치·나팔이 body mesh에 포함돼 있는지, 별도 추출이 필요한지”)을 닫는다.
+
+### 7.1 `Large Kouku`는 모델이 아니라 표시 카테고리다
+
+- `CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory`(`Client/Private/KoukuSaydonAnimationActionDocument.cpp:996`)가
+  profile `MN_RPCZ_00`이고 displayName이 `대형 쿠크_`로 시작하면 `"Large Kouku"`를 돌려준다. Workbench Resources 트리는
+  `카테고리 → profile → action`이므로 `Large Kouku` 아래 leaf도 전부 `MN_RPCZ_00` action이다.
+- preview asset은 `Client/Public/AnimationPreviewAssets.h:205`의 `kakulsaydon.mn-rpcz-00` 하나뿐이고 scale 0.01이다.
+  따라서 `Large Kouku` leaf를 눌러도 같은 몸체가 같은 크기로 재생된다.
+- 실물·추출본 어디에도 큰 쿠크 모델은 없다. `CanonicalSource/Character/UModelMetadata/MN_RPCZ_00/umodel.list.log.txt`의
+  skeletalmesh는 `mn_rpcz_00_sk`(+ 로프 prop) 하나이고, `WP_MN_RPCZ_*` 패키지도 없다.
+- `대형 쿠크_*` action 8개(4219765 순간이동, 4219766~68 광기 카운터, 4219730 인형 종료, 4219780 사망스킬, 4219794/95 buff 정리)는
+  같은 rig의 clip만 쓴다. 원본이 같은 모델을 NPC scale로 키웠을 가능성이 크지만 **배율 값은 추출 범위(Action LOA)에 없다.**
+  현재 계약은 `BossCatalog` `bodyModelPreScale 0.01`(cm→m 변환), `presentationScale 1.0`이며
+  `Publish-GameplayBalance.ps1:1358~1370`이 Kouku의 `presentationScale == 1.0`을 고정한다. `CNpc::NPC_DESC`에는 scale 필드가 없고
+  arena spawn(`ClientReplication.cpp:2312`)도 scale을 적용하지 않는다. 큰 쿠크는 catalog 배율 + `CTransform::Scaling` 적용 + Server
+  collisionRadius를 함께 바꾸는 별도 변경이며, 배율은 인게임 참고 영상으로 정해야 한다.
+
+### 7.2 무기는 socket `WP_1`에 붙는 mesh particle이다
+
+원본 Action LOA의 `PlayParticleEffect` notify가 socket `WP_1`에 무기 particle을 붙인다(`WP_1` 문자열 306회).
+
+| 무기 | particle system | mesh (cooked) | material / texture (cooked) |
+|---|---|---|---|
+| 뿅망치 | `FX_MN_RPCZ_00_G.Par_G_RPCZ_00_WP_Hammer_01`, `_Despawn_01` | `Effect/KakulSaydon/Meshes/fx_sm_00/fm_g_rhkp_01.wmodel` | `wp_mn_rhkp_07_mi_dead` → `Effect/KakulSaydon/Textures/WP_MN_RHKP_07/tex/wp_mn_rhkp_07_{d,n,s}.dds` |
+| 바주카포 | `Par_G_RPCZ_00_WP_Bazooka_01`, `_Despawn_01` | `fx_sm_00/fm_g_rhkp_06.wmodel` | `wp_mn_rhkp_06_mi_dead` → `WP_MN_RHKP_06/tex/wp_mn_rhkp_06_{d,e,n,s}.dds` |
+| 나팔 | `Par_G_RPCZ_00_WP_Trumpet_01`, `_Despawn_01` | `fx_sm_00/fm_g_reup_01.wmodel` | `wp_mn_reup_01-1_mi_dead` → `WP_MN_REUP_01/tex/wp_mn_reup_01-1_d.dds`, `_n.dds` |
+
+- 쿠크 wmodel skeleton에는 `b_wp_1`, `b_wp_2`, `b_wp_3` bone이 있다(문자열 스캔). 원본은 `WP_1`만 쓴다.
+- 타이밍(4219706 뿅망치 선이동A): stage0 `att_battle_2_01` 1.70s에 `WP_Hammer_01`(Lifetime), 1.75s에 `Weapon_Spawn` 연기 →
+  이후 stage마다 t=0에 같은 particle을 stage 길이만큼 재발행 → 마지막 stage `att_battle_2_09` 0.75s에 `WP_Hammer_Despawn_01`.
+  바주카는 `att_battle_1_01` 2.00s, 나팔도 같은 구조다.
+- 따라서 `BossCatalog.weaponModel: null`은 오류가 아니라 원본 구조와 같다. 별도 무기 skeletal mesh를 추출할 필요가 없다.
+- `WP_MN_RPCT_08`(`wp_mn_rpct_08_sk`, `08_1_sk`)은 어떤 action-effects에도 참조되지 않는 05 본체 텍스처의 소형 파츠이며 뿅망치가 아니다.
+
+### 7.3 현재 프로젝트에서 붙이는 경로
+
+- 이미 있는 lane: `CNpc::Play_NetworkAction` → `CEffectV2Runtime::Notify_Clip(From_Npc)` → archetype별
+  `Data/Effects/V2/Bindings/<archetype>.effectv2bindings.json`의 `{effectId, clip, startMs, bone, followBone, rotation, stopWithClip}`.
+  `CNpc::Update`(`Npc.cpp:243`)가 매 프레임 `CEffectV2Runtime::Tick`을 호출하므로 쿠크 boss(CNpc)도 같은 lane 위에 있다.
+  V2 문서는 `mesh: <Resources-relative wmodel>` + `base/mask/emissive/dissolve` 텍스처를 받는다(`boss.valtan.axe_elec_1.effectv2.json` 예).
+- 막힌 지점 하나: `EffectV2_Runtime.cpp:136 Resolve_Archetype`이 `CActorCatalog::Get_Npcs()`의 model tag만 archetype으로 매핑한다.
+  쿠크 boss의 tag `Prototype_Component_Model_KoukuSaydon_MN_RPCZ_00`은 NpcCatalog에 없어 nullptr을 돌려주고 binding이 로드되지 않는다.
+  `CActorCatalog::Find_Boss("BOSS_KAKULSAYDON_G1_KOUKU")`의 tag를 같은 map에 넣는 작은 변경이 선행이다.
+  Effect Tool V2의 `Target (NPC archetype / Valtan)` 목록(`Effect_Tool_V2.cpp:2528`)도 NpcCatalog만 나열하므로 in-tool 저작에는 같은 추가가 필요하다.
+- 그 뒤 데이터만으로 붙는다. 예: `kouku.wp.hammer` V2 mesh 문서(`fm_g_rhkp_01.wmodel` + `wp_mn_rhkp_07_d.dds`, loop) +
+  `BOSS_KAKULSAYDON_G1_KOUKU.effectv2bindings.json`에 `clip rpcz00_att_battle_2_01 / startMs 1700 / bone b_wp_1 / followBone true`,
+  이어지는 `2_02, 2_08, 2_03, 2_09`는 `startMs 0 / stopWithClip true`, `2_09` 750ms에 despawn 문서.
+- `Effect_PresentationService`의 `EFFECT_OWNER_VIEW`는 `CCharacter`/`CValtan`만 소유하므로 Valtan식 pattern cue(`anchorSlotId`)로는
+  쿠크에 붙지 않는다. 쿠크 pattern Effect 저작(Workbench Effect lane)은 CLAUDE.md대로 별도 범위다.

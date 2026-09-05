@@ -243,6 +243,71 @@ namespace Client
 			std::uint32_t startOffsetMs,
 			std::string& outStatus);
 
+		/* Logic catalog. A definition is named once in Resources; a box places it
+		   on one Pattern with a pattern-relative window. Values and the Server
+		   consumer arrive in a later slice, so a PRODUCT Pattern may not own boxes. */
+		bool_t Create_Logic(
+			std::string_view displayName,
+			std::string_view logicType,
+			std::string& outLogicId,
+			std::string& outStatus);
+		bool_t Delete_Logic(
+			std::string_view logicId,
+			std::string& outStatus);
+		bool_t Append_LogicBox(
+			std::string_view patternId,
+			std::string_view logicId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outOccurrenceId,
+			std::string& outStatus);
+		bool_t Set_LogicBoxWindow(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outStatus);
+		bool_t Delete_LogicBox(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::string& outStatus);
+		/* Wires one outcome slot of a DURATION box to a RESULT Logic; an empty
+		   resultLogicId clears the slot. The box owns the wiring, so the same
+		   definition may succeed into different results on different Patterns. */
+		bool_t Set_LogicBoxOutcome(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			bool_t success,
+			std::string_view resultLogicId,
+			std::string& outStatus);
+
+		/* Summon catalog. A definition is only a name today; a box places it on
+		   one Pattern with spawn time (startMs) and lifetime (durationMs). */
+		bool_t Create_Summon(
+			std::string_view displayName,
+			std::string& outSummonId,
+			std::string& outStatus);
+		bool_t Delete_Summon(
+			std::string_view summonId,
+			std::string& outStatus);
+		bool_t Append_SummonBox(
+			std::string_view patternId,
+			std::string_view summonId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outOccurrenceId,
+			std::string& outStatus);
+		bool_t Set_SummonBoxWindow(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outStatus);
+		bool_t Delete_SummonBox(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::string& outStatus);
+
 	private:
 		/* One browsable extracted action: indices into the immutable reference
 		   set snapshot that Reload/Save replaced last. */
@@ -290,6 +355,11 @@ namespace Client
 		void Render_Toolbar();
 		void Render_PatternsAndResources();
 		void Render_ResourceTree();
+		void Render_AnimationResources();
+		void Render_LogicResources();
+		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		void Render_SummonResources();
+		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_ResourcesWindow();
 		void Render_Timeline();
 		void Clear_TimelineSelection();
@@ -323,6 +393,23 @@ namespace Client
 		// Expansion belongs to this session and survives search/catalog rebuilds by stable source ID.
 		std::string m_strExpandedResourceActionId;
 		std::string m_strExpandedResourceStageId;
+		// Resources family tab and Logic authoring session state; none of it is document data.
+		int32_t m_iSelectedResourceCategory = 0;
+		int32_t m_iNewLogicType = 0;
+		int32_t m_iNewLogicBoxDurationMs = 1000;
+		char_t m_NewLogicName[256]{};
+		std::string m_strSelectedLogicId;
+		std::string m_strSelectedLogicOccurrenceId;
+		int32_t m_iLogicBoxStartMs = 0;
+		int32_t m_iLogicBoxDurationMs = 1000;
+		// Summon authoring session state; a new box defaults to the remaining Pattern lifetime.
+		char_t m_NewSummonName[256]{};
+		std::string m_strSelectedSummonId;
+		std::string m_strSelectedSummonOccurrenceId;
+		int32_t m_iNewSummonBoxDurationMs = 1000;
+		bool_t m_bNewSummonBoxToPatternEnd = true;
+		int32_t m_iSummonBoxStartMs = 0;
+		int32_t m_iSummonBoxDurationMs = 1000;
 
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		std::string m_strSelectedPatternId;

@@ -1361,7 +1361,7 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 			[string]$presentationBoss.animationSetId -cne
 			'Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel' -or
 			[double]$presentationBoss.presentationScale -ne 1.0 -or
-			[double]$presentationBoss.bodyModelPreScale -ne 0.01 -or
+			[double]$presentationBoss.bodyModelPreScale -ne 0.02 -or
 			@($presentationBoss.armorModels).Count -ne 0 -or
 			@($presentationBoss.armorParts).Count -ne 0 -or
 			@($presentationBoss.combatObjectVisuals).Count -ne 0 -or

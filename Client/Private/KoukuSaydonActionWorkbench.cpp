@@ -2,6 +2,7 @@
 
 #include "KoukuSaydonActionWorkbench.h"
 #include "CompositionTimeline.h"
+#include "DataJson.h"
 #include "ProjectDataRoot.h"
 
 #include <Windows.h>
@@ -29,6 +30,12 @@ namespace
 		"WINDUP", "ACTIVE", "RECOVERY" };
 	constexpr std::array<const char_t*, 2u> PATTERN_CATEGORIES = {
 		"NORMAL", "MECHANIC" };
+	/* Resources family tabs in display order. Animation and Logic own an
+	   authoring flow; the others only name the family until their consumer lands. */
+	constexpr std::array<const char_t*, 8u> RESOURCE_CATEGORIES = {
+		"Animation", "Logic", "Summon", "Effect", "Collider", "Scene Profile", "Sound", "Camera" };
+	constexpr ImU32 TIMELINE_LOGIC_COLOR = IM_COL32(196, 118, 64, 255);
+	constexpr ImU32 TIMELINE_SUMMON_COLOR = IM_COL32(88, 156, 116, 255);
 
 	KOUKU_SAYDON_COMPOSITION_PATTERN* Find_Pattern(
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
@@ -318,6 +325,214 @@ namespace
 			duration += stage.iDurationMs;
 		return static_cast<std::uint32_t>((std::min)(duration,
 			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)())));
+	}
+
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* Find_Logic(
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const std::string_view logicId)
+	{
+		const auto found = std::find_if(document.Logics.begin(), document.Logics.end(),
+			[logicId](const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
+			{
+				return logic.strLogicId == logicId;
+			});
+		return found == document.Logics.end() ? nullptr : &*found;
+	}
+
+	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Find_LogicBox(
+		KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		const std::string_view occurrenceId)
+	{
+		const auto found = std::find_if(
+			pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+			[occurrenceId](const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box)
+			{
+				return box.strOccurrenceId == occurrenceId;
+			});
+		return found == pattern.LogicOccurrences.end() ? nullptr : &*found;
+	}
+
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Find_LogicBox(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		const std::string_view occurrenceId)
+	{
+		const auto found = std::find_if(
+			pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+			[occurrenceId](const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box)
+			{
+				return box.strOccurrenceId == occurrenceId;
+			});
+		return found == pattern.LogicOccurrences.end() ? nullptr : &*found;
+	}
+
+	std::size_t Count_LogicReferences(
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const std::string_view logicId,
+		bool_t* const outUnresolved = nullptr)
+	{
+		std::size_t count = 0u;
+		bool_t unresolved = false;
+		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
+		{
+			if (pattern.strLoadError.empty())
+			{
+				for (const auto& box : pattern.LogicOccurrences)
+				{
+					if (box.strLogicId == logicId)
+						++count;
+					if (box.strOnSuccessLogicId == logicId)
+						++count;
+					if (box.strOnTimeoutLogicId == logicId)
+						++count;
+				}
+				continue;
+			}
+			// Quarantined Patterns keep their references in the preserved source.
+			DATA_JSON_VALUE preserved;
+			std::string error;
+			if (!CDataJson::Parse(pattern.strPreservedJson, preserved, error) ||
+				!preserved.Is_Object())
+			{
+				unresolved = true;
+				continue;
+			}
+			const auto* boxes = preserved.Find("logicOccurrences");
+			if (nullptr == boxes)
+				continue;
+			if (!boxes->Is_Array())
+			{
+				unresolved = true;
+				continue;
+			}
+			for (const auto& box : boxes->Get_Array())
+			{
+				const auto* reference = box.Find("logicId");
+				if (nullptr == reference || !reference->Is_String())
+					unresolved = true;
+				else if (reference->Get_String() == logicId)
+					++count;
+				// Outcome slots are optional; a present non-text slot is unreadable.
+				for (const char_t* const outcomeKey : { "onSuccessLogicId", "onTimeoutLogicId" })
+				{
+					const auto* outcome = box.Find(outcomeKey);
+					if (nullptr == outcome)
+						continue;
+					if (!outcome->Is_String())
+						unresolved = true;
+					else if (outcome->Get_String() == logicId)
+						++count;
+				}
+			}
+		}
+		if (nullptr != outUnresolved)
+			*outUnresolved = unresolved;
+		return count;
+	}
+
+	// Latest Logic box end; the Pattern lifetime may never shrink below it.
+	std::uint32_t Pattern_LogicEndMs(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+	{
+		std::uint64_t end = 0u;
+		for (const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box : pattern.LogicOccurrences)
+			end = (std::max)(end, static_cast<std::uint64_t>(box.iStartMs) + box.iDurationMs);
+		return static_cast<std::uint32_t>((std::min)(end,
+			static_cast<std::uint64_t>(MAX_EDITOR_TIME_MS)));
+	}
+
+	const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION* Find_Summon(
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const std::string_view summonId)
+	{
+		const auto found = std::find_if(document.Summons.begin(), document.Summons.end(),
+			[summonId](const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon)
+			{
+				return summon.strSummonId == summonId;
+			});
+		return found == document.Summons.end() ? nullptr : &*found;
+	}
+
+	KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE* Find_SummonBox(
+		KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		const std::string_view occurrenceId)
+	{
+		const auto found = std::find_if(
+			pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
+			[occurrenceId](const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box)
+			{
+				return box.strOccurrenceId == occurrenceId;
+			});
+		return found == pattern.SummonOccurrences.end() ? nullptr : &*found;
+	}
+
+	const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE* Find_SummonBox(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		const std::string_view occurrenceId)
+	{
+		const auto found = std::find_if(
+			pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
+			[occurrenceId](const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box)
+			{
+				return box.strOccurrenceId == occurrenceId;
+			});
+		return found == pattern.SummonOccurrences.end() ? nullptr : &*found;
+	}
+
+	// Same reference rules as Logic: typed boxes plus quarantined Patterns' preserved source.
+	std::size_t Count_SummonReferences(
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const std::string_view summonId,
+		bool_t* const outUnresolved = nullptr)
+	{
+		std::size_t count = 0u;
+		bool_t unresolved = false;
+		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
+		{
+			if (pattern.strLoadError.empty())
+			{
+				for (const auto& box : pattern.SummonOccurrences)
+					if (box.strSummonId == summonId)
+						++count;
+				continue;
+			}
+			DATA_JSON_VALUE preserved;
+			std::string error;
+			if (!CDataJson::Parse(pattern.strPreservedJson, preserved, error) ||
+				!preserved.Is_Object())
+			{
+				unresolved = true;
+				continue;
+			}
+			const auto* boxes = preserved.Find("summonOccurrences");
+			if (nullptr == boxes)
+				continue;
+			if (!boxes->Is_Array())
+			{
+				unresolved = true;
+				continue;
+			}
+			for (const auto& box : boxes->Get_Array())
+			{
+				const auto* reference = box.Find("summonId");
+				if (nullptr == reference || !reference->Is_String())
+					unresolved = true;
+				else if (reference->Get_String() == summonId)
+					++count;
+			}
+		}
+		if (nullptr != outUnresolved)
+			*outUnresolved = unresolved;
+		return count;
+	}
+
+	std::uint32_t Pattern_SummonEndMs(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+	{
+		std::uint64_t end = 0u;
+		for (const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box : pattern.SummonOccurrences)
+			end = (std::max)(end, static_cast<std::uint64_t>(box.iStartMs) + box.iDurationMs);
+		return static_cast<std::uint32_t>((std::min)(end,
+			static_cast<std::uint64_t>(MAX_EDITOR_TIME_MS)));
 	}
 
 	bool_t Copy_Text(char_t* const destination, const std::size_t capacity,
@@ -1918,6 +2133,10 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_AnimationPlayback(
 
 void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()
 {
+	if (!m_strSelectedLogicId.empty() && nullptr == Find_Logic(m_Draft, m_strSelectedLogicId))
+		m_strSelectedLogicId.clear();
+	if (!m_strSelectedSummonId.empty() && nullptr == Find_Summon(m_Draft, m_strSelectedSummonId))
+		m_strSelectedSummonId.clear();
 	const KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern =
 		Find_Pattern(m_Draft, m_strSelectedPatternId);
 	if (nullptr == pattern)
@@ -1926,7 +2145,19 @@ void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()
 		m_strSelectedPatternId.clear();
 		m_strSelectedStageId.clear();
 		m_strSelectedOccurrenceId.clear();
+		m_strSelectedLogicOccurrenceId.clear();
+		m_strSelectedSummonOccurrenceId.clear();
 		return;
+	}
+	if (!m_strSelectedLogicOccurrenceId.empty() &&
+		nullptr == Find_LogicBox(*pattern, m_strSelectedLogicOccurrenceId))
+	{
+		m_strSelectedLogicOccurrenceId.clear();
+	}
+	if (!m_strSelectedSummonOccurrenceId.empty() &&
+		nullptr == Find_SummonBox(*pattern, m_strSelectedSummonOccurrenceId))
+	{
+		m_strSelectedSummonOccurrenceId.clear();
 	}
 	m_strSelectedActorProfileId = pattern->strActorProfileId;
 	if (m_strTimelineSelectionPatternId != m_strSelectedPatternId)
@@ -1967,12 +2198,30 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 	m_iOccurrencePlayMs = 1;
 	m_fOccurrencePlayRate = 1.f;
 	m_iOccurrenceEndPolicy = 0;
+	m_iLogicBoxStartMs = 0;
+	m_iLogicBoxDurationMs = 1000;
+	m_iSummonBoxStartMs = 0;
+	m_iSummonBoxDurationMs = 1000;
 	const KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern =
 		Find_Pattern(m_Draft, m_strSelectedPatternId);
 	if (nullptr == pattern)
 		return;
 	(void)Copy_Text(m_PatternName, std::size(m_PatternName), pattern->strDisplayName);
 	m_iPatternDurationMs = static_cast<int32_t>(Pattern_DurationMs(*pattern));
+	if (const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* const logicBox =
+			Find_LogicBox(*pattern, m_strSelectedLogicOccurrenceId);
+		nullptr != logicBox)
+	{
+		m_iLogicBoxStartMs = static_cast<int32_t>(logicBox->iStartMs);
+		m_iLogicBoxDurationMs = static_cast<int32_t>(logicBox->iDurationMs);
+	}
+	if (const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE* const summonBox =
+			Find_SummonBox(*pattern, m_strSelectedSummonOccurrenceId);
+		nullptr != summonBox)
+	{
+		m_iSummonBoxStartMs = static_cast<int32_t>(summonBox->iStartMs);
+		m_iSummonBoxDurationMs = static_cast<int32_t>(summonBox->iDurationMs);
+	}
 	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* const occurrence =
 		Find_Occurrence(*pattern, m_strSelectedOccurrenceId);
 	if (nullptr == occurrence)
@@ -2146,6 +2395,33 @@ void Client::CKoukuSaydonActionWorkbench::Render_ResourcesWindow()
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_ResourceTree()
+{
+	/* One tab per family. Only Animation and Logic own an authoring flow today;
+	   the remaining tabs name their family without pretending to work. */
+	if (!ImGui::BeginTabBar("##KoukuResourceCategories"))
+		return;
+	for (int32_t index = 0; index < static_cast<int32_t>(RESOURCE_CATEGORIES.size()); ++index)
+	{
+		if (!ImGui::BeginTabItem(RESOURCE_CATEGORIES[index]))
+			continue;
+		m_iSelectedResourceCategory = index;
+		const std::string_view category = RESOURCE_CATEGORIES[index];
+		if ("Animation" == category)
+			Render_AnimationResources();
+		else if ("Logic" == category)
+			Render_LogicResources();
+		else if ("Summon" == category)
+			Render_SummonResources();
+		else
+			ImGui::TextDisabled(
+				"%s rows are not authorable yet. Their save and playback consumer lands in a later slice.",
+				RESOURCE_CATEGORIES[index]);
+		ImGui::EndTabItem();
+	}
+	ImGui::EndTabBar();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_AnimationResources()
 {
 	ImGui::SeparatorText("Animation Resources");
 	if (ImGui::Button("Refresh Animation Resources")) m_bResourceRefreshRequested = true;
@@ -2530,11 +2806,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PatternDuration(
 	for (const auto& box : finalStage.AnimationOccurrences)
 		occupiedEndMs = (std::max)(occupiedEndMs,
 			static_cast<std::uint64_t>(box.iStartOffsetMs) + box.iPlayMs);
-	const auto minimumMs = earlierMs + occupiedEndMs;
+	const auto minimumMs = (std::max)(earlierMs + occupiedEndMs,
+		(std::max)(static_cast<std::uint64_t>(Pattern_LogicEndMs(*pattern)),
+			static_cast<std::uint64_t>(Pattern_SummonEndMs(*pattern))));
 	if (durationMs < minimumMs || durationMs > MAX_EDITOR_TIME_MS)
 	{
 		outStatus = m_strStatus = "Full lifetime must be " + std::to_string(minimumMs) +
-			"..600000 ms. Earlier Stage clocks and existing animation boxes are preserved.";
+			"..600000 ms. Earlier Stage clocks, existing animation boxes and Logic boxes are preserved.";
 		return false;
 	}
 	if (durationMs == Pattern_DurationMs(*pattern))
@@ -2730,6 +3008,8 @@ void Client::CKoukuSaydonActionWorkbench::Select_TimelineBox(
 	else if (found == selected.end()) selected.push_back(id);
 	m_strSelectedStageId = stageId;
 	m_strSelectedOccurrenceId = occurrenceId;
+	m_strSelectedLogicOccurrenceId.clear();
+	m_strSelectedSummonOccurrenceId.clear();
 	m_strTimelineSelectionPatternId = m_strSelectedPatternId;
 	Synchronize_EditorFields();
 }
@@ -2782,10 +3062,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	if (ImGui::SliderFloat("Zoom##KoukuSequencer", &m_fPixelsPerSecond, 1.f, 500.f, "%.1f px/s"))
 		m_bFitRequested = false;
 	ImGui::SameLine();
-	ImGui::BeginDisabled(publishing || !patternReady || pattern->Stages.empty());
+	const bool_t durationEditable = !publishing && patternReady && !pattern->Stages.empty();
+	ImGui::BeginDisabled(!durationEditable);
 	ImGui::SetNextItemWidth(145.f);
-	bool_t durationRequested = ImGui::InputInt("Full lifetime ms##KoukuSequencer",
-		&m_iPatternDurationMs, 100, 1000, ImGuiInputTextFlags_EnterReturnsTrue);
+	ImGui::InputInt("Full lifetime ms##KoukuSequencer",
+		&m_iPatternDurationMs, 100, 1000);
+	bool_t durationRequested = durationEditable &&
+		(ImGui::IsItemActive() || ImGui::IsItemDeactivated()) &&
+		(ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
+		 ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false));
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Sum of Stage clocks. Enter or Apply changes the final Stage only; existing animation windows are preserved.");
 	ImGui::SameLine();
@@ -2797,21 +3082,34 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::TextUnformatted("Selected Box");
 	ImGui::SameLine();
 	const bool_t hasSelection = !m_TimelineSelectedStageIds.empty() ||
-		!m_TimelineSelectedOccurrenceIds.empty();
+		!m_TimelineSelectedOccurrenceIds.empty() ||
+		!m_strSelectedLogicOccurrenceId.empty() ||
+		!m_strSelectedSummonOccurrenceId.empty();
 	ImGui::BeginDisabled(publishing || !patternReady || !hasSelection);
 	bool_t deleteRequested = ImGui::Button("Delete##KoukuSequencerSelection");
 	ImGui::SameLine();
+	ImGui::BeginDisabled(m_TimelineSelectedStageIds.empty() &&
+		m_TimelineSelectedOccurrenceIds.empty());
 	const bool_t duplicateRequested = ImGui::Button("Duplicate##KoukuSequencerSelection");
 	ImGui::EndDisabled();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::TextDisabled("%zu Stages + %zu animation boxes",
-		m_TimelineSelectedStageIds.size(), m_TimelineSelectedOccurrenceIds.size());
+	ImGui::TextDisabled("%zu Stages + %zu animation boxes%s",
+		m_TimelineSelectedStageIds.size(), m_TimelineSelectedOccurrenceIds.size(),
+		m_strSelectedLogicOccurrenceId.empty() ?
+			(m_strSelectedSummonOccurrenceId.empty() ? "" : " + 1 summon box") : " + 1 logic box");
 	ImGui::TextDisabled("Click: select | Ctrl+click: toggle | drag empty space: box select | Ctrl+drag: add | Delete: remove selection");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	if (saveRequested || deleteRequested || duplicateRequested || durationRequested)
 	{
 		std::string status;
-		if (deleteRequested)
+		if (deleteRequested && m_TimelineSelectedStageIds.empty() &&
+			m_TimelineSelectedOccurrenceIds.empty() && !m_strSelectedLogicOccurrenceId.empty())
+			(void)Delete_LogicBox(patternId, m_strSelectedLogicOccurrenceId, status);
+		else if (deleteRequested && m_TimelineSelectedStageIds.empty() &&
+			m_TimelineSelectedOccurrenceIds.empty() && !m_strSelectedSummonOccurrenceId.empty())
+			(void)Delete_SummonBox(patternId, m_strSelectedSummonOccurrenceId, status);
+		else if (deleteRequested)
 			(void)Delete_TimelineSelection(patternId,
 				m_TimelineSelectedStageIds, m_TimelineSelectedOccurrenceIds, status);
 		else if (duplicateRequested)
@@ -2874,7 +3172,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		occurrenceRows.emplace(interval.occurrence->strOccurrenceId, row);
 	}
 	const std::size_t rowCount = (std::max)(std::size_t{ 1u }, rowEnds.size());
-	const f32_t height = rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(1u + rowCount);
+	// Stages lane + animation rows + one Logic lane + one Summon lane.
+	const f32_t height = rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(3u + rowCount);
 	if (!ImGui::BeginChild("##KoukuTimeline", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
 		ImGuiWindowFlags_HorizontalScrollbar))
 	{
@@ -2931,8 +3230,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			IM_COL32(180, 180, 190, 255), label.c_str());
 	}
 
-	std::string editStageId, editOccurrenceId;
+	const f32_t logicLaneY = origin.y + rulerHeight +
+		TIMELINE_LANE_HEIGHT * static_cast<f32_t>(1u + rowCount);
+	draw->AddText(ImVec2(origin.x + 4.f, logicLaneY + 4.f),
+		IM_COL32(236, 170, 110, 255), "Logic");
+
+	std::string editStageId, editOccurrenceId, editLogicBoxId;
 	std::uint32_t newOffset = 0u, newSourceStart = 0u, newPlayMs = 0u, newStageDuration = 0u;
+	std::uint32_t newLogicStartMs = 0u, newLogicDurationMs = 0u;
+	bool_t deleteLogicRequested = false;
+	const f32_t summonLaneY = logicLaneY + TIMELINE_LANE_HEIGHT;
+	draw->AddText(ImVec2(origin.x + 4.f, summonLaneY + 4.f),
+		IM_COL32(150, 220, 180, 255), "Summon");
+	std::string editSummonBoxId;
+	std::uint32_t newSummonStartMs = 0u, newSummonDurationMs = 0u;
+	bool_t deleteSummonRequested = false;
 	std::uint32_t stageStartMs = 0u;
 	for (const auto& stage : pattern->Stages)
 	{
@@ -3046,6 +3358,138 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		}
 		stageStartMs += stage.iDurationMs;
 	}
+	/* Logic boxes live on one pattern-relative lane so a window can span the
+	   repeated clips it judges. Marquee selection ignores them on purpose. */
+	for (const auto& box : pattern->LogicOccurrences)
+	{
+		const f32_t x = origin.x + labelWidth + box.iStartMs * scale;
+		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
+		ImGui::PushID(box.strOccurrenceId.c_str());
+		ImGui::SetCursorScreenPos(ImVec2(x, logicLaneY));
+		ImGui::InvisibleButton("##LogicBox", ImVec2(width, 22.f));
+		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
+		{
+			m_iDragOriginOffsetMs = box.iStartMs;
+			m_iDragOriginPlayMs = box.iDurationMs;
+			const auto gesture = CompositionTimeline::HitBoxGesture(
+				ImGui::GetIO().MousePos.x, x, x + width, 6.f, true, true);
+			m_iTimelineDragMode = gesture == CompositionTimeline::BoxGesture::TRIM_START ? 1 :
+				(gesture == CompositionTimeline::BoxGesture::TRIM_END ? 2 : 0);
+			m_TimelineSelectedStageIds.clear();
+			m_TimelineSelectedOccurrenceIds.clear();
+			m_strSelectedStageId.clear();
+			m_strSelectedOccurrenceId.clear();
+			m_strSelectedLogicOccurrenceId = box.strOccurrenceId;
+			m_strSelectedSummonOccurrenceId.clear();
+			m_strTimelineSelectionPatternId = patternId;
+			Synchronize_EditorFields();
+		}
+		f32_t shownX = x, shownWidth = width;
+		if (canInteract && !m_bTimelineMarqueeActive && m_iTimelineDragMode >= 0 &&
+			(ImGui::IsItemActive() || ImGui::IsItemDeactivated()))
+		{
+			int64_t start = m_iDragOriginOffsetMs, length = m_iDragOriginPlayMs;
+			const auto delta = static_cast<int64_t>(std::llround(ImGui::GetMouseDragDelta().x / scale));
+			const auto lifetime = static_cast<int64_t>(durationMs);
+			if (1 == m_iTimelineDragMode)
+			{
+				const auto trim = std::clamp(delta, -start, length - 1);
+				start += trim;
+				length -= trim;
+			}
+			else if (2 == m_iTimelineDragMode)
+				length = std::clamp(length + delta, int64_t{1}, (std::max)(int64_t{1}, lifetime - start));
+			else
+				start = std::clamp(start + delta, int64_t{0}, (std::max)(int64_t{0}, lifetime - length));
+			shownX = origin.x + labelWidth + static_cast<f32_t>(start) * scale;
+			shownWidth = (std::max)(8.f, static_cast<f32_t>(length) * scale);
+			if (ImGui::IsItemDeactivated() &&
+				(start != box.iStartMs || length != box.iDurationMs))
+			{
+				editLogicBoxId = box.strOccurrenceId;
+				newLogicStartMs = static_cast<std::uint32_t>(start);
+				newLogicDurationMs = static_cast<std::uint32_t>(length);
+			}
+		}
+		const auto* const logic = Find_Logic(m_Draft, box.strLogicId);
+		std::string label = nullptr == logic ? box.strLogicId :
+			logic->strDisplayName + " [" + logic->strLogicType + "]";
+		if (const auto* const successLogic = Find_Logic(m_Draft, box.strOnSuccessLogicId);
+			nullptr != successLogic)
+			label += "  ok>" + successLogic->strDisplayName;
+		if (const auto* const timeoutLogic = Find_Logic(m_Draft, box.strOnTimeoutLogicId);
+			nullptr != timeoutLogic)
+			label += "  fail>" + timeoutLogic->strDisplayName;
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s\n%s | start %u ms | lifetime %u ms",
+				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
+		CompositionTimeline::DrawBox(draw, ImVec2(shownX, logicLaneY),
+			ImVec2(shownX + shownWidth, logicLaneY + 22.f), TIMELINE_LOGIC_COLOR,
+			m_strSelectedLogicOccurrenceId == box.strOccurrenceId, label.c_str());
+		ImGui::PopID();
+	}
+	/* Summon boxes: spawn at the left edge, despawn at the right edge. */
+	for (const auto& box : pattern->SummonOccurrences)
+	{
+		const f32_t x = origin.x + labelWidth + box.iStartMs * scale;
+		const f32_t width = (std::max)(8.f, box.iDurationMs * scale);
+		ImGui::PushID(box.strOccurrenceId.c_str());
+		ImGui::SetCursorScreenPos(ImVec2(x, summonLaneY));
+		ImGui::InvisibleButton("##SummonBox", ImVec2(width, 22.f));
+		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
+		{
+			m_iDragOriginOffsetMs = box.iStartMs;
+			m_iDragOriginPlayMs = box.iDurationMs;
+			const auto gesture = CompositionTimeline::HitBoxGesture(
+				ImGui::GetIO().MousePos.x, x, x + width, 6.f, true, true);
+			m_iTimelineDragMode = gesture == CompositionTimeline::BoxGesture::TRIM_START ? 1 :
+				(gesture == CompositionTimeline::BoxGesture::TRIM_END ? 2 : 0);
+			m_TimelineSelectedStageIds.clear();
+			m_TimelineSelectedOccurrenceIds.clear();
+			m_strSelectedStageId.clear();
+			m_strSelectedOccurrenceId.clear();
+			m_strSelectedLogicOccurrenceId.clear();
+			m_strSelectedSummonOccurrenceId = box.strOccurrenceId;
+			m_strTimelineSelectionPatternId = patternId;
+			Synchronize_EditorFields();
+		}
+		f32_t shownX = x, shownWidth = width;
+		if (canInteract && !m_bTimelineMarqueeActive && m_iTimelineDragMode >= 0 &&
+			(ImGui::IsItemActive() || ImGui::IsItemDeactivated()))
+		{
+			int64_t start = m_iDragOriginOffsetMs, length = m_iDragOriginPlayMs;
+			const auto delta = static_cast<int64_t>(std::llround(ImGui::GetMouseDragDelta().x / scale));
+			const auto lifetime = static_cast<int64_t>(durationMs);
+			if (1 == m_iTimelineDragMode)
+			{
+				const auto trim = std::clamp(delta, -start, length - 1);
+				start += trim;
+				length -= trim;
+			}
+			else if (2 == m_iTimelineDragMode)
+				length = std::clamp(length + delta, int64_t{1}, (std::max)(int64_t{1}, lifetime - start));
+			else
+				start = std::clamp(start + delta, int64_t{0}, (std::max)(int64_t{0}, lifetime - length));
+			shownX = origin.x + labelWidth + static_cast<f32_t>(start) * scale;
+			shownWidth = (std::max)(8.f, static_cast<f32_t>(length) * scale);
+			if (ImGui::IsItemDeactivated() &&
+				(start != box.iStartMs || length != box.iDurationMs))
+			{
+				editSummonBoxId = box.strOccurrenceId;
+				newSummonStartMs = static_cast<std::uint32_t>(start);
+				newSummonDurationMs = static_cast<std::uint32_t>(length);
+			}
+		}
+		const auto* const summon = Find_Summon(m_Draft, box.strSummonId);
+		const std::string label = nullptr == summon ? box.strSummonId : summon->strDisplayName;
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s\n%s | spawn %u ms | lifetime %u ms",
+				box.strOccurrenceId.c_str(), label.c_str(), box.iStartMs, box.iDurationMs);
+		CompositionTimeline::DrawBox(draw, ImVec2(shownX, summonLaneY),
+			ImVec2(shownX + shownWidth, summonLaneY + 22.f), TIMELINE_SUMMON_COLOR,
+			m_strSelectedSummonOccurrenceId == box.strOccurrenceId, label.c_str());
+		ImGui::PopID();
+	}
 	if (!canInteract)
 	{
 		m_bTimelineMarqueeActive = false;
@@ -3065,6 +3509,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			m_TimelineSelectedOccurrenceIds.clear();
 			m_strSelectedStageId.clear();
 			m_strSelectedOccurrenceId.clear();
+			m_strSelectedLogicOccurrenceId.clear();
+			m_strSelectedSummonOccurrenceId.clear();
 			Synchronize_EditorFields();
 		}
 		m_bTimelineMarqueeActive = true;
@@ -3107,9 +3553,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	}
 	if (canInteract && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
 		!m_bTimelineMarqueeActive && !ImGui::IsAnyItemActive() &&
-		(!m_TimelineSelectedStageIds.empty() || !m_TimelineSelectedOccurrenceIds.empty()) &&
 		ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-		deleteRequested = true;
+	{
+		if (!m_TimelineSelectedStageIds.empty() || !m_TimelineSelectedOccurrenceIds.empty())
+			deleteRequested = true;
+		else if (!m_strSelectedLogicOccurrenceId.empty())
+			deleteLogicRequested = true;
+		else if (!m_strSelectedSummonOccurrenceId.empty())
+			deleteSummonRequested = true;
+	}
 	ImGui::SetCursorScreenPos(origin);
 	ImGui::Dummy(ImVec2(timelineWidth, height + 48.f));
 	ImGui::EndChild();
@@ -3120,6 +3572,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		(void)Delete_TimelineSelection(patternId,
 			m_TimelineSelectedStageIds, m_TimelineSelectedOccurrenceIds, status);
 	}
+	else if (deleteLogicRequested)
+		(void)Delete_LogicBox(patternId, m_strSelectedLogicOccurrenceId, status);
+	else if (!editLogicBoxId.empty())
+		(void)Set_LogicBoxWindow(patternId, editLogicBoxId, newLogicStartMs, newLogicDurationMs, status);
+	else if (deleteSummonRequested)
+		(void)Delete_SummonBox(patternId, m_strSelectedSummonOccurrenceId, status);
+	else if (!editSummonBoxId.empty())
+		(void)Set_SummonBoxWindow(patternId, editSummonBoxId, newSummonStartMs, newSummonDurationMs, status);
 	else if (!editStageId.empty())
 		(void)Set_StageDuration(m_strSelectedPatternId, editStageId, newStageDuration, status);
 	else if (!editOccurrenceId.empty())
@@ -3134,6 +3594,782 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		(void)Normalize_EndPolicyForWindow(*found.pOccurrence, policyNote);
 		Mark_Draft(candidate, *editedPattern);
 		(void)Commit_Candidate(std::move(candidate), "Updated animation box timing." + policyNote, status);
+	}
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Create_Logic(
+	const std::string_view displayName,
+	const std::string_view logicType,
+	std::string& outLogicId,
+	std::string& outStatus)
+{
+	if (!m_bHasDraft || m_Draft.iNextLogicOrdinal >= 1000000u)
+	{
+		outStatus = m_strStatus = "Logic creation requires a loaded draft and an available ordinal.";
+		return false;
+	}
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION logic;
+	logic.strLogicId = "kakulsaydon.g1.logic." + std::to_string(candidate.iNextLogicOrdinal++);
+	logic.strDisplayName = std::string(displayName);
+	logic.strLogicType = std::string(logicType);
+	const std::string logicId = logic.strLogicId;
+	candidate.Logics.push_back(std::move(logic));
+	if (!Commit_Candidate(std::move(candidate),
+			"Created Logic " + logicId + ". Select it and press Append Logic at Cursor.", outStatus))
+	{
+		return false;
+	}
+	m_strSelectedLogicId = logicId;
+	outLogicId = logicId;
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Delete_Logic(
+	const std::string_view logicId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	const auto found = std::find_if(candidate.Logics.begin(), candidate.Logics.end(),
+		[logicId](const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
+		{
+			return logic.strLogicId == logicId;
+		});
+	if (found == candidate.Logics.end())
+	{
+		outStatus = m_strStatus = "Logic delete target is absent.";
+		return false;
+	}
+	bool_t unresolvedReferences = false;
+	const std::size_t references = Count_LogicReferences(candidate, logicId, &unresolvedReferences);
+	if (unresolvedReferences)
+	{
+		outStatus = m_strStatus = "Repair the invalid Pattern Logic references before deleting a Logic.";
+		return false;
+	}
+	if (0u != references)
+	{
+		outStatus = m_strStatus = "Delete its " + std::to_string(references) +
+			" Logic box(es) first; a referenced Logic is preserved.";
+		return false;
+	}
+	candidate.Logics.erase(found);
+	if (!Commit_Candidate(std::move(candidate), "Deleted Logic.", outStatus))
+		return false;
+	if (m_strSelectedLogicId == logicId)
+		m_strSelectedLogicId.clear();
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Append_LogicBox(
+	const std::string_view patternId,
+	const std::string_view logicId,
+	const std::uint32_t startMs,
+	const std::uint32_t durationMs,
+	std::string& outOccurrenceId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	if (nullptr == pattern || !pattern->strLoadError.empty())
+	{
+		outStatus = m_strStatus = "Append Logic requires an editable Pattern selected in Patterns.";
+		return false;
+	}
+	if (nullptr == Find_Logic(candidate, logicId))
+	{
+		outStatus = m_strStatus = "Append Logic target definition is absent.";
+		return false;
+	}
+	if (pattern->iNextLogicOccurrenceOrdinal >= 1000000u)
+	{
+		outStatus = m_strStatus = "Logic box stable ID ordinals are exhausted.";
+		return false;
+	}
+	const std::uint32_t lifetimeMs = Pattern_DurationMs(*pattern);
+	if (0u == lifetimeMs)
+	{
+		outStatus = m_strStatus =
+			"Append Logic requires a Pattern lifetime. Append an animation action first.";
+		return false;
+	}
+	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE box;
+	box.strOccurrenceId = pattern->strPatternId + ".logic." +
+		std::to_string(pattern->iNextLogicOccurrenceOrdinal++);
+	box.strLogicId = std::string(logicId);
+	box.iStartMs = (std::min)(startMs, lifetimeMs - 1u);
+	box.iDurationMs = std::clamp(durationMs, 1u, lifetimeMs - box.iStartMs);
+	const std::string occurrenceId = box.strOccurrenceId;
+	const bool_t wasProduct = "PRODUCT" == pattern->strAuthoringStatus;
+	pattern->LogicOccurrences.push_back(std::move(box));
+	Mark_Draft(candidate, *pattern);
+	if (!Commit_Candidate(std::move(candidate),
+			wasProduct ?
+				"Appended Logic box and returned the Pattern to DRAFT; Logic has no Server consumer yet." :
+				"Appended Logic box at the cursor. Drag its edges on the Logic lane or edit Lifetime in Box Detail.",
+			outStatus))
+	{
+		return false;
+	}
+	m_strSelectedPatternId = std::string(patternId);
+	m_TimelineSelectedStageIds.clear();
+	m_TimelineSelectedOccurrenceIds.clear();
+	m_strSelectedStageId.clear();
+	m_strSelectedOccurrenceId.clear();
+	m_strSelectedLogicOccurrenceId = occurrenceId;
+	m_strSelectedSummonOccurrenceId.clear();
+	m_strTimelineSelectionPatternId = m_strSelectedPatternId;
+	Synchronize_EditorFields();
+	outOccurrenceId = occurrenceId;
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxWindow(
+	const std::string_view patternId,
+	const std::string_view occurrenceId,
+	const std::uint32_t startMs,
+	const std::uint32_t durationMs,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* const box =
+		nullptr == pattern ? nullptr : Find_LogicBox(*pattern, occurrenceId);
+	if (nullptr == box)
+	{
+		outStatus = m_strStatus = "Logic box window target is absent.";
+		return false;
+	}
+	const std::uint64_t lifetimeMs = Pattern_DurationMs(*pattern);
+	const std::uint64_t endMs = static_cast<std::uint64_t>(startMs) + durationMs;
+	if (0u == durationMs || endMs > lifetimeMs)
+	{
+		outStatus = m_strStatus = "Logic box window must stay inside the Pattern lifetime of " +
+			std::to_string(lifetimeMs) + " ms.";
+		return false;
+	}
+	if (box->iStartMs == startMs && box->iDurationMs == durationMs)
+	{
+		outStatus = m_strStatus = "Logic box window is unchanged.";
+		return true;
+	}
+	box->iStartMs = startMs;
+	box->iDurationMs = durationMs;
+	return Commit_Candidate(std::move(candidate), "Updated Logic box window.", outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Delete_LogicBox(
+	const std::string_view patternId,
+	const std::string_view occurrenceId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	if (nullptr == pattern)
+	{
+		outStatus = m_strStatus = "Logic box delete Pattern is absent.";
+		return false;
+	}
+	const auto found = std::find_if(
+		pattern->LogicOccurrences.begin(), pattern->LogicOccurrences.end(),
+		[occurrenceId](const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box)
+		{
+			return box.strOccurrenceId == occurrenceId;
+		});
+	if (found == pattern->LogicOccurrences.end())
+	{
+		outStatus = m_strStatus = "Logic box delete target is absent.";
+		return false;
+	}
+	pattern->LogicOccurrences.erase(found);
+	if (!Commit_Candidate(std::move(candidate), "Deleted Logic box.", outStatus))
+		return false;
+	if (m_strSelectedLogicOccurrenceId == occurrenceId)
+	{
+		m_strSelectedLogicOccurrenceId.clear();
+		Synchronize_EditorFields();
+	}
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxOutcome(
+	const std::string_view patternId,
+	const std::string_view occurrenceId,
+	const bool_t success,
+	const std::string_view resultLogicId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* const box =
+		nullptr == pattern ? nullptr : Find_LogicBox(*pattern, occurrenceId);
+	if (nullptr == box)
+	{
+		outStatus = m_strStatus = "Logic box outcome target is absent.";
+		return false;
+	}
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const owner = Find_Logic(candidate, box->strLogicId);
+	if (nullptr == owner || "DURATION" != owner->strLogicType)
+	{
+		outStatus = m_strStatus = "Only a DURATION Logic box owns success and timeout outcomes.";
+		return false;
+	}
+	if (!resultLogicId.empty())
+	{
+		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const result = Find_Logic(candidate, resultLogicId);
+		if (nullptr == result || "RESULT" != result->strLogicType)
+		{
+			outStatus = m_strStatus = "An outcome must name an existing RESULT Logic.";
+			return false;
+		}
+	}
+	std::string& slot = success ? box->strOnSuccessLogicId : box->strOnTimeoutLogicId;
+	if (slot == resultLogicId)
+	{
+		outStatus = m_strStatus = "Logic box outcome is unchanged.";
+		return true;
+	}
+	slot = std::string(resultLogicId);
+	return Commit_Candidate(std::move(candidate),
+		success ? "Wired the success outcome. Press Save to keep it." :
+			"Wired the timeout outcome. Press Save to keep it.",
+		outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Create_Summon(
+	const std::string_view displayName,
+	std::string& outSummonId,
+	std::string& outStatus)
+{
+	if (!m_bHasDraft || m_Draft.iNextSummonOrdinal >= 1000000u)
+	{
+		outStatus = m_strStatus = "Summon creation requires a loaded draft and an available ordinal.";
+		return false;
+	}
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION summon;
+	summon.strSummonId = "kakulsaydon.g1.summon." + std::to_string(candidate.iNextSummonOrdinal++);
+	summon.strDisplayName = std::string(displayName);
+	const std::string summonId = summon.strSummonId;
+	candidate.Summons.push_back(std::move(summon));
+	if (!Commit_Candidate(std::move(candidate),
+			"Created Summon " + summonId + ". Select it and press Append Summon at Cursor.", outStatus))
+	{
+		return false;
+	}
+	m_strSelectedSummonId = summonId;
+	outSummonId = summonId;
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Delete_Summon(
+	const std::string_view summonId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	const auto found = std::find_if(candidate.Summons.begin(), candidate.Summons.end(),
+		[summonId](const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon)
+		{
+			return summon.strSummonId == summonId;
+		});
+	if (found == candidate.Summons.end())
+	{
+		outStatus = m_strStatus = "Summon delete target is absent.";
+		return false;
+	}
+	bool_t unresolvedReferences = false;
+	const std::size_t references = Count_SummonReferences(candidate, summonId, &unresolvedReferences);
+	if (unresolvedReferences)
+	{
+		outStatus = m_strStatus = "Repair the invalid Pattern Summon references before deleting a Summon.";
+		return false;
+	}
+	if (0u != references)
+	{
+		outStatus = m_strStatus = "Delete its " + std::to_string(references) +
+			" Summon box(es) first; a referenced Summon is preserved.";
+		return false;
+	}
+	candidate.Summons.erase(found);
+	if (!Commit_Candidate(std::move(candidate), "Deleted Summon.", outStatus))
+		return false;
+	if (m_strSelectedSummonId == summonId)
+		m_strSelectedSummonId.clear();
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Append_SummonBox(
+	const std::string_view patternId,
+	const std::string_view summonId,
+	const std::uint32_t startMs,
+	const std::uint32_t durationMs,
+	std::string& outOccurrenceId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	if (nullptr == pattern || !pattern->strLoadError.empty())
+	{
+		outStatus = m_strStatus = "Append Summon requires an editable Pattern selected in Patterns.";
+		return false;
+	}
+	if (nullptr == Find_Summon(candidate, summonId))
+	{
+		outStatus = m_strStatus = "Append Summon target definition is absent.";
+		return false;
+	}
+	if (pattern->iNextSummonOccurrenceOrdinal >= 1000000u)
+	{
+		outStatus = m_strStatus = "Summon box stable ID ordinals are exhausted.";
+		return false;
+	}
+	const std::uint32_t lifetimeMs = Pattern_DurationMs(*pattern);
+	if (0u == lifetimeMs)
+	{
+		outStatus = m_strStatus =
+			"Append Summon requires a Pattern lifetime. Append an animation action first.";
+		return false;
+	}
+	KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE box;
+	box.strOccurrenceId = pattern->strPatternId + ".summon." +
+		std::to_string(pattern->iNextSummonOccurrenceOrdinal++);
+	box.strSummonId = std::string(summonId);
+	box.iStartMs = (std::min)(startMs, lifetimeMs - 1u);
+	box.iDurationMs = std::clamp(durationMs, 1u, lifetimeMs - box.iStartMs);
+	const std::string occurrenceId = box.strOccurrenceId;
+	const bool_t wasProduct = "PRODUCT" == pattern->strAuthoringStatus;
+	pattern->SummonOccurrences.push_back(std::move(box));
+	Mark_Draft(candidate, *pattern);
+	if (!Commit_Candidate(std::move(candidate),
+			wasProduct ?
+				"Appended Summon box and returned the Pattern to DRAFT; Summon has no Server consumer yet." :
+				"Appended Summon box. Its lifetime ends where the spawn despawns; drag the edges on the Summon lane.",
+			outStatus))
+	{
+		return false;
+	}
+	m_strSelectedPatternId = std::string(patternId);
+	m_TimelineSelectedStageIds.clear();
+	m_TimelineSelectedOccurrenceIds.clear();
+	m_strSelectedStageId.clear();
+	m_strSelectedOccurrenceId.clear();
+	m_strSelectedLogicOccurrenceId.clear();
+	m_strSelectedSummonOccurrenceId = occurrenceId;
+	m_strTimelineSelectionPatternId = m_strSelectedPatternId;
+	Synchronize_EditorFields();
+	outOccurrenceId = occurrenceId;
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Set_SummonBoxWindow(
+	const std::string_view patternId,
+	const std::string_view occurrenceId,
+	const std::uint32_t startMs,
+	const std::uint32_t durationMs,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE* const box =
+		nullptr == pattern ? nullptr : Find_SummonBox(*pattern, occurrenceId);
+	if (nullptr == box)
+	{
+		outStatus = m_strStatus = "Summon box window target is absent.";
+		return false;
+	}
+	const std::uint64_t lifetimeMs = Pattern_DurationMs(*pattern);
+	const std::uint64_t endMs = static_cast<std::uint64_t>(startMs) + durationMs;
+	if (0u == durationMs || endMs > lifetimeMs)
+	{
+		outStatus = m_strStatus = "Summon box window must stay inside the Pattern lifetime of " +
+			std::to_string(lifetimeMs) + " ms.";
+		return false;
+	}
+	if (box->iStartMs == startMs && box->iDurationMs == durationMs)
+	{
+		outStatus = m_strStatus = "Summon box window is unchanged.";
+		return true;
+	}
+	box->iStartMs = startMs;
+	box->iDurationMs = durationMs;
+	return Commit_Candidate(std::move(candidate), "Updated Summon box window.", outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Delete_SummonBox(
+	const std::string_view patternId,
+	const std::string_view occurrenceId,
+	std::string& outStatus)
+{
+	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
+	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
+	if (nullptr == pattern)
+	{
+		outStatus = m_strStatus = "Summon box delete Pattern is absent.";
+		return false;
+	}
+	const auto found = std::find_if(
+		pattern->SummonOccurrences.begin(), pattern->SummonOccurrences.end(),
+		[occurrenceId](const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box)
+		{
+			return box.strOccurrenceId == occurrenceId;
+		});
+	if (found == pattern->SummonOccurrences.end())
+	{
+		outStatus = m_strStatus = "Summon box delete target is absent.";
+		return false;
+	}
+	pattern->SummonOccurrences.erase(found);
+	if (!Commit_Candidate(std::move(candidate), "Deleted Summon box.", outStatus))
+		return false;
+	if (m_strSelectedSummonOccurrenceId == occurrenceId)
+	{
+		m_strSelectedSummonOccurrenceId.clear();
+		Synchronize_EditorFields();
+	}
+	return true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_SummonResources()
+{
+	ImGui::SeparatorText("Summon Catalog");
+	ImGui::TextDisabled("%zu summons | Create names what a Pattern spawns; Append places its spawn time and lifetime.",
+		m_Draft.Summons.size());
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	const KOUKU_SAYDON_COMPOSITION_PATTERN* const selectedPattern =
+		Find_Pattern(m_Draft, m_strSelectedPatternId);
+	const bool_t patternEditable = nullptr != selectedPattern &&
+		selectedPattern->strLoadError.empty();
+	const std::string targetPatternName = nullptr == selectedPattern ?
+		std::string("none") : selectedPattern->strDisplayName;
+	const std::uint32_t lifetimeMs = nullptr == selectedPattern ? 0u : Pattern_DurationMs(*selectedPattern);
+
+	if (ImGui::BeginChild("##KoukuSummonList", ImVec2(0.f, 160.f), ImGuiChildFlags_Borders))
+	{
+		if (m_Draft.Summons.empty())
+			ImGui::TextDisabled("No Summon yet. Name it and press Create Summon.");
+		for (const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon : m_Draft.Summons)
+		{
+			const std::string label = summon.strDisplayName + "##" + summon.strSummonId;
+			if (ImGui::Selectable(label.c_str(), m_strSelectedSummonId == summon.strSummonId))
+				m_strSelectedSummonId = summon.strSummonId;
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("%s | %zu box(es)", summon.strSummonId.c_str(),
+					Count_SummonReferences(m_Draft, summon.strSummonId));
+		}
+	}
+	ImGui::EndChild();
+
+	ImGui::SeparatorText("Create Summon");
+	ImGui::InputTextWithHint("##NewKoukuSummonName", "Summon display name",
+		m_NewSummonName, std::size(m_NewSummonName));
+	ImGui::SameLine();
+	ImGui::BeginDisabled('\0' == m_NewSummonName[0] || !m_bHasDraft);
+	if (ImGui::Button("Create Summon"))
+	{
+		std::string summonId;
+		std::string status;
+		if (Create_Summon(m_NewSummonName, summonId, status))
+			m_NewSummonName[0] = '\0';
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+
+	const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION* const selectedSummon =
+		Find_Summon(m_Draft, m_strSelectedSummonId);
+	if (nullptr == selectedSummon)
+		return;
+	const std::string summonId = selectedSummon->strSummonId;
+	const std::string summonName = selectedSummon->strDisplayName;
+	bool_t unresolvedReferences = false;
+	const std::size_t references = Count_SummonReferences(m_Draft, summonId, &unresolvedReferences);
+	ImGui::SeparatorText("Selected Summon");
+	ImGui::TextWrapped("%s", summonName.c_str());
+	ImGui::TextDisabled("%s | %zu box(es)", summonId.c_str(), references);
+	ImGui::Checkbox("Until Pattern end##NewKoukuSummonBox", &m_bNewSummonBoxToPatternEnd);
+	if (!m_bNewSummonBoxToPatternEnd)
+	{
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(120.f);
+		ImGui::InputInt("Box ms##NewKoukuSummonBox", &m_iNewSummonBoxDurationMs, 100, 1000);
+		m_iNewSummonBoxDurationMs = std::clamp(m_iNewSummonBoxDurationMs, 1,
+			static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	}
+	ImGui::BeginDisabled(!patternEditable);
+	if (ImGui::Button("Append Summon at Cursor"))
+	{
+		const std::uint32_t durationMs = m_bNewSummonBoxToPatternEnd ?
+			(lifetimeMs > m_iCursorMs ? lifetimeMs - m_iCursorMs : 1u) :
+			static_cast<std::uint32_t>(m_iNewSummonBoxDurationMs);
+		std::string occurrenceId;
+		std::string status;
+		(void)Append_SummonBox(m_strSelectedPatternId, summonId, m_iCursorMs,
+			durationMs, occurrenceId, status);
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(0u != references || unresolvedReferences);
+	if (ImGui::Button("Delete Summon"))
+	{
+		std::string status;
+		(void)Delete_Summon(summonId, status);
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+	if (!patternEditable)
+		ImGui::TextDisabled("Select an editable Pattern in Patterns to append this Summon.");
+	ImGui::TextDisabled("Append target: %s | cursor %u ms | lifetime %u ms",
+		targetPatternName.c_str(), m_iCursorMs, lifetimeMs);
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_SummonBoxDetails(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+{
+	const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE* const box =
+		Find_SummonBox(pattern, m_strSelectedSummonOccurrenceId);
+	if (nullptr == box)
+		return;
+	const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION* const summon =
+		Find_Summon(m_Draft, box->strSummonId);
+	const std::string patternId = pattern.strPatternId;
+	const std::string occurrenceId = box->strOccurrenceId;
+	const std::uint32_t lifetimeMs = Pattern_DurationMs(pattern);
+	ImGui::SeparatorText("Summon Box");
+	ImGui::Text("%s", occurrenceId.c_str());
+	ImGui::Text("%s", nullptr == summon ? "(missing Summon)" : summon->strDisplayName.c_str());
+	ImGui::TextDisabled("%s", box->strSummonId.c_str());
+	ImGui::InputInt("Spawn ms##KoukuSummonBox", &m_iSummonBoxStartMs, 10, 100);
+	ImGui::InputInt("Lifetime ms##KoukuSummonBox", &m_iSummonBoxDurationMs, 10, 100);
+	m_iSummonBoxStartMs = std::clamp(m_iSummonBoxStartMs, 0,
+		static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	m_iSummonBoxDurationMs = std::clamp(m_iSummonBoxDurationMs, 1,
+		static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	if (ImGui::Button("Apply Window##KoukuSummonBox"))
+	{
+		std::string status;
+		(void)Set_SummonBoxWindow(patternId, occurrenceId,
+			static_cast<std::uint32_t>(m_iSummonBoxStartMs),
+			static_cast<std::uint32_t>(m_iSummonBoxDurationMs), status);
+		return;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("To Pattern End##KoukuSummonBox"))
+	{
+		std::string status;
+		(void)Set_SummonBoxWindow(patternId, occurrenceId, box->iStartMs,
+			lifetimeMs > box->iStartMs ? lifetimeMs - box->iStartMs : 1u, status);
+		return;
+	}
+	ImGui::TextDisabled("The spawn appears at Spawn ms and despawns when Lifetime ends. Pattern lifetime %u ms.",
+		lifetimeMs);
+	if (ImGui::Button("Delete Summon Box"))
+	{
+		std::string status;
+		(void)Delete_SummonBox(patternId, occurrenceId, status);
+	}
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_LogicResources()
+{
+	ImGui::SeparatorText("Logic Catalog");
+	ImGui::TextDisabled("%zu logics | Create names a reusable Logic; Append places its box on the selected Pattern.",
+		m_Draft.Logics.size());
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	const KOUKU_SAYDON_COMPOSITION_PATTERN* const selectedPattern =
+		Find_Pattern(m_Draft, m_strSelectedPatternId);
+	const bool_t patternEditable = nullptr != selectedPattern &&
+		selectedPattern->strLoadError.empty();
+	const std::string targetPatternName = nullptr == selectedPattern ?
+		std::string("none") : selectedPattern->strDisplayName;
+
+	if (ImGui::BeginChild("##KoukuLogicList", ImVec2(0.f, 180.f), ImGuiChildFlags_Borders))
+	{
+		if (m_Draft.Logics.empty())
+			ImGui::TextDisabled("No Logic yet. Choose a type, name it, and press Create Logic.");
+		for (const char_t* const type : KOUKU_SAYDON_LOGIC_TYPES)
+		{
+			if (!ImGui::TreeNodeEx(type, ImGuiTreeNodeFlags_DefaultOpen))
+				continue;
+			for (const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic : m_Draft.Logics)
+			{
+				if (logic.strLogicType != type)
+					continue;
+				const std::string label = logic.strDisplayName + "##" + logic.strLogicId;
+				if (ImGui::Selectable(label.c_str(), m_strSelectedLogicId == logic.strLogicId))
+					m_strSelectedLogicId = logic.strLogicId;
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s | %s | %zu box(es)", logic.strLogicId.c_str(),
+						logic.strLogicType.c_str(), Count_LogicReferences(m_Draft, logic.strLogicId));
+			}
+			ImGui::TreePop();
+		}
+	}
+	ImGui::EndChild();
+
+	ImGui::SeparatorText("Create Logic");
+	ImGui::TextUnformatted("Type");
+	for (int32_t index = 0; index < static_cast<int32_t>(KOUKU_SAYDON_LOGIC_TYPES.size()); ++index)
+	{
+		if (0 != index)
+			ImGui::SameLine();
+		if (ImGui::RadioButton(KOUKU_SAYDON_LOGIC_TYPES[index], m_iNewLogicType == index))
+			m_iNewLogicType = index;
+	}
+	ImGui::InputTextWithHint("##NewKoukuLogicName", "Logic display name",
+		m_NewLogicName, std::size(m_NewLogicName));
+	ImGui::SameLine();
+	ImGui::BeginDisabled('\0' == m_NewLogicName[0] || !m_bHasDraft);
+	if (ImGui::Button("Create Logic"))
+	{
+		std::string logicId;
+		std::string status;
+		if (Create_Logic(m_NewLogicName, KOUKU_SAYDON_LOGIC_TYPES[m_iNewLogicType], logicId, status))
+			m_NewLogicName[0] = '\0';
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const selectedLogic =
+		Find_Logic(m_Draft, m_strSelectedLogicId);
+	if (nullptr == selectedLogic)
+		return;
+	/* Copies outlive the draft replacement a mutation below performs. */
+	const std::string logicId = selectedLogic->strLogicId;
+	const std::string logicName = selectedLogic->strDisplayName;
+	const std::string logicType = selectedLogic->strLogicType;
+	bool_t unresolvedReferences = false;
+	const std::size_t references = Count_LogicReferences(m_Draft, logicId, &unresolvedReferences);
+	ImGui::SeparatorText("Selected Logic");
+	ImGui::TextWrapped("%s", logicName.c_str());
+	ImGui::TextDisabled("%s | %s | %zu box(es)", logicId.c_str(), logicType.c_str(), references);
+	ImGui::SetNextItemWidth(120.f);
+	ImGui::InputInt("Box ms##NewKoukuLogicBox", &m_iNewLogicBoxDurationMs, 100, 1000);
+	m_iNewLogicBoxDurationMs = std::clamp(m_iNewLogicBoxDurationMs, 1,
+		static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!patternEditable);
+	if (ImGui::Button("Append Logic at Cursor"))
+	{
+		std::string occurrenceId;
+		std::string status;
+		(void)Append_LogicBox(m_strSelectedPatternId, logicId, m_iCursorMs,
+			static_cast<std::uint32_t>(m_iNewLogicBoxDurationMs), occurrenceId, status);
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(0u != references || unresolvedReferences);
+	if (ImGui::Button("Delete Logic"))
+	{
+		std::string status;
+		(void)Delete_Logic(logicId, status);
+		ImGui::EndDisabled();
+		return;
+	}
+	ImGui::EndDisabled();
+	if (unresolvedReferences)
+		ImGui::TextDisabled("Repair invalid Pattern Logic references before deleting a Logic.");
+	if (!patternEditable)
+		ImGui::TextDisabled("Select an editable Pattern in Patterns to append this Logic.");
+	ImGui::TextDisabled("Append target: %s | cursor %u ms", targetPatternName.c_str(), m_iCursorMs);
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_LogicBoxDetails(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+{
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* const box =
+		Find_LogicBox(pattern, m_strSelectedLogicOccurrenceId);
+	if (nullptr == box)
+		return;
+	const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const logic =
+		Find_Logic(m_Draft, box->strLogicId);
+	const std::string patternId = pattern.strPatternId;
+	const std::string occurrenceId = box->strOccurrenceId;
+	const std::uint32_t lifetimeMs = Pattern_DurationMs(pattern);
+	ImGui::SeparatorText("Logic Box");
+	ImGui::Text("%s", occurrenceId.c_str());
+	ImGui::Text("%s | %s",
+		nullptr == logic ? "(missing Logic)" : logic->strDisplayName.c_str(),
+		nullptr == logic ? "?" : logic->strLogicType.c_str());
+	ImGui::TextDisabled("%s", box->strLogicId.c_str());
+	ImGui::InputInt("Start ms##KoukuLogicBox", &m_iLogicBoxStartMs, 10, 100);
+	ImGui::InputInt("Lifetime ms##KoukuLogicBox", &m_iLogicBoxDurationMs, 10, 100);
+	m_iLogicBoxStartMs = std::clamp(m_iLogicBoxStartMs, 0,
+		static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	m_iLogicBoxDurationMs = std::clamp(m_iLogicBoxDurationMs, 1,
+		static_cast<int32_t>(MAX_EDITOR_TIME_MS));
+	if (ImGui::Button("Apply Window##KoukuLogicBox"))
+	{
+		std::string status;
+		(void)Set_LogicBoxWindow(patternId, occurrenceId,
+			static_cast<std::uint32_t>(m_iLogicBoxStartMs),
+			static_cast<std::uint32_t>(m_iLogicBoxDurationMs), status);
+		return;
+	}
+	ImGui::TextDisabled("Pattern lifetime %u ms. Drag the box edges on the Logic lane to resize it.",
+		lifetimeMs);
+	if (nullptr != logic && "DURATION" == logic->strLogicType)
+	{
+		/* Success and timeout each pick one RESULT Logic from the catalog. The
+		   combo lists only RESULT definitions, so a window can never end in a
+		   trigger or another window. */
+		ImGui::SeparatorText("Outcomes");
+		const std::string successId = box->strOnSuccessLogicId;
+		const std::string timeoutId = box->strOnTimeoutLogicId;
+		const auto renderOutcome = [this, &patternId, &occurrenceId](
+			const char_t* const label, const bool_t success,
+			const std::string& currentId) -> bool_t
+		{
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const current =
+				currentId.empty() ? nullptr : Find_Logic(m_Draft, currentId);
+			const char_t* const preview = currentId.empty() ? "(none)" :
+				(nullptr == current ? "(missing RESULT)" : current->strDisplayName.c_str());
+			std::string requestedId;
+			bool_t requested = false;
+			if (ImGui::BeginCombo(label, preview))
+			{
+				if (ImGui::Selectable("(none)", currentId.empty()) && !currentId.empty())
+					requested = true;
+				for (const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& candidate : m_Draft.Logics)
+				{
+					if ("RESULT" != candidate.strLogicType)
+						continue;
+					const std::string item = candidate.strDisplayName + "##" + candidate.strLogicId;
+					if (ImGui::Selectable(item.c_str(), currentId == candidate.strLogicId) &&
+						currentId != candidate.strLogicId)
+					{
+						requestedId = candidate.strLogicId;
+						requested = true;
+					}
+				}
+				ImGui::EndCombo();
+			}
+			if (!requested)
+				return false;
+			std::string status;
+			(void)Set_LogicBoxOutcome(patternId, occurrenceId, success, requestedId, status);
+			return true;
+		};
+		if (renderOutcome("Success##KoukuLogicOutcome", true, successId))
+			return;
+		if (renderOutcome("Timeout##KoukuLogicOutcome", false, timeoutId))
+			return;
+		if (m_Draft.Logics.end() == std::find_if(m_Draft.Logics.begin(), m_Draft.Logics.end(),
+				[](const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& candidate)
+				{ return "RESULT" == candidate.strLogicType; }))
+		{
+			ImGui::TextDisabled("Create a RESULT Logic in Resources > Logic to wire an outcome.");
+		}
+	}
+	if (ImGui::Button("Delete Logic Box"))
+	{
+		std::string status;
+		(void)Delete_LogicBox(patternId, occurrenceId, status);
 	}
 }
 
@@ -3209,6 +4445,19 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 	{
 		std::string status;
 		(void)Delete_Pattern(patternId, status);
+		return;
+	}
+
+	if (!m_strSelectedSummonOccurrenceId.empty())
+	{
+		Render_SummonBoxDetails(*pattern);
+		return;
+	}
+	if (!m_strSelectedLogicOccurrenceId.empty())
+	{
+		/* A Logic box owns its own Details; Stage and Animation sections stay
+		   untouched until an animation box or Stage is selected again. */
+		Render_LogicBoxDetails(*pattern);
 		return;
 	}
 

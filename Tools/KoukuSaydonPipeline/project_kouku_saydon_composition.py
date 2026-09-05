@@ -101,14 +101,36 @@ REFERENCE_ROOT_KEYS = {
     "actions",
 }
 
+# Logic catalog keys are optional on read so a document written before the
+# catalog existed still opens; the editor always writes them.
+ROOT_OPTIONAL_KEYS = {"nextLogicOrdinal", "logics", "nextSummonOrdinal", "summons"}
+PATTERN_OPTIONAL_KEYS = {
+    "nextLogicOccurrenceOrdinal",
+    "logicOccurrences",
+    "nextSummonOccurrenceOrdinal",
+    "summonOccurrences",
+}
+LOGIC_KEYS = {"logicId", "displayName", "logicType"}
+LOGIC_OCCURRENCE_KEYS = {"occurrenceId", "logicId", "startMs", "durationMs"}
+# A Summon is named only today; what it spawns is a later definition field.
+SUMMON_KEYS = {"summonId", "displayName"}
+SUMMON_OCCURRENCE_KEYS = {"occurrenceId", "summonId", "startMs", "durationMs"}
+GENERATED_SUMMON_RE = re.compile(r"^kakulsaydon\.g1\.summon\.([1-9][0-9]*)$")
+MAX_SUMMONS = 4096
+MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024
+# Outcome slots are optional on read; empty text means "no outcome wired".
+LOGIC_OCCURRENCE_OPTIONAL_KEYS = {"onSuccessLogicId", "onTimeoutLogicId"}
+
 AUTHORING_STATUSES = {"DRAFT", "PRODUCT"}
 PATTERN_CATEGORIES = {"NORMAL", "MECHANIC"}
 STAGE_KINDS = {"WINDUP", "ACTIVE", "RECOVERY"}
 END_POLICIES = {"EXACT", "HOLD_LAST_POSE", "LOOP_TO_WINDOW"}
+LOGIC_TYPES = {"DURATION", "TRIGGER", "RESULT"}
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 GENERATED_PATTERN_RE = re.compile(r"^KAKULSAYDON_G1_PATTERN_([1-9][0-9]*)$")
 GENERATED_STAGE_RE = re.compile(r"^STAGE_([1-9][0-9]*)$")
+GENERATED_LOGIC_RE = re.compile(r"^kakulsaydon\.g1\.logic\.([1-9][0-9]*)$")
 MAX_ORDINAL = 1_000_000
 MAX_TIMELINE_MS = 600_000
 MAX_PATTERNS = 4096
@@ -116,6 +138,8 @@ MAX_PRODUCT_PATTERNS = 64
 MAX_DRAFT_STAGES = 1024
 MAX_PRODUCT_STAGES = 64
 MAX_OCCURRENCES = 4096
+MAX_LOGICS = 4096
+MAX_LOGIC_OCCURRENCES_PER_PATTERN = 1024
 
 
 class CompositionError(ValueError):
@@ -151,6 +175,19 @@ def _exact_keys(value: Any, expected: set[str], context: str) -> None:
         raise CompositionError(
             f"{context} fields are invalid; expected={sorted(expected)!r} "
             f"actual={actual!r}"
+        )
+
+
+def _keys(value: Any, required: set[str], optional: set[str], context: str) -> None:
+    if not isinstance(value, dict):
+        raise CompositionError(f"{context} must be an object, got {type(value).__name__}")
+    actual = set(value)
+    missing = required - actual
+    unknown = actual - required - optional
+    if missing or unknown:
+        raise CompositionError(
+            f"{context} fields are invalid; missing={sorted(missing)!r} "
+            f"unknown={sorted(unknown)!r}"
         )
 
 
@@ -208,7 +245,7 @@ def resolve_actor_profile_id(source_profile_id: str) -> str:
 def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
-    _exact_keys(document, ROOT_KEYS, "composition")
+    _keys(document, ROOT_KEYS, ROOT_OPTIONAL_KEYS, "composition")
     version = _integer(document["formatVersion"], "composition formatVersion", 1, FORMAT_VERSION)
     exact_values = {
         "schema": SCHEMA,
@@ -228,6 +265,48 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
     next_pattern = _integer(
         document["nextPatternOrdinal"], "nextPatternOrdinal", 1, MAX_ORDINAL
     )
+    next_logic = _integer(
+        document.get("nextLogicOrdinal", 1), "nextLogicOrdinal", 1, MAX_ORDINAL
+    )
+    logics = _array(document.get("logics", []), "composition logics", MAX_LOGICS)
+    logic_ids: set[str] = set()
+    logic_types: dict[str, str] = {}
+    for logic_index, logic in enumerate(logics):
+        logic_context = f"logics[{logic_index}]"
+        _exact_keys(logic, LOGIC_KEYS, logic_context)
+        logic_id = _stable_id(logic["logicId"], f"{logic_context} logicId")
+        generated_logic = GENERATED_LOGIC_RE.fullmatch(logic_id)
+        if generated_logic is None or int(generated_logic.group(1)) >= next_logic:
+            raise CompositionError(
+                f"logicId must use kakulsaydon.g1.logic.<N> below nextLogicOrdinal: {logic_id}"
+            )
+        if logic_id in logic_ids:
+            raise CompositionError(f"duplicate logicId: {logic_id}")
+        logic_ids.add(logic_id)
+        _display_name(logic["displayName"], f"{logic_context} displayName")
+        if logic["logicType"] not in LOGIC_TYPES:
+            raise CompositionError(
+                f"{logic_context} logicType is invalid: {logic['logicType']!r}"
+            )
+        logic_types[logic_id] = logic["logicType"]
+    next_summon = _integer(
+        document.get("nextSummonOrdinal", 1), "nextSummonOrdinal", 1, MAX_ORDINAL
+    )
+    summons = _array(document.get("summons", []), "composition summons", MAX_SUMMONS)
+    summon_ids: set[str] = set()
+    for summon_index, summon in enumerate(summons):
+        summon_context = f"summons[{summon_index}]"
+        _exact_keys(summon, SUMMON_KEYS, summon_context)
+        summon_id = _stable_id(summon["summonId"], f"{summon_context} summonId")
+        generated_summon = GENERATED_SUMMON_RE.fullmatch(summon_id)
+        if generated_summon is None or int(generated_summon.group(1)) >= next_summon:
+            raise CompositionError(
+                f"summonId must use kakulsaydon.g1.summon.<N> below nextSummonOrdinal: {summon_id}"
+            )
+        if summon_id in summon_ids:
+            raise CompositionError(f"duplicate summonId: {summon_id}")
+        summon_ids.add(summon_id)
+        _display_name(summon["displayName"], f"{summon_context} displayName")
     patterns = _array(document["patterns"], "composition patterns", MAX_PATTERNS)
     if not patterns:
         raise CompositionError("composition must contain at least one pattern")
@@ -242,7 +321,12 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
 
     for pattern_index, pattern in enumerate(patterns):
         context = f"patterns[{pattern_index}]"
-        _exact_keys(pattern, PATTERN_KEYS - {"actorProfileId"} if version == 1 else PATTERN_KEYS, context)
+        _keys(
+            pattern,
+            PATTERN_KEYS - {"actorProfileId"} if version == 1 else PATTERN_KEYS,
+            PATTERN_OPTIONAL_KEYS,
+            context,
+        )
         actor_profile_id = ""
         if version == FORMAT_VERSION:
             actor_profile_id = _stable_id(pattern["actorProfileId"], f"{context} actorProfileId")
@@ -261,6 +345,108 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             raise CompositionError(f"{context} authoringStatus is invalid: {status!r}")
         if pattern["category"] not in PATTERN_CATEGORIES:
             raise CompositionError(f"{context} category is invalid: {pattern['category']!r}")
+        next_logic_occurrence = _integer(
+            pattern.get("nextLogicOccurrenceOrdinal", 1),
+            f"{context} nextLogicOccurrenceOrdinal",
+            1,
+            MAX_ORDINAL,
+        )
+        logic_occurrences = _array(
+            pattern.get("logicOccurrences", []),
+            f"{context} logicOccurrences",
+            MAX_LOGIC_OCCURRENCES_PER_PATTERN,
+        )
+        if status == "PRODUCT" and logic_occurrences:
+            raise CompositionError(
+                "PRODUCT pattern cannot own logic boxes until the Server consumer exists: "
+                f"{pattern_id}"
+            )
+        logic_box_re = re.compile(rf"^{re.escape(pattern_id)}\.logic\.([1-9][0-9]*)$")
+        logic_box_ids: set[str] = set()
+        for box_index, box in enumerate(logic_occurrences):
+            box_context = f"{context}.logicOccurrences[{box_index}]"
+            _keys(box, LOGIC_OCCURRENCE_KEYS, LOGIC_OCCURRENCE_OPTIONAL_KEYS, box_context)
+            box_id = _stable_id(box["occurrenceId"], f"{box_context} occurrenceId")
+            for outcome_key in ("onSuccessLogicId", "onTimeoutLogicId"):
+                target = box.get(outcome_key, "")
+                if not isinstance(target, str):
+                    raise CompositionError(f"{box_context} {outcome_key} must be text")
+                if not target:
+                    continue
+                if logic_types.get(target) != "RESULT":
+                    raise CompositionError(
+                        f"{box_context} {outcome_key} must name a RESULT logic: {target!r}"
+                    )
+                if logic_types.get(box.get("logicId")) != "DURATION":
+                    raise CompositionError(
+                        f"{box_context} outcomes are only valid on a DURATION logic box"
+                    )
+            logic_box_match = logic_box_re.fullmatch(box_id)
+            if logic_box_match is None:
+                raise CompositionError(
+                    f"logic occurrenceId must use {pattern_id}.logic.<N>: {box_id}"
+                )
+            if int(logic_box_match.group(1)) >= next_logic_occurrence:
+                raise CompositionError(
+                    f"logic occurrenceId is ahead of nextLogicOccurrenceOrdinal: {box_id}"
+                )
+            if box_id in logic_box_ids:
+                raise CompositionError(f"duplicate Logic occurrenceId: {box_id}")
+            logic_box_ids.add(box_id)
+            if box["logicId"] not in logic_ids:
+                raise CompositionError(f"logic box references an unknown logicId: {box_id}")
+            logic_start_ms = _integer(
+                box["startMs"], f"{box_context} startMs", 0, MAX_TIMELINE_MS
+            )
+            logic_duration_ms = _integer(
+                box["durationMs"], f"{box_context} durationMs", 1, MAX_TIMELINE_MS
+            )
+            if logic_start_ms + logic_duration_ms > MAX_TIMELINE_MS:
+                raise CompositionError(f"Logic box exceeds 600 seconds: {box_id}")
+        next_summon_occurrence = _integer(
+            pattern.get("nextSummonOccurrenceOrdinal", 1),
+            f"{context} nextSummonOccurrenceOrdinal",
+            1,
+            MAX_ORDINAL,
+        )
+        summon_occurrences = _array(
+            pattern.get("summonOccurrences", []),
+            f"{context} summonOccurrences",
+            MAX_SUMMON_OCCURRENCES_PER_PATTERN,
+        )
+        if status == "PRODUCT" and summon_occurrences:
+            raise CompositionError(
+                "PRODUCT pattern cannot own summon boxes until the Server consumer exists: "
+                f"{pattern_id}"
+            )
+        summon_box_re = re.compile(rf"^{re.escape(pattern_id)}\.summon\.([1-9][0-9]*)$")
+        summon_box_ids: set[str] = set()
+        for box_index, box in enumerate(summon_occurrences):
+            box_context = f"{context}.summonOccurrences[{box_index}]"
+            _exact_keys(box, SUMMON_OCCURRENCE_KEYS, box_context)
+            box_id = _stable_id(box["occurrenceId"], f"{box_context} occurrenceId")
+            summon_box_match = summon_box_re.fullmatch(box_id)
+            if summon_box_match is None:
+                raise CompositionError(
+                    f"summon occurrenceId must use {pattern_id}.summon.<N>: {box_id}"
+                )
+            if int(summon_box_match.group(1)) >= next_summon_occurrence:
+                raise CompositionError(
+                    f"summon occurrenceId is ahead of nextSummonOccurrenceOrdinal: {box_id}"
+                )
+            if box_id in summon_box_ids:
+                raise CompositionError(f"duplicate Summon occurrenceId: {box_id}")
+            summon_box_ids.add(box_id)
+            if box["summonId"] not in summon_ids:
+                raise CompositionError(f"summon box references an unknown summonId: {box_id}")
+            summon_start_ms = _integer(
+                box["startMs"], f"{box_context} startMs", 0, MAX_TIMELINE_MS
+            )
+            summon_duration_ms = _integer(
+                box["durationMs"], f"{box_context} durationMs", 1, MAX_TIMELINE_MS
+            )
+            if summon_start_ms + summon_duration_ms > MAX_TIMELINE_MS:
+                raise CompositionError(f"Summon box exceeds 600 seconds: {box_id}")
         next_stage = _integer(
             pattern["nextStageOrdinal"], f"{context} nextStageOrdinal", 1, MAX_ORDINAL
         )
@@ -296,6 +482,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         occurrence_ordinal_re = re.compile(
             rf"^{re.escape(pattern_id)}\.animation\.([1-9][0-9]*)$"
         )
+        pattern_duration_ms = 0
         for stage_index, stage in enumerate(stages):
             stage_context = f"{context}.stages[{stage_index}]"
             _exact_keys(stage, STAGE_KEYS, stage_context)
@@ -319,6 +506,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             duration_ms = _integer(
                 stage["durationMs"], f"{stage_context} durationMs", 1, MAX_TIMELINE_MS
             )
+            pattern_duration_ms += duration_ms
+            if pattern_duration_ms > MAX_TIMELINE_MS:
+                raise CompositionError(f"Pattern exceeds 600 seconds: {pattern_id}")
             occurrences = _array(
                 stage["animationOccurrences"],
                 f"{stage_context} animationOccurrences",
@@ -420,6 +610,12 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                         f"(whole stage, sourceStartMs 0, playRate 0.1..4, "
                         f"EXACT): {occurrence_id}"
                     )
+
+        for box in logic_occurrences:
+            if box["startMs"] + box["durationMs"] > pattern_duration_ms:
+                raise CompositionError(
+                    f"Logic box exceeds the Pattern lifetime: {box['occurrenceId']}"
+                )
 
     if play_all != product_ids:
         raise CompositionError(
