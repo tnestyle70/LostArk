@@ -704,6 +704,21 @@ f32_t Client::CEffectV2Object::Alpha_Envelope() const
 	return Saturate(fEnvelope);
 }
 
+f32_t Client::CEffectV2Object::Scale_Envelope() const
+{
+	if (m_Params.fLifetime <= 0.f)
+		return 1.f;
+	const f32_t fRatio = Life_Ratio();
+	f32_t fEnvelope = 1.f;
+	const f32_t fInEnd = Saturate(m_Params.fScaleInEnd);
+	if (0.f < fInEnd && fRatio < fInEnd)
+		fEnvelope = fRatio / fInEnd;
+	const f32_t fOutStart = (std::max)(Saturate(m_Params.fScaleOutStart), fInEnd);
+	if (fOutStart < 1.f && fRatio > fOutStart)
+		fEnvelope = (std::min)(fEnvelope, (1.f - fRatio) / (1.f - fOutStart));
+	return Saturate(fEnvelope);
+}
+
 Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Npc(
 	const std::shared_ptr<CNpc>& pNpc)
 {
@@ -960,6 +975,10 @@ void Client::CEffectV2Object::Apply_Transform()
 	const float3_t vPosition = m_Params.Position.Evaluate(fRatio);
 	const float3_t vRotation = m_Params.Rotation.Evaluate(fRatio);
 	float3_t vScale = m_Params.Scale.Evaluate(fRatio);
+	const f32_t fScaleEnvelope = Scale_Envelope();
+	vScale.x *= fScaleEnvelope;
+	vScale.y *= fScaleEnvelope;
+	vScale.z *= fScaleEnvelope;
 	/* A zero axis makes the world matrix singular and Engine consumers of
 	   its inverse crash, so clamp while the tool types values like "0.4". */
 	vScale.x = std::fabs(vScale.x) < 0.001f ? 0.001f : vScale.x;
