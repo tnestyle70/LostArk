@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.kakulsaydon",
   "sourceRevision": 2,
-  "compositionRevision": "618e9f042663bea01a23463743bee2a08dc96dc4dda41541f99167f7ebeddb62",
+  "compositionRevision": "f997d4bc46274b919533315b1937a3e2b601fd137228354849c30a5364785b37",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Arena Sequencer",
@@ -13,27 +13,27 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "618e9f042663bea01a23463743bee2a08dc96dc4dda41541f99167f7ebeddb62",
+    "sourceManifestId": "f997d4bc46274b919533315b1937a3e2b601fd137228354849c30a5364785b37",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
-        "sha256": "4ae1c0e85b3240e6174beb519307910a687a46fce98d6759c14734852b1aec74",
-        "bytes": 4339
+        "sha256": "a2f9f586470836d0f4494959718e773c7e854caf4545e78663d45f5270415811",
+        "bytes": 4371
       },
       {
         "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
-        "sha256": "a565ad70cc1381b86584b4461cf7b0ea882c18bae59948aba5bc988e243bd105",
-        "bytes": 1320
+        "sha256": "83382577e289bb295bd80747d9f5ade84c13ca94de4449cd9bc392c71c58dc4a",
+        "bytes": 1325
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "f69fa1c1c41d1443db0ba64a27bee442720752f0ff6d57cb3107e7d934c379b7",
-        "bytes": 1103
+        "sha256": "4dedb6a15067fed43dbdba1e21e41cebc8eae887d9e4d0c330a9a45ca2992448",
+        "bytes": 11385
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "cbd5b96cbfeec6d4c6ecdc46f962b9f32c3d223a3f0e51ff456f1b1048cf9b76",
-        "bytes": 2153834
+        "sha256": "65b850392ea0356131a3a065906eb0768dd963a01fda832cdcd5d85f959ad98a",
+        "bytes": 5621100
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",

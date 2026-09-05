@@ -529,3 +529,33 @@ Server raw audition/hot reload는 이 Animation 작업으로 완료됐다고 표
 4. 실제 아레나 전체의 프레임 저하를 이 수정으로 해결했다고 판정하지 않는다. 조사한 공용 Arena/Character/Valtan
    갱신은 같은 frame delta를 사용하고 있었다. 지속 FPS 저하는 사용자 재현 위치와 frame-time 측정이 더 필요하다.
    요청한 MOV가 이 입장창 이외의 별도 동영상이면 파일 경로와 재생 화면은 아직 제공되지 않았다.
+
+## 11. PR #316 main 충돌 해결 — 2026-09-05
+
+PR head `88f9a6ea`에 main `0979fa7d`를 병합했다. 실행 중인 원본 Client/Server와 빌드 출력을
+보존하기 위해 별도 worktree에서 충돌 해결과 최소 컴파일을 수행했다.
+
+- `Gameplay.world.json`: 양쪽에서 그대로 유지한 기존 placement 15개, main의 신규 트리거 11개,
+  Workbench의 쿠크 보스 1개를 모두 보존했다. 총 27개이며 formatVersion 6, revision 1867이다.
+  각 parent의 placement 값이 합친 문서와 동일하고 모든 playSequence 대상 instance가 존재함을 확인했다.
+- 충돌한 Composition receipt/Sequencer를 손으로 고르지 않고 `Publish-Compositions.ps1 -Mode Publish`로
+  합쳐진 정본에서 재생성했다. 기존 Resources는 `LOSTARK_RESOURCE_ROOT`로 읽기만 했고 물리 자산은 변경하지 않았다.
+- main에서 추가한 컷신 조절 스크립트는 변경된 `Tools/KoukuSaydonPipeline` 폴더에 보존했다.
+  사용 예 경로, 스크립트 설명과 신규 카메라 오류 문구 12곳의 표시 이름을 KoukuSaydon으로 맞췄다.
+  물리 Resource alias와 public/runtime ID는 유지했다. C++ 파일은 원래 UTF-8 바이트와 줄바꿈을 유지했다.
+- main의 마리오 트리거·카메라 follow/track·컷신 체인과 PR의 Workbench preview·Server audition 연결을 함께 유지했다.
+
+### 이번에 실행한 검증
+
+- Composition publish: PASS. 합쳐진 source로 generated Product와 receipt를 다시 생성했다.
+- `Publish-WorldGameplay.ps1 -Mode Validate`: PASS. 쿠크 27 placements와 0 spawn groups를 포함한 기존 World 검증 통과.
+- 기존 naming 검사 6개와 Composition map-owner/SHADOW/rollback/구 파일명 정리 검사 4개: 총 10개 PASS.
+  수정 전 naming 검사의 신규 13개 위반을 재현했고 수정 후 해소했다.
+- PR 변경 JSON 32개, XML 6개, Python 71개 구문 검사: PASS. 별도 validator나 테스트 파일은 추가하지 않았다.
+- 겹친 `GameRoom.cpp`, `MapTool.cpp`, `Level_KakulSaydonArena.cpp` Debug x64 ClCompile: 모두 오류 0.
+  Client 두 파일의 기존 C4819 경고는 남아 있다. 로그는 격리 worktree의
+  `out/PR316/compile/server-gameroom.log`, `client-maptool.log`, `client-level-kakul.log`다.
+- unmerged path 0개와 `git diff --cached --check`: PASS.
+
+최종 링크, Product 전체 빌드, runtime 데이터의 원본 실행 폴더 publish와 Client/UI 조작·화면 검증은
+이번 충돌 해결에서 수행하지 않았다. 실행 중인 프로그램은 기존 바이너리이며 사용자의 화면 판정은 대기 상태다.

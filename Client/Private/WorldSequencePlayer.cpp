@@ -150,6 +150,37 @@ const WORLD_SEQUENCE_TRACK* CWorldSequencePlayer::Find_Track(
 	return sequence.tracks.end() == found ? nullptr : &*found;
 }
 
+const WORLD_SEQUENCE_ANIMATION_TRACK*
+CWorldSequencePlayer::Find_AnimationTrackAt(
+	const WORLD_SEQUENCE_TEMPLATE& sequence,
+	const std::string& slotId,
+	const f32_t localMs,
+	f32_t& outWindowEndMs)
+{
+	const WORLD_SEQUENCE_ANIMATION_TRACK* found = nullptr;
+	outWindowEndMs = static_cast<f32_t>(sequence.durationMs);
+	for (const WORLD_SEQUENCE_ANIMATION_TRACK& track : sequence.animationTracks)
+	{
+		if (track.slotId != slotId)
+			continue;
+		const f32_t startMs = static_cast<f32_t>(track.startMs);
+		if (startMs <= localMs)
+		{
+			/* The document orders a slot's tracks by ascending start, so the
+			   last one at or before now is the clip that owns this moment. */
+			found = &track;
+			outWindowEndMs = static_cast<f32_t>(sequence.durationMs);
+			continue;
+		}
+		if (nullptr != found)
+		{
+			outWindowEndMs = startMs;
+			break;
+		}
+	}
+	return found;
+}
+
 const WORLD_SEQUENCE_ANIMATION_TRACK* CWorldSequencePlayer::Find_AnimationTrack(
 	const WORLD_SEQUENCE_TEMPLATE& sequence,
 	const std::string& slotId)
@@ -387,6 +418,21 @@ bool_t CWorldSequencePlayer::Is_Playing(const std::string& instanceId) const
 		});
 }
 
+bool_t CWorldSequencePlayer::Try_GetElapsedMs(
+	const std::string& instanceId,
+	f32_t& outElapsedMs) const
+{
+	const auto found = std::find_if(m_Active.begin(), m_Active.end(),
+		[&instanceId](const ACTIVE_INSTANCE& value)
+		{
+			return value.instanceId == instanceId;
+		});
+	if (m_Active.end() == found)
+		return false;
+	outElapsedMs = found->elapsedMs;
+	return true;
+}
+
 void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets)
 {
 	for (const ACTIVE_INSTANCE& active : m_Active)
@@ -409,10 +455,52 @@ void CWorldSequencePlayer::Release_DeployPreviews(
 	}
 }
 
+bool_t CWorldSequencePlayer::Seek_AllToMs(
+	const f32_t elapsedMs,
+	const TARGET_SET& targets)
+{
+	if (m_Active.empty() || !targets.Is_Complete() ||
+		!std::isfinite(elapsedMs) || elapsedMs < 0.f)
+	{
+		return false;
+	}
+	/* A scrub rewrites the clock rather than advancing it, and applies the
+	   frame in place. A finished instance stays in the list here so the
+	   authoring scrub can step back into it. */
+	for (ACTIVE_INSTANCE& active : m_Active)
+	{
+		active.elapsedMs = elapsedMs;
+		(void)Apply_Instance(active, targets);
+	}
+	return true;
+}
+
+f32_t CWorldSequencePlayer::Get_LongestElapsedSpanMs() const
+{
+	f32_t longest = 0.f;
+	for (const ACTIVE_INSTANCE& active : m_Active)
+	{
+		const WORLD_SEQUENCE_INSTANCE* instance =
+			m_Document.Find_Instance(active.instanceId);
+		const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ? nullptr :
+			m_Document.Find_Template(instance->templateId);
+		if (nullptr == instance || nullptr == sequence)
+			continue;
+		const f32_t speed = instance->playbackSpeed > 0.001f ?
+			instance->playbackSpeed : 1.f;
+		const f32_t span = static_cast<f32_t>(instance->startDelayMs) +
+			static_cast<f32_t>(sequence->durationMs) / speed;
+		longest = (std::max)(longest, span);
+	}
+	return longest;
+}
+
 void CWorldSequencePlayer::Update(
 	const f32_t timeDelta,
 	const TARGET_SET& targets)
 {
+	if (m_bPaused)
+		return;
 	if (m_Active.empty() || !targets.Is_Complete() ||
 		!std::isfinite(timeDelta) || timeDelta < 0.f)
 	{
@@ -463,14 +551,21 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			return APPLY_RESULT::FAILED;
 		if (WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT == binding.targetKind)
 		{
+			f32_t windowEndMs = durationMs;
 			const WORLD_SEQUENCE_ANIMATION_TRACK* animationTrack =
-				Find_AnimationTrack(*sequence, binding.slotId);
+				Find_AnimationTrackAt(*sequence, binding.slotId, localMs,
+					windowEndMs);
 			const shared_ptr<CDeployPropObject> object =
 				targets.pDeployRuntime->Find(targetId);
 			if (nullptr == animationTrack || nullptr == object)
 				return APPLY_RESULT::FAILED;
+			/* Before its start delay an instance must not pose its target. The
+			   placement branch already holds the baseline here; parking a
+			   Deploy prop on frame 0 instead would let a later beat of a
+			   chained cutscene overwrite the beat that is actually playing. */
+			if (delayedMs < 0.f)
+				continue;
 			f32_t normalized = 0.f;
-			if (delayedMs >= 0.f)
 			{
 				f32_t clipSeconds = 0.f;
 				for (const DEPLOY_PROP_ANIMATION_CLIP& clip :
@@ -484,13 +579,15 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 				}
 				if (!std::isfinite(clipSeconds) || clipSeconds <= 0.f)
 					return APPLY_RESULT::FAILED;
-				normalized = localMs * animationTrack->playbackRate /
+				const f32_t windowMs = (std::max)(0.f,
+					localMs - static_cast<f32_t>(animationTrack->startMs));
+				normalized = windowMs * animationTrack->playbackRate /
 					(clipSeconds * 1000.f);
 				/* holdLastFrame wins at the end even for a looping clip. A
 				   sequence whose duration rounds a hair past the clip would
 				   otherwise wrap to frame 0 on its very last sample and snap
 				   an unfolded prop shut. */
-				if (localMs >= durationMs && animationTrack->holdLastFrame)
+				if (localMs >= windowEndMs && animationTrack->holdLastFrame)
 					normalized = 1.f;
 				else if (animationTrack->loop)
 					normalized = std::fmod(normalized, 1.f);
@@ -501,12 +598,47 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			   asked for 1.0, so the settled frame must be requested as a
 			   non-looping seek or the hold would fold the prop shut. */
 			const bool_t settledOnLastFrame =
-				localMs >= durationMs && animationTrack->holdLastFrame;
+				localMs >= windowEndMs && animationTrack->holdLastFrame;
 			if (!object->Sample_AnimationAuthoringPreview(
 				animationTrack->clipName, Clamp01(normalized),
 				settledOnLastFrame ? false : animationTrack->loop))
 			{
 				return APPLY_RESULT::FAILED;
+			}
+			/* A cutscene may also walk the prop while its clips play. The
+			   offset is authored in the placement's own frame, exactly as a
+			   map placement composes, so the same authored numbers mean the
+			   same thing for both target kinds. */
+			const WORLD_SEQUENCE_TRACK* const moveTrack =
+				Find_Track(*sequence, binding.slotId);
+			if (nullptr != moveTrack)
+			{
+				float3_t placedPosition{};
+				float4_t placedRotation(0.f, 0.f, 0.f, 1.f);
+				if (!object->Get_PlacedRootPose(placedPosition, placedRotation))
+					return APPLY_RESULT::FAILED;
+				const WORLD_SEQUENCE_TRANSFORM_KEY key =
+					Sample_Track(*sequence, *moveTrack, localMs);
+				const vector_t placed =
+					XMQuaternionNormalize(XMLoadFloat4(&placedRotation));
+				float3_t rotatedOffset;
+				XMStoreFloat3(&rotatedOffset, XMVector3Rotate(
+					XMLoadFloat3(&key.positionOffset), placed));
+				const float3_t posedPosition(
+					placedPosition.x + rotatedOffset.x,
+					placedPosition.y + rotatedOffset.y,
+					placedPosition.z + rotatedOffset.z);
+				vector_t combined = XMQuaternionNormalize(XMQuaternionMultiply(
+					XMLoadFloat4(&key.rotationQuaternion), placed));
+				if (XMVectorGetW(combined) < 0.f)
+					combined = XMVectorNegate(combined);
+				float4_t posedRotation;
+				XMStoreFloat4(&posedRotation, combined);
+				if (!object->Apply_AnimationAuthoringPose(
+					posedPosition, posedRotation))
+				{
+					return APPLY_RESULT::FAILED;
+				}
 			}
 			continue;
 		}

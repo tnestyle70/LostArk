@@ -63,6 +63,8 @@ CAMERA_SHOT_MAX_BLEND_MS = 10_000
 CAMERA_SHOT_MAX_PRIORITY = 1_000
 CAMERA_SHOT_MAX_HALF_EXTENT = 1_000.0
 CAMERA_SHOT_MAX_COORDINATE = 100_000.0
+CAMERA_TRACK_MAX_DURATION_MS = 120_000
+CAMERA_TRACK_MAX_KEYFRAMES = 64
 PUBLISH_LOCK_TIMEOUT_SECONDS = 120.0
 PUBLISH_RECEIPT_REL = "Composition.publish.receipt.json"
 PUBLISH_JOURNAL_NAME = ".composition-publish.journal.json"
@@ -2584,7 +2586,11 @@ def _validate_world_sequence_source(
                 f"{WORLD_SEQUENCE_MAX_TRACKS}"
             )
 
+        # A slot may carry both a transform track and a clip chain so one
+        # binding can walk an animated prop while it plays. Duplicates are a
+        # conflict only within the same kind.
         slots: dict[str, str] = {}
+        transform_slots: set[str] = set()
         for track_ordinal, track in enumerate(transform_tracks):
             track_context = f"{template_context}.tracks[{track_ordinal}]"
             if not isinstance(track, dict):
@@ -2593,10 +2599,11 @@ def _validate_world_sequence_source(
             slot_id = _require_owner_stable_id(
                 track["slotId"], f"{track_context}.slotId", 128
             )
-            if slot_id in slots:
+            if slot_id in transform_slots:
                 raise CompositionError(
                     f"duplicate World Sequence slotId: {sequence_id}/{slot_id}"
                 )
+            transform_slots.add(slot_id)
             slots[slot_id] = "MAP_PLACEMENT"
             keys = track["keys"]
             if (
@@ -2679,6 +2686,10 @@ def _validate_world_sequence_source(
                     f"{track_context} must span the whole template duration"
                 )
 
+        # An animation slot may carry an ordered clip chain, so its rows are
+        # checked against that slot's previous start. A slot still may not be
+        # both a transform and an animation slot.
+        animation_slot_starts: dict[str, int] = {}
         for track_ordinal, track in enumerate(animation_tracks):
             track_context = f"{template_context}.animationTracks[{track_ordinal}]"
             if not isinstance(track, dict):
@@ -2686,17 +2697,35 @@ def _validate_world_sequence_source(
             _require_exact_fields(
                 track,
                 ("slotId", "clipName", "playbackRate", "loop", "holdLastFrame"),
-                (),
+                ("startMs",),
                 track_context,
             )
             slot_id = _require_owner_stable_id(
                 track["slotId"], f"{track_context}.slotId", 128
             )
-            if slot_id in slots:
-                raise CompositionError(
-                    f"duplicate World Sequence slotId: {sequence_id}/{slot_id}"
+            start_ms = 0
+            if "startMs" in track:
+                start_ms = _require_nonnegative_int(
+                    track["startMs"], f"{track_context}.startMs"
                 )
-            slots[slot_id] = "DEPLOY_PLACEMENT"
+            if start_ms >= duration_ms:
+                raise CompositionError(
+                    f"{track_context}.startMs must be inside the template duration"
+                )
+            if slot_id in animation_slot_starts:
+                if start_ms <= animation_slot_starts[slot_id]:
+                    raise CompositionError(
+                        f"World Sequence animation chain must advance: "
+                        f"{sequence_id}/{slot_id}"
+                    )
+            else:
+                if start_ms != 0:
+                    raise CompositionError(
+                        f"World Sequence animation chain must start at 0ms: "
+                        f"{sequence_id}/{slot_id}"
+                    )
+                slots[slot_id] = "DEPLOY_PLACEMENT"
+            animation_slot_starts[slot_id] = start_ms
             _require_bounded_display_text(
                 track["clipName"], f"{track_context}.clipName", 128
             )
@@ -2860,7 +2889,7 @@ def _validate_camera_shot_source(
                 "blendOutMs",
                 "priority",
             ),
-            (),
+            ("cameraTrack", "follow"),
             shot_context,
         )
         shot_id = _require_owner_stable_id(
@@ -2935,7 +2964,114 @@ def _validate_camera_shot_source(
                 raise CompositionError(
                     f"{shot_context}.{field} exceeds {maximum}"
                 )
+        if "cameraTrack" in shot:
+            _validate_camera_track(shot["cameraTrack"], f"{shot_context}.cameraTrack")
+        if "follow" in shot:
+            _validate_camera_follow(shot["follow"], f"{shot_context}.follow")
     return shot_ids
+
+
+def _validate_camera_track(track: Any, context: str) -> None:
+    """Validate the optional keyframed track exactly as the product level reads it.
+
+    A shot without a track keeps its single authored pose; with one the level
+    samples it on the bound sequence's clock, so a track this owner admits but
+    the level rejects would strand the cutscene on a stale frame.
+    """
+    if not isinstance(track, dict):
+        raise CompositionError(f"{context} must be an object")
+    _require_exact_fields(
+        track, ("durationMs", "interpolation", "easing", "keyframes"), (), context
+    )
+    duration_ms = _require_positive_int(track["durationMs"], f"{context}.durationMs")
+    if duration_ms > CAMERA_TRACK_MAX_DURATION_MS:
+        raise CompositionError(
+            f"{context}.durationMs exceeds {CAMERA_TRACK_MAX_DURATION_MS}"
+        )
+    if track["interpolation"] not in ("LINEAR", "CATMULL_ROM"):
+        raise CompositionError(f"{context}.interpolation is unknown")
+    if track["easing"] not in ("LINEAR", "SMOOTHSTEP", "HOLD"):
+        raise CompositionError(f"{context}.easing is unknown")
+    keyframes = track["keyframes"]
+    if (
+        not isinstance(keyframes, list)
+        or len(keyframes) < 2
+        or len(keyframes) > CAMERA_TRACK_MAX_KEYFRAMES
+    ):
+        raise CompositionError(
+            f"{context}.keyframes must be 2 to {CAMERA_TRACK_MAX_KEYFRAMES} rows"
+        )
+    scene_ids: set[str] = set()
+    previous_time_ms = -1
+    for ordinal, keyframe in enumerate(keyframes):
+        key_context = f"{context}.keyframes[{ordinal}]"
+        if not isinstance(keyframe, dict):
+            raise CompositionError(f"{key_context} must be an object")
+        _require_exact_fields(
+            keyframe,
+            ("sceneId", "timeMs", "eye", "lookAt", "fovYDegrees"),
+            (),
+            key_context,
+        )
+        scene_id = _require_owner_stable_id(
+            keyframe["sceneId"], f"{key_context}.sceneId", 128
+        )
+        if scene_id in scene_ids:
+            raise CompositionError(f"duplicate camera keyframe sceneId: {scene_id}")
+        scene_ids.add(scene_id)
+        time_ms = _require_nonnegative_int(keyframe["timeMs"], f"{key_context}.timeMs")
+        if time_ms > duration_ms:
+            raise CompositionError(f"{key_context}.timeMs exceeds the track duration")
+        if ordinal == 0:
+            if time_ms != 0:
+                raise CompositionError(f"{context} must start at 0ms")
+        elif time_ms <= previous_time_ms:
+            raise CompositionError(f"{context}.keyframes must advance in time")
+        previous_time_ms = time_ms
+        eye = _require_float3(
+            keyframe["eye"],
+            f"{key_context}.eye",
+            maximum_magnitude=CAMERA_SHOT_MAX_COORDINATE,
+        )
+        look_at = _require_float3(
+            keyframe["lookAt"],
+            f"{key_context}.lookAt",
+            maximum_magnitude=CAMERA_SHOT_MAX_COORDINATE,
+        )
+        if sum((look_at[axis] - eye[axis]) ** 2 for axis in range(3)) <= 0.000001:
+            raise CompositionError(f"{key_context} has no view direction")
+        fov = _require_finite_number(
+            keyframe["fovYDegrees"], f"{key_context}.fovYDegrees"
+        )
+        if fov <= 1.0 or fov >= 179.0:
+            raise CompositionError(
+                f"{key_context}.fovYDegrees must be between 1 and 179"
+            )
+    if previous_time_ms != duration_ms:
+        raise CompositionError(f"{context} must end at its duration")
+
+
+def _validate_camera_follow(follow: Any, context: str) -> None:
+    """A side scrolling stage slides one framing with the player instead of
+    pinning it, so that shot carries two offsets and no fixed world pose."""
+    if not isinstance(follow, dict):
+        raise CompositionError(f"{context} must be an object")
+    _require_exact_fields(follow, ("eyeOffset", "lookAtOffset"), (), context)
+    eye_offset = _require_float3(
+        follow["eyeOffset"],
+        f"{context}.eyeOffset",
+        maximum_magnitude=CAMERA_SHOT_MAX_COORDINATE,
+    )
+    look_at_offset = _require_float3(
+        follow["lookAtOffset"],
+        f"{context}.lookAtOffset",
+        maximum_magnitude=CAMERA_SHOT_MAX_COORDINATE,
+    )
+    if (
+        sum((look_at_offset[axis] - eye_offset[axis]) ** 2 for axis in range(3))
+        <= 0.000001
+    ):
+        raise CompositionError(f"{context} offsets coincide")
 
 
 def _load_ref_ids(
