@@ -105,6 +105,9 @@ namespace Client
 			std::string& outStatus);
 		bool_t Consume_AnimationPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& outRequest);
+		// Preview the current draft at its cursor; a cursor at/past the end restarts at zero.
+		bool_t Request_PatternPreview(std::string_view patternId,
+			std::uint32_t startClockMs, std::string& outStatus);
 		bool_t Consume_PatternPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_PATTERN& outPattern,
 			std::uint32_t& outStartClockMs,
@@ -172,6 +175,15 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
+		// Copy selected parents once; standalone boxes keep their Stage and time window.
+		bool_t Duplicate_TimelineSelection(
+			std::string_view patternId,
+			const std::vector<std::string>& stageIds,
+			const std::vector<std::string>& occurrenceIds,
+			std::string& outStatus);
+		// Total lifetime is the sum of Stage clocks; only the final Stage is resized.
+		bool_t Set_PatternDuration(std::string_view patternId,
+			std::uint32_t durationMs, std::string& outStatus);
 		bool_t Move_Stage(
 			std::string_view patternId,
 			std::string_view stageId,
@@ -284,6 +296,7 @@ namespace Client
 		void Select_TimelineBox(const std::string& stageId,
 			const std::string& occurrenceId, bool_t toggle);
 		void Render_Transport();
+		void Stop_Preview();
 		void Render_Details();
 		void Render_ReloadConfirmation();
 		void Poll_PublishProcess();
@@ -347,6 +360,7 @@ namespace Client
 		f32_t m_fPixelsPerSecond = 90.f;
 		char_t m_PatternName[256]{};
 		char_t m_NewPatternName[256]{};
+		int32_t m_iPatternDurationMs = 0;
 		int32_t m_iNewStageDurationMs = 1000;
 		int32_t m_iOccurrenceStartOffsetMs = 0;
 		int32_t m_iOccurrenceSourceStartMs = 0;

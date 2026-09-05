@@ -23,7 +23,16 @@ RPCT_07은 Saydon 모델을 공유하며 source profile은 원래 값으로 보�
 - Sequence의 순차 Animation은 같은 행에 놓고 겹친 구간만 추가 행을 사용한다. Append 후 Fit한다.
   클릭/Ctrl+클릭/빈 공간 사각 드래그로 stable ID를 선택하고 Delete Selected 또는 Delete로 지운다.
   Stage와 그 자식이 함께 선택돼도 한 번씩 삭제하며, 없는 ID가 섞이면 전체 삭제를 거절한다.
-- Sequence에 Save/dirty/status를 제공한다. 기존 Save_Atomic의 validate/CAS/atomic replace/reopen을 사용한다.
+- Sequencer 상단에 Save/Play/Stop과 dirty/status를 제공한다. 아래에는 Zoom, Full lifetime ms,
+  Apply/Fit을, Selected Box에는 Delete/Duplicate를 표시한다. 미선택 상태에서도 버튼을 보인다.
+  Play는 현재 draft를 cursor부터 기존 Animation Tool preview로 보내며 끝 위치에서는 처음부터
+  재생한다. Stop은 pending 요청을 취소하고 cursor를 0으로 돌린다.
+- 전체 lifetime은 Stage clock 합계다. 마지막 Stage의 길이만 바꾸고 기존 box의 끝보다 짧은 값과
+  600초 초과를 거절한다. animation 속도나 앞 Stage timing을 자동으로 바꾸지 않는다.
+- Duplicate는 선택 Stage와 자식을 함께 복제하고 별도로 선택한 그 자식은 다시 복제하지 않는다.
+  단독 Animation 복제는 같은 Stage/time window에 새 stable ID로 넣는다. 실패하면 ordinal도
+  보존한다. Append 직후 새 박스의 단일/다중 선택을 함께 설정하며 삭제/Reload 후 없는 선택 ID를 정리한다.
+- Save는 기존 Save_Atomic의 validate/CAS/atomic replace/reopen을 사용한다.
   저장과 삭제는 새 문서 복사본이나 별도 runtime으로 우회하지 않는다.
 - 명시 Kouku publisher의 source revision guard도 v1/v2를 지원하고 stale revision 거절을 유지한다.
 
@@ -43,15 +52,21 @@ Product 내용은 바꾸지 않았다. 별도 schema 파일은 없고 실제 nat
 | `git diff --check` | 통과 |
 
 Native 검사는 실제 `Reload`, `Select_ActorProfile`, `Create_Pattern`, `Append_ActionAsStages`,
-`Append_ActionToStage`, `Delete_TimelineSelection`, `Save`를 호출했다. 화면의 Action 4219811,
+`Append_ActionToStage`, `Delete_TimelineSelection`, `Duplicate_TimelineSelection`,
+`Set_PatternDuration`, `Request_PatternPreview`, `Save`를 호출했다. 화면의 Action 4219811,
 Action 0, 07 alias, 별도 쿠크 Pattern, 빈 모델 카테고리의 원자적 자동 생성, 249 Stage Action,
 교차 모델·PRODUCT 거절, 묶음 삭제·저장·재로드, v1 마이그레이션과 손상 row 원문 보존,
 외부 파일 변경 시 CAS 실패 보존을 확인했다. 테스트 scratch는 TEMP 아래에 두고 원본 데이터는 보존했다.
+추가 controls 검사는 lifetime 저장/재로드, 점유 구간보다 짧은 값 거절, Stage+child 선택 중복 제거,
+새 ID/모델 owner 유지, 최대 길이 초과 복제의 ordinal rollback, Play cursor/one-shot request를 확인했다.
 ImGui 함수나 Client/Engine 초기화는 호출하지 않았다. 기존 harness에 focused entry를 추가했으며 새 harness는 없다.
 
-최종 로그는 `out/KoukuPattern3/native-editor-final-build.log`와
-`out/KoukuPattern3/native-editor-final-run.log`다. 최종 incremental 빌드는 오류 0,
-기존 C4828 코드 페이지 경고 198건이었다. 실제 명령은 다음과 같다.
+최종 로그는 `out/KoukuPattern3/native-sequencer-final-build.log`와
+`out/KoukuPattern3/native-sequencer-final-run.log`다. 최종 incremental 빌드는 오류 0,
+기존 C4828 코드 페이지 경고 66건이었다. 기존 Python 44개도 최신 controls에서 통과했으며
+로그는 `out/KoukuPattern3/sequencer-controls-python.log`다. Workbench header 변경의 직접
+소비자 MainApp도 다시 최소 컴파일하여 오류 0/기존 C4819 경고 34건을 확인했다.
+로그는 `out/KoukuPattern3/client-sequencer-final-mainapp.log`다. 실제 native 명령은 다음과 같다.
 
 ```text
 MSBuild.exe Tools/ValtanPatternAuditionServiceHarness/Default/ValtanPatternAuditionServiceHarness.vcxproj /t:Build /p:Configuration=Debug /p:Platform=x64 /p:BuildProjectReferences=false /m:1 /nodeReuse:false
@@ -96,5 +111,6 @@ Client link/실행과 망치 모양·손 정렬의 visual PASS는 수행하지 �
 새 소스를 받은 뒤 Server/Client를 같은 버전으로 다시 빌드하고, 이 PC의 `Server + Client`
 profile을 사용자가 Ctrl+F5로 실행한다. F1 → Action Workbench → KoukuSaydon에서
 모델 선택 → Composition Resources의 Action 선택 → Append Action as Stages →
-Sequence의 사각 선택/Delete → Save → Reload를 확인한다.
+Sequencer의 Play/Stop → Full lifetime ms/Apply → 사각 선택/Delete/Duplicate → Save → Reload를 확인한다.
+대형 이름 Action의 100배 크기와 망치 손 정렬은 사용자가 재실행 후 직접 관찰한다.
 실행 중인 원본 프로그램은 새 소스를 자동으로 반영하지 않는다.

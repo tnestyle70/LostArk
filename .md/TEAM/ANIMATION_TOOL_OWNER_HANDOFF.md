@@ -927,8 +927,12 @@ Composition의 `KoukuSaydon` 아래 Pattern은 `Kouku (MN_RPCZ_00)`,
 
 Resources의 기획 Action을 Sequence에 붙이면 원본 slot의 clip, source timing과 순서를
 복사한다. 모델에 Pattern이 없으면 첫 Append가 같은 모델의 DRAFT Pattern을 만든다.
-Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 `Delete Selected` 또는
-Delete로 제거한다. Sequence의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다.
+Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 Selected Box의 `Delete` 또는
+Delete 키로 제거한다. `Duplicate`는 새 stable ID를 발급하여 선택한 Stage/box를 복제한다.
+Stage와 그 자식을 동시에 선택해도 자식은 한 번만 복제한다. 단독 box 복제는 같은 time window에 놓인다.
+Sequencer의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다. `Play/Stop`은 로컬
+Animation preview를 제어한다. Zoom 아래 Full lifetime ms/Apply는 마지막 Stage clock을 조절하며
+기존 box가 끝나는 시간보다 짧은 값과 전체 600초 초과는 거절한다.
 입력 또는 저장 검증이 실패하면 기존 Pattern과 파일을 보존한다.
 
 정본은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`이다. formatVersion 2의

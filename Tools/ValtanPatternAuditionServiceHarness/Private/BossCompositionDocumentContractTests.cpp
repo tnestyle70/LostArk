@@ -469,6 +469,130 @@ namespace
 		Require(WriteText(sourcePath, original), "could not restore scratch source for editor test");
 	}
 
+	void VerifyKoukuTimelineControls(Client::CKoukuSaydonActionWorkbench& workbench,
+		const std::filesystem::path& sourcePath)
+	{
+		using namespace Client;
+		std::string status;
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_05", status), status,
+			"select Saydon for timeline controls");
+		std::string patternId;
+		RequireEditorStep(workbench.Create_Pattern("Timeline control roundtrip", "NORMAL",
+			patternId, status), status, "create timeline control Pattern");
+		RequireEditorRoundtrip(workbench);
+		const auto empty = workbench.Get_Composition();
+		Require(!workbench.Set_PatternDuration(patternId, 10000u, status) &&
+			workbench.Get_Composition() == empty && !workbench.Is_Dirty(),
+			"empty Pattern duration fabricated a Stage or changed its counters");
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			4219811u, status), status, "append first timeline Stage");
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			4219811u, status), status, "append second timeline Stage");
+		const auto occupied = EditorPattern(workbench, patternId);
+		RequireEditorStep(workbench.Set_PatternDuration(patternId, 10000u, status), status,
+			"extend total timeline duration");
+		auto expectedDuration = occupied;
+		expectedDuration.Stages.back().iDurationMs = 5667u;
+		Require(EditorPattern(workbench, patternId) == expectedDuration,
+			"total duration retimed earlier Stages, boxes, owners or IDs");
+		RequireEditorRoundtrip(workbench);
+		const auto durationBaseline = workbench.Get_Composition();
+		const auto durationBytes = ReadText(sourcePath);
+		for (const auto rejectedDuration : { 0u, 8665u, 600001u })
+		{
+			Require(!workbench.Set_PatternDuration(patternId, rejectedDuration, status) &&
+				!status.empty() && workbench.Get_Composition() == durationBaseline &&
+				!workbench.Is_Dirty() && ReadText(sourcePath) == durationBytes,
+				"duration below occupied content or outside bounds changed saved state");
+		}
+
+		const auto documentBeforeDuplicate = workbench.Get_Composition();
+		const auto beforeDuplicate = EditorPattern(workbench, patternId);
+		const auto firstStage = beforeDuplicate.Stages[0];
+		const auto secondStage = beforeDuplicate.Stages[1];
+		const std::string firstBox = firstStage.AnimationOccurrences[0].strOccurrenceId;
+		const std::string secondBox = secondStage.AnimationOccurrences[0].strOccurrenceId;
+		RequireEditorStep(workbench.Duplicate_TimelineSelection(patternId,
+			{ firstStage.strStageId }, { firstBox, secondBox }, status), status,
+			"duplicate Stage and standalone box without duplicating its selected child twice");
+		const auto duplicated = EditorPattern(workbench, patternId);
+		Require(duplicated.strActorProfileId == "MN_RPCT_05" &&
+			duplicated.Stages.size() == 3u && duplicated.Stages[0] == firstStage &&
+			duplicated.iNextStageOrdinal == beforeDuplicate.iNextStageOrdinal + 1u &&
+			duplicated.iNextAnimationOrdinal == beforeDuplicate.iNextAnimationOrdinal + 2u,
+			"multi-duplicate changed owner, original Stage or consumed wrong ID counts");
+		for (const auto& untouched : documentBeforeDuplicate.Patterns)
+			if (untouched.strPatternId != patternId)
+				Require(EditorPattern(workbench, untouched.strPatternId) == untouched,
+					"duplicate changed another actor's Pattern");
+		const auto& clonedStage = duplicated.Stages[1];
+		auto expectedStage = firstStage;
+		expectedStage.strStageId = clonedStage.strStageId;
+		expectedStage.strActionId = clonedStage.strActionId;
+		expectedStage.AnimationOccurrences[0].strOccurrenceId =
+			clonedStage.AnimationOccurrences[0].strOccurrenceId;
+		Require(clonedStage == expectedStage &&
+			clonedStage.strStageId != firstStage.strStageId &&
+			clonedStage.strActionId != firstStage.strActionId &&
+			clonedStage.AnimationOccurrences[0].strOccurrenceId != firstBox,
+			"Stage clone lost source identity/timing or reused stable IDs");
+		auto expectedSecond = secondStage;
+		auto expectedBox = secondStage.AnimationOccurrences[0];
+		expectedBox.strOccurrenceId = duplicated.Stages[2].AnimationOccurrences.back().strOccurrenceId;
+		expectedSecond.AnimationOccurrences.push_back(expectedBox);
+		Require(duplicated.Stages[2] == expectedSecond && expectedBox.strOccurrenceId != secondBox,
+			"standalone box clone changed its Stage clock, offset, profile or original box");
+		RequireEditorStep(workbench.Validate_Draft(status), status,
+			"validate duplicate stable IDs and ownership");
+		RequireEditorRoundtrip(workbench);
+
+		const auto duplicateBaseline = workbench.Get_Composition();
+		const auto duplicateBytes = ReadText(sourcePath);
+		Require(!workbench.Duplicate_TimelineSelection(patternId,
+			{ firstStage.strStageId, "STALE_STAGE" }, { secondBox }, status),
+			"stale Stage selection partially duplicated valid entries");
+		Require(!workbench.Duplicate_TimelineSelection(patternId,
+			{ firstStage.strStageId }, { "STALE_BOX" }, status),
+			"stale box selection partially duplicated a valid Stage");
+		const auto foreignBox = EditorPattern(workbench, "KAKULSAYDON_G1_PIZZA").Stages[0].
+			AnimationOccurrences[0].strOccurrenceId;
+		Require(!workbench.Duplicate_TimelineSelection(patternId, {}, { foreignBox }, status),
+			"duplicate imported a box owned by another actor Pattern");
+		Require(workbench.Get_Composition() == duplicateBaseline && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == duplicateBytes,
+			"stale selection consumed ordinals, changed ownership or saved source");
+
+		KOUKU_SAYDON_COMPOSITION_PATTERN preview;
+		std::uint32_t previewStart = 0u;
+		bool_t previewPaused = true;
+		std::string previewTarget;
+		RequireEditorStep(workbench.Request_PatternPreview(patternId, 1000u, status), status,
+			"queue timeline Play from cursor");
+		Require(workbench.Consume_PatternPreviewRequest(preview, previewStart,
+			previewPaused, previewTarget) && preview == EditorPattern(workbench, patternId) &&
+			previewStart == 1000u && !previewPaused && previewTarget.empty(),
+			"Play request lost cursor, owner, source boxes or running state");
+		Require(!workbench.Consume_PatternPreviewRequest(preview, previewStart,
+			previewPaused, previewTarget) && workbench.Get_Composition() == duplicateBaseline &&
+			!workbench.Is_Dirty(), "Play request was not one-shot or edited source state");
+
+		RequireEditorStep(workbench.Set_PatternDuration(patternId, 600000u, status), status,
+			"extend timeline to authoring duration bound");
+		RequireEditorRoundtrip(workbench);
+		const auto bounded = workbench.Get_Composition();
+		const auto boundedBytes = ReadText(sourcePath);
+		Require(!workbench.Duplicate_TimelineSelection(patternId,
+			{ firstStage.strStageId }, { secondBox }, status) &&
+			workbench.Get_Composition() == bounded && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == boundedBytes,
+			"overlong multi-duplicate partially committed or consumed ID ordinals");
+		RequireEditorStep(workbench.Request_PatternPreview(patternId, 600000u, status), status,
+			"restart timeline Play from its end");
+		Require(workbench.Consume_PatternPreviewRequest(preview, previewStart,
+			previewPaused, previewTarget) && previewStart == 0u && !previewPaused,
+			"Play at total duration did not restart from zero");
+	}
+
 	void VerifyKoukuEditorRoundtrip()
 	{
 		const auto sourceRoot = Client::CProjectDataRoot::Get();
@@ -631,6 +755,8 @@ namespace
 			"batch delete changed unselected Stages, counters, timing or the other model");
 		RequireEditorRoundtrip(workbench);
 
+		VerifyKoukuTimelineControls(workbench, sourcePath);
+
 		const auto beforeInvalid = workbench.Get_Composition();
 		Require(!workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
 			999999999u, status), "unknown Action was accepted");
@@ -657,7 +783,7 @@ int Run_KoukuCompositionEditorContractTests()
 	{
 		VerifyKoukuEditorRoundtrip();
 		std::cout << "KoukuCompositionEditorContractTests: append/action-zero/model-owners/"
-			"249-stage/batch-delete/save-reload/CAS passed\n";
+			"249-stage/batch-delete/duration/multi-duplicate/preview-request/save-reload/CAS passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)
