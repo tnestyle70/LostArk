@@ -311,7 +311,7 @@ namespace Client
 		/* Authoring reloads target the primary replicated Server-authoritative
 		   Valtan, never only the Development preview returned by
 		   CAnimationTargetService. A rejected active reload latches the freshness
-		   gate consumed by Boss Tool Complete Play. */
+		   gate consumed by Valtan Boss Tool Complete Play. */
 		bool_t Reload_PrimaryValtanPresentationAuthoring(
 			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 			std::string& strOutStatus);
@@ -644,6 +644,8 @@ namespace Client
 			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
+			std::uint32_t iPatternSequence = 0u;
+			std::uint32_t iPatternStageIndex = 0u;
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
 			/* The Server occurrence pin and the R -> M generation admitted by the

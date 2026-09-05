@@ -10,7 +10,7 @@ BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 AUTHORING_H = ROOT / "Client/Public/ValtanPatternEffectCueAuthoring.h"
 AUTHORING_CPP = ROOT / "Client/Private/ValtanPatternEffectCueAuthoring.cpp"
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 
 
 def body(source: str, signature: str) -> str:
@@ -132,13 +132,13 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
     def test_workbench_uses_semantic_catalog_and_full_typed_details(self) -> None:
         semantic = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects(",
+            "void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects(",
         )
         self.assertIn('rfind("effect.valtan.", 0u)', semantic)
         self.assertIn("CEffectCatalog::Is_DirectAuthoredDocument", semantic)
         details = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         for token in (
             '"Filter authored effect.valtan.*..."',
@@ -168,7 +168,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
     def test_workbench_explains_selected_effect_anchor_basis(self) -> None:
         details = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         arena_start = details.index(
             'if ("arena.center.facing" == Draft.strAnchorSlotId)'
@@ -234,7 +234,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
 
         details = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         gate = details[details.index("const VALTAN_PATTERN_VIEW* pSavedPattern") :]
         for token in (
@@ -260,7 +260,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
     def test_collider_add_is_manual_only_while_existing_hits_are_tunable(self) -> None:
         gameplay = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         for token in (
             'const bool_t bHasExistingServerHit = "NONE" != Draft.hitShape',
@@ -297,7 +297,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
     def test_sequencer_effect_row_selects_typed_detail_without_fake_collider(self) -> None:
         timeline = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         self.assertIn(
             "DETAIL_OWNER::EFFECT, TIMELINE_LANE::EFFECT", timeline
@@ -305,7 +305,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         self.assertIn("Cue.strOccurrenceId", timeline)
         details = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         self.assertIn("never infers hit geometry", details)
         self.assertNotIn("Cue.LocalTransform.vScale.x *", details)
@@ -313,7 +313,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
     def test_stale_preview_is_stop_only_and_reload_stages_effect_catalog_once(self) -> None:
         reload_body = body(
             self.workbench,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         self.assertIn("Reset_EffectCueEditor();", reload_body)
         self.assertIn("Reload_SemanticValtanEffects();", reload_body)
@@ -323,13 +323,13 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         )
         preview = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Preview(",
+            "void Client::CValtanActionWorkbench::Render_Preview(",
         )
         self.assertIn("Stop is the sole stale-safe transport command", preview)
         self.assertIn("nullptr == m_pAnimationTool || !Preview.bPlaying", preview)
         sequence_browser = body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         use_index = sequence_browser.index('"Use for Create New Pattern"')
         self.assertIn("!bMutationAdmitted", sequence_browser[:use_index])

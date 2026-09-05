@@ -14,8 +14,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-WORKBENCH = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
-HEADER = ROOT / "Client/Public/ActionCompositionWorkbench.h"
+WORKBENCH = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
+HEADER = ROOT / "Client/Public/ValtanActionWorkbench.h"
 PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 BINDINGS = ROOT / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 
@@ -56,8 +56,8 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
     def test_timeline_projects_clip_source_clock_without_file_scans(self) -> None:
         timeline = source_slice(
             self.source,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
-            "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Pack_TimelineSubrows(",
         )
         self.assertIn("Binding.strStage != Stage.strActionId", timeline)
         self.assertIn("Binding.strClip != strClipName", timeline)
@@ -75,23 +75,23 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
     def test_duplicate_delete_move_and_box_detail_resolve_exact_clip_key(self) -> None:
         duplicate = source_slice(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
-            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Duplicate_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Delete_SelectedTimelineBox(",
         )
         delete = source_slice(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
-            "bool_t Client::CActionCompositionWorkbench::Apply_AnimationOccurrenceTiming(",
+            "bool_t Client::CValtanActionWorkbench::Delete_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Apply_AnimationOccurrenceTiming(",
         )
         details = source_slice(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
-            "bool_t Client::CActionCompositionWorkbench::Validate_TimelineDependencyWindows(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
+            "bool_t Client::CValtanActionWorkbench::Validate_TimelineDependencyWindows(",
         )
         timeline_render = source_slice(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
-            "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_SemanticLinkedRows(",
         )
         for block in (duplicate, delete, details, timeline_render):
             self.assertIn("strEffectV2ClipOccurrenceId", block)

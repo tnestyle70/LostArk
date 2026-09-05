@@ -16,6 +16,7 @@
 #include "Model.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Npc.h"
 #include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
@@ -44,6 +45,10 @@
 namespace
 {
 	using Client::CValtan;
+	constexpr std::string_view KOUKU_SAYDON_BOSS_ARCHETYPE =
+		"BOSS_KAKULSAYDON_G1_KOUKU";
+	constexpr std::string_view KOUKU_SAYDON_ENCOUNTER =
+		"ENCOUNTER_KAKULSAYDON_G1";
 
 #ifdef _DEBUG
 	Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT g_CombatDebugVisibility = []
@@ -575,7 +580,9 @@ bool Client::CClientReplication::Has_WorldEntity(
 			(LostArk::Shared::WORLD_ENTITY_KIND::MONSTER == presentation.eKind &&
 				!presentation.pNpc.expired()) ||
 			(LostArk::Shared::WORLD_ENTITY_KIND::BOSS == presentation.eKind &&
-				!presentation.pValtan.expired());
+				(!presentation.pValtan.expired() ||
+				 (presentation.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
+				  !presentation.pNpc.expired())));
 		if (presentation.strArchetypeId == archetypeId &&
 			hasLivePresentation)
 		{
@@ -2045,7 +2052,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				(WORLD_ENTITY_KIND::MONSTER == existing->second.eKind &&
 					!existing->second.pNpc.expired()) ||
 				(WORLD_ENTITY_KIND::BOSS == existing->second.eKind &&
-				!existing->second.pValtan.expired());
+				(!existing->second.pValtan.expired() ||
+				 (existing->second.strArchetypeId ==
+					KOUKU_SAYDON_BOSS_ARCHETYPE &&
+				  !existing->second.pNpc.expired())));
 		return hasLivePresentation &&
 			existing->second.eKind == spawned.eKind &&
 			existing->second.strArchetypeId == spawned.strArchetypeId &&
@@ -2278,6 +2288,83 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 	const BOSS_ACTOR_ENTRY* pBoss =
 		CActorCatalog::Find_Boss(spawned.strArchetypeId);
+	if (spawned.eKind == WORLD_ENTITY_KIND::BOSS && nullptr != pBoss &&
+		spawned.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
+		spawned.strEncounterId == KOUKU_SAYDON_ENCOUNTER &&
+		pBoss->clientPresentationId ==
+			"boss.kakulsaydon.g1.kouku.client.v1" &&
+		INVALID_NET_ENTITY_ID == spawned.iOwnerBossNetEntityId)
+	{
+		const std::wstring modelTag =
+			CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag(
+				spawned.strArchetypeId);
+		if (modelTag.empty() ||
+			FAILED(CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
+				m_Desc.pDevice, m_Desc.pContext, m_Desc.iPrototypeLevelIndex,
+				spawned.strArchetypeId)))
+		{
+			m_strPendingPresentationFailure =
+				"KoukuSaydon boss model admission failed: " +
+				CKoukuSaydonPresentationAssetService::Get_Status();
+			return false;
+		}
+
+		CNpc::NPC_DESC desc{};
+		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+		desc.strModelTag = modelTag;
+		desc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.pIdleClip = pBoss->presentationClips.idle.c_str();
+		desc.bSuppressRootMotion = true;
+		desc.bInterpolateNetworkTransform = true;
+		desc.vPosition = float3_t(
+			spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ);
+		desc.fYawDegree = spawned.fYawDegrees;
+		desc.fCollisionRadius = spawned.fCollisionRadius;
+
+		std::shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_Desc.iPrototypeLevelIndex,
+			CKoukuSaydonPresentationAssetService::Get_GameObjectPrototypeTag(),
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			&desc,
+			&gameObject)))
+		{
+			return false;
+		}
+		const std::shared_ptr<CNpc> boss =
+			std::dynamic_pointer_cast<CNpc>(gameObject);
+		if (nullptr == boss || !boss->Apply_NetworkState(
+			desc.vPosition, spawned.fYawDegrees))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag,
+				gameObject);
+			return false;
+		}
+
+		WORLD_ENTITY_PRESENTATION presentation{};
+		presentation.eKind = spawned.eKind;
+		presentation.strPlacementId = spawned.strPlacementId;
+		presentation.strArchetypeId = spawned.strArchetypeId;
+		presentation.strEncounterId = spawned.strEncounterId;
+		presentation.strCurrentClip = pBoss->presentationClips.idle;
+		presentation.strResolvedIdleClip = pBoss->presentationClips.idle;
+		presentation.fCollisionRadius = spawned.fCollisionRadius;
+		presentation.PinnedDefinitionRevision =
+			spawned.PinnedDefinitionRevision;
+		presentation.pNpc = boss;
+		const auto [insertedAt, inserted] = m_WorldEntities.emplace(
+			spawned.iNetEntityId, std::move(presentation));
+		(void)insertedAt;
+		if (!inserted)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, boss);
+		}
+		return inserted;
+	}
 	if (spawned.eKind != WORLD_ENTITY_KIND::BOSS ||
 		nullptr == pBoss ||
 		pBoss->clientPresentationId != "boss.valtan.client.v1")
@@ -3031,6 +3118,33 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 		}
 		character->Apply_NetworkStance(player.eStance);
+		if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
+		{
+			/* The owner presentation is the same replicated Valtan the Effect V2
+			hand anchors follow. A missing or isolated owner keeps the Server
+			fallback transform; only a live owner without an admitted grip is a
+			presentation admission failure worth reporting. */
+			std::shared_ptr<CValtan> owner;
+			const auto ownerIter =
+				m_WorldEntities.find(player.iAttachmentOwnerNetEntityId);
+			if (m_WorldEntities.end() != ownerIter &&
+				WORLD_ENTITY_KIND::BOSS == ownerIter->second.eKind &&
+				!ownerIter->second.bPresentationIsolated)
+			{
+				owner = ownerIter->second.pValtan.lock();
+			}
+			if (nullptr == owner)
+				character->Clear_NetworkAttachment();
+			else if (!character->Apply_NetworkAttachment(
+					owner, player.eAttachmentSlot) &&
+				m_strPendingPresentationFailure.empty())
+			{
+				m_strPendingPresentationFailure =
+					"Grabbed player kept its Server fallback transform because the owner presentation has no admitted CAPTURE gripLocalOffset.";
+			}
+		}
+		else
+			character->Clear_NetworkAttachment();
 		if (isLocallyControlled)
 		{
 			const NET_PLAYER_RECORD* localRecord =
@@ -3265,6 +3379,61 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				WORLD_ENTITY_ACTION::DEAD == entity.eAction)
 			{
 				CCombatHUDViewModel::Get().Set_BossDeadRaw(true);
+			}
+
+			if (iter->second.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
+				iter->second.strEncounterId == KOUKU_SAYDON_ENCOUNTER &&
+				INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
+			{
+				const std::shared_ptr<CNpc> boss = iter->second.pNpc.lock();
+				if (nullptr == boss ||
+					iter->second.PinnedDefinitionRevision !=
+						entity.PinnedDefinitionRevision ||
+					!boss->Apply_NetworkState(
+						position, entity.fYawDegrees, snapshot.iServerTick))
+				{
+					allSucceeded = false;
+					continue;
+				}
+
+				const bool_t newActionEdge =
+					iter->second.strActiveActionId != entity.strActionId ||
+					iter->second.iPatternSequence != entity.iPatternSequence ||
+					iter->second.iPatternStageIndex !=
+						entity.iPatternStageIndex;
+				if (newActionEdge)
+				{
+					KOUKU_SAYDON_ACTION_PRESENTATION action;
+					const bool_t hasAction =
+						CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
+							entity.strActionId, action);
+					const bool_t played = hasAction ?
+						boss->Play_NetworkAction(
+							action.strClip.c_str(), false,
+							action.fPlayRate, 0.05f) :
+						boss->Play_DefaultIdle(0.08f);
+					if (!played)
+					{
+						m_strPendingPresentationFailure = hasAction ?
+							"KoukuSaydon Product animation clip could not start: " +
+								action.strClip :
+							"KoukuSaydon Server action has no admitted Product animation binding: " +
+								entity.strActionId;
+						allSucceeded = false;
+					}
+					else
+					{
+						iter->second.strCurrentClip = hasAction ?
+							action.strClip : iter->second.strResolvedIdleClip;
+					}
+					iter->second.strActiveActionId = entity.strActionId;
+					iter->second.iPatternSequence = entity.iPatternSequence;
+					iter->second.iPatternStageIndex =
+						entity.iPatternStageIndex;
+				}
+				CCombatHUDViewModel::Get().Apply_Boss(
+					snapshot.iServerTick, iter->second.strArchetypeId, entity);
+				continue;
 			}
 
 			VALTAN_PRESENTATION_STATE latest{};

@@ -140,7 +140,7 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
 			"Valtan" }
 	}};
 
-/* Boss Tool transfers only stable Product identity. Effect Tool re-resolves
+/* Valtan Boss Tool transfers only stable Product identity. Effect Tool re-resolves
    the current joined tree and exact writable source; no pointers, paths, or
    display ordinals cross the Tool boundary. */
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST final
@@ -589,7 +589,7 @@ private:
         const std::string& strCategory,
         const std::string& strKindCategory);
 	/* All Effects exposes the exact Valtan authoring inventory. Play Server is a
-	   one-shot shortcut through the shared Server audition service; Boss Tool
+	   one-shot shortcut through the shared Server audition service; Valtan Boss Tool
 	   keeps repeat/revive/diagnostics. Canonical Product Effects remain editable
 	   and locally replayable with their joined Model View animation. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);

@@ -37,6 +37,7 @@
 namespace
 {
 	uint64_t g_iRaidBgmOwnershipGeneration = 0u;
+	constexpr const char_t* VALTAN_LEFT_HAND_BONE = "bip001-l-hand";
 
 	bool Is_ArenaCenterCueAnchor(const std::string_view slot)
 	{
@@ -771,6 +772,64 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 	return true;
 }
 
+bool_t CValtan::Reload_PlayerHandGripLocalOffset_WhileAdmitted(
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pBodyModelCom)
+	{
+		strOutStatus =
+			"Valtan player hand-grip reload requires an admitted body model.";
+		return false;
+	}
+	CEncounterPatternReference encounter;
+	if (!encounter.Load(CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanEncounter.json"), strOutStatus))
+	{
+		strOutStatus =
+			"Valtan player hand-grip Product admission rejected: " +
+			strOutStatus;
+		return false;
+	}
+	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> staged;
+	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
+	{
+		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
+		{
+			if (!stage.gripLocalOffset.has_value())
+				continue;
+			if (!CPlayerHandGripTransform::Is_ValidGripLocalOffset(
+					*stage.gripLocalOffset))
+			{
+				strOutStatus =
+					"Valtan player hand-grip CAPTURE offset is out of range: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+			if (!staged.has_value())
+				staged = *stage.gripLocalOffset;
+			else if (*staged != *stage.gripLocalOffset)
+			{
+				strOutStatus =
+					"Valtan player hand-grip CAPTURE offsets disagree across the encounter: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+		}
+	}
+	if (staged.has_value() && !m_pBodyModelCom->Has_Bone(VALTAN_LEFT_HAND_BONE))
+	{
+		strOutStatus =
+			"Valtan player hand-grip socket bone is missing from the admitted body model: bip001-l-hand";
+		return false;
+	}
+	m_PlayerHandGripLocalOffset = staged;
+	strOutStatus = staged.has_value() ?
+		"Reloaded one Valtan player hand-grip CAPTURE offset." :
+		"Reloaded zero Valtan player hand-grip CAPTURE offsets.";
+	return true;
+}
+
 bool_t CValtan::Reload_PatternPresentationAuthoring(
 	std::string& strOutStatus)
 {
@@ -836,6 +895,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	const auto PreviousBindings = m_PatternClipByActionId;
 	const auto PreviousBodyVisibility =
 		m_PatternBodyVisibilityByActionId;
+	const auto PreviousPlayerHandGrip = m_PlayerHandGripLocalOffset;
 	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
 	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
 	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
@@ -859,6 +919,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	const auto RestorePrevious = [this,
 		&PreviousBindings, &PreviousBodyVisibility,
+		&PreviousPlayerHandGrip,
 		&PreviousEffectCues, &PreviousArenaCenters,
 		&PreviousEffectAttempts, PreviousEffectScanValid,
 		PreviousEffectScanAge, &PreviousSoundCues,
@@ -871,6 +932,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		m_PatternClipByActionId = PreviousBindings;
 		m_PatternBodyVisibilityByActionId = PreviousBodyVisibility;
+		m_PlayerHandGripLocalOffset = PreviousPlayerHandGrip;
 		m_PatternEffectCuesByActionId = PreviousEffectCues;
 		m_PatternArenaCenterAnchors = PreviousArenaCenters;
 		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
@@ -893,6 +955,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	std::string StepStatus;
 	if (!Reload_PatternBindings_WhileAdmitted(StepStatus) ||
+		!Reload_PlayerHandGripLocalOffset_WhileAdmitted(StepStatus) ||
 		!Reload_PatternEffectCues_WhileAdmitted(StepStatus) ||
 		!Reload_PatternSoundCues_WhileAdmitted(StepStatus) ||
 		!Reload_CombatObjectSoundCues_WhileAdmitted(StepStatus) ||
@@ -900,7 +963,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		RestorePrevious();
 		strOutStatus =
-			"Valtan joined presentation reload rejected; every previous animation/effect/sound/combat-sound/shake cache was preserved: " +
+			"Valtan joined presentation reload rejected; every previous animation/grip/effect/sound/combat-sound/shake cache was preserved: " +
 			StepStatus;
 		return false;
 	}
@@ -913,6 +976,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	auto StagedBindings = std::move(m_PatternClipByActionId);
 	auto StagedBodyVisibility =
 		std::move(m_PatternBodyVisibilityByActionId);
+	auto StagedPlayerHandGrip = m_PlayerHandGripLocalOffset;
 	auto StagedEffectCues = std::move(m_PatternEffectCuesByActionId);
 	auto StagedArenaCenters = std::move(m_PatternArenaCenterAnchors);
 	auto StagedSoundCues = std::move(m_PatternSoundCuesByActionId);
@@ -942,6 +1006,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	m_PatternClipByActionId = std::move(StagedBindings);
 	m_PatternBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
+	m_PlayerHandGripLocalOffset = StagedPlayerHandGrip;
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
 	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
@@ -1323,6 +1388,14 @@ bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
 		}
 	}
 
+	if (Source.m_PlayerHandGripLocalOffset.has_value() &&
+		!m_pBodyModelCom->Has_Bone(VALTAN_LEFT_HAND_BONE))
+	{
+		strOutStatus =
+			"Ghost pool animation donor is missing the admitted player hand-grip socket bone: bip001-l-hand.";
+		return false;
+	}
+
 	auto StagedBindings = Source.m_PatternClipByActionId;
 	auto StagedBodyVisibility = Source.m_PatternBodyVisibilityByActionId;
 	auto StagedEffectCues = Source.m_PatternEffectCuesByActionId;
@@ -1337,6 +1410,7 @@ bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
 
 	m_PatternClipByActionId = std::move(StagedBindings);
 	m_PatternBodyVisibilityByActionId = std::move(StagedBodyVisibility);
+	m_PlayerHandGripLocalOffset = Source.m_PlayerHandGripLocalOffset;
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
 	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
@@ -3514,6 +3588,45 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 HRESULT CValtan::Render()
 {
 	return S_OK;
+}
+
+bool_t CValtan::Try_Get_PlayerHandGripSocketView(
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+	PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const
+{
+	if (LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != slot ||
+		m_isReplicationDormant || nullptr == m_pBodyModelCom ||
+		nullptr == m_pTransformCom ||
+		!m_pBodyModelCom->Has_Bone(VALTAN_LEFT_HAND_BONE))
+	{
+		return false;
+	}
+	float4x4_t presentationRoot{};
+	if (!Try_Get_PresentationRootMatrix(&presentationRoot))
+		return false;
+	PLAYER_HAND_GRIP_SOCKET_VIEW staged{};
+	XMStoreFloat4x4(
+		&staged.SocketWorld,
+		m_pBodyModelCom->Get_BoneMatrix(VALTAN_LEFT_HAND_BONE) *
+		XMLoadFloat4x4(&presentationRoot));
+	staged.OwnerYawBasis = *m_pTransformCom->Get_WorldMatrixPtr();
+	outView = staged;
+	return true;
+}
+
+bool_t CValtan::Try_Get_PlayerHandGripLocalOffset(
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+	PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
+{
+	if (LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != slot ||
+		!m_PlayerHandGripLocalOffset.has_value() ||
+		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(
+			*m_PlayerHandGripLocalOffset))
+	{
+		return false;
+	}
+	outOffset = *m_PlayerHandGripLocalOffset;
+	return true;
 }
 
 bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const

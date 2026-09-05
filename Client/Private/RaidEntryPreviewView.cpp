@@ -496,9 +496,10 @@ bool_t CRaidEntryPreviewView::Render()
 	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
 
-	/* Timer_Default is the frame clock Client.cpp registers at startup; the grow is eased over
-	   real time so it settles the same way regardless of framerate. */
-	const f32_t fFrameDelta = CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default"));
+	/* Client.cpp advances Timer_Default on every idle-loop iteration. Timer_60 is
+	   the elapsed time passed to MainApp for this rendered frame, so the movie
+	   and tab easing must use it rather than the final sub-frame idle interval. */
+	const f32_t fFrameDelta = CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60"));
 	/* Advances the boss-portrait commander-movie flipbook (and any other animation.frames slot);
 	   without this the swapped frame set would just hold on frame 0. */
 	m_pView->Update(fFrameDelta);

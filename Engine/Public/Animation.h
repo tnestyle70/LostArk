@@ -16,6 +16,9 @@ public:
 	~CAnimation();
 
 public:
+	// Cooked playback uses this runtime clock. Metadata consumers must
+	// use the same rate even when a package retains a different import rate.
+	static constexpr f32_t COOKED_TICK_RATE = 30.f;
 	HRESULT Initialize(const aiAnimation* pAIAnimation, const vector<shared_ptr<class CBone>>& Bones);
 	HRESULT Initialize(const MODEL_ANIMATION_DATA& animation,
 		const vector<shared_ptr<class CBone>>& Bones);

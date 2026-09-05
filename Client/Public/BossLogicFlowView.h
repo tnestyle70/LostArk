@@ -25,7 +25,7 @@ namespace Client
 		std::string strStageKind;
 		std::vector<std::string> ClipNames;
 		/* Human-readable, read-only projection of the authored condition inputs.
-		   These strings never drive gameplay; they let the large Logic Pattern
+		   These strings never drive gameplay; they let the large Valtan Logic Pattern
 		   inspector show the same proxy/response/status/hit contract the Server
 		   consumed from the admitted Pattern. */
 		std::vector<std::string> ConditionSummaries;
@@ -96,7 +96,7 @@ namespace Client
 	};
 
 	/* One immutable Client observation of the already-replicated boss cursor.
-	   This is deliberately smaller than WORLD_ENTITY_SNAPSHOT: Logic Pattern
+	   This is deliberately smaller than WORLD_ENTITY_SNAPSHOT: Valtan Logic Pattern
 	   must not grow a second replication/runtime path. */
 	struct BOSS_LOGIC_FLOW_LIVE_SNAPSHOT final
 	{
@@ -178,7 +178,7 @@ namespace Client
 		float fMinimumCanvasHeight = 320.f;
 	};
 
-	/* Immediate-mode read-only canvas. The Boss Tool owner supplies live identity;
+	/* Immediate-mode read-only canvas. The Valtan Boss Tool owner supplies live identity;
 	   stable click inspection is explicitly opt-in and disabled by default. This
 	   renderer never reads the network, mutates gameplay, or owns Pattern selection.
 	   Render returns true only when one opt-in stable selection is emitted. */

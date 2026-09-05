@@ -46,13 +46,171 @@
     "playerProfileCount": 6,
     "skillDefinitionCount": 94,
     "damageProfileCount": 109,
-    "bossProfileCount": 2,
+    "bossProfileCount": 3,
     "encounterPatternCount": 34,
-    "fieldEntryCount": 3420,
+    "fieldEntryCount": 3431,
     "bossPartCount": 2,
     "bossCombatObjectCount": 9
   },
   "entries": [
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "archetypeId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "armorPlates",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": [],
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": [],
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "attackPower",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 1,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 1,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "collisionRadius",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 1.0,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 1.0,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": "쿠크세이튼",
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": "쿠크세이튼",
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "encounterId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": "ENCOUNTER_KAKULSAYDON_G1",
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": "ENCOUNTER_KAKULSAYDON_G1",
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "engageDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 100.0,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 100.0,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "maximumHealthBars",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 1,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 1,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "maximumHp",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 1000000,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 1000000,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "moveSpeed",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": 1.0,
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": 1.0,
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
+    {
+      "targetDocument": "Data/Balance/BossProfiles.json",
+      "targetId": "boss:BOSS_KAKULSAYDON_G1_KOUKU",
+      "targetField": "phasePolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "koukusaydon-animation-audition-admission-v1"
+      },
+      "sourceValue": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "transform": "KoukuSaydon animation-audition admission baseline",
+      "resultValue": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "note": "Non-final preview survival and admission value; combat fidelity is not claimed."
+    },
     {
       "targetDocument": "Data/Balance/BossProfiles.json",
       "targetId": "boss:BOSS_VALTAN",
@@ -35615,9 +35773,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12.9903810568,
+      "sourceValue": 15.5884572681,
       "transform": "Balance Tool authored override",
-      "resultValue": 12.9903810568,
+      "resultValue": 15.5884572681,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -35699,9 +35857,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 9.9926008129,
+      "sourceValue": 11.9911209755,
       "transform": "Balance Tool authored override",
-      "resultValue": 9.9926008129,
+      "resultValue": 11.9911209755,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {

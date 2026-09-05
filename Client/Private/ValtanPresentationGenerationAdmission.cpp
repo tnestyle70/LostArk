@@ -547,7 +547,7 @@ namespace
 			!Read_String(bossCatalog, "schema", bossSchema) ||
 			"lostark.boss-catalog" != bossSchema ||
 			!Read_Unsigned(bossCatalog, "formatVersion", bossVersion) ||
-			6u != bossVersion || nullptr == bosses || !bosses->Is_Array())
+			7u != bossVersion || nullptr == bosses || !bosses->Is_Array())
 		{
 			status = "BossCatalog Effect V2 owner header is invalid.";
 			return false;

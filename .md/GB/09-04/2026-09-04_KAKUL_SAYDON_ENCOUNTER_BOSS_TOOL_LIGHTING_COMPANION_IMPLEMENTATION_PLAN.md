@@ -1,1232 +1,1589 @@
-# 2026-09-04 쿠크세이튼 40일차 — 패턴 검증 모델·Boss Tool·Logic Graph·조명 연출·건슬 AI 구현 계획서
+# 2026-09-04 쿠크세이튼 1관문·전용 도구·통합 조명·건슬링어 AI 최종 구현 계획서
 
-브랜치 `GB/KoukuSaydon-pattern1`, HEAD `9dd7b10c`(= `origin/main` merge PR #310), worktree clean.
-읽은 정본: `AGENTS.md`, `CLAUDE.md`, `.md/GB/gotchas.md`, `.md/GB/gotchas.local.md`, `.md/TEAM/README.md`,
-`.md/TEAM/보스툴.md`, `.md/GB/계획서하네스규칙.local.md`, `.md/GB/local.md`,
-`09-03 KAKUL_SAYDON_PATTERN_INTAKE_AND_COMPOSITION_SAVE_AUDIT`, `09-03 KAKUL_SAYDON_MODEL_AND_ANIMATION_INVENTORY_ANALYSIS`,
-`09-03 INTEGRATED_SEQUENCER_IMPLEMENTATION_PLAN/RESULT`, `09-03 TOOLCHAIN_UNIFICATION_AND_BOTTLENECK_REMOVAL_RESULT`,
-`09-04 KOUKU_ROULETTE_AND_BOOK_CUTSCENE_RESULT`.
+> 문서 종류: 구현 계획서
+>
+> 상태: P0-1·P0-2 구현 및 자동 검증 완료 / P0-3 독립 KoukuSaydon Composition Workbench 재설계 중
+>
+> 실측 기준: 2026-09-05, `GB/KoukuSaydon-DataFormat`, `36bcf7fa` + P0-2 검증 완료 worktree
+> 역사적 파일명은 같은 작업의 PLAN을 갱신한다는 규칙 때문에 유지한다. 이 문서가 지시하는 신규 저작 이름의 정본은 `KoukuSaydon`이다.
 
-이 문서는 **구현 계획서**다. 목표, 현재 실측, 변경 파일, 데이터·호출 흐름, G별 범위, 검증을 합의하는 문서이며
-기존 H/CPP 전문은 싣지 않는다. 각 G의 코드는 선언 수준의 러프 계약이고, 실제 반영 전에 G별 디테일 계획서
-또는 대화 delta 설명으로 확장한다. 사용자가 언급한 `쿠크세이튼공략.txt`와 `koukusaytonComposition.json`은 현재
-저장소와 바탕화면에서 발견되지 않았다. 원작 기믹은 사용자 서술과 `Data/Animation/Reference/KakulSaydon/*.actionreference.json`의
-`displayName`을 정본으로 삼았고, Composition은 실제 파일인 `Data/Compositions/Bosses/KakulSaydon.bosscomposition.json`을 기준으로 한다.
+현재 worktree에는 이 계획과 무관한 기존 수정 3건이 있다.
 
----
+- `Client/Bin/DataFiles/Compositions/Bosses/Valtan.bosscomposition.json`
+- `Client/Bin/DataFiles/Compositions/Composition.publish.receipt.json`
+- `Client/Bin/DataFiles/Compositions/Sequences/KakulSaydonArena.sequencer.json`
 
-## 0. 요청 정리와 결론
-
-| 사용자 요청 | 결론 | 소유 G |
-|---|---|---|
-| Debug에서 진입 즉시 전체 패턴이 재생되는 불편 제거. Debug 기본은 queue(대기), Release는 저장된 full pattern 자동 재생 | Server room에 `SERVER_BOSS_PLAYBACK_POLICY`를 둔다. Debug 빌드 기본 `HOLD_UNTIL_COMMAND`, Release `PRODUCT_AUTOMATIC`. 기존 `bAutomaticPatternSequenceAuditionHold`를 spawn 시점에 켜는 것이 전부이며 두 번째 결정 경로를 만들지 않는다 | G00 |
-| 처음 카메라 시퀀스가 끝나는 큐와 타이밍에 맞춰 패턴 시작 | 입장 cinematic을 Server 패턴(첫 slot)으로 두고 그 stage ENTER에서 `PLAY_WORLD_SEQUENCE` stage action이 world sequence를 방송한다. Server stage clock 하나가 카메라·소품·보스 시작을 모두 소유한다 | G00 |
-| Boss Tool에서 Valtan/KoukuSaydon 선택, composition 기준 pattern 나열, All/Current 두 탭, `[Live]` 행 표시와 text, Play Selected(무한 반복), Play Full Pattern(저장 순서 0부터 끝), Next Pattern을 보스별로 | `BOSS_TOOL_TARGET` 선택자, 행 `[Live]` 마커, Action bar 재편. All/Current 탭과 Repeat·Restart Saved Flow는 이미 있으므로 이름과 위치만 바꾼다 | G01 |
-| 쿠크세이튼 보스 자체를 더 효율적으로 패턴 수행 | Valtan과 같은 split source(`Data/Kakul/*`) → projector → Server catalog/brain → Client presentation 계약을 encounter 단위로 일반화하고 첫 패턴 하나를 관통시킨다 | G02 |
-| 1관문 기믹(카드 분배, 광기 게이지·삐에로, 130 무력화·반사, 110 하트핑·스포트라이트, 85 댄스타임, 50 룰렛, 카드 맞추기) | 전부 Server typed stage action / outcome / judgement 확장이며 Client는 표현과 입력 relay만 한다 | G03 |
-| Logic flow를 상용 엔진 blueprint처럼 노드 연결·분기·counter 튜닝 | 기존 read-only `CBossLogicFlowRenderer`와 Workbench `Composition Boss Pattern` 캔버스를 하나의 편집 가능한 `CBossLogicGraphEditor`로 승격한다. writer는 여전히 `CBalanceTool` joined draft 하나다 | G04 |
-| 맵별 조명 배치, 기믹 시작 시 암전 연출, 렌더 퀄리티 튜닝 | scene profile(전역 분위기) / map light(배치 조명) / pattern light cue(기믹 연출) 세 층으로 나눈다. Engine에 spot light를 추가하고 profile blend와 light group을 데이터로 둔다 | G05 |
-| 건슬 AI: `도움!` 입력 시 20~30초 전투 참여, 이후 따라다니며 기믹 설명 말풍선, ChatGPT 연동 또는 저장된 JSON | Server가 소유하는 pseudo-player companion(GUNSLINGER class)으로 만든다. 대사는 scripted JSON이 기본이고 LLM은 Server 밖 sidecar가 선택적으로 담당한다. 말풍선은 기존 `S2C_CHAT` 경로를 그대로 쓴다 | G06 |
-| 2·3관문, 마지막 빙고 UI 연출 | action 매핑만 고정하고 별도 계획서로 넘긴다 | G07 |
+구현자는 위 파일을 임의로 되돌리거나, generated Product를 손으로 고쳐 이번 변경에 섞지 않는다.
 
 ---
 
-## 1. 현재 실측
+## 0. 최종 결론
 
-### 1.1 쿠크세이튼 자산·데이터·Server
+이번 작업은 “기존 발탄 도구에 쿠크 분기를 더하는 일”이 아니다. 다음 네 수직 슬라이스를 명확히 분리해 순서대로 닫는 작업이다.
 
-| 축 | 현재 | 근거 |
-|---|---|---|
-| Level / World | `LEVEL::KAKULSAYDON_ARENA`, `WORLD_ID::KAKULSAYDON_ARENA`, Debug Character Select의 `C2S_DEBUG_ENTER_KAKULSAYDON_ARENA` typed transfer로만 진입 | `Client/Private/LevelRegistry.cpp:156`, `Server/Private/GameRoom.cpp:3098` |
-| Level scene profile | `scene.development.neutral.v1` (Valtan은 `scene.valtan.cool-low-key.v1`) | `LevelRegistry.cpp:158` |
-| Map | `LV_LUT_MIDNIGHTC_ED` placement 2971, asset 318, 룰렛판(배치 40, 기본 숨김), 팝업북 컷신(배치 41~299, 4.5초), camera shot 2개, world sequence instance 10개 | `Data/Maps/MapCatalog.json`, `LV_LUT_MIDNIGHTC_ED.camerashots.json`, `.worldsequences.json` |
-| Map light | 없음. Valtan만 `maplights` pair(PointLight 22개) | `MapCatalog.json` Valtan 항목 |
-| Gameplay world | formatVersion 6, playerSpawn 9, triggerBox 6(`jump.1~3`, `paper.1~2`, `1Stage_Final`=circus finale playSequence), **boss placement 0** | `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json` |
-| Stage marker | SL01~SL05, `semanticStatus=SOURCE_LEVEL_ID_ONLY` | `StageMarkers.json` |
-| Animation reference | 4 profile / 349 action / 4,072 stage / 3,692 slot, `REFERENCE_ONLY` | `Data/Animation/Reference/KakulSaydon/*.actionreference.json` |
-| Animation 저작 | `actionbindings` 0행, `patternbindings` 0 pattern | `Data/Animation/Authored/KakulSaydon/*` |
-| Boss Composition | `status REFERENCE_ONLY`, `bossArchetypeId null`, `patterns []`, source 12개 | `Data/Compositions/Bosses/KakulSaydon.bosscomposition.json` |
-| Arena Sequencer | `SHADOW`, track 2개(circus finale world sequence + `shot.1`), 21,010 ms | `Data/Compositions/Sequences/KakulSaydonArena.sequencer.json` |
-| BossCatalog / BossProfiles | v6 `BOSS_VALTAN`, `BOSS_VALTAN_GHOST`만. v4 Valtan 2건만 | `Data/Actors/BossCatalog.json`, `Data/Balance/BossProfiles.json` |
-| Server brain / Encounter / combat object | 전부 없음. `Data/Kakul`, `Data/Encounters/KakulSaydon` 폴더 없음 | `ls Data/`, `ls Data/Encounters/` |
-| 모델 | `MN_RPCZ_00`(1관문 쿠크, 무기 소켓 3개·무기 모델 없음), `MN_RPCT_00/05`(2관문 세이튼, 같은 skeleton·249 clip), `MN_RPCT_06`+`WP_MN_RPCT_06`(대형 세이튼, 무기가 본체와 같은 이름 clip을 재생), `MN_RPCT_07`=05 alias(3관문) | 09-03 인벤토리 분석 §1 |
+1. **KoukuSaydon 전용 raid domain**
 
-즉 **보스가 아레나에 서서 패턴을 재생하는 데 필요한 것 중 애니메이션과 맵만 있다.** 이 사실이 G02를 모든 기믹 G보다 앞에 두는 이유다.
+   저작 데이터, pattern ID, Boss Tool, Action Workbench, draft, save job, Server brain, Client presentation, harness를 발탄과 분리한다.
 
-### 1.2 Valtan 패턴 재생 제어의 현재 구조
+2. **Rendering Tool과 lighting runtime**
 
-Server `CValtanBrain::SelectPattern`(`ValtanBrain.cpp:1198~`)의 우선순위는 다음과 같다.
+   Scene Profile, Directional Light, Area Point/Spot Light, Light Group, rendering quality, pattern multiplier를 한 화면에서 튜닝하되 각 데이터의 저장 정본은 합치지 않는다.
 
-```text
-1. PendingPatternFollowup (cross-pattern 후속, FORCED_AUDITION)
-2. scriptedSequence (Product 자동 프로그램, ORDERED_ONCE_THEN_IDLE)
-   조건: !bScriptedPatternPlayback && !bAutomaticPatternSequenceAuditionOverride && PendingPatternIds.empty()
-3. intro pattern (scriptedSequence가 없거나 override일 때만)
-4. PendingPatternIds (Debug 강제 큐 / health-bar mechanic 큐)
-5. bAutomaticPatternSequenceAuditionHold && scriptedSequence -> 아무것도 고르지 않고 대기
-6. weighted rotation
-```
+3. **Gate 1 Server-authoritative mechanics**
 
-`Data/Valtan/Valtan.gameplay.json`의 `decisionModel.scriptedSequence`는 51 slot을 가지며 첫 engage 직후 자동으로 시작한다.
-이것이 사용자가 말한 "진입하자마자 전체 패턴이 재생된다"의 정확한 원인이다. `bAutomaticPatternSequenceAuditionHold`는
-현재 `ARM_HEALTH_BAR` 뒤에만 켜지고, 켜져 있으면 5번에서 idle로 대기한다. 따라서 **Debug 기본 대기는 이 flag를
-boss spawn 시점에 켜는 것으로 충분하다.** Release Server는 모든 audition op를 `REJECTED_RELEASE_BUILD`로 거부한다
-(`Level_ValtanArena.cpp:795`).
+   Pizza를 첫 실제 패턴으로 관통시키고 130/110/85/50줄 기믹을 독립적인 수직 슬라이스로 완결한다.
 
-Client 소유자는 `CValtanPatternAuditionService`(PLAY_PATTERN_ID / RESTART / Next 한 큐), `CValtanPatternFlowService`
-(Debug ordered Flow), `CBossTool`(관측·명령). wire는 `C2S_VALTAN_AUDITION_REQUEST`가 이미 `strBossPlacementId`,
-`strPatternId` stable ID를 나른다(`PacketMessages.h:1103`). `NETWORK_PROTOCOL_VERSION = 55`,
-`GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 32`(`CLAUDE.md`의 v51/v26 서술은 낡았다. §1.7).
+4. **한 명의 Gunslinger companion**
 
-### 1.3 Boss Tool 현재 화면
+   같은 Server player actor가 전투와 가이드를 모두 수행한다. 챗봇이 응답하지 않아도 authored fallback 대사가 기존 제품 말풍선과 채팅 로그로 즉시 나온다.
 
-`CBossTool::Render()`(`BossTool.cpp:1710`)는 창 제목 `Valtan Boss Tool`, 탭 `Boss Verification` / `Pattern Flow` / `Logic Flow`.
-Boss Verification 왼쪽은 이미 `All Patterns`(`Render_PatternList`, CORE/ANIMATOR/DERIVED 구분) / `Current Patterns`
-(`Render_CurrentPatternList`, 저장된 scriptedSequence 순서) 두 탭이고 오른쪽은 `Render_SelectedPattern`.
-Action bar(`BossTool.cpp:3803`)는 `Play Selected Pattern (Keep Arena)`, `Restart Active Pattern (Keep Arena)`,
-`Retry Restart Verdict`, `Repeat`(`m_bRepeat`), `Revive Player`. `Restart Saved Flow (Fresh Arena)`(=저장 순서 01부터 전체 재생)는
-Pattern Flow 탭 안에 있다. Live는 `Render_LiveSummary`(`m_strLivePatternId`, `m_bFollowLive`)가 상단에 요약하지만 **목록 행에는
-`[Live]` 마커가 없다.** `Next Pattern...`은 `m_NextPatternIds` 공용 inventory에서 고른다.
+핵심 결정은 다음과 같다.
 
-### 1.4 Logic / Blueprint 캔버스 현재 상태
-
-| 파일 | 역할 | 편집 |
-|---|---|---|
-| `Client/Public/ActionCompositionGraphModel.h` | 한 Pattern의 stage 노드·outcome edge·경로·layout·hit-test 순수 투영 | 없음(투영) |
-| `Client/Public/BossLogicFlowView.h` | `CBossLogicFlowRenderer` read-only 캔버스(pan/zoom, opt-in 선택), `CBossLogicFlowObservedEdgeResolver` live edge 관측 | 없음 |
-| `Client/Private/ActionCompositionWorkbench_Blueprint.cpp` | `Render_BossPatternWindow`: outcome override preview, `COMPOSITION_NN` stage 추가 | stage 추가만 |
-| `CBossTool::Render_FlowGraphEditor` | Pattern Flow slot 노드/edge 편집, `Save Flow` | pattern 순서만 |
-
-즉 노드 캔버스 3개가 서로 다른 수준(패턴 순서 / 스테이지 분기)을 각각 그리고, **stage 분기·counter·event를 노드에서 직접 편집하는
-경로는 없다.** 편집은 Composition Workbench의 표/Detail 패널에서 `CBalanceTool` joined draft를 거친다.
-
-### 1.5 조명·렌더링 현재 상태
-
-- Engine `LIGHT_DESC`(`Engine_Struct.h:21`)는 `eType, vDirection, vPosition, fRange, fFalloffExponent, vDiffuse/vAmbient/vSpecular`. `sizeof == 92` static_assert.
-  `Shader_Deferred.hlsl`은 `PS_MAIN_DIRECTIONAL`, `PS_MAIN_POINT`만 있고 **spot light가 없다.**
-- `Data/Rendering/Authored/RenderingProfiles.json` v1 revision 10: `globalQuality`(SSAO/Bloom/exposure/gamma/FXAA)와 scene profile
-  (directional light, shadow, height fog, exposure/bloom multiplier). `CRenderingProfileService::Activate_Profile`은 즉시 전환이며 blend가 없다.
-- Map point light: `<Area>.maplights.json` v1(`lightId, sourceLevel, sourceObjectId, position, radiusMeters, falloffExponent, color, brightness`),
-  `CMapLightDocument::MAX_LIGHT_COUNT = 64`, `CMapLightPresentationRuntime`이 매 frame `CPresentation_Manager::Add_TransientLight`로 제출.
-  Valtan Level만 소유하고 Kakul Level은 소유하지 않는다.
-- Screen post 4종(`RGB_NOISE / ZOOM_BLUR / FILM_NOISE / CHROMATIC_ABERRATION`), screen overlay, Effect V1 point light emission(`Effect_LightPresentation.h`).
-- F1 `RENDERING` Workbench는 profile 편집·Save/Publish·Benchmark. 렌더링 품질 로드맵은 09-03 TOOLCHAIN PLAN §12.2(PBR/IBL, CSM, TAA, SSR/GI, ACES).
-
-### 1.6 채팅·NPC·Esther (건슬 AI 재료)
-
-- 채팅: `C2S_CHAT` → `CGameRoom::Handle_Chat`(`GameRoom.cpp:4680`)이 방 전원에 `S2C_CHAT{iFromNetEntityId, strFromNickname, strText}` relay.
-  Client `CChatWindowView`(제품 UI, ImGui 아님), `CWorldPlayerChatBubbleView`(`Try_Get_ActiveChatBubble(netEntityId)`로 nameplate 위 말풍선).
-- Esther: `CEstherSkillSystem` + `Spawn_EstherSummon`(`GameRoom.cpp:3414`)이 NPC archetype을 world entity로 소환하고 clip 종료에 despawn.
-  Server가 소유한 아군 entity의 살아 있는 예다.
-- `CNpcBehaviorRuntime`(route/idle), `CMonsterBrain`(추적/공격), `CPlayerSkillSystem`(플레이어 스킬 판정)이 있고
-  GUNSLINGER는 정식 playable class(`PlayerSkills.json` 38000 계열, `inputSlot` 보유).
-- HTTP client는 Engine/Client/Server 어디에도 없다(`winhttp/libcurl` grep 0건). WinSock 래퍼 `WinSockContext.h`만 있다.
-
-### 1.7 문서 drift
-
-`CLAUDE.md`는 protocol v51 / gameplay bootstrap v26을 서술하지만 코드는 `NETWORK_PROTOCOL_VERSION = 55`, `GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 32`다.
-이 계획의 첫 wire/bootstrap 변경 G에서 `CLAUDE.md`와 `AGENTS.md`의 숫자를 코드 값으로 교정한다.
+| 항목 | 최종 결정 |
+|---|---|
+| Sequencer lane | `48px -> 24px`, padding `6px -> 2px`. 별도 48px 호환 모드는 만들지 않는다 |
+| Timeline 크기 | 데이터 최대 duration을 늘리는 것이 아니라 **편집 viewport의 가용 면적과 수평 확대 범위**를 늘린다. 기본/최대화 모드, 세로 scroll, Fit을 둔다 |
+| 상단 설명 | Composition Sequencer 위의 장문 3줄은 삭제한다. 상시 UI에는 dirty/error/lock/status만 남긴다 |
+| Resource 선택 | 실제 사용자 single-click은 즉시 audition한다. 선택은 절대 append/save/dirty를 만들지 않는다 |
+| 저작 명령 | `Bind/Replace/Create box`처럼 이름이 드러난 명시적 명령 또는 drag/drop만 문서를 바꾼다 |
+| Debug/Product 재생 | Debug의 Valtan/Kouku는 입장 연출 뒤 `HOLD_UNTIL_COMMAND`, Release는 저장된 Product flow를 자동 재생한다. 두 domain은 policy state를 공유하지 않는다 |
+| 입장 카메라 | `KAKULSAYDON_G1_ENTRANCE`의 Server stage가 world sequence를 시작하고, 그 Server duration이 끝난 뒤에만 다음 pattern으로 진행한다 |
+| 기본 조명 | 삭제하거나 일괄 off하지 않는다. 먼저 Directional/Ambient, Map Group, transient effect, bloom, emissive의 기여도를 분리 진단한다 |
+| Pattern 암전 | 별도 dark profile로 교체하거나 light를 끄지 않는다. Gate 1 base profile 위에 상대 multiplier token을 blend-in하고 종료 시 token을 해제한다 |
+| Spot/Map Light | Point/Spot, group, blend, owner-token restore를 기믹보다 먼저 완결한다 |
+| 발탄과 쿠크 | 같은 창의 target dropdown 두 모드가 아니다. 별도 tool/controller/source/draft/writer/harness다 |
+| 공유 허용 범위 | immutable typed view, timeline/graph renderer, transaction primitive, audition transport, fixed-tick stage executor만 공유한다 |
+| Gunslinger | 방마다 최대 1명인 sessionless Server player actor. 기존 Gunslinger 전투 수치만 참조하며 수치를 AI JSON에 복제하지 않는다 |
+| Dialogue | 정본 파일은 `Data/Dialogue/KoukuSaydon.Gunslinger.json`. `KouKuSaydon`, `Gunsliger` 표기는 사용하지 않는다 |
+| Gate 확장 | Gate 1을 실제 Server+Client 계약으로 끝낸 뒤 Gate 2/3, Mario, Bingo를 추가한다. 빈 placeholder 파일은 만들지 않는다 |
 
 ---
 
-## 2. 개념과 방향성
+## 1. 현재 코드·데이터 실측
 
-### 2.1 패턴 검증 모델: "보스는 명령을 기다린다"
+### 1.1 쿠크세이튼 제품 상태
 
-```text
-Release Server
-  spawn -> 첫 engage -> scriptedSequence slot 01(입장 cinematic 패턴) -> slot 02부터 마지막 slot까지 순서대로 -> 종료 idle
-  Debug op는 REJECTED_RELEASE_BUILD
+- `LEVEL::KAKULSAYDON_ARENA`, `WORLD_ID::KAKULSAYDON_ARENA`, 맵 placement, camera shot, world sequence, animation reference는 존재한다.
+- Level은 아직 `scene.development.neutral.v1`을 사용한다.
+- `LV_LUT_MIDNIGHTC_ED`에는 현재 제품 maplights 문서와 `CMapLightPresentationRuntime` 연결이 없다.
+- Gameplay world에는 player spawn과 trigger가 있지만 제품 boss placement가 없다.
+- 현재 Boss Composition은 `REFERENCE_ONLY`, pattern 0건이며 Arena Sequencer는 `SHADOW`다.
+- BossCatalog/BossProfiles, Server `CKoukuSaydonBrain`, Client 제품 `CKoukuSaydon` presentation이 없다.
 
-Debug Server (기본 HOLD_UNTIL_COMMAND)
-  spawn -> bAutomaticPatternSequenceAuditionHold = true -> IDLE 대기
-  Boss Tool Play Selected     -> PLAY_PATTERN_ID 한 패턴, Repeat면 완료 tick마다 재제출
-  Boss Tool Play Full Pattern -> FLOW_START(저장 slot 01부터), Stop After Current로 중단
-  Boss Tool Auto Playback ON  -> SET_AUTOMATIC_PLAYBACK(PRODUCT_AUTOMATIC) -> Release와 같은 자동 진행을 Debug에서 검증
-```
+따라서 맵과 애니메이션이 보인다는 사실을 raid product가 존재한다는 뜻으로 취급하면 안 된다. 첫 완료 단위는 반드시
+`Data -> publisher -> catalog/world -> Server brain -> snapshot -> Client presentation -> tool/harness` 전체를 관통해야 한다.
 
-카메라 시퀀스 동기는 Client가 시퀀스 종료를 관측해 Server에 알리는 방식이 아니라, **Server 패턴 stage의 duration이 시퀀스 길이와 같고
-그 stage ENTER가 시퀀스 시작을 방송**하는 방식이다. Valtan은 이미 `VALTAN_ENTRANCE_CINEMATIC`(8600+5800+5467 ms)이 카메라 cue와 같은 시계를
-쓴다. 쿠크는 `KAKUL_G1_ENTRANCE`(21,010 ms, `KakulSaydonArena.sequencer.json`의 durationMs와 동일) stage ENTER에서
-`PLAY_WORLD_SEQUENCE world.sequence.instance.circusfinale`를 방송하고, `shot.1`이 그 sequence에 묶여 있으므로 카메라도 같은 길이로 잡힌다.
+### 1.2 현재 Sequencer의 정확한 화면
 
-### 2.2 보스 하나의 정본
+사용자가 편집하는 화면은 `Action Composition Workbench > Composition Sequencer`다. 별도 `CSequencerTool`은 Workbench cache를 읽는 read-only sibling이며 쿠크 source에는 요약만 표시한다.
 
-```text
-Data/<Boss>/<Boss>.gameplay.json        Server stage·branch·motion·collider·event·reaction·decisionModel
-Data/<Boss>/<Boss>.presentation.json    ordered animation occurrence·Effect/Camera/Scene/Light invocation
-Data/<Boss>/<Boss>.combatobjects.json   FIXED_AREA / MISSILE / HOMING 정의
-Data/Actors/BossCatalog.json            archetype -> 모델·무기·part·combat-object visual
-Data/Balance/BossProfiles.json          HP·health bar·이동·충돌·phase
-Data/Worlds/<Area>/Gameplay.world.json  boss placement(disabled) + activateEncounter triggerBox
-Data/Compositions/Bosses/<Boss>.bosscomposition.json   위 owner의 stable ID join manifest (본문 복제 금지)
-        │ projector (Validate -> stage -> commit, CAS)
-        ▼
-Data/Encounters/<Boss>/*.json           generated Product (직접 편집 금지)
-        │ Publish-GameplayBalance / Publish-WorldGameplay
-        ▼
-Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap, World/<WORLD>.worldbootstrap
-```
+현재 Workbench는 다음 값 때문에 세로로 과도하게 크다.
 
-쿠크는 이 구조를 **그대로** 쓴다. `gotchas.md`의 "gameplay source가 없는 encounter에 공용 Dataset/runtime부터 만들지 않는다"에 따라
-공용 registry(`BossSourceRegistry`)는 G02에서 Kakul source/Product를 만들면서 Valtan과 Kakul 두 소비자를 **같은 변경 단위**로 옮길 때만 도입한다.
-관문은 encounter 3개(`ENCOUNTER_KAKUL_GATE1/2/3`)로 나누고 world는 하나(`KAKULSAYDON_ARENA`)를 유지한다. 관문 이동은 기존
-`activateEncounter` triggerBox와 stage marker 위치로 표현하며 새 Level을 만들지 않는다.
+- row height 48px
+- vertical padding 6px
+- canvas minimum 420px
+- Resources/Sequencer default height 2배 확대
+- 가용 높이보다 420px을 우선하는 `max(420, available)`
 
-### 2.3 기믹은 Server typed contract다
+기존 contract test도 48px/420px/2배/Append를 정답으로 고정하고 있으므로 C++만 고치지 않고 oracle을 함께 바꿔야 한다.
 
-원작 기믹은 전부 다음 세 가지 조합으로 환원된다.
+### 1.3 현재 조명 구조와 “맵에 기본으로 깔린 조명”
 
-| 원시 개념 | Server 계약 | Client |
-|---|---|---|
-| 플레이어 상태 부여(카드 무늬, 광기, 삐에로, 속박) | `SERVER_PLAYER` 필드 + `PLAYER_SNAPSHOT` 복제 + stage action | 머리 위 아이콘, 게이지, 모델 교체 표현 |
-| 판정(바라보기, 입력 따라하기, 무늬 일치) | stage `judgement` + fixed tick 평가 + outcome/실패 응답(EXECUTE) | 입력 window만 relay, 판정 없음 |
-| 오브젝트(카드 투사체, 세이튼 분신, 룰렛) | combat object(HOMING) / summon set / world sequence 방송 | 시각 표현 |
+- `CRenderingProfileService`는 global quality와 한 개의 active scene profile을 즉시 적용한다.
+- scene profile은 directional/ambient 성격의 값, exposure/bloom multiplier, shadow, fog를 가진다. profile blend와 pattern modifier는 없다.
+- `CMapLightDocument` v1은 point-only, strict, 최대 64개다.
+- Engine `LIGHT`와 `LIGHT_DESC`에는 Directional/Point만 있고 Spot은 없다.
+- Kakul map은 maplights runtime을 로드하지 않는다.
+- deferred 결과에는 material emissive와 bloom도 밝기에 기여한다.
 
-`CBossCombatRuntime`, `BOSS_PATTERN_STAGE_ACTION_KIND`, `BOSS_PATTERN_STAGE_OUTCOME`, `SET_PLAYER_BIND`, `SET_SHIELD`,
-`SPAWN_COMBAT_OBJECT_VOLLEY`, `counterProxy`, `bossResponse`가 이미 있으므로 기믹마다 enum 값과 struct 필드를 추가하는 일이지 새 시스템이 아니다.
+따라서 현재 밝아 보이는 원인이 “삭제해야 할 map light”라고 단정할 수 없다. 현재 가장 가능성이 높은 순서는 scene directional/ambient,
+exposure·bloom, emissive mesh이고, effect transient light가 그 다음이다. LIGHTING 이름의 map mesh는 조명 actor라는 증거가 아니다.
 
-### 2.4 Logic Graph는 편집 가능한 blueprint, writer는 하나
+### 1.4 발탄 결합 상태
 
-편집 가능한 캔버스를 추가해도 저장 경로는 `CBalanceTool` joined draft → Composition `Save + Validate + Publish` 하나다.
-캔버스는 노드·핀·엣지 드래그를 **typed draft mutation 명령**으로 변환할 뿐 JSON을 직접 만지지 않는다. canonical 11 pattern의 topology 잠금
-(`manualAuditions` 밖)은 그대로 유지하고 잠긴 항목은 회색 핀으로 보인다.
+현재 `CBossTool`과 `CActionCompositionWorkbench`는 이름만 일반적이고 내부에서 Valtan 문서, pattern tree, audition service,
+save state를 직접 소유한다. 여기에 `if (Kouku)`와 descriptor만 추가하면 draft·writer·live state가 계속 섞인다.
 
-### 2.5 조명·분위기 세 층
+### 1.5 채팅/말풍선의 선행 누락
 
-```text
-scene profile   Level·관문·기믹 단위의 전역 분위기 (directional, ambient, fog, exposure, bloom)  RenderingProfiles.json
-map light       맵에 달린 조명 배치 (point/spot, group, 기본 on/off)                          <Area>.maplights.json v2
-pattern cue     패턴 stage가 켜고 끄는 연출 (profile 전환, light group 감쇠, 스포트라이트)     <Boss>.presentation.json
-```
+- `CMainApp`의 chat input/render admission은 Bern과 Valtan만 허용한다.
+- `CLevel_KakulSaydonArena`에는 nameplate/chat-bubble view와 replicated player view render가 없다.
+- `S2C_CHAT` 수신은 bubble map만 갱신하고 remote chat log에는 넣지 않는다.
 
-"기믹 시작 시 전체가 어두워진다"는 stage ENTER의 `sceneInvocation{profileId: scene.kakul.blackout.v1, transitionMs: 600}`과
-`lightGroupInvocation{groupId: tent.lamps, intensityMultiplier: 0.05}`이고, "세이튼이 스포트라이트를 받는다"는 summon 앵커의
-`lightCue{kind: SPOT, innerCone 12°, outerCone 22°}`다. 렌더 품질 자체(PBR/CSM/TAA)는 별도 수직 슬라이스이며 이 계획은 그 위에서 튜닝
-가능한 데이터와 도구를 먼저 닫는다. 쿠크 화면의 인상은 조명 기법보다 **조명 배치·색·대비(암전+스포트)** 에서 먼저 결정되므로 이 순서가 맞다.
+그러므로 “기존 말풍선을 그대로 쓴다”는 것은 시각 디자인을 재사용한다는 뜻이지, 배선이 이미 완성됐다는 뜻이 아니다.
+Gunslinger AI보다 먼저 쿠크 레벨에서 사람 채팅부터 end-to-end로 보여야 한다.
 
-### 2.6 건슬 AI = Server pseudo-player
+### 1.6 GameplayCatalog의 Valtan exact oracle과 전역 fail-close
 
-companion을 world entity가 아니라 **세션 없는 `SERVER_PLAYER`(GUNSLINGER)** 로 두면 이동·스킬·쿨다운·HP·피격·nameplate·말풍선이
-전부 기존 플레이어 경로를 재사용한다. Client는 새 presentation 경로 없이 `S2C_PLAYER_SPAWNED`의 `isCompanion` 플래그만 읽는다.
-대사 소유권은 세 겹이다.
+현재 `CGameplayCatalog::Load_BootstrapPath`는 기존 catalog 전체를 rollback 대상으로 옮기고 새 `Gameplay.bootstrap`을 한 번에
+파싱·검증한다. 한 boss/encounter row의 semantic validation이 실패해도 함수 전체가 false가 되어 다른 encounter까지 사용할 수 없다.
 
-```text
-1. 트리거   Server 패턴 stage ENTER edge, assist 시작/종료, 플레이어 질문(채팅)
-2. 문장     Data/Dialogue/KakulSaydon.companion.json (기본, 결정적)
-3. LLM      Tools/CompanionChat/companion_chat_sidecar.py (선택, localhost, timeout 시 2번으로 fallback)
-```
+또 `GameplayCatalog.cpp`에는 `hasExactValtanHighJumpTypedVolley`, phase action, ghost portal/topology처럼 Valtan의 특정 pattern·stage·수치를
+고정하는 exact oracle이 있다. 이런 검사는 공용 stage-action schema가 아니라 **`ENCOUNTER_VALTAN` partition의 제품 불변식**이다.
+Kouku row가 같은 공용 action kind를 쓴다는 이유로 Valtan pattern ID/action ID/count를 요구하면 안 된다.
 
-Server tick은 LLM 응답을 절대 기다리지 않는다. 응답은 room command로 들어와 다음 tick에 `S2C_CHAT`으로 나간다.
+반대로 새 Kouku stage action kind의 enum, parser, field/range grammar는 공용 schema에 한 번 추가한다. schema가 action kind를
+`KAKULSAYDON only`로 막는 것이 아니라, Valtan은 그 action을 저작하지 않을 뿐이다. encounter별 허용 결과·exact ID·개수 검사는
+각 partition semantic oracle이 담당한다.
 
 ---
 
-## 3. 데이터 규칙과 규약
+## 2. 명명 정본과 원자적 마이그레이션
 
-### 3.1 ID 규칙
+사용자가 요청한 `KoukuSaydon`은 authored data·pattern·tool domain의 유일한 표기다. 기존 public enum과 실제 binary alias는
+호환성을 위해 역할별로 구분한다.
 
-| 대상 | 형식 | 예 |
+| 역할 | 정본 | 예 |
 |---|---|---|
-| encounterId | `ENCOUNTER_KAKUL_GATE<N>` | `ENCOUNTER_KAKUL_GATE1` |
-| bossArchetypeId | `BOSS_KAKUL_<역할>` | `BOSS_KAKUL_G1_KOUKU`, `BOSS_KAKUL_G2_SAYDON_LARGE` |
-| summon archetypeId | `SUMMON_KAKUL_<역할>` | `SUMMON_KAKUL_SAYDON_CLONE` |
-| patternId | `KAKUL_G<N>_<SNAKE>` | `KAKUL_G1_PIZZA`, `KAKUL_G1_STAGGER_130`, `KAKUL_G1_HEART_PING_110` |
-| actionId | `kakul.g<N>.<pattern>.<stage>` | `kakul.g1.pizza.windup` |
-| stageId | 대문자 SNAKE, 패턴 안에서 유일 | `WINDUP`, `SLICE_1`, `JUDGE` |
-| combatObjectArchetypeId | `combatobject.kakul.<이름>` | `combatobject.kakul.card.heart` |
-| sceneProfileId | `scene.kakul.<관문>.<분위기>.v<N>` | `scene.kakul.gate1.circus-tent.v1`, `scene.kakul.blackout.v1` |
-| lightId / groupId | `light.kakul.<관문>.<source>` / `group.kakul.<관문>.<역할>` | `group.kakul.gate1.tent-lamps` |
-| companionId / lineId | `companion.<class>` / `line.<boss>.<pattern>.<n>` | `companion.gunslinger`, `line.kakul.g1.heart-ping.01` |
+| authored 폴더·문서·schema·C++ domain | `KoukuSaydon` | `Data/KoukuSaydon/Gate1`, `KoukuSaydonGate1.gameplay.json`, `CKoukuSaydonBossTool` |
+| public/runtime stable ID | `KAKULSAYDON` / `kakulsaydon` | `KAKULSAYDON_G1_PIZZA`, `kakulsaydon.g1.pizza.windup-a` |
+| 기존 Level/World public enum | `KAKULSAYDON_ARENA` 유지 | `WORLD_ID::KAKULSAYDON_ARENA` |
+| physical Resource alias | `KoukuSaton` 유지 | `Character/KoukuSaton/MN_RPCZ_00/...` |
+| physical map root | Area ID | `Map/LV_LUT_MIDNIGHTC_ED/...` |
+| 사용자 표시 | 한국어 | `쿠크세이튼 1관문` |
 
-pointer, prototype tag, vector index, 한글 표시 이름은 ID가 아니다. `sourceActionId`(4219714 등)는 reference join 키이며 runtime ID로 쓰지 않는다.
+신규 stable ID 예시는 다음으로 고정한다.
 
-### 3.2 문서 소유권
+- `ENCOUNTER_KAKULSAYDON_G1`
+- `BOSS_KAKULSAYDON_G1_KOUKU`
+- `boss.kakulsaydon.g1.kouku`
+- `KAKULSAYDON_G1_PIZZA`
+- `KAKULSAYDON_G1_STAGGER_130`
+- `KAKULSAYDON_G1_HEART_PING_110`
+- `KAKULSAYDON_G1_DANCE_85`
+- `KAKULSAYDON_G1_ROULETTE_50`
+- `scene.kakulsaydon.gate1.base.v1`
+- `lighting-modifier.kakulsaydon.gate1.mechanic-dark.v1`
+- `light-group.kakulsaydon.gate1.ambient`
+- `light-group.kakulsaydon.gate1.stage`
+- `light-group.kakulsaydon.gate1.fixture`
 
-| 문서 | schema | 정본/생성물 | validator / publisher |
-|---|---|---|---|
-| `Data/Kakul/Kakul.gameplay.json` | `lostark.boss-gameplay-authoring` v1 (Valtan의 현재 schema 문자열은 alias로 계속 승인) | 정본 | `Tools/KakulSaydonPipeline/Project-KakulPatternMaster.ps1 -Mode Validate\|PublishV2` (Valtan projector 함수 재사용) |
-| `Data/Kakul/Kakul.presentation.json` | `lostark.boss-presentation-authoring` v1 | 정본 | 위와 같은 transaction |
-| `Data/Kakul/Kakul.combatobjects.json` | `lostark.boss-combat-object-authoring` v1 | 정본 | 위와 같은 transaction |
-| `Data/Encounters/KakulSaydon/KakulEncounter.json`, `KakulPatternRotations.json`, `Kakul.patternbindings.json`, `Kakul.patterneffectcues.json`, `KakulCombatObjects.json` | 기존 Valtan Product schema | 생성물 | projector가 생성, 직접 편집 금지 |
-| `Data/Actors/BossCatalog.json` v7 | `lostark.boss-catalog` | 정본 | `Publish-GameplayBalance.ps1` |
-| `Data/Balance/BossProfiles.json` v5 | `lostark.boss-profiles` | 정본 | `Publish-GameplayBalance.ps1` |
-| `Data/Balance/DamageProfiles.json` (`madnessGain` 필드 추가) | 기존 | 정본 | `Publish-GameplayBalance.ps1` |
-| `Data/Balance/PlayerSkills.json` (`KAKUL_CLOWN` Q/W/E 3행) | 기존 | 정본 | `Publish-GameplayBalance.ps1` |
-| `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json` (boss placement, activateEncounter) | v6 | 정본 | `Publish-WorldGameplay.ps1` |
-| `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json` | `lostark.map-light-presentation` v2 | 정본 | `Publish-MapAuthoring.ps1` (pair) |
-| `Data/Rendering/Authored/RenderingProfiles.json` | v1 (`transitionMs`는 invocation 쪽 필드) | 정본 | Rendering Workbench Save/Publish |
-| `Data/Companions/GunslingerCompanion.json` | `lostark.companion-profile` v1 | 정본 | `Publish-GameplayBalance.ps1`에 domain 추가 |
-| `Data/Dialogue/KakulSaydon.companion.json` | `lostark.companion-dialogue` v1 | 정본 | `Tools/CompanionChat/Validate-CompanionDialogue.ps1` |
-| `Data/Compositions/Bosses/KakulSaydon.bosscomposition.json` | 기존 v1, `status SHADOW`로 승격 | manifest | `Publish-Compositions.ps1` |
+여기서 사용자가 요청한 “data와 pattern을 `KoukuSaydon`으로 변경”은 authored 물리 경로, 문서명, schema domain,
+Tool/C++ domain 이름을 뜻한다. JSON의 `patternId`, boss/encounter/light/profile ID는 wire·catalog·snapshot에서 소비되는
+public logical ID이므로 저장소 고정 계약인 `KAKULSAYDON`을 유지한다. 파일명에서 public ID를 추론하지 않는다.
 
-모든 JSON은 stable ID unique, formatVersion exact, unknown field 거부, `parse -> validate -> stage -> commit`, 실패 시 이전 문서 보존 규칙을 따른다.
+첫 변경 단위에서 다음을 함께 이동·수정한다.
 
-### 3.3 첫 패턴 하나의 split source 예 (G02가 실제로 커밋할 최소 형태)
+- `Data/Animation/Reference/KakulSaydon -> Data/Animation/Reference/KoukuSaydon`
+- `Data/Animation/Authored/KakulSaydon -> Data/Animation/Authored/KoukuSaydon`
+- Boss composition을 `Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json`으로
+- Arena sequencer를 `Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json`으로
+- pipeline을 `Tools/KoukuSaydonPipeline`으로
+- 모든 consumer, test fixture, BuildDomains input, project item, reference revision
 
-`Data/Kakul/Kakul.gameplay.json`
+금지 사항은 다음과 같다.
 
-```json
-{
-  "schema": "lostark.boss-gameplay-authoring",
-  "formatVersion": 1,
-  "bossArchetypeId": "BOSS_KAKUL_G1_KOUKU",
-  "encounterId": "ENCOUNTER_KAKUL_GATE1",
-  "scope": "GATE1",
-  "retiredPatternIds": [],
-  "decisionModel": {
-    "scriptedSequence": {
-      "sequenceId": "sequence.kakul.gate1.server-authored.v1",
-      "mode": "ORDERED_ONCE_THEN_IDLE",
-      "interStepPursuitMs": 1000,
-      "patternIds": ["KAKUL_G1_ENTRANCE", "KAKUL_G1_PIZZA"],
-      "transitionPursuitMs": [0, 1000]
-    },
-    "selectionSets": [],
-    "selectionWindows": [],
-    "mechanics": [],
-    "manualAuditions": [
-      { "patternId": "KAKUL_G1_PIZZA", "admissionState": "MANUAL_SERVER_AUDITION" }
-    ]
-  },
-  "counterReactionLayers": [],
-  "patterns": [
-    {
-      "patternId": "KAKUL_G1_ENTRANCE",
-      "displayName": "1관문 입장 - 팝업북",
-      "category": "NORMAL",
-      "compatibilitySelectionWeight": 1,
-      "actionId": "kakul.g1.entrance",
-      "entryActionId": "kakul.g1.entrance.book",
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
-      "eligibility": {
-        "armorRequirement": "ANY", "phaseRequirement": "ANY",
-        "minimumGameplayPhase": 1, "maximumGameplayPhase": 1,
-        "minimumHealthBarInclusive": 1, "maximumHealthBarInclusive": 150,
-        "minimumRangeM": 0.0, "maximumRangeM": 200.0,
-        "cooldownPolicy": "DERIVED_SOURCE_ACTION", "selectionCooldownMs": null, "cooldownGroupId": null,
-        "repeatPolicy": { "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE", "limit": 1 }
-      },
-      "invulnerableWhileRunning": true,
-      "sourceActionIds": [],
-      "serverMotion": null,
-      "reactions": [],
-      "stages": [
-        {
-          "stageId": "BOOK", "actionId": "kakul.g1.entrance.book", "stageKind": "WINDUP",
-          "durationMs": 21010, "defaultNextActionId": null,
-          "hit": { "shape": { "kind": "NONE" } }, "motion": null,
-          "events": [
-            { "eventId": "event.kakul.g1.entrance.book.hide", "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "flagId": "boss.flag.hidden", "enabled": true },
-            { "eventId": "event.kakul.g1.entrance.book.sequence", "trigger": "ENTER", "kind": "PLAY_WORLD_SEQUENCE", "sequenceInstanceId": "world.sequence.instance.circusfinale" },
-            { "eventId": "event.kakul.g1.entrance.book.show", "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "flagId": "boss.flag.hidden", "enabled": false }
-          ],
-          "branches": []
-        }
-      ]
-    },
-    {
-      "patternId": "KAKUL_G1_PIZZA",
-      "displayName": "나팔 - 피자",
-      "category": "NORMAL",
-      "compatibilitySelectionWeight": 10,
-      "actionId": "kakul.g1.pizza",
-      "entryActionId": "kakul.g1.pizza.windup",
-      "targetPolicy": "NEAREST_AT_START",
-      "aimPolicy": "LOCK_AT_START",
-      "eligibility": {
-        "armorRequirement": "ANY", "phaseRequirement": "ANY",
-        "minimumGameplayPhase": 1, "maximumGameplayPhase": 1,
-        "minimumHealthBarInclusive": 1, "maximumHealthBarInclusive": 150,
-        "minimumRangeM": 0.0, "maximumRangeM": 14.0,
-        "cooldownPolicy": "DERIVED_SOURCE_ACTION", "selectionCooldownMs": null, "cooldownGroupId": null,
-        "repeatPolicy": { "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE", "limit": 2 }
-      },
-      "invulnerableWhileRunning": false,
-      "sourceActionIds": [4219714],
-      "serverMotion": null,
-      "reactions": [],
-      "stages": [
-        { "stageId": "WINDUP", "actionId": "kakul.g1.pizza.windup", "stageKind": "WINDUP", "durationMs": 2500, "defaultNextActionId": "kakul.g1.pizza.slice-1",
-          "hit": { "shape": { "kind": "NONE" } }, "motion": null, "events": [], "branches": [] },
-        { "stageId": "SLICE_1", "actionId": "kakul.g1.pizza.slice-1", "stageKind": "ACTIVE", "durationMs": 4667, "defaultNextActionId": "kakul.g1.pizza.recovery-1",
-          "hit": { "shape": { "kind": "SECTOR", "outerRadiusM": 12.0, "angleDegrees": 45.0 }, "schedule": { "kind": "EXPLICIT_OFFSETS", "offsetsMs": [1500, 2600, 3700] },
-                   "serverDamageProfileId": "damage.kakul.g1.pizza", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-          "motion": null, "events": [], "branches": [] },
-        { "stageId": "RECOVERY_1", "actionId": "kakul.g1.pizza.recovery-1", "stageKind": "RECOVERY", "durationMs": 1000, "defaultNextActionId": null,
-          "hit": { "shape": { "kind": "NONE" } }, "motion": null, "events": [], "branches": [] }
-      ]
-    }
-  ]
-}
-```
+- 신규 authored 경로·문서명에 `KakulSaydon`, `KouKuSaydon`, `Gunsliger`를 남기지 않는다. 신규 public ID에는 bare `KAKUL_G1_*` 대신 `KAKULSAYDON_G1_*`만 허용한다.
+- `KoukuSaton` physical asset을 authored domain 철자로 바꾸지 않는다.
+- 사용자 소유 legacy binary root를 자동 삭제하지 않는다.
+- `Client/Bin/DataFiles` generated 문서를 rename하면서 손으로 고치지 않는다. publisher가 stage/validate/commit한다.
+- 구 이름을 무기한 허용하는 runtime alias fallback을 만들지 않는다. migration 한 번으로 consumer를 닫는다.
 
-`Kakul.presentation.json`은 같은 `patternId/stageId/actionId`에 `animation.occurrences[]`(`clip: rpcz00_att_battle_3_01` 등),
-`effectCues[]`, `cameraInvocations[]`, 그리고 G05가 추가하는 `sceneInvocations[]`, `lightGroupInvocations[]`, `lightCues[]`를 붙인다.
-피자 원작은 6 stage(3_01/3_07/3_09 ×2)이므로 위 3 stage를 두 번 이어 붙인 형태가 완성본이다. 원작 피자 판정은 8분할 장판(FIXED_AREA
-combat object)이며 위 예는 첫 슬라이스를 위한 caster SECTOR 판정이다. combat object 버전은 `Kakul.combatobjects.json`에 `combatobject.kakul.pizza.slice`를
-추가하고 stage에 `SPAWN_COMBAT_OBJECT_VOLLEY(BOSS_RELATIVE, 8방향)`로 교체한다.
+---
 
-### 3.4 BossCatalog v7 / BossProfiles v5
+## 3. Valtan과 KoukuSaydon의 분리 구조
 
-BossCatalog v7 추가 필드는 `bodyRole`, `weaponClipSync`, `summonKind`뿐이다. 나머지는 v6 그대로다.
-
-```json
-{
-  "archetypeId": "BOSS_KAKUL_G1_KOUKU",
-  "visualAssetId": "KAKUL_MN_RPCZ_00",
-  "presentationScale": 1.0,
-  "bodyModel": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
-  "weaponModel": null,
-  "armorModels": [],
-  "armorParts": [],
-  "combatObjectVisuals": []
-}
-```
-
-```json
-{
-  "archetypeId": "BOSS_KAKUL_G2_SAYDON_LARGE",
-  "visualAssetId": "KAKUL_MN_RPCT_06",
-  "presentationScale": 1.0,
-  "bodyModel": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
-  "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
-  "weaponClipSync": "SAME_CLIP_NAME",
-  "armorModels": [],
-  "armorParts": [],
-  "combatObjectVisuals": []
-}
-```
-
-`weaponClipSync: SAME_CLIP_NAME`은 `WP_MN_RPCT_06`의 `wprpct06_att_battle_01_*`가 본체 `mn_rpct_06_sk.ao_att_battle_01_*`와 같은 번호 clip을
-동시에 재생해야 한다는 인벤토리 §1.1 결론의 typed 표현이다. Valtan의 정적 `weaponModel` 부착과 구분한다.
-
-BossProfiles v5는 archetype당 한 행이며 `maximumHealthBars`는 관문별 초기값(150/150/100)으로 두고 `PROJECT_TUNED`로 표시한다(§5 결정 항목).
-1관문 광기 규칙은 `Kakul.gameplay.json` 최상위 `encounterRules.madness`가 소유한다.
-
-```json
-"encounterRules": {
-  "cardSuit": { "assignment": "RANDOM", "excludeCompanions": true },
-  "madness": { "maximum": 100, "decayPerSecond": 0, "fireGainPerSecond": 12, "clownDurationMs": 15000, "clownSkillClass": "KAKUL_CLOWN" }
-}
-```
-
-### 3.5 Gameplay.world.json boss placement
-
-기존 v6 `boss` kind와 `activateEncounter` triggerBox를 그대로 쓴다. 관문 3개는 `placementId` `boss.kakul.gate1/2/3`(disabled)과 stage marker 위치의
-triggerBox 3개다. MapTool이 저장하고 `Publish-WorldGameplay.ps1`이 navigation walkable을 검사한다. 세이튼 분신 4자리 anchor는 `Kakul.gameplay.json`의
-`arena.anchors[]`(`anchorId, position, yawDegrees`)가 소유하며 projector가 같은 navgrid로 walkable을 검사한다. 배치 좌표를 두 문서에 복제하지 않기
-위해 anchor는 world 문서가 아니라 gameplay 문서에만 둔다.
-
-### 3.6 기믹 typed 확장 (G03이 추가하는 enum/field 총목록)
+### 3.1 소유 구조
 
 ```text
-BOSS_PATTERN_STAGE_ACTION_KIND  += PLAY_WORLD_SEQUENCE, ASSIGN_PLAYER_CARD_SUITS, SET_PLAYER_FORM,
-                                    SPAWN_SUMMON_SET, DESPAWN_SUMMON_SET, BEGIN_INPUT_JUDGEMENT,
-                                    BEGIN_FACING_JUDGEMENT, EXECUTE_ALL_PLAYERS, ROLL_ROULETTE
-BOSS_PATTERN_STAGE_OUTCOME      += SHIELD_BROKEN, JUDGEMENT_ALL_PASSED, JUDGEMENT_ANY_FAILED
-stage field                     += hitReflect { kind: NONE|FORWARD_ARC, arcDegrees, reflectPercent }
-SET_PLAYER_BIND                 += targetPolicy { kind: ALL_ALIVE|RANDOM_ALIVE_COUNT|SUIT_FILTER, count, suit: ROULETTE_RESULT|HEART|SPADE|CLOVER|DIAMOND, excludeCompanions }
-combat object movement          += HOMING { speedMps, retargetEachTick, targetPolicy: UNBOUND_ALIVE|NEAREST_ALIVE, maximumLifetimeMs }
-combat object hit response      += SUIT_JUDGEMENT { objectSuit, onMatch: DESTROY_OBJECT, onMismatch: EXECUTE }
-SERVER_PLAYER                   += eCardSuit, eForm, iMadnessGauge, iMadnessMaximum, iFormEndTick, iMechanicInputWindowEndTick, bIsCompanion
-PLAYER_SNAPSHOT                 += eCardSuit, eForm, iMadnessGauge, iMadnessMaximum, iMechanicInputWindowEndTick, isCompanion
-BOSS combat snapshot            += iMechanicVariantIndex (댄스 variant, 하트/총 shooter role)
-C2S                             += C2S_MECHANIC_INPUT { iRequestSequence, eInputSlot }
+Valtan domain                              KoukuSaydon domain
+Data/Valtan/*                              Data/KoukuSaydon/Gate1/*
+CValtanPatternSource                       CKoukuSaydonPatternSource
+CValtanAuthoringService                    CKoukuSaydonAuthoringService
+CValtanBossTool                            CKoukuSaydonBossTool
+CValtanActionWorkbench                     CKoukuSaydonActionWorkbench
+CValtanBrain                               CKoukuSaydonBrain
+CValtan client presentation                CKoukuSaydon client presentation
+Valtan-only harness                        KoukuSaydon-only harness
+
+                 shared typed infrastructure only
+ BOSS_PATTERN_VIEW / BOSS_STAGE_VIEW / timeline & graph pure renderer
+ authoring transaction / scoped audition transport / fixed-tick stage executor
+ Server combat primitives / Client occurrence presentation primitives
 ```
 
-wire 변경은 한 번에 모은다. `NETWORK_PROTOCOL_VERSION 55 -> 56`, `GAMEPLAY_BOOTSTRAP_FORMAT_VERSION 32 -> 33`은 G03-1이 올리고 G03-2 이후와 G06은
-같은 버전 안에서 필드를 채운다(각 G가 버전을 따로 올리지 않도록 G03-1의 Shared 변경에 모든 필드를 한 번에 선언한다).
+### 3.2 강제 경계
 
-### 3.7 조명 문서
+- MainApp는 Valtan/Kouku Boss Tool과 Action Workbench를 별도 객체로 소유한다.
+- 한 창에서 boss dropdown으로 mutable state를 갈아 끼우지 않는다.
+- 각 audition service instance는 immutable `{worldId, encounterId, bossPlacementId, bossArchetypeId}` scope를 받는다.
+- Kouku 요청에 Valtan ID/world/revision이 섞이면 Client admission과 Server admission 모두 거부한다.
+- `CValtanPatternTree`, `Save_Valtan*`, `Preview_Valtan*`, `Data/Valtan`, `Tools/ValtanPipeline`을 Kouku 코드가 호출하지 않는다.
+- Server는 `CValtanBrain`과 `CKoukuSaydonBrain`을 별도로 유지한다. 선택·체력 기믹·특수 판정은 공유하지 않는다.
+- Client는 `CValtan`에 Kouku switch를 추가하지 않고 별도 `CKoukuSaydon`을 둔다.
+- 공용 runtime은 실제 Valtan과 Kouku 두 소비자가 동시에 사용하는 작은 계약만 추출한다. 두 번째 거대한 boss framework를 미리 만들지 않는다.
+- 공용 audition wire로 이전할 경우 Valtan도 같은 변경에서 이전하고 기존 Valtan 전용 route를 병존시키지 않는다.
 
-`<Area>.maplights.json` v2
+모든 신규 C++ 파일은 실제 물리 폴더와 함께 해당 `.vcxproj`, `.vcxproj.filters`, 필요한 harness project에 같은 변경 단위로 등록한다.
+
+---
+
+## 4. Rendering Tool 최종 설계
+
+### 4.1 한 화면, 네 개의 transaction owner
+
+Rendering Tool은 사용자가 조명을 한 흐름으로 비교·튜닝하는 **통합 저작 화면**이다. 그러나 저장 파일을 하나의 mega JSON으로 합치지 않는다.
+
+| 화면 영역 | 저작 정본 | 의미 |
+|---|---|---|
+| Rendering Catalog | `Data/Rendering/Authored/RenderingProfiles.json` | 같은 catalog/revision 안의 global quality와 scene profiles: directional/ambient, shadow, fog, exposure, bloom |
+| Area Lights | `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json` | 월드에 배치한 Point/Spot과 group |
+| Pattern Lighting Catalog | `Data/Rendering/Authored/LightingModifiers.json` | base/group multiplier preset과 Point/Spot transient cue의 실제 수치 |
+| Pattern timing/binding | `Data/KoukuSaydon/Gate1/KoukuSaydonGate1.presentation.json` | 어느 pattern/stage에서 어떤 modifier/cue preset을 어떤 anchor에 언제 적용할지 |
+
+각 owner는 별도 `Draft/Saved/Published/Active` revision, dirty, validation error, Save 버튼을 가진다. 초기 구현에는
+부분 실패를 숨기는 `Save All`을 두지 않는다. 통합 publisher가 필요하면 각 owner의 exact revision을 join한 뒤 전부 유효할 때만
+runtime set을 atomic promote한다.
+
+Global Quality와 Scene Profile은 같은 Rendering Catalog transaction이므로 UI tab과 draft subsection만 나누고 revision/Save는 공유한다.
+둘을 독립 저장된 것처럼 표시하지 않는다.
+
+### 4.2 Tool 코드와 화면
+
+현재 `CMainApp::RenderRenderingWorkbench`의 대형 함수를 다음으로 추출한다.
+
+- `Client/Public/RenderingTool.h`
+- `Client/Private/RenderingTool.cpp`
+- `Client/Public|Private/RenderingAuthoringSession.*`
+- `Client/Public|Private/SceneLightCoordinator.*`
+- `Client/Public|Private/LightingModifierCatalog.*`
+
+MainApp는 construct/update/render와 service wiring만 소유한다. `AlwaysAutoResize`를 제거하고 resizable split workspace를 쓴다.
+
+```text
+[Area: LV_LUT_MIDNIGHTC_ED] [Gate 1] [Base Profile] [Modifier Preview] [A/B] [Validate/Publish]
+-------------------------------------------------------------------------------------------
+Hierarchy                    Viewport                         Details
+  Scene Directional          point/spot gizmo                selected type properties
+  light-group.*              contribution overlay            owner/revision/validation
+    Point ...
+    Spot  ...
+-------------------------------------------------------------------------------------------
+Scene Profile | Area Lights | Groups & Blend | Modifier Preview | Quality | Benchmark
+```
+
+- Directional은 scene profile당 정확히 1개다. 위치를 가진 fake light로 배치하지 않고 direction rotation과 profile detail만 편집한다.
+- 첫 slice의 Point/Spot 배치는 기존 world picking을 이용한 `Pick Position`, numeric Details, Spot `Aim at picked target`, cone debug draw로 닫는다.
+- 저장소에 없는 ImGuizmo를 전제하지 않는다. axis drag handle은 Effect/Map Tool과 공용 typed transform interaction을 실제로 추출하는 후속 slice에서만 추가한다.
+- Rendering Tool이 debug input owner일 때만 picking/gizmo를 받는다.
+- MapTool의 screen/world picking과 transform command는 공용 utility로 추출할 수 있지만 map light writer UI는 Rendering Tool 하나만 둔다.
+- hierarchy에서 enable, solo, mute, duplicate, add/delete, group 이동을 제공한다. solo/mute는 preview token이며 제품 source를 조용히 바꾸지 않는다.
+- Details는 type별 exact field만 보인다. unknown/mismatched field는 저장 때 버리지 않고 validator가 거부한다.
+- `CRenderingAuthoringSession`은 maplight source revision CAS, typed add/delete/move/update, temp save, exact reparse, atomic promote를 필수로 소유한다.
+
+### 4.3 Map lights v2
+
+대표 데이터 형태는 다음과 같다.
 
 ```json
 {
   "schema": "lostark.map-light-presentation",
   "formatVersion": 2,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "provenance": "SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED",
+  "provenance": "PROJECT_AUTHORED",
   "groups": [
-    { "groupId": "group.kakul.gate1.tent-lamps", "enabledByDefault": true },
-    { "groupId": "group.kakul.gate1.stage-spots", "enabledByDefault": false }
+    {
+      "groupId": "light-group.kakulsaydon.g1.ambient",
+      "displayName": "Gate 1 Ambient Fixtures",
+      "scopeId": "ENCOUNTER_KAKULSAYDON_G1",
+      "enabledByDefault": true,
+      "defaultIntensity": 1.0,
+      "blendInMs": 300,
+      "blendOutMs": 300
+    },
+    {
+      "groupId": "light-group.kakulsaydon.g1.stage",
+      "displayName": "Gate 1 Stage Fixtures",
+      "scopeId": "ENCOUNTER_KAKULSAYDON_G1",
+      "enabledByDefault": true,
+      "defaultIntensity": 1.0,
+      "blendInMs": 300,
+      "blendOutMs": 300
+    },
+    {
+      "groupId": "light-group.kakulsaydon.g1.fixture",
+      "displayName": "Gate 1 Fixtures",
+      "scopeId": "ENCOUNTER_KAKULSAYDON_G1",
+      "enabledByDefault": true,
+      "defaultIntensity": 1.0,
+      "blendInMs": 300,
+      "blendOutMs": 300
+    }
   ],
   "lights": [
-    { "lightId": "light.kakul.gate1.pointlight_12", "kind": "POINT", "groupId": "group.kakul.gate1.tent-lamps",
-      "sourceLevel": "LV_LUT_MIDNIGHTC_ED_SL01", "sourceObjectId": "SL01:export:812:pointlight_12",
-      "position": [66.0, 6.5, -102.0], "radiusMeters": 9.0, "falloffExponent": 2.0, "color": [1.0, 0.72, 0.35, 1.0], "brightness": 4.0 },
-    { "lightId": "light.kakul.gate1.spot_stage_a", "kind": "SPOT", "groupId": "group.kakul.gate1.stage-spots",
-      "sourceLevel": null, "sourceObjectId": null,
-      "position": [60.0, 14.0, -96.0], "direction": [0.2, -1.0, 0.3], "innerConeDegrees": 12.0, "outerConeDegrees": 22.0,
-      "radiusMeters": 24.0, "falloffExponent": 1.5, "color": [1.0, 0.95, 0.85, 1.0], "brightness": 8.0 }
+    {
+      "lightId": "light.kakulsaydon.g1.stage-center",
+      "kind": "SPOT",
+      "groupId": "light-group.kakulsaydon.g1.fixture",
+      "enabled": true,
+      "position": [0.0, 8.0, 0.0],
+      "direction": [0.0, -1.0, 0.0],
+      "rangeMeters": 18.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 14.0,
+      "outerConeDegrees": 30.0,
+      "color": [1.0, 0.72, 0.50, 1.0],
+      "brightness": 1.0,
+      "priority": 100
+    }
   ]
 }
 ```
 
-v1 문서(Valtan)는 `kind` 누락을 `POINT`, `groupId` 누락을 area 기본 group으로 읽는다. 자동 추측 변환은 하지 않고 reader가 v1/v2를 모두 exact로 승인한다.
+검증 규칙:
 
-`<Boss>.presentation.json` stage 확장
+- stable group/light ID unique, 모든 group·scope join 유효
+- finite vector/color/range/brightness
+- Spot direction normalize, `0 < inner <= outer < 90`
+- Point에는 cone/direction 금지, Spot에는 필수
+- v2 empty lights는 “profile only area”로 허용
+- v1 문서는 in-memory legacy group + Point adapter로 읽어 Valtan source를 억지로 rewrite하지 않음
+- authored 총량과 runtime active cap을 분리
+- runtime active 64개 초과 시 group/range/frustum 뒤 `priority -> distance -> stable ID`로 결정론적으로 선택하고 진단을 남김
 
-```json
-"sceneInvocations": [
-  { "invocationId": "scene.kakul.g1.heart-ping.blackout", "profileId": "scene.kakul.blackout.v1", "transitionMs": 600, "restorePolicy": "PATTERN_END" }
-],
-"lightGroupInvocations": [
-  { "invocationId": "lightgroup.kakul.g1.heart-ping.lamps-off", "groupId": "group.kakul.gate1.tent-lamps", "intensityMultiplier": 0.05, "transitionMs": 600, "restorePolicy": "PATTERN_END" }
-],
-"lightCues": [
-  { "cueId": "light.kakul.g1.heart-ping.spot", "kind": "SPOT", "anchor": { "kind": "SUMMON_ROLE", "role": "ANY" }, "localOffset": [0.0, 9.0, 0.0], "direction": [0.0, -1.0, 0.0],
-    "innerConeDegrees": 10.0, "outerConeDegrees": 20.0, "radiusMeters": 14.0, "color": [1.0, 0.98, 0.9, 1.0], "brightness": 10.0, "stopPolicy": "STAGE_END" }
-]
+G03-2는 v2 source 생성, `Data/Maps/MapCatalog.json`의 exact `sourceLights/lights` pair, publisher 처리, Client runtime load를
+한 transaction으로 추가한다. pair 없이 source 파일만 두어 publisher가 조용히 건너뛰게 하지 않는다. Save는
+
+```text
+loaded source revision -> typed draft mutation -> validate -> temp write
+-> exact CMapLightDocument reparse -> compare expected revision -> atomic promote
 ```
 
-### 3.8 Companion / Dialogue 문서
+순서를 따르고 실패하면 source와 active preview를 모두 이전 admitted 상태로 유지한다.
 
-`Data/Companions/GunslingerCompanion.json`
+Engine 변경 지점은 `Engine/Public/Engine_Enum.h`, `Engine/Public/Engine_Struct.h`, `Engine/Private/Light.cpp`,
+`Engine/Private/Presentation_Manager.cpp`, canonical `Engine/Bin/ShaderFiles/Shader_Deferred.hlsl`이다. Client의 shader copy는
+
+`UpdateLib`/Client build가 만드는 generated copy이므로 직접 정본으로 편집하지 않는다. Spot shader pass는 기존 pass index 사이에
+삽입하지 않고 technique 끝에 append해 기존 Combined/Final/overlay/chromatic index를 보존한다. `END`, renderer/static_assert,
+compiled-shader closure를 함께 갱신한다.
+`SPOT` 추가는 Engine public 계약이므로 `UpdateLib -> Product -> compiled-shader WARP closure`까지 같은 G에서 닫는다.
+
+### 4.4 Base Profile, blend, group, pattern multiplier
+
+Gate 1은 `scene.kakulsaydon.g1.base.v1` 하나를 먼저 만든다. Gate 2/3 base profile은 해당 관문 제품 작업 때 추가하고
+지금 빈 파일로 예약하지 않는다.
+
+맵/방이 9개라는 이유로 profile 9개를 먼저 만들지 않는다. profile 수는 **서로 다른 기본 atmosphere 수**로 결정한다.
+Card Map이나 Mario 1~4가 같은 directional/ambient/fog/exposure를 쓰면 하나의 base profile을 공유하고, 방별로 다른 fixture는
+Area Light group으로 나눈다. 실제로 공기가 달라지는 관문·Mario·Bingo만 해당 수직 슬라이스에서 profile을 추가한다.
+
+짧은 패턴 연출은 scene profile 교체가 아니라 다음 modifier preset을 사용한다.
 
 ```json
 {
-  "schema": "lostark.companion-profile",
+  "schema": "lostark.lighting-modifier-catalog",
   "formatVersion": 1,
-  "companionId": "companion.gunslinger",
-  "characterClass": "GUNSLINGER",
-  "displayName": "건슬링어 (AI)",
-  "chatCommands": { "assist": ["도움!", "/도움"], "guide": ["/따라와"], "dismiss": ["/그만"] },
-  "assist": { "durationMs": 20000, "engageRangeM": 8.0, "preferredDistanceM": 6.0, "decisionIntervalMs": 200, "dodgeLookaheadMs": 400,
-              "skillRotation": [38020, 38050] },
-  "guide": { "followDistanceM": 2.5, "repositionIntervalMs": 300 },
-  "dialogueDocument": "Data/Dialogue/KakulSaydon.companion.json",
-  "llm": { "enabled": false, "endpoint": "127.0.0.1:7778", "timeoutMs": 1500 }
+  "modifiers": [
+    {
+      "modifierId": "lighting-modifier.kakulsaydon.g1.mechanic-dark.v1",
+      "areaId": "LV_LUT_MIDNIGHTC_ED",
+      "sceneMultipliers": {
+        "directionalDiffuse": 0.45,
+        "directionalAmbient": 0.30,
+        "directionalSpecular": 0.55,
+        "exposure": 0.85,
+        "bloomIntensity": 0.75
+      },
+      "groupMultipliers": [
+        {
+          "groupId": "light-group.kakulsaydon.g1.ambient",
+          "intensityMultiplier": 0.25
+        },
+        {
+          "groupId": "light-group.kakulsaydon.g1.stage",
+          "intensityMultiplier": 1.0
+        }
+      ]
+    }
+  ],
+  "transientCueDefinitions": [
+    {
+      "cueDefinitionId": "lighting-cue.kakulsaydon.g1.heart-role-spot.v1",
+      "kind": "SPOT",
+      "localOffset": [0.0, 8.0, 0.0],
+      "direction": [0.0, -1.0, 0.0],
+      "rangeMeters": 14.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 10.0,
+      "outerConeDegrees": 24.0,
+      "color": [1.0, 0.95, 0.82, 1.0],
+      "brightness": 4.0
+    }
+  ]
 }
 ```
 
-`Data/Dialogue/KakulSaydon.companion.json`
+위 숫자는 schema 예시와 최초 audition seed이며 최종 visual truth가 아니다. 실제 값은 대표 camera에서 사용자가 A/B로 판정한 뒤 저작한다.
+
+합성은 매 frame immutable base에서 다시 계산한다.
+
+```text
+baseScene = Blend(profileA, profileB, baseBlendAlpha)
+effectiveScene = baseScene × product(active scene modifier tokens)
+effectiveFixture = authored light × base group weight × product(active group modifier tokens)
+finalLights = selected effective fixtures + occurrence-owned transient cues
+```
+
+- 직전 effective 값에 다시 곱하지 않는다.
+- token key는 `{bossEntityId, occurrenceSequence, invocationId}`다.
+- 같은 source의 재적용은 replace하고 중첩 증가시키지 않는다.
+- stage/pattern end, skip, interrupt, boss despawn, disconnect, level exit, revision change에서 token을 해제한다.
+- 해제 시 last effective 값을 수동 복사하지 않고 현재 base에서 다시 계산해 `blendOutMs` 동안 복원한다.
+- late join은 Server action start tick/occurrence sequence로 현재 blend progress를 재구성한다.
+- Debug preview token은 제품 token과 분리하며 Tool close 또는 input-owner 상실 시 반드시 해제한다.
+- profile switch/blend는 관문·방·컷신의 base atmosphere 전환에 사용하고, Pizza/Heart/Dance 암전은 modifier에 사용한다.
+
+이를 위해 `CRenderingProfileService`의 admitted base catalog/authored draft와 composed runtime 값을 분리한다.
+pattern modifier는 catalog를 바꾸는 기존 profile apply API를 호출하지 않고, 저장값을 전혀 변경하지 않는
+`Apply_ComposedRuntime` 경계를 사용한다. `CSceneLightCoordinator`는 directional/shadow commit과 **정확히 한 개의 active area-fixture
+transient provider**를 하나의 target activation으로 stage한다. target profile 또는 declared maplight가 실패하면 새 Level의 lighting
+activation 전체를 rollback하며, 새 Area에 이전 Area fixture만 남기지 않는다.
+
+`LightingModifiers.json`은 다음 경로로 제품화한다.
+
+```text
+Data/Rendering/Authored/LightingModifiers.json
+  -> Tools/RenderingPipeline/Publish-LightingModifiers.ps1 -Mode Validate|Publish
+  -> profile/map-group/cue exact join + parse/validate/stage/atomic commit
+  -> Client/Bin/DataFiles/Rendering/LightingModifiers.runtime.json
+  -> Client/Bin/DataFiles/Rendering/LightingModifiers.publish.receipt.json
+  -> CLightingModifierCatalog -> CSceneLightCoordinator
+```
+
+publisher는 unknown field, duplicate modifier/cue ID, dangling Area/group, kind-specific field mismatch, invalid cone/vector/range를
+거부하고 실패 시 runtime과 receipt의 이전 bytes를 유지한다. Client project의 `96.DataFiles`에는 authored JSON을 `None`으로만 등록한다.
+
+Pattern presentation은 값 자체가 아니라 invocation을 소유한다.
+
+```json
+{
+  "patternId": "KAKULSAYDON_G1_HEART_PING_110",
+  "stageId": "SUMMON",
+  "lightingInvocations": [
+    {
+      "invocationId": "heart-dark",
+      "modifierId": "lighting-modifier.kakulsaydon.g1.mechanic-dark.v1",
+      "trigger": "STAGE_ENTER",
+      "transitionMs": 600,
+      "restorePolicy": "PATTERN_END"
+    }
+  ],
+  "lightCues": [
+    {
+      "cueInvocationId": "heart-role-spot",
+      "cueDefinitionId": "lighting-cue.kakulsaydon.g1.heart-role-spot.v1",
+      "anchor": {"kind": "SUMMON_ROLE_EACH", "roleSet": "HEART_PING"},
+      "transitionMs": 250,
+      "restorePolicy": "PATTERN_END"
+    }
+  ]
+}
+```
+
+Server는 profile/light/group ID를 알지 않는다. Server의 committed pattern/stage occurrence를 Client presentation이 typed cue view와 join한다.
+publisher의 dangling profile/group/anchor는 fail-close하고, runtime anchor가 일시적으로 없으면 해당 cue만 격리해 raid gameplay는 유지한다.
+
+### 4.5 기본 맵 조명 처리와 튜닝 순서
+
+Rendering Tool에 preview-only `Contribution Isolation`을 둔다.
+
+- Scene Directional/Ambient
+- Area Point/Spot groups
+- Effect transient lights
+- Bloom/Exposure
+- Emissive visualization 또는 진단
+
+현재 Area fixture와 Effect light가 같은 transient queue를 쓰므로 단순 UI checkbox만으로는 둘을 분리할 수 없다. G03에서
+`TRANSIENT_LIGHT_SOURCE_CHANNEL { AREA_FIXTURE, EFFECT, PATTERN_CUE, DEBUG_PREVIEW }` metadata를 transient submission에 추가하고,
+Debug Rendering Tool에만 channel별 suppression/count diagnostics를 제공한다. 이 channel은 damage·network·저장 identity가 아니며
+Release의 light 선택 순서를 바꾸지 않는다. emissive는 transient channel이 아니므로 별도 deferred debug visualization으로만 격리한다.
+
+판정 후의 처리 원칙은 다음과 같다.
+
+- 원인이 Directional/Ambient면 Gate 1 base profile을 조정한다.
+- 실제 fixture Point/Spot이면 light/group의 enabled/defaultIntensity를 조정한다.
+- emissive mesh면 material/emissive 경로를 별도로 조정한다. map light flag로 가리지 않는다.
+- MapCatalog가 light pair를 선언하지 않은 area는 정상적인 profile-only area다.
+- pair를 선언했는데 source/runtime이 누락 또는 오염이면 기존 admitted lighting을 유지하고 fail-close한다.
+- light를 “안 보이게 하려고” raw map mesh나 source row부터 삭제하지 않는다.
+
+실제 튜닝 순서는 고정한다.
+
+1. 대표 Gate 1 camera와 character/boss 위치를 고정한다.
+2. contribution isolation으로 base 원인을 분리한다.
+3. Directional diffuse/ambient와 색을 먼저 맞춘다.
+4. shadow direction, bias, range를 맞춘다.
+5. fixture Point group을 배치·조정한다.
+6. Spot group과 cone/anchor를 맞춘다.
+7. exposure/bloom은 마지막에 맞춘다.
+8. base가 깨끗해진 뒤 Pizza/Heart/Dance dark modifier를 A/B 튜닝한다.
+9. VFX/emissive를 다시 켜고 clipping/과노출을 조정한다.
+10. benchmark와 사용자 visual smoke로 확정한다.
+
+---
+
+## 5. Composition Sequencer와 Resource audition
+
+### 5.1 압축 규격
+
+- `TIMELINE_ROW_HEIGHT = 24.f`
+- `TIMELINE_BLOCK_VERTICAL_PADDING = 2.f`
+- hit rectangle은 row 전체 24px을 사용해 box 내부 그래픽이 작아져도 선택·drag가 끊기지 않게 한다.
+- 고정 `TIMELINE_CANVAS_MINIMUM_HEIGHT = 420.f`를 제거한다.
+- 기본 canvas는 `laneCount * 24 + ruler`를 가용 viewport 안에서 clamp하고 내부 세로 scroll을 사용한다.
+- `Maximize Timeline`은 현재 Tool viewport의 최대 96%까지 사용하고 Details/Resources는 collapse 또는 overlay로 전환한다.
+- `Fit`은 전체 duration을 현재 폭에 맞춘다.
+- horizontal zoom 상한은 500에서 1200px/s로 올린다.
+- 저장 데이터 duration 안전 상한 600,000ms는 유지한다. “크게 본다”와 “무한 duration을 허용한다”를 섞지 않는다.
+- 좌우 column은 고정 비율보다 최소 폭 + draggable splitter를 사용해 중앙 timeline 폭을 우선 확보한다.
+- Resources/Sequencer default height 2배 확대는 제거한다.
+- 상단의 장문 `TextDisabled` 3줄은 삭제하고 추가 설명은 tooltip 또는 Advanced Help로 이동한다.
+- box를 편집하는 유일한 기본 화면은 Composition Sequencer다. 별도 read-only `CSequencerTool`은 기본 focus 목록에서 빼고
+  `Composition Source Inspector (Advanced)`로 명확히 표시하거나, 고유 consumer가 사라진 뒤 제거한다.
+
+상시 표시 정보는 `source revision / draft dirty / validation error / writer lock / audition status` 한 줄뿐이다.
+
+### 5.2 single-click audition 계약
+
+모든 Resource tab은 다음 공통 규칙을 따른다.
+
+1. 실제 사용자가 leaf `Selectable`을 click했을 때만 audition한다.
+2. filter/reload가 첫 행을 자동 선택한 경우에는 audition하지 않는다.
+3. 새 후보의 resource와 playback state를 먼저 validate/stage한다.
+4. stage가 성공했을 때만 같은 channel의 old preview를 멈추고 new preview로 atomic replace한다.
+5. 같은 항목을 다시 click하면 성공한 replace로 0ms부터 restart한다.
+6. 성공한 preview만 viewport/input owner를 claim한다.
+7. 실패하면 기존 preview를 유지하고 선택 행 옆에 구체적 미지원/실패 이유를 표시한다.
+8. click은 draft generation, dirty, box 생성, append, save를 절대 발생시키지 않는다.
+
+| Resource | single-click 결과 |
+|---|---|
+| Animation | 현재 Kouku preview actor에서 clip/sequence를 즉시 재생 |
+| Effect | preview anchor에서 effect를 즉시 재생 |
+| Sound | 전용 bounded preview channel에서 즉시 재생, 다음 선택 시 이전 sound 정지 |
+| Camera shot/sequence | Tool viewport에서 즉시 재생, Esc/Stop으로 복원 |
+| 아직 지원하지 않는 항목 | 선택 상태와 정확한 미지원 이유만 표시; 재생 성공을 가장하지 않음 |
+
+`Append to Stage Slots`를 선택 동작과 action strip에서 제거한다. 저작은 다음처럼 분명한 명령만 남긴다.
+
+현재 Camera tab에는 resource leaf가 없으므로 G02에서 Area의 typed CameraShot/WorldSequence 목록을 열거하고, stable ID별
+bounded preview player와 camera restore owner를 추가한다. `Open Camera Tool` 버튼만 둔 채 Camera single-click 완료로 기록하지 않는다.
+
+- `Bind Selected Resource to Selected Box`
+- `Replace Selected Box Resource`
+- `Create Box on <Lane>`
+- lane drag/drop
+
+Kouku preview actor가 제품으로 들어오기 전에는 Kouku animation click이 “선택됨 / preview actor unavailable”을 보여야 한다.
+G04에서 `CKoukuSaydon` preview presentation이 연결된 뒤 같은 audition interface의 실제 소비자로 닫는다.
+
+### 5.3 Lighting lane
+
+Kouku Workbench에는 `LIGHTING` lane을 추가한다. box는 다음만 저장한다.
+
+- invocation/cue stable ID
+- start/stop stage 또는 offset
+- transition timing
+- restore policy
+
+multiplier, color, brightness, group 정의를 Composition 안에서 중복 편집하지 않는다. Lighting box 선택 시 Rendering Tool의 해당
+modifier/group/cue로 deep-link하고, Rendering Tool 저장 owner가 값을 관리한다.
+
+---
+
+## 6. KoukuSaydon Gate 1 데이터와 제품 구조
+
+### 6.1 직접 저작하는 정본
+
+```text
+Data/KoukuSaydon/Gate1/
+  KoukuSaydonGate1.gameplay.json
+  KoukuSaydonGate1.presentation.json
+  KoukuSaydonGate1.combatobjects.json
+  KoukuSaydonGate1.debugaudition.json
+
+Data/Animation/Reference/KoukuSaydon/*.actionreference.json
+Data/Animation/Authored/KoukuSaydon/*.actionbindings.json
+Data/Animation/Authored/KoukuSaydon/*.patternbindings.json
+Data/Effects/V2/Bindings/BOSS_KAKULSAYDON_G1_KOUKU.effectv2bindings.json
+Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json
+Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json
+```
+
+네 핵심 source는 exact schema를 사용한다.
+
+| 파일 | schema/version | exact root owner |
+|---|---|---|
+| `KoukuSaydonGate1.gameplay.json` | `lostark.kouku-saydon-gameplay-authoring` v1 | `encounterId`, `bossArchetypeId`, `brainKind`, `sourceRevision`, `decisionModel`, `patterns` |
+| `KoukuSaydonGate1.presentation.json` | `lostark.kouku-saydon-pattern-presentation-authoring` v1 | `encounterId`, `bossArchetypeId`, `gameplayRevision`, pattern/stage별 animation/effect/sound/camera/lighting invocation |
+| `KoukuSaydonGate1.combatobjects.json` | `lostark.kouku-saydon-combat-object-authoring` v1 | `encounterId`, Server hit/movement/lifetime/damage-profile 참조를 가진 `objects` |
+| `KoukuSaydonGate1.debugaudition.json` | 공용 `lostark.boss-debug-audition` v1 | `worldId`, `encounterId`, `bossPlacementId`, `gameplayRevision`, `orderedPatternIds` |
+
+gameplay의 `decisionModel`은 exact `productFlow`, `normalPool`, `healthMechanics`를 소유한다. pattern은 stable ID/category/source action,
+selection policy와 ordered stages를, stage는 stable stage/action ID, kind, duration, next/outcome edges, typed stage actions와
+combat-object references를 소유한다. presentation은 같은 pattern/stage를 exact join할 뿐 damage·judgement를 다시 정의하지 않는다.
+unknown root/stage/action field, duplicate ID, dangling edge, gameplay/presentation revision mismatch를 모두 거부한다.
+
+`brainKind: KAKULSAYDON`의 유일한 authored owner는 gameplay root이고 projector가 Product로 복사한다. 첫 typed grammar가 들어갈 때
+generated encounter는 `lostark.encounter-profile` v5로 올려 `brainKind`, decision model, typed stage action/outcome을 싣는다.
+기존 Valtan v4를 조용히 v5로 해석하지 않으며, 같은 publisher 변경에서 explicit v4 adapter와 parity fixture를 둔다.
+생성되는 combat-object/rotation 문서는 각각 `lostark.kakulsaydon-combat-objects` v1,
+`lostark.kakulsaydon-pattern-rotations` v1을 사용한다.
+
+위 신규 JSON과 `Data/AI`, `Data/Dialogue` 원본은 `Client/Default/Client.vcxproj`와 `.filters`의 `96.DataFiles` 아래
+`None` 항목으로만 등록한다. build output Content나 프로젝트별 복사본을 만들지 않는다.
+
+공용 catalog와 world에서 바뀌는 정본:
+
+- `Data/Actors/BossCatalog.json`
+- `Data/Balance/BossProfiles.json`
+- 필요한 `Data/Balance/DamageProfiles.json`
+- `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`
+- `Data/Maps/MapCatalog.json`
+
+Gameplay world에는 disabled `boss.kakulsaydon.g1.kouku` placement와 이를 활성화하는 typed `activateEncounter` trigger를 둔다.
+`playerSpawn.archetypeId`는 계속 null이며 실제 class를 placement가 소유하지 않는다.
+
+현재 world의 circus-finale trigger는 `playSequence`를 직접 실행한다. G04 world transaction에서 그 action을 **정확히 하나의
+`activateEncounter`로 교체**하고, 같은 sequence를 시작하는 유일한 owner를 Entrance Server stage로 바꾼다. direct trigger와
+Entrance stage를 병존시켜 sequence를 두 번 재생하지 않는다.
+
+### 6.2 생성물
+
+다음은 publisher만 교체할 수 있다.
+
+- `Data/Encounters/KoukuSaydon/KoukuSaydonGate1Encounter.json`
+- `Data/Encounters/KoukuSaydon/KoukuSaydonGate1CombatObjects.json`
+- `Data/Encounters/KoukuSaydon/KoukuSaydonGate1PatternRotations.json`
+- `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`
+- `Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json`
+- `Client/Bin/DataFiles/Rendering/*.runtime.json`
+- `Client/Bin/DataFiles/Compositions/...`
+
+`Publish-Compositions.ps1`은 join/manifest를 publish할 뿐 gameplay bootstrap의 두 번째 writer가 되지 않는다.
+`Publish-GameplayBalance.ps1`이 모든 domain candidate가 유효할 때 최종 bootstrap을 한 번 stage/commit한다.
+
+### 6.3 데이터와 호출 흐름
+
+```text
+Kouku gameplay/presentation/combatobjects authoring
+  -> KoukuSaydon domain validator/projector
+  -> BossCatalog/BossProfiles/World exact join
+  -> one Gameplay.bootstrap atomic commit
+  -> GameRoom routes brainKind KAKULSAYDON
+  -> CKoukuSaydonBrain selects pattern and owns mechanic verdict
+  -> shared fixed-tick stage/combat-object runtime
+  -> Shared spawn/snapshot/action events
+  -> CKoukuSaydon presentation
+  -> animation/effect/camera/lighting occurrence consumers
+
+CKoukuSaydonBossTool / CKoukuSaydonActionWorkbench
+  -> scoped debug audition request with exact source/runtime revision
+  -> Server KAKULSAYDON_ARENA admission
+  -> same Product brain/stage runtime
+  -> typed lifecycle/result
+```
+
+Tool preview를 위해 Client local boss gameplay를 새로 만들지 않는다.
+
+재생 정책과 입장 연출은 다음으로 고정한다.
+
+- encounter activation 뒤 첫 Product pattern은 `KAKULSAYDON_G1_ENTRANCE`다.
+- 그 stage ENTER의 typed `PLAY_WORLD_SEQUENCE`가 기존 world-sequence broadcast 경로를 사용한다.
+- published world-sequence duration과 Server stage duration을 validator가 exact join한다.
+- Client의 카메라 종료 callback이 Server pattern을 시작하지 않는다. Server stage clock이 다음 pattern 진입 시점을 소유한다.
+- Client camera/resource 재생 실패는 해당 presentation만 격리하며 Server flow를 멈추거나 로컬 pattern으로 대체하지 않는다.
+- Debug는 Entrance 종료 뒤 `HOLD_UNTIL_COMMAND`로 대기한다.
+- Release는 Entrance 뒤 저장된 Product flow를 순서대로 자동 재생하며 Debug audition packet을 거부한다.
+- Valtan도 사용자가 요청한 Debug HOLD/Release AUTO 정책을 적용하되, Valtan policy와 queue는 Valtan domain 객체가 따로 소유한다.
+
+### 6.4 Gate 1 패턴
+
+| 패턴 | Server truth | Presentation/lighting |
+|---|---|---|
+| Entrance | encounter 시작과 intro timing | world sequence/camera; 필요할 때만 base profile blend |
+| Pizza | source action 4219714, 6 stage, sector combat object와 safe-sector variant. normal pool/audition baseline이며 근거 없는 HP threshold를 붙이지 않음 | WINDUP에서 mechanic-dark, sweep telegraph, 종료/abort 시 base restore |
+| Stagger 130 | HP 130 crossing once, stagger window·reflection outcome을 Server가 판정 | dark modifier와 warning cue는 gameplay outcome에 종속 |
+| Heart Ping 110 | `VANISH -> SUMMON -> JUDGE -> RETURN`; shooter 1/heart 3 summon, 바라보기 판정, partial spawn 전체 rollback | pattern 시작 dark multiplier, summon role별 4 Spot, RETURN/abort/disconnect restore |
+| Dance 85 | `INTRO -> STEP_1..3 -> RESOLVE/PUNISH -> RECOVERY`; Saydon summon variant와 Q/W/E/R window를 Server가 판정 | dark multiplier, dancer/stage Spot, step별 cue, recovery restore |
+| Roulette 50 | HP 50 crossing once, roulette/card 결과와 damage를 Server가 판정 | stage/fixture group과 필요한 cue; 시각 결과가 Server verdict를 대신하지 않음 |
+
+한 fixed tick에 여러 HP threshold를 넘으면 높은 HP threshold부터 안정적인 `order`로 pending queue에 넣고 현재 occurrence 종료 뒤 하나씩 실행한다.
+각 mechanic은 encounter generation별 once ledger를 가진다. disconnect/restart 때 이전 generation ledger를 재사용하지 않는다.
+
+Pizza의 action 4219714는 다음 여섯 stage를 첫 vertical slice로 사용한다.
+
+```text
+WINDUP_A -> SECTOR_SWEEP_A -> RECOVERY_A
+WINDUP_B -> SECTOR_SWEEP_B -> RECOVERY_B
+```
+
+animation reference의 `3_01 / 3_07 / 3_09` 두 세트를 authored stage에 join하며, Client animation timing이 Server damage timing을 만들지 않는다.
+
+Gate 1 완결에는 기존 요구의 다음 encounter 공통 상태도 포함한다.
+
+| 공통 상태/패턴 | 소유와 규칙 |
+|---|---|
+| Card suit assignment | encounter generation 시작에 eligible human만 대상으로 Server가 stable player ID 순서와 authored policy로 배정한다. companion은 제외한다 |
+| Madness gauge | 획득·감소·임계·clown form 전이를 Server player state가 소유하고 snapshot으로 복제한다. Client HUD/모델은 read-only 표현이다 |
+| Clown form | 별도 playable class로 위장하지 않고 typed temporary form 상태와 허용 skill profile로 처리한다. 실제 model/animation asset admission 없이는 시각 완료로 기록하지 않는다 |
+| Card matching | bind 대상, homing card, suit 일치와 실패 damage를 Server가 판정한다. Client projectile/effect 위치는 판정 근거가 아니다 |
+
+카드 아이콘·광기 게이지가 필요하면 `Data/UI` stable slot/image 계약과 `CUIObject` 계열 제품 UI로 구현한다. ImGui를 제품 HUD로 승격하지 않는다.
+이 상태들도 실제 첫 소비자가 들어오는 slice에서만 wire/bootstrap field를 추가한다.
+
+### 6.5 Boss Tool과 Action Workbench
+
+`CKoukuSaydonBossTool`은 다음만 소유한다.
+
+- Kouku source/revision/encounter scope
+- All Patterns / Current Product Flow
+- row의 `[Live]` marker
+- `Play Selected`, `Repeat`, `Play Full Pattern`, `Stop After Current`, `Restart Active`, `Next Pattern`, `Revive`
+- Server result/lifecycle와 exact request correlation
+
+`CKoukuSaydonActionWorkbench`은 다음만 소유한다.
+
+- Kouku pattern/stage immutable view
+- Kouku draft와 authoring transaction
+- animation/effect/sound/camera/lighting box
+- candidate validation, save, exact revision apply/restart
+
+Valtan과 selection, next queue, dirty flag, undo, writer lock, save path를 공유하지 않는다.
+
+---
+
+## 7. Gunslinger AI와 Dialogue
+
+### 7.1 목표와 역할
+
+방마다 최대 한 명의 `GUNSLINGER` companion을 둔다. 이 actor는 한 객체 안에서 다음 모드를 가진다.
+
+- `GUIDE`: owner를 navigation으로 따라가고 encounter/pattern/stage 안내를 한다.
+- `ASSIST`: 같은 Server combat/navigation/damage 계약으로 실제 전투한다. 시간 종료 후 GUIDE로 돌아간다.
+- `DISMISSED`: despawn transaction을 수행한다.
+
+MVP에서는 첫 human의 Kouku admission이 commit된 뒤 빈 일반 player spawn slot에 GUIDE 1명을 transactionally 만든다.
+`도움!`은 새 actor spawn이 아니라 기존 actor의 ASSIST 전환이다. 현재 입구 spawn과 human-only movePlayer trigger를 우회해
+owner 근처에 순간 생성하는 동작은 만들지 않는다.
+
+owner는 생성 당시의 `FIRST_ADMITTED_HUMAN` stable PlayerId로 commit한다. mode 변경/dismiss command는 owner-only이고,
+질문은 같은 room의 모든 admitted human에게 rate limit 하에 허용한다. owner가 나가면 이 MVP에서는 재지정하지 않고 despawn한다.
+
+companion은 일반 actor capacity와 spawn slot을 사용한다. 4칸이 모두 차면 생성은 원자적으로 거부하고 human을 내보내거나 5번째 actor를 만들지 않는다.
+combat target과 damage의 대상은 될 수 있지만 party/invite/reward/inventory/world transfer/vote/card·dance·heart assignment와
+encounter/change-level/gimmick trigger에는 참여하지 않는다. 입구에서 arena까지 이동할 수 있도록 기존 `jump.1~3`의 `movePlayer`에만
+typed `actorPolicy: HUMAN_AND_COMPANION`을 저작하고, 다른 trigger의 기본은 `HUMAN_ONLY`로 유지한다.
+
+### 7.2 AI 정본
+
+파일명은 사용자 요청 그대로 `Data/AI/Gunslinger.json`이다.
+
+```json
+{
+  "schema": "lostark.companion-ai-profile",
+  "formatVersion": 1,
+  "profileId": "companion.gunslinger.raid-guide.v1",
+  "characterClass": "GUNSLINGER",
+  "displayNickname": "건슬링어 (AI)",
+  "allowedWorldIds": ["KAKULSAYDON_ARENA"],
+  "maximumInstancesPerRoom": 1,
+  "ownerPolicy": "FIRST_ADMITTED_HUMAN",
+  "commandAuthority": "OWNER_ONLY",
+  "questionAuthority": "ANY_ADMITTED_HUMAN",
+  "ownerLeavePolicy": "DESPAWN",
+  "chatCommands": {
+    "assist": ["도움!", "/도움"],
+    "guide": ["/따라와"],
+    "dismiss": ["/그만"],
+    "questionPrefix": "@건슬 "
+  },
+  "guide": {
+    "followStartDistanceMeters": 8.0,
+    "followStopDistanceMeters": 5.0,
+    "maximumOwnerDistanceMeters": 25.0,
+    "navReplanTicks": 6
+  },
+  "assist": {
+    "durationTicks": 600,
+    "decisionIntervalTicks": 6,
+    "preferredDistanceMeters": 6.0,
+    "evadeHorizonTicks": 12,
+    "basicAttackSkillId": 38000,
+    "skillCandidates": [
+      {"candidateId": "active-q", "skillId": 38020, "baseScore": 1.0},
+      {"candidateId": "active-w", "skillId": 38050, "baseScore": 0.9}
+    ]
+  }
+}
+```
+
+위 AI 파일은 decision/follow/evade/command/lifecycle만 소유한다. HP/resource, damage, cooldown, action duration, animation을 복제하지 않는다.
+`Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, authored animation binding이 기존 전투 수치와 표현의 정본이다.
+
+### 7.3 Human과 AI가 공유하는 전투 경계
+
+```text
+Human C2S packet
+  -> session/auth/anti-replay adapter
+  -> PLAYER_ACTOR_MOVE_INTENT / PLAYER_ACTOR_SKILL_INTENT
+
+CompanionBrain decision
+  -> PLAYER_ACTOR_MOVE_INTENT / PLAYER_ACTOR_SKILL_INTENT
+
+both -> one Server player actor executor
+     -> navigation / cooldown / resource / skill / damage / snapshot
+```
+
+`Handle_Move`나 `Handle_UseSkill`에 fake session/C2S packet을 만들어 재진입하지 않는다. `SERVER_PLAYER_CONTROL_KIND { HUMAN_SESSION, SERVER_COMPANION }`을
+player actor에 두고 spawn에는 확장 가능한 `REPLICATED_PLAYER_KIND`를 싣는다. 정적 identity를 매 snapshot에 반복하지 않는다.
+
+decision 우선순위는 `EVADE_HAZARD -> FOLLOW/REPOSITION -> ACTIVE_SKILL -> BASIC_ATTACK -> HOLD`이며
+Server navigation과 Server XZ combat/hazard geometry만 사용한다.
+
+room tick 순서는 다음으로 고정한다.
+
+```text
+human packet drain/auth/anti-replay validation
+  -> companion perception/decision
+  -> stable PlayerId order로 normalized actor intent 실행
+  -> movement/combat simulation
+  -> snapshot/broadcast
+```
+
+LMB `38000`은 3단 COMBO이므로 Brain은 같은 action의 Server-authored continuation window에서만 다음 continuation intent를 낼 수 있다.
+combo stage를 AI가 임의 증가시키지 않고, 일반 player와 같은 `iComboStage` Server 결과를 소비한다.
+
+### 7.4 Dialogue 정본과 trigger
+
+사용자 입력의 오타를 정규화한 유일한 파일명은 `Data/Dialogue/KoukuSaydon.Gunslinger.json`이다.
 
 ```json
 {
   "schema": "lostark.companion-dialogue",
   "formatVersion": 1,
-  "companionId": "companion.gunslinger",
-  "encounterId": "ENCOUNTER_KAKUL_GATE1",
-  "persona": { "name": "건슬링어", "systemPrompt": "너는 로스트아크 쿠크세이튼 레이드의 숙련된 공대장이다. 한 문장으로 짧게 현재 패턴의 대처법을 말한다." },
+  "dialogueId": "dialogue.kakulsaydon.gunslinger.ko-kr.v1",
+  "profileId": "companion.gunslinger.raid-guide.v1",
+  "locale": "ko-KR",
+  "providerPolicy": {
+    "prefetchOnEncounterEnter": true,
+    "realtimePlayerQuestion": true,
+    "timeoutMs": 1500,
+    "maximumResponseBytes": 256
+  },
   "lines": [
-    { "lineId": "line.kakul.g1.heart-ping.01", "trigger": { "kind": "PATTERN_STAGE_ENTER", "patternId": "KAKUL_G1_HEART_PING_110", "stageId": "SUMMON" },
-      "text": "네 방향 세이튼 중 총을 든 쪽을 바라봐!", "durationMs": 4000, "priority": 10 },
-    { "lineId": "line.kakul.g1.assist.start", "trigger": { "kind": "ASSIST_START" }, "text": "20초만 같이 친다. 뒤는 맡겨!", "durationMs": 3000, "priority": 5 }
+    {
+      "lineId": "g1-heart-summon",
+      "triggerKind": "PATTERN_STAGE_ENTER",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "patternId": "KAKULSAYDON_G1_HEART_PING_110",
+      "stageId": "SUMMON",
+      "requiredChatFlags": ["GUIDE_ENABLED"],
+      "presentationFlags": ["CHAT_LOG", "HEAD_BUBBLE"],
+      "bubbleDurationMs": 3000,
+      "priority": 100,
+      "text": "하트 표시가 아닌 진짜 쿠크를 찾아 바라봐!"
+    },
+    {
+      "lineId": "g1-question-default",
+      "triggerKind": "PLAYER_QUESTION",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "patternId": null,
+      "stageId": null,
+      "requiredChatFlags": ["GUIDE_ENABLED"],
+      "presentationFlags": ["CHAT_LOG", "HEAD_BUBBLE"],
+      "bubbleDurationMs": 3000,
+      "priority": 10,
+      "text": "지금 패턴과 안전 위치를 먼저 확인해 줘. 연결이 복구되면 더 자세히 답할게."
+    }
   ]
 }
 ```
 
-`trigger.kind`는 `PATTERN_STAGE_ENTER | PATTERN_OUTCOME | ASSIST_START | ASSIST_END | PLAYER_QUESTION`이다. validator는 `patternId/stageId`가 해당 encounter
-Product에 존재하는지, `skillRotation`이 `PlayerSkills.json`의 GUNSLINGER ACTIVE skillId인지 검사한다.
+trigger는 Server가 commit한 `ENCOUNTER_ENTER`, `PATTERN_ENTER`, `PATTERN_STAGE_ENTER`, `ASSIST_START/END`,
+`PLAYER_QUESTION`만 사용한다. pattern 안내 lookup은 exact encounter+pattern+stage, pattern default, encounter default, silence 순이다.
+질문은 같은 encounter의 `PLAYER_QUESTION` default row를 fallback으로 사용하고 그 row가 없을 때만 침묵한다.
+한 occurrence generation에서 같은 stage line은 한 번만 재생한다.
 
----
+`requiredChatFlags`는 JSON을 수정하는 값이 아니라 room/owner별 runtime state다. UI는 flag를 직접 set하지 않고 chat request를
+보낼 뿐이며 Server command parser가 owner/world/rate/state를 검증한 뒤 set/clear한다.
+unknown flag, duplicate key, invalid scope, invalid UTF-8, 256-byte 초과 text는 publish를 거부한다.
 
-## 4. G별 구현 범위
+`C2S_CHAT`에는 known-mask `CHAT_REQUEST_FLAG::COMPANION_QUESTION`을 추가한다. Client는 `@건슬 ` prefix일 때만 flag를 세우고,
+Server가 prefix, requester, owner/room admission, rate, byte limit를 다시 검증한다. `도움!`, `/따라와`, `/그만`은 Server가
+command로 소비해 일반 chat으로 broadcast하지 않고 `S2C_COMPANION_COMMAND_RESULT` typed receipt를 보낸다. `@건슬` 질문은
+human chat line으로 한 번만 broadcast한 뒤 별도 companion response를 만든다.
 
-### G00 — Server 재생 정책과 입장 시퀀스 동기
+### 7.5 기존 말풍선과 선택적 챗봇
 
-#### 목표와 종료 증거
+먼저 쿠크 레벨에서 기존 `CWorldPlayerNameplateView`, `CWorldPlayerChatBubbleView`, `CChatWindowView`를 연결한다.
+말풍선의 스타일과 제품 image를 새로 만들거나 ImGui widget으로 대체하지 않는다.
+긴 응답은 기존 글꼴의 실제 측정 폭으로 UTF-safe wrap하고, 최대 폭·최대 줄·대기열을 bounded하게 둔다. 이는 같은 말풍선의
+텍스트 배치 안정화이며 새 말풍선 디자인을 만드는 작업이 아니다.
 
-Debug Server에서 Valtan Arena에 진입하면 보스가 IDLE로 대기하고, Boss Tool `Play Selected`/`Play Full Pattern`/`Auto Playback ON`이 각각
-한 패턴 / 저장 순서 전체 / Release와 같은 자동 진행을 시작한다. Release 빌드는 기존과 같이 첫 engage에서 scriptedSequence를 시작한다.
-Kakul `KAKUL_G1_ENTRANCE`의 `PLAY_WORLD_SEQUENCE`가 Server broadcast로 circus finale를 시작하고 21,010 ms 뒤 보스가 나타난다(G02 뒤 확인).
-
-#### 수정·신규 파일
-
-| 파일 | 변경 |
-|---|---|
-| `Shared/Public/Network/PacketMessages.h` | `VALTAN_AUDITION_OPERATION::SET_AUTOMATIC_PLAYBACK` 추가. `iTargetHealthBar`를 mode(0=HOLD, 1=AUTO)로 재사용. `VALTAN_AUDITION_RESULT::PLAYBACK_POLICY_SET` 추가 |
-| `Shared/Public/Network/PacketType.h` | `NETWORK_PROTOCOL_VERSION 55 -> 56` (G03-1의 wire 필드까지 같은 bump에 포함) |
-| `Server/Public/GameRoom.h` | `enum class SERVER_BOSS_PLAYBACK_POLICY : uint8_t { PRODUCT_AUTOMATIC, DEBUG_HOLD_UNTIL_COMMAND }`, 멤버 `m_eBossPlaybackPolicy` |
-| `Server/Private/GameRoom.cpp` | boss entity spawn/reset 지점에서 policy가 HOLD면 `bAutomaticPatternSequenceAuditionHold = true`. `Handle_ValtanAudition`에 `SET_AUTOMATIC_PLAYBACK` 분기. `Handle_ValtanAudition`의 `REJECTED_WRONG_WORLD` 검사를 `VALTAN_ARENA \|\| KAKULSAYDON_ARENA`로 확장 |
-| `Server/Public/GameplayCatalog.h`, `Server/Private/GameplayCatalog.cpp` | `BOSS_PATTERN_STAGE_ACTION_KIND::PLAY_WORLD_SEQUENCE`와 `strSequenceInstanceId` 필드, bootstrap row parse |
-| `Server/Private/GameRoom.cpp` `Stage_BossPatternStageActions` | `PLAY_WORLD_SEQUENCE` ENTER edge에서 triggerBox `playSequence`가 쓰는 같은 broadcast 함수 호출 |
-| `Tools/GameplayPipeline/Publish-GameplayBalance.ps1` | `PLAY_WORLD_SEQUENCE.sequenceInstanceId`가 `MapCatalog`의 해당 area `worldsequences.json` instance에 존재하는지 검사, bootstrap row 생성 |
-| `Client/Public/ValtanPatternAuditionService.h/.cpp` | `Set_AutomaticPlayback(bool bAutomatic, std::string& strOutStatus)` (기존 Submit과 같은 one-shot verdict 큐) |
-| `Client/Private/BossTool.cpp` | Action bar에 `Auto Playback (Release behavior)` checkbox → 위 서비스 호출 |
-| `Tools/NetworkProtocolHarness` | 새 op/result round-trip fixture |
-| `Server/Private/ServerGameplayContractTests.cpp` | HOLD 정책에서 spawn 뒤 N tick 동안 `SelectPattern`이 nullptr, AUTO 전환 뒤 scriptedSequence 시작; `PLAY_WORLD_SEQUENCE` ENTER 방송 1회 |
-| `CLAUDE.md`, `AGENTS.md` | protocol/bootstrap 숫자 교정, Debug 기본 HOLD 서술 |
-
-#### H 계약 (러프)
-
-```cpp
-// Server/Public/GameRoom.h — CGameRoom private 멤버 옆
-enum class SERVER_BOSS_PLAYBACK_POLICY : std::uint8_t
-{
-	PRODUCT_AUTOMATIC,
-	DEBUG_HOLD_UNTIL_COMMAND
-};
-/* Debug 기본은 HOLD. Release는 audition op 자체가 거부되므로 AUTO 고정. */
-SERVER_BOSS_PLAYBACK_POLICY m_eBossPlaybackPolicy =
-#ifdef _DEBUG
-	SERVER_BOSS_PLAYBACK_POLICY::DEBUG_HOLD_UNTIL_COMMAND;
-#else
-	SERVER_BOSS_PLAYBACK_POLICY::PRODUCT_AUTOMATIC;
-#endif
-bool Apply_BossPlaybackPolicyOnSpawn(SERVER_WORLD_ENTITY& boss);
-```
-
-```cpp
-// Server/Public/GameplayCatalog.h — BOSS_PATTERN_STAGE_ACTION_KIND 끝
-PLAY_WORLD_SEQUENCE
-// BOSS_PATTERN_STAGE_ACTION struct
-std::string strSequenceInstanceId;
-```
-
-#### 호출 흐름
+외부 챗봇 연결은 선택적 sidecar다.
 
 ```text
-Room boss spawn / Fresh Arena reset
-→ Apply_BossPlaybackPolicyOnSpawn: HOLD면 boss.bAutomaticPatternSequenceAuditionHold = true
-→ CValtanBrain::SelectPattern 5번 분기에서 IDLE 유지
-Boss Tool Play Selected → PLAY_PATTERN_ID → 기존 PendingPatternIds 경로 (큐가 비면 hold도 함께 false가 되는 기존 코드 유지)
-Boss Tool Play Full Pattern → FLOW_START → bScriptedPatternPlayback 경로
-Boss Tool Auto Playback ON → SET_AUTOMATIC_PLAYBACK(1) → policy=AUTO, boss.bAutomaticPatternSequenceAuditionHold=false → scriptedSequence
-Stage ENTER PLAY_WORLD_SEQUENCE → Broadcast(S2C_WORLD_SEQUENCE_PLAY) → Client Consume_WorldSequencePlays → Start_ServerRequestedSequence
+Server fixed tick
+  -> ServerApp-owned bounded localhost JSONL gateway
+  -> 127.0.0.1:7778 sidecar
+  -> provider HTTPS adapter
+  -> typed ROOM_COMMAND result on the next room tick
+  -> context/ledger revalidation
+  -> exactly one S2C_CHAT or stale drop
+  -> existing chat log + head bubble
 ```
 
-불변식: `Play Selected`가 한 패턴을 끝낸 뒤 hold가 다시 켜져야 한다(현재 코드는 큐가 비면 hold를 false로 만든다). `FinishPattern`에서
-policy가 HOLD이고 Flow/Next 소유자가 없으면 hold를 다시 true로 복원한다. Repeat는 Client 서비스가 `COMPLETED` 관측 뒤 재제출하므로 Server 변경이 없다.
+- Client는 HTTP와 API key를 알지 않는다.
+- Server fixed tick은 network/provider를 기다리지 않는다.
+- sidecar만 provider HTTP와 process environment의 secret을 소유한다.
+- cache/stale key는 `roomEpoch`, companion `NetEntityId+generation`, `profileId`, dialogue revision, trigger kind,
+  encounter/pattern/stage/line ID, occurrence sequence를 포함한다. 질문은 requester PlayerId와 request sequence도 포함한다.
+- pattern/stage 안내는 event tick에 **유효 prefetch cache 또는 authored JSON 중 하나**를 occurrence ledger에 commit한다.
+  cache miss로 JSON을 commit한 뒤 도착한 provider text는 버려 중복 발화하지 않는다.
+- player 질문은 request sequence별 provider success 또는 1500ms timeout fallback 중 정확히 하나만 commit한다.
+- room/revision/generation/owner/occurrence가 달라진 늦은 응답은 버린다.
+- queue/rate/response bytes/circuit breaker를 제한하고 협력 취소와 bounded join을 사용한다.
+- LLM text는 gameplay trigger, pattern verdict, movement 명령을 만들 수 없다.
 
-#### 검증
+encounter clear/wipe/restart, companion death, owner/world exit마다 mode, HP/resource/cooldown/path, pending intent,
+chat flags, dialogue occurrence ledger를 명시적으로 reset 또는 폐기한다. 마지막 human 퇴장 시 새 결정 중지,
+dialogue/sidecar 작업 취소, companion despawn broadcast와 entity/map 제거, Kouku empty-room reset 순으로 정리한다.
+현재 reset admission에 Kouku world를 실제로 추가하지 않은 채 완료 처리하지 않는다.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug
-Server\Bin\Debug\Server.exe --contract-test
-Tools\NetworkProtocolHarness\Bin\Debug\NetworkProtocolHarness.exe
-```
-
-사용자 smoke: `Server + Client` → Lobby → Valtan → 보스가 IDLE 대기 → F1 Boss Tool → Play Selected → 한 패턴 뒤 다시 대기 → Auto Playback ON → 자동 진행.
-
----
-
-### G01 — Boss Tool 재편
-
-#### 목표와 종료 증거
-
-Boss Tool 상단에 `Valtan | KoukuSaydon` 선택자가 있고 현재 Level의 보스가 자동 선택된다. All Patterns / Current Patterns 두 탭 모두에서
-Server가 재생 중인 패턴 행 앞에 `[Live]`가 붙고 행이 강조되며 목록 아래에 `Live: <한국어 이름> / <stageId> / seq N` 한 줄이 보인다.
-Action bar는 `Play Selected`, `Repeat`, `Play Full Pattern`, `Stop After Current`, `Restart Active`, `Revive` 순서다. `Next Pattern...`은 선택된
-보스의 inventory만 보인다. Valtan 기능 회귀 없음(기존 `test_valtan_boss_tool_pattern_flow_contract` PASS).
-
-#### 수정·신규 파일
-
-| 파일 | 변경 |
-|---|---|
-| `Client/Public/BossTool.h` | `struct BOSS_TOOL_TARGET`, `m_Target`, `Select_Target`, `Render_TargetSelector`, `Is_TargetLevelActive` |
-| `Client/Private/BossTool.cpp` | 창 제목 `Boss Tool`, `Render_PatternList`/`Render_CurrentPatternList` 행 `[Live]` 마커, `Render_ActionBar` 재배치, `Render_NextPatternPicker` target 필터 |
-| `Client/Public/ValtanPatternTree.h/.cpp` | `CValtanPatternTree::Load(const BOSS_SOURCE_DESCRIPTOR&)` 오버로드 (G02에서 Kakul descriptor 연결; G01은 Valtan descriptor 하나) |
-| `Client/Private/MainApp.cpp` | F1 허브의 `Boss Tool` 항목이 `VALTAN_ARENA` 외 `KAKULSAYDON_ARENA`에서도 열리게 gating 확장(`MainApp.cpp:3678/3744/3795`의 VALTAN_ARENA 비교) |
-| `Tools/ValtanPipeline/test_valtan_boss_tool_pattern_flow_contract.py` | 새 버튼 라벨·Live 마커 text oracle |
-
-#### H 계약 (러프)
-
-```cpp
-// Client/Public/BossTool.h — CBossTool public struct들 옆
-struct BOSS_TOOL_TARGET final
-{
-	std::string strTargetId;        // "valtan" | "kakul-gate1"
-	std::string strDisplayName;     // "Valtan" | "KoukuSaydon 1관문"
-	std::string strEncounterId;     // ENCOUNTER_VALTAN | ENCOUNTER_KAKUL_GATE1
-	std::string strBossPlacementId; // world Gameplay.world.json boss placementId
-	LEVEL eLevel = LEVEL::END;      // 이 target을 live로 조작할 수 있는 Level
-};
-static const std::array<BOSS_TOOL_TARGET, 2u>& Get_Targets();
-bool_t Select_Target(std::string_view strTargetId, std::string& strOutStatus);
-[[nodiscard]] bool_t Is_TargetLevelActive() const;
-void Render_TargetSelector();
-void Render_LiveRowMarker(const VALTAN_PATTERN_VIEW& Pattern, bool_t bSelectedRow);
-```
-
-`BOSS_TOOL_TARGET.strBossPlacementId`는 기존 `BOSS_PLACEMENT_ID` 상수를 대체하는 값이며 Valtan은 현재 상수 값을 그대로 쓴다.
-현재 Level과 다른 target을 고르면 목록은 read-only(Product inventory)로 보이고 모든 Server 명령은 `Is_TargetLevelActive()`로 fail-close한다.
-
-#### 호출 흐름
+### 7.6 AI publisher와 sidecar 파일
 
 ```text
-Render → Render_TargetSelector (Level 진입 시 자동 Select_Target)
-→ Reload_CanonicalGraph(m_Target descriptor)
-→ Render_PatternList: 각 행에서 Pattern.strPatternId == m_strLivePatternId 이면 "[Live] " 접두 + TableSetBgColor
-→ 목록 하단 Live 한 줄 (m_strLivePatternId, m_strLiveStageId, HUD_BOSS_STATE.iPatternSequence)
-Play Selected → Submit_SelectedPattern (기존)
-Repeat        → m_bRepeat (기존, COMPLETED 관측 시 재제출)
-Play Full Pattern → Restart_SavedFlow (기존 함수, Action bar로 이동)
-Stop After Current → CValtanPatternFlowService::Stop_AfterCurrent (기존)
-Next Pattern... → Build_AdmittedPatternIds가 m_Target.strEncounterId 기준 inventory만 반환
+Tools/AIPipeline/Schemas/lostark.companion-ai-profile.v1.schema.json
+Tools/AIPipeline/Schemas/lostark.companion-dialogue.v1.schema.json
+Tools/AIPipeline/companion_ai_pipeline.py
+Tools/AIPipeline/Publish-CompanionAI.ps1
+Tools/AIPipeline/test_companion_ai_pipeline.py
+Tools/Build/BuildDomains.json
+Server/Bin/DataFiles/AI/CompanionAI.bootstrap
+
+Tools/CompanionChat/companion_chat_sidecar.py
+Tools/CompanionChat/companion_chat.config.json
+Tools/CompanionChat/Start-CompanionChatSidecar.ps1
+Tools/CompanionChat/Schemas/lostark.companion-dialogue-request.v1.schema.json
+Tools/CompanionChat/Schemas/lostark.companion-dialogue-response.v1.schema.json
+Tools/CompanionChat/test_companion_chat_sidecar.py
 ```
 
-#### 검증
+AI publisher는 `Data/AI/**`, `Data/Dialogue/**`, PlayerSkills/DamageProfiles, Kouku encounter/pattern/stage를 exact join하고
+`parse -> validate -> stage -> atomic commit`한다. 실패하면 기존 bootstrap을 유지하며 Server는 authored JSON을 직접 읽는 fallback을 만들지 않는다.
 
-```powershell
-python -m unittest Tools.ValtanPipeline.test_valtan_boss_tool_pattern_flow_contract
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product
-```
-
-사용자 smoke: Valtan에서 `[Live]` 행이 Server 재생을 따라 움직이는지, `Play Full Pattern` 뒤 Current Patterns의 `[Live]`가 01부터 내려가는지.
+sidecar request는 request ID와 위 stale key, locale, bounded question/context만 싣고 response는 request ID, status, bounded text만 싣는다.
+newline-delimited UTF-8 JSON의 최대 frame을 제한하고 loopback 이외 bind를 거부한다. sidecar만
+`LOSTARK_COMPANION_LLM_API_KEY`를 읽으며 model/endpoint는 deployment config에 있고 gameplay JSON에는 없다. ServerApp는 gateway와
+cooperative cancel/bounded join만 소유하고 sidecar process를 fixed tick에서 시작하거나 기다리지 않는다.
 
 ---
 
-### G02 — 쿠크세이튼 첫 수직 슬라이스 (보스가 서고 패턴 하나가 Server에서 돈다)
+## 8. 사용자 우선순위와 G별 구현 단위
 
-#### 목표와 종료 증거
+각 G는 별도 PLAN delta, RESULT, 검증 가능한 commit 단위다. 모든 G는 **설명/목표 -> 코드·데이터 반영 -> 자동·수동 검증** 순서로 닫는다.
+앞 G가 실패하면 다음 G가 local fallback, 수동 JSON 수정, Valtan 경로 재사용으로 우회하지 않는다.
 
-Debug `Server + Client`로 Character Select → 쿠크 아레나 진입 → 1관문 trigger box 진입 → `KAKUL_G1_ENTRANCE`가 팝업북 시퀀스를 방송하고
-21초 뒤 `BOSS_KAKUL_G1_KOUKU`가 보인다(HOLD 정책이면 여기서 대기). Boss Tool target `KoukuSaydon 1관문`에서 `KAKUL_G1_PIZZA`를 Play Selected하면
-Server snapshot에 `patternId/actionId`가 흐르고 Client가 `rpcz00_att_battle_3_01/3_07/3_09`를 재생하며 SECTOR 판정으로 데미지가 들어온다.
-`Server.exe --contract-test`, `NetworkProtocolHarness`, `Publish-GameplayBalance -Mode Validate`, 새 `Project-KakulPatternMaster.ps1 -Mode Validate` PASS.
-
-#### 수정·신규 파일
-
-| 파일 | 상태 | 역할 |
+| 사용자 우선순위 | 구현 묶음 | 눈에 보이는 도착점 |
 |---|---|---|
-| `Data/Kakul/Kakul.gameplay.json`, `Kakul.presentation.json`, `Kakul.combatobjects.json` | 신규 | §3.3 |
-| `Data/Actors/BossCatalog.json` v7 | 수정 | `BOSS_KAKUL_G1_KOUKU` (+ G2/G3 archetype은 §5 결정 뒤) |
-| `Data/Balance/BossProfiles.json` v5 | 수정 | `BOSS_KAKUL_G1_KOUKU` 행, `encounterId ENCOUNTER_KAKUL_GATE1` |
-| `Data/Balance/DamageProfiles.json` | 수정 | `damage.kakul.g1.pizza` |
-| `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json` | 수정 | `boss.kakul.gate1`(disabled, archetype `BOSS_KAKUL_G1_KOUKU`, SL01 근처) + `trigger.kakul.gate1.activate`(activateEncounter) |
-| `Data/Encounters/KakulSaydon/*.json` | 생성물 | projector 출력 |
-| `Data/Compositions/Bosses/KakulSaydon.bosscomposition.json` | 수정 | `bossArchetypeId`, `encounterId`, gameplay/presentation/combatobject source role 3개 추가, `patterns` 2개, `status SHADOW` |
-| `Tools/KakulSaydonPipeline/Project-KakulPatternMaster.ps1`, `kakul_tuning_pipeline.py` | 신규 | `valtan_tuning_pipeline.py`의 projector/validator를 `BOSS_SOURCE_DESCRIPTOR`로 호출하는 얇은 진입. 함수 복제 금지 |
-| `Tools/ValtanPipeline/valtan_tuning_pipeline.py` | 수정 | 경로·encounterId·archetype 상수를 descriptor 인자로 승격. Valtan 기본 descriptor는 현재 값 그대로 |
-| `Tools/Build/BuildDomains.json` | 수정 | `kakul.product` validation domain (valtan.product와 같은 profile) |
-| `Tools/GameplayPipeline/Publish-GameplayBalance.ps1` | 수정 | encounter 디렉터리 목록에 `KakulSaydon` 추가, BossCatalog v7 / BossProfiles v5 검증, `GAMEPLAY_BOOTSTRAP_FORMAT_VERSION 33` |
-| `Shared/Public/GameplayDataRevision.h` | 수정 | `GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 33` |
-| `Server/Private/GameplayCatalog.cpp` | 수정 | v7/v5 parse, `weaponClipSync`, Kakul encounter row 승인. `hasExactValtanHighJumpTypedVolley` 같은 Valtan exact 검사가 Kakul row에 적용되지 않도록 encounterId로 분기 |
-| `Server/Private/ValtanBrain.cpp`, `GameRoom.cpp` | 수정 | `ENCOUNTER_VALTAN`/`BOSS_VALTAN` 문자열 하드코딩 전수 조사 후 boss entity의 `strEncounterId/strArchetypeId`로 치환. 클래스 이름은 유지(리네임은 별도 합의) |
-| `Client/Public/BossSourceRegistry.h`, `Client/Private/BossSourceRegistry.cpp` | 신규 | `BOSS_SOURCE_DESCRIPTOR` 2행 (Valtan, Kakul gate1). Boss Tool, All Effects, Composition, Sequencer가 같은 descriptor로 tree를 연다 |
-| `Client/Private/ValtanPatternTree.cpp` | 수정 | 경로 상수를 descriptor로 치환 |
-| `Client/Public/ValtanPresentationAssetService.h/.cpp`, `Client/Private/ClientReplication.cpp` | 수정 | `BOSS_*` archetype presentation을 BossCatalog 행 기준으로 lazy prototype commit (현재 Valtan 고정 부분 일반화), `weaponClipSync` 소비 |
-| `Client/Private/Level_KakulSaydonArena.cpp` | 수정 | boss presentation admission을 Valtan Level과 같은 `CClientReplication` 경로로 연결, `boss.flag.hidden` 표현(GHOST_HIDDEN flag 재사용) |
-| `Client/Private/Animation_Tool.cpp` | 수정 | `Build_KakulPatternFromAction`이 REFERENCE_ONLY patternbindings 대신 `Kakul.presentation.json` Create Pattern draft를 만드는 intake adapter (Valtan `promote_valtan_animation_chains.py` 경로 재사용) |
-| `Tools/ValtanPatternAuditionServiceHarness` | 수정 | Kakul descriptor로 canonical graph load / `KAKUL_G1_PIZZA` stage join 계약 |
-| `Server/Private/ServerGameplayContractTests.cpp` | 수정 | Kakul gate1 bootstrap load, PLAY_PATTERN_ID로 `KAKUL_G1_PIZZA` 실행, SECTOR hit 1회 이상 |
+| 0순위 | G00~G04 | Kouku 진입, 24px Workbench, raw animation 탐색, 이름 있는 pattern 생성, exact revision Apply, `Play Server`로 실제 Server stage 재생, Composition 확장 row |
+| 1순위 | G05~G07 | Rendering Tool에서 base profile, 전체 light 기여도, Point/Spot, group on/off, blend, pattern multiplier를 배치·저장·재생 |
+| 2순위 | G08~G13 | Stagger/Heart/Dance/Roulette/Card Matching과 stage branch/judgement/summon을 Server authority로 완결하고 Logic Graph로 편집 |
+| 3순위 | G14~G17 | Kouku chat 표시, 한 명의 Gunslinger GUIDE/ASSIST, JSON fallback, 선택적 chatbot sidecar |
 
-#### H 계약 (러프)
+### 0순위 — 이름·애니메이션·Server 재생·Composition
 
-```cpp
-// Client/Public/BossSourceRegistry.h
-struct BOSS_SOURCE_DESCRIPTOR final
-{
-	std::string strTargetId;
-	std::string strEncounterId;
-	std::string strBossArchetypeId;
-	std::string strAreaId;
-	std::filesystem::path GameplaySourcePath;
-	std::filesystem::path PresentationSourcePath;
-	std::filesystem::path CombatObjectSourcePath;
-	std::filesystem::path EncounterProductDirectory;
-	std::filesystem::path BossCompositionPath;
-	std::string strProductProjectionCommand;   // Project-*PatternMaster.ps1 -Mode PublishV2
-};
-class CBossSourceRegistry final
-{
-public:
-	static const BOSS_SOURCE_DESCRIPTOR* Find(std::string_view strTargetId);
-	static const BOSS_SOURCE_DESCRIPTOR* Find_ByEncounter(std::string_view strEncounterId);
-	static const std::vector<BOSS_SOURCE_DESCRIPTOR>& All();
-};
-```
+#### G00 — KoukuSaydon authored 명명과 Valtan mutable owner 분리
 
-```cpp
-// Data/Actors/BossCatalog.json v7 을 읽는 Server/Client 공통 필드
-enum class BOSS_WEAPON_CLIP_SYNC : std::uint8_t { STATIC_ATTACH, SAME_CLIP_NAME };
-```
+**설명/목표**
 
-#### 호출 흐름
+모든 저작 경로·문서·Tool 이름을 먼저 `KoukuSaydon`으로 통일한다. 이 G에서는 아직 generic boss framework를 추출하지 않는다.
+기존 Valtan mutable state의 실제 이름과 경계를 분명히 해 이후 K 구현이 Valtan object 안으로 들어가는 것을 막는다.
+
+**반영**
+
+- `Data/Animation/{Reference,Authored}/KakulSaydon -> KoukuSaydon` 원자적 이동
+- composition/sequencer, pipeline, test fixture, BuildDomains, project/filter의 authored 이름 동시 갱신
+- 기존 `CBossTool`과 `CActionCompositionWorkbench`를 실제 역할인 `CValtanBossTool`, `CValtanActionWorkbench`와 Valtan source/writer state로 명확히 정리
+- public ID `KAKULSAYDON`과 physical asset alias `KoukuSaton`은 `2의 호환 예외로 유지
+- generated Product는 publisher로만 재생성
+- Valtan Debug 기본 HOLD, Release AUTO라는 명시적 변경 외에는 behavior parity 유지
+
+**검증**
+
+- authored 경로 금지 철자와 bare `KAKUL_G1_*` 0건
+- 새 asset ID는 `Character|Effect|Sound|UI/KoukuSaton/...`만 참조
+- old authored path reader 0건, rename 중간 실패 시 old/new 반쪽 commit 0건
+- Valtan source digest, pattern count, save/reload와 Product flow parity
+- 이 G에는 가짜 Kouku descriptor, registry, empty Tool/harness를 만들지 않음
+
+#### G01 — 24px Workbench와 raw Resource 탐색
+
+**설명/목표**
+
+사용자가 Kouku animation을 빠르게 찾을 수 있도록 화면부터 줄인다. single-click은 로컬 read-only audition이고,
+Server 재생은 G02 이후 이름 있는 pattern revision에만 허용한다.
+
+**반영**
+
+- lane 24px, padding 2px, 가용 높이 cap/scroll, splitter, Fit, Maximize Timeline, horizontal zoom 1200px/s
+- 장문 3줄 삭제, 나머지 설명은 tooltip/Advanced로 이동
+- standalone read-only Sequencer를 기본 focus에서 제외하고 Advanced inspector로 명확히 표시
+- Valtan Workbench의 실제 leaf click seam에서 animation/effect/sound audition을 atomic replace로 구현
+- CameraShot/WorldSequence typed enumeration, bounded preview player, camera restore owner 추가
+- filter/reload auto-selection은 audition 금지
+- `Append to Stage Slots` 제거, `Bind/Replace/Create Box`와 drag/drop만 writer로 유지
+- G02의 Kouku consumer가 생길 때 두 Workbench가 쓰는 pure timeline/resource view seam을 같은 변경에서 추출할 수 있도록 Valtan 코드를 작은 함수 단위로 정리하되, common singleton은 만들지 않음
+
+**검증**
+
+- click 전후 source bytes/revision/draft generation 동일
+- 새 preview stage 실패 시 기존 preview·input owner 유지
+- 재클릭 0ms restart, channel별 성공 후 교체, auto-selection playback 0건
+- Camera Stop/Esc 후 원래 camera restore
+- 48/420/2x/Append를 요구하던 Python oracle 전면 갱신
+- 사용자가 직접 24px 선택·drag와 Timeline maximize를 판정
+
+#### G02 — Kouku Product admission, Pizza, scoped Server Play
+
+**설명/목표**
+
+첫 실제 두 번째 boss consumer를 만든다. 이 G부터 Kouku Resource에서 고른 binding을 이름 있는 pattern으로 저장하고,
+exact runtime revision을 적용한 뒤 `Play Server`로 같은 Product stage runtime에서 볼 수 있다.
+
+**반영**
+
+- §6의 네 Kouku source schema, BossCatalog/BossProfiles, disabled boss placement, encounter projector/bootstrap
+- 기존 direct circus `playSequence` trigger를 하나의 `activateEncounter`로 교체
+- `CKoukuSaydonBrain`, Client `CKoukuSaydon`, `CKoukuSaydonPatternSource`, `CKoukuSaydonAuthoringService`
+- `CKoukuSaydonBossTool`과 `CKoukuSaydonActionWorkbench`의 실제 Pizza consumer
+- Pizza 4219714의 여섯 stage, Server sector hit/safe-sector variant, Client animation occurrence
+- 이 실제 K consumer와 같은 commit에서만 immutable view, scoped audition transport, authoring transaction, fixed-tick stage executor를 추출하고 Valtan/Kouku 양쪽을 이전
+- generic debug audition request는 immutable `{world, encounter, placement, archetype, gameplayRevision}` scope와 request sequence를 소유
+- stage-action enum/parser/field grammar는 encounter-neutral schema에 추가하고, action의 Kouku 의미는 `CKoukuSaydonBrain`/semantic validator가 소비
+- `hasExactValtanHighJumpTypedVolley`, exact phase action/ghost portal/topology와 같은 Valtan oracle의 counter·final assertion을
+  `BOSS_VALTAN + ENCOUNTER_VALTAN` partition 안으로 한정. Kouku row에는 Valtan ID/count/value oracle을 적용하지 않음
+- Debug Entrance 뒤 HOLD, Release Entrance 뒤 Product AUTO
+- protocol/bootstrap grammar가 바뀌면 병합 시점의 실제 최신 version을 한 번 올리고 양 endpoint/harness를 같이 갱신
+
+**검증**
+
+- Pizza가 Client local AI가 아니라 Server stage clock/snapshot으로 재생
+- `Play Selected`, `Play Full Pattern`, Repeat, Stop, Next와 lifecycle receipt
+- V/K world·ID·revision 교차 요청 양방향 거부
+- K save/play가 V selection, queue, dirty, writer, source bytes에 영향 0
+- direct trigger와 Entrance sequence의 이중 재생 0건
+- Release debug operation reject
+- Valtan 명시적 HOLD 변경 외 stage/damage/presentation parity
+- Kouku가 공용 action kind를 써도 Valtan exact oracle에 걸리지 않고, 반대로 Valtan row의 exact 회귀는 계속 거부
+
+이 G에서 다음 실행형 harness를 실제로 만든다.
 
 ```text
-저작: Animation Tool(Resource Files -> MN_RPCZ_00 -> 4219714) -> Create Pattern draft -> Composition Workbench -> Save
-→ Run-ValtanAuthoringSaveJob.ps1 (descriptor 인자) -> Kakul source CAS commit -> Project-KakulPatternMaster PublishV2
-→ Publish-GameplayBalance -> Gameplay.bootstrap(v33) -> Server 재시작
-런타임: trigger activateEncounter -> boss entity 활성 -> HOLD 대기 -> Boss Tool PLAY_PATTERN_ID
-→ CValtanBrain::SelectPattern -> stage fixed tick -> snapshot -> CClientReplication -> Kakul boss presentation clip 재생
+Tools/KoukuSaydonBossToolHarness/
+  Default/KoukuSaydonBossToolHarness.vcxproj
+  Default/KoukuSaydonBossToolHarness.vcxproj.filters
+  Private/KoukuSaydonBossToolHarness.cpp
+  Private/KoukuSaydonSourceAndIsolationContractTests.cpp
+  Private/KoukuSaydonAuthoringTransactionContractTests.cpp
 ```
 
-#### 검증
+`Framework.sln`과 `Tools/Build/Invoke-BuildAndRegression.ps1`의 FullDiagnostic에 등록하고
+`Tools\KoukuSaydonBossToolHarness\Bin\Debug\KoukuSaydonBossToolHarness.exe`를 직접 실행한다.
+
+#### G02A — encounter별 GameplayCatalog admission
+
+**설명/목표**
+
+단일 `Gameplay.bootstrap` publisher는 유지하되 Server runtime admission을 encounter partition별로 나눈다. Kouku row를 작업하다
+잘못 만들어도 Valtan/Bern/Lobby Server 검증과 LAN 입장이 함께 멈추지 않아야 한다. 이 변경은 첫 Kouku Product가 실제 두 번째
+consumer가 된 G02 뒤에만 수행한다.
+
+**반영**
+
+- bootstrap header/version/revision과 player/skill/damage 같은 공용 definition table을 먼저 immutable staging model로 parse
+- boss/profile/part/pattern/combat-object/intro/rotation/sequence와 encounter-local semantic join을 `encounterId`별 partition으로 stage
+- `ENCOUNTER_CATALOG_ADMISSION { encounterId, status, admittedRevision, attemptedRevision, reason }`
+- global syntax·header·공용 table 자체가 깨져 partition을 만들 수 없으면 전체 load 실패
+- encounter-local dangling ID, exact oracle, graph, count, range 실패는 그 partition만 `REJECTED`
+- 여러 partition이 같은 globally unique boss/pattern/combat-object ID를 충돌시키면 충돌한 partition들을 모두 거부하고 나머지는 유지
+- GameRoom/world admission은 target encounter의 `ADMITTED`와 exact revision을 확인하고, 거부 시 typed encounter-unavailable reason을 반환
+- Server startup은 global catalog가 유효하고 적어도 공용 player/skill table이 admitted되면 계속되며 partition status를 구조화 로그로 출력
+- 이 G는 runtime hot reload를 새로 켜지 않는다. staged reload가 이미 호출되는 경로에서는 active room이 pinned old immutable partition을
+  끝까지 쓰되, 최신 candidate가 거부된 encounter의 **새 입장**은 stale partition으로 fallback하지 않고 막는다
+
+**검증**
+
+- valid Valtan + invalid Kouku: Server load 성공, Valtan 입장/contract PASS, Kouku만 exact reason으로 거부
+- invalid Valtan + valid Kouku: Kouku 입장 가능, Valtan만 거부
+- invalid global header/player/skill table: 전체 load 실패와 이전 catalog rollback
+- K row가 Valtan high-jump/phase/ghost oracle의 count를 바꾸지 않음
+- 공용 stage action parser는 V/K row에 동일하게 적용되고 encounter semantic oracle만 분리
+- rejected candidate 뒤 active room pinned revision 보존, 새 입장 stale fallback 0건
+- `ServerGameplayContractTests`와 전용 Kouku harness에 양방향 partition fixture 추가
+
+#### G03 — 기믹 animation intake와 이름 있는 debug pattern 생성
+
+**설명/목표**
+
+무력화, 진짜 쿠크 찾기, 댄스타임, 룰렛, 카드 맞추기의 animation을 먼저 눈으로 찾고, 승인된 source action/clip만
+정확한 이름의 pattern draft로 만든다. 이 단계의 불완전한 기믹은 Release rotation에 넣지 않는다.
+
+**사용 흐름**
+
+```text
+Kouku Resources에서 animation single-click -> local read-only audition
+-> 사용자 source action/clip/순서 선택
+-> Create Kouku Pattern
+-> stage 이름·duration·binding 입력
+-> Validate Candidate
+-> Apply Debug Revision
+-> Play Server
+-> Server occurrence/snapshot으로 같은 animation 확인
+```
+
+**반영**
+
+- `KAKULSAYDON_G1_STAGGER_130`
+- `KAKULSAYDON_G1_HEART_PING_110`
+- `KAKULSAYDON_G1_DANCE_85`
+- `KAKULSAYDON_G1_ROULETTE_50`
+- `KAKULSAYDON_G1_CARD_MATCHING`
+- 각 pattern의 sourceActionId, clip sequence, duration, authored binding, 사용자 확인 상태를 stable row로 저장
+- 아직 judgement가 없는 pattern은 `debugaudition.json`에만 admission하고 `decisionModel.productFlow/normalPool/healthMechanics`에는 넣지 않음
+- `Play Server`는 asset path나 Prototype tag를 보내지 않고 applied pattern ID와 exact gameplay revision만 제출
+- Animation Tool/Resources가 raw clip을 Server 명령으로 직접 보내는 우회 금지
+
+**검증**
+
+- 각 row의 source action/clip이 실제 model clip과 exact join
+- missing/duplicate clip, empty sequence, wrong class asset, stale revision 거부
+- debug-only row가 Release Product selection에 들어가지 않음
+- 사용자가 Server 재생을 보고 pattern별 animation occurrence를 승인한 뒤에만 RESULT의 visual 상태를 기록
+
+#### G04 — Kouku Composition row/slot 확장과 P0 통합 closure
+
+**설명/목표**
+
+`KoukuSaydonGate1.bosscomposition.json`을 mega runtime으로 만들지 않고, Kouku source 전체를 한눈에 검증·저작하는
+K-only manifest/join view로 확장한다.
+
+**반영**
+
+Composition row/lane은 다음 typed 역할을 가진다.
+
+| row/lane | 값의 source owner | P0에서 보이는 것 |
+|---|---|---|
+| `ANIMATION` | Animation Authored | G03에서 승인한 sequence |
+| `EFFECT` / `SOUND` / `CAMERA` | 각 presentation catalog | 선택·audition·명시적 binding |
+| `SCENE_PROFILE` | Rendering Catalog | Gate 1 base profile reference; 실제 튜닝은 1순위 |
+| `LIGHT_GROUP` | Map Light authoring | empty 허용, dangling ID는 금지; 실제 group은 1순위 |
+| `TRANSIENT_LIGHT_CUE` | Pattern Lighting Catalog | empty 허용; 실제 cue value와 binding은 1순위 |
+| `SUMMON_GAMEPLAY` | gameplay stage action | 현재 landed summon action만 projection |
+| `SUMMON_PRESENTATION` | presentation stage | gameplay summon role exact join |
+| `LOGIC` | gameplay decision/stage graph | 현재 linear/default edge의 read-only projection |
+| `STAGE_BRANCH` | gameplay stage outcomes | 현재 landed branch만 projection; typed editor는 2순위 |
+
+- pattern마다 source revision, admission status, stage count와 각 owner join 상태를 한 row로 표시
+- manifest에는 Kouku source만 들어가며 Valtan path/reference 0건
+- composition Save는 각 domain authoring service에 typed transaction을 위임하고 자체 gameplay writer가 되지 않음
+- `SCENE_PROFILE/LIGHT_GROUP/TRANSIENT_LIGHT_CUE`는 exact referenced ID가 있을 때만 저장; 빈 lane은 허용하지만 fake ID/placeholder row는 금지
+- Gate 1 base profile은 P0에서 현재 값으로 정식 생성·publish하고, 1순위 Rendering Tool에서 값을 튜닝
+- candidate Save -> reparse -> project -> exact revision Apply -> Server replay round trip
+
+**검증**
+
+- row/slot roundtrip preservation, unknown type/version/ID 거부
+- animation 선택만으로 row/slot이 생성되지 않음
+- explicit Create/Bind만 dirty generation 증가
+- Save 중간 실패 시 모든 source와 manifest 이전 bytes 유지
+- composition publish가 Gameplay.bootstrap을 직접 쓰지 않음
+- P0 종료 시 다섯 기믹 pattern의 이름·animation·stage row와 Server replay가 보이고, judgement/light가 아직 미완료임을 명확히 표시
+
+### 1순위 — Rendering Tool, 모든 light, on/off와 blend
+
+#### G05 — Engine Spot, maplights v2, Area Light writer
+
+**설명/목표**
+
+Directional은 profile, Point/Spot은 Area 문서라는 경계를 닫고 Kouku map에 실제 배치 가능한 light layer를 만든다.
+
+**반영**
+
+- Spot pass를 기존 index 뒤에 append하고 Engine enum/struct/light/shader/static_assert 갱신
+- maplights v2 group/scope/Point/Spot exact parser와 v1 Valtan adapter
+- `CRenderingAuthoringSession`의 CAS, typed mutation, temp->reparse->atomic promote
+- Kouku MapCatalog `sourceLights/lights` pair와 empty v2 source/runtime을 같은 transaction으로 추가
+- `TRANSIENT_LIGHT_SOURCE_CHANNEL`과 debug channel diagnostics
+- authored total과 active 64 cap 분리, priority/distance/stable-ID 선택
+- MainApp scene coordinator가 정확히 한 active Area fixture provider만 제출
+
+**검증**
+
+- bad cone/direction/group/scope, duplicate, nonfinite, stale save, declared-missing file
+- v1 Valtan parity, v2 empty roundtrip
+- target lighting activation 중간 실패 전체 rollback
+- Spot pass index 보존과 WARP compiled-shader draw/readback
+- Engine public header 후 UpdateLib -> Product
+
+#### G06 — 통합 Rendering Tool과 Gate 1 base 분위기
+
+**설명/목표**
+
+Rendering Benchmark를 별도 툴로 키우지 않고 Rendering Tool 안의 tab으로 둔다. 한 창에서 Quality, Scene Profile,
+Directional, Area group, Point/Spot을 비교·배치·저장한다.
+
+**반영**
+
+- `CRenderingTool` 추출, resizable hierarchy/viewport/Details/tabs
+- Rendering Catalog 한 revision 안에서 Global Quality와 Scene Profiles 편집
+- profile enumerate/activate/Duplicate As, Gate 1 base profile 튜닝
+- group enable/default intensity, Point/Spot Pick Position, numeric Details, Aim At, cone debug
+- owner별 Save/Validate/Publish와 Draft/Saved/Published/Active 상태
+- channel별 Contribution Isolation, solo/mute preview token, A/B와 Benchmark
+- 제품 on/off는 authored group/profile 값으로, 임시 solo/mute는 Debug preview token으로 구분
+
+**검증**
+
+- profile/map owner CAS와 failure preservation
+- profile-only Area, declared empty maplights, group enable/reload
+- Tool close/input-owner 상실 시 preview token 복원
+- 사용자가 Directional -> Point -> Spot -> Exposure/Bloom 순서로 Gate 1 base atmosphere를 판정
+
+#### G07 — Profile/group blend, Pattern Lighting Catalog, LIGHTING lane
+
+**설명/목표**
+
+Pizza/Heart/Dance 같은 짧은 연출은 base light를 끄지 않고 relative multiplier와 transient cue preset을 occurrence 동안 적용한다.
+
+**반영**
+
+- `Publish-LightingModifiers.ps1`, runtime catalog/receipt, `CLightingModifierCatalog`
+- authored base catalog/draft와 `Apply_ComposedRuntime` 분리
+- profile A/B base blend, scene/group multiplier token, blend-in/out, late join
+- Point/Spot transient cue definition과 occurrence anchor
+- Pizza/Heart/Dance가 참조할 actual modifier/cue values
+- Kouku Workbench `LIGHTING` lane, Rendering Tool deep-link, exact revision Save/Apply
+- pattern/stage end, skip, abort, death, disconnect, level exit, revision change restore
+
+**검증**
+
+- modifier/cue/profile/group exact join
+- non-cumulative recomposition, same-source replace, nested token order, late join
+- missing anchor는 cue만 격리, gameplay 유지
+- 모든 exit에서 Gate 1 base로 blend-back
+- 사용자가 Pizza darkening, Heart role Spot, Dance stage Spot을 A/B 판정
+
+### 2순위 — Server boss logic과 흐름
+
+#### G08 — Health mechanic scheduler + Stagger 130
+
+**설명/목표**
+
+health crossing queue와 once ledger를 첫 consumer인 Stagger와 동시에 만든다. 다른 threshold pattern보다 반드시 먼저 완료한다.
+
+**반영**
+
+- multi-threshold crossing의 high-HP/order pending queue
+- encounter-generation once ledger, interruption/restart policy
+- `KAKULSAYDON_G1_STAGGER_130`의 shield/stagger window/front reflection/failure verdict
+- gameplay branch와 Workbench Composition projection
+- lighting invocation과 warning cue join
+
+**검증**
+
+- 한 hit로 130/110 동시 crossing 시 130부터 한 번씩 실행
+- shield break/timeout/reflection/damage/failure branch
+- restart generation에서 ledger 초기화, 같은 generation 중복 금지
+
+#### G09 — Heart Ping 110
+
+**설명/목표**
+
+진짜 쿠크 찾기의 summon, 바라보기 judgement, 암전과 Spot을 한 수직 슬라이스로 닫는다.
+
+**반영**
+
+- `VANISH -> SUMMON -> JUDGE -> RETURN`
+- shooter 1/heart 3 typed summon role, partial spawn atomic rollback
+- authoritative player yaw/facing tolerance와 failure response
+- mechanic-dark token과 role별 four Spot anchor
+- stage/abort/disconnect restore
+
+**검증**
+
+- role 배정·facing 경계값·partial spawn rollback
+- Client visual/Spot이 verdict source가 아님
+- late join과 모든 종료 경로 복원
+- 사용자 진짜 쿠크/하트 animation·Spot 판정
+
+#### G10 — Dance 85
+
+**설명/목표**
+
+Saydon summon animation과 Q/W/E/R 입력 judgement, 단계별 lighting을 같은 occurrence로 묶는다.
+
+**반영**
+
+- `INTRO -> STEP_1..3 -> RESOLVE/PUNISH -> RECOVERY`
+- Server-seeded dance variant와 first-input-only 3000ms window
+- mechanic input packet/admission, normal skill input suppression
+- summon presentation, stage Spot/cue, recovery restore
+
+**검증**
+
+- early/late/duplicate/wrong input
+- summon missing rollback, pass/punish branch
+- Client가 variant 또는 judgement를 만들지 않음
+- 사용자 stage animation/Spot/restore 판정
+
+#### G11 — Roulette 50
+
+**설명/목표**
+
+roulette world sequence와 Server outcome/card response를 50줄 once mechanic으로 닫는다.
+
+**반영**
+
+- threshold queue의 50 consumer
+- Server-seeded outcome, typed card/status response와 damage
+- world sequence occurrence correlation
+- fixture/stage group cue와 restore
+
+**검증**
+
+- outcome determinism, sequence 중복 0, stale occurrence 거부
+- disconnect/restart/card cleanup
+- 사용자 animation/sequence와 Server result 일치 판정
+
+#### G12 — Card assignment, Madness/Clown, Card Matching
+
+**설명/목표**
+
+Gate 1 공통 player state와 카드 맞추기를 실제 소비자 단위로 추가한다.
+
+**반영**
+
+- eligible human-only suit assignment와 snapshot
+- madness gain/threshold/reset, temporary clown form와 admitted skill/profile
+- bind 대상과 homing card Server combat object
+- suit match/failure damage와 cleanup
+- Data/UI stable slot의 card/madness HUD; companion 제외
+
+**검증**
+
+- suit uniqueness/policy, AI exclusion
+- madness/form/skill transition과 asset admission
+- bind/homing/match boundary, partial object rollback
+- ImGui 제품 HUD 0건
+
+#### G13 — Kouku Logic Graph와 Product flow
+
+**설명/목표**
+
+이미 landed한 typed stages/outcomes만 Kouku 전용 graph에서 편집한다. Logic Graph가 먼저 schema를 발명하지 않는다.
+
+**반영**
+
+- pure graph model/renderer만 Valtan과 공유
+- Kouku selection/draft/undo/save/revision/writer는 전용
+- stage branch, counter/judgement, health route, Product order 편집
+- Save -> candidate project -> one Gameplay.bootstrap -> exact revision Apply/Restart
+- Boss Tool Live node/edge와 Composition row 연동
+
+**검증**
+
+- finite graph, dangling/cycle policy, duplicate node/edge
+- stale save/apply rollback
+- V/K graph state와 writer bytes 완전 격리
+- landed Gate 1 Product flow 전체 Server replay
+
+### 3순위 — Gunslinger AI
+
+#### G14 — Kouku 제품 chat/log/nameplate/bubble
+
+**설명/목표**
+
+AI보다 먼저 human-to-human chat을 쿠크 Level에서 완결해 기존 말풍선 소비 경로를 증명한다.
+
+**반영**
+
+- MainApp chat admission과 Kouku command sink
+- replicated player view/nameplate/head bubble
+- `S2C_CHAT` presentation flags/duration, remote bounded log
+- font-metric UTF-safe wrap와 bounded queue, local echo dedupe
+
+**검증**
+
+- 두 human의 log+bubble exactly-once
+- invalid flag/oversize/UTF failure
+- disconnect/level-exit cleanup
+- 사용자 기존 말풍선 스타일 판정
+
+#### G15 — 공통 player actor executor + GUIDE 1명
+
+**설명/목표**
+
+첫 admitted human이 owner인 sessionless Gunslinger 하나를 일반 actor slot에 transactionally 만들고 따라오게 한다.
+
+**반영**
+
+- human adapter와 normalized move/skill intent executor
+- control/replicated actor kind와 stable PlayerId execution order
+- `Data/AI/Gunslinger.json` schema/publisher/catalog
+- first-human owner, empty-slot commit, movePlayer-only companion traversal
+- GUIDE follow/nav, owner-only commands, typed receipt, all lifecycle cleanup
+
+**검증**
+
+- human behavior parity와 fake session 0건
+- full/no-slot/invalid-owner/mid-commit rollback
+- trigger/party/reward/gimmick exclusion
+- owner leave/death/wipe/restart/last-human reset
+
+#### G16 — ASSIST combat + deterministic authored Dialogue
+
+**설명/목표**
+
+같은 actor가 기존 Gunslinger 수치로 전투하고, chatbot이 없어도 encounter/pattern/stage 안내를 한다.
+
+**반영**
+
+- `도움!` ASSIST -> authored duration -> GUIDE
+- Server hazard query와 38020/38050, 38000 COMBO intent
+- `Data/Dialogue/KoukuSaydon.Gunslinger.json` publisher/runtime
+- chat command/question flag, owner/rate admission, typed result
+- occurrence ledger와 exact/pattern/encounter/question fallback
+
+**검증**
+
+- cooldown/resource/action/combo stage parity
+- AI<->boss damage와 deterministic trace
+- dialogue once-per-occurrence, JSON-only full operation
+- command consumption과 normal chat echo 중복 0건
+
+#### G17 — 선택적 chatbot sidecar
+
+**설명/목표**
+
+챗봇은 대사 품질만 확장하며 raid와 Server tick의 필수 의존성이 아니다.
+
+**반영**
+
+- `Tools/CompanionChat` request/response schema, JSONL loopback gateway, mock provider
+- encounter prefetch, pattern cache-or-JSON single commit
+- question success-or-timeout single commit
+- full stale key, rate/queue/frame cap, circuit breaker, cooperative cancel/bounded join
+- secret/model/deployment config는 sidecar process만 소유
+
+**검증**
+
+- provider success/timeout/malformed/oversize/disconnect
+- late response drop와 중복 발화 0
+- Server key/HTTP/fixed-tick wait 0
+- 실제 유료 provider 호출은 Core/FullDiagnostic에서 제외
+
+Gate 2/3, Mario, Bingo는 Gate 1의 P0~P2가 끝난 뒤 관문별 base profile, Area group, encounter, Server mechanic,
+Client presentation, Tool row, publisher/harness를 같은 방식으로 추가한다. 빈 future node/source 파일을 지금 만들지 않는다.
+
+---
+
+
+
+## 9. 검증 매트릭스
+
+### 9.1 Publisher/데이터
+
+- Kouku naming contract: 허용 spelling 위치와 금지 경로
+- Kouku source parse/version/unknown field/duplicate ID
+- gameplay-stage-presentation-animation/effect/camera/light exact join
+- dangling profile/group/modifier/summon role/asset ID 거부
+- invalid path, absolute path, `..` 거부
+- health threshold 중복과 multi-cross order
+- partial source/candidate/publish 실패 시 이전 bytes 보존
+- Valtan source bytes가 Kouku save로 변하지 않음
+- Valtan exact oracle의 encounter scope와 encounter별 catalog admission
+- maplights v1 adapter/v2 roundtrip/empty/invalid cone/active cap
+- AI class/skill/range/hysteresis/command/dialogue scope/UTF-8/256-byte 검증
+
+### 9.2 C++/wire/runtime
+
+- NetworkProtocol roundtrip과 unknown mask
+- V/K audition scope/revision/request correlation
+- Valtan 명시적 Debug HOLD 변경 외 behavior parity
+- valid V/invalid K 및 invalid V/valid K partition admission
+- Server contract: Pizza sectors, 130/110/85/50 thresholds, summon rollback, input window
+- Server contract: card assignment uniqueness, madness/form transition, card matching verdict와 companion exclusion
+- modifier non-cumulative/replace/restore/late join
+- chat local/remote duplication, companion presentation flags
+- human/companion actor executor parity와 lifecycle
+- sidecar timeout/stale/malformed cancellation
+
+### 9.3 정본 명령
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Tools/KakulSaydonPipeline/Project-KakulPatternMaster.ps1 -Mode Validate
+powershell -ExecutionPolicy Bypass -File Tools/KoukuSaydonPipeline/Project-KoukuSaydonPatternMaster.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile FullDiagnostic
-```
-
----
-
-### G03 — 1관문 기믹
-
-모든 하위 G는 `Data(gameplay/presentation) -> projector -> bootstrap -> Server stage action/judgement -> snapshot -> Client 표현/입력 relay -> harness` 한 수직 슬라이스다.
-Client는 어떤 하위 G에서도 판정하지 않는다.
-
-#### G03-1 카드 무늬 분배와 wire 확장 (다른 하위 G의 선행)
-
-- Shared: `enum class KAKUL_CARD_SUIT : uint8_t { NONE, HEART, SPADE, CLOVER, DIAMOND, END }`, `enum class PLAYER_FORM : uint8_t { NORMAL, CLOWN, END }`,
-  `PLAYER_SNAPSHOT` §3.6 필드 전부, `S2C_PLAYER_SPAWNED.isCompanion`, `C2S_MECHANIC_INPUT`. `NETWORK_PROTOCOL_VERSION 56`(G00과 같은 bump).
-- Server: `SERVER_PLAYER` 필드, stage action `ASSIGN_PLAYER_CARD_SUITS { assignment: RANDOM|ORDERED, excludeCompanions }`. `encounterRules.cardSuit`가 기본값이고
-  1관문 입장 패턴 `KAKUL_G1_ENTRANCE` EXIT에서 한 번 실행. RANDOM은 room seed 결정적 shuffle, ORDERED는 `PLAYER_ID` 오름차순으로 HEART, CLOVER, SPADE, DIAMOND.
-- Client: `CCombatHUDViewModel::HUD_PLAYER_STATE.eCardSuit`, `CWorldPlayerCardSuitView`(nameplate 위 `UI/KakulSaydon/card_<suit>.png`, `Data/UI/KakulSaydon/CardSuit_Layout.json`).
-  UI 이미지는 팀장 Drive `Client/Bin/Resources/UI/KakulSaydon/`에 둔다(§5 자산 항목).
-- harness: NetworkProtocol round-trip, Server contract(4인 RANDOM이 4종 유일, ORDERED 고정 순서, companion 제외).
-
-#### G03-2 광기 게이지와 삐에로 변신
-
-- Server: `iMadnessGauge`는 보스 hit가 적용될 때 `DamageProfiles.json`의 `madnessGain`만큼, 화염 combat object 안에 있을 때 `fireGainPerSecond`만큼 증가.
-  `maximum` 도달 시 `SET_PLAYER_FORM CLOWN`과 동등한 내부 전이(`iFormEndTick = now + clownDurationMs`), 종료 시 NORMAL. CLOWN 중 `(class, slot)` 해석은
-  `CGameplayCatalog`가 `KAKUL_CLOWN` pseudo-class 스킬 행(Q/W/E)을 사용하고 원래 class 스킬은 silence와 같은 마스크로 막는다.
-- Data: `PlayerSkills.json`에 `characterClass: "KAKUL_CLOWN"` 3행(원작 삐에로 스킬 수치는 사용자 결정), `CharacterCatalog.json`에 `KAKUL_CLOWN`은 `playable=false`.
-  Lobby roster에는 절대 노출하지 않는다(`AGENTS.md` 여섯 class 규칙).
-- Client: `CPlayerSkillCatalog::Resolve(effectiveClass, slot)`에서 `HUD_PLAYER_STATE.eForm == CLOWN`이면 `KAKUL_CLOWN`으로 조회. HUD 광기 게이지는 identity 게이지와
-  같은 fill-ratio 슬롯(`Data/UI/KakulSaydon/Madness_Layout.json`). 삐에로 모델 교체는 §5 자산 확인 뒤 `CClientReplication`의 class replacement transaction과 같은 경로로
-  form replacement를 추가한다. 모델이 없으면 게이지·스킬 마스크·Q/W/E까지만 이번 범위다.
-
-#### G03-3 130줄 무력화 (보라 방패, 정면 반사, 실패 전멸)
-
-- gameplay: `decisionModel.mechanics`에 `{ patternId: KAKUL_G1_STAGGER_130, trigger: HEALTH_BAR_CROSSING 130, oncePerEncounter, failurePolicy: ABORT_ENCOUNTER_REQUIRE_RESET }`.
-  패턴 stage: `SHIELD_UP`(ENTER `SET_SHIELD maximum`, `hitReflect { FORWARD_ARC, 180°, 100% }`, `invulnerableWhileRunning=false`, branches
-  `SHIELD_BROKEN -> STAGGER_SUCCESS`, `TIMEOUT -> WIPE`), `STAGGER_SUCCESS`(groggy clip, `SET_BOSS_FLAG groggy`), `WIPE`(ENTER `EXECUTE_ALL_PLAYERS`).
-- Server: `CBossCombatRuntime::Apply_PlayerHit`가 stage `hitReflect`와 `BOSS_INCOMING_HIT.fSourceX/Z`로 정면 여부를 판정해 `BOSS_HIT_RESULT.iReflectedDamage`를 채우고
-  GameRoom이 source player에게 `DAMAGE_EVENT`로 적용. shield가 0이 되는 tick에 `Publish_PatternOutcome(SHIELD_BROKEN)`. `EXECUTE_ALL_PLAYERS`는 companion 포함 전원 HP 0.
-- Client: HUD 보스 shield bar(기존 `iCurrentShield/iMaximumShield` 필드 사용, 보라 tint), 반사 피격은 기존 damage event 표현.
-
-#### G03-4 110줄 하트핑 (암전, 분신 4, 바라보기 판정, 스포트라이트)
-
-- gameplay: `KAKUL_G1_HEART_PING_110` stages `VANISH`(ENTER `SET_BOSS_FLAG hidden`), `SUMMON`(ENTER `SPAWN_SUMMON_SET { summonSetId, archetypeId: SUMMON_KAKUL_SAYDON_CLONE, anchorIds: 4, roles: [SHOOTER ×1, HEART ×3] 랜덤 배정, lifetimeMs }`),
-  `JUDGE`(ENTER `BEGIN_FACING_JUDGEMENT { targetRole: SHOOTER, toleranceDegrees: 45, resolveAtMs: 2500, failureResponse: EXECUTE }`, branches `JUDGEMENT_ALL_PASSED -> RETURN`, `JUDGEMENT_ANY_FAILED -> RETURN`),
-  `RETURN`(ENTER `DESPAWN_SUMMON_SET`, `SET_BOSS_FLAG hidden false`).
-- Server: summon set은 Esther summon과 같은 world entity 생성 경로를 쓰되 `SERVER_SUMMON_SET` 원장(`summonSetId, entity ids, roles`)을 boss entity가 소유한다.
-  facing 판정은 resolve tick에 살아 있는 non-companion 각 player의 yaw와 shooter 방향의 각도 차로 결정한다.
-- presentation: summon role별 animation(`SHOOTER: rpct05 4219842 총잡이 진짜`, `HEART: 4219832 하트 진짜`)은 `Kakul.presentation.json` `summonPresentations[]`가 소유하고
-  `iMechanicVariantIndex`로 role을 복제한다. `sceneInvocations`(blackout), `lightGroupInvocations`(lamps 0.05), `lightCues`(summon 앵커 SPOT)는 G05 계약을 소비한다.
-- Client: 분신 entity presentation은 world entity spawn 경로(`S2C_WORLD_ENTITY_SPAWNED` + BossCatalog summon archetype).
-
-#### G03-5 85줄 댄스타임 (Q/W/E/R 따라하기)
-
-- gameplay: `KAKUL_G1_DANCE_85` stages `INTRO`, `STEP_1..STEP_3`(각 ENTER `BEGIN_INPUT_JUDGEMENT { variants: [{inputSlot: Q, variantId: dance.power}, {W, dance.stab}, {E, dance.cheer}, {R, dance.break}], windowMs: 3000, failureResponse: EXECUTE }`,
-  branches `JUDGEMENT_ANY_FAILED -> PUNISH`, `JUDGEMENT_ALL_PASSED -> next`), `PUNISH`, `RECOVERY`.
-- Server: variant는 room seed로 선택해 `iMechanicVariantIndex`로 복제. window 동안 각 player의 첫 `C2S_MECHANIC_INPUT`만 채택(재입력 무시). 미입력도 실패.
-- presentation: stage `animation.variants[]`(variantId → clip: `4219906 힘자랑 / 4219907 찌르기 / 4219908 만세 / 4219909 브레이크댄스`는 3관문 07 profile이며 1관문 쿠크(RPCZ_00)에는
-  댄스 clip이 없다. **1관문 댄스타임은 세이튼(05 모델) 분신이 추는 원작 구조이므로 `SPAWN_SUMMON_SET` 1개 + summon presentation variant로 구현한다**(§5 결정).
-- Client: `CPlayerController::Set_MechanicInputWindow(bool bOpen)` — window가 열려 있으면 Q/W/E/R press를 `Request_MechanicInput(slot)`으로 보내고 스킬 제출은 막는다.
-  HUD는 window 남은 시간과 요구 입력 아이콘을 표시한다(입력 아이콘은 `KakulSaydon` UI 도메인).
-
-#### G03-6 카드 맞추기 (3인 속박, 유도 카드, 무늬 불일치 즉사)
-
-- gameplay: `KAKUL_G1_CARD_MATCH` stages `BIND`(ENTER `SET_PLAYER_BIND { targetPolicy: RANDOM_ALIVE_COUNT 3, excludeCompanions }`), `FIRE_1..FIRE_4`(각 `SPAWN_COMBAT_OBJECT combatobject.kakul.card.<suit>`,
-  suit는 room seed 순열), `RELEASE`(EXIT bind 해제).
-- combatobjects: `combatobject.kakul.card.heart` 등 4개, `kind: MISSILE`, `movement: HOMING { speedMps: 9, retargetEachTick: true, targetPolicy: UNBOUND_ALIVE, maximumLifetimeMs: 12000 }`,
-  hit `trigger CONTACT`, `response: SUIT_JUDGEMENT { objectSuit: HEART, onMatch: DESTROY_OBJECT, onMismatch: EXECUTE }`.
-- Server: `CCombatObjectRuntime`에 HOMING 이동과 SUIT_JUDGEMENT 응답 추가. contact 시 `player.eCardSuit == objectSuit`면 오브젝트 소멸, 아니면 EXECUTE.
-- Client: BossCatalog `combatObjectVisuals` 4행(`effectAssetId` 카드 Effect는 §5 자산). 유도 이동은 기존 combat object 2-tick 보간.
-
-#### G03-7 50줄 룰렛
-
-- gameplay: `KAKUL_G1_ROULETTE_50` stages `SPIN`(ENTER `PLAY_WORLD_SEQUENCE world.sequence.instance.<roulette>` + `ROLL_ROULETTE { outcomes: [HEART, SPADE, CLOVER, DIAMOND] }`, durationMs 22200),
-  `RESULT`(후속 stage action의 `targetPolicy.suit: ROULETTE_RESULT`로 참조). 결과가 무엇을 유발하는지는 §5 결정 항목이며, 결정 전에는 `RESULT` stage가 `SET_PLAYER_BIND { SUIT_FILTER ROULETTE_RESULT, 3000ms }`
-  하나만 갖는다(placeholder가 아니라 실제 동작하는 최소 규칙).
-- Server: roulette 결과는 room seed로 결정하고 boss combat snapshot `iMechanicVariantIndex`로 복제한다. Client 룰렛 소품 정지 위치와 Server 결과가 일치하도록
-  world sequence의 정지 각도 4종을 `variantId`별 instance 4개(`roulette.heart` 등)로 두고 `PLAY_WORLD_SEQUENCE`가 variant instance를 고른다.
-
-#### 검증(G03 공통)
-
-```powershell
+powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Mode Validate
+powershell -ExecutionPolicy Bypass -File Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Validate
+# G07에서 추가한 뒤 실행: Tools/RenderingPipeline/Publish-LightingModifiers.ps1 -Mode Validate
+# G15에서 추가한 뒤 실행: Tools/AIPipeline/Publish-CompanionAI.ps1 -Mode Validate
 Server\Bin\Debug\Server.exe --contract-test
 Tools\NetworkProtocolHarness\Bin\Debug\NetworkProtocolHarness.exe
-powershell -ExecutionPolicy Bypass -File Tools/KakulSaydonPipeline/Project-KakulPatternMaster.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
-```
-
-Server contract 최소 시나리오: (a) 4인 카드 유일성, (b) madness 누적과 CLOWN 전이·복귀, (c) shield 0 → SHIELD_BROKEN, TIMEOUT → 전원 HP 0, 정면 hit 반사,
-(d) shooter 반대 방향 player만 EXECUTE, (e) 잘못된 slot/미입력 실패·정답 통과, (f) 불일치 suit contact EXECUTE·일치 시 오브젝트 소멸, (g) roulette variant 결정성.
-
----
-
-### G04 — Logic Graph 편집기 (blueprint)
-
-#### 목표와 종료 증거
-
-F1 `Logic Pattern` 창이 한 Pattern의 stage 노드와 outcome 핀을 그리고, 핀에서 노드로 드래그하면 branch가 draft에 추가되며, 노드 우클릭 inspector에서
-duration·stageKind·counterProxy·bossResponse threshold·event·judgement를 편집한다. 편집은 Composition Workbench의 dirty 표시로 즉시 보이고 `Save + Validate + Publish`로만
-저장된다. canonical 잠금 pattern은 핀이 회색이고 드래그가 거부 사유를 표시한다. Live overlay(현재 action 강조, observed edge)는 유지된다.
-상위 encounter 그래프(scriptedSequence step, mechanics, selection window)도 같은 창에서 탭으로 열리고 mechanic의 healthBar/order/failurePolicy를 편집한다.
-
-#### 수정·신규 파일
-
-| 파일 | 상태 | 역할 |
-|---|---|---|
-| `Client/Public/BossLogicGraphEditor.h`, `Client/Private/BossLogicGraphEditor.cpp` | 신규 | 편집 가능한 캔버스. `CBossLogicFlowRenderer`의 그리기 코드를 옮기고 핀·드래그·inspector를 추가 |
-| `Client/Public/BossLogicFlowView.h` | 수정 | `BOSS_LOGIC_FLOW_NODE_VIEW`에 outcome 핀 목록, 잠금 이유, judgement 요약 추가 |
-| `Client/Public/BalanceTool.h`, `Client/Private/BalanceTool.cpp` | 수정 | typed draft mutation API: `Set_StageBranch`, `Remove_StageBranch`, `Set_StageCounterProxy`, `Set_StageBossResponse`, `Add_StageEvent`, `Remove_StageEvent`, `Set_StageJudgement`, `Set_MechanicTrigger`. 각각 `parse -> validate -> stage -> commit`이며 실패 시 draft 불변 |
-| `Client/Private/BossTool.cpp` | 수정 | `Render_LogicPatternContent`가 editor를 호출. `Render_LogicFlowTab`은 encounter 그래프 탭 추가 |
-| `Client/Private/ActionCompositionWorkbench_Blueprint.cpp` | 수정 | `Render_BossPatternWindow`가 같은 editor를 재사용(두 캔버스 코드 삭제). outcome override preview는 editor의 preview 모드로 흡수 |
-| `Tools/ValtanPipeline/test_action_composition_workbench_regression_oracles.py` | 수정 | editor mutation이 draft API만 호출하고 JSON writer를 직접 호출하지 않는 text oracle |
-| `Client/Default/Client.vcxproj`, `.filters` | 수정 | 신규 2파일, 필터 `03. Tools\01. Boss` |
-
-#### H 계약 (러프)
-
-```cpp
-// Client/Public/BossLogicGraphEditor.h
-enum class BOSS_LOGIC_GRAPH_MUTATION_KIND : std::uint8_t
-{
-	NONE,
-	SET_BRANCH,
-	REMOVE_BRANCH,
-	SET_COUNTER_PROXY,
-	SET_BOSS_RESPONSE,
-	ADD_EVENT,
-	REMOVE_EVENT,
-	SET_JUDGEMENT,
-	SET_STAGE_DURATION,
-	SET_STAGE_KIND,
-	SET_MECHANIC_TRIGGER
-};
-struct BOSS_LOGIC_GRAPH_MUTATION final
-{
-	BOSS_LOGIC_GRAPH_MUTATION_KIND eKind = BOSS_LOGIC_GRAPH_MUTATION_KIND::NONE;
-	std::string strPatternId;
-	std::string strStageId;
-	std::string strOutcome;
-	std::string strTargetActionId;
-	std::string strTargetPatternId;
-	std::string strEventId;
-	std::string strMechanicId;
-	std::uint32_t iValueMs = 0u;
-	std::uint32_t iValueCount = 0u;
-	float fValue = 0.f;
-	std::string strEnumValue;
-};
-struct BOSS_LOGIC_GRAPH_EDIT_CONTEXT final
-{
-	bool_t bTopologyEditable = false;   // manualAuditions 안
-	bool_t bTuneEditable = false;       // canonical에도 허용되는 제자리 튜닝
-	std::string_view strLockReason;
-	std::string_view strLiveActionId;
-	const BOSS_LOGIC_FLOW_OBSERVED_EDGE* pObservedEdge = nullptr;
-};
-/* 캔버스는 mutation을 반환할 뿐 draft를 만지지 않는다. 소유자가 CBalanceTool에 제출한다. */
-class CBossLogicGraphEditor final
-{
-public:
-	static bool_t Render(
-		const BOSS_LOGIC_FLOW_VIEW& View,
-		const BOSS_LOGIC_GRAPH_EDIT_CONTEXT& Context,
-		BOSS_LOGIC_FLOW_CANVAS_STATE& InOutState,
-		BOSS_LOGIC_FLOW_SELECTION& OutSelection,
-		std::vector<BOSS_LOGIC_GRAPH_MUTATION>& OutMutations);
-};
-```
-
-#### 호출 흐름
-
-```text
-BossTool::Render_LogicPatternContent
-→ CBossLogicGraphEditor::Render (pin drag / inspector) → OutMutations
-→ CBalanceTool::Apply_LogicGraphMutation(mutation, status)  [validate → stage → commit draft, 실패 시 draft 보존·status]
-→ Workbench dirty → Save + Validate + Publish (기존 Run-ValtanAuthoringSaveJob / Kakul descriptor)
-→ exact reopen → Boss Tool Reload_CanonicalGraph → editor View 재투영
-```
-
-#### 검증
-
-```powershell
-python -m unittest Tools.ValtanPipeline.test_action_composition_workbench_regression_oracles
-Tools\ValtanPatternAuditionServiceHarness\Bin\Debug\ValtanPatternAuditionServiceHarness.exe
-```
-
-사용자 smoke: `VALTAN_TRIPLE_COUNTER`에서 `COUNTER_HIT` 핀을 다른 pattern 노드로 드래그 → Save → Logic Pattern live 강조가 새 edge를 따라가는지.
-
----
-
-### G05 — 조명·렌더링
-
-#### G05-1 Kakul map light 추출과 Level 연결
-
-- `Tools/LevelPlacementExtractor/extract_map_lights.py`(신규, `sync_valtan_tower_phase_registration.py`의 light 추출 부분 일반화) → `LV_LUT_MIDNIGHTC_ED.maplights.json` v2, `MapCatalog.json` pair 등록.
-- `CMapLightDocument` v2 reader(`kind`, `groupId`, spot 필드), `MAX_LIGHT_COUNT`는 유지하되 **활성 group만** 제출한다(관문별 group). `CLevel_KakulSaydonArena`가 Valtan Level과 같이
-  `CMapLightPresentationRuntime`을 소유하고 실패 시 진입 실패로 fail-close.
-- MapTool light authoring panel: 추가/이동/색/반경/cone/group, Save는 `Publish-MapAuthoring.ps1` pair transaction. MapTool은 source를, 제품 Level은 runtime을 읽는 기존 경계 유지.
-
-#### G05-2 Engine spot light
-
-- `Engine_Typedef.h` `LIGHT` enum에 `SPOT`, `LIGHT_DESC`에 `float fInnerConeCos, fOuterConeCos` 추가(size static_assert 92 → 100, offset 갱신, 모든 소비자 재빌드).
-- `Shader_Deferred.hlsl` `PS_MAIN_SPOT` pass(point attenuation × `smoothstep(outerCos, innerCos, dot(-L, dir))`), `CLight::Render_Desc` pass 선택, technique/pass 등록.
-- Engine public header 변경이므로 `Invoke-BuildAndRegression -Profile Product` 필수, `Test-CompiledShaderClosure.ps1` PASS.
-
-#### G05-3 Scene profile Kakul 세트와 blend
-
-- `RenderingProfiles.json`에 `scene.kakul.gate1.circus-tent.v1`(따뜻한 저조도, fog 약), `scene.kakul.gate2.poker-hall.v1`(녹색·금색 대비), `scene.kakul.gate3.theater.v1`(붉은 무대), `scene.kakul.blackout.v1`(exposure 0.15, ambient 0.02).
-  `LevelRegistry` Kakul 기본 profile → gate1. 값은 Rendering Workbench에서 사용자가 튜닝한다.
-- `CRenderingProfileService::Begin_Transition(profileId, transitionMs)`, `Update(fTimeDelta)`: LIGHT_DESC/fog/exposure/bloom multiplier를 선형 보간해 매 frame `Apply_ActiveProfile`.
-  `Get_ActiveProfileId()`는 target을 반환하고 `Is_Transitioning()`을 추가. `CMainApp`이 frame마다 `Update` 호출.
-
-#### G05-4 Pattern light cue (기믹 연출)
-
-- `Kakul.presentation.json`/`Valtan.presentation.json` stage에 §3.7 세 배열 추가, projector가 profileId/groupId 존재 검증, Product `*.patternlightcues.json` 생성.
-- Client `CBossPatternLightPresentation`(신규): boss action ENTER/EXIT edge에서 `sceneInvocation`→`Begin_Transition`, `lightGroupInvocation`→`CMapLightPresentationRuntime::Set_GroupMultiplier`,
-  `lightCue`→`CPresentation_Manager::Add_TransientLight`(anchor: BOSS root / SUMMON_ROLE entity / WORLD). restorePolicy는 stage/pattern 종료 edge에서 역순 복원. Effect cue와 같은 소비 시점을 쓴다.
-- Sequencer v1 `SCENE_PROFILE` track(09-03 PLAN §3)은 컷신 전용이며 이 G에서는 Kakul 관문 클리어 sequence 하나만 연결한다.
-
-#### G05-5 렌더 품질 로드맵 위치
-
-이 계획은 09-03 §12.2의 로드맵을 바꾸지 않는다. 쿠크 화면에 효과가 큰 순서로 별도 슬라이스를 권고한다: (1) spot light + emissive bloom 튜닝(G05-2/3으로 대부분 확보), (2) CSM, (3) PBR-lite(roughness/metal 텍스처가 있는 asset부터), (4) TAA, (5) ACES.
-Benchmark 섹션이 각 단계 전후 비용을 잰다.
-
-#### 검증
-
-```powershell
-powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration Debug
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product
-```
-
-사용자 smoke: 쿠크 진입 → 텐트 램프 point light가 보이는지 → Boss Tool `KAKUL_G1_HEART_PING_110` Play Selected → 600 ms 암전 → 분신 4개 스포트라이트 → 패턴 종료 복원.
-화면 판정은 사용자 전용이다.
-
----
-
-### G06 — 건슬 AI 컴패니언과 대사
-
-#### 목표와 종료 증거
-
-쿠크 아레나에서 채팅에 `도움!`을 입력하면 Server가 GUNSLINGER companion을 소환해 20초 동안 보스를 공격하고 활성 stage hit shape를 피하며, 종료 뒤 소유자 2.5 m 뒤를 따라다닌다.
-Server 패턴 stage ENTER마다 `KakulSaydon.companion.json`의 line이 companion 머리 위 말풍선과 채팅 로그에 나온다. `llm.enabled=true`이고 sidecar가 떠 있으면 플레이어 질문에 LLM 답이
-같은 말풍선으로 나오고, sidecar가 없거나 1.5초를 넘기면 scripted line으로 fallback한다. companion은 party roster, `ROOM_FULL`, 카드 분배, 기믹 대상에서 제외된다.
-
-#### 수정·신규 파일
-
-| 파일 | 상태 | 역할 |
-|---|---|---|
-| `Data/Companions/GunslingerCompanion.json`, `Data/Dialogue/KakulSaydon.companion.json` | 신규 | §3.8 |
-| `Tools/CompanionChat/companion_dialogue.py`, `Validate-CompanionDialogue.ps1`, `test_companion_dialogue_contract.py` | 신규 | schema/ID/trigger join 검증, `Publish-GameplayBalance` domain에 `companion.profile` 추가 |
-| `Tools/CompanionChat/companion_chat_sidecar.py`, `companion_chat.config.json` | 신규 | localhost:7778 line-delimited JSON, OpenAI-compatible `/v1/chat/completions`. API key는 환경 변수 `LOSTARK_COMPANION_LLM_API_KEY`만 읽는다. Git에 key 금지 |
-| `Shared/Public/Network/PacketMessages.h` | 수정 | `S2C_PLAYER_SPAWNED.isCompanion`, `PLAYER_SNAPSHOT.isCompanion`(G03-1 bump에 포함) |
-| `Server/Public/CompanionSystem.h`, `Server/Private/CompanionSystem.cpp` | 신규 | `SERVER_COMPANION_STATE`, `CCompanionSystem`(spawn/dismiss/mode/tick), `CCompanionBrain`(follow/assist 결정) |
-| `Server/Public/CompanionDialogue.h`, `Server/Private/CompanionDialogue.cpp` | 신규 | scripted line 선택, LLM client(WinSock non-blocking, request id, timeout), 결과를 `ROOM_COMMAND_TYPE::COMPANION_DIALOGUE_RESULT`로 enqueue |
-| `Server/Public/RoomCommand.h` | 수정 | `COMPANION_DIALOGUE_RESULT` |
-| `Server/Private/GameRoom.cpp` | 수정 | `Handle_Chat`에 command parser(`chatCommands`), companion `SERVER_PLAYER` 생성(`iSessionId=INVALID`, `bIsCompanion`), roster/ROOM_FULL/카드/기믹 대상 제외, tick에서 `CCompanionSystem::Update` |
-| `Server/Private/ServerApp.cpp` | 수정 | `--companion-llm` 인자로 `llm.enabled` override(기본 데이터 값) |
-| `Client/Private/ClientReplication.cpp` | 수정 | `isCompanion` player를 같은 `CCharacter` 경로로 spawn, nameplate에 `(AI)` |
-| `Client/Private/WorldPlayerChatBubbleView.cpp` | 수정 없음 | companion도 player view이므로 그대로 동작. 말풍선 art는 `UI/Chat/SpeechBubble.png` 자산이 오면 교체(§5) |
-| `Server/Private/ServerGameplayContractTests.cpp`, `NetworkProtocolHarness` | 수정 | 아래 계약 |
-
-#### H 계약 (러프)
-
-```cpp
-// Server/Public/CompanionSystem.h
-enum class SERVER_COMPANION_MODE : std::uint8_t { INACTIVE, ASSIST, GUIDE, END };
-struct SERVER_COMPANION_PROFILE final
-{
-	std::string strCompanionId;
-	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
-	std::uint32_t iAssistDurationTicks = 0u;
-	float fAssistEngageRangeM = 0.f;
-	float fAssistPreferredDistanceM = 0.f;
-	std::uint32_t iDecisionIntervalTicks = 0u;
-	std::uint32_t iDodgeLookaheadTicks = 0u;
-	std::vector<LostArk::Shared::SKILL_ID> SkillRotation;
-	float fGuideFollowDistanceM = 0.f;
-	std::uint32_t iGuideRepositionIntervalTicks = 0u;
-	std::vector<std::string> AssistCommands;
-	std::vector<std::string> GuideCommands;
-	std::vector<std::string> DismissCommands;
-	bool bLlmEnabled = false;
-	std::string strLlmEndpoint;
-	std::uint32_t iLlmTimeoutMs = 0u;
-};
-struct SERVER_COMPANION_STATE final
-{
-	LostArk::Shared::PLAYER_ID iOwnerPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
-	LostArk::Shared::PLAYER_ID iCompanionPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
-	SERVER_COMPANION_MODE eMode = SERVER_COMPANION_MODE::INACTIVE;
-	std::uint32_t iModeEndTick = 0u;
-	std::uint32_t iNextDecisionTick = 0u;
-	std::size_t iRotationCursor = 0u;
-	std::string strLastLineId;
-	std::uint32_t iLastLineTick = 0u;
-	std::uint32_t iPendingDialogueRequestId = 0u;
-};
-class CCompanionSystem final
-{
-public:
-	bool Initialize(const SERVER_COMPANION_PROFILE& profile, std::string& outStatus);
-	bool Try_ParseChatCommand(std::string_view text, SERVER_COMPANION_MODE& outRequestedMode) const;
-	bool Request_Assist(LostArk::Shared::PLAYER_ID ownerPlayerId, std::uint32_t serverTick, std::string& outStatus);
-	bool Request_Guide(LostArk::Shared::PLAYER_ID ownerPlayerId, std::uint32_t serverTick, std::string& outStatus);
-	bool Dismiss(LostArk::Shared::PLAYER_ID ownerPlayerId, std::string& outStatus);
-	void Reset();
-	[[nodiscard]] bool Is_Companion(LostArk::Shared::PLAYER_ID playerId) const;
-	[[nodiscard]] const std::vector<SERVER_COMPANION_STATE>& Get_States() const { return m_States; }
-private:
-	SERVER_COMPANION_PROFILE m_Profile;
-	std::vector<SERVER_COMPANION_STATE> m_States;
-};
-/* 결정만 한다. 이동·스킬 적용은 GameRoom의 기존 Handle_Move/Handle_UseSkill 내부 함수를 통해 실행한다. */
-struct COMPANION_DECISION final
-{
-	bool bHasMoveGoal = false;
-	float fMoveGoalX = 0.f;
-	float fMoveGoalZ = 0.f;
-	bool bHasSkill = false;
-	LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
-	float fAimX = 0.f;
-	float fAimZ = 0.f;
-};
-class CCompanionBrain final
-{
-public:
-	static COMPANION_DECISION Decide(
-		const SERVER_COMPANION_PROFILE& profile,
-		const SERVER_COMPANION_STATE& state,
-		const SERVER_PLAYER& companion,
-		const SERVER_PLAYER& owner,
-		const SERVER_WORLD_ENTITY* boss,
-		const BOSS_PATTERN_STAGE_DEFINITION* activeStage,
-		const CServerNavigation& navigation,
-		std::uint32_t serverTick);
-};
-```
-
-```cpp
-// Server/Public/CompanionDialogue.h
-enum class COMPANION_DIALOGUE_TRIGGER : std::uint8_t
-{
-	PATTERN_STAGE_ENTER, PATTERN_OUTCOME, ASSIST_START, ASSIST_END, PLAYER_QUESTION, END
-};
-struct COMPANION_DIALOGUE_LINE final
-{
-	std::string strLineId;
-	COMPANION_DIALOGUE_TRIGGER eTrigger = COMPANION_DIALOGUE_TRIGGER::END;
-	std::string strPatternId;
-	std::string strStageId;
-	std::string strText;
-	std::uint32_t iDurationMs = 0u;
-	std::uint32_t iPriority = 0u;
-};
-struct COMPANION_DIALOGUE_RESULT final
-{
-	std::uint32_t iRequestId = 0u;
-	LostArk::Shared::PLAYER_ID iCompanionPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
-	bool bFromLlm = false;
-	std::string strText;
-};
-class CCompanionDialogue final
-{
-public:
-	bool Load(const std::filesystem::path& path, std::string_view expectedEncounterId, std::string& outStatus);
-	const COMPANION_DIALOGUE_LINE* Find_ScriptedLine(COMPANION_DIALOGUE_TRIGGER trigger, std::string_view patternId, std::string_view stageId) const;
-	bool Begin_LlmRequest(std::uint32_t requestId, LostArk::Shared::PLAYER_ID companionPlayerId, std::string_view context, std::string_view question, std::string& outStatus);
-	void Poll(std::vector<COMPANION_DIALOGUE_RESULT>& outResults, std::uint32_t nowMs);
-};
-```
-
-#### 호출 흐름
-
-```text
-C2S_CHAT "도움!" → Handle_Chat → relay + CCompanionSystem::Try_ParseChatCommand → Request_Assist
-→ companion SERVER_PLAYER 생성(없으면) → S2C_PLAYER_SPAWNED(isCompanion) → Client CCharacter(GUNSLINGER) 표현
-room tick → CCompanionBrain::Decide (ASSIST: 보스 6 m 유지, activeStage hit shape 예측 회피, SkillRotation 쿨다운 순환 / GUIDE: owner 2.5 m 뒤 추종)
-→ 기존 내부 Handle_Move/Handle_UseSkill → CPlayerSkillSystem → snapshot
-boss stage ENTER edge → CCompanionDialogue::Find_ScriptedLine → S2C_CHAT(from companion NetEntityId) → Client 말풍선 + 채팅 로그
-C2S_CHAT 일반 문장(owner) + llm.enabled → Begin_LlmRequest → sidecar → Poll → COMPANION_DIALOGUE_RESULT room command → S2C_CHAT
-timeout/실패 → Find_ScriptedLine(PLAYER_QUESTION) fallback
-```
-
-#### 검증
-
-Server contract: (a) `도움!` 뒤 companion spawn, 20초 뒤 GUIDE 전환, (b) roster/ROOM_FULL 미포함, (c) 카드 분배·bind target 제외, (d) stage ENTER line 1회 방송,
-(e) sidecar 부재 시 fallback line, (f) `/그만` dismiss. `python -m unittest Tools.CompanionChat.test_companion_dialogue_contract`, NetworkProtocol round-trip.
-사용자 smoke: 쿠크에서 `도움!` → 전투 → 추종 → 패턴 말풍선.
-
----
-
-### G07 — 2·3관문 배분과 빙고 UI (범위만 고정)
-
-| 관문 | 원작 | profile / action (인벤토리 §3) | 필요 계약 |
-|---|---|---|---|
-| 2관문 125 세이튼 등장 | 대형 세이튼 등장 | `MN_RPCT_06` + `WP_MN_RPCT_06` `SAME_CLIP_NAME` | BossCatalog v7 weaponClipSync, `ENCOUNTER_KAKUL_GATE2` |
-| 2관문 110 파1·빨2 | 카드 무늬 색 | `4219810~4219840` 검은/붉은 스페이드·클로버·하트·다이아 | G03-1 suit + color 확장 `KAKUL_CARD_COLOR` |
-| 2관문 95 조커 찾기 | 진짜/가짜 | `4221807 시작`, `4221816 성공`, 카드뒤집기 `4221820~4221839` | summon set + facing/입력 판정 재사용 |
-| 2관문 85 카드 미로 | 이동 판정 | `4219899/42198100/42198101` | Server trigger cell 판정(collisionBox 동적 활성) — dynamic collision 계약 별도 |
-| 2관문 55 피자 | 장판 | `4219714` 재사용 | G02 combat object 피자 |
-| 3관문 마리오 1~4 / 쇼타임 | 플랫폼 이동 + 컷신 | `world.sequence.instance.boss_showtime`, `4219905 빙고맵 오프닝`, `4219984 빙고 폭탄` | Sequencer v1 + boss combat snapshot `bingoBoard`(25 bit) + `Data/UI/KakulSaydon/Bingo_Layout.json` |
-
-빙고 UI는 `CCombatHUDViewModel::HUD_BOSS_STATE.iBingoBoardMask`를 읽는 image widget이며 UI가 빙고를 판정하지 않는다. 별도 구현 계획서로 다룬다.
-
----
-
-## 5. 사용자 결정 필요 항목
-
-| # | 항목 | 권고 |
-|---|---|---|
-| 1 | 2관문 무대 세이튼 본체 `MN_RPCT_00`(기본) vs `MN_RPCT_05`(쿠크 파츠 포함) | 05 (3관문과 리소스 공유) |
-| 2 | 카드 분배 `RANDOM` vs `ORDERED` | 데이터 `encounterRules.cardSuit.assignment`로 둘 다 지원, 기본 RANDOM |
-| 3 | 도움 지속 20초 vs 30초 | `assist.durationMs` 20000 기본, Balance Tool에서 조정 |
-| 4 | LLM 사용 여부와 provider(ChatGPT/OpenAI-compatible) | 기본 scripted, sidecar는 opt-in. Server 안에 HTTP client를 넣지 않는다 |
-| 5 | 50줄 룰렛 결과가 유발하는 행동 | 결정 전 최소 규칙(결과 무늬 3초 속박) |
-| 6 | 삐에로(플레이어 변신) 모델 리소스 존재 여부 | 팀장 Drive 확인. 없으면 G03-2는 게이지·스킬까지 |
-| 7 | 카드/하트/총/스포트 관련 Effect·UI 자산(`UI/KakulSaydon/*`, 카드 Effect) | 추출 목록을 별도 인테이크 문서로 |
-| 8 | 관문별 `maximumHealthBars` 초기값 150/150/100 | Balance Tool `PROJECT_TUNED` |
-| 9 | Engine `LIGHT_DESC` 확장(spot) 승인 — 공개 헤더·size static_assert 변경 | 승인 권고, Product build로 닫음 |
-| 10 | Debug 기본 HOLD를 Valtan에도 적용 | 적용 권고(Auto Playback 토글로 Release 검증 가능) |
-| 11 | 1관문 댄스타임을 세이튼 분신(05)으로 구현 | 인벤토리상 쿠크(RPCZ_00)에 댄스 clip이 없으므로 분신 구현 권고 |
-| 12 | 관문 = encounter 3개 + world 1개 | 권고안 그대로 |
-
-결정 전까지는 해당 G를 시작하지 않는다. 계획서 안에 표식으로 미루지 않기 위해 각 항목은 위 권고 값으로 진행 가능하게 적었다.
-
----
-
-## 6. 하지 않는 것
-
-- Client에서 phase/HP/판정/빙고를 계산하는 어떤 경로도 만들지 않는다.
-- `CValtanBrain`·`CValtan`·`CValtanPatternTree`의 리네임. 이름은 유지하고 encounter 인자로 일반화한다(리네임은 별도 합의).
-- 두 번째 pattern parser, 두 번째 Server audition service, 두 번째 JSON writer, 두 번째 boss presentation 경로.
-- PBR/CSM/TAA/SSR/ACES 구현. 이 계획은 그 위에서 튜닝할 데이터·도구·연출 계약까지다.
-- ImGui 위젯을 제품 UI로 승격. 카드 아이콘·광기 게이지·빙고는 `Data/UI` layout JSON + `CUIObject` 경로다.
-- Server 안에 HTTP client·API key. LLM은 sidecar와 localhost 소켓뿐이다.
-- Sequencer v1 전체(09-03 PLAN G00~G05). 이 계획은 SCENE_PROFILE track 하나와 관문 클리어 sequence 하나만 연결한다.
-- 에이전트의 Client 자율 실행·화면 캡처·visual PASS 기록.
-
----
-
-## 7. 검증 명령 총괄
-
-```powershell
-powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
-powershell -ExecutionPolicy Bypass -File Tools/KakulSaydonPipeline/Project-KakulPatternMaster.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/CompanionChat/Validate-CompanionDialogue.ps1
-python -m unittest Tools.CompanionChat.test_companion_dialogue_contract
-python -m unittest Tools.ValtanPipeline.test_valtan_boss_tool_pattern_flow_contract
-python -m unittest Tools.ValtanPipeline.test_action_composition_workbench_regression_oracles
-powershell -ExecutionPolicy Bypass -File Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration Debug
+Tools\KoukuSaydonBossToolHarness\Bin\Debug\KoukuSaydonBossToolHarness.exe
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile FullDiagnostic
 git diff --check
 ```
 
-각 G의 RESULT는 구현 완료 / 자동 검증 / 사용자 수동 검증 / 남은 경계를 분리해 `.md/GB/<MM-DD>/`에 남긴다. Python contract PASS만으로 native admission을
-결론내리지 않고, 변경 domain은 compiled harness와 `Server.exe --contract-test`로 다시 연다(`gotchas.md` consumer closure matrix).
+Engine public header를 바꾼 G05는 `UpdateLib` 뒤 Client까지 검증한다. 신규 C++ 파일은 project/filter XML parse와 Product build에서 누락을 잡는다.
+
+### 9.4 사용자 전용 visual smoke
+
+에이전트는 Client/UI를 자율 실행하거나 visual PASS를 대신 기록하지 않는다. 자동 검증 뒤 사용자가 `Client/Default`에서 직접 확인한다.
+
+1. 24px lane 선택·drag, maximize/Fit, Details/Resources 접근
+2. raw Animation/Effect/Sound/Camera single-click 즉시 preview와 non-mutation
+3. 다섯 기믹 이름의 draft 생성, Apply Debug Revision, `Play Server` animation
+4. Rendering Tool의 Gate 1 base directional/ambient와 point/spot group A/B
+5. Pizza 시작 암전과 종료 원복
+6. Heart Ping 암전, 진짜 쿠크/하트 role spotlight, 모든 종료 경로 원복
+7. Dance 단계별 spotlight와 recovery 원복
+8. Roulette/Card cue와 Server verdict 일치
+9. human chat과 Gunslinger 안내의 기존 chat log/머리 위 말풍선
+10. `도움!` 전투, GUIDE 복귀, owner leave despawn
 
 ---
 
-## 8. 실행 순서
+## 10. 완료 정의와 비범위
 
-```text
-G00 Server 재생 정책 (Valtan에서 즉시 검증 가능)          → RESULT
-G01 Boss Tool 재편 (Valtan)                              → RESULT
-G02 쿠크 첫 수직 슬라이스 (입장 + 피자 1패턴)            → RESULT, 이후 모든 Kakul G의 전제
-G05-1/2/3 조명 기반 (map light, spot, profile blend)      → G03-4가 소비
-G03-1 → G03-3 → G03-4 → G03-5 → G03-6 → G03-2 → G03-7      → 각 RESULT
-G04 Logic Graph 편집기                                   → Valtan/Kakul 공용
-G05-4 pattern light cue                                  → G03-4 하트핑 연출 완성
-G06 건슬 AI                                              → 1관문 line 작성
-G07 별도 계획서
-```
+완료는 문서나 Tool mock이 아니라 다음 조건을 모두 만족하는 상태다.
 
-G02와 G05-1은 서로 독립이라 병렬 가능하다. G03-2(광기·삐에로)는 자산 결정(§5-6)에 걸려 있어 뒤로 두었다.
+- Kouku authored 경로·문서·Tool 이름이 `KoukuSaydon`으로 원자적 마이그레이션되고 public `KAKULSAYDON`/physical `KoukuSaton` 예외가 검증됨
+- Valtan과 Kouku의 mutable 저작·runtime 선택·검증 상태가 완전히 분리됨
+- 한 encounter의 semantic 실패가 다른 admitted encounter의 입장과 LAN 검증을 막지 않음
+- Rendering Tool에서 Gate 1 base/profile/group/Point/Spot/modifier를 저장·재로드·publish할 수 있음
+- Pizza와 130/110/85/50 기믹이 실제 Server authority로 실행됨
+- 각 pattern modifier가 종료·중단·퇴장·재시작에서 정확히 base로 복원됨
+- one-click Resource audition이 문서를 수정하지 않음
+- 한 명의 Gunslinger가 같은 player executor로 전투하고, authored dialogue/optional chatbot 결과를 기존 말풍선으로 표시함
+- 관련 publisher, protocol/server harness, Product/FullDiagnostic, `git diff --check` 통과
+- 화면 품질은 사용자 서면 관찰로만 PASS 처리
+
+이번 범위에 포함하지 않는다.
+
+- 발탄 data를 Kouku schema로 복제하거나 한 Boss Tool dropdown에 합치기
+- 두 번째 model/runtime path
+- Client local boss/AI combat authority
+- ImGui 말풍선 또는 제품 UI
+- pattern마다 absolute scene profile을 복제해 암전
+- raw map mesh의 추측 삭제
+- Gate 2/3/Mario/Bingo placeholder
+- AI 전용 damage/cooldown/animation 수치 복제
+- Client 또는 Server fixed tick에서 직접 provider HTTP 호출
+
+이 순서의 기준은 단순하다. **먼저 Kouku에서 실제 animation을 찾아 이름 있는 pattern으로 Server 재생하고,
+그 row 위에 조명과 판정을 얹은 뒤, 마지막으로 같은 확정 이벤트를 Gunslinger 가이드가 설명하게 한다.**

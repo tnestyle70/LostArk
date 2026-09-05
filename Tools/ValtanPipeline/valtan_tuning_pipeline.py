@@ -84,7 +84,7 @@ EFFECT_V1_ALIASES_REL = (
 )
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 32
+GAMEPLAY_BOOTSTRAP_VERSION = 33
 # Keep the authored cross-pattern follow-up bound aligned with the native
 # GameplayCatalog/ValtanBrain traversal guard.  A single edge has depth 1.
 PATTERN_FOLLOWUP_MAX_DEPTH = 32
@@ -100,14 +100,14 @@ CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
 COMPOSITION_CUE_ID_PREFIX = "cue.valtan.composition."
 DIRECT_AUTHORED_EFFECT_KIND = "DIRECT_AUTHORED_DOCUMENT"
 SUPPORTED_AUTHORED_EFFECT_VERSIONS = frozenset((13, 15))
-GHOST_PORTAL_CIRCUMRADIUS_M = 7.5
+GHOST_PORTAL_CIRCUMRADIUS_M = 9.0
 GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
 GHOST_PORTAL_TRAVEL_MS = 1300
 GHOST_PORTAL_START_DELAY_MS = 300
 GHOST_PORTAL_LIFETIME_MS = 1900
 GHOST_PORTAL_SPEED_MPS = GHOST_PORTAL_EDGE_LENGTH_M / (GHOST_PORTAL_TRAVEL_MS / 1000.0)
 GHOST_PORTAL_INDEPENDENT_DISPLAY_NAME = (
-    "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형"
+    "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형"
 )
 REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS = frozenset(
     (
@@ -3635,7 +3635,7 @@ def _validate_scripted_sequence(
             integer(
                 pursuit_ms,
                 f"scriptedSequence.transitionPursuitMs[{index}]",
-                100,
+                0,
                 10000,
             )
     for pattern_id in pattern_ids:

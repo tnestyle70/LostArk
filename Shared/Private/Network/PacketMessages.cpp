@@ -5032,3 +5032,313 @@ bool LostArk::Shared::Read_Message(
 	message = std::move(decoded);
 	return true;
 }
+
+namespace
+{
+	bool Is_Valid_KoukuSaydonAuditionOperation(
+		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation)
+	{
+		return static_cast<std::uint8_t>(operation) < static_cast<std::uint8_t>(
+			LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::END);
+	}
+
+	bool Is_Valid_KoukuSaydonAuditionScope(
+		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE& scope)
+	{
+		return LostArk::Shared::Is_Known_World_Id(scope.eWorldId) &&
+			Is_Valid_StableId(scope.strEncounterId, false) &&
+			Is_Valid_StableId(scope.strBossPlacementId, false) &&
+			Is_Valid_StableId(scope.strBossArchetypeId, false) &&
+			scope.ExpectedGameplayRevision.Is_Valid() &&
+			0u != scope.iExpectedSourceRevision;
+	}
+
+	bool Is_Valid_KoukuSaydonAuditionRequestShape(
+		const std::uint32_t requestSequence,
+		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation,
+		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE& scope,
+		const std::string& patternId)
+	{
+		if (0u == requestSequence ||
+			!Is_Valid_KoukuSaydonAuditionOperation(operation) ||
+			!Is_Valid_KoukuSaydonAuditionScope(scope))
+		{
+			return false;
+		}
+		return LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED ==
+			operation ? Is_Valid_StableId(patternId, false) : patternId.empty();
+	}
+
+	bool Write_KoukuSaydonAuditionScope(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE& scope)
+	{
+		if (!Is_Valid_KoukuSaydonAuditionScope(scope))
+			return false;
+		writer.Write_U16(static_cast<std::uint16_t>(scope.eWorldId));
+		if (!writer.Write_String(scope.strEncounterId,
+			LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		if (!writer.Write_String(scope.strBossPlacementId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		if (!writer.Write_String(scope.strBossArchetypeId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		if (!LostArk::Shared::Write_GameplayDataRevision(
+			writer, scope.ExpectedGameplayRevision))
+		{
+			return false;
+		}
+		writer.Write_U32(scope.iExpectedSourceRevision);
+		return true;
+	}
+
+	bool Read_KoukuSaydonAuditionScope(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE& scope)
+	{
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE decoded{};
+		std::uint16_t rawWorld = 0u;
+		if (!reader.Read_U16(rawWorld) ||
+			!reader.Read_String(decoded.strEncounterId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(decoded.strBossPlacementId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(decoded.strBossArchetypeId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!LostArk::Shared::Read_GameplayDataRevision(
+				reader, decoded.ExpectedGameplayRevision) ||
+			!reader.Read_U32(decoded.iExpectedSourceRevision))
+		{
+			return false;
+		}
+		decoded.eWorldId = static_cast<LostArk::Shared::WORLD_ID>(rawWorld);
+		if (!Is_Valid_KoukuSaydonAuditionScope(decoded))
+			return false;
+		scope = std::move(decoded);
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message)
+{
+	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
+		message.iRequestSequence, message.eOperation, message.Scope,
+		message.strPatternId))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	return Write_KoukuSaydonAuditionScope(writer, message.Scope) &&
+		writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message)
+{
+	C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decoded{};
+	std::uint8_t rawOperation = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U8(rawOperation) ||
+		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
+		!reader.Read_String(decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	decoded.eOperation =
+		static_cast<KOUKUSAYDON_PATTERN_AUDITION_OPERATION>(rawOperation);
+	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
+		decoded.iRequestSequence, decoded.eOperation, decoded.Scope,
+		decoded.strPatternId))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message)
+{
+	const bool accepted =
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == message.eResult ||
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED == message.eResult;
+	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
+			message.iRequestSequence, message.eOperation, message.Scope,
+			message.strRequestedPatternId) ||
+		static_cast<std::uint8_t>(message.eResult) >=
+			static_cast<std::uint8_t>(KOUKUSAYDON_PATTERN_AUDITION_RESULT::END) ||
+		!message.PinnedGameplayRevision.Is_Valid() ||
+		0u == message.iPinnedSourceRevision ||
+		!Is_Valid_StableId(message.strResolvedPatternId, !accepted) ||
+		!Is_Valid_BoundedReason(message.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, true) ||
+		(accepted && (0u == message.iRoomAuditionEpoch ||
+			INVALID_NET_ENTITY_ID == message.iBossNetEntityId ||
+			message.Scope.ExpectedGameplayRevision !=
+				message.PinnedGameplayRevision ||
+			message.Scope.iExpectedSourceRevision !=
+				message.iPinnedSourceRevision)) ||
+		(!accepted && (0u != message.iRoomAuditionEpoch ||
+			INVALID_NET_ENTITY_ID != message.iBossNetEntityId ||
+			0u != message.iPatternSequence || 0u != message.iStageIndex ||
+			!message.strResolvedPatternId.empty())))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	if (!Write_KoukuSaydonAuditionScope(writer, message.Scope) ||
+		!writer.Write_String(message.strRequestedPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U32(message.iRoomAuditionEpoch);
+	writer.Write_U32(message.iBossNetEntityId);
+	if (!writer.Write_String(message.strResolvedPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iPatternSequence);
+	writer.Write_U32(message.iStageIndex);
+	if (!Write_GameplayDataRevision(writer, message.PinnedGameplayRevision))
+		return false;
+	writer.Write_U32(message.iPinnedSourceRevision);
+	return
+		writer.Write_String(message.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message)
+{
+	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT decoded{};
+	std::uint8_t rawOperation = 0u;
+	std::uint8_t rawResult = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U8(rawOperation) ||
+		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
+		!reader.Read_String(decoded.strRequestedPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U8(rawResult) ||
+		!reader.Read_U32(decoded.iRoomAuditionEpoch) ||
+		!reader.Read_U32(decoded.iBossNetEntityId) ||
+		!reader.Read_String(decoded.strResolvedPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iPatternSequence) ||
+		!reader.Read_U32(decoded.iStageIndex) ||
+		!Read_GameplayDataRevision(reader, decoded.PinnedGameplayRevision) ||
+		!reader.Read_U32(decoded.iPinnedSourceRevision) ||
+		!reader.Read_String(decoded.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES))
+	{
+		return false;
+	}
+	decoded.eOperation =
+		static_cast<KOUKUSAYDON_PATTERN_AUDITION_OPERATION>(rawOperation);
+	decoded.eResult = static_cast<KOUKUSAYDON_PATTERN_AUDITION_RESULT>(rawResult);
+	CPacketWriter validationWriter;
+	if (!Write_Message(validationWriter, decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message)
+{
+	const bool terminalAbort =
+		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED == message.eState;
+	if (0u == message.iRequestSequence ||
+		!Is_Valid_KoukuSaydonAuditionOperation(message.eOperation) ||
+		!Is_Valid_KoukuSaydonAuditionScope(message.Scope) ||
+		0u == message.iRoomAuditionEpoch ||
+		INVALID_NET_ENTITY_ID == message.iBossNetEntityId ||
+		!Is_Valid_StableId(message.strPatternId, false) ||
+		static_cast<std::uint8_t>(message.eState) >= static_cast<std::uint8_t>(
+			KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::END) ||
+		!message.PinnedGameplayRevision.Is_Valid() ||
+		message.Scope.ExpectedGameplayRevision !=
+			message.PinnedGameplayRevision ||
+		0u == message.iPinnedSourceRevision ||
+		message.Scope.iExpectedSourceRevision !=
+			message.iPinnedSourceRevision ||
+		!Is_Valid_BoundedReason(message.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, !terminalAbort) ||
+		((KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE == message.eState ||
+		  KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED ==
+			message.eState ||
+		  KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED == message.eState) &&
+			0u == message.iPatternSequence))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	if (!Write_KoukuSaydonAuditionScope(writer, message.Scope))
+		return false;
+	writer.Write_U32(message.iRoomAuditionEpoch);
+	writer.Write_U32(message.iBossNetEntityId);
+	if (!writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iPatternSequence);
+	writer.Write_U32(message.iStageIndex);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	if (!Write_GameplayDataRevision(writer, message.PinnedGameplayRevision))
+		return false;
+	writer.Write_U32(message.iPinnedSourceRevision);
+	return
+		writer.Write_String(message.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message)
+{
+	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE decoded{};
+	std::uint8_t rawOperation = 0u;
+	std::uint8_t rawState = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U8(rawOperation) ||
+		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
+		!reader.Read_U32(decoded.iRoomAuditionEpoch) ||
+		!reader.Read_U32(decoded.iBossNetEntityId) ||
+		!reader.Read_String(decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iPatternSequence) ||
+		!reader.Read_U32(decoded.iStageIndex) ||
+		!reader.Read_U8(rawState) ||
+		!Read_GameplayDataRevision(reader, decoded.PinnedGameplayRevision) ||
+		!reader.Read_U32(decoded.iPinnedSourceRevision) ||
+		!reader.Read_String(decoded.strReason,
+			MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES))
+	{
+		return false;
+	}
+	decoded.eOperation =
+		static_cast<KOUKUSAYDON_PATTERN_AUDITION_OPERATION>(rawOperation);
+	decoded.eState =
+		static_cast<KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE>(rawState);
+	CPacketWriter validationWriter;
+	if (!Write_Message(validationWriter, decoded))
+		return false;
+	message = std::move(decoded);
+	return true;
+}

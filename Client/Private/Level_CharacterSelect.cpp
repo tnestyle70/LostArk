@@ -1491,13 +1491,13 @@ bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
 		CLevelTransitionService::Is_Pending())
 	{
 		m_strStatus =
-			"KoukuSaton transfer requires an idle, Server-approved Character Select arena.";
+			"KoukuSaydon transfer requires an idle, Server-approved Character Select arena.";
 		return false;
 	}
 	if (nullptr == m_pWorldEntityCommandSink)
 	{
 		m_strStatus =
-			"KoukuSaton world-transfer command owner is unavailable.";
+			"KoukuSaydon world-transfer command owner is unavailable.";
 		return false;
 	}
 
@@ -1509,11 +1509,11 @@ bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
 		requestSequence))
 	{
 		m_strStatus =
-			"KoukuSaton Server arena request could not be sent.";
+			"KoukuSaydon Server arena request could not be sent.";
 		return false;
 	}
 
-	m_strStatus = "KoukuSaton Server arena transfer requested.";
+	m_strStatus = "KoukuSaydon Server arena transfer requested.";
 	return true;
 }
 #endif
@@ -1692,7 +1692,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	if (ImGui::Button("Enter Valtan Map"))
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
-	if (ImGui::Button("Enter KoukuSaton Arena"))
+	if (ImGui::Button("Enter KoukuSaydon Arena"))
 		(void)Debug_Request_KakulSaydonArena();
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))

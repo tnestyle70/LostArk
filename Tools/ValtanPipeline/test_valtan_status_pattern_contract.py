@@ -575,7 +575,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         hud = read_text("Client/Private/CombatHUDViewModel.cpp")
         main_app = read_text("Client/Private/MainApp.cpp")
-        composition = read_text("Client/Private/ActionCompositionWorkbench.cpp")
+        composition = read_text("Client/Private/ValtanActionWorkbench.cpp")
         for marker in (
             "bPatternBound", "iPatternBindEndTick", "fPatternBindRestoreX",
             "iSilenceEndTick", "iSilenceDurationTicks",
@@ -603,7 +603,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertIn('"player.status.silence" == targetId', catalog)
         self.assertIn("writer.Write_U8(player.isPatternBound ? 1u : 0u)", packet_cpp)
         self.assertIn("player.isPatternBound = 0u != rawPatternBound", packet_cpp)
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 55", protocol)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 57", protocol)
         self.assertIn("Pattern-Bound Player Snapshot Round Trip", harness)
         self.assertIn("iSilenceDurationTicks", harness)
         skill_build = hud[

@@ -184,6 +184,22 @@ foreach ($key in $current.Keys) {
     }
 }
 
+# The first KoukuSaydon profile is deliberately a non-final animation-audition
+# admission profile.  Its values keep the preview alive and within the current
+# BOSS row grammar; they do not claim extracted or combat-fidelity tuning.
+foreach ($entry in @($receipt.entries | Where-Object {
+	[string]$_.targetDocument -ceq 'Data/Balance/BossProfiles.json' -and
+	[string]$_.targetId -ceq 'boss:BOSS_KAKULSAYDON_G1_KOUKU'
+})) {
+	$entry.basis = 'PROJECT_TUNED'
+	$entry.source = [pscustomobject]@{
+		type = 'project-policy'
+		policyId = 'koukusaydon-animation-audition-admission-v1'
+	}
+	$entry.transform = 'KoukuSaydon animation-audition admission baseline'
+	$entry.note = 'Non-final preview survival and admission value; combat fidelity is not claimed.'
+}
+
 $receipt.entries = @($receipt.entries | Sort-Object targetDocument,targetId,targetField)
 $receipt.extractorSha256 = Get-CanonicalTextSha256 (
 	Join-Path $repoRoot 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py')

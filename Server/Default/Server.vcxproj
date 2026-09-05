@@ -41,6 +41,7 @@
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerNavigation.h" />
 	<ClInclude Include="..\Public\ValtanBrain.h" />
+	<ClInclude Include="..\Public\KoukuSaydonBrain.h" />
 	<ClInclude Include="..\Public\EstherSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
@@ -72,6 +73,7 @@
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonBrain.cpp" />
 	<ClCompile Include="..\Private\EstherSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp">
 	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
@@ -225,7 +227,7 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <Target Name="PublishServerBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+  <Target Name="PublishServerBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Server" />
   </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

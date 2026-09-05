@@ -46,13 +46,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
         cls.composition_h = read(
-            "Client/Public/ActionCompositionWorkbench.h"
+            "Client/Public/ValtanActionWorkbench.h"
         )
         cls.composition_cpp = read(
-            "Client/Private/ActionCompositionWorkbench.cpp"
+            "Client/Private/ValtanActionWorkbench.cpp"
         )
         cls.composition_blueprint_cpp = read(
-            "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+            "Client/Private/ValtanActionWorkbench_Blueprint.cpp"
         )
         cls.animation_binding_h = read(
             "Client/Public/AnimationSkillBindingDocument.h"
@@ -68,8 +68,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.balance_cpp = read("Client/Private/BalanceTool.cpp")
         cls.valtan_tree_h = read("Client/Public/ValtanPatternTree.h")
         cls.valtan_tree_cpp = read("Client/Private/ValtanPatternTree.cpp")
-        cls.boss_h = read("Client/Public/BossTool.h")
-        cls.boss_cpp = read("Client/Private/BossTool.cpp")
+        cls.boss_h = read("Client/Public/ValtanBossTool.h")
+        cls.boss_cpp = read("Client/Private/ValtanBossTool.cpp")
         cls.level_h = read("Client/Public/Level_ValtanArena.h")
         cls.level_cpp = read("Client/Private/Level_ValtanArena.cpp")
         cls.client_replication_h = read("Client/Public/ClientReplication.h")
@@ -81,6 +81,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.main_h = read("Client/Public/MainApp.h")
+        cls.sequencer_cpp = read("Client/Private/SequencerTool.cpp")
         cls.packet_h = read("Shared/Public/Network/PacketMessages.h")
         cls.packet_cpp = read("Shared/Private/Network/PacketMessages.cpp")
         cls.packet_type_h = read("Shared/Public/Network/PacketType.h")
@@ -104,26 +105,18 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
     def test_primary_window_has_one_workbench_identity(self) -> None:
         developer_tools = function_body(
-            self.main_cpp,
-            "void CMainApp::RenderDeveloperTools()",
-        )
-        composition = function_body(
-            self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            self.main_cpp, "void CMainApp::RenderDeveloperTools()",
         )
         animation = function_body(
-            self.animation_cpp,
-            "void Client::CAnimation_Tool::Render()",
+            self.animation_cpp, "void Client::CAnimation_Tool::Render()",
         )
         self.assertRegex(
             developer_tools,
-            r'toolCell\(\s*"Action Composition Workbench"\s*,\s*'
-            r"DEBUG_TOOL::COMPOSITION",
+            r'toolCell\(\s*"Action Workbench"\s*,\s*DEBUG_TOOL::SEQUENCER',
         )
         self.assertRegex(
             developer_tools,
-            r'toolCell\(\s*"Animation Clip Tool"\s*,\s*'
-            r"DEBUG_TOOL::ANIMATION",
+            r'toolCell\(\s*"Animation Clip Tool"\s*,\s*DEBUG_TOOL::ANIMATION',
         )
         self.assertIn('"##DeveloperToolLaunchGrid"', developer_tools)
         self.assertIn("iToolButtonColumns", developer_tools)
@@ -133,24 +126,22 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
             '"Box Detail###CompositionDetailsWindow"',
             '"Composition Resources###CompositionResourcesWindowResizableV2"',
-            '"Server Replay###CompositionSessionWindow"',
+            '"Action Workbench###CompositionSessionWindow"',
         ):
-            self.assertIn(window, self.composition_cpp)
+            self.assertIn(window, self.sequencer_cpp)
+        for token in ("Selected_Session()", "Begin_WorkbenchFrame()",
+                      "Render_WorkbenchPane(", "End_WorkbenchFrame()"):
+            self.assertIn(token, self.sequencer_cpp)
         self.assertIn(
-            '"Animation Clip Tool###AnimationClipToolResizableV1"',
-            animation,
-        )
-        self.assertRegex(
-            self.main_h,
-            r"enum class DEBUG_TOOL[\s\S]*?COMPOSITION,[\s\S]*?ANIMATION,",
+            '"Animation Clip Tool###AnimationClipToolResizableV1"', animation,
         )
         self.assertNotRegex(
             developer_tools,
-            r'"Action Composition Workbench"\s*,\s*DEBUG_TOOL::ANIMATION',
+            r'toolCell\(\s*"(?:Valtan|KoukuSaydon) Action Workbench"',
         )
         self.assertNotRegex(
             developer_tools,
-            r'"Animation Clip Tool"\s*,\s*DEBUG_TOOL::COMPOSITION',
+            r'"Action Workbench"\s*,\s*DEBUG_TOOL::ANIMATION',
         )
 
     def test_f1_has_no_hard_bounds_and_owner_windows_keep_layout_contracts(
@@ -166,7 +157,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         composition = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         for token in (
             "ImGui::GetMainViewport()",
@@ -210,11 +201,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertIn(token, self.composition_cpp)
         for window_signature in (
-            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
-            "void Client::CActionCompositionWorkbench::Render_PreviewWindow(",
-            "void Client::CActionCompositionWorkbench::Render_SequencerWindow(",
-            "void Client::CActionCompositionWorkbench::Render_DetailsWindow(",
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_PatternsWindow(",
+            "void Client::CValtanActionWorkbench::Render_PreviewWindow(",
+            "void Client::CValtanActionWorkbench::Render_SequencerWindow(",
+            "void Client::CValtanActionWorkbench::Render_DetailsWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         ):
             self.assertNotIn(
                 "ImGuiWindowFlags_AlwaysAutoResize",
@@ -226,19 +217,31 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Composition must not turn its default size into a hard bound",
         )
         for token in (
-            "COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE = 2.f",
-            "COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE = 2.f",
             "COMPOSITION_LEFT_COLUMN_WIDTH_RATIO = 0.18f",
             "COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO = 0.20f",
-            "TIMELINE_ROW_HEIGHT = 48.f",
-            "TIMELINE_BLOCK_VERTICAL_PADDING = 6.f",
-            "TIMELINE_CANVAS_MINIMUM_HEIGHT = 420.f",
-            "leftBottomHeight * COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE",
-            "sequencerHeight * COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE",
+            "TIMELINE_ROW_HEIGHT = 24.f",
+            "TIMELINE_BLOCK_VERTICAL_PADDING = 2.f",
             '"Composition Resources###CompositionResourcesWindowResizableV2"',
             '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
         ):
             self.assertIn(token, self.composition_cpp)
+        for removed_fixed_height in (
+            "COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE",
+            "COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE",
+            "TIMELINE_CANVAS_MINIMUM_HEIGHT",
+            "TIMELINE_ROW_HEIGHT = 48.f",
+            "TIMELINE_BLOCK_VERTICAL_PADDING = 6.f",
+        ):
+            self.assertNotIn(removed_fixed_height, self.composition_cpp)
+        default_layout = function_body(
+            self.composition_cpp,
+            "COMPOSITION_DEFAULT_LAYOUT BuildCompositionDefaultLayout(",
+        )
+        for unscaled_owner_size in (
+            "layout.ResourcesSize = ImVec2(leftWidth, leftBottomHeight)",
+            "layout.SequencerSize = ImVec2(centerWidth, sequencerHeight)",
+        ):
+            self.assertIn(unscaled_owner_size, default_layout)
         column_ratios = re.search(
             r"COMPOSITION_LEFT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;"
             r"[\s\S]*?COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;",
@@ -259,19 +262,188 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         self.assertIn("bool_t m_bResetLayoutRequested = false;", self.composition_h)
 
-        kakul = function_body(
+        kouku_saydon = function_body(
             self.animation_cpp,
-            "void Client::CAnimation_Tool::Render_KakulActionBindings(",
+            "void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(",
         )
         for token in (
-            "KAKUL_ACTION_LIST_MIN_WIDTH",
-            "KAKUL_ACTION_DETAIL_MIN_WIDTH",
-            'ImGui::InvisibleButton("##KakulActionSplitter"',
+            "KOUKU_SAYDON_ACTION_LIST_MIN_WIDTH",
+            "KOUKU_SAYDON_ACTION_DETAIL_MIN_WIDTH",
+            'ImGui::InvisibleButton("##KoukuSaydonActionSplitter"',
             "ImGui::GetIO().MouseDelta.x",
-            "m_fKakulActionListWidth",
-            '"##KakulActionDetail"',
+            "m_fKoukuSaydonActionListWidth",
+            '"##KoukuSaydonActionDetail"',
         ):
-            self.assertIn(token, kakul)
+            self.assertIn(token, kouku_saydon)
+
+    def test_sequencer_uses_compact_dynamic_rows_and_explicit_fit_maximize(
+        self,
+    ) -> None:
+        timeline = function_body(
+            self.composition_cpp,
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
+        )
+        self.assertRegex(
+            timeline,
+            r'ImGui::SliderFloat\(\s*"Zoom \(px/sec\)",\s*'
+            r"&m_fTimelinePixelsPerSecond,\s*40\.f,\s*1200\.f,",
+        )
+        self.assertIn(
+            "m_fTimelinePixelsPerSecond, 40.f, 1200.f", timeline
+        )
+        fit_duration = timeline[
+            timeline.index("const uint32_t iFitDurationMs") :
+            timeline.index("const float fFitClockWidth")
+        ]
+        self.assertIn("m_iTimelineDurationMs", fit_duration)
+        self.assertIn("MAX_TIMELINE_RENDER_DURATION_MS", fit_duration)
+        fit_width = timeline[
+            timeline.index("const float fFitClockWidth") :
+            timeline.index("ImGui::SetNextItemWidth(220.f)")
+        ]
+        for fit_inset in (
+            "TIMELINE_LANE_LABEL_WIDTH",
+            "TIMELINE_LABEL_MAXIMUM_WIDTH_PX",
+            "ImGui::GetStyle().ScrollbarSize",
+            "ImGui::GetStyle().ChildBorderSize * 2.f",
+        ):
+            self.assertIn(fit_inset, fit_width)
+
+        fit_at = timeline.index('ImGui::Button("Fit Timeline")')
+        maximize_at = timeline.index(
+            'm_bTimelineMaximized ? "Restore Timeline" : "Maximize Timeline"'
+        )
+        self.assertLess(fit_at, maximize_at)
+        fit_gate = timeline[timeline.rfind("ImGui::BeginDisabled", 0, fit_at) : fit_at]
+        self.assertIn("0u == m_iTimelineDurationMs", fit_gate)
+        fit_action = timeline[fit_at:maximize_at]
+        self.assertIn("fFitClockWidth * 1000.f", fit_action)
+        self.assertIn("static_cast<float>(iFitDurationMs)", fit_action)
+        self.assertIn("40.f, 1200.f", fit_action)
+        self.assertIn("Pack_TimelineSubrows()", fit_action)
+
+        desired_at = timeline.index("const float fDesiredCanvasHeight")
+        child_at = timeline.index("ImGui::BeginChild", desired_at)
+        dynamic_height = timeline[desired_at:child_at]
+        for token in (
+            "TIMELINE_ROW_HEIGHT",
+            "1.f + static_cast<float>(std::accumulate(",
+            "m_TimelineLaneSubrowCounts.begin()",
+            "m_TimelineLaneSubrowCounts.end()",
+            "ImGui::GetStyle().ItemSpacing.y",
+            "static_cast<float>(m_TimelineLaneSubrowCounts.size())",
+            "ImGui::GetStyle().ScrollbarSize",
+            "(std::min)(fDesiredCanvasHeight, ImGui::GetContentRegionAvail().y)",
+        ):
+            self.assertIn(token, dynamic_height)
+        self.assertNotIn("420", dynamic_height)
+        clock_width = timeline[
+            timeline.index("const float fClockCanvasWidth") : desired_at
+        ]
+        self.assertIn("const float fClockCanvasWidth = (std::max)(\n\t\t1.f,", clock_width)
+        self.assertNotIn("520.f", clock_width)
+        self.assertIn(
+            '"##ActionCompositionTimelineCanvas", ImVec2(0.f, fAvailableHeight)',
+            timeline[child_at : timeline.index("ImGui::EndChild()", child_at)],
+        )
+
+        box_at = timeline.index("const ImVec2 BlockMin(")
+        hover_at = timeline.index("const bool_t bBlockHovered", box_at)
+        self.assertIn(
+            "const bool_t bLaneRowHovered = ImGui::IsItemHovered();",
+            timeline[:box_at],
+        )
+        hit_geometry = timeline[box_at:hover_at]
+        for visual_box in (
+            "fSubrowY + TIMELINE_BLOCK_VERTICAL_PADDING",
+            "fSubrowY + TIMELINE_ROW_HEIGHT -",
+            "TIMELINE_BLOCK_VERTICAL_PADDING",
+        ):
+            self.assertIn(visual_box, hit_geometry)
+        for full_row_hit in (
+            "const ImVec2 HitMin(fStartX, fSubrowY)",
+            "const ImVec2 HitMax(",
+            "fSubrowY + TIMELINE_ROW_HEIGHT",
+        ):
+            self.assertIn(full_row_hit, hit_geometry)
+        hover = timeline[hover_at : timeline.index("const auto ItemStage", hover_at)]
+        self.assertIn("bLaneRowHovered", hover)
+        self.assertIn(
+            "ImGui::IsMouseHoveringRect(HitMin, HitMax, true)", hover
+        )
+        self.assertNotIn("BlockMin, BlockMax, true", hover)
+        self.assertLess(
+            hover_at,
+            timeline.index(
+                "if (bBlockHovered && ImGui::IsMouseClicked", hover_at
+            ),
+        )
+
+        for removed_explanation in (
+            "One Server Pattern clock.",
+            "LIVE: Animation + V1/V2 Effect",
+            "Effect timing and Sound timing remain unsaved",
+        ):
+            self.assertNotIn(removed_explanation, timeline)
+
+        self.assertIn(
+            "bool_t m_bTimelineMaximized = false;", self.composition_h
+        )
+        for removed_rect_state in (
+            "m_bTimelineRestoreWindowRectRequested",
+            "m_bTimelineWindowRectCaptured",
+            "m_vTimelineWindowPosition",
+            "m_vTimelineWindowSize",
+        ):
+            self.assertNotIn(removed_rect_state, self.composition_h)
+        sequencer_window = function_body(
+            self.composition_cpp,
+            "void Client::CValtanActionWorkbench::Render_SequencerWindow(",
+        )
+        for maximize_contract in (
+            '"Composition Timeline###CompositionTimelineMaximizedOverlay"',
+            "ImGuiWindowFlags_NoDocking",
+            "ImGuiWindowFlags_NoSavedSettings",
+            "pViewport->WorkPos.x + pViewport->WorkSize.x * 0.02f",
+            "pViewport->WorkPos.y + pViewport->WorkSize.y * 0.02f",
+            "pViewport->WorkSize.x * 0.96f",
+            "pViewport->WorkSize.y * 0.96f",
+            "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
+            "ImGui::SetNextWindowPos(Layout.SequencerPos, Condition)",
+            "ImGui::SetNextWindowSize(Layout.SequencerSize, Condition)",
+            "bool_t bMaximizedOverlayOpen = true",
+            "m_bTimelineMaximized ?",
+            "&bMaximizedOverlayOpen : &m_bSequencerWindowVisible",
+            "ImGui::Begin(\n\t\tpWindowTitle, pWindowOpen, WindowFlags)",
+            "if (m_bTimelineMaximized && !bMaximizedOverlayOpen)",
+            "m_bTimelineMaximized = false",
+        ):
+            self.assertIn(maximize_contract, sequencer_window)
+        for forbidden_normal_rect_mutation in (
+            "ImGui::GetWindowPos()",
+            "ImGui::GetWindowSize()",
+            "m_bTimelineRestoreWindowRectRequested",
+        ):
+            self.assertNotIn(
+                forbidden_normal_rect_mutation, sequencer_window
+            )
+        render = function_body(
+            self.composition_cpp,
+            "void Client::CValtanActionWorkbench::Render()",
+        )
+        self.assertLess(
+            render.index("Render_SequencerWindow("),
+            render.index("if (!m_bTimelineMaximized)"),
+        )
+        sibling_gate = function_body(render, "if (!m_bTimelineMaximized)")
+        for sibling in (
+            "Render_BossPatternWindow(",
+            "Render_PatternsWindow(",
+            "Render_PreviewWindow(",
+            "Render_DetailsWindow(",
+            "Render_ResourcesWindow(",
+        ):
+            self.assertIn(sibling, sibling_gate)
 
     def test_valtan_workbench_has_stable_three_plus_one_pane_shell(self) -> None:
         for token in (
@@ -330,11 +502,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     def test_valtan_arena_without_model_still_enters_data_only_master(self) -> None:
         render = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         preview = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Preview(",
+            "void Client::CValtanActionWorkbench::Render_Preview(",
         )
         for token in (
             "Reload_Canonical()",
@@ -371,7 +543,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     ) -> None:
         reload_canonical = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         for token in (
             "const bool_t bBalanceDraftDirty",
@@ -403,7 +575,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     def test_patterns_window_exposes_canonical_admission_status_and_reload(self) -> None:
         patterns_window = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+            "void Client::CValtanActionWorkbench::Render_PatternsWindow(",
         )
         for token in (
             'ImGui::TextDisabled("Canonical admission: %s", Admission_Label())',
@@ -422,11 +594,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     ) -> None:
         preview = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Preview(",
+            "void Client::CValtanActionWorkbench::Render_Preview(",
         )
         consume = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::"
+            "bool_t Client::CValtanActionWorkbench::"
             "Consume_PreviewOwnerClaimRequest()",
         )
         main_update = function_body(self.main_cpp, "void CMainApp::Update(")
@@ -449,9 +621,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "Consume_PreviewOwnerClaimRequest()",
-            "IsDebugToolVisible(DEBUG_TOOL::COMPOSITION)",
-            "m_eDebugInputOwner = DEBUG_TOOL::COMPOSITION",
-            "m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION",
+            "IsDebugToolVisible(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH)",
+            "m_eDebugInputOwner = DEBUG_TOOL::VALTAN_ACTION_WORKBENCH",
+            "m_eDebugWindowFocusPending = DEBUG_TOOL::VALTAN_ACTION_WORKBENCH",
             "Set_PreviewOwnerActive(",
         ):
             self.assertIn(token, main_update)
@@ -467,11 +639,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     ) -> None:
         linked = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
+            "void Client::CValtanActionWorkbench::Render_SemanticLinkedRows(",
         )
         resources = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
 
         for category in (
@@ -525,11 +697,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     ) -> None:
         details = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         gameplay = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::"
+            "void Client::CValtanActionWorkbench::"
             "Render_GameplayStageDetails(",
         )
 
@@ -580,7 +752,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     def test_effect_selected_collider_routes_to_server_gameplay_owner(self) -> None:
         details = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         effect_owner = function_body(
             details,
@@ -705,8 +877,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CCharacterPreviewPanel::Select_Asset(",
         )
         for token in (
-            "bValtanArenaBossPreview",
-            'asset.pBossArchetypeId } == "BOSS_VALTAN"',
+            "bRaidCompositionPreview",
+            "Is_CompositionAnimationTargetAsset(asset.pAssetName)",
+            "Try_ResolveRaidPreviewPlacement(",
             "CValtanPresentationAssetService::Ensure_Prototypes(",
             "CAnimationTargetService::Bind_Preview(",
             'TEXT("Layer_AnimationPreview")',
@@ -733,9 +906,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.character_preview_cpp,
             "bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(",
         )
-        self.assertIn("Try_Get_AuthoringPreviewPlacement(", select_target)
-        self.assertIn("Target=ARENA CLONE", select_target)
-        self.assertIn("Server Valtan=UNCHANGED", select_target)
+        self.assertIn("Try_ResolveRaidPreviewPlacement(", select_target)
+        self.assertIn("Target=LOCAL ARENA PREVIEW", select_target)
+        self.assertIn("Server boss=UNCHANGED", select_target)
 
         sequence_preview = function_body(
             self.animation_cpp,
@@ -776,7 +949,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         sequence_browser = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         preview_button = sequence_browser.index(
             'ImGui::Button("Preview Sequence on Arena Clone")'
@@ -829,7 +1002,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     def test_valtan_dirty_workspace_uses_only_exact_preview_model(self) -> None:
         composition_play = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(",
+            "bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(",
         )
         draft_play = function_body(
             self.animation_cpp,
@@ -1238,7 +1411,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         composition_gameplay = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         for token in (
             "Get_ValtanCounterWindowDraft(",
@@ -1257,7 +1430,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.assertIn(token, self.composition_cpp)
         composition_save = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         )
         self.assertNotIn(
             "Save_ValtanCompositionPatternSounds(", composition_save
@@ -1491,7 +1664,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         playback_admission = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Acquire_ServerPlaybackAdmission(",
+            "bool_t Client::CValtanBossTool::Acquire_ServerPlaybackAdmission(",
         )
         self.assertIn(
             "Can_Play_PrimaryValtanPresentation(", playback_admission
@@ -1515,23 +1688,23 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         canonical_save = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         )
         save_completion = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+            "void Client::CValtanActionWorkbench::Update_SaveState()",
         )
         owner_accept = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            "bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(",
         )
         graph_reopen = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            "bool_t Client::CValtanActionWorkbench::Reload_AfterPendingSave(",
         )
         toolbar = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         self.assertIn(
             "READ-ONLY GENERATED PRODUCT: Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
@@ -1622,19 +1795,19 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         direct = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Submit_SelectedPattern()",
+            "bool_t Client::CValtanBossTool::Submit_SelectedPattern()",
         )
         require_gate_before(direct, "CValtanPatternAuditionService::Get().Submit(")
 
         isolated = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()",
+            "bool_t Client::CValtanBossTool::Preview_SelectedFlowSlotIsolated()",
         )
         require_gate_before(isolated, "CValtanPatternAuditionService::Get().Submit(")
 
         flow_start = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Start_Flow(",
+            "bool_t Client::CValtanBossTool::Start_Flow(",
         )
         first_slot = flow_start.index("pFlow->Slots.front().strSlotId")
         delegate = flow_start.index(
@@ -1643,15 +1816,15 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertLess(first_slot, delegate)
         flow_submit = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Start_FlowAtSlot(",
+            "bool_t Client::CValtanBossTool::Start_FlowAtSlot(",
         )
         self.assertIn("CValtanPatternFlowService::Get().Start(", flow_submit)
         restart_saved = self.boss_cpp[
             self.boss_cpp.index(
-                "bool_t Client::CBossTool::Restart_SavedFlow()"
+                "bool_t Client::CValtanBossTool::Restart_SavedFlow()"
             ) :
             self.boss_cpp.index(
-                "bool_t Client::CBossTool::Request_RevivePlayer("
+                "bool_t Client::CValtanBossTool::Request_RevivePlayer("
             )
         ]
         self.assertLess(
@@ -1679,14 +1852,14 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         next_picker = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_NextPatternPicker()",
+            "void Client::CValtanBossTool::Render_NextPatternPicker()",
         )
         self.assertIn("Queue_NextServerPattern(", next_picker)
         self.assertNotIn("Service.Queue_NextPattern(", next_picker)
 
         next_card = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_NextPatternCard()",
+            "void Client::CValtanBossTool::Render_NextPatternCard()",
         )
         next_gate = next_card.index("Acquire_ServerPlaybackAdmission(")
         self.assertLess(next_card.index("Service.Clear_NextPattern("), next_gate)
@@ -1694,7 +1867,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         flow_detail = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_FlowSelectedSlot()",
+            "void Client::CValtanBossTool::Render_FlowSelectedSlot()",
         )
         self.assertIn("Stop_AfterCurrent(", flow_detail)
         self.assertNotIn("Acquire_ServerPlaybackAdmission(", flow_detail)
@@ -1896,7 +2069,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 55;",
+            "NETWORK_PROTOCOL_VERSION = 57;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (
@@ -2166,7 +2339,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "CMainApp::Get_Active",
             "Debug_SelectCompletePlayPattern",
             "Debug_CompletePlaySelected",
-            "m_pBossTool->Set_ServerArenaPreset",
+            "m_pValtanBossTool->Set_ServerArenaPreset",
             "m_pBalanceTool->Set_ValtanStageDraft",
             "Consume_EffectToolOpenRequest",
             "Consume_CameraToolOpenRequest",
@@ -2318,7 +2491,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         boss_route = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Set_ServerArenaPreset(",
+            "bool_t Client::CValtanBossTool::Set_ServerArenaPreset(",
         )
         self.assertIn("CLevel_ValtanArena::Get_Active", boss_route)
         self.assertIn("arena->Set_ArenaPreset", boss_route)
@@ -2411,7 +2584,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "RENDERING",
             "UI",
             "BALANCE",
-            "BOSS",
+            "VALTAN_BOSS",
             "CAMERA",
         ):
             self.assertIn(
@@ -2422,7 +2595,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2)", render
         )
         self.assertIn("m_pEffectToolV2->Render()", render)
-        self.assertIn("m_pBossTool->Render()", render)
+        self.assertIn("m_pValtanBossTool->Render()", render)
         self.assertNotIn("switch (m_eActiveDebugTool)", render)
 
         for relative, token in (
@@ -2436,7 +2609,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.main_cpp,
             "bool_t CMainApp::Debug_CompletePlaySelected(",
         )
-        self.assertIn("m_pBossTool->Play_ServerPattern", complete_play)
+        self.assertIn("m_pValtanBossTool->Play_ServerPattern", complete_play)
         self.assertNotIn("CNetworkManager", complete_play)
 
         for token in (
@@ -2528,7 +2701,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         toolbar = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         complete_play = function_body(
             toolbar, 'if (ImGui::Button("Play on Server"'
@@ -2646,12 +2819,12 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Valtan Pattern Sound Cues"',
             '"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"',
             '"Valtan Encounter Runtime"',
-            "DEBUG_TOOL::COMPOSITION",
+            "DEBUG_TOOL::VALTAN_ACTION_WORKBENCH",
         ):
             self.assertIn(token, semantic_refresh)
         self.assertIn("EnsureDebugTool(source.eTool)", semantic_open)
-        self.assertIn("EnsureDebugTool(DEBUG_TOOL::COMPOSITION)", semantic_open)
-        self.assertIn("m_pActionCompositionWorkbench->Open_Valtan()", semantic_open)
+        self.assertIn("EnsureDebugTool(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH)", semantic_open)
+        self.assertIn("m_pValtanActionWorkbench->Open_Valtan()", semantic_open)
 
         for token in (
             "CRuntimeAssetRoot::Get_ResourceRoot",
@@ -2659,7 +2832,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"DataFiles/Map"',
             '"Data/Effects/V2"',
             '"Resources/Sound"',
-            '"KoukuSaton"',
+            '"KoukuSaydon"',
             '"Resources/Map/LV_LUT_MIDNIGHTC_ED/"',
             '"Resources/Character/MN_RPCT_05/"',
         ):
@@ -2695,13 +2868,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)",
         )
         composition = ensure[
-            ensure.index("case DEBUG_TOOL::COMPOSITION:") :
+            ensure.index("case DEBUG_TOOL::VALTAN_ACTION_WORKBENCH:") :
             ensure.index("case DEBUG_TOOL::ANIMATION:")
         ]
-        self.assertIn("m_pBossTool->Reload_CanonicalGraph", composition)
+        self.assertIn("m_pValtanBossTool->Reload_CanonicalGraph", composition)
         self.assertLess(
-            composition.index("m_pBossTool->Reload_CanonicalGraph"),
-            composition.index("m_pActionCompositionWorkbench->Open_Valtan"),
+            composition.index("m_pValtanBossTool->Reload_CanonicalGraph"),
+            composition.index("m_pValtanActionWorkbench->Open_Valtan"),
         )
 
     def test_native_master_parser_accepts_canonical_sequence_zero(self) -> None:

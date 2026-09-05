@@ -34,8 +34,8 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.animation_h = read("Client/Public/Animation_Tool.h")
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
-        cls.boss_h = read("Client/Public/BossTool.h")
-        cls.boss_cpp = read("Client/Private/BossTool.cpp")
+        cls.boss_h = read("Client/Public/ValtanBossTool.h")
+        cls.boss_cpp = read("Client/Private/ValtanBossTool.cpp")
         cls.backend = read(
             "Tools/ValtanPipeline/promote_valtan_animation_chains.py"
         )
@@ -164,7 +164,7 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
         self.assertIn("m_pBalanceTool->Reload_ValtanSource", poll)
         self.assertNotIn("m_pBalanceTool->Save_ValtanProduct", poll)
         self.assertIn("Reload_ValtanPatternMaster()", poll)
-        self.assertIn("m_pBossTool->Reload_CanonicalGraph", poll)
+        self.assertIn("m_pValtanBossTool->Reload_CanonicalGraph", poll)
         self.assertIn("bReloadClosureAdmitted", poll)
         self.assertIn("m_bValtanCompositionPatternCreatedPending = true", poll)
         self.assertIn("m_strValtanPatternCreateValidatedRequestSha256", poll)
@@ -174,7 +174,7 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
         )
         self.assertLess(
             poll.index("Reload_ValtanPatternMaster()"),
-            poll.index("m_pBossTool->Reload_CanonicalGraph"),
+            poll.index("m_pValtanBossTool->Reload_CanonicalGraph"),
         )
 
         consume = function_body(
@@ -190,7 +190,7 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
         )
         reload_graph = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Reload_CanonicalGraph(",
+            "bool_t Client::CValtanBossTool::Reload_CanonicalGraph(",
         )
         self.assertIn("Reload_Graph()", reload_graph)
 

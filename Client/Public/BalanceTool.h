@@ -152,7 +152,8 @@ public:
 		float radiusM = 2.25f;
 	};
 
-	CBalanceTool();
+	explicit CBalanceTool(bool loadImmediately = true);
+	bool Ensure_Initialized();
 	~CBalanceTool();
 	void Open();
 	void Open_Valtan();
@@ -205,7 +206,7 @@ public:
 		const VALTAN_COMBAT_OBJECT_RING_HIT_EDIT& hit,
 		std::string& status);
 	/* Returns the effective in-memory authoring Pattern, including every typed
-	   draft staged through this owner.  The Action Composition Workbench uses a
+	   draft staged through this owner.  The Valtan Action Workbench uses a
 	   value copy so its Details, Sequencer, and local model preview can never
 	   fall back to a stale repository-only projection while edits are pending. */
 	bool Get_ValtanPatternDraft(
@@ -305,6 +306,15 @@ public:
 	   with animation NONE; it does not introduce a second runtime stage kind.
 	   Every operation preserves existing stable Stage/Action identities and is
 	   serialized through the same canonical source transaction as field edits. */
+	// Raw clip authoring validates only the selected document candidate. It does
+	// not require a preview model or cross-owner presentation admission.
+	bool Can_AppendValtanAnimationClip(const std::string& patternId,
+		const std::string& stageId, const std::string& clip, std::uint32_t durationMs,
+		bool asNewStage, std::string& status) const;
+	bool Append_ValtanAnimationClip(const std::string& patternId,
+		const std::string& stageId, const std::string& clip, std::uint32_t durationMs,
+		bool asNewStage, VALTAN_PATTERN_VIEW& outPattern, std::string& outStageId,
+		std::string& outOccurrenceId, std::string& status);
 	bool Insert_ValtanManualStageAfter(
 		const std::string& patternId,
 		const std::string& afterStageId,
@@ -899,6 +909,8 @@ private:
 	bool m_dirty = false;
 	std::uint64_t m_valtanDraftGeneration = 1u;
 	bool m_reloadConfirmationOpen = false;
+	bool m_initializationAttempted = false;
+	bool m_initialized = false;
 	bool m_open = true;
 	bool m_focusPending = false;
 	std::string m_status;

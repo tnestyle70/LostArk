@@ -103,6 +103,8 @@
         1000,
         1000,
         1000,
+        0,
+        0,
         1000,
         1000,
         1000,
@@ -136,9 +138,7 @@
         1000,
         1000,
         1000,
-        1000,
-        1000,
-        1000,
+        0,
         1000
       ]
     },
@@ -2445,7 +2445,7 @@
               "countPerResolvedTarget": 3,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 7.5,
+                "radiusM": 9.0,
                 "startAngleDegrees": 30.0,
                 "angleStepDegrees": 120.0,
                 "mappingBasis": "PROJECT_TUNED"

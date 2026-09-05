@@ -710,7 +710,7 @@ bool_t Client::CValtanPatternFlowDocument::Validate(
 			!nodesById.contains(edge.strFromNodeId) ||
 			!nodesById.contains(edge.strToNodeId) ||
 			!outgoing.emplace(edge.strFromNodeId, &edge).second ||
-			edge.iPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+			edge.iPursuitMs < MIN_EDGE_PURSUIT_MS ||
 			edge.iPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
 			(edge.iMaxTraversals.has_value() &&
 			 (0u == *edge.iMaxTraversals ||
@@ -897,7 +897,7 @@ bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
 			transitionPursuitMs.begin(), transitionPursuitMs.end(),
 			[](const std::uint32_t pursuitMs)
 			{
-				return pursuitMs >= MIN_INTER_STEP_PURSUIT_MS &&
+				return pursuitMs >= MIN_EDGE_PURSUIT_MS &&
 					pursuitMs <= MAX_INTER_STEP_PURSUIT_MS;
 			}))
 	{
@@ -1584,12 +1584,12 @@ bool_t Client::CValtanPatternFlowDocument::Connect_CompletedEdge(
 	const VALTAN_PATTERN_FLOW_DEFINITION* current = Get_DefaultFlow();
 	if (nullptr == current || current->Edges.size() >= MAX_EDGES ||
 		current->iNextEdgeOrdinal > MAX_EDGE_ORDINAL ||
-		pursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+		pursuitMs < MIN_EDGE_PURSUIT_MS ||
 		pursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
 		0u == maximumTraversals || maximumTraversals > MAX_EDGE_TRAVERSALS)
 	{
 		outStatus =
-			"A Flow link needs 100..10000 ms pursuit and 1..255 finite back-edge traversals.";
+			"A Flow link needs 0..10000 ms pursuit and 1..255 finite back-edge traversals.";
 		return false;
 	}
 	if (nullptr == Find_Node(*current, fromNodeId) ||
@@ -1670,10 +1670,10 @@ bool_t Client::CValtanPatternFlowDocument::Set_EdgePursuitMs(
 	std::string& outStatus)
 {
 	outStatus.clear();
-	if (!m_bReady || pursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+	if (!m_bReady || pursuitMs < MIN_EDGE_PURSUIT_MS ||
 		pursuitMs > MAX_INTER_STEP_PURSUIT_MS)
 	{
-		outStatus = "Flow edge pursuit must be within 100..10000 ms.";
+		outStatus = "Flow edge pursuit must be within 0..10000 ms.";
 		return false;
 	}
 	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;

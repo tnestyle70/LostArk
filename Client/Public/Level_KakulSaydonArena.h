@@ -87,6 +87,10 @@ public:
 		return s_pActiveInstance;
 	}
 
+	// The level owns the replicated player anchor used by local authoring previews.
+	bool_t Try_Get_AuthoringPreviewPlacement(
+		float3_t& outPosition, std::string& outStatus) const;
+
 	/* The F1 stage selector submits only stable authored placement IDs through
 	   the typed Server command sink. Until an authored StageMarkers contract is
 	   loaded, the empty allow-list rejects every request instead of inventing a

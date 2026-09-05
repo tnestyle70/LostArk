@@ -107,6 +107,8 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         1000,
         1000,
         1000,
+        0,
+        0,
         1000,
         1000,
         1000,
@@ -140,9 +142,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         1000,
         1000,
         1000,
-        1000,
-        1000,
-        1000,
+        0,
         1000
     ],
 }
@@ -3625,7 +3625,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             {**expected, "mode": "ORDERED_REPEAT"},
             {**expected, "interStepPursuitMs": 0},
             {**expected, "transitionPursuitMs": [100]},
-            {**expected, "transitionPursuitMs": [100, 0]},
+            {**expected, "transitionPursuitMs": [100, 10001]},
             {**expected, "patternIds": []},
             {**expected, "patternIds": ["VALTAN_UNKNOWN"]},
             {**expected, "patternIds": ["../invalid-pattern-id"]},
@@ -4517,6 +4517,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 Path("Data/Actors/MonsterCatalog.json"),
                 Path("Data/Balance/MonsterProfiles.json"),
                 Path(pipeline.ENCOUNTER_REL),
+                Path("Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json"),
             ]
             for area_id in (
                 "LV_BER_BERNCASTLE", "LV_LUT_HEARTRB_ED",

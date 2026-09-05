@@ -588,15 +588,16 @@ namespace LostArk::Shared
 		ESTHER_CAST,
 		/* A boss owns the player's gameplay transform until it releases the
 		attachment. The Server recomputes the world position and yaw from its
-		boss-local attachment snapshot; the Client presents that transform without
-		replacing it with a model-bone composition. */
+		boss-local attachment snapshot and judges, releases and ejects from it;
+		the Client draws the body on the owner presentation's hand socket while
+		this state lasts. */
 		GRABBED,
 		END
 	};
 
 	/* Typed replicated attachment identity. This is deliberately not a model
-	bone name: Shared and Server never consume Client assets, and the Client does
-	not map it to a presentation bone. */
+	bone name: Shared and Server never consume Client assets. The Client alone
+	maps the slot to its own presentation socket. */
 	enum class PLAYER_ATTACHMENT_SLOT : std::uint8_t
 	{
 		NONE,
@@ -646,8 +647,9 @@ namespace LostArk::Shared
 		NET_ENTITY_ID iAttachmentOwnerNetEntityId = INVALID_NET_ENTITY_ID;
 		PLAYER_ATTACHMENT_SLOT eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::NONE;
 		/* Captured once in the owner's gameplay-root frame. The Server uses these
-		offsets each tick to publish the authoritative player world transform; the
-		Client consumes that position and yaw and never composes a hand bone.
+		offsets each tick to publish the authoritative player world transform that
+		judgement and release consume; Client presentation follows the owner
+		socket instead and keeps this position as its fallback.
 		Canonical zero outside GRABBED. */
 		float fAttachmentLocalOffsetX = 0.f;
 		float fAttachmentLocalOffsetY = 0.f;
@@ -1916,4 +1918,124 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message);
 	bool Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message);
+
+	// KoukuSaydon Boss Tool playback deliberately owns a separate command family
+	// from Valtan. The scope is echoed on every response so a tool can never
+	// mistake another world, placement, archetype, or data generation for Live.
+	enum class KOUKUSAYDON_PATTERN_AUDITION_OPERATION : std::uint8_t
+	{
+		PLAY_SELECTED,
+		PLAY_ALL,
+		END
+	};
+
+	enum class KOUKUSAYDON_PATTERN_AUDITION_RESULT : std::uint8_t
+	{
+		QUEUED,
+		DUPLICATE_IGNORED,
+		REJECTED_RELEASE_BUILD,
+		REJECTED_SCOPE_MISMATCH,
+		REJECTED_NO_BOSS,
+		REJECTED_BOSS_DEAD,
+		REJECTED_BUSY,
+		REJECTED_UNKNOWN_PATTERN,
+		REJECTED_NO_PRODUCT_SEQUENCE,
+		REJECTED_UNSUPPORTED_PATTERN,
+		REJECTED_REVISION_MISMATCH,
+		REJECTED_SOURCE_REVISION_MISMATCH,
+		REJECTED_STALE_REQUEST,
+		END
+	};
+
+	enum class KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE : std::uint8_t
+	{
+		PENDING,
+		ACTIVE,
+		PATTERN_COMPLETED,
+		COMPLETED,
+		ABORTED,
+		END
+	};
+
+	inline constexpr std::size_t
+		MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES = 192u;
+
+	struct KOUKUSAYDON_PATTERN_AUDITION_SCOPE final
+	{
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::string strEncounterId;
+		std::string strBossPlacementId;
+		std::string strBossArchetypeId;
+		GameplayDataRevision ExpectedGameplayRevision{};
+		std::uint32_t iExpectedSourceRevision = 0u;
+	};
+
+	struct C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_OPERATION eOperation =
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+		KOUKUSAYDON_PATTERN_AUDITION_SCOPE Scope;
+		// Required only by PLAY_SELECTED. PLAY_ALL order is resolved exclusively
+		// from the admitted Server Product sequence.
+		std::string strPatternId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
+
+	struct S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_OPERATION eOperation =
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+		KOUKUSAYDON_PATTERN_AUDITION_SCOPE Scope;
+		std::string strRequestedPatternId;
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT eResult =
+			KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH;
+		std::uint32_t iRoomAuditionEpoch = 0u;
+		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strResolvedPatternId;
+		std::uint32_t iPatternSequence = 0u;
+		std::uint32_t iStageIndex = 0u;
+		GameplayDataRevision PinnedGameplayRevision{};
+		std::uint32_t iPinnedSourceRevision = 0u;
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message);
+
+	struct S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_OPERATION eOperation =
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+		KOUKUSAYDON_PATTERN_AUDITION_SCOPE Scope;
+		std::uint32_t iRoomAuditionEpoch = 0u;
+		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strPatternId;
+		std::uint32_t iPatternSequence = 0u;
+		std::uint32_t iStageIndex = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState =
+			KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
+		GameplayDataRevision PinnedGameplayRevision{};
+		std::uint32_t iPinnedSourceRevision = 0u;
+		std::string strReason;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message);
 }

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "62dff8ed38d602e0dacc024c7c8ad0e3a9b0d496c491e5a6aa3cb3e5cf0f4a6c",
+  "compositionRevision": "598dc9c07dc1769dd62147d95471827f63618676e2f94e3e80c254fe4fe3ecf6",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "62dff8ed38d602e0dacc024c7c8ad0e3a9b0d496c491e5a6aa3cb3e5cf0f4a6c",
+    "sourceManifestId": "598dc9c07dc1769dd62147d95471827f63618676e2f94e3e80c254fe4fe3ecf6",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -1177,7 +1177,7 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "ef5cd84c0daf1b6785fa13255da1538d2eb9a9a427a035b65eec382fae77979c",
+        "sha256": "b06e68c1bbfcb59522929aa7a8bfdc0e7970050702ab1b565d097c39f2f333e1",
         "bytes": 262342
       },
       {
@@ -1187,13 +1187,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "6f20b22b394e393fadb013cf68b5b8a29b0335207ace758148b67425f316cd57",
-        "bytes": 9113
+        "sha256": "5fd5d9544ccf62df12a5899a709d30de735f0acda56f66b174dcd742839d3332",
+        "bytes": 9114
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "e35b2ab579d49d4e59a0f100cc259393172fcbe36b7ae44a4f710473c37184e9",
-        "bytes": 221156
+        "sha256": "ce5462eb268d8667b3120d79f7bd01c38a2061bc0e1c19160766031327c3381c",
+        "bytes": 221147
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -1202,8 +1202,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.presentation.json",
-        "sha256": "b48bcc90bc412b89677baa52f39bc07d7375b0b4b5597cbd576a1b0c79d69c38",
-        "bytes": 226815
+        "sha256": "e1225077391c166c1bc2a232cf95e428e0780d7a09865db7c8c02fd064886b83",
+        "bytes": 226813
       },
       {
         "path": "Data/Valtan/Valtan.worldeventsets.json",
@@ -1452,6 +1452,8 @@
             1000,
             1000,
             1000,
+            0,
+            0,
             1000,
             1000,
             1000,
@@ -1485,9 +1487,7 @@
             1000,
             1000,
             1000,
-            1000,
-            1000,
-            1000,
+            0,
             1000
           ]
         },
@@ -1868,7 +1868,7 @@
         },
         {
           "independentEffectId": "valtan.independent-effect.ghost-portal-once",
-          "displayName": "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형",
+          "displayName": "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형",
           "ownership": "SERVER_COMBAT_OBJECT",
           "spawnEventId": "event.valtan.ghost.portal-once.volley"
         }
@@ -5849,7 +5849,7 @@
                   "countPerResolvedTarget": 3,
                   "layout": {
                     "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 7.5,
+                    "radiusM": 9.0,
                     "startAngleDegrees": 30.0,
                     "angleStepDegrees": 120.0,
                     "mappingBasis": "PROJECT_TUNED"
@@ -29691,7 +29691,7 @@
                 "countPerResolvedTarget": 3,
                 "layout": {
                   "kind": "RADIAL_AROUND_BOSS",
-                  "radiusM": 7.5,
+                  "radiusM": 9.0,
                   "startAngleDegrees": 30.0,
                   "angleStepDegrees": 120.0,
                   "mappingBasis": "PROJECT_TUNED"
@@ -29784,7 +29784,7 @@
                   "countPerResolvedTarget": 3,
                   "layout": {
                     "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 7.5,
+                    "radiusM": 9.0,
                     "startAngleDegrees": 30.0,
                     "angleStepDegrees": 120.0,
                     "mappingBasis": "PROJECT_TUNED"

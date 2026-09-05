@@ -18,8 +18,8 @@ SERVICE_H = ROOT / "Client/Public/ValtanPatternFlowService.h"
 SERVICE_CPP = ROOT / "Client/Private/ValtanPatternFlowService.cpp"
 TUNING_SERVICE_H = ROOT / "Client/Public/ValtanTuningCommandService.h"
 TUNING_SERVICE_CPP = ROOT / "Client/Private/ValtanTuningCommandService.cpp"
-BOSS_TOOL_CPP = ROOT / "Client/Private/BossTool.cpp"
-BOSS_TOOL_H = ROOT / "Client/Public/BossTool.h"
+BOSS_TOOL_CPP = ROOT / "Client/Private/ValtanBossTool.cpp"
+BOSS_TOOL_H = ROOT / "Client/Public/ValtanBossTool.h"
 NETWORK_H = ROOT / "Client/Public/NetworkManager.h"
 NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
 MAIN_APP_CPP = ROOT / "Client/Private/MainApp.cpp"
@@ -205,7 +205,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
             raise ValueError("dangling")
         if edge["fromNodeId"] in outgoing:
             raise ValueError("deterministic")
-        if type(edge["pursuitMs"]) is not int or not 100 <= edge["pursuitMs"] <= 10_000:
+        if type(edge["pursuitMs"]) is not int or not 0 <= edge["pursuitMs"] <= 10_000:
             raise ValueError("edge pursuit")
         if "maxTraversals" in edge and (
             type(edge["maxTraversals"]) is not int
@@ -252,7 +252,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
         current = edge["toNodeId"]
 
 
-class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
+class ValtanValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.header = DOCUMENT_H.read_text(encoding="utf-8")
@@ -632,13 +632,13 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.boss_tool)
         start_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Start_Flow") :
-            self.boss_tool.index("bool_t Client::CBossTool::Request_RevivePlayer")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Start_Flow") :
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Request_RevivePlayer")
         ]
         self.assertIn("CValtanPatternFlowService::Get().Start(", start_body)
         self.assertNotIn("CValtanPatternAuditionService::Get().Submit(", start_body)
         self.assertNotIn("PendingPatternIds", self.boss_tool)
-        self.assertIn("void Client::CBossTool::Open_PatternFlow()", self.boss_tool)
+        self.assertIn("void Client::CValtanBossTool::Open_PatternFlow()", self.boss_tool)
         self.assertIn("m_bSelectPatternFlowTab = true", self.boss_tool)
 
     def test_flow_selection_and_hover_reuse_the_shared_pattern_identity(self) -> None:
@@ -648,8 +648,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             ("Render_FlowSelectedSlot()", "Render_LiveSummary()"),
         ):
             with self.subTest(section=start):
-                begin = self.boss_tool.index("void Client::CBossTool::" + start)
-                finish = self.boss_tool.index("void Client::CBossTool::" + end, begin)
+                begin = self.boss_tool.index("void Client::CValtanBossTool::" + start)
+                finish = self.boss_tool.index("void Client::CValtanBossTool::" + end, begin)
                 section = self.boss_tool[begin:finish]
                 self.assertIn("Find_AuditionPattern(", section)
                 self.assertIn("pPattern->strDisplayName", section)
@@ -661,8 +661,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_restart_reloads_first_canonical_slot_without_a_flow_publisher(self) -> None:
         start_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Start_Flow") :
-            self.boss_tool.index("bool_t Client::CBossTool::Request_RevivePlayer")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Start_Flow") :
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Request_RevivePlayer")
         ]
         self.assertIn("CValtanPatternFlowDocument::Validate(", start_body)
         self.assertIn("m_FlowDocument.Verify_SourceRevision", start_body)
@@ -714,8 +714,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_load_and_save_share_gameplay_canonical_owner_until_restart(self) -> None:
         reload_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Reload_FlowDocument()"):
-            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Reload_FlowDocument()"):
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Save_FlowDocument()")
         ]
         self.assertLess(
             reload_body.index("Reload_Graph()"),
@@ -727,8 +727,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("Start_Flow(", reload_body)
         self.assertNotIn("Set_ServerArenaPreset(", reload_body)
         save_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()"):
-            self.boss_tool.index("void Client::CBossTool::Synchronize_LiveSelection()")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Save_FlowDocument()"):
+            self.boss_tool.index("void Client::CValtanBossTool::Synchronize_LiveSelection()")
         ]
         self.assertLess(
             save_body.index("Set_ValtanScriptedSequenceDraft("),
@@ -753,9 +753,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
     def test_clean_flow_can_retry_product_publish_apply_without_second_save(self) -> None:
         retry = self.boss_tool[
             self.boss_tool.index(
-                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()"
+                "bool_t Client::CValtanBossTool::Retry_FlowProductPublishApply()"
             ) : self.boss_tool.index(
-                "void Client::CBossTool::Synchronize_LiveSelection()"
+                "void Client::CValtanBossTool::Synchronize_LiveSelection()"
             )
         ]
         self.assertLess(
@@ -771,8 +771,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("Save_ValtanCanonicalProduct", retry)
 
         flow_tab = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()") :
-            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternFlowTab()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternList()")
         ]
         save_button = flow_tab.index('ImGui::Button("Save Flow")')
         retry_button = flow_tab.index(
@@ -803,78 +803,78 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
         guarded_entries = (
             (
-                "bool_t Client::CBossTool::Submit_SelectedPattern()",
-                "bool_t Client::CBossTool::Restart_SelectedPattern()",
+                "bool_t Client::CValtanBossTool::Submit_SelectedPattern()",
+                "bool_t Client::CValtanBossTool::Restart_SelectedPattern()",
                 '"Pattern Play"',
             ),
             (
-                "bool_t Client::CBossTool::Restart_SelectedPattern()",
-                "bool_t Client::CBossTool::Restart_ServerPattern(",
+                "bool_t Client::CValtanBossTool::Restart_SelectedPattern()",
+                "bool_t Client::CValtanBossTool::Restart_ServerPattern(",
                 '"Pattern Restart"',
             ),
             (
-                "bool_t Client::CBossTool::Restart_ServerPattern(",
-                "bool_t Client::CBossTool::Queue_NextServerPattern(",
+                "bool_t Client::CValtanBossTool::Restart_ServerPattern(",
+                "bool_t Client::CValtanBossTool::Queue_NextServerPattern(",
                 '"Pattern Restart"',
             ),
             (
-                "bool_t Client::CBossTool::Queue_NextServerPattern(",
-                "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+                "bool_t Client::CValtanBossTool::Queue_NextServerPattern(",
+                "bool_t Client::CValtanBossTool::Can_Play_ServerPattern(",
                 '"Queue Next Pattern"',
             ),
             (
-                "bool_t Client::CBossTool::Can_Play_ServerPattern(",
-                "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+                "bool_t Client::CValtanBossTool::Can_Play_ServerPattern(",
+                "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(",
                 '"Pattern Play"',
             ),
             (
-                "bool_t Client::CBossTool::Acquire_ServerPlaybackAdmission(",
-                "bool_t Client::CBossTool::Get_ServerPatternOptions(",
+                "bool_t Client::CValtanBossTool::Acquire_ServerPlaybackAdmission(",
+                "bool_t Client::CValtanBossTool::Get_ServerPatternOptions(",
                 '"Server Pattern playback"',
             ),
             (
-                "bool_t Client::CBossTool::Play_ServerPattern(",
-                "bool_t Client::CBossTool::Get_ServerPatternStatus(",
+                "bool_t Client::CValtanBossTool::Play_ServerPattern(",
+                "bool_t Client::CValtanBossTool::Get_ServerPatternStatus(",
                 '"Pattern Play"',
             ),
             (
-                "bool_t Client::CBossTool::Set_ServerArenaPreset(",
-                "bool_t Client::CBossTool::Get_ServerArenaActiveState(",
+                "bool_t Client::CValtanBossTool::Set_ServerArenaPreset(",
+                "bool_t Client::CValtanBossTool::Get_ServerArenaActiveState(",
                 '"Arena Preset"',
             ),
             (
-                "bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()",
-                "bool_t Client::CBossTool::Start_Flow(",
+                "bool_t Client::CValtanBossTool::Preview_SelectedFlowSlotIsolated()",
+                "bool_t Client::CValtanBossTool::Start_Flow(",
                 '"Flow Isolated Preview"',
             ),
             (
-                "bool_t Client::CBossTool::Start_FlowAtSlot(",
-                "bool_t Client::CBossTool::Restart_SavedFlow()",
+                "bool_t Client::CValtanBossTool::Start_FlowAtSlot(",
+                "bool_t Client::CValtanBossTool::Restart_SavedFlow()",
                 '"Restart Saved Flow"',
             ),
             (
-                "bool_t Client::CBossTool::Restart_SavedFlow()",
-                "bool_t Client::CBossTool::Request_RevivePlayer(",
+                "bool_t Client::CValtanBossTool::Restart_SavedFlow()",
+                "bool_t Client::CValtanBossTool::Request_RevivePlayer(",
                 '"Restart Saved Flow"',
             ),
             (
-                "bool_t Client::CBossTool::Reload_FlowDocument()",
-                "bool_t Client::CBossTool::Save_FlowDocument()",
+                "bool_t Client::CValtanBossTool::Reload_FlowDocument()",
+                "bool_t Client::CValtanBossTool::Save_FlowDocument()",
                 '"Flow Load/Discard"',
             ),
             (
-                "bool_t Client::CBossTool::Save_FlowDocument()",
-                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()",
+                "bool_t Client::CValtanBossTool::Save_FlowDocument()",
+                "bool_t Client::CValtanBossTool::Retry_FlowProductPublishApply()",
                 '"Flow Save"',
             ),
             (
-                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()",
-                "void Client::CBossTool::Synchronize_LiveSelection()",
+                "bool_t Client::CValtanBossTool::Retry_FlowProductPublishApply()",
+                "void Client::CValtanBossTool::Synchronize_LiveSelection()",
                 '"Flow Publish Retry"',
             ),
             (
-                "bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()",
-                "void Client::CBossTool::Render_ConnectionSummary(",
+                "bool_t Client::CValtanBossTool::Save_SelectedPatternRingAuthoring()",
+                "void Client::CValtanBossTool::Render_ConnectionSummary(",
                 '"Canonical Ring Save"',
             ),
         )
@@ -887,8 +887,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertLess(guard, body.index("return false;", guard))
 
         flow_tab = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()") :
-            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternFlowTab()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternList()")
         ]
         self.assertIn("bAuthoringTransactionBlocked", flow_tab)
         self.assertIn("Has_ValtanAuthoringTransactionBarrier", flow_tab)
@@ -902,8 +902,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         )
 
         action_bar = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_ActionBar()") :
-            self.boss_tool.index("void Client::CBossTool::Normalize_CurrentFlowSelection()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_ActionBar()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Normalize_CurrentFlowSelection()")
         ]
         self.assertIn("Has_ValtanAuthoringTransactionBarrier", action_bar)
         self.assertIn("!bAuthoringTransactionBlocked", action_bar)
@@ -913,24 +913,24 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn('ImGui::Button("Stop After Current")', action_bar)
 
         next_card = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_NextPatternCard()") :
-            self.boss_tool.index("void Client::CBossTool::Render_NextPatternPicker()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_NextPatternCard()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_NextPatternPicker()")
         ]
         self.assertIn("bAuthoringTransactionBlocked", next_card)
         self.assertIn("!bAuthoringTransactionBlocked", next_card)
         self.assertIn('ImGui::Button("Cancel Reservation")', next_card)
         self.assertIn('ImGui::Button("Retry Same Next Command")', next_card)
         next_picker = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_NextPatternPicker()") :
-            self.boss_tool.index("void Client::CBossTool::Render_FlowGraphEditor()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_NextPatternPicker()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_FlowGraphEditor()")
         ]
         self.assertIn("Has_ValtanAuthoringTransactionBarrier", next_picker)
         ring_editor = self.boss_tool[
             self.boss_tool.index(
-                "bool_t Client::CBossTool::Render_SelectedPatternRingAuthoring("
+                "bool_t Client::CValtanBossTool::Render_SelectedPatternRingAuthoring("
             ) :
             self.boss_tool.index(
-                "bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()"
+                "bool_t Client::CValtanBossTool::Save_SelectedPatternRingAuthoring()"
             )
         ]
         self.assertIn("bAuthoringTransactionBlocked", ring_editor)
@@ -939,17 +939,17 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             ring_editor,
         )
         selected_flow = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_FlowSelectedSlot()") :
-            self.boss_tool.index("void Client::CBossTool::Render_ActionBar()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_FlowSelectedSlot()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_ActionBar()")
         ]
         self.assertIn("Stop_AfterCurrent(Status)", selected_flow)
         self.assertNotIn("Is_RuntimePublishMutationBlocked(", selected_flow)
 
     def test_failed_canonical_reload_keeps_display_rows_but_revokes_mutation(self) -> None:
-        header = (ROOT / "Client/Public/BossTool.h").read_text(encoding="utf-8")
+        header = (ROOT / "Client/Public/ValtanBossTool.h").read_text(encoding="utf-8")
         reload_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Reload_Graph()") :
-            self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Reload_Graph()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Refresh_PresentationFreshness(")
         ]
         self.assertIn('#include "ValtanViewAdmission.h"', header)
         self.assertIn("m_eGraphAdmission", header)
@@ -970,29 +970,29 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         )
 
         gate = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Can_MutateCanonicalGraph(") :
-            self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Can_MutateCanonicalGraph(") :
+            self.boss_tool.index("void Client::CValtanBossTool::Refresh_PresentationFreshness(")
         ]
         self.assertIn("Can_MutateValtanView(m_eGraphAdmission)", gate)
         self.assertIn("display-only", gate)
         for start, end, marker in (
-            ("bool_t Client::CBossTool::Can_Play_ServerPattern(",
-             "bool_t Client::CBossTool::Get_ServerPatternOptions(",
+            ("bool_t Client::CValtanBossTool::Can_Play_ServerPattern(",
+             "bool_t Client::CValtanBossTool::Get_ServerPatternOptions(",
              "Can_MutateCanonicalGraph"),
-            ("bool_t Client::CBossTool::Set_ServerArenaPreset(",
-             "bool_t Client::CBossTool::Get_ServerArenaActiveState(",
+            ("bool_t Client::CValtanBossTool::Set_ServerArenaPreset(",
+             "bool_t Client::CValtanBossTool::Get_ServerArenaActiveState(",
              "Can_MutateCanonicalGraph"),
-            ("bool_t Client::CBossTool::Start_Flow(",
-             "bool_t Client::CBossTool::Request_RevivePlayer(",
+            ("bool_t Client::CValtanBossTool::Start_Flow(",
+             "bool_t Client::CValtanBossTool::Request_RevivePlayer(",
              "Acquire_ServerPlaybackAdmission"),
-            ("bool_t Client::CBossTool::Save_FlowDocument()",
-             "void Client::CBossTool::Synchronize_LiveSelection()",
+            ("bool_t Client::CValtanBossTool::Save_FlowDocument()",
+             "void Client::CValtanBossTool::Synchronize_LiveSelection()",
              "Can_MutateCanonicalGraph"),
-            ("void Client::CBossTool::Render_NextPatternPicker()",
-             "void Client::CBossTool::Render_FlowSlotList()",
+            ("void Client::CValtanBossTool::Render_NextPatternPicker()",
+             "void Client::CValtanBossTool::Render_FlowSlotList()",
              "Queue_NextServerPattern"),
-            ("void Client::CBossTool::Render_FlowSelectedSlot()",
-             "void Client::CBossTool::Render_ActionBar()",
+            ("void Client::CValtanBossTool::Render_FlowSelectedSlot()",
+             "void Client::CValtanBossTool::Render_ActionBar()",
              "Can_MutateCanonicalGraph"),
         ):
             body = self.boss_tool[
@@ -1015,8 +1015,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("Publish_SavedPatternFlow", self.boss_tool)
         self.assertNotIn("Apply_SavedFlow", self.boss_tool)
         flow_tab = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()"):
-            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternFlowTab()"):
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternList()")
         ]
         self.assertIn("Has_LegacyLinearProjection(", flow_tab)
         self.assertIn("Reload_FlowDocument()", flow_tab)
@@ -1026,8 +1026,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, flow_tab)
         restart_flow = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Restart_SavedFlow()"):
-            self.boss_tool.index("bool_t Client::CBossTool::Request_RevivePlayer(")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Restart_SavedFlow()"):
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Request_RevivePlayer(")
         ]
         self.assertIn(
             "Try_GetLatestGameplaySourceServerActiveRevision(", restart_flow
@@ -1042,8 +1042,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         )
         self.assertIn("&SavedCandidateRevision", restart_flow)
         start_at_slot = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Start_FlowAtSlot(") :
-            self.boss_tool.index("bool_t Client::CBossTool::Restart_SavedFlow()")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Start_FlowAtSlot(") :
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Restart_SavedFlow()")
         ]
         self.assertLess(
             start_at_slot.index("ExpectedRevision != *pRequiredDefinitionRevision"),
@@ -1051,14 +1051,14 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         )
         self.assertIn("no Flow command was submitted", start_at_slot)
         restart_body = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Restart_SelectedPattern()"):
-            self.boss_tool.index("bool_t Client::CBossTool::Can_Play_ServerPattern(")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Restart_SelectedPattern()"):
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Can_Play_ServerPattern(")
         ]
         self.assertIn("Restart_ActivePattern(", restart_body)
 
         action_bar = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_ActionBar()"):
-            self.boss_tool.index("void Client::CBossTool::Normalize_CurrentFlowSelection()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_ActionBar()"):
+            self.boss_tool.index("void Client::CValtanBossTool::Normalize_CurrentFlowSelection()")
         ]
         self.assertIn("Restart_SelectedPattern()", action_bar)
         self.assertNotIn("Restart_SavedSinglePatternFreshArena", self.boss_tool)
@@ -1140,9 +1140,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.boss_tool)
         selected_slot = self.boss_tool[
             self.boss_tool.index(
-                "void Client::CBossTool::Render_FlowSelectedSlot()"
+                "void Client::CValtanBossTool::Render_FlowSelectedSlot()"
             ) : self.boss_tool.index(
-                "void Client::CBossTool::Render_LiveSummary()"
+                "void Client::CValtanBossTool::Render_LiveSummary()"
             )
         ]
         for marker in (
@@ -1155,9 +1155,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, selected_slot)
         graph_editor = self.boss_tool[
             self.boss_tool.index(
-                "void Client::CBossTool::Render_FlowGraphEditor()"
+                "void Client::CValtanBossTool::Render_FlowGraphEditor()"
             ) : self.boss_tool.index(
-                "bool_t Client::CBossTool::Render_AddPatternNodePopup()"
+                "bool_t Client::CValtanBossTool::Render_AddPatternNodePopup()"
             )
         ]
         self.assertIn("if (Render_AddPatternNodePopup())", graph_editor)
@@ -1182,16 +1182,16 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertNotIn(removed_jargon, graph_editor)
         add_popup = self.boss_tool[
             self.boss_tool.index(
-                "bool_t Client::CBossTool::Render_AddPatternNodePopup()"
+                "bool_t Client::CValtanBossTool::Render_AddPatternNodePopup()"
             ) : self.boss_tool.index(
-                "void Client::CBossTool::Render_FlowSlotList()"
+                "void Client::CValtanBossTool::Render_FlowSlotList()"
             )
         ]
         self.assertIn("bDocumentMutated = true", add_popup)
         self.assertIn("return bDocumentMutated", add_popup)
         save = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()") :
-            self.boss_tool.index("void Client::CBossTool::Synchronize_LiveSelection()")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Save_FlowDocument()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Synchronize_LiveSelection()")
         ]
         self.assertIn("m_pBalanceTool->Set_ValtanScriptedSequenceDraft", save)
         self.assertIn("m_pBalanceTool->Save_ValtanCanonicalProduct", save)
@@ -1323,7 +1323,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             start_body.index('Reset_ValtanAuditionState(*boss, resetTick, resetStatus)'),
         )
         self.assertIn(
-            'Boss Tool Restart rejects a reordered saved Flow without mutation, '
+            'Valtan Boss Tool Restart rejects a reordered saved Flow without mutation, '
             'then fresh-resets and starts exact Server-active scriptedSequence Pattern 01',
             self.server_tests,
         )
@@ -1377,8 +1377,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.server_room)
         for marker in (
             "Run a saved slot-two suffix through a targetless IDLE retry and duplicate ordered patterns with preserved between-slot state, terminal hold, and correlated lifecycle",
-            "Stop a running Boss Tool flow after its current occurrence and reject a stale flow epoch without starting the next slot",
-            "Reject Boss Tool pattern-flow start and stop commands in a Release Server without staging room state",
+            "Stop a running Valtan Boss Tool flow after its current occurrence and reject a stale flow epoch without starting the next slot",
+            "Reject Valtan Boss Tool pattern-flow start and stop commands in a Release Server without staging room state",
         ):
             self.assertIn(marker, self.server_tests)
         for marker in (
@@ -1405,8 +1405,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
     def test_boss_verification_separates_inventory_from_saved_current_order(self) -> None:
         boss_header = BOSS_TOOL_H.read_text(encoding="utf-8")
         verification = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_BossVerificationTab()") :
-            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_BossVerificationTab()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternFlowTab()")
         ]
         for marker in (
             'ImGui::BeginTabItem("All Patterns")',
@@ -1426,8 +1426,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("m_Baseline.Flows", baseline_accessor)
         self.assertNotIn("m_Draft.Flows", baseline_accessor)
         current_list = self.boss_tool[
-            self.boss_tool.index("void Client::CBossTool::Render_CurrentPatternList()") :
-            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+            self.boss_tool.index("void Client::CValtanBossTool::Render_CurrentPatternList()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Render_PatternList()")
         ]
         for marker in (
             "m_FlowDocument.Get_SavedDefaultFlow()",
@@ -1442,8 +1442,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
 
     def test_canonical_save_refreshes_adapter_but_active_run_does_not_lock_authoring(self) -> None:
         save = self.boss_tool[
-            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()") :
-            self.boss_tool.index("void Client::CBossTool::Synchronize_LiveSelection()")
+            self.boss_tool.index("bool_t Client::CValtanBossTool::Save_FlowDocument()") :
+            self.boss_tool.index("void Client::CValtanBossTool::Synchronize_LiveSelection()")
         ]
         self.assertLess(
             save.index("m_pBalanceTool->Set_ValtanScriptedSequenceDraft("),
@@ -1465,14 +1465,14 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("exact saved Product revision is Server-active", save)
 
         for start, end in (
-            ("void Client::CBossTool::Render_FlowGraphEditor()",
-             "bool_t Client::CBossTool::Render_AddPatternNodePopup()"),
-            ("bool_t Client::CBossTool::Render_AddPatternNodePopup()",
-             "void Client::CBossTool::Render_FlowSlotList()"),
-            ("void Client::CBossTool::Render_FlowSlotList()",
-             "void Client::CBossTool::Render_AddPatternPopup()"),
-            ("void Client::CBossTool::Render_AddPatternPopup()",
-             "void Client::CBossTool::Render_FlowSelectedSlot()"),
+            ("void Client::CValtanBossTool::Render_FlowGraphEditor()",
+             "bool_t Client::CValtanBossTool::Render_AddPatternNodePopup()"),
+            ("bool_t Client::CValtanBossTool::Render_AddPatternNodePopup()",
+             "void Client::CValtanBossTool::Render_FlowSlotList()"),
+            ("void Client::CValtanBossTool::Render_FlowSlotList()",
+             "void Client::CValtanBossTool::Render_AddPatternPopup()"),
+            ("void Client::CValtanBossTool::Render_AddPatternPopup()",
+             "void Client::CValtanBossTool::Render_FlowSelectedSlot()"),
         ):
             body = self.boss_tool[
                 self.boss_tool.index(start) : self.boss_tool.index(end)
@@ -1483,7 +1483,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             )
 
         selected_start = self.boss_tool.index(
-            "void Client::CBossTool::Render_FlowSelectedSlot()"
+            "void Client::CValtanBossTool::Render_FlowSelectedSlot()"
         )
         selected_prefix = self.boss_tool[
             selected_start : self.boss_tool.index(

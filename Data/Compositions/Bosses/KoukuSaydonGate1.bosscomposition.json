@@ -1,0 +1,102 @@
+{
+  "schema": "lostark.boss-composition",
+  "formatVersion": 1,
+  "compositionId": "boss.composition.kakulsaydon",
+  "status": "REFERENCE_ONLY",
+  "revision": 2,
+  "displayName": "KoukuSaydon Gate 1 Boss Composition",
+  "bossArchetypeId": null,
+  "encounterId": null,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "sourceDocuments": [
+    {
+      "role": "ACTION_REFERENCE_MN_RPCZ_00",
+      "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json"
+    },
+    {
+      "role": "ACTION_BINDING_MN_RPCZ_00",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.actionbindings.json"
+    },
+    {
+      "role": "PATTERN_BINDING_MN_RPCZ_00",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json"
+    },
+    {
+      "role": "ACTION_REFERENCE_MN_RPCT_05",
+      "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json"
+    },
+    {
+      "role": "ACTION_BINDING_MN_RPCT_05",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json"
+    },
+    {
+      "role": "PATTERN_BINDING_MN_RPCT_05",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.patternbindings.json"
+    },
+    {
+      "role": "ACTION_REFERENCE_MN_RPCT_06",
+      "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_06.actionreference.json"
+    },
+    {
+      "role": "ACTION_BINDING_MN_RPCT_06",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.actionbindings.json"
+    },
+    {
+      "role": "PATTERN_BINDING_MN_RPCT_06",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.patternbindings.json"
+    },
+    {
+      "role": "ACTION_REFERENCE_MN_RPCT_07",
+      "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_07.actionreference.json"
+    },
+    {
+      "role": "ACTION_BINDING_MN_RPCT_07",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.actionbindings.json"
+    },
+    {
+      "role": "PATTERN_BINDING_MN_RPCT_07",
+      "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.patternbindings.json"
+    }
+  ],
+  "coverage": {
+    "kind": "KOUKU_SAYDON_ACTION_REFERENCE",
+    "expectedProfileCount": 4,
+    "expectedActionCount": 349,
+    "expectedIdentitySha256": "bde26be6321bd2d27c314cb0fe3619138d92079a037eb7c4e655078833b9ddf7",
+    "profiles": [
+      {
+        "profileId": "MN_RPCZ_00",
+        "actionReferencePath": "Data/Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json",
+        "actionBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.actionbindings.json",
+        "patternBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json",
+        "expectedActionCount": 85,
+        "expectedReferenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745"
+      },
+      {
+        "profileId": "MN_RPCT_05",
+        "actionReferencePath": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json",
+        "actionBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
+        "patternBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.patternbindings.json",
+        "expectedActionCount": 115,
+        "expectedReferenceRevision": "86692c07ed139cb9dd6957b079c4e1ac763e7a02d65ca2d8393b85d4df7959ae"
+      },
+      {
+        "profileId": "MN_RPCT_06",
+        "actionReferencePath": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_06.actionreference.json",
+        "actionBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.actionbindings.json",
+        "patternBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.patternbindings.json",
+        "expectedActionCount": 47,
+        "expectedReferenceRevision": "1a9f70ab5bd4892c034edd1d9368a1346e1ed5395738eaf248ceef97b08b7061"
+      },
+      {
+        "profileId": "MN_RPCT_07",
+        "actionReferencePath": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_07.actionreference.json",
+        "actionBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.actionbindings.json",
+        "patternBindingPath": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.patternbindings.json",
+        "expectedActionCount": 102,
+        "expectedReferenceRevision": "6c04775d1325013e0ae83ba1dd33edcda5da3e765ff9698c538617a30cd7c98c"
+      }
+    ]
+  },
+  "patterns": []
+}

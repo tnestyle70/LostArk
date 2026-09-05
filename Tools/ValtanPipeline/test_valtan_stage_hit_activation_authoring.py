@@ -220,7 +220,7 @@ class ValtanStageHitActivationAuthoringTests(unittest.TestCase):
         for token in (
             "if (stage.bHasHitActivation)",
             '"Timing ACTIVE_WINDOW | start %u ms | lifetime %u ms | per target ONCE"',
-            '"Collider geometry, timing, response, and damage are written only through Action Composition Workbench typed Details."',
+            '"Collider geometry, timing, response, and damage are written only through Valtan Action Workbench typed Details."',
         ):
             self.assertIn(token, panel)
         for bypass in (

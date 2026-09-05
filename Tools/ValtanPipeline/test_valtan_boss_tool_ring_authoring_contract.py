@@ -16,8 +16,8 @@ sys.path.insert(0, str(ROOT / "Tools/ValtanPipeline"))
 import valtan_tuning_pipeline as pipeline  # noqa: E402
 
 
-BOSS_CPP = ROOT / "Client/Private/BossTool.cpp"
-BOSS_H = ROOT / "Client/Public/BossTool.h"
+BOSS_CPP = ROOT / "Client/Private/ValtanBossTool.cpp"
+BOSS_H = ROOT / "Client/Public/ValtanBossTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
@@ -39,7 +39,7 @@ def function_body(source: str, signature: str) -> str:
     raise AssertionError(f"unterminated function: {signature}")
 
 
-class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
+class ValtanValtanBossToolRingAuthoringContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.docs = pipeline.load_pipeline_documents(ROOT)
@@ -159,7 +159,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
     def test_boss_slots_use_shared_typed_draft_and_canonical_save(self) -> None:
         render = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Render_SelectedPatternRingAuthoring(",
+            "bool_t Client::CValtanBossTool::Render_SelectedPatternRingAuthoring(",
         )
         for marker in (
             "ImGui::InputDouble",
@@ -179,7 +179,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
 
         selected = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_SelectedPattern()",
+            "void Client::CValtanBossTool::Render_SelectedPattern()",
         )
         self.assertRegex(
             selected,
@@ -196,7 +196,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
 
         save = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()",
+            "bool_t Client::CValtanBossTool::Save_SelectedPatternRingAuthoring()",
         )
         for marker in (
             "Can_MutateCanonicalGraph",
@@ -231,7 +231,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
     def test_live_reveal_is_exact_and_never_overwrites_manual_selection(self) -> None:
         sync = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Synchronize_LiveSelection()",
+            "void Client::CValtanBossTool::Synchronize_LiveSelection()",
         )
         self.assertIn("Find_AuditionPattern(Boss.strPatternId)", sync)
         self.assertIn("Find_LiveStage(*pPattern)", sync)
@@ -239,7 +239,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
         self.assertNotIn("m_strSelectedPatternId =", sync)
         self.assertNotIn("m_strSelectedStageId =", sync)
         listing = function_body(
-            self.boss_cpp, "void Client::CBossTool::Render_PatternList()"
+            self.boss_cpp, "void Client::CValtanBossTool::Render_PatternList()"
         )
         self.assertIn('Label += "  [LIVE]"', listing)
         self.assertIn("ImGui::SetScrollHereY(0.5f)", listing)

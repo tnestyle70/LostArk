@@ -4,47 +4,47 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "882fab7a7abcb906a6289bd1e60867fef9fc9917717d506618f4b53f3a2bc90d",
+    "sourceManifestId": "c3c3c5bacc6be7664f3d88b7260f1eaa2c364e3db3e267bebbbf06830649755a",
     "files": [
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_05.actionbindings.json",
-        "sha256": "67fe0d633a0949ea0b62e1057d73ab9ba208edc970d01f46df605a88d42ab00b",
-        "bytes": 259
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
+        "sha256": "0ed11cf2860e93f63492a2df2daf8dcb180c443a2302743d425003df178cdc16",
+        "bytes": 266
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_05.patternbindings.json",
-        "sha256": "83fd13454f7146d067e4221fb974ff32c75d83383d69be72539003d6b4c1f078",
-        "bytes": 288
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.patternbindings.json",
+        "sha256": "18d28035c4c865fc3555da69cae25605d47a9c52ecede9f548bfb835344be497",
+        "bytes": 295
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_06.actionbindings.json",
-        "sha256": "df79ca73877423801fe37734ab51978203b07d6bc2f4acec07a0b3016ad0f76b",
-        "bytes": 259
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.actionbindings.json",
+        "sha256": "7d0ad2ebc733a8d47198f7720722e59b2fe63022c4472b87043c0a0b965f0467",
+        "bytes": 266
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_06.patternbindings.json",
-        "sha256": "7873c010f0efe2064a3959a271130a9fb797c9d486896805021bb2b10c56828a",
-        "bytes": 288
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_06.patternbindings.json",
+        "sha256": "405a48c5b88e57cf07c705ba87ebd1600eb311f4703cec9d9f134473ea55979c",
+        "bytes": 295
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_07.actionbindings.json",
-        "sha256": "9e5029903da68d8ad98b022fd794458d0d317b9a9004538311725652c1ca6796",
-        "bytes": 259
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.actionbindings.json",
+        "sha256": "b97f3586a9a7627b366a536eb232f3b9cfa4ab4cfefc167e3f10a6789c5b3bc1",
+        "bytes": 266
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_07.patternbindings.json",
-        "sha256": "4a88ee7d018edb12d71cf606590908ea8973dd771c83ab02faf344f1e531a16d",
-        "bytes": 288
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_07.patternbindings.json",
+        "sha256": "a85e127d592a9ba3ee88e3dc75b3efed4a99bf11f4ef8c6d9a3ac7f8e0e61969",
+        "bytes": 295
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCZ_00.actionbindings.json",
-        "sha256": "2257bf8cf2ad25fc3a3d123f706dc60c0992f4809d1517c76aee264b4a9f4e8c",
-        "bytes": 259
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.actionbindings.json",
+        "sha256": "42a3062b08280ff8d74b41f714f804186c7c179a0be13f1b98c1680879d8f777",
+        "bytes": 266
       },
       {
-        "path": "Data/Animation/Authored/KakulSaydon/MN_RPCZ_00.patternbindings.json",
-        "sha256": "76c12c3a6c9ceb1ecc3281833bee1a8eaa9472a8cd6bba4c79afb6831aec6723",
-        "bytes": 288
+        "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json",
+        "sha256": "ea6cbb1468745798683ffdd93d7a2ae53fd2218c7358cd49f3dab02103531584",
+        "bytes": 295
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -77,29 +77,29 @@
         "bytes": 369362
       },
       {
-        "path": "Data/Animation/Reference/KakulSaydon/MN_RPCT_05.actionreference.json",
-        "sha256": "8f01ee66321053d5b089e541a797aa3c06440541f52390499af99afc8eb6c953",
-        "bytes": 1391717
+        "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json",
+        "sha256": "349a1fa5c81bd5eedb986d55869537be241ceccdf9c96f47d812fb074eeeb8f4",
+        "bytes": 1391724
       },
       {
-        "path": "Data/Animation/Reference/KakulSaydon/MN_RPCT_06.actionreference.json",
-        "sha256": "cec3a2362cde06e1cbc5e46a750fe1e779140de4a692cbf3c08c3d78e7d39c0f",
-        "bytes": 100530
+        "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_06.actionreference.json",
+        "sha256": "4829c5971dbbf2df817190afde7f161fc1839f04b3ae4151d93e81a23f1c3028",
+        "bytes": 100537
       },
       {
-        "path": "Data/Animation/Reference/KakulSaydon/MN_RPCT_07.actionreference.json",
-        "sha256": "e78cb65d92e431280aae254b6ac497ae010352696335c039d392eebebac1c3df",
-        "bytes": 382782
+        "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCT_07.actionreference.json",
+        "sha256": "13d6f40ee03ff907d2d6f065c3bd7618c562fdbebec2c8f35ad2442bced07679",
+        "bytes": 382789
       },
       {
-        "path": "Data/Animation/Reference/KakulSaydon/MN_RPCZ_00.actionreference.json",
-        "sha256": "322b805ad044480cd024d94e6f8eb17a743644be01eba0190cb43de01dcec30a",
-        "bytes": 365398
+        "path": "Data/Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json",
+        "sha256": "eb60de440b346076ef83ddfbe0391e25a9b888710a6e14fc01f177f8339c578b",
+        "bytes": 365405
       },
       {
-        "path": "Data/Compositions/Bosses/KakulSaydon.bosscomposition.json",
-        "sha256": "09bb7bb8bc936413fa204243b0e42d2041c50aee87de480cfb59d72e4e84b50e",
-        "bytes": 4357
+        "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
+        "sha256": "a2f9f586470836d0f4494959718e773c7e854caf4545e78663d45f5270415811",
+        "bytes": 4371
       },
       {
         "path": "Data/Compositions/Bosses/Valtan.bosscomposition.json",
@@ -107,9 +107,9 @@
         "bytes": 4341
       },
       {
-        "path": "Data/Compositions/Sequences/KakulSaydonArena.sequencer.json",
-        "sha256": "50aab791c843a80da57d0b4344ed90f9fc323fa165921a777cdf1f81e1dddf6c",
-        "bytes": 1308
+        "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
+        "sha256": "83382577e289bb295bd80747d9f5ade84c13ca94de4449cd9bc392c71c58dc4a",
+        "bytes": 1325
       },
       {
         "path": "Data/Compositions/Sequences/ValtanArena.sequencer.json",
@@ -1243,7 +1243,7 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "ef5cd84c0daf1b6785fa13255da1538d2eb9a9a427a035b65eec382fae77979c",
+        "sha256": "b06e68c1bbfcb59522929aa7a8bfdc0e7970050702ab1b565d097c39f2f333e1",
         "bytes": 262342
       },
       {
@@ -1258,8 +1258,8 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "a04c1ae7059887c556b19744fc7a74baf6ac4afc96e7aba16979a7a928190b66",
-        "bytes": 11264
+        "sha256": "4dedb6a15067fed43dbdba1e21e41cebc8eae887d9e4d0c330a9a45ca2992448",
+        "bytes": 11385
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
@@ -1278,13 +1278,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "6f20b22b394e393fadb013cf68b5b8a29b0335207ace758148b67425f316cd57",
-        "bytes": 9113
+        "sha256": "5fd5d9544ccf62df12a5899a709d30de735f0acda56f66b174dcd742839d3332",
+        "bytes": 9114
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "e35b2ab579d49d4e59a0f100cc259393172fcbe36b7ae44a4f710473c37184e9",
-        "bytes": 221156
+        "sha256": "ce5462eb268d8667b3120d79f7bd01c38a2061bc0e1c19160766031327c3381c",
+        "bytes": 221147
       },
       {
         "path": "Data/Valtan/Valtan.legacy-compatibility.json",
@@ -1293,8 +1293,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.presentation.json",
-        "sha256": "b48bcc90bc412b89677baa52f39bc07d7375b0b4b5597cbd576a1b0c79d69c38",
-        "bytes": 226815
+        "sha256": "e1225077391c166c1bc2a232cf95e428e0780d7a09865db7c8c02fd064886b83",
+        "bytes": 226813
       },
       {
         "path": "Data/Valtan/Valtan.worldeventsets.json",
@@ -1305,19 +1305,19 @@
   },
   "products": [
     {
-      "path": "Bosses/KakulSaydon.bosscomposition.json",
-      "sha256": "d2b97e98736f77dd38c4aa674039248fb62b7286b56bfbda851de649570725a0",
-      "bytes": 2752718
+      "path": "Bosses/KoukuSaydonGate1.bosscomposition.json",
+      "sha256": "315cb3f1f74d795a5aadc79c9c99724720e0f9a8783b438483fdaed4c1e57e93",
+      "bytes": 2752821
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "6a630e089390f4b3996f1a68f9fa3c3b66d208c24401c1e8c3bc996532f6e227",
-      "bytes": 3759003
+      "sha256": "547ad85d54b4312686182ef339cb99c3d48c1b35b6e09a2b25dd224074f65797",
+      "bytes": 3758992
     },
     {
-      "path": "Sequences/KakulSaydonArena.sequencer.json",
-      "sha256": "ca309bdb49840a4fec557a4fff4475716178e9ca9147b4d5ee23c477b6f54612",
-      "bytes": 2123
+      "path": "Sequences/KoukuSaydonArena.sequencer.json",
+      "sha256": "2f0b6afbb63df350579ea6c03ec87116c764484d5d869e5b0fc0aae6d34f363a",
+      "bytes": 2140
     },
     {
       "path": "Sequences/ValtanArena.sequencer.json",
