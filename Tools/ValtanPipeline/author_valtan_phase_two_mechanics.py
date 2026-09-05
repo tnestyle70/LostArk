@@ -1892,7 +1892,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                 "shape": {"kind": "CIRCLE", "outerRadiusM": 100.0},
                 "schedule": {
                     "kind": "INTERVAL", "count": 1,
-                    "firstOffsetMs": 2900, "intervalMs": 0,
+                    "firstOffsetMs": 1000, "intervalMs": 0,
                 },
                 "serverDamageProfileId":
                     "damage.valtan.omnidirectional-wipe-130",
@@ -2608,7 +2608,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     ]
     presentation["independentEffects"].append({
         "independentEffectId": independent_id,
-        "displayName": "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형",
+        "displayName": "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형",
         "ownership": "SERVER_COMBAT_OBJECT",
         "spawnEventId": "event.valtan.ghost.portal-once.volley",
     })

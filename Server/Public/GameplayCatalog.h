@@ -989,6 +989,10 @@ namespace LostArk::Server
 		consumes it instead of intro/health-bar/rotation selection. */
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* Find_BossPatternSequence(
 			const std::string& encounterId) const;
+		/* The authored composition counter is intentionally separate from the
+		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
+		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
+			const std::string& encounterId) const noexcept;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
@@ -1071,6 +1075,7 @@ namespace LostArk::Server
 			m_BossPatternRotations;
 		std::unordered_map<std::string, BOSS_PATTERN_SEQUENCE_DEFINITION>
 			m_BossPatternSequences;
+		std::uint32_t m_iKoukuSaydonProductSourceRevision = 0u;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused regression oracles for the independent Action Composition Workbench.
+"""Focused regression oracles for the independent Valtan Action Workbench.
 
 These tests deliberately combine physical authoring fixtures with narrow source
 contracts.  The fixture checks prove the indexed animation/pattern data is real;
@@ -136,7 +136,7 @@ def fit_hold_chain_to_stage(
     return fitted
 
 
-class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
+class ValtanActionWorkbenchRegressionOracles(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
@@ -144,16 +144,16 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         cls.valtan_view_admission_h = read(
             "Client/Public/ValtanViewAdmission.h"
         )
-        cls.workbench_h = read("Client/Public/ActionCompositionWorkbench.h")
-        cls.workbench_cpp = read("Client/Private/ActionCompositionWorkbench.cpp")
+        cls.workbench_h = read("Client/Public/ValtanActionWorkbench.h")
+        cls.workbench_cpp = read("Client/Private/ValtanActionWorkbench.cpp")
         cls.blueprint_cpp = read(
-            "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+            "Client/Private/ValtanActionWorkbench_Blueprint.cpp"
         )
         cls.timeline_h = read("Client/Public/ActionPresentationTimeline.h")
         cls.timeline_cpp = read("Client/Private/ActionPresentationTimeline.cpp")
         cls.balance_h = read("Client/Public/BalanceTool.h")
         cls.balance_cpp = read("Client/Private/BalanceTool.cpp")
-        cls.boss_cpp = read("Client/Private/BossTool.cpp")
+        cls.boss_cpp = read("Client/Private/ValtanBossTool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.effect_v2_runtime_cpp = read("Client/Private/EffectV2_Runtime.cpp")
@@ -194,15 +194,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_sequence_intake_routes_to_creator_then_back_to_created_pattern(self) -> None:
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         patterns = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+            "void Client::CValtanActionWorkbench::Render_PatternsWindow(",
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         intake = browser.index("Stage_ValtanCompositionIntakeSequence(")
         route_to_creator = browser.index("m_iRequestedPatternTab = 1", intake)
@@ -219,7 +219,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_transient_canonical_writer_lock_recovers_without_reopening(self) -> None:
         reload_body = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         for token in (
             "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;",
@@ -237,7 +237,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         render_body = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         self.assertIn("m_bCanonicalReloadRetryPending", render_body)
         self.assertIn("m_dNextCanonicalReloadRetrySeconds", render_body)
@@ -246,15 +246,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_sequencer_owns_a_deferred_pattern_save_without_stale_frame_views(self) -> None:
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
         self.assertIn("m_bSavePatternRequested = true", timeline)
@@ -283,11 +283,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_pattern_navigation_uses_deferred_save_discard_cancel_gate(self) -> None:
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Browser(",
+            "void Client::CValtanActionWorkbench::Render_Browser(",
         )
         request = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Request_PatternSelection(",
+            "void Client::CValtanActionWorkbench::Request_PatternSelection(",
         )
         modal = function_body(
             self.workbench_cpp,
@@ -295,7 +295,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         resolve = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Resolve_PendingPatternSelection()",
+            "void Client::CValtanActionWorkbench::Resolve_PendingPatternSelection()",
         )
         discard = function_body(
             self.workbench_cpp,
@@ -303,7 +303,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
 
         for token in (
@@ -345,7 +345,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_bSelectAfterPendingSave = true", resolve)
         completion = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+            "void Client::CValtanActionWorkbench::Update_SaveState()",
         )
         self.assertIn(
             "PENDING_PATTERN_SELECTION_DECISION::SELECT", completion
@@ -418,14 +418,14 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         for signature in (
             "Validate_ManualStageTopologySoundDependencies(",
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         ):
             body = function_body(self.workbench_cpp, signature)
             self.assertIn(
                 "Collect_CanonicalPatternsForDependencyValidation()", body
             )
 
-    def test_native_model_window_admission_precedes_every_animation_mutation(self) -> None:
+    def test_native_metadata_window_admission_precedes_every_animation_mutation(self) -> None:
         for token in (
             "Resolve_ValtanCompositionNativeClipDurationMs",
             "Validate_ValtanCompositionAnimationStageMutation",
@@ -433,6 +433,23 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         ):
             self.assertIn(token, self.animation_h)
             self.assertIn(token, self.animation_cpp)
+        # Save must work after previewing another boss or the ghost rig. It
+        # reads Valtan's physical metadata and retains native timing precision.
+        ensure = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Ensure_ValtanCompositionNativeResources(",
+        )
+        self.assertIn("Read_CompositionAnimationResources(", ensure)
+        self.assertIn('resource.strTargetAssetName == "Valtan"', ensure)
+        for forbidden in ("Resolve_Model(", "Resolve_Boss(", "Select_TargetAsset("):
+            self.assertNotIn(forbidden, ensure)
+        inventory = function_body(
+            self.animation_cpp, "bool_t BuildStrictValtanNativeClipInventory(",
+        )
+        self.assertIn('resource.strTargetAssetName != "Valtan"', inventory)
+        self.assertIn("resource.fDurationTicks, resource.fTicksPerSecond", inventory)
+        self.assertNotIn("Get_NumAnimations", inventory)
+        self.assertNotIn("Resolve_ValtanCompositionNativeModel", self.animation_cpp)
         self.assertIn("Validate_AuthoredSourceWindow", self.timeline_h)
         strict = function_body(
             self.timeline_cpp,
@@ -469,7 +486,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         save = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         )
         self.assertLess(
             save.index("Validate_ValtanCompositionAnimationGraphMutations"),
@@ -483,7 +500,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_extracted_hold_chain_fits_the_existing_stage_with_exact_slots(self) -> None:
         apply = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
+            "bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage(",
         )
         self.assertLess(
             apply.index('"WAIT" == Stage.strSequenceRole'),
@@ -572,7 +589,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         workbench_reload = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_AnimationSequences()",
+            "bool_t Client::CValtanActionWorkbench::Reload_AnimationSequences()",
         )
         for body in (loader, getter, workbench_reload):
             self.assertNotIn("Resolve_Model()", body)
@@ -652,19 +669,19 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_animation_occurrence_timing_is_a_typed_sequencer_edit(self) -> None:
         apply_timing = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Apply_AnimationOccurrenceTiming(",
+            "bool_t Client::CValtanActionWorkbench::Apply_AnimationOccurrenceTiming(",
         )
         inline_editor = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SelectedAnimationTiming(",
+            "void Client::CValtanActionWorkbench::Render_SelectedAnimationTiming(",
         )
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         build_timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         wrapper = function_body(
             self.workbench_cpp,
@@ -742,31 +759,31 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_stale_preserved_renders_only_the_pinned_canonical_generation(self) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         build_timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         gameplay_details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         animation_details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_AnimationStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_AnimationStageDetails(",
         )
         inline_timing = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SelectedAnimationTiming(",
+            "void Client::CValtanActionWorkbench::Render_SelectedAnimationTiming(",
         )
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Browser(",
+            "void Client::CValtanActionWorkbench::Render_Browser(",
         )
 
         effective_ready = render.index("bool_t bEffectivePatternReady =")
@@ -811,11 +828,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_product_display_and_full_source_join_have_separate_admission(self) -> None:
         reload_body = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
 
         product_load = reload_body.index("CValtanPatternTree::Load_WhileAdmitted")
@@ -927,7 +944,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_sound_owner_reload_discard_and_main_save_require_fresh_admission(self) -> None:
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         sound_start = details.index(
             "if (DETAIL_OWNER::SOUND == m_eDetailOwner)"
@@ -970,12 +987,12 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         auto_retry_guard = toolbar.index(
             "m_LastPatternSoundAutoApplyRevision != ExpectedServerRevision"
@@ -994,7 +1011,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_dirty_reload_preserves_current_admission_and_draft(self) -> None:
         reload_body = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         dirty_start = reload_body.index(
             "if (bBalanceDraftDirty && bHasDisplaySnapshot)"
@@ -1054,7 +1071,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         self.assertIn("const bool launchDirectionValid", setter)
         self.assertIn(
@@ -1167,7 +1184,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         self.assertNotIn("Save_ValtanProduct", poll)
         for prerequisite in (
@@ -1196,7 +1213,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_one_save_commits_pattern_and_sound_before_local_consumer_reload(self) -> None:
         save = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         )
         animation_validation = save.index(
             "Validate_ValtanCompositionAnimationGraphMutations"
@@ -1208,7 +1225,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         product_save = save.index("Begin_ValtanCompositionSave")
         complete = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+            "void Client::CValtanActionWorkbench::Update_SaveState()",
         )
         sound_accept = complete.index("Accept_PendingSaveOwners")
         consume = complete.index("Consume_ValtanSaveJobReceipt")
@@ -1242,15 +1259,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_workbench_frame_gate_is_memory_only_and_gap_is_typed(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         observe = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Observe_ServerActivePatternRevision(",
+            "bool_t Client::CValtanBossTool::Observe_ServerActivePatternRevision(",
         )
         exact = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+            "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(",
         )
         self.assertIn("Observe_ServerActivePatternRevision(", toolbar)
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
@@ -1263,7 +1280,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         gap = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SelectedStageGapControl(",
+            "void Client::CValtanActionWorkbench::Render_SelectedStageGapControl(",
         )
         for token in (
             '"Selected Stage Gap (ms)"',
@@ -1276,14 +1293,14 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.assertIn(token, gap)
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn("Render_SelectedStageGapControl", timeline)
 
     def test_workbench_is_six_independent_unconstrained_domain_windows(self) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         renderers = (
             "Render_PatternsWindow",
@@ -1307,7 +1324,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
                 else self.workbench_cpp
             )
             body = function_body(
-                source, f"Client::CActionCompositionWorkbench::{renderer}("
+                source, f"Client::CValtanActionWorkbench::{renderer}("
             )
             self.assertIn("ImGui::Begin(", body, renderer)
             self.assertIn("ImGui::End();", body, renderer)
@@ -1344,7 +1361,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
                     hard_constraint,
                     function_body(
                         source,
-                        f"Client::CActionCompositionWorkbench::{renderer}(",
+                        f"Client::CValtanActionWorkbench::{renderer}(",
                     ),
                 )
         self.assertIn("ImGuiCond_FirstUseEver", self.workbench_cpp)
@@ -1353,11 +1370,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_lane_plus_opens_one_large_typed_resource_picker(self) -> None:
         request = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Request_LaneAuthoring(",
+            "void Client::CValtanActionWorkbench::Request_LaneAuthoring(",
         )
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         for token in (
             "m_bResourcesWindowExpandRequested = true",
@@ -1386,15 +1403,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_effect_v2_group_authoring_is_boss_scoped_and_local_preview_owned(self) -> None:
         reload_effects = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects(",
+            "void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects(",
         )
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         refresh = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::\nRefresh_EffectV2LocalPreviewAfterMutation(",
+            "void Client::CValtanActionWorkbench::\nRefresh_EffectV2LocalPreviewAfterMutation(",
         )
         self.assertGreaterEqual(
             reload_effects.count("IsBossValtanEffectV2Resource("), 2
@@ -1441,11 +1458,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_effect_v2_group_play_stages_ready_snapshot_and_reports_failures(self) -> None:
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         play = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(",
+            "bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(",
         )
         direct_group_play = function_body(
             self.effect_tool_v2_cpp,
@@ -1510,23 +1527,23 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_effect_v2_timeline_boxes_are_typed_large_and_mutable(self) -> None:
         build = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         pack = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows(",
+            "void Client::CValtanActionWorkbench::Pack_TimelineSubrows(",
         )
         duplicate = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Duplicate_SelectedTimelineBox(",
         )
         delete = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Delete_SelectedTimelineBox(",
         )
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
 
         for token in (
@@ -1558,7 +1575,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_boss_pattern_graph_is_queue_only_and_generation_cached(self) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         sequencer = render.index("Render_SequencerWindow(")
         graph = render.index("Render_BossPatternWindow(")
@@ -1570,7 +1587,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         window = function_body(
             self.blueprint_cpp,
-            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
         )
         self.assertIn("m_bSavePatternRequested = true", window)
         self.assertNotIn("Save_Publish_Reload", window)
@@ -1591,7 +1608,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_boss_pattern_selection_reuses_details_and_preview_only_routes(self) -> None:
         window = function_body(
             self.blueprint_cpp,
-            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
         )
         self.assertIn("Select_Stage(*pPattern, Stage", window)
         self.assertIn('Stage.strStageId + "/branch/" + Edge.strOutcome', window)
@@ -1616,15 +1633,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_boss_pattern_window_is_opt_in_with_explicit_entry_points(self) -> None:
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Browser(",
+            "void Client::CValtanActionWorkbench::Render_Browser(",
         )
         menu = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_WindowMenu()",
+            "void Client::CValtanActionWorkbench::Render_WindowMenu()",
         )
         open_valtan = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Open_Valtan()",
+            "bool_t Client::CValtanActionWorkbench::Open_Valtan()",
         )
         self.assertIn('ImGui::Button("Open Boss Pattern")', browser)
         self.assertIn('ImGui::MenuItem("Boss Pattern"', menu)
@@ -1660,7 +1677,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         lane_order = re.search(
             r"TIMELINE_LANE_ORDER\s*=\s*\{(?P<body>.*?)\};",
@@ -1685,7 +1702,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         lane_labels = function_body(
             self.workbench_cpp,
-            "const char_t* Client::CActionCompositionWorkbench::Lane_Label(",
+            "const char_t* Client::CValtanActionWorkbench::Lane_Label(",
         )
         for label in (
             "Stage",
@@ -1709,14 +1726,14 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_timeline_cache_build_is_generation_driven_not_per_frame(self) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         self.assertNotIn("Build_Timeline(", render)
         self.assertIn("Ensure_TimelineCache(", render)
 
         cache = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Ensure_TimelineCache(",
+            "void Client::CValtanActionWorkbench::Ensure_TimelineCache(",
         )
         self.assertIn("Get_ValtanDraftGeneration", cache)
         self.assertIn("m_strTimelineCachePatternId", cache)
@@ -1730,15 +1747,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_large_animation_catalog_is_lazy_and_v2_timeline_catalog_is_eager(self) -> None:
         open_valtan = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Open_Valtan()",
+            "bool_t Client::CValtanActionWorkbench::Open_Valtan()",
         )
         reload_canonical = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         for body in (open_valtan, reload_canonical, render):
             self.assertNotIn("Reload_AnimationSequences(", body)
@@ -1754,7 +1771,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         sequence_browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         automatic_animation = sequence_browser.index(
             "if (!m_bAnimationSequenceLoadAttempted)"
@@ -1772,7 +1789,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(refresh_animation, second_animation_load)
 
         resources_signature = (
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow("
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow("
         )
         self.assertIn(resources_signature, self.workbench_cpp)
         resources = function_body(self.workbench_cpp, resources_signature)
@@ -1803,7 +1820,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(refresh_effect, second_effect_load)
         effect_reload = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()",
+            "void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()",
         )
         self.assertIn(
             "m_bSemanticValtanEffectLoadAttempted = true", effect_reload
@@ -1812,20 +1829,20 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_workbench_next_and_flow_routes_use_the_existing_server_owners(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         queue = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Queue_NextServerPattern(",
+            "bool_t Client::CValtanBossTool::Queue_NextServerPattern(",
         )
         open_flow = function_body(
             self.main_cpp,
-            "bool_t CMainApp::Debug_OpenBossPatternFlow(",
+            "bool_t CMainApp::Debug_OpenValtanPatternFlow(",
         )
         self.assertIn('ImGui::Button("Queue Next"', toolbar)
         self.assertIn("Queue_NextServerPattern", toolbar)
         self.assertIn('ImGui::Button("Pattern Flow"', toolbar)
-        self.assertIn("Debug_OpenBossPatternFlow", toolbar)
+        self.assertIn("Debug_OpenValtanPatternFlow", toolbar)
 
         self.assertIn("Acquire_ServerPlaybackAdmission", queue)
         self.assertIn("Can_QueueNextPattern", queue)
@@ -1837,30 +1854,30 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertIn("m_bRepeat = false", queue)
 
-        self.assertIn("EnsureDebugTool(DEBUG_TOOL::BOSS)", open_flow)
+        self.assertIn("EnsureDebugTool(DEBUG_TOOL::VALTAN_BOSS)", open_flow)
         self.assertIn("Open_PatternFlow", open_flow)
         self.assertNotIn("CValtanPatternFlowDocument", toolbar)
 
     def test_server_replay_shell_is_not_dispatched_and_sequencer_owns_save(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         window_menu = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_WindowMenu()",
+            "void Client::CValtanActionWorkbench::Render_WindowMenu()",
         )
         open_valtan = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Open_Valtan()",
+            "bool_t Client::CValtanActionWorkbench::Open_Valtan()",
         )
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
 
         self.assertNotIn('ImGui::Button("Reload Canonical"', toolbar)
@@ -1874,7 +1891,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_bSavePatternRequested = true", timeline)
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         self.assertNotIn("Render_SessionWindow(", render)
         self.assertNotIn('ImGui::MenuItem("Server Replay"', window_menu)
@@ -1888,11 +1905,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_session_keeps_actions_visible_and_hides_raw_diagnostics_by_default(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         linked = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
+            "void Client::CValtanActionWorkbench::Render_SemanticLinkedRows(",
         )
 
         for action_table in (
@@ -1905,7 +1922,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("Saved data is newer than this Valtan arena.", toolbar)
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
         self.assertIn("bHasUnsavedChanges", timeline)
@@ -1923,7 +1940,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_manual_pattern_stage_role_is_a_typed_detail_not_an_id_rewrite(self) -> None:
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         setter = function_body(
             self.balance_cpp,
@@ -1942,7 +1959,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_timeline_trim_never_rebuilds_the_vector_being_iterated(self) -> None:
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn(
             "const std::vector<TIMELINE_ITEM>& TimelineItems = m_TimelineItems",
@@ -1965,15 +1982,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_lane_add_routes_to_typed_details_and_lazy_resource_domains(self) -> None:
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         request = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Request_LaneAuthoring(",
+            "void Client::CValtanActionWorkbench::Request_LaneAuthoring(",
         )
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         self.assertIn('ImGui::SmallButton("+##LaneAuthoring")', timeline)
         self.assertIn("Request_LaneAuthoring(eLane", timeline)
@@ -2000,7 +2017,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_pattern_browser_is_the_complete_play_inventory_projection(self) -> None:
         collect = function_body(
             self.workbench_cpp,
-            "Client::CActionCompositionWorkbench::Collect_Patterns() const",
+            "Client::CValtanActionWorkbench::Collect_Patterns() const",
         )
         self.assertEqual(
             2,
@@ -2019,11 +2036,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_selection_is_local_and_complete_play_is_an_explicit_command(self) -> None:
         select_pattern = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Select_Pattern(",
+            "void Client::CValtanActionWorkbench::Select_Pattern(",
         )
         select_stage = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Select_Stage(",
+            "void Client::CValtanActionWorkbench::Select_Stage(",
         )
         for selection in (select_pattern, select_stage):
             self.assertNotIn("Debug_SelectCompletePlayPattern", selection)
@@ -2035,7 +2052,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         toolbar = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
         )
         command_edge = toolbar.index('ImGui::Button("Play on Server"')
         select_edge = toolbar.index("Debug_SelectCompletePlayPattern", command_edge)
@@ -2044,7 +2061,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(select_edge, play_edge)
         sequence_browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         resource_command = sequence_browser.index(
             '"Play Owning Saved Active Revision on Server Valtan"'
@@ -2072,13 +2089,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         animation_reload = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_AnimationSequences()",
+            "bool_t Client::CValtanActionWorkbench::Reload_AnimationSequences()",
         )
         self.assertIn("m_FilteredAnimationSequenceIndices.clear()", animation_reload)
         self.assertIn("m_bAnimationSequenceFilterDirty = true", animation_reload)
         animation = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         animation_gate = animation.index("if (m_bAnimationSequenceFilterDirty")
         animation_filter = animation.index("ContainsInsensitive", animation_gate)
@@ -2133,13 +2150,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         effect_reload = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()",
+            "void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()",
         )
         self.assertIn("m_FilteredEffectAssetIndices.clear()", effect_reload)
         self.assertIn("m_bEffectFilterDirty = true", effect_reload)
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         effect_tab = resources.index('"Effect", nullptr,')
         effect_gate = resources.index("if (m_bEffectFilterDirty", effect_tab)
@@ -2165,7 +2182,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     ) -> None:
         index = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Ensure_SourceSequenceOwnerIndex()",
+            "void Client::CValtanActionWorkbench::Ensure_SourceSequenceOwnerIndex()",
         )
         generation_gate = index.index(
             "m_iSourceSequenceOwnerIndexGeneration =="
@@ -2180,13 +2197,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         lookup = function_body(
             self.workbench_cpp,
-            "Client::CActionCompositionWorkbench::Find_SourceSequenceOwners(",
+            "Client::CValtanActionWorkbench::Find_SourceSequenceOwners(",
         )
         self.assertIn("std::lower_bound", lookup)
 
         animation = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         self.assertIn("Ensure_SourceSequenceOwnerIndex()", animation)
         self.assertIn("Find_SourceSequenceOwners(", animation)
@@ -2195,7 +2212,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         reload_canonical = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         self.assertEqual(2, reload_canonical.count("++m_iCanonicalDisplayGeneration"))
         self.assertEqual(2, reload_canonical.count("Invalidate_SourceSequenceOwnerIndex()"))
@@ -2236,7 +2253,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     ) -> None:
         animation = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         gate_start = animation.index("const bool_t bCanPlayServerPattern")
         gate_end = animation.index("ImGui::BeginDisabled", gate_start)
@@ -2251,7 +2268,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_timeline_clocks_are_bounded_and_edits_commit_at_interaction_edges(self) -> None:
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertRegex(
             self.workbench_cpp,
@@ -2275,7 +2292,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         pattern_duration = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_PatternDurationControl(",
+            "void Client::CValtanActionWorkbench::Render_PatternDurationControl(",
         )
         self.assertIn("Pattern Total Duration (read only)", pattern_duration)
         self.assertIn("the total never creates a hidden WAIT", pattern_duration)
@@ -2287,7 +2304,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         stage_gap = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SelectedStageGapControl(",
+            "void Client::CValtanActionWorkbench::Render_SelectedStageGapControl(",
         )
         gap_input = stage_gap.index("ImGui::InputInt(")
         gap_commit_edge = stage_gap.index(
@@ -2323,7 +2340,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_pattern_duration_is_a_read_only_derived_branch_sum(self) -> None:
         duration = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_PatternDurationControl(",
+            "void Client::CValtanActionWorkbench::Render_PatternDurationControl(",
         )
         self.assertIn("Pattern Total Duration (read only)", duration)
         self.assertIn("Pattern.Stages.size()", duration)
@@ -2335,7 +2352,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     ) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         local_gate_at = render.index("const bool_t bLocalPreviewAdmitted")
         mutation_gate_at = render.index("const bool_t bMutationAdmitted")
@@ -2350,7 +2367,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         play_at = timeline.index(
             'ImGui::Button(Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play")'
@@ -2363,7 +2380,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         preview = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Preview(",
+            "void Client::CValtanActionWorkbench::Render_Preview(",
         )
         self.assertIn("!bLocalPreviewAdmitted", preview)
         self.assertIn(
@@ -2373,7 +2390,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         sequence_browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         self.assertIn("bServerRevisionAdmitted && bSoundRuntimeReady", sequence_browser)
         self.assertNotIn("bLocalPreviewAdmitted", sequence_browser)
@@ -2381,7 +2398,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_sequence_action_strip_stays_above_a_bounded_resource_tree(self) -> None:
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+            "void Client::CValtanActionWorkbench::Render_SequenceBrowser(",
         )
         selected_at = browser.index('ImGui::SeparatorText("Selected Sequence")')
         actions = [
@@ -2412,15 +2429,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     ) -> None:
         resources = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+            "void Client::CValtanActionWorkbench::Render_ResourcesWindow(",
         )
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         menu = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_WindowMenu()",
+            "void Client::CValtanActionWorkbench::Render_WindowMenu()",
         )
         developer_tools = function_body(
             self.main_cpp,
@@ -2432,10 +2449,10 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn('ImGui::MenuItem("Server Replay"', menu)
         self.assertEqual(
             1,
-            developer_tools.count('toolCell("Boss Tool", DEBUG_TOOL::BOSS)'),
+            developer_tools.count('toolCell("Valtan Boss Tool", DEBUG_TOOL::VALTAN_BOSS)'),
         )
-        self.assertIn('{ DEBUG_TOOL::BOSS, "Boss Tool" }', developer_tools)
-        self.assertNotIn("m_pBossTool->Render", developer_tools)
+        self.assertIn('{ DEBUG_TOOL::VALTAN_BOSS, "Valtan Boss Tool" }', developer_tools)
+        self.assertNotIn("m_pValtanBossTool->Render", developer_tools)
         self.assertIn("RenderCompletePlayControls()", developer_tools)
 
     def test_valtan_preview_staging_releases_only_its_own_dirty_lock(self) -> None:
@@ -2577,7 +2594,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     ) -> None:
         apply_sequence = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
+            "bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage(",
         )
         typed_call = apply_sequence.index(
             "SetValtanStageDraftWithSoundDependencyAdmission("
@@ -2607,15 +2624,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_logic_branch_selection_identity_does_not_embed_mutable_target(self) -> None:
         select_stage = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Select_Stage(",
+            "void Client::CValtanActionWorkbench::Select_Stage(",
         )
         build_timeline = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         self.assertIn("NormalizeBranchStableId(", select_stage)
         self.assertIn(
@@ -2633,15 +2650,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def test_post_commit_publish_retries_exact_receipt_without_rewriting_source(self) -> None:
         mark_committed = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Mark_SourceCommitted(",
+            "void Client::CValtanActionWorkbench::Mark_SourceCommitted(",
         )
         publish = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Publish_AfterSave()",
+            "void Client::CValtanActionWorkbench::Publish_AfterSave()",
         )
         update = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+            "void Client::CValtanActionWorkbench::Update_SaveState()",
         )
         self.assertIn("strExactSourceRevision", mark_committed)
         self.assertNotIn("Get_ValtanPublishSourceRevision", mark_committed)
@@ -2665,7 +2682,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         post_publish = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Update_PostSaveState()",
+            "void Client::CValtanActionWorkbench::Update_PostSaveState()",
         )
         self.assertIn("&JobRevision", post_publish)
         self.assertIn("JobRevision != m_strPostSaveRevision", post_publish)

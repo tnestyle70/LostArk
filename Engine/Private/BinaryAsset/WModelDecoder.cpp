@@ -9,6 +9,7 @@
 #include "Winters/WSkeletonReader.h"
 
 #include <cstring>
+#include <cmath>
 #include <algorithm>
 #include <fstream>
 #include <unordered_set>
@@ -347,6 +348,142 @@ bool_t CWModelDecoder::CanDecode(const filesystem::path& meshPath) const
 	return HasMagic(probe, WINTERS_MAGIC) &&
 		(HasMagic(probe + sizeof(FILE_HEADER), WMESH_MAGIC) ||
 			HasMagic(probe + sizeof(FILE_HEADER), WMODEL_MAGIC));
+}
+
+bool_t CWModelDecoder::Read_AnimationCatalog(const filesystem::path& modelPath,
+	vector<MODEL_ANIMATION_CATALOG_ENTRY>& outEntries, string& outStatus)
+{
+	try
+	{
+		ifstream stream(modelPath, ios::binary | ios::ate);
+		const streamoff fileSize = stream ? static_cast<streamoff>(stream.tellg()) : -1;
+		if (fileSize < static_cast<streamoff>(sizeof(FILE_HEADER) + sizeof(MODEL_META_HEADER)))
+		{
+			outStatus = "Could not open the WModel package or its header is truncated.";
+			return false;
+		}
+		const auto ReadAt = [&](uint64_t offset, void* pDestination, size_t size) -> bool_t
+		{
+			if (offset > static_cast<uint64_t>(fileSize) ||
+				size > static_cast<uint64_t>(fileSize) - offset)
+				return false;
+			stream.seekg(static_cast<streamoff>(offset), ios::beg);
+			return static_cast<bool_t>(stream.read(
+				reinterpret_cast<char*>(pDestination), static_cast<streamsize>(size)));
+		};
+
+		FILE_HEADER fileHeader{};
+		if (!ReadAt(0, &fileHeader, sizeof(fileHeader)) ||
+			!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
+			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
+			fileHeader.versionMinor > WINT_GEOMETRY_VERSION_MINOR ||
+			0 != fileHeader.flags ||
+			fileHeader.contentSize != static_cast<uint64_t>(fileSize) - sizeof(FILE_HEADER))
+		{
+			outStatus = "Invalid WINT WModel file header.";
+			return false;
+		}
+		MODEL_META_HEADER modelHeader{};
+		if (!ReadAt(sizeof(FILE_HEADER), &modelHeader, sizeof(modelHeader)) ||
+			!HasMagic(modelHeader.magic, WMODEL_MAGIC) ||
+			modelHeader.sectionCount < 2 || modelHeader.sectionCount > MAX_MODEL_SECTIONS ||
+			modelHeader.animationCount > modelHeader.sectionCount)
+		{
+			outStatus = "Invalid WMOD metadata.";
+			return false;
+		}
+		const uint64_t tableBytes = static_cast<uint64_t>(modelHeader.sectionCount) *
+			sizeof(MODEL_SECTION_DESC);
+		if (tableBytes > fileHeader.contentSize - sizeof(MODEL_META_HEADER))
+		{
+			outStatus = "WMOD section table is truncated.";
+			return false;
+		}
+		vector<MODEL_SECTION_DESC> descriptors(modelHeader.sectionCount);
+		if (!ReadAt(sizeof(FILE_HEADER) + sizeof(MODEL_META_HEADER),
+			descriptors.data(), static_cast<size_t>(tableBytes)))
+		{
+			outStatus = "Could not read the WMOD section table.";
+			return false;
+		}
+		vector<const MODEL_SECTION_DESC*> animations;
+		animations.reserve(modelHeader.animationCount);
+		for (const MODEL_SECTION_DESC& section : descriptors)
+		{
+			if (section.offset > fileHeader.contentSize ||
+				section.size > fileHeader.contentSize - section.offset)
+			{
+				outStatus = "A WMOD section points outside the package.";
+				return false;
+			}
+			const MODEL_SECTION_TYPE type = static_cast<MODEL_SECTION_TYPE>(section.type);
+			if (type < MODEL_SECTION_TYPE::MESH || type > MODEL_SECTION_TYPE::ANIMATION)
+			{
+				outStatus = "WMOD contains an unknown section type.";
+				return false;
+			}
+			if (MODEL_SECTION_TYPE::ANIMATION == type)
+				animations.push_back(&section);
+		}
+		if (animations.size() != modelHeader.animationCount)
+		{
+			outStatus = "WMOD animation count does not match its section table.";
+			return false;
+		}
+		// Keep the same section order and truncated-name disambiguation as Decode.
+		sort(animations.begin(), animations.end(), [](const auto* pLeft, const auto* pRight)
+			{ return pLeft->index < pRight->index; });
+		unordered_set<string> animationNames;
+		vector<MODEL_ANIMATION_CATALOG_ENTRY> stagedEntries;
+		stagedEntries.reserve(animations.size());
+		for (const MODEL_SECTION_DESC* pAnimation : animations)
+		{
+			MODEL_SECTION_VIEW nameSource{};
+			nameSource.index = pAnimation->index;
+			nameSource.name = ReadFixedName(pAnimation->name, sizeof(pAnimation->name));
+			const string animationName = MakeUniqueAnimationName(nameSource, animationNames);
+			if (animationName.empty())
+			{
+				outStatus = "WMOD contains an unnamed animation clip.";
+				return false;
+			}
+			FILE_HEADER animationFileHeader{};
+			ANIMATION_META_HEADER animationHeader{};
+			const uint64_t animationOffset = sizeof(FILE_HEADER) + pAnimation->offset;
+			if (pAnimation->size < sizeof(FILE_HEADER) + sizeof(ANIMATION_META_HEADER) ||
+				!ReadAt(animationOffset, &animationFileHeader, sizeof(animationFileHeader)) ||
+				!HasMagic(animationFileHeader.magic, WINTERS_MAGIC) ||
+				WINT_VERSION_MAJOR != animationFileHeader.versionMajor ||
+				0 != animationFileHeader.flags ||
+				animationFileHeader.contentSize < sizeof(ANIMATION_META_HEADER) ||
+				animationFileHeader.contentSize > pAnimation->size - sizeof(FILE_HEADER))
+			{
+				outStatus = "Invalid WINT animation file header: " + animationName;
+				return false;
+			}
+			if (!ReadAt(animationOffset + sizeof(FILE_HEADER), &animationHeader, sizeof(animationHeader)) ||
+				!HasMagic(animationHeader.magic, WANIM_MAGIC) ||
+				animationHeader.channelCount > MAX_ANIMATION_CHANNELS ||
+				animationHeader.totalKeyCount > MAX_ANIMATION_KEYS ||
+				animationHeader.eventCount > MAX_ANIMATION_EVENTS ||
+				!isfinite(animationHeader.durationTicks) || animationHeader.durationTicks <= 0.f ||
+				!isfinite(animationHeader.ticksPerSecond) || animationHeader.ticksPerSecond <= 0.f)
+			{
+				outStatus = "Invalid WANM metadata: " + animationName;
+				return false;
+			}
+			stagedEntries.push_back(MODEL_ANIMATION_CATALOG_ENTRY{
+				animationName, animationHeader.durationTicks, animationHeader.ticksPerSecond });
+		}
+		outEntries = move(stagedEntries);
+		outStatus.clear();
+		return true;
+	}
+	catch (const exception& exception)
+	{
+		outStatus = exception.what();
+		return false;
+	}
 }
 
 bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,

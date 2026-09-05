@@ -10,10 +10,10 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
-WORKBENCH_H = ROOT / "Client/Public/ActionCompositionWorkbench.h"
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_H = ROOT / "Client/Public/ValtanActionWorkbench.h"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 WORKBENCH_BLUEPRINT_CPP = (
-    ROOT / "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+    ROOT / "Client/Private/ValtanActionWorkbench_Blueprint.cpp"
 )
 
 
@@ -304,7 +304,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         )
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         self.assertIn("Open Boss Pattern Structure", details)
         self.assertNotIn("Insert_ValtanManualStageAfter", details)
@@ -336,7 +336,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("stage->bSuppressAnimation = false", setter)
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         self.assertIn('const bool_t bWaitStage = "WAIT" == Stage.strSequenceRole', details)
         self.assertIn('"WINDUP" == Stage.strStageKind', details)
@@ -349,7 +349,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("m_strSelectedStageId = Stage.strStageId", details)
         sequence = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
+            "bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage(",
         )
         self.assertIn("Replace Stage Slots", self.workbench_cpp)
         self.assertIn("Draft.animationSlots = std::move(Slots)", sequence)
@@ -370,14 +370,14 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
     def test_draft_only_stage_selection_survives_the_next_render_frame(self) -> None:
         normalize = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Normalize_Selection()",
+            "void Client::CValtanActionWorkbench::Normalize_Selection()",
         )
         self.assertNotIn("nullptr == Find_SelectedStage(pPattern)", normalize)
         self.assertIn("m_strSelectedStageId.empty()", normalize)
 
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         effective = render.index(
             "const VALTAN_PATTERN_VIEW* const pPattern = bEffectivePatternReady"
@@ -395,13 +395,13 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         patterns_window = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+            "void Client::CValtanActionWorkbench::Render_PatternsWindow(",
         )
         self.assertIn("Render_Browser(pPattern)", patterns_window)
 
         browser = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Browser(",
+            "void Client::CValtanActionWorkbench::Render_Browser(",
         )
         self.assertIn("pEffectiveSelectedPattern", browser)
         self.assertIn("pDisplayPattern->Stages", browser)
@@ -409,7 +409,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         details = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_Details(",
+            "void Client::CValtanActionWorkbench::Render_Details(",
         )
         self.assertIn('"Selected Stage##CompositionStableStage"', details)
         self.assertIn("StageSequenceRoleLabel(Candidate)", details)
@@ -422,7 +422,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
     def test_boss_graph_generation_belongs_to_the_immutable_pattern_view(self) -> None:
         render = function_body(
             self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Render()",
         )
         generation = render.index(
             "const std::uint64_t iPatternViewDraftGeneration"
@@ -438,7 +438,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         window = function_body(
             self.workbench_blueprint_cpp,
-            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
         )
         self.assertNotIn("Get_ValtanDraftGeneration", window)
         self.assertIn(
@@ -462,7 +462,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         window = function_body(
             self.workbench_blueprint_cpp,
-            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
         )
         self.assertIn('ImGui::SmallButton("Reset Route")', window)
         self.assertIn("bool_t bCanInteractSnapshot", window)

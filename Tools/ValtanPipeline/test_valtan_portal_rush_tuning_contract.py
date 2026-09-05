@@ -504,7 +504,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             encoding="utf-8-sig"
         )
         composition = (
-            self.root / "Client/Private/ActionCompositionWorkbench.cpp"
+            self.root / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8-sig")
         balance = (self.root / "Client/Private/BalanceTool.cpp").read_text(
             encoding="utf-8-sig"

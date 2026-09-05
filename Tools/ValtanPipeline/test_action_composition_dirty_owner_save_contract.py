@@ -17,17 +17,17 @@ class ActionCompositionDirtyOwnerSaveContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workbench = (
-            REPOSITORY_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            REPOSITORY_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8")
         cls.save = _function_body(
             cls.workbench,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar",
         )
         cls.accept = _function_body(
             cls.workbench,
-            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
-            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            "bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(",
+            "bool_t Client::CValtanActionWorkbench::Reload_AfterPendingSave(",
         )
 
     def test_dirty_snapshot_selects_the_only_save_participants(self) -> None:
@@ -43,7 +43,7 @@ class ActionCompositionDirtyOwnerSaveContractTests(unittest.TestCase):
         no_change = self.save.index(
             "if (!bSavePattern && !bSaveSound && !bSaveEffectV2)"
         )
-        pipeline_owner = self.save.index("if (nullptr == m_pBossTool)")
+        pipeline_owner = self.save.index("if (nullptr == m_pValtanBossTool)")
         self.assertLess(no_change, pipeline_owner)
 
     def test_pattern_and_sound_validators_are_owner_scoped(self) -> None:
@@ -96,8 +96,8 @@ class ActionCompositionDirtyOwnerSaveContractTests(unittest.TestCase):
     def test_clean_sound_owner_is_not_polled_or_reported_as_pinned(self) -> None:
         timeline = _function_body(
             self.workbench,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
-            "void Client::CActionCompositionWorkbench::Render_TimelineGrid(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_TimelineGrid(",
         )
         self.assertIn(
             "bool_t bSoundOwnerCommitAdmitted = !m_bPatternSoundDependencyDirty",

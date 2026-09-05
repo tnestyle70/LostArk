@@ -147,6 +147,7 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 		break;
 
 	case WORLD_ID::VALTAN_ARENA:
+	case WORLD_ID::KAKULSAYDON_ARENA:
 		staged.eCharacterClass = g_SelectedClass.value_or(
 			CHARACTER_CLASS_ID::LANCE_MASTER);
 		if (g_CreatedNickname.has_value())

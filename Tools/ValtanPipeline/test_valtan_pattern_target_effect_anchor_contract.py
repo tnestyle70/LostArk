@@ -36,7 +36,7 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
         cls.cue_authoring_cpp = read(
             "Client/Private/ValtanPatternEffectCueAuthoring.cpp"
         )
-        cls.workbench_cpp = read("Client/Private/ActionCompositionWorkbench.cpp")
+        cls.workbench_cpp = read("Client/Private/ValtanActionWorkbench.cpp")
         cls.six_pizza_effect = json.loads(read(
             "Data/Effects/Authored/"
             "effect.valtan.project-tuned.sequence.six-pizza-106.effect.json"

@@ -42,6 +42,21 @@
         "kind": "AUTHORED_PATTERN_EVENT"
       },
       "armorPlates": []
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "displayName": "쿠크세이튼",
+      "maximumHp": 1000000,
+      "maximumHealthBars": 1,
+      "attackPower": 1,
+      "collisionRadius": 1.0,
+      "engageDistance": 100.0,
+      "moveSpeed": 1.0,
+      "phasePolicy": {
+        "kind": "AUTHORED_PATTERN_EVENT"
+      },
+      "armorPlates": []
     }
   ]
 }

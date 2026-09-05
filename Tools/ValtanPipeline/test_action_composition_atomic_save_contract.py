@@ -19,18 +19,18 @@ import promote_valtan_animation_chains as promotion  # noqa: E402
 class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
     def test_workbench_uses_one_save_edge_and_keeps_v2_edits_draft(self) -> None:
         source = (
-            REPOSITORY_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            REPOSITORY_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8")
         save = source.split(
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()", 1
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()", 1
         )[1].split(
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar", 1
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar", 1
         )[0]
         accept = source.split(
-            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            "bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(",
             1,
         )[1].split(
-            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            "bool_t Client::CValtanActionWorkbench::Reload_AfterPendingSave(",
             1,
         )[0]
         self.assertEqual(save.count("Begin_ValtanCompositionSave("), 1)
@@ -55,18 +55,18 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
 
     def test_save_participants_are_selected_by_owner_dirty_state(self) -> None:
         source = (
-            REPOSITORY_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            REPOSITORY_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8")
         save = source.split(
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()", 1
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()", 1
         )[1].split(
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar", 1
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar", 1
         )[0]
         accept = source.split(
-            "bool_t Client::CActionCompositionWorkbench::Accept_PendingSaveOwners(",
+            "bool_t Client::CValtanActionWorkbench::Accept_PendingSaveOwners(",
             1,
         )[1].split(
-            "bool_t Client::CActionCompositionWorkbench::Reload_AfterPendingSave(",
+            "bool_t Client::CValtanActionWorkbench::Reload_AfterPendingSave(",
             1,
         )[0]
 
@@ -189,7 +189,8 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         )
         positions = [typed_commit.index(token) for token in ordered_read_set_cas]
         self.assertEqual(positions, sorted(positions))
-        self.assertIn("Reload before Save", typed_commit)
+        self.assertIn("rebuild and restart the Client", typed_commit)
+        self.assertIn("The draft was preserved", typed_commit)
         self.assertIn("effect_v2_effective_bytes", typed_commit)
         self.assertIn(
             "_read_bytes_or_none(effect_v2_target) != effect_v2_physical_baseline",

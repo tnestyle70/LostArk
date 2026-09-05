@@ -71,6 +71,25 @@ public:
 	   rewinds it against the baseline captured by the first start. */
 	bool_t Play(const std::string& instanceId, const TARGET_SET& targets);
 	bool_t Is_Playing(const std::string& instanceId) const;
+	/* The camera cue runs on the cutscene's own clock. Only the player owns
+	   that clock, so it hands out a read-only sample instead of letting a
+	   second owner count the same time. false means the instance is not
+	   playing and the caller must not pose a camera from a stale value. */
+	bool_t Try_GetElapsedMs(
+		const std::string& instanceId,
+		f32_t& outElapsedMs) const;
+	/* Authoring needs to hold a cutscene on one frame and step to any point
+	   of it. Paused instances stop advancing but keep their baselines, so a
+	   scrub never restarts the sequence or loses the placed pose. */
+	void Set_Paused(bool_t paused) { m_bPaused = paused; }
+	bool_t Is_Paused() const noexcept { return m_bPaused; }
+	/* Moves every playing instance to the same wall-clock point and applies
+	   that frame at once. false means nothing is playing to scrub. */
+	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets);
+	/* The longest authored span across the playing instances, so the tool can
+	   size a scrub bar without guessing. */
+	f32_t Get_LongestElapsedSpanMs() const;
+
 	/* Stopping hands every animated Deploy target back: an authoring preview
 	   left running blocks the prop's state from being set, so a second play
 	   could never restore it. */
@@ -95,6 +114,14 @@ public:
 	static const WORLD_SEQUENCE_ANIMATION_TRACK* Find_AnimationTrack(
 		const WORLD_SEQUENCE_TEMPLATE& sequence,
 		const std::string& slotId);
+	/* The clip a slot is playing at this point of the sequence, plus the time
+	   that clip's window ends. A slot with one track answers with that track
+	   and the sequence duration, so a chain and a single clip read the same. */
+	static const WORLD_SEQUENCE_ANIMATION_TRACK* Find_AnimationTrackAt(
+		const WORLD_SEQUENCE_TEMPLATE& sequence,
+		const std::string& slotId,
+		f32_t localMs,
+		f32_t& outWindowEndMs);
 	static MAP_RUNTIME_PLACED_ENTRY* Find_Placement(
 		std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
 		uint64_t placementId);
@@ -135,6 +162,7 @@ private:
 
 private:
 	CWorldSequenceDocument m_Document;
+	bool_t m_bPaused = false;
 	std::vector<ACTIVE_INSTANCE> m_Active;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;
 	std::string m_Status;

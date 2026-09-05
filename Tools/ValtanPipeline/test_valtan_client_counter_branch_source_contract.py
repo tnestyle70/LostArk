@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BALANCE_H = ROOT / "Client" / "Public" / "BalanceTool.h"
 BALANCE_CPP = ROOT / "Client" / "Private" / "BalanceTool.cpp"
 PATTERN_TREE_CPP = ROOT / "Client" / "Private" / "ValtanPatternTree.cpp"
-WORKBENCH_CPP = ROOT / "Client" / "Private" / "ActionCompositionWorkbench.cpp"
+WORKBENCH_CPP = ROOT / "Client" / "Private" / "ValtanActionWorkbench.cpp"
 
 
 def _slice(source: str, begin: str, end: str) -> str:

@@ -28,7 +28,7 @@ class ActionCompositionCollisionAuthoringContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workbench = read_text(
-            "Client/Private/ActionCompositionWorkbench.cpp"
+            "Client/Private/ValtanActionWorkbench.cpp"
         )
         cls.balance = read_text("Client/Private/BalanceTool.cpp")
         cls.pipeline_source = read_text(
@@ -36,8 +36,8 @@ class ActionCompositionCollisionAuthoringContractTests(unittest.TestCase):
         )
         cls.gameplay_details = between(
             cls.workbench,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
-            "void Client::CActionCompositionWorkbench::Render_AnimationStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_AnimationStageDetails(",
         )
 
     def test_details_keep_collision_directions_and_lifetimes_explicit(self) -> None:

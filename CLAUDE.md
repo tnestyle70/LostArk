@@ -30,7 +30,7 @@ git lfs pull
 
 팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. 이 물리 트리는 Git이 추적하지 않는다. 빌드된 EXE/DataFiles를 다른 PC에 전달할 때는 `.md/TEAM/RUNTIME_BUILD_DELIVERY_GUIDE.md`의 runtime ZIP 설치기를 사용하며, Resource pack 자체를 ZIP manifest나 Git 정본으로 승격하지 않는다.
 
-세팅 후 Debug 정본 회귀를 한 번 실행한다.
+세팅 후 Debug 제품 빌드를 실행한다. 최초 실행 데이터가 없으면 아래 명시 publisher 명령으로 준비한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
@@ -58,14 +58,16 @@ EffectRender 광역 프로젝트는 퇴역했다. V2 document stage/commit과 re
 `Tools\RenderingPipeline\ProductEffectShaderWarpProbe.cpp` 한 파일만 임시 컴파일해 현재 Product의
 V1/V2 CSO를 WARP로 draw/readback한다. 이 probe는 Client 제품 CPP나 영구 프로젝트/cache를 만들지 않는다.
 
-### 빌드 순서 — 반드시 지킬 것
+### 제품 빌드와 기능 확인
 
 ```
-1) Product: domain receipt validation/publish -> Engine -> Shared -> Server -> Client + product CSO closure
-2) Core: Product + NetworkProtocol + 실제 Server Character Select Core(private·shared world 격리) 1회 + publisher validation
-3) FullDiagnostic: Core + Character Select Party2/Party4 transfer + 변경 domain의 presentation/render/physics/model/server 광역 계약
-4) Lobby/Bern/Valtan/Development smoke는 사용자가 직접 실행·판정
+Product: Engine → Shared → Server → Client (SDK·shader·runtime DLL 배포 포함)
+기능 확인: 변경한 입력·저장·재로드 → 사용자 실제 아레나 재생 확인
 ```
+
+기능별 반복에는 필요한 최소 컴파일을 사용한다. 화면과 재생 결과가 예상과 다르면 사용자의 관찰을
+바탕으로 animation benchmark와 해당 family를 조정한다. JSON parse 및 실패 시 기존 항목 보존은
+유지한다. 에이전트는 Client를 자율 실행·조작하지 않으며 광역 진단은 사용자가 요청할 때만 실행한다.
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
 
@@ -101,8 +103,17 @@ producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일�
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
-정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 기본 `Core`는 제품과 중복 컴파일 없는 protocol 계약 및 Character Select `Core` live Server scenario 한 번을 실행하고, `-Profile Product`는 제품+CSO만, `-Profile FullDiagnostic`은 Character Select `Party2`/`Party4` transfer와 변경 domain 광역 진단까지 실행한다. `Tools/Build/BuildDomains.json`의 validation/publisher는 입력·도구·물리 Resources와 생성 output fingerprint가 같은 경우 `out/BuildPipeline/receipts`를 재사용한다. `-SkipBuild`는 현재 source closure 및 정확한 Engine/Shared/Server/Client EXE·DLL·LIB/PDB hash가 직전 product receipt와 모두 일치할 때만 허용하고, 불일치는 publisher 실행 전 거부한다. 성공 실행의 HEAD+dirty identity, source/input hash, binary/PDB hash, 단계별 시간은 `out/BuildPipeline/runs`에 남긴다. 퇴역한 EffectRender 광역 실행을 복원하지 않으며, 현재 Product/V2 fixture와 CSO closure가 그 고유 계약을 검증한다. Client 작업 디렉터리는 반드시 `Client/Default`로 고정한다.
-`BuildDomains.json`의 `composition.presentation` domain은 Product/Core/FullDiagnostic에서 Boss
+정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이며 기본은 `Product`다. 일반 컴파일은 publisher, oracle, 전체 source/resource 해시, CSO WARP probe, Server harness를 실행하지 않는다. `-Profile Core`와 `-Profile FullDiagnostic`은 사용자가 광역 진단을 요청할 때 선택할 수 있는 옵션이며 기능 완료나 커밋의 필수 조건이 아니다. Product 결과와 단계별 시간은 `out/BuildPipeline/runs/*-product.json`에 기록한다. `-SkipBuild`는 컴파일을 생략하고 배포 경로만 확인하는 옵션이며 현재 소스의 빌드 완료 증거로 쓰지 않는다.
+
+runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터 준비 명령은 다음과 같다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client
+```
+
+`BuildDomains.json`의 진단 profile과 명시 publisher는 기존 receipt를 재사용하지만 기본 Product 경로는 이를 호출하지 않는다. Client 작업 디렉터리는 `Client/Default`다.
+`BuildDomains.json`의 `composition.presentation` domain은 명시 publish/Core/FullDiagnostic에서 Boss
 Composition과 Arena Sequencer source graph를 검증하고, resolved Client read model 4개와 publish receipt
 하나를 생성한다. 이 domain은 Server gameplay bootstrap이나 runtime Hot Reload를 대신하지 않는다.
 
@@ -219,9 +230,9 @@ CPrototype (추상, enable_shared_from_this)
 enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, END };
 ```
 
-시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다.
+시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern` 다섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다.
 
-`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. KakulSaydon은 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
+`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KAKULSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
@@ -231,7 +242,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 ### 서버 권위 월드 파이프라인
 
-MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
+MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
 Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v51 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
@@ -255,7 +266,7 @@ cleanup으로 처리해 queue 포화와 close/entry race가 player slot을 남�
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
-- automated contracts: `NetworkProtocolHarness`, `Server.exe --contract-test`, 변경 domain publisher/check와 focused 실행 검증을 실행
+- 선택 진단: 사용자가 요청하면 `NetworkProtocolHarness`, `Server.exe --contract-test` 또는 관련 domain 검사를 실행할 수 있다.
 - runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행해 Lobby → Server 승인 Character Select 진입, class 연속 변경과 각 class 스킬 snapshot, 우클릭 이동, F6 follow/free와 free-camera command 차단, disconnect 시 Lobby 복귀, Bern/Valtan 진입을 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
@@ -305,9 +316,12 @@ Tool에서 직접 저장하지 않는다. 제품 Arena와 `CValtan`은 admitted 
 두 번째 runtime으로 해석하지 않는다. 각 stage animation은 `EXACT`, `HOLD_LAST_POSE`,
 `LOOP_TO_STAGE_END` 중 하나의 종료 정책을 사용한다.
 
-F1의 `Action Composition Workbench`는 기존 Animation Clip Tool과 독립적으로 열리는 resizable ImGui
-저작 셸이다. Pattern/Stage와 model-independent Valtan Sequence intake를 의미 단위로 나열하고, 하나의
-playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
+F1의 `Action Workbench`는 Boss에서 Valtan/KoukuSaydon을 선택하는 공용 저작 셸이다.
+Sequencer·Patterns·Composition Resources·Box Detail·Preview 창과 ruler/box/trim 조작을 공유하고,
+보스별 문서·draft·선택·Save owner는 각각 유지한다. Boss 전환으로 다른 보스의 draft를 다시 읽지 않는다.
+Resources는 여섯 보스 몸체의 실제 Animation clip을 WModel 헤더에서 읽으며 현재 preview 모델과 무관하게
+목록을 표시한다. clip 선택은 Animation Tool 창을 열지 않고 기존 preview backend를 사용한다.
+Valtan session은 하나의 playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
 joined draft를 통해 Sequence slot, Stage clock/gap, Server collider/hit schedule, Counter→Groggy edge,
 `RELEASE_GRABBED_PLAYERS` speed/duration/yaw를 편집한다. Effect invocation Details는 exact animation
 occurrence에 대해 source start/end, stop/repeat, anchor/follow, local transform과 scale policy를
@@ -317,8 +331,9 @@ occurrence에 대해 source start/end, stop/repeat, anchor/follow, local transfo
 draft-only row를 asset-only fallback으로 열지 않는다. Animation Clip Tool은
 실제 모델 pose preview와 Create Pattern intake adapter로만 재사용한다. 로컬 draft preview는 Product
 cache를 덮지 않으며 실제로 seek/stop이 연결된 lane과 inspection-only lane을 구분한다.
-`Save + Validate + Publish`는 split source와 generated Product를 공통 writer generation으로 commit하고
-exact canonical reload까지 성공해야 로컬 저장 완료다. Server runtime 활성화는 별도이며 같은 immutable
+발탄 Save는 기존 split source와 generated Product의 writer와 reload를 사용하며, Server runtime publish는
+별도 선택이다. 쿠크 Save는 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` 단일 파일의 CAS 원자 저장이다.
+쿠크의 Append·Save·timeline은 발탄 PatternTree/Balance/Sound admission을 호출하지 않는다. Server runtime 활성화는 별도이며 같은 immutable
 revision이 Server-active로 확인되기 전에는 Complete Play와 exact Restart를 막는다. admission 실패 뒤
 보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
 전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
@@ -331,12 +346,15 @@ arena clock과 stable owner reference만 소유하는 scheduling facade다.
 `Client/Bin/DataFiles/Compositions`에 resolved read model과 receipt를 만든다. 생성물 안에 함께 보이는
 Stage와 cue 값은 파생 projection이며 새 정본이 아니다.
 
-현재 Valtan Boss Composition은 `SHADOW`, KakulSaydon Boss Composition은 `REFERENCE_ONLY`, 두 Arena
-Sequencer는 `SHADOW`이고 모두 `runtimeEligible=false`다. `CSequencerTool`은 `CProjectDataRoot`를 통해
-source manifest를 staged load하여 inspection만 제공하며 generated resolved Product를 두 번째 timeline
-runtime으로 읽지 않는다. Valtan의 상세 box 편집, Play와 Save는 기존 `CActionCompositionWorkbench`와
-split owner가 계속 담당한다. KakulSaydon은 reference inventory와 authored arena track을 표시할 뿐
-generic Composition Save/Play나 Server encounter를 제공하지 않는다.
+현재 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은
+`REFERENCE_ONLY`, `ValtanArena.sequencer.json`과 `KoukuSaydonArena.sequencer.json`은 `SHADOW`이고 모두
+`runtimeEligible=false`다. 이 manifest는 공용 Workbench 창을 열거나 편집하기 위한 선행 입력이 아니다.
+`CSequencerTool`는 선택 session에 pane 명령을 전달하며 manifest inspection이나 generated resolved Product를
+두 번째 timeline runtime으로 사용하지 않는다. Valtan은 기존 split owner, KoukuSaydon은 전용 Composition을
+편집한다. 이번 공용 Animation Resources는 Valtan·Ghost·MN_RPCT_00/05/06·MN_RPCZ_00을 제공하며
+다른 rig의 clip은 preview할 수 있지만 선택 보스 본체의 clip만 해당 보스 Pattern에 Append한다.
+로컬 preview는 아레나의 복제된 플레이어 주변 collision-off 모델이고 Server 보스 본체 재생과 구분한다.
+쿠크 Effect/Sound/Camera/Profile/Light/Summon 저작·family 실행은 Animation 연결과 별도 구현 범위다.
 
 Pattern Sound cue는 exact occurrence dependency와 canonical read generation을 확인한 뒤 Sound owner에
 별도 CAS 저장한다. Pattern source와 하나의 atomic writer라고 표시하지 않는다. committed Sound source의
@@ -369,7 +387,7 @@ stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document�
 `Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`이 제품 Effect의 단일 입력이며,
 Editor Save 직후의 다음 재생과 다음 Client 실행이 같은 authored 파일을 소비한다. schema·catalog·source batch는
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 검증하고 다른 폴더로 복사하거나 publish하지 않는다.
-Resources는 팀장 Drive 물리 입력이므로 기본 validator와 정본 전체 회귀는 Git 비추적 파일을 그대로 검사한다.
+Resources는 팀장 Drive 물리 입력이므로 명시적으로 실행한 validator는 Git 비추적 파일을 그대로 검사한다.
 기존 `-AllowLocalResources`와 `-AllowLocalEffectResources`는 과거 명령 호환용으로만 남아 있으며 생략해도
 안전한 상대 경로, 파일 실재, DDS/WModel 내용과 로컬 파일 수를 같은 강도로 검사한다. 이미 Git index에
 있는 최소 dependency는 기존 index/LFS identity 검사도 유지한다. 이 검증은 Git만으로 리소스 배포가
@@ -533,8 +551,8 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
-- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. two-step ground target의 optional 입력·preview 계약은 `PlayerSkillTargeting.json`이며 기존 skillId/maximumRange와 exact join한다. Server pre-build의 `Publish-GameplayBalance.ps1`이 수치와 `SKILLTARGET` admission runtime bootstrap을 생성한다. texture ID와 tint는 Client-only이며 Server bootstrap에 넣지 않는다.
-- 아이템: `Data/Items/ItemCatalog.json`이 정본이다. Server pre-build의 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
+- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. two-step ground target의 optional 입력·preview 계약은 `PlayerSkillTargeting.json`이며 기존 skillId/maximumRange와 exact join한다. 명시 실행하는 `Publish-GameplayBalance.ps1`이 수치와 `SKILLTARGET` admission runtime bootstrap을 생성한다. texture ID와 tint는 Client-only이며 Server bootstrap에 넣지 않는다.
+- 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 - 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다.
@@ -551,7 +569,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
 역할 이름은 시작점과 권위 경계를 나타내며 파일 수정 권한을 제한하지 않는다. 기능 담당자는
-요청된 동작이 실제로 실행되도록 필요한 Data, Shared, Server, Client, UI와 harness를 한 수직
+요청된 동작이 실제로 실행되도록 필요한 Data, Shared, Server, Client와 UI를 한 수직
 슬라이스로 연결한다. 예를 들어 Player/Input 담당자가 서버 권위 스킬을 추가한다면 Server 판정과
 snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유로 Client command만 남기지 않는다.
 표의 금지 경계는 다른 폴더를 수정하지 말라는 뜻이 아니라 계층을 우회하지 말라는 뜻이다.
@@ -566,7 +584,7 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 
 - 로컬 입력의 현재 제품 경계는 `CPlayerController -> IPlayerCommandSink`다. Controller는 transport를 모르고 Character는 입력을 읽지 않는다.
 - `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
-- quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
+- quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약과 presentation을 함께 연결해 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
 - 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 단일 `movePlayer`/`changeLevel`/`activateSpawnGroup`/`activateEncounter` action의 `triggerBox`, 정적 `collisionBox`다. NPC presentation은 `Data/Actors/NpcCatalog.json`의 `runtimeStatus=supported` archetype 70종, monster presentation은 Valtan 4 archetype을 지원한다. 수업용 Monster 구현은 포함하지 않는다.
 - Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`, `collisionBox`, Valtan spawn anchor/group/wave를 저작하면 publisher가 bootstrap v5와 optional spawn bootstrap v2로 변환하고 Server가 player OBB 진입, swept 이동 차단, monster wave/AI/combat/despawn을 판정한다. `destroyable`, 파티 대기, 컷신, Area별 balance override는 아직 지원하지 않는다.
@@ -621,7 +639,7 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 1. [단계] → 검증: [확인 방법]
 2. [단계] → 검증: [확인 방법]
 
-이 프로젝트에는 자동화된 테스트 스위트가 없다. 검증은 대개 **빌드 성공 + 실제 실행 확인**이므로, 무엇을 어떻게 확인했는지(빌드 구성, 실행한 레벨, 눈으로 본 결과) 명시한다.
+일상 작업은 변경 기능의 최소 컴파일과 실제 입력·저장·실행 확인을 중심으로 진행한다. 기존 자동화 진단은 사용자가 요청할 때 선택하고, 새 기능마다 하네스나 oracle을 자동으로 추가하지 않는다. 실행한 검사와 사용자의 아레나 관찰을 구분해서 기록하며 미실행 광역 진단을 완료·커밋 차단 조건으로 삼지 않는다.
 
 ## 프로젝트 고유 규칙
 
@@ -629,4 +647,4 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - `new`/`delete` 직접 사용 금지. 스마트 포인터, `ComPtr`, `Safe_Delete`/`Safe_Release`를 쓴다.
 - 서브시스템 소유권이 헷갈리면 위 "서브시스템 소유권" 표를 본다.
 - 기존 소스는 주변 주석의 언어와 파일별 인코딩을 그대로 맞춘다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
-- 빌드가 깨진 채로 커밋하지 않는다. `Engine/Public/` 변경 후에는 정본 Product runner로 Engine → Client 빌드와 SDK 반영까지 확인한다.
+- `Engine/Public/` 변경 후에는 Product runner로 Engine → Client 컴파일과 SDK 반영을 확인한다. 그 밖의 변경은 해당 기능에 필요한 최소 컴파일을 사용한다. 발견된 컴파일·링크 오류는 수정하고, 아직 하지 않은 실행 확인은 구분해 보고한다.

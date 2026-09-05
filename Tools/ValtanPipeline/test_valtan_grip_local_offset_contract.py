@@ -61,13 +61,27 @@ class ValtanGripLocalOffsetContractTests(unittest.TestCase):
             set(bindings),
         )
 
-    def test_client_never_composes_the_grip_on_a_hand_bone(self) -> None:
+    def test_client_composes_the_grip_before_the_parts_update(self) -> None:
         header = VALTAN_HEADER.read_text(encoding="utf-8-sig")
         valtan = VALTAN_SOURCE.read_text(encoding="utf-8-sig")
         replication_header = REPLICATION_HEADER.read_text(encoding="utf-8-sig")
         replication = REPLICATION_SOURCE.read_text(encoding="utf-8-sig")
         character = CHARACTER_SOURCE.read_text(encoding="utf-8-sig")
         game_room = GAME_ROOM_SOURCE.read_text(encoding="utf-8-sig")
+        # The only Client writer runs inside CCharacter::Update, after the
+        # Server interpolation and before the parts compose their world.
+        update = character[character.index("void CCharacter::Update(f32_t fTimeDelta)"):]
+        update = update[: update.index("void CCharacter::Late_Update(")]
+        self.assertLess(
+            update.index("Update_NetworkTransform(fTimeDelta);"),
+            update.index("Update_NetworkAttachmentTransform(fTimeDelta);"),
+        )
+        self.assertLess(
+            update.index("Update_NetworkAttachmentTransform(fTimeDelta);"),
+            update.index("__super::Update(fTimeDelta);"),
+        )
+        self.assertIn("PLAYER_ACTION_STATE::GRABBED == action", character)
+        # Level-update-phase overwrites never render: the parts already composed.
         for forbidden in (
             "Update_PlayerAttachmentPresentations",
             "Stage_PlayerAttachmentPresentation",
@@ -76,15 +90,17 @@ class ValtanGripLocalOffsetContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, replication_header)
             self.assertNotIn(forbidden, replication)
-        for forbidden in (
-            "m_PlayerHandGripLocalOffsetByActionId",
-            "m_PlayerHandGripLocalOffsetByPatternId",
-            "Try_Get_PlayerHandGripLocalOffset",
-            "Reload_PlayerHandGripLocalOffsets_WhileAdmitted",
-        ):
-            self.assertNotIn(forbidden, header)
-            self.assertNotIn(forbidden, valtan)
-        self.assertIn("PLAYER_ACTION_STATE::GRABBED == action", character)
+        self.assertIn("character->Apply_NetworkAttachment(", replication)
+        self.assertIn("character->Clear_NetworkAttachment();", replication)
+        # Valtan owns the socket bone and the encounter-wide admitted grip.
+        self.assertIn("public IPlayerHandGripSocketSource", header)
+        self.assertIn("m_PlayerHandGripLocalOffset", header)
+        self.assertIn('VALTAN_LEFT_HAND_BONE = "bip001-l-hand"', valtan)
+        self.assertIn(
+            "Reload_PlayerHandGripLocalOffset_WhileAdmitted(StepStatus)", valtan
+        )
+        self.assertIn("Get_BoneMatrix(VALTAN_LEFT_HAND_BONE)", valtan)
+        # Server authority is unchanged.
         self.assertIn("Update_PlayerAttachment(player, updateTick)", game_room)
         self.assertIn("player.fAttachmentLocalOffsetX * cosine", game_room)
 

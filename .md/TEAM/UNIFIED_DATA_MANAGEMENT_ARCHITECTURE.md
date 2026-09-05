@@ -678,12 +678,12 @@ Composition으로 이동한 것이 아니다. 관리 graph 밖 cue는 조용히 
 | 문서 | 상태 | 현재 경계 |
 |---|---|---|
 | `Valtan.bosscomposition.json` | `SHADOW` | 기존 Valtan split owner의 Pattern index와 coverage를 고정한다. Server와 기존 Product가 계속 runtime 권위다 |
-| `KakulSaydon.bosscomposition.json` | `REFERENCE_ONLY` | 네 profile의 349개 reference action을 검증한다. boss/encounter ID와 gameplay Pattern을 만들지 않는다 |
-| `ValtanArena.sequencer.json`, `KakulSaydonArena.sequencer.json` | `SHADOW` | authored arena track과 owner reference를 검증하지만 scene runtime을 실행하지 않는다 |
+| `KoukuSaydonGate1.bosscomposition.json` | `REFERENCE_ONLY` | 네 profile의 349개 reference action을 검증한다. boss/encounter ID와 gameplay Pattern을 만들지 않는다 |
+| `ValtanArena.sequencer.json`, `KoukuSaydonArena.sequencer.json` | `SHADOW` | authored arena track과 owner reference를 검증하지만 scene runtime을 실행하지 않는다 |
 
 네 문서의 published Product는 모두 `runtimeEligible=false`다. 현재 Client Sequencer는 source manifest를
 staged load해 inspection만 제공하고 generated resolved Product를 두 번째 runtime으로 읽지 않는다.
-Valtan의 상세 편집, Play, Save는 기존 Action Composition Workbench와 split writer가 계속 담당한다.
+Valtan의 상세 편집, Play, Save는 `CValtanActionWorkbench`와 split writer가 계속 담당한다.
 generic Composition writer/player, Server trigger adapter, Client scene runner, revision/rollback harness가 같은
 수직 슬라이스로 연결되기 전에는 `AUTHORITATIVE`로 승격하지 않는다.
 
@@ -1145,7 +1145,7 @@ promotion 실패와 기존 runtime 보존을 검증한다.
 | multi-hit/shape/status combat timeline | `TARGET` |
 | Valtan 첫 pattern 수치와 C++ phase threshold | `CURRENT`; Encounter `states[]`는 `PARTIAL` |
 | Valtan Boss Composition | `PARTIAL`: `SHADOW` source manifest, resolved Product/receipt와 read-only Sequencer inspection까지 연결 |
-| KakulSaydon Boss Composition | `PARTIAL`: `REFERENCE_ONLY` 4 profile/349 action coverage만 연결, gameplay/Server runtime 없음 |
+| KoukuSaydon Gate 1 Boss Composition | `PARTIAL`: `REFERENCE_ONLY` 4 profile/349 action coverage만 연결, gameplay/Server runtime 없음 |
 | Arena Sequencer | `PARTIAL`: 두 source가 `SHADOW`; typed track validation은 있으나 generic Save/Play/scene runtime 없음 |
 | Player defense 감산 | `CURRENT`: `raw*100/(100+defense)`, `PROJECT_TUNED` |
 | 원작 Valtan pattern timeline | `REFERENCE 추출 선행 필요` |

@@ -1,0 +1,195 @@
+{
+  "schema": "lostark.kouku-saydon-composition",
+  "formatVersion": 1,
+  "revision": 2,
+  "compositionId": "boss.composition.kakulsaydon.gate1",
+  "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+  "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+  "bossPlacementId": "boss.kakulsaydon.g1.kouku",
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "fixedTickHz": 30,
+  "nextPatternOrdinal": 1,
+  "playAllPatternIds": [
+    "KAKULSAYDON_G1_PIZZA"
+  ],
+  "patterns": [
+    {
+      "patternId": "KAKULSAYDON_G1_SHIELD_STAGGER",
+      "displayName": "1관문 / 방패 무력화 패턴",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 1,
+      "stages": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_FIND_TRUE_KOUKU",
+      "displayName": "1관문 / 진짜 쿠크세이튼 찾기 패턴",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 1,
+      "stages": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_DANCE_TIME",
+      "displayName": "1관문 / 댄스타임",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 1,
+      "stages": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PIZZA",
+      "displayName": "1관문 / 피자(룰렛) 패턴",
+      "authoringStatus": "PRODUCT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 7,
+      "stages": [
+        {
+          "stageId": "WINDUP_A",
+          "actionId": "kakulsaydon.g1.pizza.windup-a",
+          "stageKind": "WINDUP",
+          "durationMs": 2500,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.1",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-000",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_01",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 2500,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        },
+        {
+          "stageId": "SECTOR_SWEEP_A",
+          "actionId": "kakulsaydon.g1.pizza.sector-sweep-a",
+          "stageKind": "ACTIVE",
+          "durationMs": 4667,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.2",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-001",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_07",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 4667,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        },
+        {
+          "stageId": "RECOVERY_A",
+          "actionId": "kakulsaydon.g1.pizza.recovery-a",
+          "stageKind": "RECOVERY",
+          "durationMs": 1000,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.3",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-002",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_09",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 1000,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        },
+        {
+          "stageId": "WINDUP_B",
+          "actionId": "kakulsaydon.g1.pizza.windup-b",
+          "stageKind": "WINDUP",
+          "durationMs": 2500,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.4",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-003",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_01",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 2500,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        },
+        {
+          "stageId": "SECTOR_SWEEP_B",
+          "actionId": "kakulsaydon.g1.pizza.sector-sweep-b",
+          "stageKind": "ACTIVE",
+          "durationMs": 4667,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.5",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-004",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_07",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 4667,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        },
+        {
+          "stageId": "RECOVERY_B",
+          "actionId": "kakulsaydon.g1.pizza.recovery-b",
+          "stageKind": "RECOVERY",
+          "durationMs": 1000,
+          "animationOccurrences": [
+            {
+              "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.6",
+              "profileId": "MN_RPCZ_00",
+              "sourceActionId": 4219714,
+              "sourceStageId": "stage-005",
+              "sourceSlotId": "animation-000",
+              "referenceRevision": "8d2e0188d80efc498123d497cddc7b660abbea784220a53aa5cf644803af8745",
+              "runtimeClip": "rpcz00_att_battle_3_09",
+              "startOffsetMs": 0,
+              "sourceStartMs": 0,
+              "playMs": 1000,
+              "playRate": 1.0,
+              "endPolicy": "EXACT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_CARD_MATCH",
+      "displayName": "1관문 / 카드 맞추기 패턴",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 1,
+      "stages": []
+    }
+  ]
+}

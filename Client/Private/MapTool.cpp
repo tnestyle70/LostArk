@@ -25,6 +25,7 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Trigger_Box.h"
+#include "ValtanCinematicCameraController.h"
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
@@ -739,6 +740,14 @@ namespace
 	/* Distinct from the product level and the cinematic owners so an editor
 	   preview never collides with a shipped override. */
 	constexpr uint64_t CAMERA_SHOT_PREVIEW_OWNER_ID = 0x4D54434D53485450ull;
+	/* The walkthrough takes the editor camera on its own ticket so it can
+	   never be mistaken for the cutscene shot preview above. */
+	constexpr uint64_t MARIO_WALK_PREVIEW_OWNER_ID = 0x4D54434D57414C4Bull;
+	/* The walker joins the run this far before the first trigger box and
+	   leaves it this far after the last, so both ends are seen moving. */
+	constexpr f32_t MARIO_WALK_LEAD_METRES = 14.f;
+	constexpr std::string_view MARIO_SEQUENCE_ROOT =
+		"world.sequence.instance.mario_";
 
 	bool_t ReadTextFile(
 		const std::filesystem::path& path,
@@ -1022,6 +1031,8 @@ void Client::CMapTool::Update(
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
+	if (isMapAuthoringLevel)
+		Update_MarioWalkthrough(fTimeDelta);
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(
 		bAllowWorldInput && isMapAuthoringLevel &&
@@ -1776,6 +1787,483 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 	}
 }
 
+void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
+{
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr == camera)
+		return;
+	const EDITOR_CAMERA_SHOT* bound = nullptr;
+	f32_t elapsedMs = 0.f;
+	for (const EDITOR_CAMERA_SHOT& shot : m_CameraShots)
+	{
+		/* A bound shot with fewer than two keys is still a shot: the product
+		   level holds its single pose for the cutscene, so the preview must
+		   show the same thing instead of leaving the free camera alone. */
+		if (shot.sequenceInstanceId.empty())
+			continue;
+		f32_t candidateMs = 0.f;
+		if (!m_ArenaRisePlayer.Try_GetElapsedMs(
+			shot.sequenceInstanceId, candidateMs))
+		{
+			continue;
+		}
+		if (nullptr == bound || shot.priority > bound->priority)
+		{
+			bound = &shot;
+			elapsedMs = candidateMs;
+		}
+	}
+	if (nullptr == bound)
+	{
+		End_CutsceneCameraTrack();
+		return;
+	}
+	/* Built here rather than stored so the preview always samples what the
+	   editor currently shows, and so the product runtime keeps the single
+	   cinematic sampler as the only implementation of this motion. */
+	VALTAN_CINEMATIC_CAMERA_CUE cue{};
+	cue.strCueId = bound->shotId;
+	cue.iDurationMs = static_cast<uint32_t>((std::max)(1, bound->trackDurationMs));
+	cue.eInterpolation = 0 == bound->interpolationIndex ?
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR :
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+	cue.eEasing = 0 == bound->easingIndex ?
+		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR :
+		(1 == bound->easingIndex ?
+			VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP :
+			VALTAN_CINEMATIC_CAMERA_EASING::HOLD);
+	cue.eTrackingMode = VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+	cue.Keyframes.reserve(bound->keyframes.size());
+	for (const EDITOR_CAMERA_KEYFRAME& source : bound->keyframes)
+	{
+		VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe{};
+		keyframe.strSceneId = source.sceneId;
+		keyframe.iTimeMs = static_cast<uint32_t>((std::max)(0, source.timeMs));
+		keyframe.vEye = source.eye;
+		keyframe.vLookAt = source.lookAt;
+		keyframe.fFovYDegrees = source.fovYDegrees;
+		cue.Keyframes.push_back(std::move(keyframe));
+	}
+	VALTAN_CINEMATIC_CAMERA_POSE pose{};
+	pose.vEye = bound->eye;
+	pose.vLookAt = bound->lookAt;
+	pose.fFovYDegrees = bound->fovYDegrees;
+	if (2u <= cue.Keyframes.size() &&
+		!CValtanCinematicCameraController::Sample_Cue(
+			cue, elapsedMs / 1000.f, pose))
+	{
+		End_CutsceneCameraTrack();
+		return;
+	}
+	if (!m_bCutsceneCameraHeld)
+	{
+		if (!camera->Begin_PresentationOverride(
+			CAMERA_SHOT_PREVIEW_OWNER_ID,
+			CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
+		{
+			return;
+		}
+		/* Where the free camera stands right now is where the glide starts,
+		   exactly as the product level starts from its follow pose. */
+		const float4_t* cameraPosition = CGameInstance::Get().Get_CamPosition();
+		const float4x4_t* viewMatrix =
+			CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+		if (nullptr != cameraPosition && nullptr != viewMatrix)
+		{
+			m_vCutsceneCameraFromEye = float3_t(
+				cameraPosition->x, cameraPosition->y, cameraPosition->z);
+			const vector_t forward = XMVector3Normalize(XMVectorSet(
+				viewMatrix->_13, viewMatrix->_23, viewMatrix->_33, 0.f));
+			XMStoreFloat3(&m_vCutsceneCameraFromLook,
+				XMLoadFloat3(&m_vCutsceneCameraFromEye) + forward * 10.f);
+		}
+		else
+		{
+			m_vCutsceneCameraFromEye = pose.vEye;
+			m_vCutsceneCameraFromLook = pose.vLookAt;
+		}
+		m_fCutsceneCameraFromFov = pose.fFovYDegrees;
+		m_fCutsceneCameraBlendSeconds = 0.f;
+		m_bCutsceneCameraHeld = true;
+	}
+	m_fCutsceneCameraBlendSeconds += (std::max)(0.f, timeDelta);
+	if (0 < bound->blendInMs)
+	{
+		VALTAN_CINEMATIC_CAMERA_POSE fromPose{};
+		fromPose.vEye = m_vCutsceneCameraFromEye;
+		fromPose.vLookAt = m_vCutsceneCameraFromLook;
+		fromPose.fFovYDegrees = m_fCutsceneCameraFromFov;
+		VALTAN_CINEMATIC_CAMERA_POSE blended{};
+		if (CValtanCinematicCameraController::Sample_BoundedTransition(
+			fromPose, pose, static_cast<uint32_t>(bound->blendInMs),
+			m_fCutsceneCameraBlendSeconds, blended))
+		{
+			pose = blended;
+		}
+	}
+	if (!camera->Apply_PresentationPose(CAMERA_SHOT_PREVIEW_OWNER_ID,
+		pose.vEye, pose.vLookAt, pose.fFovYDegrees))
+	{
+		End_CutsceneCameraTrack();
+	}
+}
+
+void Client::CMapTool::End_CutsceneCameraTrack()
+{
+	if (!m_bCutsceneCameraHeld)
+		return;
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr != camera)
+		camera->End_PresentationOverride(CAMERA_SHOT_PREVIEW_OWNER_ID);
+	m_bCutsceneCameraHeld = false;
+}
+
+vector<std::string> Client::CMapTool::Collect_MarioWalkStages()
+{
+	vector<std::string> stages;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		m_WorldGameplayDocument.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
+			!placement.isEnabled || 1u != placement.triggerEvents.size())
+		{
+			continue;
+		}
+		const WORLD_TRIGGER_EVENT& event = placement.triggerEvents.front();
+		if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE != event.eKind ||
+			0 != event.targetId.rfind(MARIO_SEQUENCE_ROOT, 0))
+		{
+			continue;
+		}
+		/* `...mario_m2_ambient` yields `m2`. A target with no separator
+		   after the stage token is not a stage instance. */
+		const size_t begin = MARIO_SEQUENCE_ROOT.size();
+		const size_t split = event.targetId.find('_', begin);
+		if (std::string::npos == split || split == begin)
+			continue;
+		std::string stage = event.targetId.substr(begin, split - begin);
+		if (stages.end() ==
+			std::find(stages.begin(), stages.end(), stage))
+		{
+			stages.push_back(std::move(stage));
+		}
+	}
+	std::sort(stages.begin(), stages.end());
+	return stages;
+}
+
+bool_t Client::CMapTool::Play_MarioWalkthrough(
+	const std::string& stageToken)
+{
+	Stop_MarioWalkthrough();
+	/* Activating an Area leaves the gameplay document alone, so the
+	   walkthrough pulls it in itself instead of making the user open
+	   another panel first. */
+	if (m_WorldGameplayDocument.Get_Placements().empty() &&
+		!Load_WorldGameplay())
+	{
+		m_MarioWalkStatus = m_WorldGameplayStatus;
+		return false;
+	}
+	const std::string prefix =
+		std::string(MARIO_SEQUENCE_ROOT) + stageToken + "_";
+	m_MarioWalkStops.clear();
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		m_WorldGameplayDocument.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
+			!placement.isEnabled || 1u != placement.triggerEvents.size())
+		{
+			continue;
+		}
+		const WORLD_TRIGGER_EVENT& event = placement.triggerEvents.front();
+		if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE != event.eKind ||
+			0 != event.targetId.rfind(prefix, 0))
+		{
+			continue;
+		}
+		MARIO_WALK_STOP stop{};
+		stop.position = placement.position;
+		stop.sequenceInstanceId = event.targetId;
+		m_MarioWalkStops.push_back(std::move(stop));
+	}
+	if (m_MarioWalkStops.size() < 2u)
+	{
+		m_MarioWalkStatus = stageToken + " needs at least two playSequence "
+			"trigger boxes in the world gameplay document";
+		return false;
+	}
+
+	/* The framing must be the one the product level will use, so it comes
+	   from the authored follow shot rather than from a preview constant.
+	   Any box may be the one the shot covers because the run is not
+	   ordered yet. */
+	m_iMarioWalkShot = m_CameraShots.size();
+	for (size_t index = 0;
+		index < m_CameraShots.size() &&
+		m_iMarioWalkShot >= m_CameraShots.size(); ++index)
+	{
+		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[index];
+		if (!shot.followsPlayer)
+			continue;
+		for (const MARIO_WALK_STOP& stop : m_MarioWalkStops)
+		{
+			if (std::abs(stop.position.x - shot.center.x) >
+					shot.halfExtents.x ||
+				std::abs(stop.position.z - shot.center.z) >
+					shot.halfExtents.z)
+			{
+				continue;
+			}
+			m_iMarioWalkShot = index;
+			break;
+		}
+	}
+	if (m_iMarioWalkShot >= m_CameraShots.size())
+	{
+		m_MarioWalkStatus =
+			"No follow camera shot covers a " + stageToken + " trigger box";
+		return false;
+	}
+
+	/* Travel order comes from the shot, not from a world axis. Under
+	   LookAtLH the camera's right vector is cross(up, forward), which is
+	   (forward.z, 0, -forward.x), and the runner advances along it: the
+	   Mario1 footage shows the background flowing the other way. Ordering
+	   the boxes by that projection works for any stage heading, and it
+	   reproduces exactly the order the old descending X sort gave
+	   Mario1. */
+	{
+		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[m_iMarioWalkShot];
+		const f32_t forwardX =
+			shot.followLookAtOffset.x - shot.followEyeOffset.x;
+		const f32_t forwardZ =
+			shot.followLookAtOffset.z - shot.followEyeOffset.z;
+		const f32_t rightX = forwardZ;
+		const f32_t rightZ = -forwardX;
+		if (rightX * rightX + rightZ * rightZ <= 0.000001f)
+		{
+			/* A shot looking straight down has no screen right in the XZ
+			   plane, so there is no run direction to order by. */
+			m_MarioWalkStatus = "Follow shot has no horizontal direction: " +
+				shot.shotId;
+			return false;
+		}
+		std::sort(m_MarioWalkStops.begin(), m_MarioWalkStops.end(),
+			[rightX, rightZ](const MARIO_WALK_STOP& lhs,
+				const MARIO_WALK_STOP& rhs)
+			{
+				return lhs.position.x * rightX + lhs.position.z * rightZ <
+					rhs.position.x * rightX + rhs.position.z * rightZ;
+			});
+	}
+
+	/* The sequence player is only handed the Area by whichever preview
+	   runs first, so the walkthrough must do it too. Without this every
+	   Play call is refused and the run looks like a camera move over a
+	   dead stage. */
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_MarioWalkStatus = "Mario1 walkthrough needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_MarioWalkStatus = "Sequence document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	/* A previous run leaves its own instances holding the props. */
+	m_ArenaRisePlayer.Stop_All(targets);
+	m_fMarioWalkSeconds = 0.f;
+	m_iMarioWalkNextStop = 0u;
+	m_bMarioWalkRunning = true;
+	m_MarioWalkStage = stageToken;
+	m_MarioWalkStatus = stageToken + " walkthrough started over " +
+		std::to_string(m_MarioWalkStops.size()) + " trigger boxes";
+	return true;
+}
+
+void Client::CMapTool::Update_MarioWalkthrough(const f32_t timeDelta)
+{
+	if (!m_bMarioWalkRunning)
+		return;
+	if (m_MarioWalkStops.size() < 2u ||
+		m_iMarioWalkShot >= m_CameraShots.size())
+	{
+		Stop_MarioWalkthrough();
+		return;
+	}
+	m_fMarioWalkSeconds += (std::max)(0.f, timeDelta);
+
+	/* The walk line is the trigger boxes themselves, extended at both ends
+	   so the run is entered and left in motion instead of starting on top
+	   of the first box. */
+	const auto lead = [](const float3_t& from, const float3_t& towards)
+	{
+		const f32_t dx = from.x - towards.x;
+		const f32_t dz = from.z - towards.z;
+		const f32_t length = std::sqrt(dx * dx + dz * dz);
+		if (length <= 0.0001f)
+			return from;
+		return float3_t(
+			from.x + dx / length * MARIO_WALK_LEAD_METRES, from.y,
+			from.z + dz / length * MARIO_WALK_LEAD_METRES);
+	};
+	vector<float3_t> path;
+	path.reserve(m_MarioWalkStops.size() + 2u);
+	path.push_back(lead(m_MarioWalkStops.front().position,
+		m_MarioWalkStops[1].position));
+	for (const MARIO_WALK_STOP& stop : m_MarioWalkStops)
+		path.push_back(stop.position);
+	path.push_back(lead(m_MarioWalkStops.back().position,
+		m_MarioWalkStops[m_MarioWalkStops.size() - 2u].position));
+
+	const f32_t travelledTotal = m_fMarioWalkSpeed * m_fMarioWalkSeconds;
+	f32_t travelled = travelledTotal;
+	float3_t walker = path.back();
+	bool_t finished = true;
+	for (size_t index = 0; index + 1u < path.size(); ++index)
+	{
+		const float3_t& from = path[index];
+		const float3_t& to = path[index + 1u];
+		const f32_t dx = to.x - from.x;
+		const f32_t dy = to.y - from.y;
+		const f32_t dz = to.z - from.z;
+		const f32_t length = std::sqrt(dx * dx + dy * dy + dz * dz);
+		if (length > 0.f && travelled > length)
+		{
+			travelled -= length;
+			continue;
+		}
+		const f32_t ratio = length > 0.f ? travelled / length : 0.f;
+		walker = float3_t(from.x + dx * ratio, from.y + dy * ratio,
+			from.z + dz * ratio);
+		finished = false;
+		break;
+	}
+
+	/* Entering a box is what starts its sequence in the product, so the
+	   walker reaching the box is the same event here. Distance along
+	   the path decides it, which no axis or travel direction can
+	   silently invert. */
+	f32_t reachedAt = 0.f;
+	for (size_t index = 0; index + 1u < path.size(); ++index)
+	{
+		if (index >= m_iMarioWalkNextStop + 1u)
+			break;
+		const float3_t& from = path[index];
+		const float3_t& to = path[index + 1u];
+		const f32_t dx = to.x - from.x;
+		const f32_t dy = to.y - from.y;
+		const f32_t dz = to.z - from.z;
+		reachedAt += std::sqrt(dx * dx + dy * dy + dz * dz);
+	}
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	while (m_iMarioWalkNextStop < m_MarioWalkStops.size() &&
+		travelledTotal >= reachedAt)
+	{
+		const MARIO_WALK_STOP& stop = m_MarioWalkStops[m_iMarioWalkNextStop];
+		if (m_ArenaRisePlayer.Play(stop.sequenceInstanceId, targets))
+		{
+			m_MarioWalkStatus = "Played " + stop.sequenceInstanceId;
+		}
+		else
+		{
+			/* One rejected sequence must not end the run: the rest of the
+			   stage is still worth watching, and the reason is kept. */
+			m_MarioWalkStatus = "Sequence rejected: " +
+				m_ArenaRisePlayer.Get_Status();
+		}
+		++m_iMarioWalkNextStop;
+		if (m_iMarioWalkNextStop + 1u < path.size())
+		{
+			const float3_t& from = path[m_iMarioWalkNextStop];
+			const float3_t& to = path[m_iMarioWalkNextStop + 1u];
+			const f32_t dx = to.x - from.x;
+			const f32_t dy = to.y - from.y;
+			const f32_t dz = to.z - from.z;
+			reachedAt += std::sqrt(dx * dx + dy * dy + dz * dz);
+		}
+	}
+
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr == camera)
+	{
+		Stop_MarioWalkthrough();
+		return;
+	}
+	if (!m_bMarioWalkCameraHeld)
+	{
+		if (!camera->Begin_PresentationOverride(MARIO_WALK_PREVIEW_OWNER_ID,
+			CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
+		{
+			m_MarioWalkStatus =
+				"Another preview already holds the editor camera";
+			m_bMarioWalkRunning = false;
+			return;
+		}
+		m_bMarioWalkCameraHeld = true;
+	}
+	const EDITOR_CAMERA_SHOT& shot = m_CameraShots[m_iMarioWalkShot];
+	const float3_t eye(walker.x + shot.followEyeOffset.x,
+		walker.y + shot.followEyeOffset.y,
+		walker.z + shot.followEyeOffset.z);
+	const float3_t lookAt(walker.x + shot.followLookAtOffset.x,
+		walker.y + shot.followLookAtOffset.y,
+		walker.z + shot.followLookAtOffset.z);
+	if (!camera->Apply_PresentationPose(MARIO_WALK_PREVIEW_OWNER_ID,
+		eye, lookAt, shot.fovYDegrees))
+	{
+		Stop_MarioWalkthrough();
+		return;
+	}
+	/* Hold the last frame until the sequences the walk started have run
+	   out, so the final pop-out is watched rather than cut off. */
+	if (finished)
+	{
+		const bool_t stillPlaying = std::any_of(
+			m_MarioWalkStops.begin(), m_MarioWalkStops.end(),
+			[this](const MARIO_WALK_STOP& stop)
+			{
+				return m_ArenaRisePlayer.Is_Playing(stop.sequenceInstanceId);
+			});
+		if (!stillPlaying)
+		{
+			const std::string stage = m_MarioWalkStage;
+			Stop_MarioWalkthrough();
+			m_MarioWalkStatus = stage + " walkthrough finished";
+		}
+	}
+}
+
+void Client::CMapTool::Stop_MarioWalkthrough()
+{
+	if (m_bMarioWalkCameraHeld)
+	{
+		const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+		if (nullptr != camera)
+			camera->End_PresentationOverride(MARIO_WALK_PREVIEW_OWNER_ID);
+		m_bMarioWalkCameraHeld = false;
+	}
+	m_bMarioWalkRunning = false;
+	m_fMarioWalkSeconds = 0.f;
+	m_iMarioWalkNextStop = 0u;
+}
+
 void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
 {
 	size_t applied = 0;
@@ -1902,17 +2390,46 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	   frame that starts a cutscene is long. Feeding that whole frame to the
 	   sequence clock would skip most of the authored motion, so advance the
 	   preview by at most one slow frame at a time. */
-	m_ArenaRisePlayer.Update(
-		(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
+	if (0.f <= m_fCutsceneLoopStartMs && m_fCutsceneLoopEndMs >
+		m_fCutsceneLoopStartMs)
+	{
+		/* Replay only the selected key's own stretch so its framing can be
+		   judged over and over without replaying the whole cutscene. */
+		m_ArenaRisePlayer.Set_Paused(true);
+		f32_t next = ((std::max)(m_fCutsceneScrubMs, m_fCutsceneLoopStartMs)) +
+			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
+		if (next >= m_fCutsceneLoopEndMs)
+			next = m_fCutsceneLoopStartMs;
+		m_fCutsceneScrubMs = next;
+		(void)m_ArenaRisePlayer.Seek_AllToMs(m_fCutsceneScrubMs, targets);
+	}
+	else if (0.f <= m_fCutsceneScrubMs)
+	{
+		/* Held on one frame: the clock is written, not advanced, so props,
+		   boss and camera all show the same instant every frame. */
+		m_ArenaRisePlayer.Set_Paused(true);
+		(void)m_ArenaRisePlayer.Seek_AllToMs(m_fCutsceneScrubMs, targets);
+	}
+	else
+	{
+		m_ArenaRisePlayer.Set_Paused(false);
+		m_ArenaRisePlayer.Update(
+			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
+	}
 
 	/* The original recycles its cutscene props on the frame the unfold ends and
 	   lets the persistent arena stand in their place; do the same here. */
 	if (m_bCutsceneOriginalRunning && !Is_CutsceneOriginalPlaying())
 	{
 		m_bCutsceneOriginalRunning = false;
+		End_CutsceneCameraTrack();
 		Hide_CutsceneSet();
 		Apply_CutsceneArenaVisibility(false);
 		m_Status = "Original cutscene finished: arena handed back";
+	}
+	else if (m_bCutsceneOriginalRunning)
+	{
+		Apply_CutsceneCameraTrack(fTimeDelta);
 	}
 
 	/* The reference does not leave the book standing in the finished arena, so
@@ -2124,12 +2641,61 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 		if (m_bCutsceneOriginalRunning)
 		{
 			m_bCutsceneOriginalRunning = false;
+			End_CutsceneCameraTrack();
 			Hide_CutsceneSet();
 			Apply_CutsceneArenaVisibility(false);
 		}
 		m_Status = "Arena rise stopped";
 	}
 	ImGui::TextDisabled("%s", m_Status.c_str());
+
+	ImGui::SeparatorText("Side Scrolling Walkthrough");
+	ImGui::TextWrapped(
+		"Runs one side scrolling stage with no player and no Server. A virtual "
+		"walker follows that stage's authored playSequence trigger boxes in "
+		"order, the follow camera shot frames it exactly as the product level "
+		"will, and reaching a box starts that box's own sequence. A stage gets "
+		"a button as soon as its trigger boxes exist.");
+	ImGui::DragFloat("Walk speed (m/s)", &m_fMarioWalkSpeed, 0.1f, 1.f,
+		30.f, "%.1f");
+	const vector<std::string> walkStages = Collect_MarioWalkStages();
+	ImGui::BeginDisabled(m_bMarioWalkRunning);
+	if (walkStages.empty())
+	{
+		/* Activating an Area does not read the gameplay document, so the
+		   stage list is empty until something pulls it in. */
+		if (ImGui::Button("Load Gameplay Document"))
+			(void)Load_WorldGameplay();
+	}
+	for (size_t index = 0; index < walkStages.size(); ++index)
+	{
+		if (0u != index)
+			ImGui::SameLine();
+		const std::string label = "Play " + walkStages[index];
+		if (ImGui::Button(label.c_str()))
+			(void)Play_MarioWalkthrough(walkStages[index]);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Stop Walkthrough"))
+	{
+		Stop_MarioWalkthrough();
+		CWorldSequencePlayer::TARGET_SET targets{};
+		targets.levelIndex = m_iAuthoringLevelIndex;
+		targets.pCatalog = &m_Catalog;
+		targets.pPlacements = &m_Placements;
+		targets.pDeployRuntime = &m_DeployRuntime;
+		m_ArenaRisePlayer.Stop_All(targets);
+		m_MarioWalkStatus = "Walkthrough stopped";
+	}
+	if (m_bMarioWalkRunning)
+	{
+		ImGui::Text("%s: trigger boxes passed %zu / %zu at %.1fs",
+			m_MarioWalkStage.c_str(), m_iMarioWalkNextStop,
+			m_MarioWalkStops.size(),
+			static_cast<double>(m_fMarioWalkSeconds));
+	}
+	ImGui::TextDisabled("%s", m_MarioWalkStatus.c_str());
 }
 
 void Client::CMapTool::Render_AnimatedPropsAuthoring()
@@ -6227,7 +6793,7 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
 		{ "LV_BER_BERNCASTLE", "Bern" },
 		{ "LV_LUT_HEARTRB_ED", "Valtan" },
-		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaton / MidnightC ED" },
+		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaydon / MidnightC ED" },
 		{ "LV_SHS_RCARENA_D", "Training Map" },
 	}};
 	std::vector<EDITOR_AREA_DESCRIPTOR> staged;
@@ -12921,6 +13487,62 @@ bool_t Client::CMapTool::Load_CameraShots(
 		shot.blendInMs = static_cast<int32_t>(blendIn->Get_Number());
 		shot.blendOutMs = static_cast<int32_t>(blendOut->Get_Number());
 		shot.priority = static_cast<int32_t>(priority->Get_Number());
+		const DATA_JSON_VALUE* follow = value.Find("follow");
+		if (nullptr != follow && follow->Is_Object())
+		{
+			if (!readFloat3(follow->Find("eyeOffset"), shot.followEyeOffset) ||
+				!readFloat3(follow->Find("lookAtOffset"),
+					shot.followLookAtOffset))
+			{
+				m_CameraShotStatus = "Camera shot follow offsets are invalid";
+				return false;
+			}
+			shot.followsPlayer = true;
+		}
+		const DATA_JSON_VALUE* cameraTrack = value.Find("cameraTrack");
+		if (nullptr != cameraTrack && cameraTrack->Is_Object())
+		{
+			const DATA_JSON_VALUE* durationMs = cameraTrack->Find("durationMs");
+			const DATA_JSON_VALUE* interpolation =
+				cameraTrack->Find("interpolation");
+			const DATA_JSON_VALUE* easing = cameraTrack->Find("easing");
+			const DATA_JSON_VALUE* keyframes = cameraTrack->Find("keyframes");
+			if (nullptr == durationMs || !durationMs->Is_Number() ||
+				nullptr == interpolation || !interpolation->Is_String() ||
+				nullptr == easing || !easing->Is_String() ||
+				nullptr == keyframes || !keyframes->Is_Array())
+			{
+				m_CameraShotStatus = "Camera track is invalid: " + shot.shotId;
+				return false;
+			}
+			shot.trackDurationMs =
+				static_cast<int32_t>(durationMs->Get_Number());
+			shot.interpolationIndex =
+				"LINEAR" == interpolation->Get_String() ? 0 : 1;
+			shot.easingIndex = "LINEAR" == easing->Get_String() ? 0 :
+				("HOLD" == easing->Get_String() ? 2 : 1);
+			for (const DATA_JSON_VALUE& entry : keyframes->Get_Array())
+			{
+				EDITOR_CAMERA_KEYFRAME keyframe{};
+				const DATA_JSON_VALUE* sceneId = entry.Find("sceneId");
+				const DATA_JSON_VALUE* timeMs = entry.Find("timeMs");
+				const DATA_JSON_VALUE* fov = entry.Find("fovYDegrees");
+				if (nullptr == sceneId || !sceneId->Is_String() ||
+					nullptr == timeMs || !timeMs->Is_Number() ||
+					nullptr == fov || !fov->Is_Number() ||
+					!readFloat3(entry.Find("eye"), keyframe.eye) ||
+					!readFloat3(entry.Find("lookAt"), keyframe.lookAt))
+				{
+					m_CameraShotStatus =
+						"Camera keyframe is invalid: " + shot.shotId;
+					return false;
+				}
+				keyframe.sceneId = sceneId->Get_String();
+				keyframe.timeMs = static_cast<int32_t>(timeMs->Get_Number());
+				keyframe.fovYDegrees = static_cast<f32_t>(fov->Get_Number());
+				shot.keyframes.push_back(std::move(keyframe));
+			}
+		}
 		staged.push_back(std::move(shot));
 	}
 
@@ -13009,8 +13631,38 @@ bool_t Client::CMapTool::Save_CameraShots()
 		text += "      \"fovYDegrees\": " + number(shot.fovYDegrees) + ",\n";
 		text += "      \"blendInMs\": " + std::to_string(shot.blendInMs) + ",\n";
 		text += "      \"blendOutMs\": " + std::to_string(shot.blendOutMs) + ",\n";
-		text += "      \"priority\": " + std::to_string(shot.priority) + "\n";
-		text += "    }";
+		text += "      \"priority\": " + std::to_string(shot.priority);
+		if (shot.followsPlayer)
+		{
+			text += ",\n      \"follow\": { \"eyeOffset\": " +
+				vector3(shot.followEyeOffset) + ", \"lookAtOffset\": " +
+				vector3(shot.followLookAtOffset) + " }";
+		}
+		if (2u <= shot.keyframes.size())
+		{
+			text += ",\n      \"cameraTrack\": {\n";
+			text += "        \"durationMs\": " +
+				std::to_string(shot.trackDurationMs) + ",\n";
+			text += "        \"interpolation\": \"" +
+				std::string(0 == shot.interpolationIndex ?
+					"LINEAR" : "CATMULL_ROM") + "\",\n";
+			text += "        \"easing\": \"" +
+				std::string(0 == shot.easingIndex ? "LINEAR" :
+					(1 == shot.easingIndex ? "SMOOTHSTEP" : "HOLD")) + "\",\n";
+			text += "        \"keyframes\": [\n";
+			for (size_t keyIndex = 0; keyIndex < shot.keyframes.size(); ++keyIndex)
+			{
+				const EDITOR_CAMERA_KEYFRAME& keyframe = shot.keyframes[keyIndex];
+				text += "          { \"sceneId\": \"" + keyframe.sceneId +
+					"\", \"timeMs\": " + std::to_string(keyframe.timeMs) +
+					", \"eye\": " + vector3(keyframe.eye) +
+					", \"lookAt\": " + vector3(keyframe.lookAt) +
+					", \"fovYDegrees\": " + number(keyframe.fovYDegrees) + " }";
+				text += (keyIndex + 1u == shot.keyframes.size()) ? "\n" : ",\n";
+			}
+			text += "        ]\n      }";
+		}
+		text += "\n    }";
 	}
 	text += m_CameraShots.empty() ? "]\n}\n" : "\n  ]\n}\n";
 
@@ -13159,6 +13811,260 @@ void Client::CMapTool::Render_CameraShotSection()
 			ImGui::DragInt("Blend In (ms)", &shot.blendInMs, 10.f, 0, 10000);
 			ImGui::DragInt("Blend Out (ms)", &shot.blendOutMs, 10.f, 0, 10000);
 			ImGui::DragInt("Priority", &shot.priority, 1.f, 0, 1000);
+
+			ImGui::SeparatorText("Follow");
+			ImGui::TextDisabled(
+				"On: the shot slides with the local Character. Both offsets are added to that Character's position.");
+			ImGui::Checkbox("Follows Player", &shot.followsPlayer);
+			ImGui::BeginDisabled(!shot.followsPlayer);
+			ImGui::DragFloat3("Follow Eye Offset", &shot.followEyeOffset.x, 0.1f);
+			ImGui::DragFloat3("Follow Look Offset",
+				&shot.followLookAtOffset.x, 0.1f);
+			ImGui::EndDisabled();
+
+			ImGui::SeparatorText("Camera Track");
+			ImGui::TextDisabled(
+				"Two or more keys make the shot move on the bound sequence clock. Fewer keeps the single pose.");
+
+			/* Hold the running cutscene so a key is judged against the frame it
+			   actually governs instead of guessed from a still. */
+			bool_t cutscenePlaying = Is_CutsceneOriginalPlaying();
+			const bool_t cutsceneHeld = 0.f <= m_fCutsceneScrubMs;
+			if (ImGui::Button(cutsceneHeld ? "Resume Cutscene" : "Hold Cutscene"))
+			{
+				if (cutsceneHeld)
+				{
+					m_fCutsceneScrubMs = -1.f;
+					m_fCutsceneLoopStartMs = -1.f;
+					m_fCutsceneLoopEndMs = -1.f;
+					m_CameraShotStatus = "Cutscene resumed";
+				}
+				else
+				{
+					/* Start the cutscene here if no other panel has, so the
+					   camera work never depends on visiting another tab. */
+					if (!cutscenePlaying)
+						cutscenePlaying = Play_CutsceneOriginalRise();
+					f32_t nowMs = 0.f;
+					if (!shot.sequenceInstanceId.empty())
+					{
+						(void)m_ArenaRisePlayer.Try_GetElapsedMs(
+							shot.sequenceInstanceId, nowMs);
+					}
+					m_fCutsceneScrubMs = (std::max)(0.f, nowMs);
+					m_CameraShotStatus = cutscenePlaying ?
+						"Cutscene held for editing" :
+						"Cutscene could not start: " + m_Status;
+				}
+			}
+			if (cutsceneHeld)
+			{
+				const f32_t span = (std::max)(1.f,
+					m_ArenaRisePlayer.Get_LongestElapsedSpanMs());
+				f32_t scrub = m_fCutsceneScrubMs;
+				ImGui::SetNextItemWidth(360.f);
+				if (ImGui::SliderFloat("Cutscene Time (ms)", &scrub,
+					0.f, span, "%.0f"))
+				{
+					m_fCutsceneScrubMs = std::clamp(scrub, 0.f, span);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("-100"))
+				{
+					m_fCutsceneScrubMs =
+						(std::max)(0.f, m_fCutsceneScrubMs - 100.f);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("+100"))
+				{
+					m_fCutsceneScrubMs =
+						(std::min)(span, m_fCutsceneScrubMs + 100.f);
+				}
+			}
+			if (0.f <= m_fCutsceneLoopStartMs)
+			{
+				ImGui::SameLine();
+				ImGui::Text("Looping %.0f - %.0f ms", m_fCutsceneLoopStartMs,
+					m_fCutsceneLoopEndMs);
+			}
+
+			ImGui::Text("Keys: %zu", shot.keyframes.size());
+			ImGui::DragInt("Track Duration (ms)", &shot.trackDurationMs,
+				10.f, 0, 120000);
+			ImGui::Combo("Interpolation", &shot.interpolationIndex,
+				"LINEAR\0CATMULL_ROM\0\0");
+			ImGui::Combo("Easing", &shot.easingIndex,
+				"LINEAR\0SMOOTHSTEP\0HOLD\0\0");
+			ImGui::BeginDisabled(!hasEditorPose);
+			if (ImGui::Button("Append Key From Camera"))
+			{
+				EDITOR_CAMERA_KEYFRAME keyframe{};
+				char sceneBuffer[192]{};
+				(void)std::snprintf(sceneBuffer, sizeof(sceneBuffer), "%s.k%02zu",
+					shot.shotId.c_str(), shot.keyframes.size());
+				keyframe.sceneId = sceneBuffer;
+				keyframe.timeMs = shot.keyframes.empty() ? 0 :
+					shot.keyframes.back().timeMs + 1000;
+				keyframe.eye = editorEye;
+				keyframe.lookAt = editorLookAt;
+				keyframe.fovYDegrees = shot.fovYDegrees;
+				shot.trackDurationMs = (std::max)(shot.trackDurationMs,
+					keyframe.timeMs);
+				shot.keyframes.push_back(std::move(keyframe));
+				m_CameraShotStatus = "Appended a camera key to " + shot.shotId;
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (ImGui::Button("Clear Keys"))
+			{
+				shot.keyframes.clear();
+				shot.trackDurationMs = 0;
+				m_CameraShotStatus = "Cleared the camera track of " + shot.shotId;
+			}
+			if (m_iCutsceneSelectedKey >=
+				static_cast<int32_t>(shot.keyframes.size()))
+			{
+				m_iCutsceneSelectedKey = -1;
+			}
+			if (!shot.keyframes.empty())
+			{
+				ImGui::TextDisabled(
+					"Pick a key, jump to its moment, then drag Eye/Look/Fov and watch the frame.");
+				if (ImGui::BeginListBox("Keys##cameratrack",
+					ImVec2(420.f, 140.f)))
+				{
+					for (size_t keyIndex = 0; keyIndex < shot.keyframes.size();
+						++keyIndex)
+					{
+						const EDITOR_CAMERA_KEYFRAME& row =
+							shot.keyframes[keyIndex];
+						char label[224]{};
+						(void)std::snprintf(label, sizeof(label),
+							"%2zu   %6d ms   eye %.1f %.1f %.1f   fov %.0f",
+							keyIndex, row.timeMs, row.eye.x, row.eye.y,
+							row.eye.z, row.fovYDegrees);
+						const bool_t selected = m_iCutsceneSelectedKey ==
+							static_cast<int32_t>(keyIndex);
+						if (ImGui::Selectable(label, selected))
+						{
+							m_iCutsceneSelectedKey =
+								static_cast<int32_t>(keyIndex);
+							if (cutscenePlaying)
+							{
+								m_fCutsceneScrubMs =
+									static_cast<f32_t>(row.timeMs);
+							}
+						}
+					}
+					ImGui::EndListBox();
+				}
+			}
+			if (0 <= m_iCutsceneSelectedKey &&
+				m_iCutsceneSelectedKey <
+					static_cast<int32_t>(shot.keyframes.size()))
+			{
+				EDITOR_CAMERA_KEYFRAME& keyframe =
+					shot.keyframes[static_cast<size_t>(m_iCutsceneSelectedKey)];
+				ImGui::PushID(4200 + m_iCutsceneSelectedKey);
+				ImGui::Text("Editing %s", keyframe.sceneId.c_str());
+				ImGui::BeginDisabled(!cutscenePlaying);
+				if (ImGui::Button("Jump To This Key"))
+				{
+					m_fCutsceneScrubMs = static_cast<f32_t>(keyframe.timeMs);
+					m_CameraShotStatus = "Held at " + keyframe.sceneId;
+				}
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				const bool_t looping = 0.f <= m_fCutsceneLoopStartMs;
+				if (ImGui::Button(looping ? "Stop Key Loop" : "Play This Key"))
+				{
+					if (looping)
+					{
+						m_fCutsceneLoopStartMs = -1.f;
+						m_fCutsceneLoopEndMs = -1.f;
+						m_CameraShotStatus = "Key loop stopped";
+					}
+					else
+					{
+						if (!Is_CutsceneOriginalPlaying())
+							(void)Play_CutsceneOriginalRise();
+						/* The key owns the stretch from the previous key to the
+						   next one, so the loop shows the whole move it steers
+						   rather than a single frozen instant. */
+						const size_t self =
+							static_cast<size_t>(m_iCutsceneSelectedKey);
+						const f32_t startMs = 0u == self ?
+							static_cast<f32_t>(shot.keyframes.front().timeMs) :
+							static_cast<f32_t>(shot.keyframes[self - 1u].timeMs);
+						const f32_t endMs = self + 1u < shot.keyframes.size() ?
+							static_cast<f32_t>(shot.keyframes[self + 1u].timeMs) :
+							static_cast<f32_t>(keyframe.timeMs) + 1000.f;
+						m_fCutsceneLoopStartMs = startMs;
+						m_fCutsceneLoopEndMs = (std::max)(startMs + 100.f, endMs);
+						m_fCutsceneScrubMs = startMs;
+						m_CameraShotStatus = "Looping " + keyframe.sceneId;
+					}
+				}
+				ImGui::SameLine();
+				ImGui::BeginDisabled(!hasEditorPose);
+				if (ImGui::Button("Set From Free Camera"))
+				{
+					keyframe.eye = editorEye;
+					keyframe.lookAt = editorLookAt;
+					m_CameraShotStatus = "Set " + keyframe.sceneId +
+						" from the free camera";
+				}
+				ImGui::EndDisabled();
+				ImGui::DragInt("Key Time (ms)", &keyframe.timeMs,
+					10.f, 0, 120000);
+				ImGui::DragFloat3("Key Eye", &keyframe.eye.x, 0.05f);
+				ImGui::DragFloat3("Key Look At", &keyframe.lookAt.x, 0.05f);
+				ImGui::DragFloat("Key Fov Y", &keyframe.fovYDegrees,
+					0.25f, 5.f, 170.f);
+				/* Orbit the key around what it looks at, so framing can be
+				   nudged by angle instead of by three raw axes. */
+				const float3_t toEye(keyframe.eye.x - keyframe.lookAt.x,
+					keyframe.eye.y - keyframe.lookAt.y,
+					keyframe.eye.z - keyframe.lookAt.z);
+				f32_t orbitRadius = std::sqrt(toEye.x * toEye.x +
+					toEye.y * toEye.y + toEye.z * toEye.z);
+				f32_t orbitYaw =
+					XMConvertToDegrees(std::atan2(toEye.z, toEye.x));
+				f32_t orbitPitch = orbitRadius > 0.0001f ?
+					XMConvertToDegrees(std::asin(
+						std::clamp(toEye.y / orbitRadius, -1.f, 1.f))) : 0.f;
+				bool_t orbitChanged = false;
+				if (ImGui::DragFloat("Orbit Yaw", &orbitYaw, 0.5f, -360.f, 360.f))
+					orbitChanged = true;
+				if (ImGui::DragFloat("Orbit Pitch", &orbitPitch, 0.5f, -89.f, 89.f))
+					orbitChanged = true;
+				if (ImGui::DragFloat("Orbit Distance", &orbitRadius,
+					0.05f, 0.05f, 400.f))
+				{
+					orbitChanged = true;
+				}
+				if (orbitChanged)
+				{
+					const f32_t yaw = XMConvertToRadians(orbitYaw);
+					const f32_t pitch = XMConvertToRadians(
+						std::clamp(orbitPitch, -89.f, 89.f));
+					keyframe.eye = float3_t(
+						keyframe.lookAt.x +
+							orbitRadius * std::cos(pitch) * std::cos(yaw),
+						keyframe.lookAt.y + orbitRadius * std::sin(pitch),
+						keyframe.lookAt.z +
+							orbitRadius * std::cos(pitch) * std::sin(yaw));
+				}
+				if (ImGui::Button("Delete This Key"))
+				{
+					shot.keyframes.erase(shot.keyframes.begin() +
+						m_iCutsceneSelectedKey);
+					m_iCutsceneSelectedKey = -1;
+					m_CameraShotStatus =
+						"Deleted a camera key from " + shot.shotId;
+				}
+				ImGui::PopID();
+			}
 
 			ImGui::BeginDisabled(!hasEditorPose);
 			if (ImGui::Button("Capture Camera Into Shot"))

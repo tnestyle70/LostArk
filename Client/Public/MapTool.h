@@ -63,6 +63,17 @@ private:
 	/* One authored camera shot. The product level holds this exact pose while
 	   the local Character stands inside the box, so what is framed here is
 	   what ships. */
+	struct EDITOR_CAMERA_KEYFRAME final
+	{
+		/* Stable within its shot; the runtime rejects duplicates. Never a
+		   list index, so reordering keys cannot silently rebind one. */
+		std::string sceneId;
+		int32_t timeMs = 0;
+		float3_t eye = {};
+		float3_t lookAt = {};
+		f32_t fovYDegrees = 50.f;
+	};
+
 	struct EDITOR_CAMERA_SHOT final
 	{
 		std::string shotId;
@@ -78,6 +89,27 @@ private:
 		int32_t blendInMs = 2000;
 		int32_t blendOutMs = 1000;
 		int32_t priority = 10;
+		/* On: the shot slides with the local Character instead of pinning
+		   one pose. Both offsets are added to that Character's position. */
+		bool_t followsPlayer = false;
+		float3_t followEyeOffset = {};
+		float3_t followLookAtOffset = {};
+		/* Fewer than two keys keeps the single authored pose. Two or more
+		   are sampled on the bound sequence clock exactly as the product
+		   level samples them. */
+		std::vector<EDITOR_CAMERA_KEYFRAME> keyframes;
+		int32_t trackDurationMs = 0;
+		int32_t interpolationIndex = 1;
+		int32_t easingIndex = 1;
+	};
+
+	/* One authored playSequence trigger box on a side scrolling run. The
+	   walkthrough preview visits these in order with no player and no
+	   Server, so the pop-outs can be judged from the editor alone. */
+	struct MARIO_WALK_STOP final
+	{
+		float3_t position = {};
+		std::string sequenceInstanceId;
 	};
 
 	struct EDITOR_AREA_DESCRIPTOR
@@ -239,6 +271,15 @@ private:
 	/* Authoring keeps the arena visible so it can be edited. This previews the
 	   product level's cutscene start state without touching a saved document. */
 	void Render_CutsceneArenaPreview();
+	void Apply_CutsceneCameraTrack(f32_t timeDelta);
+	void End_CutsceneCameraTrack();
+	/* Walks one stage's authored trigger boxes with no player and no
+	   Server so the run's camera and pop-outs can be watched. The stage
+	   token is the part after `mario_` in the sequence instance ID. */
+	vector<std::string> Collect_MarioWalkStages();
+	bool_t Play_MarioWalkthrough(const std::string& stageToken);
+	void Update_MarioWalkthrough(f32_t timeDelta);
+	void Stop_MarioWalkthrough();
 	void Apply_CutsceneArenaVisibility(bool_t hidden);
 	bool_t Is_CutsceneOriginalPlaying() const;
 	void Hide_CutsceneSet();
@@ -509,6 +550,33 @@ private:
 	f32_t m_fCutsceneBookHoldMs = -1.f;
 	/* True while the original cutscene owes the arena back. */
 	bool_t m_bCutsceneOriginalRunning = false;
+	/* True while the cutscene preview holds the editor camera. */
+	bool_t m_bCutsceneCameraHeld = false;
+	/* Authoring scrub: the cutscene holds on one frame so a key can be moved
+	   and judged in place. Negative means the preview runs normally. */
+	f32_t m_fCutsceneScrubMs = -1.f;
+	int32_t m_iCutsceneSelectedKey = -1;
+	/* Looping one key's own stretch. Negative start means no loop is armed. */
+	f32_t m_fCutsceneLoopStartMs = -1.f;
+	f32_t m_fCutsceneLoopEndMs = -1.f;
+	/* The pose the preview held when the shot took over, frozen once so
+	   advancing both ends of the blend cannot shorten it. */
+	float3_t m_vCutsceneCameraFromEye = {};
+	float3_t m_vCutsceneCameraFromLook = {};
+	f32_t m_fCutsceneCameraFromFov = 60.f;
+	f32_t m_fCutsceneCameraBlendSeconds = 0.f;
+	/* Mario1 walkthrough state. The shot index points into m_CameraShots
+	   at the follow shot that covers the first trigger box. */
+	bool_t m_bMarioWalkRunning = false;
+	bool_t m_bMarioWalkCameraHeld = false;
+	f32_t m_fMarioWalkSeconds = 0.f;
+	f32_t m_fMarioWalkSpeed = 6.f;
+	size_t m_iMarioWalkNextStop = 0u;
+	size_t m_iMarioWalkShot = 0u;
+	vector<MARIO_WALK_STOP> m_MarioWalkStops;
+	std::string m_MarioWalkStage;
+	std::string m_MarioWalkStatus =
+		"No stage walkthrough has run in this session";
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 

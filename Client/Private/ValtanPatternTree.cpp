@@ -4612,7 +4612,6 @@ namespace
 				pScriptedTransitionPursuit->Get_Array())
 			{
 				if (!Is_NonNegativeInteger(&PursuitMs) ||
-					PursuitMs.Get_Number() < 100.0 ||
 					PursuitMs.Get_Number() > 10000.0)
 				{
 					strOutError =
@@ -6870,7 +6869,6 @@ namespace
 				pProductTransitionPursuit->Get_Array())
 			{
 				if (!Is_NonNegativeInteger(&PursuitMs) ||
-					PursuitMs.Get_Number() < 100.0 ||
 					PursuitMs.Get_Number() > 10000.0)
 				{
 					strOutError =

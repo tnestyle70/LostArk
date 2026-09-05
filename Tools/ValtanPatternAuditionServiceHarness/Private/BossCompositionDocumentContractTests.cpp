@@ -152,12 +152,12 @@ namespace
 	{
 		std::filesystem::path testRoot;
 		std::filesystem::path dataRoot;
-		std::filesystem::path kakulBossPath;
-		std::filesystem::path kakulArenaPath;
+		std::filesystem::path koukuSaydonBossPath;
+		std::filesystem::path koukuSaydonArenaPath;
 		std::filesystem::path valtanBossPath;
 		std::filesystem::path valtanArenaPath;
-		std::string kakulBossBaseline;
-		std::string kakulArenaBaseline;
+		std::string koukuSaydonBossBaseline;
+		std::string koukuSaydonArenaBaseline;
 		std::string valtanBossBaseline;
 		std::string valtanArenaBaseline;
 		Client::CCompositionDocumentCatalog catalog;
@@ -174,20 +174,20 @@ namespace
 			 std::to_string(GetCurrentProcessId()) + "-" +
 			 std::to_string(GetTickCount64()));
 		fixture.dataRoot = fixture.testRoot / "Data";
-		fixture.kakulBossPath = fixture.dataRoot /
-			"Compositions/Bosses/KakulSaydon.bosscomposition.json";
-		fixture.kakulArenaPath = fixture.dataRoot /
-			"Compositions/Sequences/KakulSaydonArena.sequencer.json";
+		fixture.koukuSaydonBossPath = fixture.dataRoot /
+			"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json";
+		fixture.koukuSaydonArenaPath = fixture.dataRoot /
+			"Compositions/Sequences/KoukuSaydonArena.sequencer.json";
 		fixture.valtanBossPath = fixture.dataRoot /
 			"Compositions/Bosses/Valtan.bosscomposition.json";
 		fixture.valtanArenaPath = fixture.dataRoot /
 			"Compositions/Sequences/ValtanArena.sequencer.json";
 		Require(CopyFixture(repositoryDataRoot /
-				"Compositions/Bosses/KakulSaydon.bosscomposition.json",
-			fixture.kakulBossPath) &&
+				"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
+			fixture.koukuSaydonBossPath) &&
 			CopyFixture(repositoryDataRoot /
-				"Compositions/Sequences/KakulSaydonArena.sequencer.json",
-				fixture.kakulArenaPath) &&
+				"Compositions/Sequences/KoukuSaydonArena.sequencer.json",
+				fixture.koukuSaydonArenaPath) &&
 			CopyFixture(repositoryDataRoot /
 				"Compositions/Bosses/Valtan.bosscomposition.json",
 				fixture.valtanBossPath) &&
@@ -210,18 +210,18 @@ namespace
 			"Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
 			"Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json",
 			"Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json",
-			"Animation/Reference/KakulSaydon/MN_RPCZ_00.actionreference.json",
-			"Animation/Authored/KakulSaydon/MN_RPCZ_00.actionbindings.json",
-			"Animation/Authored/KakulSaydon/MN_RPCZ_00.patternbindings.json",
-			"Animation/Reference/KakulSaydon/MN_RPCT_05.actionreference.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_05.actionbindings.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_05.patternbindings.json",
-			"Animation/Reference/KakulSaydon/MN_RPCT_06.actionreference.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_06.actionbindings.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_06.patternbindings.json",
-			"Animation/Reference/KakulSaydon/MN_RPCT_07.actionreference.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_07.actionbindings.json",
-			"Animation/Authored/KakulSaydon/MN_RPCT_07.patternbindings.json",
+			"Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCZ_00.actionbindings.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json",
+			"Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_05.patternbindings.json",
+			"Animation/Reference/KoukuSaydon/MN_RPCT_06.actionreference.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_06.actionbindings.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_06.patternbindings.json",
+			"Animation/Reference/KoukuSaydon/MN_RPCT_07.actionreference.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_07.actionbindings.json",
+			"Animation/Authored/KoukuSaydon/MN_RPCT_07.patternbindings.json",
 			"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
 			"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
 			"Rendering/Authored/RenderingProfiles.json",
@@ -232,8 +232,8 @@ namespace
 			Require(WriteText(fixture.dataRoot / relative, "{}\n"),
 				"could not create a Composition owner placeholder");
 		}
-		fixture.kakulBossBaseline = ReadText(fixture.kakulBossPath);
-		fixture.kakulArenaBaseline = ReadText(fixture.kakulArenaPath);
+		fixture.koukuSaydonBossBaseline = ReadText(fixture.koukuSaydonBossPath);
+		fixture.koukuSaydonArenaBaseline = ReadText(fixture.koukuSaydonArenaPath);
 		fixture.valtanBossBaseline = ReadText(fixture.valtanBossPath);
 		fixture.valtanArenaBaseline = ReadText(fixture.valtanArenaPath);
 		return fixture;
@@ -262,16 +262,16 @@ namespace
 		Require(fixture.catalog.Load_Pair(
 				"boss.composition.kakulsaydon",
 				"arena.sequencer.kakulsaydon", status),
-			("valid Kakul descriptor pair failed: " + status).c_str());
+			("valid KoukuSaydon descriptor pair failed: " + status).c_str());
 		fixture.committed = Snapshot(fixture.catalog,
 			"boss.composition.kakulsaydon",
 			"arena.sequencer.kakulsaydon");
 
-		std::string wrongArenaPath = fixture.kakulArenaBaseline;
+		std::string wrongArenaPath = fixture.koukuSaydonArenaBaseline;
 		Require(ReplaceOnce(wrongArenaPath,
 				"Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
 				"Data/Items/ItemCatalog.json") &&
-			WriteText(fixture.kakulArenaPath, wrongArenaPath),
+			WriteText(fixture.koukuSaydonArenaPath, wrongArenaPath),
 			"could not stage the wrong Arena source path fixture");
 		Require(!fixture.catalog.Load_Pair(
 				"boss.composition.kakulsaydon",
@@ -282,13 +282,13 @@ namespace
 			"boss.composition.kakulsaydon",
 			"arena.sequencer.kakulsaydon");
 
-		Require(WriteText(fixture.kakulArenaPath, fixture.kakulArenaBaseline),
+		Require(WriteText(fixture.koukuSaydonArenaPath, fixture.koukuSaydonArenaBaseline),
 			"could not restore the Arena descriptor fixture");
-		std::string wrongBossRole = fixture.kakulBossBaseline;
+		std::string wrongBossRole = fixture.koukuSaydonBossBaseline;
 		Require(ReplaceOnce(wrongBossRole,
 				"ACTION_REFERENCE_MN_RPCZ_00",
 				"ACTION_REFERENCE_WRONG") &&
-			WriteText(fixture.kakulBossPath, wrongBossRole),
+			WriteText(fixture.koukuSaydonBossPath, wrongBossRole),
 			"could not stage the wrong Boss source role fixture");
 		Require(!fixture.catalog.Load_Pair(
 				"boss.composition.kakulsaydon",
@@ -299,9 +299,9 @@ namespace
 			"boss.composition.kakulsaydon",
 			"arena.sequencer.kakulsaydon");
 
-		Require(WriteText(fixture.kakulBossPath, fixture.kakulBossBaseline),
+		Require(WriteText(fixture.koukuSaydonBossPath, fixture.koukuSaydonBossBaseline),
 			"could not restore the Boss descriptor fixture");
-		std::string extraArenaSource = fixture.kakulArenaBaseline;
+		std::string extraArenaSource = fixture.koukuSaydonArenaBaseline;
 		const std::size_t sourceStart =
 			extraArenaSource.find("\"sourceDocuments\"");
 		const std::size_t sourceEnd = extraArenaSource.find("\n  ],", sourceStart);
@@ -311,7 +311,7 @@ namespace
 		extraArenaSource.insert(sourceEnd,
 			",\n    {\n      \"role\": \"UNUSED\",\n"
 			"      \"path\": \"Data/Items/ItemCatalog.json\"\n    }");
-		Require(WriteText(fixture.kakulArenaPath, extraArenaSource),
+		Require(WriteText(fixture.koukuSaydonArenaPath, extraArenaSource),
 			"could not stage the extra Arena source fixture");
 		Require(!fixture.catalog.Load_Pair(
 				"boss.composition.kakulsaydon",
@@ -322,8 +322,8 @@ namespace
 			"boss.composition.kakulsaydon",
 			"arena.sequencer.kakulsaydon");
 
-		Require(WriteText(fixture.kakulArenaPath,
-			fixture.kakulArenaBaseline),
+		Require(WriteText(fixture.koukuSaydonArenaPath,
+			fixture.koukuSaydonArenaBaseline),
 			"could not restore the extra Arena source fixture");
 		Client::CCompositionDocumentCatalog valtanCatalog;
 		Require(valtanCatalog.Load_Pair(

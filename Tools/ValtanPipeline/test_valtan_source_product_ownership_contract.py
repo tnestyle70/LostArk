@@ -129,7 +129,7 @@ class ValtanSourceProductOwnershipContractTests(unittest.TestCase):
             "bMutationAdmitted",
             "Can_MutateValtanView(m_eValtanPatternMasterAdmission)",
             "READ-ONLY: Pattern data is %s",
-            "nullptr == m_pBossTool || !bMutationAdmitted",
+            "nullptr == m_pValtanBossTool || !bMutationAdmitted",
             "nullptr == m_pBalanceTool || !bMutationAdmitted",
             'ImGui::Button("Complete Play (Server/Arena)")',
             "ImGui::BeginDisabled(!bMutationAdmitted)",

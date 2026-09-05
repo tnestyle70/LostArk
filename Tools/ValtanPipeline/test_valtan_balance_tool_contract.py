@@ -15,7 +15,7 @@ AUDITION_CPP = ROOT / "Client/Private/ValtanPatternAuditionService.cpp"
 AUDITION_H = ROOT / "Client/Public/ValtanPatternAuditionService.h"
 TUNING_COMMAND_CPP = ROOT / "Client/Private/ValtanTuningCommandService.cpp"
 EFFECT_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
-BOSS_CPP = ROOT / "Client/Private/BossTool.cpp"
+BOSS_CPP = ROOT / "Client/Private/ValtanBossTool.cpp"
 PROJECT = ROOT / "Client/Default/Client.vcxproj"
 FILTERS = ROOT / "Client/Default/Client.vcxproj.filters"
 NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
@@ -189,9 +189,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "Manual Server audition | phase %u | source chain %s",
             "automatic selection disabled",
             "AUDITION_ONLY keeps selection, repeat, and target range read-only",
-            "edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
-            "Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool",
-            "Collider geometry, timing, response, and damage are written only through Action Composition Workbench typed Details",
+            "edit Stage kind, Sequence slots, and gap in Valtan Action Workbench",
+            "Server replay is available in Valtan Boss Tool and Effect Tool; Repeat and Revive remain in Valtan Boss Tool",
+            "Collider geometry, timing, response, and damage are written only through Valtan Action Workbench typed Details",
             "Pattern Presentation references (read-only)",
         ):
             self.assertIn(marker, managed_render)
@@ -259,13 +259,13 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
     def test_single_audition_service_is_submitted_only_by_shared_boss_owner(self) -> None:
         self.assertIn("class CValtanPatternAuditionService", self.audition_h)
         self.assertIn("Try_Consume_ValtanPatternAuditionByIdResult", self.audition_cpp)
-        self.assertIn('"Boss Tool"', self.boss_cpp)
+        self.assertIn('"Valtan Boss Tool"', self.boss_cpp)
         self.assertIn("CValtanPatternAuditionService::Get().Submit", self.boss_cpp)
         self.assertIn('"Effect Tool"', self.effect_cpp)
         self.assertNotIn("CValtanPatternAuditionService::Get().Submit", self.effect_cpp)
         self.assertIn("Debug_SelectCompletePlayPattern", self.effect_cpp)
         self.assertIn("Debug_CompletePlaySelected", self.effect_cpp)
-        self.assertIn("m_pBossTool->Play_ServerPattern", self.main_app_cpp)
+        self.assertIn("m_pValtanBossTool->Play_ServerPattern", self.main_app_cpp)
         self.assertNotIn("CValtanPatternAuditionService", self.balance_cpp)
         self.assertNotIn("Request_RevivePlayer", self.balance_cpp)
         self.assertNotIn("Request_RevivePlayer", self.effect_cpp)
@@ -728,7 +728,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         replay_gate = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+            "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(",
         )
         activation_gate = function_body(
             self.tuning_command_cpp,
@@ -744,7 +744,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         construct_balance = function_body(
             self.balance_cpp,
-            "Client::CBalanceTool::CBalanceTool()",
+            "Client::CBalanceTool::CBalanceTool(const bool loadImmediately)",
         )
 
         self.assertEqual(
@@ -770,8 +770,13 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("no admitted Product candidate", exact_activation_gate)
         self.assertIn("Has_GameplaySourceActivationExpectation", reload_balance)
         self.assertIn("A saved Valtan authoring head was resumed", reload_balance)
-        self.assertIn("if (!Reload()", construct_balance)
-        self.assertIn("Record_GameplaySourceActivationExpectation", construct_balance)
+        self.assertIn("if (loadImmediately)", construct_balance)
+        self.assertIn("Ensure_Initialized()", construct_balance)
+        self.assertNotIn("Reload()", construct_balance)
+        initialize_balance = function_body(
+            self.balance_cpp, "bool Client::CBalanceTool::Ensure_Initialized()")
+        self.assertIn("if (!Reload()", initialize_balance)
+        self.assertIn("Record_GameplaySourceActivationExpectation", initialize_balance)
         self.assertIn("Runtime active pointer is unchanged", self.balance_cpp)
         self.assertIn("m_valtanAuthoringRevision", self.balance_h)
         self.assertIn("m_valtanCandidateRevision", self.balance_h)

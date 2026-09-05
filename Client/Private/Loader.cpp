@@ -27,6 +27,7 @@
 #include "Navigation.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
@@ -743,6 +744,8 @@ HRESULT CLoader::Ready_For_ValtanArena()
 
 HRESULT CLoader::Ready_For_KakulSaydonArena()
 {
+	CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	CNpcPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
@@ -761,7 +764,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA));
-	Set_Status(TEXT("KoukuSaton: arena map"));
+	Set_Status(TEXT("KoukuSaydon: arena map"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::KAKULSAYDON_ARENA);
@@ -774,7 +777,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
-	Set_Status(TEXT("KoukuSaton: server-approved character rendering"));
+	Set_Status(TEXT("KoukuSaydon: server-approved character rendering"));
 	const std::array selectedClass =
 	{
 		CNetworkManager::Get().Get_LocalCharacterClass()
@@ -786,7 +789,19 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
-	Set_Status(TEXT("KoukuSaton arena loading complete"));
+	Set_Status(TEXT("KoukuSaydon: Server boss presentation"));
+	if (FAILED(CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
+		m_pDevice,
+		m_pContext,
+		ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		"BOSS_KAKULSAYDON_G1_KOUKU")))
+	{
+		OutputDebugStringA(("[Loader][KoukuSaydonPresentation] " +
+			CKoukuSaydonPresentationAssetService::Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("KoukuSaydon arena loading complete"));
 	rollback.Commit();
 	return S_OK;
 }

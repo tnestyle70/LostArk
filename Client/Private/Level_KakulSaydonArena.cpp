@@ -8,12 +8,14 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
+#include "ValtanCinematicCameraController.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "Transform.h"
 
 #include <algorithm>
+#include <cstring>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -73,9 +75,27 @@ namespace
 	/* A shot is released only once the Character stands this far outside its
 	   box, so walking the boundary cannot flip the camera every frame. */
 	constexpr f32_t CAMERA_SHOT_EXIT_MARGIN = 0.5f;
+	/* A cue longer than the cutscene it rides is authoring nonsense, and a
+	   key list longer than this is past what one shot can be read as. */
+	constexpr uint32_t CAMERA_TRACK_MAX_DURATION_MS = 120000u;
+	constexpr size_t CAMERA_TRACK_MAX_KEYFRAMES = 64u;
+	constexpr f32_t CAMERA_TRACK_MIN_LOOK_DISTANCE = 0.01f;
 	/* Distinct from the Bern and Valtan cinematic owners so the engine's
 	   single-owner override never confuses this arena with theirs. */
 	constexpr uint64_t KAKULSAYDON_CAMERA_SHOT_OWNER_ID = 0x4B414B554C534854ull;
+	/* The pop-up book cutscene and the boss prop it stages. The boss is
+	   presentation only, so it leaves the arena when this sequence ends. */
+	constexpr const char* KAKULSAYDON_CUTSCENE_SEQUENCE_ID =
+		"world.sequence.instance.original_kouku";
+	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID = 5ull;
+	constexpr uint64_t KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID = 7ull;
+	/* Every instance whose id starts with this belongs to the same show. */
+	constexpr const char* KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX =
+		"world.sequence.instance.original_";
+	/* The unfolding copy of the tent. These placements are hidden while the
+	   arena stands and take over for the length of the cutscene. */
+	constexpr uint64_t KAKULSAYDON_CUTSCENE_SET_FIRST_ID = 41ull;
+	constexpr uint64_t KAKULSAYDON_CUTSCENE_SET_END_ID = 300ull;
 	/* The follow camera this level installs. Reused when a shot hands the
 	   camera back so the released pose matches the follow pose exactly. */
 	const float3_t KAKULSAYDON_FOLLOW_POSITION_OFFSET(0.4f, 7.5f, 4.5f);
@@ -103,6 +123,31 @@ namespace
 				return false;
 		}
 		return true;
+	}
+
+	/* The shot object carries optional blocks. Counting the required names
+	   and allowing only the known optional ones rejects unknown properties
+	   just as strictly as one exact list per combination would. */
+	bool Has_ShotProperties(
+		const Client::DATA_JSON_VALUE& object,
+		const std::initializer_list<std::string_view> required,
+		const std::initializer_list<std::string_view> optional)
+	{
+		if (!object.Is_Object())
+			return false;
+		size_t known = 0u;
+		for (const std::string_view name : required)
+		{
+			if (nullptr == object.Find(name))
+				return false;
+			++known;
+		}
+		for (const std::string_view name : optional)
+		{
+			if (nullptr != object.Find(name))
+				++known;
+		}
+		return object.Get_Object().size() == known;
 	}
 
 	bool Is_StableId(const std::string_view value)
@@ -179,6 +224,143 @@ namespace
 
 	/* Same yawed box test the Server applies to trigger boxes, so a shot
 	   authored with the trigger tools covers the ground it appears to. */
+	bool Read_CameraTrack(
+		const Client::DATA_JSON_VALUE& value,
+		const std::string& shotId,
+		Client::VALTAN_CINEMATIC_CAMERA_CUE& outCue,
+		std::string& outStatus)
+	{
+		if (!Has_ExactProperties(value,
+			{ "durationMs", "interpolation", "easing", "keyframes" }))
+		{
+			outStatus = "KoukuSaydon camera track shape is invalid: " + shotId;
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* interpolation =
+			Required(value, "interpolation", Client::DATA_JSON_TYPE::STRING);
+		const Client::DATA_JSON_VALUE* easing =
+			Required(value, "easing", Client::DATA_JSON_TYPE::STRING);
+		const Client::DATA_JSON_VALUE* keyframes =
+			Required(value, "keyframes", Client::DATA_JSON_TYPE::ARRAY);
+		uint32_t durationMs = 0u;
+		if (nullptr == interpolation || nullptr == easing || nullptr == keyframes ||
+			!Read_Uint(value.Find("durationMs"), CAMERA_TRACK_MAX_DURATION_MS,
+				durationMs) ||
+			0u == durationMs ||
+			keyframes->Get_Array().size() < 2u ||
+			keyframes->Get_Array().size() > CAMERA_TRACK_MAX_KEYFRAMES)
+		{
+			outStatus = "KoukuSaydon camera track values are invalid: " + shotId;
+			return false;
+		}
+		if ("LINEAR" == interpolation->Get_String())
+		{
+			outCue.eInterpolation =
+				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR;
+		}
+		else if ("CATMULL_ROM" == interpolation->Get_String())
+		{
+			outCue.eInterpolation =
+				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+		}
+		else
+		{
+			outStatus = "KoukuSaydon camera track interpolation is unknown: " + shotId;
+			return false;
+		}
+		if ("LINEAR" == easing->Get_String())
+			outCue.eEasing = Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+		else if ("SMOOTHSTEP" == easing->Get_String())
+			outCue.eEasing = Client::VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
+		else if ("HOLD" == easing->Get_String())
+			outCue.eEasing = Client::VALTAN_CINEMATIC_CAMERA_EASING::HOLD;
+		else
+		{
+			outStatus = "KoukuSaydon camera track easing is unknown: " + shotId;
+			return false;
+		}
+		outCue.strCueId = shotId;
+		outCue.strPatternId.clear();
+		outCue.strStageId.clear();
+		outCue.strStageActionId.clear();
+		outCue.iStageIndex = 0u;
+		outCue.iDurationMs = durationMs;
+		outCue.iTransitionInMs = 0u;
+		outCue.iTransitionOutMs = 0u;
+		/* The cutscene has no replicated actor to track; the shot is authored
+		   in world space and the level's own blend owns the hand-over. */
+		outCue.eTrackingMode = Client::VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+		outCue.vTrackingOrigin = float3_t(0.f, 0.f, 0.f);
+		outCue.fShakeAmplitude = 0.f;
+		outCue.iShakeDurationMs = 0u;
+		outCue.Keyframes.clear();
+		outCue.Keyframes.reserve(keyframes->Get_Array().size());
+		uint32_t previousTimeMs = 0u;
+		std::unordered_set<std::string> sceneIds;
+		for (const Client::DATA_JSON_VALUE& entry : keyframes->Get_Array())
+		{
+			if (!Has_ExactProperties(entry,
+				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
+			{
+				outStatus = "KoukuSaydon camera keyframe shape is invalid: " + shotId;
+				return false;
+			}
+			Client::VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe;
+			const Client::DATA_JSON_VALUE* sceneId =
+				Required(entry, "sceneId", Client::DATA_JSON_TYPE::STRING);
+			const Client::DATA_JSON_VALUE* fov =
+				Required(entry, "fovYDegrees", Client::DATA_JSON_TYPE::NUMBER);
+			uint32_t timeMs = 0u;
+			if (nullptr == sceneId || !Is_StableId(sceneId->Get_String()) ||
+				!sceneIds.emplace(sceneId->Get_String()).second ||
+				!Read_Uint(entry.Find("timeMs"), durationMs, timeMs) ||
+				!Read_Float3(entry.Find("eye"), CAMERA_SHOT_MAX_COORDINATE,
+					keyframe.vEye) ||
+				!Read_Float3(entry.Find("lookAt"), CAMERA_SHOT_MAX_COORDINATE,
+					keyframe.vLookAt) ||
+				nullptr == fov || !std::isfinite(fov->Get_Number()) ||
+				fov->Get_Number() <= 1.0 || fov->Get_Number() >= 179.0)
+			{
+				outStatus = "KoukuSaydon camera keyframe values are invalid: " + shotId;
+				return false;
+			}
+			if (outCue.Keyframes.empty())
+			{
+				if (0u != timeMs)
+				{
+					outStatus = "KoukuSaydon camera track must start at 0ms: " + shotId;
+					return false;
+				}
+			}
+			else if (timeMs <= previousTimeMs)
+			{
+				outStatus = "KoukuSaydon camera keyframes must advance: " + shotId;
+				return false;
+			}
+			const f32_t dx = keyframe.vLookAt.x - keyframe.vEye.x;
+			const f32_t dy = keyframe.vLookAt.y - keyframe.vEye.y;
+			const f32_t dz = keyframe.vLookAt.z - keyframe.vEye.z;
+			if (CAMERA_TRACK_MIN_LOOK_DISTANCE >
+				std::sqrt(dx * dx + dy * dy + dz * dz))
+			{
+				outStatus = "KoukuSaydon camera keyframe has no view direction: " +
+					shotId;
+				return false;
+			}
+			keyframe.strSceneId = sceneId->Get_String();
+			keyframe.iTimeMs = timeMs;
+			keyframe.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
+			previousTimeMs = timeMs;
+			outCue.Keyframes.push_back(std::move(keyframe));
+		}
+		if (outCue.Keyframes.back().iTimeMs != durationMs)
+		{
+			outStatus = "KoukuSaydon camera track must end at its duration: " + shotId;
+			return false;
+		}
+		return true;
+	}
+
 	bool Contains_CameraShot(
 		const Client::CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT& shot,
 		const float3_t& position,
@@ -432,7 +614,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	{
 		CLevelTransitionService::Report_NetworkRecovery(
 			"level-kakul-saydon.network-connection-lost",
-			"KoukuSaton replication observed a disconnected Server session.");
+			"KoukuSaydon replication observed a disconnected Server session.");
 		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
@@ -475,7 +657,123 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		}
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
+	Update_CutsceneBossRetire(targets);
 	Update_CameraShots(fTimeDelta);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
+	const CWorldSequencePlayer::TARGET_SET& targets,
+	std::string& outStatus)
+{
+	if (!targets.Is_Complete())
+	{
+		outStatus = "Cutscene targets are not ready";
+		return false;
+	}
+	/* The book carries the unfold animation, so it has to be on the map
+	   before its sequence samples the first frame. */
+	if (!targets.pDeployRuntime->Set_State(
+		KAKULSAYDON_CUTSCENE_BOOK_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
+	{
+		outStatus = "Cutscene book could not be revealed: " +
+			targets.pDeployRuntime->Get_Status();
+		return false;
+	}
+	Apply_CutsceneSetVisible(true);
+
+	const size_t prefixLength = strlen(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX);
+	size_t started = 0u;
+	std::string rejected;
+	for (const WORLD_SEQUENCE_INSTANCE& instance :
+		m_SequencePlayer.Get_Document().Get_Instances())
+	{
+		if (instance.instanceId.size() < prefixLength ||
+			0 != instance.instanceId.compare(0, prefixLength,
+				KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
+		{
+			continue;
+		}
+		if (m_SequencePlayer.Play(instance.instanceId, targets))
+		{
+			++started;
+			continue;
+		}
+		if (!rejected.empty())
+			rejected += ", ";
+		rejected += instance.instanceId.substr(prefixLength);
+	}
+	if (0u == started)
+	{
+		Apply_CutsceneSetVisible(false);
+		outStatus = "Cutscene could not start: " + rejected;
+		return false;
+	}
+	m_bCutsceneBossVisible = true;
+	outStatus = rejected.empty() ? "Cutscene started" :
+		"Cutscene started without " + rejected;
+	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Apply_CutsceneSetVisible(
+	const bool_t cutsceneVisible)
+{
+	if (m_bCutsceneSetVisible == cutsceneVisible)
+		return;
+	m_bCutsceneSetVisible = cutsceneVisible;
+	/* The unfolding copy and the standing arena occupy the same space, so
+	   exactly one of them is on screen at a time. */
+	for (MAP_RUNTIME_PLACED_ENTRY& entry :
+		m_MapRuntime.Get_MutablePlacements())
+	{
+		const uint64_t placementId = entry.record.placementId;
+		const bool_t isCutsceneSet =
+			KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= placementId &&
+			placementId < KAKULSAYDON_CUTSCENE_SET_END_ID;
+		if (isCutsceneSet)
+		{
+			(void)CMapPlacementRuntime::Set_RuntimeVisible(
+				entry, cutsceneVisible);
+			continue;
+		}
+		const bool_t isHiddenArena = std::find(
+			KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.begin(),
+			KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.end(),
+			placementId) != KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.end();
+		if (isHiddenArena)
+		{
+			(void)CMapPlacementRuntime::Set_RuntimeVisible(
+				entry, !cutsceneVisible);
+		}
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Update_CutsceneBossRetire(
+	const CWorldSequencePlayer::TARGET_SET& targets)
+{
+	if (!targets.Is_Complete())
+		return;
+	const bool_t playing =
+		m_SequencePlayer.Is_Playing(KAKULSAYDON_CUTSCENE_SEQUENCE_ID);
+	if (playing)
+	{
+		m_bCutsceneBossVisible = true;
+		return;
+	}
+	if (!m_bCutsceneBossVisible)
+		return;
+	/* One retire per cutscene: the flag clears whether or not the prop was
+	   still there, so a missing prop never retries every frame. */
+	m_bCutsceneBossVisible = false;
+	/* The show is over: the arena the cutscene built takes over from the
+	   unfolding copy, and the presentation boss leaves with it. */
+	Apply_CutsceneSetVisible(false);
+	if (!targets.pDeployRuntime->Set_State(
+		KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED))
+	{
+		OutputDebugStringA((
+			"[Level_KakulSaydonArena][Cutscene] boss retire failed: " +
+			targets.pDeployRuntime->Get_Status() + "\n").c_str());
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
@@ -495,6 +793,11 @@ bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 		});
 	if (KAKULSAYDON_PAPER_BRIDGE_LINKS.end() != link)
 		return Request_PaperBridgeUnfold(link->leverPlacementId, outStatus);
+
+	/* The pop-up book show is authored as several instances but the Server
+	   names only one of them, so that name starts the whole show. */
+	if (KAKULSAYDON_CUTSCENE_SEQUENCE_ID == instanceId)
+		return Start_PopupBookCutscene(targets, outStatus);
 
 	if (!m_SequencePlayer.Play(instanceId, targets))
 	{
@@ -577,14 +880,14 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
 	if (path.empty() || fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
 	{
-		outStatus = "KoukuSaton StageMarkers document is missing or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon StageMarkers document is missing or exceeds 256 KiB.";
 		return false;
 	}
 
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
-		outStatus = "KoukuSaton StageMarkers document could not be opened.";
+		outStatus = "KoukuSaydon StageMarkers document could not be opened.";
 		return false;
 	}
 	const std::string text{
@@ -592,7 +895,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		std::istreambuf_iterator<char>() };
 	if (input.bad() || text.size() != fileBytes)
 	{
-		outStatus = "KoukuSaton StageMarkers document could not be read completely.";
+		outStatus = "KoukuSaydon StageMarkers document could not be read completely.";
 		return false;
 	}
 
@@ -607,7 +910,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			{ "schema", "formatVersion", "worldId", "areaId", "revision",
 				"semanticStatus", "stages" }))
 	{
-		outStatus = "KoukuSaton StageMarkers root is invalid: " + parseError;
+		outStatus = "KoukuSaydon StageMarkers root is invalid: " + parseError;
 		return false;
 	}
 
@@ -631,7 +934,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		nullptr == stages || stages->Get_Array().empty() ||
 		stages->Get_Array().size() > 64u)
 	{
-		outStatus = "KoukuSaton StageMarkers header is invalid.";
+		outStatus = "KoukuSaydon StageMarkers header is invalid.";
 		return false;
 	}
 
@@ -644,7 +947,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		if (!Has_ExactProperties(value,
 			{ "stageId", "placementId", "displayNameKo", "sourceLevelId" }))
 		{
-			outStatus = "KoukuSaton StageMarkers stage has unexpected properties.";
+			outStatus = "KoukuSaydon StageMarkers stage has unexpected properties.";
 			return false;
 		}
 		const DATA_JSON_VALUE* stageId = Required(value, "stageId", DATA_JSON_TYPE::STRING);
@@ -661,7 +964,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			!stagedIds.emplace(stageId->Get_String()).second ||
 			!stagedPlacementIds.emplace(placementId->Get_String()).second)
 		{
-			outStatus = "KoukuSaton StageMarkers stage identity or evidence is invalid.";
+			outStatus = "KoukuSaydon StageMarkers stage identity or evidence is invalid.";
 			return false;
 		}
 		stagedMarkers.push_back({
@@ -671,7 +974,71 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 
 	m_StageMarkers = std::move(stagedMarkers);
 	m_StageMarkerPlacementIds = std::move(stagedPlacementIds);
-	outStatus = "KoukuSaton StageMarkers loaded.";
+	outStatus = "KoukuSaydon StageMarkers loaded.";
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Try_Get_AuthoringPreviewPlacement(
+	float3_t& outPosition, std::string& outStatus) const
+{
+	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		outStatus = "Waiting for the replicated local player in the KoukuSaydon arena.";
+		return false;
+	}
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+	{
+		outStatus = "The replicated local player has no transform for preview placement.";
+		return false;
+	}
+	const vector_t playerPosition = transform->Get_State(STATE::POSITION);
+	float3_t position{};
+	XMStoreFloat3(&position, playerPosition);
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z))
+	{
+		outStatus = "The replicated local player position is not finite.";
+		return false;
+	}
+
+	vector_t screenRight = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	if (nullptr != m_pCamera)
+	{
+		const shared_ptr<CTransform> cameraTransform = dynamic_pointer_cast<CTransform>(
+			m_pCamera->Get_Component(g_strTransformComTag));
+		if (nullptr != cameraTransform)
+		{
+			vector_t candidate = cameraTransform->Get_State(STATE::RIGHT);
+			candidate = XMVectorSetW(XMVectorSetY(candidate, 0.f), 0.f);
+			const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(candidate));
+			if (std::isfinite(lengthSquared) && lengthSquared > 0.000001f)
+				screenRight = XMVector3Normalize(candidate);
+		}
+	}
+
+	constexpr f32_t PREVIEW_OFFSET_METERS = 3.25f;
+	for (const f32_t direction : std::array<f32_t, 2>{ 1.f, -1.f })
+	{
+		float3_t candidate{};
+		XMStoreFloat3(&candidate,
+			playerPosition + screenRight * (PREVIEW_OFFSET_METERS * direction));
+		float3_t sampled{};
+		if (localCharacter->Try_SampleTargetGround(candidate.x, candidate.z, sampled) &&
+			std::isfinite(sampled.x) && std::isfinite(sampled.y) && std::isfinite(sampled.z))
+		{
+			outPosition = sampled;
+			outStatus = direction > 0.f ?
+				"replicated local player / camera-right / Navigation" :
+				"replicated local player / camera-left / Navigation";
+			return true;
+		}
+	}
+
+	// Navigation is optional for this collision-off view; retain the player's height.
+	XMStoreFloat3(&outPosition, playerPosition + screenRight * PREVIEW_OFFSET_METERS);
+	outStatus = "replicated local player / camera-right / unclamped";
 	return true;
 }
 
@@ -682,27 +1049,27 @@ bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 {
 	if (0u == requestSequence || placementId.empty())
 	{
-		outStatus = "KoukuSaton stage teleport request identity is invalid.";
+		outStatus = "KoukuSaydon stage teleport request identity is invalid.";
 		return false;
 	}
 	if (m_StageMarkerPlacementIds.empty())
 	{
-		outStatus = "KoukuSaton StageMarkers are not authored; teleport is isolated.";
+		outStatus = "KoukuSaydon StageMarkers are not authored; teleport is isolated.";
 		return false;
 	}
 	if (!m_StageMarkerPlacementIds.contains(std::string(placementId)))
 	{
-		outStatus = "KoukuSaton stage marker placement ID is not authored.";
+		outStatus = "KoukuSaydon stage marker placement ID is not authored.";
 		return false;
 	}
 	if (nullptr == m_pWorldEntityCommandSink ||
 		!m_pWorldEntityCommandSink->Request_StageTeleport(
 			requestSequence, placementId))
 	{
-		outStatus = "KoukuSaton stage teleport command was rejected.";
+		outStatus = "KoukuSaydon stage teleport command was rejected.";
 		return false;
 	}
-	outStatus = "KoukuSaton stage teleport command submitted.";
+	outStatus = "KoukuSaydon stage teleport command submitted.";
 	return true;
 }
 
@@ -819,19 +1186,19 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	std::error_code fileError;
 	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
 	{
-		outStatus = "KoukuSaton camera shot document is absent; follow view only.";
+		outStatus = "KoukuSaydon camera shot document is absent; follow view only.";
 		return true;
 	}
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
 	if (fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
 	{
-		outStatus = "KoukuSaton camera shot document is empty or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon camera shot document is empty or exceeds 256 KiB.";
 		return false;
 	}
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
-		outStatus = "KoukuSaton camera shot document could not be opened.";
+		outStatus = "KoukuSaydon camera shot document could not be opened.";
 		return false;
 	}
 	const std::string text{
@@ -839,7 +1206,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		std::istreambuf_iterator<char>() };
 	if (input.bad() || text.size() != fileBytes)
 	{
-		outStatus = "KoukuSaton camera shot document could not be read completely.";
+		outStatus = "KoukuSaydon camera shot document could not be read completely.";
 		return false;
 	}
 
@@ -853,7 +1220,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		!Has_ExactProperties(root,
 			{ "schema", "formatVersion", "areaId", "revision", "shots" }))
 	{
-		outStatus = "KoukuSaton camera shot root is invalid: " + parseError;
+		outStatus = "KoukuSaydon camera shot root is invalid: " + parseError;
 		return false;
 	}
 
@@ -870,7 +1237,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		std::floor(revision->Get_Number()) != revision->Get_Number() ||
 		nullptr == shots || shots->Get_Array().size() > CAMERA_SHOT_MAX_COUNT)
 	{
-		outStatus = "KoukuSaton camera shot header is invalid.";
+		outStatus = "KoukuSaydon camera shot header is invalid.";
 		return false;
 	}
 
@@ -879,11 +1246,12 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	stagedShots.reserve(shots->Get_Array().size());
 	for (const DATA_JSON_VALUE& value : shots->Get_Array())
 	{
-		if (!Has_ExactProperties(value,
+		if (!Has_ShotProperties(value,
 			{ "shotId", "sequenceInstanceId", "box", "eye", "lookAt",
-				"fovYDegrees", "blendInMs", "blendOutMs", "priority" }))
+				"fovYDegrees", "blendInMs", "blendOutMs", "priority" },
+			{ "cameraTrack", "follow" }))
 		{
-			outStatus = "KoukuSaton camera shot has unexpected properties.";
+			outStatus = "KoukuSaydon camera shot has unexpected properties.";
 			return false;
 		}
 		KAKUL_CAMERA_SHOT shot;
@@ -894,7 +1262,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			nullptr == box ||
 			!Has_ExactProperties(*box, { "center", "halfExtents", "yawDegrees" }))
 		{
-			outStatus = "KoukuSaton camera shot identity or box is invalid.";
+			outStatus = "KoukuSaydon camera shot identity or box is invalid.";
 			return false;
 		}
 		shot.strShotId = shotId->Get_String();
@@ -904,7 +1272,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			(!sequenceId->Get_String().empty() &&
 				!Is_StableId(sequenceId->Get_String())))
 		{
-			outStatus = "KoukuSaton camera shot sequence binding is invalid: " +
+			outStatus = "KoukuSaydon camera shot sequence binding is invalid: " +
 				shot.strShotId;
 			return false;
 		}
@@ -927,12 +1295,51 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			!Read_Uint(value.Find("blendOutMs"), CAMERA_SHOT_MAX_BLEND_MS, shot.iBlendOutMs) ||
 			!Read_Uint(value.Find("priority"), CAMERA_SHOT_MAX_PRIORITY, shot.iPriority))
 		{
-			outStatus = "KoukuSaton camera shot values are out of range: " +
+			outStatus = "KoukuSaydon camera shot values are out of range: " +
 				shot.strShotId;
 			return false;
 		}
 		shot.fYawDegrees = static_cast<f32_t>(yaw->Get_Number());
 		shot.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
+		const DATA_JSON_VALUE* cameraTrack = value.Find("cameraTrack");
+		if (nullptr != cameraTrack)
+		{
+			if (DATA_JSON_TYPE::OBJECT != cameraTrack->Get_Type() ||
+				!Read_CameraTrack(*cameraTrack, shot.strShotId,
+					shot.CameraTrack, outStatus))
+			{
+				return false;
+			}
+			shot.hasCameraTrack = true;
+		}
+		const DATA_JSON_VALUE* follow = value.Find("follow");
+		if (nullptr != follow)
+		{
+			if (DATA_JSON_TYPE::OBJECT != follow->Get_Type() ||
+				!Has_ExactProperties(*follow, { "eyeOffset", "lookAtOffset" }) ||
+				!Read_Float3(follow->Find("eyeOffset"),
+					CAMERA_SHOT_MAX_COORDINATE, shot.vFollowEyeOffset) ||
+				!Read_Float3(follow->Find("lookAtOffset"),
+					CAMERA_SHOT_MAX_COORDINATE, shot.vFollowLookAtOffset))
+			{
+				outStatus = "KoukuSaydon camera shot follow offsets are invalid: " +
+					shot.strShotId;
+				return false;
+			}
+			const float3_t followForward(
+				shot.vFollowLookAtOffset.x - shot.vFollowEyeOffset.x,
+				shot.vFollowLookAtOffset.y - shot.vFollowEyeOffset.y,
+				shot.vFollowLookAtOffset.z - shot.vFollowEyeOffset.z);
+			if (followForward.x * followForward.x +
+				followForward.y * followForward.y +
+				followForward.z * followForward.z <= 0.000001f)
+			{
+				outStatus = "KoukuSaydon camera shot follow offsets coincide: " +
+					shot.strShotId;
+				return false;
+			}
+			shot.followsPlayer = true;
+		}
 		/* A pose whose eye sits on its own target has no direction, and the
 		   engine would reject it every frame. Refuse it at load instead. */
 		const float3_t forward(
@@ -942,7 +1349,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		if (forward.x * forward.x + forward.y * forward.y +
 			forward.z * forward.z <= 0.000001f)
 		{
-			outStatus = "KoukuSaton camera shot eye and lookAt coincide: " +
+			outStatus = "KoukuSaydon camera shot eye and lookAt coincide: " +
 				shot.strShotId;
 			return false;
 		}
@@ -950,7 +1357,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	}
 
 	m_CameraShots = std::move(stagedShots);
-	outStatus = "KoukuSaton camera shots loaded: " +
+	outStatus = "KoukuSaydon camera shots loaded: " +
 		std::to_string(m_CameraShots.size());
 	return true;
 }
@@ -1083,6 +1490,35 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		m_vCameraEyeTo = shot->vEye;
 		m_vCameraLookTo = shot->vLookAt;
 		m_fCameraFovTo = shot->fFovYDegrees;
+		if (shot->followsPlayer && nullptr != transform)
+		{
+			/* The side scrolling stages keep this framing and slide it with
+			   the Character, so the backdrop stays behind the run line. */
+			m_vCameraEyeTo = float3_t(
+				position.x + shot->vFollowEyeOffset.x,
+				position.y + shot->vFollowEyeOffset.y,
+				position.z + shot->vFollowEyeOffset.z);
+			m_vCameraLookTo = float3_t(
+				position.x + shot->vFollowLookAtOffset.x,
+				position.y + shot->vFollowLookAtOffset.y,
+				position.z + shot->vFollowLookAtOffset.z);
+		}
+		f32_t cueElapsedMs = 0.f;
+		VALTAN_CINEMATIC_CAMERA_POSE cuePose{};
+		if (shot->hasCameraTrack &&
+			!shot->strSequenceInstanceId.empty() &&
+			m_SequencePlayer.Try_GetElapsedMs(
+				shot->strSequenceInstanceId, cueElapsedMs) &&
+			CValtanCinematicCameraController::Sample_Cue(
+				shot->CameraTrack, cueElapsedMs / 1000.f, cuePose))
+		{
+			/* The cue owns the framing for as long as the cutscene runs. The
+			   authored single pose stays as the fallback so a rejected sample
+			   never leaves the camera holding a stale frame. */
+			m_vCameraEyeTo = cuePose.vEye;
+			m_vCameraLookTo = cuePose.vLookAt;
+			m_fCameraFovTo = cuePose.fFovYDegrees;
+		}
 	}
 	else
 	{

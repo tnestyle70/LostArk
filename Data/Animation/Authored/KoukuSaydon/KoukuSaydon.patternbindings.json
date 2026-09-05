@@ -1,0 +1,68 @@
+{
+  "schema": "lostark.kouku-saydon-pattern-bindings",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+  "sourceRevision": 2,
+  "bindings": [
+    {
+      "actionId": "kakulsaydon.g1.pizza.windup-a",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.1",
+      "clip": "rpcz00_att_battle_3_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "kakulsaydon.g1.pizza.sector-sweep-a",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.2",
+      "clip": "rpcz00_att_battle_3_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4667,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "kakulsaydon.g1.pizza.recovery-a",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.3",
+      "clip": "rpcz00_att_battle_3_09",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "kakulsaydon.g1.pizza.windup-b",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.4",
+      "clip": "rpcz00_att_battle_3_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "kakulsaydon.g1.pizza.sector-sweep-b",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.5",
+      "clip": "rpcz00_att_battle_3_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4667,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "kakulsaydon.g1.pizza.recovery-b",
+      "occurrenceId": "KAKULSAYDON_G1_PIZZA.animation.6",
+      "clip": "rpcz00_att_battle_3_09",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1.0,
+      "endPolicy": "EXACT"
+    }
+  ]
+}

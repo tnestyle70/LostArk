@@ -8,6 +8,7 @@
 	<ClCompile Include="..\Private\BossLogicFlowViewModelContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPresentationGenerationAdmissionContractTests.cpp" />
 	<ClCompile Include="..\Private\CombatDebugVisibilityContractTests.cpp" />
+	<ClCompile Include="..\Private\PlayerHandGripTransformContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAnimationBindingDocumentContractTests.cpp" />

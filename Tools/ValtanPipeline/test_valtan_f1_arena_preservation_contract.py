@@ -45,10 +45,10 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
 
     def test_complete_play_status_tracks_the_matching_server_lifecycle(self) -> None:
         main = read("Client/Private/MainApp.cpp")
-        boss = read("Client/Private/BossTool.cpp")
-        header = read("Client/Public/BossTool.h")
+        boss = read("Client/Private/ValtanBossTool.cpp")
+        header = read("Client/Public/ValtanBossTool.h")
         render = function_body(main, "void CMainApp::RenderCompletePlayControls()")
-        status = function_body(boss, "bool_t Client::CBossTool::Get_ServerPatternStatus(")
+        status = function_body(boss, "bool_t Client::CValtanBossTool::Get_ServerPatternStatus(")
 
         self.assertIn("Get_ServerPatternStatus", header)
         self.assertIn("m_bCompletePlayStatusTracking", render)
@@ -60,13 +60,13 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
 
     def test_complete_play_waits_for_the_saved_server_revision(self) -> None:
         main = read("Client/Private/MainApp.cpp")
-        boss = read("Client/Private/BossTool.cpp")
+        boss = read("Client/Private/ValtanBossTool.cpp")
         render = function_body(main, "void CMainApp::RenderCompletePlayControls()")
         gate = function_body(
-            boss, "bool_t Client::CBossTool::Get_ServerActivePatternRevision("
+            boss, "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision("
         )
         submit = function_body(
-            boss, "bool_t Client::CBossTool::Submit_SelectedPattern()"
+            boss, "bool_t Client::CValtanBossTool::Submit_SelectedPattern()"
         )
 
         self.assertNotIn("Can_Play_ServerPattern", render)
@@ -108,7 +108,7 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
 
     def test_arena_status_polls_the_exact_server_transaction(self) -> None:
         main = read("Client/Private/MainApp.cpp")
-        boss = read("Client/Private/BossTool.cpp")
+        boss = read("Client/Private/ValtanBossTool.cpp")
         level = read("Client/Private/Level_ValtanArena.cpp")
         render = function_body(main, "void CMainApp::RenderServerArenaActiveControls()")
         pending = function_body(
@@ -135,10 +135,10 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, active)
 
     def test_preset_route_delegates_to_the_level_transaction_owner_only(self) -> None:
-        boss = read("Client/Private/BossTool.cpp")
+        boss = read("Client/Private/ValtanBossTool.cpp")
         level = read("Client/Private/Level_ValtanArena.cpp")
         boss_submit = function_body(
-            boss, "bool_t Client::CBossTool::Set_ServerArenaPreset("
+            boss, "bool_t Client::CValtanBossTool::Set_ServerArenaPreset("
         )
         level_submit = function_body(
             level, "bool_t CLevel_ValtanArena::Set_ArenaPreset("
@@ -202,7 +202,7 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         self.assertIn("iToolButtonColumns", developer_tools)
         self.assertIn("ImGui::TableNextColumn()", developer_tools)
         self.assertNotIn(
-            'toolButton("Boss Tool", DEBUG_TOOL::BOSS, true);\n\tImGui::SameLine()',
+            'toolButton("Valtan Boss Tool", DEBUG_TOOL::VALTAN_BOSS, true);\n\tImGui::SameLine()',
             developer_tools,
         )
 
@@ -236,11 +236,11 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, boss_only)
 
     def test_explicit_pattern_restart_is_exact_and_arena_preserving(self) -> None:
-        boss = read("Client/Private/BossTool.cpp")
-        header = read("Client/Public/BossTool.h")
+        boss = read("Client/Private/ValtanBossTool.cpp")
+        header = read("Client/Public/ValtanBossTool.h")
         service = read("Client/Private/ValtanPatternAuditionService.cpp")
         server = read("Server/Private/GameRoom.cpp")
-        action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
+        action_bar = function_body(boss, "void Client::CValtanBossTool::Render_ActionBar()")
         restart = function_body(
             service,
             "bool Client::CValtanPatternAuditionService::Restart_ActivePattern(",
@@ -254,7 +254,7 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         self.assertIn("Restart_SelectedPattern", header)
         self.assertIn("Restart_ServerPattern", header)
         restart_submit = function_body(
-            boss, "bool_t Client::CBossTool::Restart_SelectedPattern()"
+            boss, "bool_t Client::CValtanBossTool::Restart_SelectedPattern()"
         )
         self.assertIn("Restart_ActivePattern", restart_submit)
         for marker in (
@@ -284,11 +284,11 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         self.assertNotIn("Reset_ValtanAuditionState(", evaluate[pattern_start:pattern_end])
 
     def test_pattern_restart_and_saved_flow_restart_are_distinct(self) -> None:
-        boss = read("Client/Private/BossTool.cpp")
-        action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
+        boss = read("Client/Private/ValtanBossTool.cpp")
+        action_bar = function_body(boss, "void Client::CValtanBossTool::Render_ActionBar()")
         restart_flow = function_body(
             boss,
-            "bool_t Client::CBossTool::Restart_SavedFlow()",
+            "bool_t Client::CValtanBossTool::Restart_SavedFlow()",
         )
         server = read("Server/Private/GameRoom.cpp")
         pattern_start = function_body(
