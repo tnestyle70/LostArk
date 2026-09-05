@@ -155,6 +155,10 @@ private:
 	bool_t Spawn_Target(const std::string& strArchetypeId);
 	bool_t Spawn_NpcTarget(const std::string& strArchetypeId, const float3_t& vPosition);
 	bool_t Spawn_ValtanTarget(const float3_t& vPosition);
+	bool_t Spawn_PreviewBodyTarget(
+		const std::string& strAssetName,
+		const std::string& strBindingArchetypeId,
+		const float3_t& vPosition);
 	bool_t Resolve_TargetView(EFFECT_V2_TARGET_VIEW& OutView) const;
 	void Play_TargetClip(const char_t* pClipName, bool_t bLoop);
 	void Render_ValtanPatternSection();
