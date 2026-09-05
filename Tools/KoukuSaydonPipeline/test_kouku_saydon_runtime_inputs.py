@@ -61,7 +61,7 @@ class KoukuSaydonRuntimeInputTests(unittest.TestCase):
                     "patternRecovery": "rpcz00_att_battle_3_09",
                     "dead": "rpcz00_dead_1",
                 },
-                "bodyModelPreScale": 0.01,
+                "bodyModelPreScale": 0.02,
                 "weaponModelPreScale": None,
             },
             {key: value for key, value in kouku.items() if key != "archetypeId"},

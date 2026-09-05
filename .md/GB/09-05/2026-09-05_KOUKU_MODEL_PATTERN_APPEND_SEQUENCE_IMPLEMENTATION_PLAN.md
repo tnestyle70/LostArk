@@ -72,3 +72,16 @@ hit box 교차 검사도 같은 이름으로 연결한다. 좌표 계산식과 �
 검증은 실제 Client 설정을 사용하는 Debug Product compile/link와 `git diff --check`다.
 UI 사각 선택의 직접 조작과 화면 확인은 사용자가 수행한다. 이 수정의 코드와 대응 PLAN/RESULT만
 PR에 포함하고 기존 미커밋 조사 문서 및 SHIELD_STAGGER 구현 계획서는 보존한다.
+
+## G05. Full lifetime 입력의 ImGui assertion 수정
+
+사용자가 전달한 `imgui_widgets.cpp`의
+`(flags & ImGuiInputTextFlags_EnterReturnsTrue) == 0` assertion은
+`Render_Timeline`의 Full lifetime `InputInt` 호출과 일치한다. 숫자 입력 함수가
+지원하지 않는 플래그를 제거하고, 해당 입력이 활성 또는 비활성화된 프레임의
+Enter/Keypad Enter를 별도로 검사해 기존 Apply 버튼과 같은 확정 명령으로 연결한다.
+입력 중 값은 session buffer에만 두며 일반 타이핑이나 다른 곳 클릭만으로 draft를 바꾸지 않는다.
+
+기존 CPP의 이 입력 블록만 수정한다. public 선언과 JSON/XML, project/filter 변경은 없다.
+Client Debug 최소 컴파일과 `git diff --check`를 확인하고 UI 실행은 사용자가 수행한다.
+이번 사용자 요청은 로컬 반영까지이며 commit/push/PR 생성/병합은 수행하지 않는다.

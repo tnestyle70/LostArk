@@ -43,6 +43,64 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_STAGE&) const = default;
 	};
 
+	/* One reusable Logic definition owned by the composition document. The
+	   editor stores only its identity, name and type today; the judgement values
+	   and the Server consumer arrive in a later slice. */
+	struct KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION final
+	{
+		std::string strLogicId;
+		std::string strDisplayName;
+		std::string strLogicType;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION&) const = default;
+	};
+
+	/* One placed Logic box. Its window is pattern-relative, not Stage-relative,
+	   so a box can span the repeated clips it judges. */
+	struct KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strLogicId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		/* Outcome wiring of a DURATION box: each names one RESULT Logic or is
+		   empty. The box, not the definition, owns where success and timeout go. */
+		std::string strOnSuccessLogicId;
+		std::string strOnTimeoutLogicId;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE&) const = default;
+	};
+
+	/* One reusable Summon definition. Only its name is authored today; the
+	   archetype it spawns and the Pattern the spawn plays are later fields. */
+	struct KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION final
+	{
+		std::string strSummonId;
+		std::string strDisplayName;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION&) const = default;
+	};
+
+	/* One placed Summon box: startMs is the spawn time and durationMs the
+	   lifetime after which the spawn despawns. Pattern-relative like Logic. */
+	struct KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strSummonId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE&) const = default;
+	};
+
+	// DURATION judges a window, TRIGGER starts a Pattern, RESULT applies an outcome.
+	inline constexpr std::array<const char_t*, 3u> KOUKU_SAYDON_LOGIC_TYPES = {
+		"DURATION", "TRIGGER", "RESULT" };
+
 	struct KOUKU_SAYDON_COMPOSITION_PATTERN final
 	{
 		std::string strPatternId;
@@ -52,7 +110,11 @@ namespace Client
 		std::string strCategory;
 		std::uint32_t iNextStageOrdinal = 1u;
 		std::uint32_t iNextAnimationOrdinal = 1u;
+		std::uint32_t iNextLogicOccurrenceOrdinal = 1u;
+		std::uint32_t iNextSummonOccurrenceOrdinal = 1u;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
+		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
+		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE> SummonOccurrences;
 		// A malformed Pattern remains visible and survives unrelated saves.
 		// These fields are editor state; Serialize writes the preserved JSON.
 		std::string strLoadError;
@@ -72,7 +134,11 @@ namespace Client
 		std::string strAreaId;
 		std::uint32_t iFixedTickHz = 30u;
 		std::uint32_t iNextPatternOrdinal = 1u;
+		std::uint32_t iNextLogicOrdinal = 1u;
+		std::uint32_t iNextSummonOrdinal = 1u;
 		std::vector<std::string> PlayAllPatternIds;
+		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> Logics;
+		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION> Summons;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN> Patterns;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_DOCUMENT&) const = default;

@@ -593,6 +593,135 @@ namespace
 			"Play at total duration did not restart from zero");
 	}
 
+	void VerifyKoukuLogicControls(Client::CKoukuSaydonActionWorkbench& workbench,
+		const std::filesystem::path& sourcePath)
+	{
+		using namespace Client;
+		const auto originalDraft = workbench.Get_Composition();
+		const std::string originalBytes = ReadText(sourcePath);
+		Require(!workbench.Is_Dirty(), "Logic fixture requires a saved editor draft");
+		std::string status;
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_05", status), status,
+			"select Saydon for Logic controls");
+		std::string patternId;
+		RequireEditorStep(workbench.Create_Pattern("Logic resource roundtrip", "NORMAL",
+			patternId, status), status, "create Logic fixture Pattern");
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			4219811u, status), status, "append Logic fixture animation");
+		const auto animationStages = EditorPattern(workbench, patternId).Stages;
+		std::string referencedLogicId, unrelatedLogicId, boxId;
+		RequireEditorStep(workbench.Create_Logic("Referenced duration", "DURATION",
+			referencedLogicId, status), status, "create duration Logic");
+		RequireEditorStep(workbench.Create_Logic("Unrelated trigger", "TRIGGER",
+			unrelatedLogicId, status), status, "create unreferenced trigger Logic");
+		const auto& definitions = workbench.Get_Composition().Logics;
+		Require(definitions.size() == originalDraft.Logics.size() + 2u &&
+			referencedLogicId != unrelatedLogicId &&
+			definitions[definitions.size() - 2u].strLogicId == referencedLogicId &&
+			definitions[definitions.size() - 2u].strDisplayName == "Referenced duration" &&
+			definitions[definitions.size() - 2u].strLogicType == "DURATION" &&
+			definitions.back().strLogicId == unrelatedLogicId &&
+			definitions.back().strLogicType == "TRIGGER",
+			"Logic creation lost definition identity, name or type");
+		RequireEditorStep(workbench.Append_LogicBox(patternId, referencedLogicId,
+			1000u, 1000u, boxId, status), status, "append Logic box");
+		RequireEditorStep(workbench.Set_LogicBoxWindow(patternId, boxId,
+			750u, 1250u, status), status, "move and trim Logic box");
+		const auto edited = EditorPattern(workbench, patternId);
+		Require(edited.Stages == animationStages && edited.LogicOccurrences.size() == 1u &&
+			edited.LogicOccurrences[0].strOccurrenceId == boxId &&
+			edited.LogicOccurrences[0].strLogicId == referencedLogicId &&
+			edited.LogicOccurrences[0].iStartMs == 750u &&
+			edited.LogicOccurrences[0].iDurationMs == 1250u,
+			"Logic editing changed animation content or lost box identity/window");
+		RequireEditorRoundtrip(workbench);
+		const auto validDraft = workbench.Get_Composition();
+		const std::string validBytes = ReadText(sourcePath);
+		Require(!workbench.Set_LogicBoxWindow(patternId, boxId, 4000u, 1000u, status) &&
+			!workbench.Delete_Logic(referencedLogicId, status) &&
+			workbench.Get_Composition() == validDraft && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == validBytes,
+			"invalid Logic window or referenced definition delete changed saved state");
+
+		// An unrelated Stage error must not hide a preserved Logic reference.
+		auto damaged = validDraft;
+		Require(damaged.Patterns.back().strPatternId == patternId,
+			"Logic fixture Pattern is not the last authored Pattern");
+		damaged.Patterns.back().Stages[0].iDurationMs = 0u;
+		const std::string damagedBytes = CKoukuSaydonCompositionDocument::Serialize(damaged);
+		Require(WriteText(sourcePath, damagedBytes), "could not damage scratch Stage duration");
+		RequireEditorStep(workbench.Reload(status), status, "isolate Pattern with bad Stage");
+		const auto isolatedDraft = workbench.Get_Composition();
+		const auto badPattern = EditorPattern(workbench, patternId);
+		Require(!badPattern.strLoadError.empty() && badPattern.LogicOccurrences.empty() &&
+			badPattern.strPreservedJson.find(referencedLogicId) != std::string::npos,
+			"bad Stage fixture did not isolate the Pattern with its raw Logic reference");
+		Require(!workbench.Delete_Logic(referencedLogicId, status) && !status.empty() &&
+			workbench.Get_Composition() == isolatedDraft && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == damagedBytes,
+			"deleting a quarantined Pattern's Logic changed draft or source bytes");
+		RequireEditorStep(workbench.Delete_Logic(unrelatedLogicId, status), status,
+			"delete unrelated Logic while a Pattern is isolated");
+		Require(workbench.Get_Composition().Logics.size() == isolatedDraft.Logics.size() - 1u &&
+			std::none_of(workbench.Get_Composition().Logics.begin(),
+				workbench.Get_Composition().Logics.end(), [&](const auto& logic) {
+					return logic.strLogicId == unrelatedLogicId;
+				}) && EditorPattern(workbench, patternId) == badPattern &&
+			ReadText(sourcePath) == damagedBytes,
+			"unrelated Logic deletion changed the isolated Pattern or saved source");
+		RequireEditorRoundtrip(workbench);
+		Require(EditorPattern(workbench, patternId) == badPattern,
+			"saving an unrelated Logic deletion changed preserved Pattern JSON");
+
+		// An unreadable reference list blocks definition deletion, not other edits or Save.
+		std::string unresolvedBytes = damagedBytes;
+		const std::size_t patternOffset = unresolvedBytes.find("\"patternId\": \"" + patternId + "\"");
+		const std::size_t listOffset = unresolvedBytes.find("\"logicOccurrences\": [", patternOffset);
+		const std::size_t listStart = unresolvedBytes.find('[', listOffset);
+		const std::size_t listEnd = unresolvedBytes.find(']', listStart);
+		Require(patternOffset != std::string::npos && listOffset != std::string::npos &&
+			listStart != std::string::npos && listEnd != std::string::npos,
+			"could not locate the scratch Logic reference list");
+		unresolvedBytes.replace(listStart, listEnd - listStart + 1u, "{}");
+		Require(WriteText(sourcePath, unresolvedBytes), "could not damage scratch Logic list");
+		RequireEditorStep(workbench.Reload(status), status, "isolate unreadable Logic list");
+		const auto unresolvedDraft = workbench.Get_Composition();
+		const auto unresolvedPattern = EditorPattern(workbench, patternId);
+		Require(!unresolvedPattern.strLoadError.empty() &&
+			!workbench.Delete_Logic(unrelatedLogicId, status) && !status.empty() &&
+			workbench.Get_Composition() == unresolvedDraft && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == unresolvedBytes,
+			"unresolved Logic references allowed deletion or changed draft/source bytes");
+		std::string additionalLogicId;
+		RequireEditorStep(workbench.Create_Logic("Still editable result", "RESULT",
+			additionalLogicId, status), status, "create Logic beside an unresolved Pattern");
+		Require(workbench.Get_Composition().Logics.size() == unresolvedDraft.Logics.size() + 1u &&
+			EditorPattern(workbench, patternId) == unresolvedPattern,
+			"unresolved references blocked a normal edit or replaced preserved Pattern JSON");
+		RequireEditorRoundtrip(workbench);
+		Require(EditorPattern(workbench, patternId) == unresolvedPattern,
+			"Save changed an unresolved Pattern's preserved JSON");
+
+		Require(WriteText(sourcePath, validBytes), "could not restore valid Logic fixture");
+		RequireEditorStep(workbench.Reload(status), status, "reload repaired Logic fixture");
+		Require(workbench.Get_Composition() == validDraft,
+			"Logic fixture did not recover after restoring its valid source");
+		RequireEditorStep(workbench.Delete_LogicBox(patternId, boxId, status), status,
+			"delete Logic box before its definition");
+		RequireEditorStep(workbench.Delete_Logic(referencedLogicId, status), status,
+			"delete unlinked Logic definition");
+		Require(EditorPattern(workbench, patternId).LogicOccurrences.empty() &&
+			EditorPattern(workbench, patternId).Stages == animationStages,
+			"Logic deletion changed animation content or retained the removed box");
+		RequireEditorRoundtrip(workbench);
+
+		Require(WriteText(sourcePath, originalBytes), "could not restore pre-Logic scratch source");
+		RequireEditorStep(workbench.Reload(status), status, "restore editor state after Logic tests");
+		Require(workbench.Get_Composition() == originalDraft && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == originalBytes,
+			"Logic tests changed the fixture for subsequent editor contracts");
+	}
+
 	void VerifyKoukuEditorRoundtrip()
 	{
 		const auto sourceRoot = Client::CProjectDataRoot::Get();
@@ -756,6 +885,7 @@ namespace
 		RequireEditorRoundtrip(workbench);
 
 		VerifyKoukuTimelineControls(workbench, sourcePath);
+		VerifyKoukuLogicControls(workbench, sourcePath);
 
 		const auto beforeInvalid = workbench.Get_Composition();
 		Require(!workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
@@ -783,7 +913,7 @@ int Run_KoukuCompositionEditorContractTests()
 	{
 		VerifyKoukuEditorRoundtrip();
 		std::cout << "KoukuCompositionEditorContractTests: append/action-zero/model-owners/"
-			"249-stage/batch-delete/duration/multi-duplicate/preview-request/save-reload/CAS passed\n";
+			"249-stage/batch-delete/duration/multi-duplicate/preview-request/logic/quarantine/save-reload/CAS passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

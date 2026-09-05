@@ -140,3 +140,22 @@ Assimp include는 `min`만 해제하므로 `max` 오류만 드러났으며, 기�
 `Server + Client` profile을 Ctrl+F5로 실행한 뒤 F1 → Action Workbench → KoukuSaydon →
 Sequencer에서 사각 선택을 확인한다. 기존 미커밋 조사 문서와 SHIELD_STAGGER 구현 계획서는
 이 수정 커밋에 포함하지 않는다.
+
+## G05. Full lifetime 입력 assertion의 로컬 수정
+
+사용자가 전달한 `(flags & ImGuiInputTextFlags_EnterReturnsTrue) == 0` assertion을
+현재 `InputScalar` 검사와 `Render_Timeline`의 `InputInt` 호출에 대조했다.
+Full lifetime 입력에서 지원하지 않는 플래그를 제거했고, 편집 가능한 상태에서
+입력이 활성 또는 비활성화된 프레임의 Enter/Keypad Enter만 확정 요청으로 소비한다.
+기존 Apply 버튼은 유지하며 타이핑·step 버튼은 session buffer만 변경한다.
+비활성 입력에서 Enter를 눌러도 draft 확정 요청을 제출하지 않는다.
+
+- `KoukuSaydonActionWorkbench.cpp` Client Debug x64 단일 `ClCompile`: 성공, 종료 코드 0.
+- 로그: `out/ActionWorkbenchAssert/client-workbench-debug-compile.log`.
+- `git diff --check`: 통과. 기존 C4819 경고 1건은 남는다.
+- 기존 UTF-8 BOM 없음/CRLF 유지. 변경 JSON/XML과 project/filter 등록 없음.
+- Client 링크·실행, Enter/Apply의 직접 입력과 화면 확인은 미실행이다. 실행 확인 전에는 재빌드가 필요하다.
+- 사용자 요청에 따라 로컬 반영만 수행했다. commit/push/PR 생성/병합은 하지 않았다.
+
+현재 작업 브랜치는 `codex/kouku-shield-stagger`이며 기존 미커밋 조사 문서와
+SHIELD_STAGGER 계획서는 그대로 보존했다.
