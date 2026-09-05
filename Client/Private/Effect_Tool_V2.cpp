@@ -107,6 +107,7 @@ void Client::CEffect_Tool_V2::Deactivate()
 {
 	Stop_GroupPreview();
 	Stop_ValtanTimeline();
+	Stop_KoukuTimeline();
 	m_bTestOrbit = false;
 	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
 	{
@@ -1800,6 +1801,11 @@ void Client::CEffect_Tool_V2::Despawn_Target()
 	m_fValtanTimelineSeconds = 0.f;
 	m_iValtanTimelineStage = static_cast<size_t>(-1);
 	m_ValtanTimeline.clear();
+	m_bKoukuTimelineActive = false;
+	m_bKoukuTimelinePaused = false;
+	m_fKoukuTimelineSeconds = 0.f;
+	m_iKoukuTimelineRow = static_cast<size_t>(-1);
+	m_KoukuTimeline.clear();
 	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
 		pPreview->Clear_FollowTarget();
 	m_ePivotMode = PIVOT_MODE::WORLD;
@@ -1845,6 +1851,7 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 {
 	Update_ValtanTimeline(fTimeDelta);
+	Update_KoukuTimeline(fTimeDelta);
 	/* NPC and Valtan tick the runtime from their own Update; the tool-owned
 	   preview body has no such owner. */
 	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY == m_Target.eKind && m_Target.Is_Valid())
@@ -1918,8 +1925,8 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 			Snap_PivotToTarget();
 		pPreview->Restart();
 	}
-	if (!m_bValtanTimelineActive && fSeconds < m_fTargetLastClipSeconds &&
-		nullptr != pPreview && 0 == m_iSpawnFrame)
+	if (!m_bValtanTimelineActive && !m_bKoukuTimelineActive &&
+		fSeconds < m_fTargetLastClipSeconds && nullptr != pPreview && 0 == m_iSpawnFrame)
 	{
 		if (bSnapOnRestart)
 			Snap_PivotToTarget();
@@ -2637,6 +2644,383 @@ void Client::CEffect_Tool_V2::Update_ValtanServerPatternStatus()
 		" | " + snapshot.strStatus;
 }
 
+bool_t Client::CEffect_Tool_V2::Ensure_KoukuComposition(const bool_t bForceReload)
+{
+	if (m_bKoukuCompositionLoadAttempted && !bForceReload)
+		return m_KoukuComposition.Has_LastGood();
+	m_bKoukuCompositionLoadAttempted = true;
+	std::string strStatus;
+	if (!m_KoukuComposition.Reload(strStatus))
+	{
+		m_strKoukuCompositionStatus = strStatus;
+		return m_KoukuComposition.Has_LastGood();
+	}
+	const KOUKU_SAYDON_COMPOSITION_DOCUMENT& Document = m_KoukuComposition.Get_LastGood();
+	m_strKoukuCompositionStatus = "Composition revision " +
+		std::to_string(Document.iRevision) + ", " +
+		std::to_string(Document.Patterns.size()) + " pattern(s) (read-only reference)";
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Build_KoukuTimeline(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& Pattern)
+{
+	EFFECT_V2_TARGET_VIEW View;
+	if (!Resolve_TargetView(View))
+		return false;
+	m_KoukuTimeline.clear();
+	m_iKoukuTimelineDurationMs = 0u;
+	m_iKoukuTimelineRow = static_cast<size_t>(-1);
+	std::string strSkipped;
+	uint64_t iCursorMs = 0u;
+	for (const KOUKU_SAYDON_COMPOSITION_STAGE& Stage : Pattern.Stages)
+	{
+		for (const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& Occurrence :
+			Stage.AnimationOccurrences)
+		{
+			bool_t bHasClip = false;
+			for (uint32_t iClip = 0u; iClip < View.pModel->Get_NumAnimations() && !bHasClip; ++iClip)
+			{
+				const char_t* pName = View.pModel->Get_AnimationName(iClip);
+				bHasClip = nullptr != pName && Occurrence.strRuntimeClip == pName;
+			}
+			if (!bHasClip || 0u == Occurrence.iPlayMs)
+			{
+				strSkipped += " " + Occurrence.strRuntimeClip;
+				continue;
+			}
+			KOUKU_TIMELINE_ROW Row;
+			Row.strStageId = Stage.strStageId;
+			Row.strStageKind = Stage.strStageKind;
+			Row.Occurrence = Occurrence;
+			Row.Occurrence.iStartOffsetMs =
+				static_cast<uint32_t>(iCursorMs + Occurrence.iStartOffsetMs);
+			m_KoukuTimeline.push_back(std::move(Row));
+		}
+		iCursorMs += Stage.iDurationMs;
+	}
+	if (m_KoukuTimeline.empty() || 0u == iCursorMs)
+	{
+		m_strAttachStatus = "Pattern " + Pattern.strPatternId +
+			" has no playable animation on this body." +
+			(strSkipped.empty() ? std::string() : " Skipped:" + strSkipped);
+		m_KoukuTimeline.clear();
+		return false;
+	}
+	std::stable_sort(m_KoukuTimeline.begin(), m_KoukuTimeline.end(),
+		[](const KOUKU_TIMELINE_ROW& Left, const KOUKU_TIMELINE_ROW& Right)
+		{ return Left.Occurrence.iStartOffsetMs < Right.Occurrence.iStartOffsetMs; });
+	m_iKoukuTimelineDurationMs = static_cast<uint32_t>(iCursorMs);
+	m_strAttachStatus = "Pattern timeline " + std::to_string(m_iKoukuTimelineDurationMs) +
+		" ms over " + std::to_string(Pattern.Stages.size()) + " stage(s), " +
+		std::to_string(m_KoukuTimeline.size()) + " clip(s)." +
+		(strSkipped.empty() ? std::string() : " Skipped:" + strSkipped);
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Try_ResolveKoukuTimelineRow(
+	const uint32_t iTimelineMs,
+	size_t& iOutRow,
+	uint32_t& iOutClipMs) const
+{
+	const KOUKU_TIMELINE_ROW* pSelected = nullptr;
+	const KOUKU_TIMELINE_ROW* pPrevious = nullptr;
+	double dPreviousEndMs = 0.0;
+	double dSampleMs = static_cast<double>(iTimelineMs);
+	for (const KOUKU_TIMELINE_ROW& Row : m_KoukuTimeline)
+	{
+		const double dEndMs =
+			static_cast<double>(Row.Occurrence.iStartOffsetMs) + Row.Occurrence.iPlayMs;
+		if (dSampleMs >= Row.Occurrence.iStartOffsetMs && dSampleMs < dEndMs)
+			pSelected = &Row;
+		if (dEndMs <= dSampleMs && dEndMs >= dPreviousEndMs)
+		{
+			pPrevious = &Row;
+			dPreviousEndMs = dEndMs;
+		}
+	}
+	if (nullptr == pSelected)
+	{
+		pSelected = pPrevious;
+		dSampleMs = dPreviousEndMs;
+	}
+	if (nullptr == pSelected)
+		return false;
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& Occurrence = pSelected->Occurrence;
+	iOutRow = static_cast<size_t>(pSelected - m_KoukuTimeline.data());
+	iOutClipMs = static_cast<uint32_t>(std::lround(
+		Occurrence.iSourceStartMs +
+		(dSampleMs - Occurrence.iStartOffsetMs) * Occurrence.fPlayRate));
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Apply_KoukuTimeline(const f32_t fSeconds)
+{
+	EFFECT_V2_TARGET_VIEW View;
+	if (m_KoukuTimeline.empty() || !std::isfinite(fSeconds) || !Resolve_TargetView(View))
+		return;
+	const uint32_t iTimelineMs = static_cast<uint32_t>(
+		std::lround((std::max)(0.f, fSeconds) * 1000.f));
+	size_t iRow = 0u;
+	uint32_t iClipMs = 0u;
+	if (!Try_ResolveKoukuTimelineRow(iTimelineMs, iRow, iClipMs))
+		return;
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& Occurrence =
+		m_KoukuTimeline[iRow].Occurrence;
+	const std::shared_ptr<Engine::CModel>& pModel = View.pModel;
+	const char_t* pCurrentClip = pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
+	if (iRow != m_iKoukuTimelineRow || nullptr == pCurrentClip ||
+		Occurrence.strRuntimeClip != pCurrentClip)
+	{
+		Play_TargetClip(Occurrence.strRuntimeClip.c_str(), false);
+		m_iKoukuTimelineRow = iRow;
+	}
+	const uint32_t iClip = pModel->Get_CurrentAnimIndex();
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTickPerSecond = pModel->Get_AnimationTickPerSecond(iClip);
+	if (fTickPerSecond <= 0.f || !pModel->Get_AnimationProgress(iClip, fPosition, fDuration) ||
+		fDuration <= 0.f)
+	{
+		return;
+	}
+	double dTicks = static_cast<double>(iClipMs) * fTickPerSecond * 0.001;
+	if ("LOOP_TO_WINDOW" == Occurrence.strEndPolicy)
+		dTicks = std::fmod(dTicks, static_cast<double>(fDuration));
+	dTicks = std::clamp(dTicks, 0.0, static_cast<double>(fDuration));
+	pModel->Set_AnimPaused(true);
+	pModel->Set_AnimTrackPosition(iClip, static_cast<f32_t>(dTicks));
+}
+
+void Client::CEffect_Tool_V2::Update_KoukuTimeline(const f32_t fTimeDelta)
+{
+	if (!m_bKoukuTimelineActive)
+		return;
+	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY != m_Target.eKind || !m_Target.Is_Valid() ||
+		m_KoukuTimeline.empty())
+	{
+		Stop_KoukuTimeline();
+		return;
+	}
+	const f32_t fDuration = static_cast<f32_t>(m_iKoukuTimelineDurationMs) * 0.001f;
+	const f32_t fPrevious = m_fKoukuTimelineSeconds;
+	if (!m_bKoukuTimelinePaused && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		m_fKoukuTimelineSeconds += fTimeDelta;
+		if (m_fKoukuTimelineSeconds >= fDuration)
+		{
+			if (m_bKoukuTimelineLoop)
+				m_fKoukuTimelineSeconds = 0.f;
+			else
+			{
+				m_fKoukuTimelineSeconds = fDuration;
+				m_bKoukuTimelinePaused = true;
+			}
+		}
+	}
+	Apply_KoukuTimeline(m_fKoukuTimelineSeconds);
+	if (m_bKoukuTimelinePaused)
+		return;
+	const f32_t fSpawn = static_cast<f32_t>(m_iKoukuSpawnTimelineMs) * 0.001f;
+	const bool_t bWrapped = m_fKoukuTimelineSeconds < fPrevious;
+	const bool_t bCrossed = bWrapped ?
+		m_fKoukuTimelineSeconds >= fSpawn :
+		(fPrevious < fSpawn && m_fKoukuTimelineSeconds >= fSpawn);
+	if (bCrossed)
+	{
+		if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
+		{
+			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
+				Snap_PivotToTarget();
+			pPreview->Restart();
+		}
+	}
+}
+
+void Client::CEffect_Tool_V2::Stop_KoukuTimeline()
+{
+	const bool_t bWasActive = m_bKoukuTimelineActive;
+	m_bKoukuTimelineActive = false;
+	m_bKoukuTimelinePaused = false;
+	m_fKoukuTimelineSeconds = 0.f;
+	m_iKoukuTimelineRow = static_cast<size_t>(-1);
+	if (!bWasActive)
+		return;
+	EFFECT_V2_TARGET_VIEW View;
+	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY != m_Target.eKind || !Resolve_TargetView(View))
+		return;
+	if (const char_t* pClip = View.pModel->Get_AnimationName(View.pModel->Get_CurrentAnimIndex()))
+		Play_TargetClip(pClip, m_bTargetClipLoop);
+	View.pModel->Set_AnimPaused(false);
+}
+
+void Client::CEffect_Tool_V2::Render_KoukuPatternSection()
+{
+	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY != m_Target.eKind || !m_Target.Is_Valid() ||
+		nullptr == Find_KakulPreviewTarget(m_Target.strArchetypeId))
+	{
+		return;
+	}
+	ImGui::SeparatorText("Pattern Reference (KoukuSaydon composition)");
+	(void)Ensure_KoukuComposition(false);
+	if (!m_strKoukuCompositionStatus.empty())
+		ImGui::TextWrapped("%s", m_strKoukuCompositionStatus.c_str());
+	if (ImGui::SmallButton("Refresh Composition"))
+	{
+		Stop_KoukuTimeline();
+		m_iKoukuPatternSelection = -1;
+		m_KoukuTimeline.clear();
+		(void)Ensure_KoukuComposition(true);
+		return;
+	}
+	if (!m_KoukuComposition.Has_LastGood())
+		return;
+	const std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN>& Patterns =
+		m_KoukuComposition.Get_LastGood().Patterns;
+	const bool_t bHasPattern = m_iKoukuPatternSelection >= 0 &&
+		m_iKoukuPatternSelection < static_cast<int32_t>(Patterns.size());
+	const std::string strPatternLabel = bHasPattern ?
+		Patterns[static_cast<size_t>(m_iKoukuPatternSelection)].strPatternId : "(select)";
+	if (ImGui::BeginCombo("Pattern##Kouku", strPatternLabel.c_str()))
+	{
+		for (int32_t iIndex = 0; iIndex < static_cast<int32_t>(Patterns.size()); ++iIndex)
+		{
+			const KOUKU_SAYDON_COMPOSITION_PATTERN& Pattern = Patterns[static_cast<size_t>(iIndex)];
+			const bool_t bThisBody = Pattern.strActorProfileId == m_Target.strArchetypeId;
+			const std::string strLabel = Pattern.strPatternId + "  [" +
+				Pattern.strAuthoringStatus + "] " + Pattern.strDisplayName + "  (" +
+				Pattern.strActorProfileId + ", " + std::to_string(Pattern.Stages.size()) +
+				" stages)";
+			if (!bThisBody)
+				ImGui::BeginDisabled();
+			if (ImGui::Selectable(strLabel.c_str(), iIndex == m_iKoukuPatternSelection))
+			{
+				m_iKoukuPatternSelection = iIndex;
+				if (m_bKoukuTimelineActive)
+					Stop_KoukuTimeline();
+				m_KoukuTimeline.clear();
+			}
+			if (!bThisBody)
+				ImGui::EndDisabled();
+		}
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Patterns authored in Action Workbench for this body. Other bodies are greyed out. This view never saves the composition.");
+	ImGui::BeginDisabled(!bHasPattern);
+	if (ImGui::Button(m_bKoukuTimelineActive ?
+		(m_bKoukuTimelinePaused ? "Resume Pattern" : "Pause Pattern") : "Play Pattern"))
+	{
+		if (!m_bKoukuTimelineActive)
+		{
+			if (Build_KoukuTimeline(Patterns[static_cast<size_t>(m_iKoukuPatternSelection)]))
+			{
+				m_bKoukuTimelineActive = true;
+				m_bKoukuTimelinePaused = false;
+				m_fKoukuTimelineSeconds = 0.f;
+				m_iKoukuSpawnTimelineMs = (std::min)(
+					m_iKoukuSpawnTimelineMs, static_cast<int32_t>(m_iKoukuTimelineDurationMs));
+				Apply_KoukuTimeline(0.f);
+				if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+					nullptr != pPreview && 0 == m_iKoukuSpawnTimelineMs)
+				{
+					pPreview->Restart();
+				}
+			}
+		}
+		else
+			m_bKoukuTimelinePaused = !m_bKoukuTimelinePaused;
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bKoukuTimelineActive);
+	if (ImGui::Button("Stop##Kouku"))
+		Stop_KoukuTimeline();
+	ImGui::SameLine();
+	if (ImGui::Button("Restart##Kouku"))
+	{
+		m_fKoukuTimelineSeconds = 0.f;
+		m_bKoukuTimelinePaused = false;
+		Apply_KoukuTimeline(0.f);
+		if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
+			nullptr != pPreview && 0 == m_iKoukuSpawnTimelineMs)
+		{
+			pPreview->Restart();
+		}
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Loop##KoukuPattern", &m_bKoukuTimelineLoop);
+	if (bHasPattern && !m_bKoukuTimelineActive)
+	{
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& Pattern =
+			Patterns[static_cast<size_t>(m_iKoukuPatternSelection)];
+		for (const KOUKU_SAYDON_COMPOSITION_STAGE& Stage : Pattern.Stages)
+		{
+			for (const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& Occurrence :
+				Stage.AnimationOccurrences)
+			{
+				ImGui::TextDisabled("%s [%s]  %s  +%u ms x%u ms  rate %.2f  %s",
+					Stage.strStageId.c_str(), Stage.strStageKind.c_str(),
+					Occurrence.strRuntimeClip.c_str(), Occurrence.iStartOffsetMs,
+					Occurrence.iPlayMs, Occurrence.fPlayRate, Occurrence.strEndPolicy.c_str());
+			}
+		}
+		if (Pattern.Stages.empty())
+			ImGui::TextDisabled("No stages authored yet.");
+		return;
+	}
+	if (!m_bKoukuTimelineActive)
+		return;
+
+	int32_t iTimelineMs = static_cast<int32_t>(std::lround(m_fKoukuTimelineSeconds * 1000.f));
+	ImGui::SetNextItemWidth(-1.f);
+	if (ImGui::SliderInt("##KoukuPatternScrub", &iTimelineMs, 0,
+		static_cast<int32_t>(m_iKoukuTimelineDurationMs), "%d ms"))
+	{
+		m_bKoukuTimelinePaused = true;
+		m_fKoukuTimelineSeconds = static_cast<f32_t>(iTimelineMs) * 0.001f;
+		Apply_KoukuTimeline(m_fKoukuTimelineSeconds);
+	}
+	size_t iRow = 0u;
+	uint32_t iClipMs = 0u;
+	if (Try_ResolveKoukuTimelineRow(
+		static_cast<uint32_t>((std::max)(0, iTimelineMs)), iRow, iClipMs))
+	{
+		const KOUKU_TIMELINE_ROW& Row = m_KoukuTimeline[iRow];
+		ImGui::Text("Clip %zu/%zu  %s [%s]  %s  clip +%u ms",
+			iRow + 1u, m_KoukuTimeline.size(), Row.strStageId.c_str(),
+			Row.strStageKind.c_str(), Row.Occurrence.strRuntimeClip.c_str(), iClipMs);
+	}
+	if (ImGui::Button("Spawn Here##Kouku"))
+	{
+		m_iKoukuSpawnTimelineMs = (std::max)(0, iTimelineMs);
+		size_t iSpawnRow = 0u;
+		uint32_t iSpawnClipMs = 0u;
+		if (Try_ResolveKoukuTimelineRow(
+			static_cast<uint32_t>(m_iKoukuSpawnTimelineMs), iSpawnRow, iSpawnClipMs))
+		{
+			m_iSpawnFrame = static_cast<int32_t>(
+				static_cast<f32_t>(iSpawnClipMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
+		}
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Marks the effect start on this pattern clock and copies the clip-local time into Spawn Frame, so Add Binding stores clip + offset.");
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(140.f);
+	ImGui::InputInt("Spawn Point (ms)##Kouku", &m_iKoukuSpawnTimelineMs);
+	m_iKoukuSpawnTimelineMs = (std::max)(0,
+		(std::min)(m_iKoukuSpawnTimelineMs, static_cast<int32_t>(m_iKoukuTimelineDurationMs)));
+	size_t iSpawnRow = 0u;
+	uint32_t iSpawnClipMs = 0u;
+	if (Try_ResolveKoukuTimelineRow(
+		static_cast<uint32_t>(m_iKoukuSpawnTimelineMs), iSpawnRow, iSpawnClipMs))
+	{
+		ImGui::TextDisabled("Binding will store clip %s +%u ms (clip lane).",
+			m_KoukuTimeline[iSpawnRow].Occurrence.strRuntimeClip.c_str(), iSpawnClipMs);
+	}
+}
+
 bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)
 {
 	m_Bindings.clear();
@@ -2789,7 +3173,11 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 				if (nullptr == pName)
 					continue;
 				if (ImGui::Selectable(pName, iClip == iCurrent))
+				{
+					if (m_bKoukuTimelineActive)
+						Stop_KoukuTimeline();
 					Play_TargetClip(pName, m_bTargetClipLoop);
+				}
 			}
 			ImGui::EndCombo();
 		}
@@ -2843,6 +3231,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	}
 
 	Render_ValtanPatternSection();
+	Render_KoukuPatternSection();
 
 	ImGui::SeparatorText("Effect Pivot");
 	int32_t iMode = static_cast<int32_t>(m_ePivotMode);
@@ -3055,6 +3444,8 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			{
 				if (m_bValtanTimelineActive)
 					Stop_ValtanTimeline();
+				if (m_bKoukuTimelineActive)
+					Stop_KoukuTimeline();
 				m_iSpawnFrame = static_cast<int32_t>(
 					static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
 				Play_TargetClip(Binding.strClip.c_str(), m_bTargetClipLoop);
@@ -3688,6 +4079,18 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	ImGui::BeginDisabled(bTrailCenterline);
 	Draw_LerpTrack("Rotation (deg)", P.Rotation, 1.f, -3600.f, 3600.f);
 	Draw_LerpTrack("Scale", P.Scale, 0.01f, 0.001f, 1000.f);
+	ImGui::Indent(24.f);
+	ImGui::SliderFloat("Scale In End (life 0-1, 0 = off)", &P.fScaleInEnd, 0.f, 1.f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Scale grows from 0 to the Scale track value until this life ratio.");
+	ImGui::SliderFloat("Scale Out Start (life 0-1, 1 = off)", &P.fScaleOutStart, 0.f, 1.f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Scale shrinks from the Scale track value to 0 starting at this life ratio. Multiplies Scale Start/End, so both can be combined.");
+	if (0.f < P.fScaleInEnd && P.fScaleOutStart < P.fScaleInEnd)
+		ImGui::TextDisabled("Scale Out Start clamped to %.2f so the grow-in finishes first.", P.fScaleInEnd);
+	if ((0.f < P.fScaleInEnd || P.fScaleOutStart < 1.f) && P.fLifetime <= 0.f)
+		ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f), "Lifetime is 0: scale envelope is off.");
+	ImGui::Unindent(24.f);
 	ImGui::EndDisabled();
 	if (bTrailCenterline)
 		ImGui::TextDisabled("Centerline trail samples the pivot position only: use Start/End Width for thickness, Point Lifetime for length.");

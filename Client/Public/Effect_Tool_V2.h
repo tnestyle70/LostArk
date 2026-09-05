@@ -5,6 +5,7 @@
 #include "EffectV2_Document.h"
 #include "EffectV2_Object.h"
 #include "Engine_Defines.h"
+#include "KoukuSaydonCompositionDocument.h"
 #include "ValtanPatternTree.h"
 #include "ValtanViewAdmission.h"
 
@@ -100,6 +101,15 @@ private:
 		uint32_t iDurationMs = 0u;
 	};
 
+	/* One authored KoukuSaydon animation occurrence laid on the pattern clock.
+	   Occurrence.iStartOffsetMs is pattern-absolute here. */
+	struct KOUKU_TIMELINE_ROW final
+	{
+		std::string strStageId;
+		std::string strStageKind;
+		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE Occurrence;
+	};
+
 public:
 	CEffect_Tool_V2(
 		ComPtr<ID3D11Device> pDevice,
@@ -178,6 +188,16 @@ private:
 	bool_t Try_LocateValtanStage(const std::string& strActionId, uint32_t iOffsetMs);
 	bool_t Try_PlayValtanServerPattern();
 	void Update_ValtanServerPatternStatus();
+	void Render_KoukuPatternSection();
+	bool_t Ensure_KoukuComposition(bool_t bForceReload);
+	bool_t Build_KoukuTimeline(const KOUKU_SAYDON_COMPOSITION_PATTERN& Pattern);
+	bool_t Try_ResolveKoukuTimelineRow(
+		uint32_t iTimelineMs,
+		size_t& iOutRow,
+		uint32_t& iOutClipMs) const;
+	void Apply_KoukuTimeline(f32_t fSeconds);
+	void Update_KoukuTimeline(f32_t fTimeDelta);
+	void Stop_KoukuTimeline();
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
@@ -297,6 +317,19 @@ private:
 	size_t m_iValtanTimelineStage = static_cast<size_t>(-1);
 	int32_t m_iValtanSpawnTimelineMs = 0;
 	std::string m_strValtanServerPatternStatus;
+
+	CKoukuSaydonCompositionDocument m_KoukuComposition;
+	bool_t m_bKoukuCompositionLoadAttempted = false;
+	std::string m_strKoukuCompositionStatus;
+	int32_t m_iKoukuPatternSelection = -1;
+	std::vector<KOUKU_TIMELINE_ROW> m_KoukuTimeline;
+	uint32_t m_iKoukuTimelineDurationMs = 0u;
+	bool_t m_bKoukuTimelineActive = false;
+	bool_t m_bKoukuTimelinePaused = false;
+	bool_t m_bKoukuTimelineLoop = true;
+	f32_t m_fKoukuTimelineSeconds = 0.f;
+	size_t m_iKoukuTimelineRow = static_cast<size_t>(-1);
+	int32_t m_iKoukuSpawnTimelineMs = 0;
 
 	bool_t m_bTestOrbit = false;
 	float3_t m_vTestOrbitCenter = { 0.f, 0.f, 0.f };
