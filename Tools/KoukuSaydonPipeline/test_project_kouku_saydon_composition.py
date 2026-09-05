@@ -31,12 +31,13 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_seed_is_the_exact_six_stage_pizza_reference(self):
         self.validate(copy.deepcopy(self.document))
-        self.assertEqual(2, self.document["revision"])
+        # The live document grows with authored DRAFT patterns; only the Pizza
+        # PRODUCT reference and the header contract are pinned here.
+        self.assertGreaterEqual(self.document["revision"], 2)
         self.assertEqual(2, self.document["formatVersion"])
-        self.assertTrue(all(p["actorProfileId"] == "MN_RPCZ_00" for p in self.document["patterns"]))
         self.assertEqual(["KAKULSAYDON_G1_PIZZA"], self.document["playAllPatternIds"])
-        self.assertEqual(5, len(self.document["patterns"]))
         pattern = self.pizza(self.document)
+        self.assertEqual("MN_RPCZ_00", pattern["actorProfileId"])
         self.assertEqual("PRODUCT", pattern["authoringStatus"])
         self.assertEqual("MECHANIC", pattern["category"])
         self.assertEqual(7, pattern["nextAnimationOrdinal"])
@@ -106,8 +107,9 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.validate(duplicate)
 
         pattern_counter = copy.deepcopy(self.document)
-        self.pizza(pattern_counter)["patternId"] = "KAKULSAYDON_G1_PATTERN_1"
-        pattern_counter["playAllPatternIds"] = ["KAKULSAYDON_G1_PATTERN_1"]
+        ahead_id = f"KAKULSAYDON_G1_PATTERN_{pattern_counter['nextPatternOrdinal']}"
+        self.pizza(pattern_counter)["patternId"] = ahead_id
+        pattern_counter["playAllPatternIds"] = [ahead_id]
         with self.assertRaisesRegex(subject.CompositionError, "nextPatternOrdinal"):
             self.validate(pattern_counter)
 
@@ -119,15 +121,16 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_draft_may_be_empty_but_never_projects_or_replaces_product_inventory(self):
         document = copy.deepcopy(self.document)
         draft = copy.deepcopy(self.pizza(document))
+        draft_ordinal = document["nextPatternOrdinal"]
         draft.update(
-            patternId="KAKULSAYDON_G1_PATTERN_1",
+            patternId=f"KAKULSAYDON_G1_PATTERN_{draft_ordinal}",
             displayName="초안",
             authoringStatus="DRAFT",
             nextStageOrdinal=1,
             nextAnimationOrdinal=1,
             stages=[],
         )
-        document["nextPatternOrdinal"] = 2
+        document["nextPatternOrdinal"] = draft_ordinal + 1
         document["patterns"].append(draft)
         self.validate(document)
         encounter = subject.project_encounter(document)

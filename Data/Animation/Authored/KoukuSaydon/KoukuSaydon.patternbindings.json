@@ -2,7 +2,7 @@
   "schema": "lostark.kouku-saydon-pattern-bindings",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2,
+  "sourceRevision": 17,
   "bindings": [
     {
       "actionId": "kakulsaydon.g1.pizza.windup-a",
@@ -11,7 +11,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 2500,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     },
     {
@@ -21,7 +21,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 4667,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     },
     {
@@ -31,7 +31,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 1000,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     },
     {
@@ -41,7 +41,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 2500,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     },
     {
@@ -51,7 +51,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 4667,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     },
     {
@@ -61,7 +61,7 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 1000,
-      "playRate": 1.0,
+      "playRate": 1,
       "endPolicy": "EXACT"
     }
   ]
