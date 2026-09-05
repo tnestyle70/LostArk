@@ -2086,6 +2086,77 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_TELEPORT_TO_POSITION& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		!std::isfinite(message.fPositionX) || !std::isfinite(message.fPositionY) ||
+		!std::isfinite(message.fPositionZ))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_F32(message.fPositionX);
+	writer.Write_F32(message.fPositionY);
+	writer.Write_F32(message.fPositionZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_TELEPORT_TO_POSITION& message)
+{
+	C2S_DEBUG_TELEPORT_TO_POSITION decoded{};
+	std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_F32(decoded.fPositionX) || !reader.Read_F32(decoded.fPositionY) ||
+		!reader.Read_F32(decoded.fPositionZ))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!std::isfinite(decoded.fPositionX) || !std::isfinite(decoded.fPositionY) ||
+		!std::isfinite(decoded.fPositionZ))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= DEBUG_TELEPORT_RESULT::END ||
+		!std::isfinite(message.fPositionX) || !std::isfinite(message.fPositionY) ||
+		!std::isfinite(message.fPositionZ))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_F32(message.fPositionX);
+	writer.Write_F32(message.fPositionY);
+	writer.Write_F32(message.fPositionZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message)
+{
+	S2C_DEBUG_TELEPORT_TO_POSITION_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || !reader.Read_F32(decoded.fPositionX) ||
+		!reader.Read_F32(decoded.fPositionY) || !reader.Read_F32(decoded.fPositionZ))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<DEBUG_TELEPORT_RESULT>(result);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= DEBUG_TELEPORT_RESULT::END ||
+		!std::isfinite(decoded.fPositionX) || !std::isfinite(decoded.fPositionY) ||
+		!std::isfinite(decoded.fPositionZ))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_CHANGE_CHARACTER_CLASS& message)
 {

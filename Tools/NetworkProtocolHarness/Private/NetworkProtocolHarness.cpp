@@ -18,6 +18,7 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace LostArk::Shared;
@@ -2173,6 +2174,63 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_DebugTeleportPositionProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_DEBUG_TELEPORT_TO_POSITION request{};
+		request.iRequestSequence = 7u;
+		request.eWorldId = WORLD_ID::VALTAN_ARENA;
+		request.fPositionX = 2.f;
+		request.fPositionY = 10.f;
+		request.fPositionZ = -8.f;
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) &&
+			writer.Get_Buffer().size() == 18u,
+			"Teleport intent carries exact world, sequence and picked XYZ");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_DEBUG_TELEPORT_TO_POSITION decoded{};
+		testRunner.Require(Read_Message(reader, decoded) &&
+			decoded.eWorldId == request.eWorldId && decoded.iRequestSequence == 7u &&
+			decoded.fPositionX == 2.f && decoded.fPositionY == 10.f &&
+			decoded.fPositionZ == -8.f && 0u == reader.Get_RemainingSize(),
+			"Teleport intent round trip");
+		auto bytes = writer.Get_Buffer();
+		bytes.pop_back();
+		CPacketReader shortReader{ bytes };
+		decoded.iRequestSequence = 99u;
+		testRunner.Require(!Read_Message(shortReader, decoded) &&
+			decoded.iRequestSequence == 99u,
+			"Truncated teleport intent preserves caller output");
+		request.fPositionY = (std::numeric_limits<float>::quiet_NaN)();
+		CPacketWriter invalid;
+		testRunner.Require(!Write_Message(invalid, request),
+			"Teleport intent refuses nonfinite picked altitude");
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(DEBUG_TELEPORT_RESULT::END); ++reason)
+		{
+			S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+			result.iRequestSequence = 7u;
+			result.eWorldId = WORLD_ID::VALTAN_ARENA;
+			result.eResult = static_cast<DEBUG_TELEPORT_RESULT>(reason);
+			result.fPositionY = 10.25f;
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				19u == resultWriter.Get_Buffer().size(),
+				"Teleport verdict writer accepts every exact typed reason");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_DEBUG_TELEPORT_TO_POSITION_RESULT read{};
+			testRunner.Require(Read_Message(resultReader, read) &&
+				read.iRequestSequence == 7u && read.eWorldId == result.eWorldId &&
+				read.eResult == result.eResult && read.fPositionY == 10.25f &&
+				0u == resultReader.Get_RemainingSize(),
+				"Teleport verdict echoes correlation, reason and accepted ground");
+		}
+		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE) + 1u,
+			"Teleport packet identities append without renumbering peers");
+	}
+
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2286,8 +2344,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(57u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 57");
+			testRunner.Require(58u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 58");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5406,8 +5464,8 @@ namespace
 		}
 
 		testRunner.Require(
-			57u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 57");
+			58u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 58");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5434,8 +5492,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			57u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 57");
+			58u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 58");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6658,9 +6716,14 @@ namespace
 	}
 }
 
-int main()
+int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-teleport-only")
+	{
+		Test_DebugTeleportPositionProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 
 	Test_EnterWorldRoundTrip(testRunner);
 	Test_PlayerNicknameContract(testRunner);
@@ -6686,6 +6749,7 @@ int main()
 	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_KakulAuthoringCommandProtocol(testRunner);
+	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);

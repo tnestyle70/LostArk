@@ -1354,6 +1354,38 @@ bool CNetworkManager::Send_DebugEnterKakulSaydonArena(
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DebugTeleportToPosition(
+	const std::uint32_t requestSequence,
+	const float pickedX, const float pickedY, const float pickedZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_TELEPORT_TO_POSITION message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.fPositionX = pickedX;
+	message.fPositionY = pickedY;
+	message.fPositionZ = pickedZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugTeleportResult(
+	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
+{
+	if (m_DebugTeleportResults.empty())
+		return false;
+	result = m_DebugTeleportResults.front();
+	m_DebugTeleportResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugTeleportToPlacement(
 	const std::uint32_t requestSequence,
 	const std::string_view placementId)
@@ -2059,6 +2091,7 @@ void CNetworkManager::Reset_WorldInboundState()
 			1u : m_iWorldInboundGeneration + 1u;
 	m_ReplicationEvents.clear();
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
+	m_DebugTeleportResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
@@ -3221,6 +3254,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED;
 		event.CombatObjectDespawned = despawned;
 		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
+	{
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugTeleportResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_DebugTeleportResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:

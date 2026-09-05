@@ -1796,6 +1796,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_DebugTeleportToPlacement(
 				command.iSessionId, command.DebugTeleportToPlacement);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_POSITION:
+			Handle_DebugTeleportToPosition(
+				command.iSessionId, command.DebugTeleportToPosition);
+			break;
 		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
 			Handle_ChangeCharacterClass(
 				command.iSessionId, command.ChangeCharacterClass);
@@ -3231,6 +3235,13 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	player.fPositionY = ground.y;
 	player.fPositionZ = ground.z;
 	player.fYawDegrees = waypoint->fYawDegrees;
+	Reset_PlayerForDebugTeleport(player);
+#endif
+}
+
+void LostArk::Server::CGameRoom::Reset_PlayerForDebugTeleport(SERVER_PLAYER& player)
+{
+	using namespace LostArk::Shared;
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
 	player.Clear_SkillTarget();
@@ -3262,6 +3273,102 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	player.iHitReactionGraceEndTick = 0u;
 	player.isCombatReady = true;
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugTeleportToPosition(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request)
+{
+	using namespace LostArk::Shared;
+	const auto session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(binding->second);
+	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+		result = Apply_DebugTeleportToPosition(player->second, request);
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(
+		PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT, writer.Get_Buffer()))
+	{
+		session->Request_Close();
+	}
+}
+
+LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT
+LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+#ifndef _DEBUG
+	(void)player;
+	result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED;
+	return result;
+#else
+	if (request.eWorldId != m_eWorldId)
+	{
+		result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD;
+		return result;
+	}
+	const auto& previous = player.LastDebugTeleportResult;
+	if (0u != request.iRequestSequence &&
+		request.iRequestSequence == previous.iRequestSequence)
+		return previous;
+	if (!Is_NewerSequence(request.iRequestSequence, previous.iRequestSequence))
+	{
+		result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_STALE_SEQUENCE;
+		return result;
+	}
+	const auto reject = [&player, &result](const DEBUG_TELEPORT_RESULT reason)
+	{
+		result.eResult = reason;
+		player.LastDebugTeleportResult = result;
+		return result;
+	};
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound ||
+		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
+		return reject(DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE);
+	if (!std::isfinite(request.fPositionX) || !std::isfinite(request.fPositionY) ||
+		!std::isfinite(request.fPositionZ) || std::abs(request.fPositionX) > 100000.f ||
+		std::abs(request.fPositionY) > 100000.f || std::abs(request.fPositionZ) > 100000.f)
+		return reject(DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION);
+	SERVER_NAV_POINT ground{};
+	if (!m_ServerNavigation.Is_PointWalkableExact(request.fPositionX, request.fPositionZ) ||
+		!m_ServerNavigation.Sample_Position(request.fPositionX, request.fPositionZ, ground))
+		return reject(DEBUG_TELEPORT_RESULT::REJECTED_NAVIGATION);
+	/* The single-layer Server grid owns Y. A picked roof/prop/other deck must
+	not silently land on whatever unrelated floor happens to share its XZ.
+	One metre covers authored mesh-vs-cell sampling variation, never whole decks. */
+	constexpr float MAX_PICKED_GROUND_HEIGHT_ERROR = 1.f;
+	if (!std::isfinite(ground.y) ||
+		std::abs(request.fPositionY - ground.y) > MAX_PICKED_GROUND_HEIGHT_ERROR)
+		return reject(DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT);
+	Refresh_PlayerBlockingBodies();
+	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(
+		ground.x, ground.y, ground.z, player.iNetEntityId))
+		return reject(DEBUG_TELEPORT_RESULT::REJECTED_COLLISION);
+	/* Validation is complete before any action, movement, projectile or
+	trigger state is cleared. Only this session's player is mutated. */
+	Reset_PlayerForDebugTeleport(player);
+	player.fPositionX = ground.x;
+	player.fPositionY = ground.y;
+	player.fPositionZ = ground.z;
+	result.eResult = DEBUG_TELEPORT_RESULT::ACCEPTED;
+	result.fPositionX = ground.x;
+	result.fPositionY = ground.y;
+	result.fPositionZ = ground.z;
+	player.LastDebugTeleportResult = result;
+	return result;
 #endif
 }
 

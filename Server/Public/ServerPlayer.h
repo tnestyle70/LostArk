@@ -139,6 +139,8 @@ namespace LostArk::Server
 		std::uint32_t iLastMoveSequence = 0;
 		std::uint32_t iLastReviveSequence = 0;
 		std::uint32_t iLastClassChangeSequence = 0;
+		/* One idempotent Debug verdict belongs to this player in this room. */
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT LastDebugTeleportResult;
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
 		float fMoveSpeed = 6.f;

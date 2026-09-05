@@ -84,7 +84,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v51 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v58 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -281,6 +281,25 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 - Client `CNavigation`, mesh picking, animation root motion은 Server 위치를 확정하지 않는다.
 
 walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 공격은 room-owned `CCombatObjectRuntime`의 pure XZ pose/swept primitive가 Server fixed tick에서 판정한다. 플레이어 투사체와 발탄 전투 객체는 spawn adapter만 다르고 같은 live set과 hit resolver를 사용한다. Shared combat-object lifecycle/full snapshot과 Client world-root Effect는 위치 표현만 담당하며 Client collider가 피해를 판정하지 않는다. 동적 capsule-vs-capsule와 knockback obstacle collision은 아직 public 계약이 아니므로 추가할 때 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
+
+### 4.1 F1 아레나 카메라와 플레이어 위치 작업
+
+발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
+기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
+프로세스에서 유지되고 같은 아레나에 재입장해도 보존하며 프로그램 종료 후 디스크에 저장하지 않는다.
+
+플레이어 위치를 바꾸려면 F6 자유 카메라 → F1 `Move Player` → UI 밖의 지면을 한 번 클릭한다.
+버튼을 누르면 mouse-look이 꺼지고, Esc/우클릭/F6 follow 복귀는 아직 제출하지 않은 선택을 취소한다.
+다시 둘러보려면 Tab으로 mouse-look을 켠다. send 성공은 완료가 아니며 F1의 Server 응답을 확인한다.
+
+`CPlayerController -> IPlayerCommandSink -> C2S_DEBUG_TELEPORT_TO_POSITION -> CGameRoom`이
+좌표 의도를 전달하고 Server는 같은 session/world, 새 요청 순서, 생존·capture 상태, navigation과
+정적/동적 blocker를 검증한다. 피킹 높이와 Server 바닥 높이가 1m보다 다르면 다른 층/소품으로 보고
+거절한다. 성공은 해당 player만 이동·action reset 후 snapshot으로 보이고, 거절은 기존 상태를 보존한다.
+중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
+UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
+
+Shared protocol 58의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 ## 5. Character와 Animation
 

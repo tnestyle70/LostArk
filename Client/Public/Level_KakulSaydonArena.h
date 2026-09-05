@@ -87,6 +87,13 @@ public:
 		return s_pActiveInstance;
 	}
 
+#ifdef _DEBUG
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	// Applies immediately and remembers this arena's value until process exit.
+	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
+#endif
+
 	// The level owns the replicated player anchor used by local authoring previews.
 	bool_t Try_Get_AuthoringPreviewPlacement(
 		float3_t& outPosition, std::string& outStatus) const;

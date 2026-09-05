@@ -361,6 +361,34 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerSpawnClear(
 		});
 }
 
+bool LostArk::Server::CServerCollisionSystem::Is_PlayerPositionClear(
+	const float x, const float y, const float z,
+	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
+{
+	if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+		return false;
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (index < m_PlayerBlocking.size() && m_PlayerBlocking[index] &&
+			Is_PlayerCenterInsideExpandedBox(x, y, z, m_CollisionBoxes[index]))
+			return false;
+	}
+	const float centerY = y + PLAYER_CENTER_OFFSET_Y;
+	for (const auto& body : m_BlockingBodies)
+	{
+		if (body.iNetEntityId == ignoredBodyId ||
+			centerY + PLAYER_HALF_EXTENT_Y < body.fCenterY - body.fHalfHeight ||
+			centerY - PLAYER_HALF_EXTENT_Y > body.fCenterY + body.fHalfHeight)
+			continue;
+		const float dx = x - body.fX;
+		const float dz = z - body.fZ;
+		const float radius = PLAYER_HALF_EXTENT_X + body.fRadius + CONTACT_MARGIN;
+		if (dx * dx + dz * dz < radius * radius)
+			return false;
+	}
+	return true;
+}
+
 void LostArk::Server::CServerCollisionSystem::Set_BlockingBodies(
 	std::vector<SERVER_BLOCKING_BODY> bodies)
 {

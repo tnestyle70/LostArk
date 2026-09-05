@@ -184,7 +184,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests(bool);
+		friend int Run_ServerGameplayContractTests(bool, bool);
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -336,6 +336,13 @@ namespace LostArk::Server
 		void Handle_DebugTeleportToPlacement(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT& request);
+		void Handle_DebugTeleportToPosition(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT Apply_DebugTeleportToPosition(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
+		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);

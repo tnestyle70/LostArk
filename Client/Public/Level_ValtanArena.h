@@ -47,6 +47,13 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+#ifdef _DEBUG
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	// Applies immediately and remembers this arena's value until process exit.
+	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
+#endif
+
 	/* CGameInstance::Draw_Text submits immediately (SpriteBatch) but the invite
 	   popup's art composites later inside CImGuiLayer::EndFrame() -- see
 	   CPartyInteractionView::Render_InvitePopupText's own comment. */

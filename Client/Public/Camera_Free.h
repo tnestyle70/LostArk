@@ -12,6 +12,11 @@ NS_BEGIN(Client)
 class CCamera_Free final : public CCamera
 {
 public:
+	static constexpr f32_t DEFAULT_ARENA_MOVE_SPEED = 20.f;
+	static constexpr f32_t MIN_FREE_MOVE_SPEED = 0.1f;
+	static constexpr f32_t MAX_FREE_MOVE_SPEED = 400.f;
+	static constexpr f32_t FREE_MOVE_SPRINT_MULTIPLIER = 30.f;
+
 	typedef struct tagCameraFreeDesc : public CCamera::CAMERA_DESC
 	{
 		f32_t		fMouseSensor = 0.1f;
@@ -57,6 +62,15 @@ public:
 	{
 		return m_bMouseLookEnabled;
 	}
+	void Set_MouseLookEnabled(bool_t isEnabled)
+	{
+		m_bMouseLookEnabled = isEnabled;
+	}
+	f32_t Get_FreeMoveSpeed() const
+	{
+		return m_fFreeMoveSpeed;
+	}
+	bool_t Set_FreeMoveSpeed(f32_t metersPerSecond);
 	void Set_PositionOffset(const float3_t& vPositionOffset);
 	void Frame_Area(const float3_t& center, f32_t radius);
 	const float3_t& Get_PositionOffset() const
@@ -73,6 +87,8 @@ private:
 
 private:
 	f32_t				m_fMouseSensor = 0.1f;
+	f32_t				m_fInitialMoveSpeed = DEFAULT_ARENA_MOVE_SPEED;
+	f32_t				m_fFreeMoveSpeed = DEFAULT_ARENA_MOVE_SPEED;
 	bool_t				m_bFollowEnabled = false;
 	bool_t				m_bFollowRequested = false;
 	bool_t				m_bFollowInitialized = false;
