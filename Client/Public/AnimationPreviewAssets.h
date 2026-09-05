@@ -171,7 +171,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_00/MN_RPCT_00.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_00",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -183,7 +183,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_05",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -195,7 +195,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_06",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -207,7 +207,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCZ_00",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
