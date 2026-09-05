@@ -297,6 +297,9 @@ namespace Client
 		bool_t m_bResourceTreeDirty = true;
 		std::string m_strSelectedResourceProfileId;
 		std::uint32_t m_iSelectedResourceActionId = 0u;
+		// Expansion belongs to this session and survives search/catalog rebuilds by stable source ID.
+		std::string m_strExpandedResourceActionId;
+		std::string m_strExpandedResourceStageId;
 
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		std::string m_strSelectedPatternId;

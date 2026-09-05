@@ -2196,8 +2196,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_ResourceTree()
 		{
 			const auto& sequence = m_SequenceResources[leaf.iAction];
 			ImGui::PushID(sequence.strStableId.c_str());
+			const std::string sequencePath = "SEQUENCE/" + sequence.strStableId;
+			ImGui::SetNextItemOpen(m_strExpandedResourceActionId == sequencePath);
 			const bool open = ImGui::TreeNodeEx("##Sequence", ImGuiTreeNodeFlags_SpanAvailWidth,
 				"%s | %zu clips", sequence.strDisplayName.c_str(), sequence.Clips.size());
+			if (ImGui::IsItemToggledOpen())
+			{
+				m_strExpandedResourceActionId = open ? sequencePath : std::string{};
+				m_strExpandedResourceStageId.clear();
+			}
 			if (ImGui::IsItemClicked()) Queue_SequencePreview(sequence);
 			if (open)
 			{
@@ -2235,10 +2242,18 @@ void Client::CKoukuSaydonActionWorkbench::Render_ResourceTree()
 		const std::string actionLabel = action.strDisplayName + " (" +
 			std::to_string(action.iSourceActionId) + ") | " + std::to_string(clipCount) +
 			" clips | " + std::to_string(totalMs) + " ms";
+		const std::string actionPath = "ACTION/" + reference.strProfileId + "/" +
+			std::to_string(action.iSourceActionId);
+		ImGui::SetNextItemOpen(m_strExpandedResourceActionId == actionPath);
 		const bool_t actionOpen = ImGui::TreeNodeEx("##ResourceAction",
 			ImGuiTreeNodeFlags_SpanAvailWidth |
 				(actionSelected ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None),
 			"%s", actionLabel.c_str());
+		if (ImGui::IsItemToggledOpen())
+		{
+			m_strExpandedResourceActionId = actionOpen ? actionPath : std::string{};
+			m_strExpandedResourceStageId.clear();
+		}
 		if (ImGui::IsItemClicked())
 			Queue_ActionPreview(reference, action, nullptr);
 		if (actionOpen)
@@ -2248,7 +2263,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_ResourceTree()
 				if (stage.Slots.empty())
 					continue;
 				ImGui::PushID(stage.strStageId.c_str());
+				const std::string stagePath = actionPath + "/" + stage.strStageId;
+				ImGui::SetNextItemOpen(m_strExpandedResourceStageId == stagePath);
 				const bool_t stageOpen = ImGui::TreeNode(stage.strStageId.c_str());
+				if (ImGui::IsItemToggledOpen())
+					m_strExpandedResourceStageId = stageOpen ? stagePath : std::string{};
 				if (ImGui::IsItemClicked())
 					Queue_ActionPreview(reference, action, &stage);
 				if (stageOpen)
