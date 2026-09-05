@@ -21,6 +21,20 @@ Client::CNetworkPlayerCommandSink::Get_LiveInstanceCount()
 	return s_iLiveInstanceCount.load();
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugTeleportToPosition(
+	const std::uint32_t requestSequence,
+	const float pickedX, const float pickedY, const float pickedZ)
+{
+	return CNetworkManager::Get().Send_DebugTeleportToPosition(
+		requestSequence, pickedX, pickedY, pickedZ);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(
+	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugTeleportResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

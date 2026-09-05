@@ -2063,8 +2063,17 @@ namespace
 }
 
 
-Client::CBalanceTool::CBalanceTool()
+Client::CBalanceTool::CBalanceTool(const bool loadImmediately)
 {
+	m_open = loadImmediately;
+	if (loadImmediately)
+		(void)Ensure_Initialized();
+}
+
+bool Client::CBalanceTool::Ensure_Initialized()
+{
+	if (m_initializationAttempted)
+		return m_initialized;
 	if (!Reload() &&
 		!CValtanTuningCommandService::Get().
 			Has_GameplaySourceActivationExpectation())
@@ -2075,6 +2084,7 @@ Client::CBalanceTool::CBalanceTool()
 				"Valtan source admission failed while initializing the Complete Play revision gate: " +
 				m_status);
 	}
+	return m_initialized;
 }
 
 Client::CBalanceTool::~CBalanceTool()
@@ -2101,6 +2111,7 @@ Client::CBalanceTool::~CBalanceTool()
 
 void Client::CBalanceTool::Open()
 {
+	(void)Ensure_Initialized();
 	m_open = true;
 	m_focusPending = true;
 }
@@ -2946,7 +2957,7 @@ bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
 			transitionPursuitMs.begin(), transitionPursuitMs.end(),
 			[](const std::uint32_t pursuitMs)
 			{
-				return pursuitMs >= 100u && pursuitMs <= 10000u;
+				return pursuitMs <= 10000u;
 			}))
 	{
 		status =
@@ -3168,6 +3179,180 @@ bool Client::CBalanceTool::Can_Edit_ValtanManualStageTopology(
 		return false;
 	}
 	return IsValtanManualStageTopologyLinear(*pattern, status);
+}
+
+bool Client::CBalanceTool::Can_AppendValtanAnimationClip(
+	const std::string& patternId, const std::string& stageId,
+	const std::string& clip, const std::uint32_t durationMs,
+	const bool asNewStage, std::string& status) const
+{
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState || Is_ServerRuntimeSetPublishRunning())
+	{
+		status = "Finish the current Save or Publish before appending an animation.";
+		return false;
+	}
+	if (!IsValtanStableAuthoringId(clip) || durationMs < 1u || durationMs > 600000u)
+	{
+		status = "The physical clip name or native duration is outside the Valtan document contract.";
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	const VALTAN_STAGE_VIEW* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == pattern || nullptr == stage || !pattern->bAuthoringMasterManaged)
+	{
+		status = "Select a Valtan authoring Pattern and Stage before appending an animation.";
+		return false;
+	}
+	if (asNewStage)
+	{
+		if (pattern->Stages.size() >= 64u || !IsValtanManualStageTopologyLinear(*pattern, status))
+		{
+			if (pattern->Stages.size() >= 64u) status = "The Pattern already has 64 Stages.";
+			return false;
+		}
+		status.clear();
+		return true;
+	}
+	const PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
+	if (!draft.animationEditable || stage->ClipOccurrences.size() >= 32u)
+	{
+		status = "Select an editable non-WAIT Stage with fewer than 32 animation slots.";
+		return false;
+	}
+	std::uint64_t wallMs = durationMs;
+	for (const VALTAN_CLIP_OCCURRENCE_VIEW& slot : stage->ClipOccurrences)
+	{
+		if (slot.bLoop || slot.iPlayMs == 0u || slot.iPlayMs > 600000u ||
+			!std::isfinite(slot.fPlayRate) || slot.fPlayRate <= 0.f || slot.fPlayRate > 16.f)
+		{
+			status = "Give existing slots an exact Play Duration before appending after them.";
+			return false;
+		}
+		const double slotWallMs = static_cast<double>(slot.iPlayMs) / slot.fPlayRate;
+		if (!std::isfinite(slotWallMs) || slotWallMs < 1.0 || slotWallMs > 600000.0)
+		{
+			status = "An existing animation slot has an invalid wall-clock duration.";
+			return false;
+		}
+		wallMs += static_cast<std::uint64_t>(std::llround(slotWallMs));
+	}
+	// This source format has one Stage end policy, so it cannot retain a hold
+	// in the middle of a newly extended sequence. Keep the authored clock intact.
+	if (!stage->ClipOccurrences.empty() &&
+		(wallMs - durationMs != stage->iDurationMs || stage->iAuthoringRepeatCount > 1u))
+	{
+		status = "This Stage has a hold, gap or repeated sequence. Use Append as Stage to preserve its timing.";
+		return false;
+	}
+	if (wallMs > 600000u || stage->iDurationMs > 600000u)
+	{
+		status = "The appended animation would exceed the 600-second Stage clock.";
+		return false;
+	}
+	if (draft.portalRushMotionEditable && wallMs > stage->iDurationMs)
+	{
+		status = "The Warp Rush owner controls this Stage clock; append within its existing duration.";
+		return false;
+	}
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Append_ValtanAnimationClip(
+	const std::string& patternId, const std::string& stageId,
+	const std::string& clip, const std::uint32_t durationMs,
+	const bool asNewStage, VALTAN_PATTERN_VIEW& outPattern,
+	std::string& outStageId, std::string& outOccurrenceId, std::string& status)
+{
+	if (!Can_AppendValtanAnimationClip(patternId, stageId, clip, durationMs, asNewStage, status))
+		return false;
+	VALTAN_PATTERN_VIEW* const current = FindValtanPattern(m_valtanPatternTree, patternId);
+	VALTAN_PATTERN_VIEW candidate = *current;
+	std::string targetStageId = stageId;
+	std::uint64_t identityHash = 1469598103934665603ull;
+	for (const unsigned char ch : patternId)
+	{
+		identityHash ^= ch;
+		identityHash *= 1099511628211ull;
+	}
+	const std::string identityPrefix = "valtan.resource." + std::to_string(identityHash);
+	if (asNewStage)
+	{
+		bool allocated = false;
+		for (std::uint32_t ordinal = 1u; ordinal <= 9999u && !allocated; ++ordinal)
+		{
+			targetStageId = "RESOURCE_" + std::to_string(ordinal);
+			const std::string actionId = identityPrefix + ".stage." + std::to_string(ordinal);
+			if (nullptr != FindValtanStage(candidate, targetStageId)) continue;
+			bool actionExists = false;
+			for (const auto* group : { &m_valtanPatternTree.Gimmicks, &m_valtanPatternTree.Rotation })
+				for (const VALTAN_PATTERN_VIEW& owner : *group)
+					actionExists |= nullptr != FindValtanStageByAction(owner, actionId);
+			if (actionExists) continue;
+			if (!InsertValtanManualStageAfter(candidate, stageId,
+				BuildValtanManualStage(targetStageId, actionId, "ACTIVE", durationMs), status))
+				return false;
+			allocated = true;
+		}
+		if (!allocated)
+		{
+			status = "No free stable resource Stage identity remains.";
+			return false;
+		}
+	}
+	VALTAN_STAGE_VIEW* const stage = FindValtanStage(candidate, targetStageId);
+	if (nullptr == stage)
+	{
+		status = "The target Stage was lost while preparing the animation; no draft changed.";
+		return false;
+	}
+	identityHash ^= static_cast<unsigned char>('/');
+	identityHash *= 1099511628211ull;
+	for (const unsigned char ch : targetStageId)
+	{
+		identityHash ^= ch;
+		identityHash *= 1099511628211ull;
+	}
+	const std::string occurrencePrefix = "valtan.resource.clip." + std::to_string(identityHash) + ".";
+	std::string occurrenceId;
+	for (std::size_t ordinal = 0u; ordinal <= stage->ClipOccurrences.size(); ++ordinal)
+	{
+		const std::string id = occurrencePrefix + std::to_string(ordinal);
+		const bool exists = std::any_of(stage->ClipOccurrences.begin(), stage->ClipOccurrences.end(),
+			[&id](const VALTAN_CLIP_OCCURRENCE_VIEW& slot) { return slot.strClipOccurrenceId == id; });
+		if (!exists && IsValtanStableAuthoringId(id)) { occurrenceId = id; break; }
+	}
+	if (occurrenceId.empty())
+	{
+		status = "No free stable animation occurrence identity remains; no draft changed.";
+		return false;
+	}
+	std::uint64_t wallMs = durationMs;
+	for (const VALTAN_CLIP_OCCURRENCE_VIEW& slot : stage->ClipOccurrences)
+		wallMs += static_cast<std::uint64_t>(std::llround(
+			static_cast<double>(slot.iPlayMs) / slot.fPlayRate));
+	VALTAN_CLIP_OCCURRENCE_VIEW added;
+	added.strClipOccurrenceId = occurrenceId;
+	added.strClipName = clip;
+	added.strMappingBasis = "PROJECT_AUTHORED";
+	added.iPlayMs = durationMs;
+	added.iAuthoringWallMs = durationMs;
+	stage->ClipOccurrences.push_back(std::move(added));
+	stage->iDurationMs = (std::max)(stage->iDurationMs, static_cast<std::uint32_t>(wallMs));
+	stage->strAnimationEndPolicy = wallMs == stage->iDurationMs ? "EXACT" : "HOLD_LAST_POSE";
+	stage->ClipOccurrences.back().iAuthoringWallMs += stage->iDurationMs - static_cast<std::uint32_t>(wallMs);
+	stage->iAuthoringRepeatCount = 1u;
+	stage->bSuppressAnimation = false;
+
+	// Build every output before the single commit. Failed allocation, identity or
+	// topology work above leaves the original Pattern, dirty state and revision intact.
+	outPattern = candidate;
+	outStageId = targetStageId;
+	outOccurrenceId = occurrenceId;
+	*current = std::move(candidate);
+	MarkDirty(true);
+	status = "Appended physical animation to the Valtan draft. Save writes the source document.";
+	return true;
 }
 
 bool Client::CBalanceTool::Insert_ValtanManualStageAfter(
@@ -6145,6 +6330,8 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 
 bool Client::CBalanceTool::Reload()
 {
+	m_initializationAttempted = true;
+	m_initialized = false;
 	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState &&
 		m_valtanVerifiedReloadSourceRevision.empty())
 	{
@@ -6744,6 +6931,7 @@ bool Client::CBalanceTool::Reload()
 			m_valtanAuthoringRevision.substr(0u, 12u) +
 			" after strict pointer, manifest, hash, source, and empty-draft admission.";
 	}
+	m_initialized = true;
 	return true;
 }
 
@@ -8200,7 +8388,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 		}
 
 		ImGui::TextDisabled(
-			"Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool.");
+			"Server replay is available in Valtan Boss Tool and Effect Tool; Repeat and Revive remain in Valtan Boss Tool.");
 
 		if (pattern.ServerMotion.has_value())
 		{
@@ -8248,7 +8436,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				if (bManualAudition)
 				{
 					ImGui::TextDisabled(
-						"Duration %u ms | edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
+						"Duration %u ms | edit Stage kind, Sequence slots, and gap in Valtan Action Workbench",
 						stage.iDurationMs);
 				}
 				else
@@ -8454,7 +8642,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 						ImGui::Text("Damage rate: %u%%", *rate);
 					}
 					ImGui::TextDisabled(
-						"Collider geometry, timing, response, and damage are written only through Action Composition Workbench typed Details.");
+						"Collider geometry, timing, response, and damage are written only through Valtan Action Workbench typed Details.");
 				}
 				for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& object :
 					stage.CombatObjectEffects)
@@ -8841,7 +9029,7 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 				pattern.selectionMode.c_str(), pattern.phaseRequirement.c_str(),
 				pattern.selectionWeight, pattern.stageCount);
 			ImGui::TextDisabled(
-				"Read-only legacy row. Use Boss Tool or Effect Tool for Server replay.");
+				"Read-only legacy row. Use Valtan Boss Tool or Effect Tool for Server replay.");
 			ImGui::TreePop();
 		}
 		ImGui::PopID();
@@ -9054,7 +9242,7 @@ void Client::CBalanceTool::RenderLiveVerification()
 		ImGui::Text("Server tick %u", player.iServerTick);
 		ImGui::Text("Combat ready: %s", player.isCombatReady ? "YES" : "PROTECTED");
 		if (0u == player.iCurrentHp)
-			ImGui::TextDisabled("Revive is available in F1 -> Boss Tool.");
+			ImGui::TextDisabled("Revive is available in F1 -> Valtan Boss Tool.");
 	}
 	else
 		ImGui::TextDisabled("No replicated player snapshot");

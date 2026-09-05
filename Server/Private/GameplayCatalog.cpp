@@ -1291,6 +1291,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
 		LostArk::Shared::GameplayDataRevision& presentationGenerationId;
+		std::uint32_t& koukuSaydonProductSourceRevision;
 		SKILL_MAP previousSkills;
 		BOSS_MAP previousBosses;
 		BOSS_PART_MAP previousBossParts;
@@ -1303,6 +1304,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
 		LostArk::Shared::GameplayDataRevision previousPresentationGenerationId{};
+		std::uint32_t previousKoukuSaydonProductSourceRevision = 0u;
 		bool committed = false;
 
 		LOAD_ROLLBACK(
@@ -1317,7 +1319,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			TIMELINE_MAP& timelineTarget,
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget,
-			LostArk::Shared::GameplayDataRevision& presentationGenerationTarget)
+			LostArk::Shared::GameplayDataRevision& presentationGenerationTarget,
+			std::uint32_t& koukuSaydonProductSourceRevisionTarget)
 			: skills(skillTarget)
 			, bosses(bossTarget)
 			, bossParts(bossPartTarget)
@@ -1330,6 +1333,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, players(playerTarget)
 			, damages(damageTarget)
 			, presentationGenerationId(presentationGenerationTarget)
+			, koukuSaydonProductSourceRevision(
+				koukuSaydonProductSourceRevisionTarget)
 			, previousSkills(std::move(skillTarget))
 			, previousBosses(std::move(bossTarget))
 			, previousBossParts(std::move(bossPartTarget))
@@ -1342,6 +1347,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
 			, previousPresentationGenerationId(presentationGenerationTarget)
+			, previousKoukuSaydonProductSourceRevision(
+				koukuSaydonProductSourceRevisionTarget)
 		{
 		}
 
@@ -1361,6 +1368,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
 			presentationGenerationId = previousPresentationGenerationId;
+			koukuSaydonProductSourceRevision =
+				previousKoukuSaydonProductSourceRevision;
 		}
 	};
 	LOAD_ROLLBACK rollback{
@@ -1369,7 +1378,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		m_BossPatternSequences,
 		m_ValtanTimelines, m_Players,
 		m_DamageRatePercentByProfileId,
-		m_ValtanPresentationGenerationId };
+		m_ValtanPresentationGenerationId,
+		m_iKoukuSaydonProductSourceRevision };
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_BossParts.clear();
@@ -1382,6 +1392,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
 	m_ValtanPresentationGenerationId = {};
+	m_iKoukuSaydonProductSourceRevision = 0u;
 
 	std::ifstream bootstrapFile(path, std::ios::binary);
 	if (!bootstrapFile)
@@ -1447,7 +1458,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 		StripCarriageReturn(line);
 		const std::vector<std::string_view> fields = SplitTabs(line);
-		if (!fields.empty() && "PATTERNPRESENTATIONGENERATION" == fields[0])
+		if (!fields.empty() && "KOUKUSAYDONPRODUCTREVISION" == fields[0])
+		{
+			std::uint32_t sourceRevision = 0u;
+			if (4u != fields.size() ||
+				"ENCOUNTER_KAKULSAYDON_G1" != fields[1] ||
+				"BOSS_KAKULSAYDON_G1_KOUKU" != fields[2] ||
+				0u != m_iKoukuSaydonProductSourceRevision ||
+				!ParseNumber(fields[3], sourceRevision) || 0u == sourceRevision)
+			{
+				m_strStatus =
+					"KoukuSaydon Product source revision row is invalid or duplicated";
+				return false;
+			}
+			m_iKoukuSaydonProductSourceRevision = sourceRevision;
+		}
+		else if (!fields.empty() && "PATTERNPRESENTATIONGENERATION" == fields[0])
 		{
 			if (3u != fields.size() || "ENCOUNTER_VALTAN" != fields[1] ||
 				m_ValtanPresentationGenerationId.Is_Valid() ||
@@ -3255,8 +3281,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				stepIndex + 1u < sequence->second.iExpectedStepCount;
 			if (6u == fields.size() &&
 				(!ParseNumber(fields[5], pursuitAfterMs) ||
-				 (hasNextStep &&
-				  (pursuitAfterMs < 100u || pursuitAfterMs > 10000u)) ||
+				 (hasNextStep && pursuitAfterMs > 10000u) ||
 				 (!hasNextStep && 0u != pursuitAfterMs)))
 			{
 				m_strStatus =
@@ -4076,13 +4101,31 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	}
 
 	if (std::getline(input, line) || m_Skills.empty() || m_Players.empty() ||
-		m_Bosses.empty() || m_BossParts.empty() || m_BossPatterns.empty() ||
+		m_Bosses.empty() || m_BossPatterns.empty() ||
 		m_BossCombatObjects.empty() ||
 		m_ValtanTimelines.empty() ||
 		m_DamageRatePercentByProfileId.empty() ||
 		!m_ValtanPresentationGenerationId.Is_Valid())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
+		return false;
+	}
+	const bool hasKoukuSaydonBoss =
+		m_Bosses.contains("BOSS_KAKULSAYDON_G1_KOUKU");
+	const bool hasKoukuSaydonPatterns =
+		m_BossPatterns.contains("ENCOUNTER_KAKULSAYDON_G1");
+	const bool hasKoukuSaydonSequence =
+		m_BossPatternSequences.contains("ENCOUNTER_KAKULSAYDON_G1");
+	const bool hasAnyKoukuSaydonProductComponent =
+		hasKoukuSaydonBoss || hasKoukuSaydonPatterns || hasKoukuSaydonSequence ||
+		0u != m_iKoukuSaydonProductSourceRevision;
+	if (hasAnyKoukuSaydonProductComponent &&
+		(!hasKoukuSaydonBoss || !hasKoukuSaydonPatterns ||
+		 !hasKoukuSaydonSequence ||
+		 0u == m_iKoukuSaydonProductSourceRevision))
+	{
+		m_strStatus =
+			"KoukuSaydon Product source revision and catalog rows are incomplete";
 		return false;
 	}
 	if (skillCombatTraitOwners.size() != m_Skills.size())
@@ -4262,8 +4305,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	for (const auto& [archetypeId, boss] : m_Bosses)
 	{
 		const auto foundParts = m_BossParts.find(archetypeId);
+		const bool isValtanPrimary = "BOSS_VALTAN" == archetypeId &&
+			"ENCOUNTER_VALTAN" == boss.strEncounterId;
+		const bool isKoukuSaydonGateOne =
+			"BOSS_KAKULSAYDON_G1_KOUKU" == archetypeId &&
+			"ENCOUNTER_KAKULSAYDON_G1" == boss.strEncounterId;
 		if ((m_BossParts.end() == foundParts || foundParts->second.empty()) &&
-			!dependentBossArchetypeIds.contains(archetypeId))
+			!dependentBossArchetypeIds.contains(archetypeId) &&
+			!isKoukuSaydonGateOne)
 		{
 			m_strStatus = "Boss has no part definitions";
 			return false;
@@ -4371,7 +4420,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				0u == pattern.iTriggerOrder &&
 				0u == pattern.iSelectionWeight &&
 				0u == pattern.iMaximumConsecutiveUses &&
-				BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory;
+				(BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory ||
+				 isKoukuSaydonGateOne);
 			const bool validSelection = validNormalSelection ||
 				validHealthSelection || validAuditionSelection;
 			if (!validSelection || !validVerticalOffset ||
@@ -4392,7 +4442,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					pattern.Motion.iTravelEndMs ||
 				  pattern.Motion.iTravelEndMs >
 					pattern.Stages[pattern.Motion.iTravelStageIndex].iDurationMs)) ||
-				0u == pattern.iSourcePrimaryActionId ||
+				(0u == pattern.iSourcePrimaryActionId && !isKoukuSaydonGateOne) ||
 				pattern.Stages.size() != pattern.iExpectedStageCount)
 			{
 				m_strStatus = "Boss pattern selection or stage count is invalid";
@@ -4890,7 +4940,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							3u == action.Volley.iCountPerResolvedTarget &&
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 								action.Volley.eLayout &&
-							std::fabs(action.Volley.fRadiusM - 7.5f) < 0.0001f &&
+							std::fabs(action.Volley.fRadiusM - 9.f) < 0.0001f &&
 							30.f == action.Volley.fStartAngleDegrees &&
 							120.f == action.Volley.fAngleStepDegrees &&
 							!action.Volley.bAllowOverlap &&
@@ -4899,10 +4949,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							0u == action.Volley.iFirstSpawnOffsetMs &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
-							std::fabs(combatObject->second.fSpeedMps - 9.9926008129f) <
+							std::fabs(combatObject->second.fSpeedMps - 11.9911209755f) <
 								0.0001f &&
 							std::fabs(combatObject->second.fMaximumDistanceM -
-								12.9903810568f) < 0.0001f &&
+								15.5884572681f) < 0.0001f &&
 							300u == combatObject->second.iMovementStartDelayMs &&
 							!combatObject->second.bExpireOnDistanceEnd &&
 							1900u == combatObject->second.iLifeMs)
@@ -5213,10 +5263,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		const bool expectsAuthoredPhaseAction =
 			BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT ==
 				boss.PhasePolicy.eKind;
-		const bool isValtanPrimary = "BOSS_VALTAN" == archetypeId &&
-			"ENCOUNTER_VALTAN" == boss.strEncounterId;
 		const std::size_t expectedGameplayPhaseActionCount =
-			isValtanPrimary ? 2u : 1u;
+			isValtanPrimary ? 2u : (isKoukuSaydonGateOne ? 0u : 1u);
 		if ((expectsAuthoredPhaseAction &&
 			 expectedGameplayPhaseActionCount != gameplayPhaseActionCount) ||
 			(!expectsAuthoredPhaseAction && 0u != gameplayPhaseActionCount))
@@ -5704,6 +5752,14 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternSequence(
 {
 	const auto iter = m_BossPatternSequences.find(encounterId);
 	return m_BossPatternSequences.end() == iter ? nullptr : &iter->second;
+}
+
+std::uint32_t
+LostArk::Server::CGameplayCatalog::Find_KoukuSaydonProductSourceRevision(
+	const std::string& encounterId) const noexcept
+{
+	return "ENCOUNTER_KAKULSAYDON_G1" == encounterId ?
+		m_iKoukuSaydonProductSourceRevision : 0u;
 }
 
 const std::string& LostArk::Server::CGameplayCatalog::Find_IntroPatternId(

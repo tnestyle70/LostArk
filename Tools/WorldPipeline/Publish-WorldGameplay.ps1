@@ -106,13 +106,24 @@ function Format-InvariantFloat {
 
 function Get-EncounterProfiles {
     $documents = @(
-        (Read-ProjectJson 'Data/Encounters/Valtan/ValtanEncounter.json')
+        (Read-ProjectJson 'Data/Encounters/Valtan/ValtanEncounter.json'),
+        (Read-ProjectJson `
+            'Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json')
     )
     $profiles = @{}
     foreach ($document in $documents) {
-        Assert-ExactProperties $document @(
-            'schema','formatVersion','encounterId','bossArchetypeId',
-            'authority','fixedTickHz','introPatternId','states','patterns') 'encounter profile'
+		$isKoukuSaydon = [string]$document.encounterId -ceq
+			'ENCOUNTER_KAKULSAYDON_G1'
+		$encounterProperties = @(
+			'schema','formatVersion','encounterId','bossArchetypeId',
+			'authority','fixedTickHz','patterns')
+		if ($isKoukuSaydon) {
+			$encounterProperties += @('sourceRevision','playAllPatternIds')
+		}
+		else {
+			$encounterProperties += @('introPatternId','states')
+		}
+        Assert-ExactProperties $document $encounterProperties 'encounter profile'
 		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 4 4
 		Assert-JsonInteger $document.fixedTickHz "$($document.encounterId) fixedTickHz" 30 30
         Assert-StableId $document.encounterId 'encounterId'
@@ -123,34 +134,54 @@ function Get-EncounterProfiles {
             $document.fixedTickHz -ne 30) {
             throw "Encounter header is invalid: $($document.encounterId)"
         }
+		if ($isKoukuSaydon) {
+			Assert-JsonInteger $document.sourceRevision `
+				'KoukuSaydon encounter sourceRevision' 1 ([uint32]::MaxValue)
+			if ([string]$document.bossArchetypeId -cne
+				'BOSS_KAKULSAYDON_G1_KOUKU' -or
+				$document.playAllPatternIds -isnot [Array] -or
+				@($document.playAllPatternIds).Count -lt 1) {
+				throw 'KoukuSaydon encounter Product identity is invalid.'
+			}
+		}
         if ($profiles.ContainsKey([string]$document.encounterId)) {
             throw "Duplicate encounter ID: $($document.encounterId)"
         }
 
-        $stateIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        foreach ($state in @($document.states)) {
-            Assert-ExactProperties $state @('id','actionId','next') "$($document.encounterId) state"
-			Assert-JsonString $state.id "$($document.encounterId) state id"
-			Assert-JsonString $state.actionId "$($document.encounterId) state actionId"
-			Assert-JsonString $state.next "$($document.encounterId) state next" -AllowNull
-            Assert-StableId $state.id "$($document.encounterId) state id"
-            Assert-StableId $state.actionId "$($document.encounterId) state actionId"
-            Assert-StableId $state.next "$($document.encounterId) state next" -AllowEmpty
-            if (-not $stateIds.Add([string]$state.id)) {
-                throw "Duplicate encounter state ID: $($state.id)"
-            }
-        }
-        if ($stateIds.Count -eq 0) {
-            throw "Encounter requires at least one state: $($document.encounterId)"
-        }
+        if (-not $isKoukuSaydon) {
+			$stateIds =
+				[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			foreach ($state in @($document.states)) {
+				Assert-ExactProperties $state @('id','actionId','next') `
+					"$($document.encounterId) state"
+				Assert-JsonString $state.id "$($document.encounterId) state id"
+				Assert-JsonString $state.actionId `
+					"$($document.encounterId) state actionId"
+				Assert-JsonString $state.next `
+					"$($document.encounterId) state next" -AllowNull
+				Assert-StableId $state.id "$($document.encounterId) state id"
+				Assert-StableId $state.actionId `
+					"$($document.encounterId) state actionId"
+				Assert-StableId $state.next `
+					"$($document.encounterId) state next" -AllowEmpty
+				if (-not $stateIds.Add([string]$state.id)) {
+					throw "Duplicate encounter state ID: $($state.id)"
+				}
+			}
+			if ($stateIds.Count -eq 0) {
+				throw "Encounter requires at least one state: $($document.encounterId)"
+			}
+		}
 
         $patterns = @($document.patterns)
         if ($patterns.Count -eq 0) {
             throw "Encounter requires at least one pattern: $($document.encounterId)"
         }
-		# introPatternId is owned and strictly validated by the gameplay balance
-		# publisher; this document only needs to tolerate its presence.
-		$null = $document.PSObject.Properties['introPatternId']
+		# Valtan introPatternId is owned by the gameplay balance publisher. K's
+		# animation-only Product intentionally has no automatic intro selector.
+		if (-not $isKoukuSaydon) {
+			$null = $document.PSObject.Properties['introPatternId']
+		}
 		$patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		foreach ($pattern in $patterns) {
 			# serverMotion/finale are owned and strictly validated by the gameplay balance
@@ -192,6 +223,22 @@ function Get-EncounterProfiles {
 				Assert-StableId $stage.stageId "$($document.encounterId) stageId"
 				Assert-StableId $stage.actionId "$($document.encounterId) stage actionId"
 				Assert-JsonInteger $stage.durationMs "$($document.encounterId) stage durationMs" 1 ([uint32]::MaxValue)
+			}
+		}
+		if ($isKoukuSaydon) {
+			$playAllIds = @($document.playAllPatternIds)
+			if ($playAllIds.Count -ne $patternIds.Count) {
+				throw 'KoukuSaydon playAll inventory differs from Product patterns.'
+			}
+			for ($index = 0; $index -lt $playAllIds.Count; ++$index) {
+				Assert-JsonString $playAllIds[$index] `
+					'KoukuSaydon playAll patternId'
+				Assert-StableId $playAllIds[$index] `
+					'KoukuSaydon playAll patternId'
+				if ([string]$playAllIds[$index] -cne
+					[string]$patterns[$index].patternId) {
+					throw 'KoukuSaydon playAll order differs from Product order.'
+				}
 			}
 		}
         $profiles[[string]$document.encounterId] = $document

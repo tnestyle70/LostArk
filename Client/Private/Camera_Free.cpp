@@ -12,10 +12,6 @@
 namespace
 {
 	constexpr f32_t SHAKE_TRANSLATION_METERS_PER_UNIT = 0.01f;
-	/* An extracted authoring Area can span thousands of units, so holding
-	   either Shift scales only the free-camera step for crossing it. The
-	   camera keeps the speed its level authored for ordinary work. */
-	constexpr f32_t FREE_CAMERA_SPRINT_SCALE = 30.f;
 	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
 	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
 }
@@ -41,6 +37,10 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 		return E_FAIL;
 
 	auto pDesc = static_cast<CAMERA_FREE_DESC*>(pArg);
+	if (!std::isfinite(pDesc->fSpeedPerSec) || pDesc->fSpeedPerSec <= 0.f)
+		return E_INVALIDARG;
+	m_fInitialMoveSpeed = pDesc->fSpeedPerSec;
+	m_fFreeMoveSpeed = pDesc->fSpeedPerSec;
 
 	m_fMouseSensor = pDesc->fMouseSensor;
 	m_pFollowTarget = pDesc->pFollowTarget;
@@ -131,6 +131,18 @@ void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 		Update_FollowCamera(0.f);
 		__super::Update_PipeLine();
 	}
+}
+
+bool_t CCamera_Free::Set_FreeMoveSpeed(const f32_t metersPerSecond)
+{
+	if (!std::isfinite(metersPerSecond) ||
+		metersPerSecond < MIN_FREE_MOVE_SPEED ||
+		metersPerSecond > MAX_FREE_MOVE_SPEED)
+	{
+		return false;
+	}
+	m_fFreeMoveSpeed = metersPerSecond;
+	return true;
 }
 
 void CCamera_Free::Set_PositionOffset(
@@ -274,8 +286,11 @@ void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 	const bool_t sprintHeld = !textInputActive &&
 		(0 != (keyState(DIK_LSHIFT) & 0x80) ||
 		 0 != (keyState(DIK_RSHIFT) & 0x80));
-	const f32_t fMoveDelta = sprintHeld ?
-		fTimeDelta * FREE_CAMERA_SPRINT_SCALE : fTimeDelta;
+	// Scale only translation; the Transform keeps its initialized speed and
+	// mouse rotation and follow-camera response retain their original time step.
+	const f32_t fMoveDelta = fTimeDelta *
+		(m_fFreeMoveSpeed / m_fInitialMoveSpeed) *
+		(sprintHeld ? FREE_MOVE_SPRINT_MULTIPLIER : 1.f);
 
 	if (!textInputActive && keyState(DIK_W) & 0x80)
 		m_pTransformCom->Go_Straight(fMoveDelta);

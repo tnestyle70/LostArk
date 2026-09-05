@@ -161,54 +161,53 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true
 	},
-	/* KoukuSaton extracted bodies are Development authoring references only.
-	   They intentionally have no bossArchetypeId until a Server Product world,
-	   encounter and pattern contract admits a concrete subset. */
+	/* Registered local preview bodies for Character Select, Development and both raid arenas.
+	   These descriptors do not supply a Server entity or boss archetype identity. */
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakul.mn-rpct-00",
-		"[KoukuSaton Reference] MN_RPCT_00 (249 clips)",
+		"kakulsaydon.mn-rpct-00",
+		"[KoukuSaydon Reference] MN_RPCT_00 (249 clips)",
 		"MN_RPCT_00",
 		"Character/KoukuSaton/MN_RPCT_00/MN_RPCT_00.wmodel",
-		L"Prototype_Component_Model_AnimationPreview_Kakul_MN_RPCT_00",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_00",
 		false,
-		0.01f,
+		0.02f,
 		-90.f,
 		true
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakul.mn-rpct-05",
-		"[KoukuSaton Reference] MN_RPCT_05 / MN_RPCT_07 alias (249 clips)",
+		"kakulsaydon.mn-rpct-05",
+		"[KoukuSaydon Reference] MN_RPCT_05 / MN_RPCT_07 alias (249 clips)",
 		"MN_RPCT_05",
 		"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-		L"Prototype_Component_Model_AnimationPreview_Kakul_MN_RPCT_05",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_05",
 		false,
-		0.01f,
+		0.02f,
 		-90.f,
 		true
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakul.mn-rpct-06",
-		"[KoukuSaton Reference] MN_RPCT_06 (34 clips)",
+		"kakulsaydon.mn-rpct-06",
+		"[KoukuSaydon Reference] MN_RPCT_06 (34 clips)",
 		"MN_RPCT_06",
 		"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
-		L"Prototype_Component_Model_AnimationPreview_Kakul_MN_RPCT_06",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_06",
 		false,
-		0.01f,
+		0.02f,
 		-90.f,
 		true
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakul.mn-rpcz-00",
-		"[KoukuSaton Reference] MN_RPCZ_00 (91 clips)",
+		"kakulsaydon.mn-rpcz-00",
+		"[KoukuSaydon Reference] MN_RPCZ_00 (91 clips)",
 		"MN_RPCZ_00",
 		"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
-		L"Prototype_Component_Model_AnimationPreview_Kakul_MN_RPCZ_00",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCZ_00",
 		false,
-		0.01f,
+		0.02f,
 		-90.f,
 		true
 	},
@@ -223,12 +222,13 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		0.0001f,
 		-90.f,
 		true,
-		"BOSS_VALTAN"
+		"BOSS_VALTAN",
+		"Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan.ghost",
-		"[Boss] Ghost Valtan - MN_RPBF_02 (140 clips)",
+		"[Boss] Ghost Valtan - MN_RPBF_02 + AnimSet (286 clips)",
 		"Valtan_Ghost_MN_RPBF_02",
 		"Character/Valtan/Ghost/MN_RPBF_02.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan_Ghost",

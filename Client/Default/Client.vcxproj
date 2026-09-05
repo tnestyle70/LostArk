@@ -30,8 +30,12 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
-	<ClInclude Include="..\Public\KakulAnimationActionDocument.h" />
-	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonAnimationActionDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonAnimationPatternDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonCompositionDocument.h" />
+	<ClInclude Include="..\Public\KoukuSaydonActionWorkbench.h" />
+	<ClInclude Include="..\Public\KoukuSaydonBossTool.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPatternAuditionService.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
@@ -44,11 +48,15 @@
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
-      <ClInclude Include="..\Public\BossTool.h" />
+      <ClInclude Include="..\Public\ValtanBossTool.h" />
 	  <ClInclude Include="..\Public\CameraTool.h" />
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\Public\BossLogicFlowView.h" />
-	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
+	<ClInclude Include="..\Public\ValtanActionWorkbench.h" />
+	<ClInclude Include="..\Public\CompositionResourceTree.h" />
+	<ClInclude Include="..\Public\CompositionAnimationResource.h" />
+	<ClInclude Include="..\Public\CompositionWorkbenchSession.h" />
+	<ClInclude Include="..\Public\CompositionTimeline.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
@@ -56,6 +64,7 @@
     <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
     <ClInclude Include="..\Public\CharacterSelectWindowView.h" />
+    <ClInclude Include="..\Public\MinimapView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
@@ -98,6 +107,7 @@
 	<ClInclude Include="..\Public\NpcPlacementPresentationService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationContract.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
@@ -220,9 +230,10 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
-	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp" />
+	<ClCompile Include="..\Private\ValtanActionWorkbench.cpp" />
+	<ClCompile Include="..\Private\ValtanActionWorkbench_Blueprint.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
+	<ClCompile Include="..\Private\CompositionResourceTree.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowRenderer.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
@@ -236,8 +247,12 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
-	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp" />
-	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonAnimationActionDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonAnimationPatternDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonCompositionDocument.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonActionWorkbench.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonBossTool.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPatternAuditionService.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
@@ -250,7 +265,7 @@
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
-      <ClCompile Include="..\Private\BossTool.cpp" />
+      <ClCompile Include="..\Private\ValtanBossTool.cpp" />
       <ClCompile Include="..\Private\CameraTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\HitAreaWire.cpp" />
@@ -258,6 +273,7 @@
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\CharacterSelectWindowView.cpp" />
+    <ClCompile Include="..\Private\MinimapView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
@@ -289,6 +305,7 @@
 	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp" />
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
@@ -423,9 +440,9 @@
 	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />
 	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json" />
-	<None Include="..\..\Data\Compositions\Bosses\KakulSaydon.bosscomposition.json" />
+	<None Include="..\..\Data\Compositions\Bosses\KoukuSaydonGate1.bosscomposition.json" />
 	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json" />
-	<None Include="..\..\Data\Compositions\Sequences\KakulSaydonArena.sequencer.json" />
+	<None Include="..\..\Data\Compositions\Sequences\KoukuSaydonArena.sequencer.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
@@ -455,18 +472,18 @@
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_05.actionreference.json" />
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_06.actionreference.json" />
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_07.actionreference.json" />
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCZ_00.actionreference.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.actionbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json" />
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_05.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_06.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_07.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCZ_00.actionreference.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_05.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_06.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_07.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCZ_00.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_05.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_06.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_07.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCZ_00.patternbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
@@ -519,7 +536,10 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
-    <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
+	<None Include="..\..\Data\Encounters\KoukuSaydon\KoukuSaydonEncounter.json" />
+	<None Include="..\..\Data\KoukuSaydon\Gate1\KoukuSaydonComposition.json" />
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
@@ -612,6 +632,8 @@
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
     <None Include="..\..\Data\UI\Lobby\LobbyServers.json" />
     <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json" />
+    <None Include="..\..\Data\UI\Minimap\Minimap_Layout.json" />
+    <None Include="..\..\Data\UI\Minimap\MinimapAreas.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
     <None Include="..\..\Data\UI\ItemAnnounce\ItemAnnounce_Layout.json" />
@@ -835,7 +857,7 @@
     <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
     <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
   </PropertyGroup>
-  <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+  <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Client -ResourceRoot &quot;$(ProjectDir)..\Bin\Resources&quot;" />
   </Target>
   <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">

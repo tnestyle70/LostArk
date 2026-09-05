@@ -63,9 +63,9 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             self.assertIn(token, refresh)
         for token in (
             "EnsureDebugTool(source.eTool)",
-            "EnsureDebugTool(DEBUG_TOOL::COMPOSITION)",
-            "m_pActionCompositionWorkbench->Open_Valtan()",
-            "m_pActionCompositionWorkbench->Has_DisplaySnapshot()",
+            "EnsureDebugTool(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH)",
+            "m_pValtanActionWorkbench->Open_Valtan()",
+            "m_pValtanActionWorkbench->Has_DisplaySnapshot()",
             "canonical Product snapshot in read-only mode",
             "canonical Product admission was rejected",
             "Open_ValtanAllEffectsWorkspace()",
@@ -121,8 +121,8 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
         for token in (
             "Read-only raw path selected",
             "this arbitrary file was not loaded",
-            "m_pActionCompositionWorkbench->Open_Valtan()",
-            "Open_KakulProfile",
+            "m_pValtanActionWorkbench->Open_Valtan()",
+            "Open_KoukuSaydonProfile",
         ):
             self.assertIn(token, open_raw)
 

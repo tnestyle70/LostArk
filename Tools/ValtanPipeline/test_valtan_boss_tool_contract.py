@@ -13,8 +13,8 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "Tools/ValtanPipeline"))
 import valtan_tuning_pipeline as tuning_pipeline  # noqa: E402
-BOSS_CPP = ROOT / "Client/Private/BossTool.cpp"
-BOSS_H = ROOT / "Client/Public/BossTool.h"
+BOSS_CPP = ROOT / "Client/Private/ValtanBossTool.cpp"
+BOSS_H = ROOT / "Client/Public/ValtanBossTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 EFFECT_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
@@ -69,7 +69,7 @@ def function_body(source: str, signature: str) -> str:
     raise AssertionError(f"unterminated function body: {signature}")
 
 
-class ValtanBossToolContractTests(unittest.TestCase):
+class ValtanValtanBossToolContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.boss_cpp = BOSS_CPP.read_text(encoding="utf-8")
@@ -97,27 +97,27 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
     def test_project_and_f1_hub_register_one_boss_tool(self) -> None:
         for source in (self.project, self.filters):
-            self.assertEqual(1, source.count("BossTool.h"))
-            self.assertEqual(1, source.count("BossTool.cpp"))
+            self.assertEqual(1, source.count("ValtanBossTool.h"))
+            self.assertEqual(1, source.count("ValtanBossTool.cpp"))
         self.assertIn("BOSS", self.main_h)
         self.assertIn("LOGIC_PATTERN", self.main_h)
-        self.assertIn("unique_ptr<CBossTool>", self.main_h)
+        self.assertIn("unique_ptr<CValtanBossTool>", self.main_h)
         ensure = function_body(
             self.main_cpp,
             "HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)",
         )
-        self.assertIn("case DEBUG_TOOL::BOSS", ensure)
-        self.assertIn("m_pBossTool->Open()", ensure)
-        self.assertIn("case DEBUG_TOOL::LOGIC_PATTERN", ensure)
-        self.assertIn("m_pBossTool->Open_LogicPattern()", ensure)
+        self.assertIn("case DEBUG_TOOL::VALTAN_BOSS", ensure)
+        self.assertIn("m_pValtanBossTool->Open()", ensure)
+        self.assertIn("case DEBUG_TOOL::VALTAN_LOGIC_PATTERN", ensure)
+        self.assertIn("m_pValtanBossTool->Open_LogicPattern()", ensure)
         self.assertEqual(
             1,
-            self.main_cpp.count('toolCell("Boss Tool", DEBUG_TOOL::BOSS)'),
+            self.main_cpp.count('toolCell("Valtan Boss Tool", DEBUG_TOOL::VALTAN_BOSS)'),
         )
         self.assertEqual(
             1,
             self.main_cpp.count(
-                'toolCell("Logic Pattern", DEBUG_TOOL::LOGIC_PATTERN)'
+                'toolCell("Valtan Logic Pattern", DEBUG_TOOL::VALTAN_LOGIC_PATTERN)'
             ),
         )
 
@@ -133,21 +133,21 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("void Render_LogicFlowTab();", self.boss_h)
         deep_link = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_LogicFlowTab()",
+            "void Client::CValtanBossTool::Render_LogicFlowTab()",
         )
         self.assertIn(
-            'ImGui::Button("Open Large Logic Pattern Window")', deep_link
+            'ImGui::Button("Open Large Valtan Logic Pattern Window")', deep_link
         )
         self.assertIn("Open_LogicPattern()", deep_link)
         window = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_LogicPatternWindow()",
+            "void Client::CValtanBossTool::Render_LogicPatternWindow()",
         )
         self.assertIn('ImGui::Begin("Valtan Logic Pattern"', window)
         self.assertIn("Render_LogicPatternContent()", window)
         render = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_LogicPatternContent()",
+            "void Client::CValtanBossTool::Render_LogicPatternContent()",
         )
         for marker in (
             '"Current Flow: %s | Slot %u / %u | %s"',
@@ -193,7 +193,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
 
         logic_tab = function_body(
-            self.boss_cpp, "void Client::CBossTool::Render_LogicFlowTab()"
+            self.boss_cpp, "void Client::CValtanBossTool::Render_LogicFlowTab()"
         )
         self.assertIn("Find_AuditionPattern(Boss.strPatternId)", logic_tab)
         self.assertIn('ImGui::Text("Server live: %s | Sequence %u"', logic_tab)
@@ -201,7 +201,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         inspector = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_LogicPatternInspector(",
+            "void Client::CValtanBossTool::Render_LogicPatternInspector(",
         )
         self.assertIn('ImGui::Text("Sequence %u"', inspector)
         self.assertIn(
@@ -244,7 +244,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertEqual(4, request.count(";"))
         render = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_ConnectionSummary(",
+            "void Client::CValtanBossTool::Render_ConnectionSummary(",
         )
         compact = re.sub(r"\s+", "", render)
         self.assertIn('ImGui::Button("EditLinkedEffect")', compact)
@@ -266,7 +266,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_linked_effect_request_is_consumed_exactly_once(self) -> None:
         consume = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Consume_EffectToolOpenRequest(",
+            "bool_t Client::CValtanBossTool::Consume_EffectToolOpenRequest(",
         )
         compact = re.sub(r"\s+", "", consume)
         self.assertIn("if(!m_hasEffectToolOpenRequest)returnfalse;", compact)
@@ -295,7 +295,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, route)
 
     def test_default_screen_keeps_only_the_user_workflow(self) -> None:
-        render = function_body(self.boss_cpp, "void Client::CBossTool::Render()")
+        render = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render()")
         for marker in (
             '"Valtan Boss Tool"',
             'BeginTabBar("##bossToolTabs")',
@@ -311,7 +311,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         verification = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_BossVerificationTab()",
+            "void Client::CValtanBossTool::Render_BossVerificationTab()",
         )
         for marker in (
             "Render_LiveSummary()",
@@ -343,13 +343,13 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_initial_selection_is_empty_and_live_follow_is_exact(self) -> None:
         reload_body = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Reload_Graph()",
+            "bool_t Client::CValtanBossTool::Reload_Graph()",
         )
         self.assertNotIn("m_Graph.Gimmicks.front().strPatternId", reload_body)
         self.assertNotIn("m_Graph.Rotation.front().strPatternId", reload_body)
         sync = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Synchronize_LiveSelection()",
+            "void Client::CValtanBossTool::Synchronize_LiveSelection()",
         )
         self.assertIn("Find_AuditionPattern(Boss.strPatternId)", sync)
         self.assertIn("Find_LiveStage(*pPattern)", sync)
@@ -359,19 +359,19 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertNotIn("m_strSelectedStageId =", sync)
         pattern_list = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_PatternList()",
+            "void Client::CValtanBossTool::Render_PatternList()",
         )
         self.assertIn('Label += "  [LIVE]"', pattern_list)
         self.assertIn("ImGui::SetScrollHereY(0.5f)", pattern_list)
         self.assertIn("m_bFollowLive && Pattern.strPatternId == m_strLivePatternId", pattern_list)
         submit = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Submit_SelectedPattern()",
+            "bool_t Client::CValtanBossTool::Submit_SelectedPattern()",
         )
         self.assertIn("m_bFollowLive = true", submit)
         find_live = function_body(
             self.boss_cpp,
-            "const Client::VALTAN_STAGE_VIEW* Client::CBossTool::Find_LiveStage(",
+            "const Client::VALTAN_STAGE_VIEW* Client::CValtanBossTool::Find_LiveStage(",
         )
         self.assertIn("Candidate.strActionId == Boss.strActionId", find_live)
         self.assertNotIn("iPatternStageIndex", find_live)
@@ -412,7 +412,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertNotIn(legacy_only, authored_ids)
 
         pattern_list = function_body(
-            self.boss_cpp, "void Client::CBossTool::Render_PatternList()")
+            self.boss_cpp, "void Client::CValtanBossTool::Render_PatternList()")
         for marker in (
             "m_AuditionInventory.CorePatternIds", "m_AuditionInventory.AnimatorPatternIds",
             "m_AuditionInventory.DerivedPatternIds", "CORE SERVER PATTERNS",
@@ -443,8 +443,8 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertNotIn("RuntimeClipNames", summary)
         self.assertNotIn("std::sort", summary)
         for signature in (
-            "void Client::CBossTool::Render_SelectedPattern()",
-            "void Client::CBossTool::Render_PatternList()",
+            "void Client::CValtanBossTool::Render_SelectedPattern()",
+            "void Client::CValtanBossTool::Render_PatternList()",
         ):
             with self.subTest(signature=signature):
                 selected = function_body(self.boss_cpp, signature)
@@ -504,7 +504,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         boss_submit = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Submit_SelectedPattern()",
+            "bool_t Client::CValtanBossTool::Submit_SelectedPattern()",
         )
         effect_submit = function_body(
             self.effect_cpp,
@@ -515,17 +515,17 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
     def test_hidden_graph_patterns_cannot_reenter_selection_or_repeat(self) -> None:
         for signature in (
-            "bool_t Client::CBossTool::Submit_SelectedPattern()",
-            "void Client::CBossTool::Render_ActionBar()",
-            "void Client::CBossTool::Render_SelectedPattern()",
-            "void Client::CBossTool::Synchronize_LiveSelection()",
+            "bool_t Client::CValtanBossTool::Submit_SelectedPattern()",
+            "void Client::CValtanBossTool::Render_ActionBar()",
+            "void Client::CValtanBossTool::Render_SelectedPattern()",
+            "void Client::CValtanBossTool::Synchronize_LiveSelection()",
         ):
             body = function_body(self.boss_cpp, signature)
             self.assertIn("Find_AuditionPattern", body, signature)
 
         reload_body = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Reload_Graph()",
+            "bool_t Client::CValtanBossTool::Reload_Graph()",
         )
         self.assertIn("Build_PlayablePatternInventory", reload_body)
         self.assertIn("StagedAdmittedPatternIds", reload_body)
@@ -565,7 +565,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         update = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Update(",
+            "void Client::CValtanBossTool::Update(",
         )
         self.assertLess(
             update.index("Find_AuditionPattern(m_strRepeatPatternId)"),
@@ -574,7 +574,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         live_summary = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_LiveSummary()",
+            "void Client::CValtanBossTool::Render_LiveSummary()",
         )
         self.assertIn("Find_Pattern(Boss.strPatternId)", live_summary)
         self.assertNotIn("Find_AuditionPattern(Boss.strPatternId)", live_summary)
@@ -585,11 +585,11 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         pattern_list = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_PatternList()",
+            "void Client::CValtanBossTool::Render_PatternList()",
         )
         select_pattern = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Select_Pattern(",
+            "void Client::CValtanBossTool::Select_Pattern(",
         )
         self.assertIn("Select_Pattern(*pPattern)", pattern_list)
         self.assertIn("Repeat stopped after selecting a different Pattern", select_pattern)
@@ -598,13 +598,13 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_repeat_stops_when_hidden_or_closed_and_waits_for_revive(self) -> None:
         update = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Update(",
+            "void Client::CValtanBossTool::Update(",
         )
-        self.assertIn("if (!bBossToolVisible || !m_bOpen)", update)
+        self.assertIn("if (!bValtanBossToolVisible || !m_bOpen)", update)
         self.assertIn("bLogicPatternVisible", update)
         self.assertLess(
             update.index("Update_LogicFlowObservation()"),
-            update.index("if (!bBossToolVisible || !m_bOpen)"),
+            update.index("if (!bValtanBossToolVisible || !m_bOpen)"),
         )
         self.assertIn("m_strRepeatPatternId.clear()", update)
         self.assertIn("0u == Player.iCurrentHp", update)
@@ -617,7 +617,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_context_actions_keep_immediate_feedback_visible(self) -> None:
         action_bar = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_ActionBar()",
+            "void Client::CValtanBossTool::Render_ActionBar()",
         )
         self.assertIn("m_strActionFeedback", action_bar)
         self.assertIn("Repeat stopped.", action_bar)
@@ -625,7 +625,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("if (m_strActionFeedback.empty())", action_bar)
         revive = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Request_RevivePlayer(",
+            "bool_t Client::CValtanBossTool::Request_RevivePlayer(",
         )
         self.assertIn("Revive requested.", revive)
 
@@ -659,7 +659,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID",
             self.effect_cpp,
         )
-        self.assertIn("m_pBossTool->Play_ServerPattern", self.main_cpp)
+        self.assertIn("m_pValtanBossTool->Play_ServerPattern", self.main_cpp)
         for forbidden in (
             "Request_RevivePlayer",
             "Stop After Current",
@@ -667,10 +667,10 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "Try_Consume_ValtanPatternAuditionByIdResult",
         ):
             self.assertNotIn(forbidden, self.effect_cpp)
-        self.assertIn("Repeat and Revive remain in Boss Tool", self.balance_cpp)
+        self.assertIn("Repeat and Revive remain in Valtan Boss Tool", self.balance_cpp)
         action_bar = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_ActionBar()",
+            "void Client::CValtanBossTool::Render_ActionBar()",
         )
         self.assertEqual(1, action_bar.count("Request_RevivePlayer"))
 
@@ -725,7 +725,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_graph_reload_holds_one_generation_through_final_commit(self) -> None:
         reload_graph = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Reload_Graph()",
+            "bool_t Client::CValtanBossTool::Reload_Graph()",
         )
         acquire = reload_graph.index("CanonicalAdmission.Acquire")
         load = reload_graph.index("CValtanPatternTree::Load_WhileAdmitted")
@@ -746,7 +746,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_server_playback_recomputes_physical_world_entry_generation(self) -> None:
         admission = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+            "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(",
         )
         self.assertIn("ServerActiveRevision", admission)
         self.assertIn("Is_Connected()", admission)
@@ -766,7 +766,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("std::ios::binary | std::ios::app", native)
 
     def test_next_picker_is_independent_of_saved_flow_and_turns_repeat_off(self) -> None:
-        picker = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternPicker()")
+        picker = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render_NextPatternPicker()")
         for marker in (
             "m_NextPatternIds", "m_NextPatternSearch", "Contains_CaseInsensitive",
             "strDisplayName", "PatternId", "bAuthoringMasterManaged",
@@ -784,27 +784,27 @@ class ValtanBossToolContractTests(unittest.TestCase):
             picker.index("m_strRepeatPatternId.clear()"),
             queue_call,
         )
-        admitted = function_body(self.boss_cpp, "std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const")
+        admitted = function_body(self.boss_cpp, "std::vector<std::string> Client::CValtanBossTool::Build_AdmittedPatternIds() const")
         self.assertNotIn("m_NextPatternIds", admitted)
         self.assertIn("m_AuditionInventory", admitted)
 
     def test_next_card_survives_graph_flow_and_selected_slot_failures(self) -> None:
-        layout = function_body(self.boss_cpp, "void Client::CBossTool::Render_PatternFlowTab()")
+        layout = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render_PatternFlowTab()")
         self.assertNotIn("return;", layout)
         self.assertIn("fColumnHeight", layout)
         self.assertLess(layout.index("##bossFlowSelectedPane"), layout.index("##bossNextPatternCard"))
         self.assertIn("ImGui::EndChild();", layout[layout.index("Render_FlowSelectedSlot();"):layout.index("##bossNextPatternCard")])
-        card = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternCard()")
+        card = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render_NextPatternCard()")
         for marker in ("Get_Snapshot", "Get_NextSnapshot", "Get_NextCommand",
                        "Clear_NextPattern", "Retry_NextPatternCommand", "UNCONFIRMED"):
             self.assertIn(marker, card)
         self.assertIn("Service.Can_QueueNextPattern", card)
         self.assertIn("!Next.Is_Live() || Next.bReservationConsumed ||", card)
-        picker = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternPicker()")
+        picker = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render_NextPatternPicker()")
         self.assertIn("Service.Can_QueueNextPattern", picker)
         for forbidden in ("m_FlowDocument", "Find_SelectedFlowSlot", "Is_Dirty", "Has_ExternalConflict"):
             self.assertNotIn(forbidden, card)
-        reload_graph = function_body(self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()")
+        reload_graph = function_body(self.boss_cpp, "bool_t Client::CValtanBossTool::Reload_Graph()")
         self.assertNotIn("m_bNextPatternInventoryReady = false", reload_graph)
         self.assertNotIn("m_NextPatternIds.clear()", reload_graph)
         staged = reload_graph.index(
@@ -820,18 +820,18 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertLess(next_commit, ready_commit)
         self.assertEqual(1, reload_graph.count("m_NextPatternIds ="))
         for function in ("Reload_FlowDocument", "Save_FlowDocument"):
-            body = function_body(self.boss_cpp, "bool_t Client::CBossTool::" + function + "()")
+            body = function_body(self.boss_cpp, "bool_t Client::CValtanBossTool::" + function + "()")
             for forbidden in ("Queue_NextPattern", "Clear_NextPattern", ".Submit(", "Send_"):
                 self.assertNotIn(forbidden, body)
 
     def test_next_ownership_guards_repeat_flow_and_other_tools(self) -> None:
         for signature in (
-            "void Client::CBossTool::Update(",
-            "void Client::CBossTool::Render_ActionBar()",
-            "void Client::CBossTool::Render_FlowSelectedSlot()",
+            "void Client::CValtanBossTool::Update(",
+            "void Client::CValtanBossTool::Render_ActionBar()",
+            "void Client::CValtanBossTool::Render_FlowSelectedSlot()",
         ):
             self.assertIn("Has_PlaybackOwnership", function_body(self.boss_cpp, signature))
-        action_bar = function_body(self.boss_cpp, "void Client::CBossTool::Render_ActionBar()")
+        action_bar = function_body(self.boss_cpp, "void Client::CValtanBossTool::Render_ActionBar()")
         repeat_begin = action_bar.index('ImGui::Checkbox("Repeat"')
         self.assertIn("bNextOwnsPlayback", action_bar[:repeat_begin])
         service = (ROOT / "Client/Private/ValtanPatternAuditionService.cpp").read_text(encoding="utf-8")
@@ -876,7 +876,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
     def test_product_fallback_is_generation_pinned_read_only_and_shared(self) -> None:
         reload_graph = function_body(
-            self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()"
+            self.boss_cpp, "bool_t Client::CValtanBossTool::Reload_Graph()"
         )
         self.assertLess(
             reload_graph.index("CanonicalAdmission.Acquire(Diagnostic)"),
@@ -887,7 +887,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         self.assertIn("Fail_GraphReload(Status, &CanonicalAdmission)", reload_graph)
         fallback = function_body(
-            self.boss_cpp, "bool_t Client::CBossTool::Fail_GraphReload("
+            self.boss_cpp, "bool_t Client::CValtanBossTool::Fail_GraphReload("
         )
         self.assertLess(
             fallback.index("StagedProduct.Load("),
@@ -928,11 +928,11 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
 
         workbench = (
-            ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8")
         composition_fallback = function_body(
             workbench,
-            "bool_t Client::CActionCompositionWorkbench::Stage_ProductFallback(",
+            "bool_t Client::CValtanActionWorkbench::Stage_ProductFallback(",
         )
         self.assertLess(
             composition_fallback.index("Validate_StillCurrent(CurrentStatus)"),
@@ -989,17 +989,17 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
     def test_boss_graph_transient_reload_retries_without_dropping_last_good(self) -> None:
         update = function_body(
-            self.boss_cpp, "void Client::CBossTool::Update("
+            self.boss_cpp, "void Client::CValtanBossTool::Update("
         )
         reload_graph = function_body(
-            self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()"
+            self.boss_cpp, "bool_t Client::CValtanBossTool::Reload_Graph()"
         )
         schedule = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Schedule_CanonicalReloadRetry()",
+            "void Client::CValtanBossTool::Schedule_CanonicalReloadRetry()",
         )
         fallback = function_body(
-            self.boss_cpp, "bool_t Client::CBossTool::Fail_GraphReload("
+            self.boss_cpp, "bool_t Client::CValtanBossTool::Fail_GraphReload("
         )
 
         self.assertIn("CANONICAL_RELOAD_RETRY_SECONDS = 0.25", self.boss_cpp)

@@ -7501,7 +7501,7 @@
               "targetingPolicy": "BOSS_RELATIVE",
               "countPerResolvedTarget": 3,
               "layout": "RADIAL",
-              "radiusM": 7.5,
+              "radiusM": 9.0,
               "startAngleDegrees": 30.0,
               "angleStepDegrees": 120.0,
               "allowOverlap": false,

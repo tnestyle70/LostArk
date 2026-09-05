@@ -386,7 +386,7 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
             encoding="utf-8-sig"
         )
         workbench = (
-            ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8-sig")
         self.assertIn("std::string strEffectV2GroupId;", header)
         self.assertIn('Visual.Find("effectV2Group")', tree)

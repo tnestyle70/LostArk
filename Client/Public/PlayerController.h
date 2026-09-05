@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <string>
 
 //local 입력을 gameplay command로 바꾸는 client 입력 경계
 //level, character, networkmanager 사이에서 다음 흐름만 조정
@@ -457,7 +458,14 @@ namespace Client
 		bool_t Request_DebugKillSelf();
 #endif
 
-		void Update(bool_t gameplayCommandsEnabled);
+		void Update(bool_t gameplayCommandsEnabled, bool_t debugPlacementEnabled = false);
+#ifdef _DEBUG
+		bool_t Begin_DebugPlayerPlacement(LostArk::Shared::WORLD_ID worldId);
+		void Cancel_DebugPlayerPlacement();
+		bool_t Is_DebugPlayerPlacementArmed() const { return m_debugPlacementArmed; }
+		bool_t Is_DebugPlayerPlacementPending() const { return 0u != m_pendingDebugPlacementSequence; }
+		const std::string& Get_DebugPlayerPlacementStatus() const { return m_debugPlacementStatus; }
+#endif
 
 		/* One-shot: consumed (cleared) by the next Update() regardless of
 		whether it actually had a move click to suppress that frame. Caller
@@ -525,6 +533,9 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
 		void Cancel_GroundTargeting();
+#ifdef _DEBUG
+		void Update_DebugPlayerPlacement(bool_t enabled);
+#endif
 
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
@@ -563,5 +574,17 @@ namespace Client
 		shared_ptr<CClickMoveEffect> m_pClickMoveEffect;
 		bool_t m_wasTargetingLeftMouseDown = false;
 		bool_t m_wasTargetingRightMouseDown = false;
+#ifdef _DEBUG
+		// This controller owns one pick and its correlated reply, never player position.
+		bool_t m_debugPlacementEnabled = false;
+		bool_t m_debugPlacementArmed = false;
+		bool_t m_wasDebugPlacementLeftDown = false;
+		bool_t m_debugPlacementReplyDelayed = false;
+		std::uint32_t m_nextDebugPlacementSequence = 1u;
+		std::uint32_t m_pendingDebugPlacementSequence = 0u;
+		LostArk::Shared::WORLD_ID m_debugPlacementWorld = LostArk::Shared::WORLD_ID::END;
+		std::chrono::steady_clock::time_point m_debugPlacementSentAt{};
+		std::string m_debugPlacementStatus;
+#endif
 	};
 }

@@ -80,7 +80,7 @@ class ValtanRockPillarEffectV2GroupContractTests(unittest.TestCase):
         )
 
     def test_boss_prefix_makes_group_visible_in_composition_catalog(self) -> None:
-        workbench = _read("Client/Private/ActionCompositionWorkbench.cpp")
+        workbench = _read("Client/Private/ValtanActionWorkbench.cpp")
         self.assertIn(
             'return 0u == strResourceId.rfind("boss.valtan.", 0u);',
             workbench,

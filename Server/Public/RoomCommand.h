@@ -25,11 +25,13 @@ namespace LostArk::Server
 		DEBUG_KILL_SELF,
 		DEBUG_ENTER_KAKULSAYDON_ARENA,
 		DEBUG_TELEPORT_TO_PLACEMENT,
+		DEBUG_TELEPORT_TO_POSITION,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
 		VALTAN_PATTERN_FLOW_START,
 		VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
+		KOUKUSAYDON_PATTERN_AUDITION,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
@@ -76,6 +78,7 @@ namespace LostArk::Server
 			DebugEnterKakulSaydonArena;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT
 			DebugTeleportToPlacement;
+		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION DebugTeleportToPosition;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;
@@ -85,6 +88,8 @@ namespace LostArk::Server
 			ValtanPatternFlowStart;
 		LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT
 			ValtanPatternFlowStopAfterCurrent;
+		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST
+			KoukuSaydonPatternAudition;
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;

@@ -197,7 +197,7 @@ Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다.
 선택한 `EffectAssetId`를 typed request로 제출할 뿐이며, Animation Tool에서 marker가 만들어지고 Save되기
 전에는 binding이 영구 저장됐다고 표시하지 않는다.
 
-### 7.1 Effect Tool V2 Group과 Action Composition binding 경계
+### 7.1 Effect Tool V2 Group과 Valtan Action Workbench binding 경계
 
 Effect Tool V2는 V2 leaf body와 재사용 가능한 Group body를 함께 소유한다.
 
@@ -210,7 +210,7 @@ Data/Effects/V2/Groups/<groupId>.effectv2group.json
   + child-local start/duration/stop/offset/yaw/scale
 
 Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json
-  Action Composition이 소유하는 exact Pattern occurrence
+  CValtanActionWorkbench가 소유하는 exact Pattern occurrence
   + groupId 또는 direct leaf reference
   + stage/clip clock, start, anchor/follow/rotation/placement
 ```
@@ -244,9 +244,12 @@ coverage만 stable ID로 묶는다. resolved Product에서 이 값들이 한 Sta
 Composition은 Effect 연결·시간·배치 reference를 다루고 Effect Tool은 asset/group body를,
 Animation owner는 clip occurrence를, gameplay owner는 Stage/branch/hit를 계속 소유한다.
 
-현재 Valtan manifest는 `SHADOW`이고 Sequencer는 source inspection 뒤 기존 Action Composition
-Workbench로 진입한다. 상세 box 편집, Play와 Save도 기존 Workbench/split writer가 담당한다. generated
-resolved Product를 재생하는 generic Composition player나 여러 owner를 직접 저장하는 새 writer는 아직 없다.
+현재 Valtan manifest는 `SHADOW`이며 공용 `Action Workbench` 진입의 선행조건이 아니다.
+Boss 선택은 Valtan/KoukuSaydon session을 같은 창에 연결한다. Valtan 상세 box 편집·Play·Save는
+`CValtanActionWorkbench`/split writer, 쿠크는 독립 Composition session이 담당한다. Resources의 여섯 몸체
+Animation inventory는 WModel metadata를 읽고 기존 CharacterPreviewPanel에서 플레이어 주변 모델을 생성한다.
+clip 클릭은 Animation Tool의 창 열기 요청을 보내지 않는다. generated resolved Product를 재생하는 두 번째
+runtime이나 모든 보스/owner를 저장하는 거대 writer를 추가하지 않는다.
 
 ## 8. Character Preview Panel이 소유하는 것
 
@@ -851,10 +854,10 @@ Lobby Character Select -> Server approval -> 같은 map Server Arena 진입
 `actionreference.json`의 `actions[]` 순서와 `displayName`을 그대로 사용한다.
 
 ```text
-Data/Animation/Reference/KakulSaydon/MN_RPCT_05.actionreference.json
-Data/Animation/Reference/KakulSaydon/MN_RPCT_06.actionreference.json
-Data/Animation/Reference/KakulSaydon/MN_RPCT_07.actionreference.json
-Data/Animation/Reference/KakulSaydon/MN_RPCZ_00.actionreference.json
+Data/Animation/Reference/KoukuSaydon/MN_RPCT_05.actionreference.json
+Data/Animation/Reference/KoukuSaydon/MN_RPCT_06.actionreference.json
+Data/Animation/Reference/KoukuSaydon/MN_RPCT_07.actionreference.json
+Data/Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json
 ```
 
 현재 네 프로필은 기획 액션 349개, stage 4,072개, 실제 WModel slot 3,692개를 보유한다.
@@ -885,13 +888,18 @@ preview는 현재 animation target generation에 고정된다. 다른 target/pro
 로컬 Pattern 정본은 다음 경로다.
 
 ```text
-Data/Animation/Authored/KakulSaydon/<Profile>.patternbindings.json
-schema: lostark.kakul-animation-pattern-bindings
+Data/Animation/Reference/KoukuSaydon/<Profile>.actionreference.json
+schema: lostark.kouku-saydon-animation-action-reference
+Data/Animation/Authored/KoukuSaydon/<Profile>.actionbindings.json
+schema: lostark.kouku-saydon-animation-action-bindings
+Data/Animation/Authored/KoukuSaydon/<Profile>.patternbindings.json
+schema: lostark.kouku-saydon-animation-pattern-bindings
 formatVersion: 1
 authority: REFERENCE_ONLY
 ```
 
-Pattern과 clip occurrence ID는 monotonic ordinal로 발급하며 삭제 뒤 재사용하지 않는다. Load는
+Pattern ID는 `kakulsaydon.<Profile>.pattern.<N>`, clip occurrence ID는
+`<PatternId>.clip.<N>`이며 monotonic ordinal로 발급하고 삭제 뒤 재사용하지 않는다. Load는
 `parse -> validate -> stage -> commit`, Save는 `validate -> sibling temp durable write -> strict
 reparse/exact compare -> reference revision 재확인 -> atomic replace`를 따른다. 잘못된 profile,
 reference revision, HOLDOUT source, 중복 ID, source tuple 불일치, model에 없는 clip, 잘못된 timing/end
@@ -902,8 +910,52 @@ Animation Tool의 `Create Pattern`은 로컬 동작 조합과 검토만 제공�
 Effect cue를 만들거나 publish하지 않는다. 제품 Pattern 승격은 별도 Data → Shared → Server → Client
 수직 슬라이스와 publisher/harness가 생긴 뒤에만 진행한다.
 
-`Data/Compositions/Bosses/KakulSaydon.bosscomposition.json`도 이 경계를 바꾸지 않는
+`Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json`도 이 경계를 바꾸지 않는
 `REFERENCE_ONLY` manifest다. 네 profile의 reference/action/pattern-binding owner를
 `sourceActionId + stageId + slotId + referenceRevision` identity와 coverage로 검증할 뿐 boss/encounter
-ID, gameplay Pattern, collider, Effect 또는 Sound를 생성하지 않는다. KakulSaydon Arena Sequencer는
+ID, gameplay Pattern, collider, Effect 또는 Sound를 생성하지 않는다.
+`Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json`은
 현재 authored world/camera track inspection만 제공하며 unified Save/Play나 Server scene runtime이 아니다.
+
+
+### 17.4 Composition의 모델별 Pattern과 Sequence 저장
+
+Composition의 `KoukuSaydon` 아래 Pattern은 `Kouku (MN_RPCZ_00)`,
+`Saydon (MN_RPCT_05)`, `Large Saydon (MN_RPCT_06)` 모델별로 나눈다.
+`MN_RPCT_07` 액션은 실제 몸체가 같은 Saydon Pattern에 넣으며 occurrence의 원래
+`profileId`는 `MN_RPCT_07`로 보존한다. 다른 몸체의 Pattern에는 붙이지 않는다.
+
+Resources의 기획 Action을 Sequence에 붙이면 원본 slot의 clip, source timing과 순서를
+복사한다. 모델에 Pattern이 없으면 첫 Append가 같은 모델의 DRAFT Pattern을 만든다.
+Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 Selected Box의 `Delete` 또는
+Delete 키로 제거한다. `Duplicate`는 새 stable ID를 발급하여 선택한 Stage/box를 복제한다.
+Stage와 그 자식을 동시에 선택해도 자식은 한 번만 복제한다. 단독 box 복제는 같은 time window에 놓인다.
+Sequencer의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다. `Play/Stop`은 로컬
+Animation preview를 제어한다. Zoom 아래 Full lifetime ms/Apply는 마지막 Stage clock을 조절하며
+기존 box가 끝나는 시간보다 짧은 값과 전체 600초 초과는 거절한다.
+입력 또는 저장 검증이 실패하면 기존 Pattern과 파일을 보존한다.
+
+정본은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`이다. formatVersion 2의
+각 Pattern은 물리 모델 ID인 `actorProfileId`를 명시한다. version 1은 읽을 때 occurrence의
+모델로 owner를 유도하며, 빈 기존 Gate 1 Pattern은 `MN_RPCZ_00`으로 옮긴다. 서로 다른
+모델이 섞였거나 모르는 프로필이 있는 기존 Pattern은 오류 항목으로 격리하고 원문을 보존한다.
+저장은 version 2로 수행한다. 별도의 `*.patternbindings.json` 로컬 Pattern 저장과는 다른
+Composition 저작 문서다.
+
+`sourceActionId = 0`도 유효한 기획 액션이다. 물리 RAW clip은 `sourceActionId = 0`과
+`sourceStageId = RAW`의 조합으로 구별한다. 참조 파일의 누락이나 최신 여부는 Composition
+Save를 막지 않으며 저장된 source ID와 revision 문자열을 보존한다.
+
+DRAFT Pattern은 원본의 긴 기획 Action을 담을 수 있도록 최대 1,024 Stage를 허용하며
+Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한을 유지한다.
+
+`PRODUCT` 투영과 Server 재생은 현재 Gate 1 몸체 `MN_RPCZ_00` Pattern만 지원한다.
+Saydon과 Large Saydon의 DRAFT 저장이 Gate 1 boss를 다른 모델로 바꾸지는 않는다.
+기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.
+
+대형 이름 Action의 로컬 preview는 요청 배율 100배를 사용하고 일반 동작/정지 시 기준 크기로
+복원한다. 원본 Unreal Actor 배율로 검증된 값은 아니다. Large Saydon의 오른손 `b_wp_1`에는
+기존 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 부착한다.
+무기 자체 skeleton과 대응 clip을 source seconds로 동기화하고, 대응이 없으면 bind pose를 쓴다.
+필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며
+모델과 인접 texture는 팀 Drive Resources 입력으로 전달한다. preview는 Server boss를 바꾸지 않는다.

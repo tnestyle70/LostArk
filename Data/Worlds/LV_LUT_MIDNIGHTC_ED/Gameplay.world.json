@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 3684,
+  "revision": 3685,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -288,6 +288,15 @@
       "position": [-2, 1.317626, 942],
       "yawDegrees": 0,
       "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g1.kouku",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [22, -0.05, -62],
+      "yawDegrees": 0,
+      "enabled": true
     }
   ]
 }

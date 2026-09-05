@@ -201,6 +201,10 @@ public:
 	/* Debug-only authoring commands. Both remain requests: Server transfer and
 	Server snapshots are the only accepted world/position results. */
 	bool Send_DebugEnterKakulSaydonArena(std::uint32_t requestSequence);
+	bool Send_DebugTeleportToPosition(
+		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ);
+	bool Try_Consume_DebugTeleportResult(
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
 		std::uint32_t requestSequence,
 		std::string_view placementId);
@@ -273,7 +277,13 @@ public:
 	   identity. The shared audition service owns all three stable-ID results. */
 	bool Send_ValtanNextPatternCommand(
 		const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message);
-	/* Debug Boss Tool ordered Flow. The UI supplies one admitted saved
+	/* KoukuSaydon owns a separate exact-scope playback command. The caller
+	provides the complete Product tuple; this boundary never substitutes Valtan
+	state or reconstructs a missing identity. */
+	bool Send_KoukuSaydonPatternAudition(
+		const LostArk::Shared::
+			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
+	/* Debug Valtan Boss Tool ordered Flow. The UI supplies one admitted saved
 	   revision; the Server preflights the full slot list and owns every
 	   occurrence after the single reset. */
 	bool Send_ValtanPatternFlowStart(
@@ -311,6 +321,11 @@ public:
 		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
 	bool Try_Consume_ValtanAuditionLifecycle(
 		LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& message);
+	bool Try_Consume_KoukuSaydonPatternAuditionResult(
+		LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message);
+	bool Try_Consume_KoukuSaydonPatternAuditionLifecycle(
+		LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE&
+			message);
 	bool Try_Consume_ValtanPatternFlowResult(
 		LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message);
 	bool Try_Consume_ValtanPatternFlowLifecycle(
@@ -474,6 +489,8 @@ private:
 
 	//Handle Frame�� �Һ��� ��� main thread�̴�.
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
+	std::deque<LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT>
+		m_DebugTeleportResults;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>
@@ -484,6 +501,10 @@ private:
 		m_ValtanPatternAuditionByIdResults;
 	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE>
 		m_ValtanAuditionLifecycleEvents;
+	std::deque<LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT>
+		m_KoukuSaydonPatternAuditionResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
+		m_KoukuSaydonPatternAuditionLifecycleEvents;
 	std::deque<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT>
 		m_ValtanPatternFlowResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE>

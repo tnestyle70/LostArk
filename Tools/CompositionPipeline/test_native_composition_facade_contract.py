@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Focused source contracts for the native Composition descriptor facade."""
+"""Focused contracts for the remaining native Composition descriptor reader.
+
+The removed read-only Sequencer facade and automatic Animation-window deep link
+have no UI oracles here; the shared Workbench has a separate editor contract.
+"""
 
 from __future__ import annotations
 
@@ -35,10 +39,6 @@ def body(source: str, signature: str) -> str:
 class NativeCompositionFacadeContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.workbench_h = read("Client/Public/ActionCompositionWorkbench.h")
-        cls.sequencer_h = read("Client/Public/SequencerTool.h")
-        cls.sequencer_cpp = read("Client/Private/SequencerTool.cpp")
-        cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.document_h = read("Client/Public/BossCompositionDocument.h")
         cls.document_cpp = read("Client/Private/BossCompositionDocument.cpp")
         cls.harness_project = read(
@@ -54,30 +54,6 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
             "BossCompositionDocumentContractTests.cpp"
         )
 
-    def test_workbench_generation_invalidates_only_the_read_only_facade(self) -> None:
-        self.assertIn(
-            "Get_CanonicalDisplayGeneration() const noexcept", self.workbench_h
-        )
-        self.assertIn("return m_iCanonicalDisplayGeneration;", self.workbench_h)
-
-        synchronize = body(
-            self.sequencer_cpp,
-            "Synchronize_SourceDocumentsWithCanonicalGeneration()",
-        )
-        for token in (
-            "Get_CanonicalDisplayGeneration()",
-            "generation != m_iObservedCanonicalDisplayGeneration",
-            "Reload_SourceDocuments();",
-        ):
-            self.assertIn(token, synchronize)
-        self.assertIn(
-            "Synchronize_SourceDocumentsWithCanonicalGeneration();",
-            body(
-                self.sequencer_cpp,
-                "void Client::CSequencerTool::Render_SourceDocumentHeader()",
-            ),
-        )
-
     def test_selected_pair_is_staged_without_loading_the_unrelated_boss(self) -> None:
         self.assertIn("bool_t Load_Pair(", self.document_h)
         self.assertNotIn("Load_All", self.document_h)
@@ -88,21 +64,19 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         for token in (
             '"boss.composition.valtan" == compositionId',
             '"boss.composition.kakulsaydon" == compositionId',
+            'L"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json"',
+            'L"Compositions/Sequences/KoukuSaydonArena.sequencer.json"',
             "stagedBoss.Load(bossPath, status)",
             "stagedArena.Load(arenaPath, status)",
             "m_BossDocuments = std::move(stagedBosses)",
             "m_ArenaDocuments = std::move(stagedArenas)",
         ):
             self.assertIn(token, load_pair)
+        self.assertNotIn("KakulSaydon", load_pair)
         self.assertLess(
             load_pair.index("stagedArena.Load(arenaPath, status)"),
             load_pair.index("m_BossDocuments = std::move(stagedBosses)"),
         )
-        reload_facade = body(
-            self.sequencer_cpp,
-            "void Client::CSequencerTool::Reload_SourceDocuments()",
-        )
-        self.assertIn("stagedCatalog.Load_Pair(bossId, arenaId", reload_facade)
 
     def test_uint_fields_and_actor_pattern_references_fail_closed(self) -> None:
         read_u32 = body(self.document_cpp, "bool_t Read_U32(")
@@ -121,41 +95,16 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         self.assertIn("std::get_if<ARENA_ACTOR_PATTERN_REFERENCE>", load_pair)
         self.assertIn("stagedBoss.Find_Pattern(actor->patternId)", load_pair)
 
-    def test_ui_does_not_claim_cross_owner_revision_admission(self) -> None:
-        for token in (
-            "descriptor revision",
-            "This view only parsed source descriptors.",
-            "Cross-owner exact revision/reference admission belongs to the Composition Publisher receipt.",
-            "WORLD_SEQUENCE and CAMERA_SHOT owner resolution is Publisher validation",
-        ):
-            self.assertIn(token, self.sequencer_cpp)
-
-    def test_kakul_profiles_deep_link_to_the_single_animation_writer(self) -> None:
-        for token in (
-            "Consume_KakulAnimationOpenRequest",
-            '"Kakul"',
-            '"Saydon"',
-            '"Large Saydon"',
-            '"Kakul + Saydon"',
-            "Open Create / Append / Preview",
-            "not a scaled MN_RPCT_05",
-        ):
-            self.assertIn(token, self.sequencer_cpp)
-        for token in (
-            "Consume_KakulAnimationOpenRequest",
-            "EnsureDebugTool(DEBUG_TOOL::ANIMATION)",
-            "m_pAnimationTool->Open_KakulProfile(kakulProfileId)",
-            "m_eDebugWindowFocusPending = DEBUG_TOOL::ANIMATION",
-        ):
-            self.assertIn(token, self.main_cpp)
-
     def test_fixed_source_closure_has_an_executable_native_contract(self) -> None:
-        for token in ("Has_ExactSourceClosure", "Has_KakulSourceClosure"):
+        for token in (
+            "Has_ExactSourceClosure",
+            "Has_KoukuSaydonSourceClosure",
+        ):
             self.assertIn(token, self.document_cpp)
         for source_contract in (
             pipeline.VALTAN_SOURCE_DOCUMENTS,
             pipeline.VALTAN_ARENA_SOURCE_DOCUMENTS,
-            pipeline.KAKUL_ARENA_SOURCE_DOCUMENTS,
+            pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS,
         ):
             for role, path in source_contract.items():
                 self.assertIn(f'{{ "{role}", "{path}" }}', self.document_cpp)

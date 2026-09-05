@@ -1354,6 +1354,38 @@ bool CNetworkManager::Send_DebugEnterKakulSaydonArena(
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DebugTeleportToPosition(
+	const std::uint32_t requestSequence,
+	const float pickedX, const float pickedY, const float pickedZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_TELEPORT_TO_POSITION message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.fPositionX = pickedX;
+	message.fPositionY = pickedY;
+	message.fPositionZ = pickedZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugTeleportResult(
+	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
+{
+	if (m_DebugTeleportResults.empty())
+		return false;
+	result = m_DebugTeleportResults.front();
+	m_DebugTeleportResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugTeleportToPlacement(
 	const std::uint32_t requestSequence,
 	const std::string_view placementId)
@@ -1720,6 +1752,28 @@ bool CNetworkManager::Send_ValtanNextPatternCommand(
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_KoukuSaydonPatternAudition(
+	const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST&
+		message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		(message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
+		 message.eOperation !=
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL))
+	{
+		return false;
+	}
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ValtanPatternFlowStart(
 	const LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
 {
@@ -1902,6 +1956,26 @@ bool CNetworkManager::Try_Consume_ValtanAuditionLifecycle(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionResult(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message)
+{
+	if (m_KoukuSaydonPatternAuditionResults.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionResults.front());
+	m_KoukuSaydonPatternAuditionResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_KoukuSaydonPatternAuditionLifecycle(
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message)
+{
+	if (m_KoukuSaydonPatternAuditionLifecycleEvents.empty())
+		return false;
+	message = std::move(m_KoukuSaydonPatternAuditionLifecycleEvents.front());
+	m_KoukuSaydonPatternAuditionLifecycleEvents.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_ValtanPatternFlowResult(
 	LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT& message)
 {
@@ -1959,7 +2033,26 @@ bool CNetworkManager::Enqueue_ReplicationEvent(
 		Client::Can_CoalesceAdjacentReplicationEvents(
 			m_ReplicationEvents.back().eType, event.eType))
 	{
-		m_ReplicationEvents.back() = std::move(event);
+		/* A snapshot's entity/player state is a full state, so the newest wins, but its
+		   DamageEvents/BossCombatEvents are that one tick's events and exist nowhere else.
+		   Carry the replaced snapshot's events ahead of the newer ones (bounded) so a
+		   coalesce never silently drops a hit. */
+		Client::CLIENT_REPLICATION_EVENT& replaced = m_ReplicationEvents.back();
+		constexpr std::size_t MAX_CARRIED_TICK_EVENTS = 256u;
+		const auto carry = [](auto& older, auto& newer)
+		{
+			if (older.empty())
+				return;
+			newer.insert(newer.begin(),
+				std::make_move_iterator(older.begin()),
+				std::make_move_iterator(older.end()));
+			if (newer.size() > MAX_CARRIED_TICK_EVENTS)
+				newer.erase(newer.begin(),
+					newer.begin() + (newer.size() - MAX_CARRIED_TICK_EVENTS));
+		};
+		carry(replaced.WorldSnapshot.DamageEvents, event.WorldSnapshot.DamageEvents);
+		carry(replaced.WorldSnapshot.BossCombatEvents, event.WorldSnapshot.BossCombatEvents);
+		replaced = std::move(event);
 		m_SessionDiagnostic.Record_EventQueueDepth(m_ReplicationEvents.size());
 		return true;
 	}
@@ -2017,11 +2110,14 @@ void CNetworkManager::Reset_WorldInboundState()
 			1u : m_iWorldInboundGeneration + 1u;
 	m_ReplicationEvents.clear();
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
+	m_DebugTeleportResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
 	m_ValtanPatternAuditionByIdResults.clear();
 	m_ValtanAuditionLifecycleEvents.clear();
+	m_KoukuSaydonPatternAuditionResults.clear();
+	m_KoukuSaydonPatternAuditionLifecycleEvents.clear();
 	m_ValtanPatternFlowResults.clear();
 	m_ValtanPatternFlowLifecycleEvents.clear();
 	m_pStagedPresentationAdmission.reset();
@@ -2772,7 +2868,13 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				   worker boundary as well as the parsed-event boundary so that cold
 				   loading cannot exhaust the raw frame queue.  Any lifecycle or
 				   destruction frame remains an ordering barrier. */
-				if (!m_InboundFrames.empty() &&
+				/* Raw frames are not decoded here, so a replaced snapshot frame loses its
+				   DamageEvents/BossCombatEvents for good. Normal play delivers one or two
+				   snapshots per main-thread drain (TCP batching), so coalesce only once a
+				   real backlog has built up -- a cold level load -- and let the parsed-event
+				   queue carry events forward for the short bursts. */
+				constexpr std::size_t INBOUND_SNAPSHOT_COALESCE_DEPTH = 30u;
+				if (m_InboundFrames.size() >= INBOUND_SNAPSHOT_COALESCE_DEPTH &&
 					Client::Can_CoalesceAdjacentInboundFrames(
 						m_InboundFrames.back().ePacketType,
 						frame.ePacketType))
@@ -3179,6 +3281,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
+	case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
+	{
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugTeleportResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_DebugTeleportResults.push_back(result);
+		break;
+	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
 	{
 		S2C_WORLD_ENTITY_SPAWN_RESULT result{};
@@ -3233,6 +3353,41 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_ValtanAuditionLifecycleEvents.push_back(std::move(lifecycle));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionResults.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_KoukuSaydonPatternAuditionResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+	{
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE lifecycle{};
+		if (!Read_Message(reader, lifecycle) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		if (m_KoukuSaydonPatternAuditionLifecycleEvents.size() >=
+			MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_KoukuSaydonPatternAuditionLifecycleEvents.push_back(
+			std::move(lifecycle));
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:

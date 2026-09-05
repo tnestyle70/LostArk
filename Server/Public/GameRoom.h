@@ -17,6 +17,7 @@
 #include "MonsterBrain.h"
 #include "NpcBehaviorRuntime.h"
 #include "ValtanBrain.h"
+#include "KoukuSaydonBrain.h"
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
@@ -183,7 +184,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests(bool);
+		friend int Run_ServerGameplayContractTests(bool, bool);
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -335,6 +336,13 @@ namespace LostArk::Server
 		void Handle_DebugTeleportToPlacement(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT& request);
+		void Handle_DebugTeleportToPosition(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
+		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT Apply_DebugTeleportToPosition(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
+		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);
@@ -378,6 +386,67 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::
 				C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request);
+		void Handle_KoukuSaydonPatternAudition(
+			SESSION_ID sessionId,
+			const LostArk::Shared::
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request);
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_RESULT
+			Evaluate_KoukuSaydonPatternAudition(
+				SESSION_ID sessionId,
+				const LostArk::Shared::
+					C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request,
+				LostArk::Shared::
+					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult);
+		SERVER_WORLD_ENTITY* Find_KoukuSaydonAuditionBoss();
+		bool Update_KoukuSaydonBoss(
+			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick);
+#ifdef _DEBUG
+		enum class KOUKUSAYDON_PATTERN_AUDITION_PHASE : std::uint8_t
+		{
+			INACTIVE,
+			PENDING,
+			ACTIVE
+		};
+
+		struct KOUKUSAYDON_PATTERN_AUDITION_STATE final
+		{
+			KOUKUSAYDON_PATTERN_AUDITION_PHASE ePhase =
+				KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE;
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST Request;
+			std::uint32_t iRoomAuditionEpoch = 0u;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
+			std::uint32_t iPinnedSourceRevision = 0u;
+			std::vector<std::string> PatternIds;
+			std::vector<std::uint32_t> TransitionTicks;
+			std::size_t iPatternIndex = 0u;
+			std::uint32_t iNextStartTick = 0u;
+		};
+
+		struct KOUKUSAYDON_PATTERN_AUDITION_RECEIPT final
+		{
+			LostArk::Shared::
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST Request;
+			LostArk::Shared::
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT Result;
+			std::optional<LostArk::Shared::
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
+				LastLifecycle;
+		};
+
+		void Queue_KoukuSaydonPatternAuditionLifecycle(
+			const std::string& patternId,
+			std::uint32_t patternSequence,
+			std::uint32_t stageIndex,
+			LostArk::Shared::
+				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state,
+			std::string reason = {});
+		bool Flush_KoukuSaydonPatternAuditionLifecycle();
+		void Clear_KoukuSaydonPatternAudition();
+#endif
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
 		SERVER_WORLD_ENTITY* Find_AuditionBoss(
 			const std::string& placementId);
@@ -785,6 +854,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
 			LostArk::Shared::VALTAN_AUDITION_RESULT result,
 			std::uint32_t currentHealthBar);
+		bool Send_KoukuSaydonPatternAuditionResult(
+			const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& message);
 		bool Send_ValtanPatternFlowResult(
 			const std::shared_ptr<CClientSession>& session,
 			std::uint32_t commandSequence,
@@ -1151,6 +1224,7 @@ namespace LostArk::Server
 		CMonsterBrain m_MonsterBrain;
 		CNpcBehaviorRuntime m_NpcBehaviorRuntime;
 		CValtanBrain m_ValtanBrain;
+		CKoukuSaydonBrain m_KoukuSaydonBrain;
 		std::unique_ptr<CValtanBrain> m_DependentValtanBrain =
 			std::make_unique<CValtanBrain>();
 		VALTAN_DECISION_TRACE_REVISION_STATE m_ValtanDecisionTraceRevision;
@@ -1232,6 +1306,18 @@ namespace LostArk::Server
 		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
 			m_ValtanPatternFlowControlSequenceBySessionId;
 #ifdef _DEBUG
+		struct TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE final
+		{
+			SESSION_ID iSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE Message;
+		};
+		std::uint32_t m_iNextKoukuSaydonPatternAuditionEpoch = 1u;
+		KOUKUSAYDON_PATTERN_AUDITION_STATE m_KoukuSaydonPatternAudition;
+		std::unordered_map<SESSION_ID, KOUKUSAYDON_PATTERN_AUDITION_RECEIPT>
+			m_KoukuSaydonPatternAuditionReceiptBySessionId;
+		std::vector<TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
+			m_PendingKoukuSaydonPatternAuditionLifecycle;
 		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
 		{
 			SESSION_ID iSessionId = INVALID_SESSION_ID;

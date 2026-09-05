@@ -22,7 +22,7 @@ camera_controller_header = read("Client/Public/ValtanCinematicCameraController.h
 valtan_level = read("Client/Private/Level_ValtanArena.cpp")
 valtan_runtime = read("Client/Private/Valtan.cpp")
 main_app = read("Client/Private/MainApp.cpp")
-boss_tool = read("Client/Private/BossTool.cpp")
+boss_tool = read("Client/Private/ValtanBossTool.cpp")
 camera_runtime = read("Engine/Private/Camera.cpp")
 camera_runtime_header = read("Engine/Public/Camera.h")
 gameplay_publisher = read("Tools/GameplayPipeline/Publish-GameplayBalance.ps1")
@@ -208,7 +208,7 @@ require(main_app.index("CGameInstance::Get().Update_Engine(fTimeDelta)") <
         "Camera Tool samples actor context before the owning Level publishes it")
 require("m_hasCameraToolOpenRequest = true" in boss_tool and
         "Open Camera Tool##" in boss_tool,
-        "Boss Tool does not emit the typed camera deep link")
+        "Valtan Boss Tool does not emit the typed camera deep link")
 
 require("higher-priority product cinematic inherits the original saved pose" in camera_runtime,
         "Server cinematic preemption does not preserve the original restore pose")

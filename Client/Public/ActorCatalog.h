@@ -106,6 +106,9 @@ struct BOSS_ACTOR_ENTRY final
 	f32_t presentationScale = {};
 	// Asset-unit conversion happens before the actor presentation transform.
 	f32_t bodyModelPreScale = {};
+	/* Zero means this embedded-body presentation has no separate weapon model.
+	Only a catalog row whose dedicated Client presentation contract admits that
+	shape may use zero; Valtan remains body+weapon exact. */
 	f32_t weaponModelPreScale = {};
 	std::string bodyModel;
 	std::string weaponModel;

@@ -66,7 +66,7 @@ namespace LostArk::Server
 
 	class CServerApp final
 	{
-		friend int Run_ServerGameplayContractTests(bool);
+		friend int Run_ServerGameplayContractTests(bool, bool);
 	public:
 		//소멸자 - 중간 실패나 정상 종료 여부 상관 없이
 		//socket과 thread를 정리

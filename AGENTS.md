@@ -56,8 +56,8 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 1. 실제 코드와 데이터의 현재 상태를 다시 확인한다.
 2. 바뀐 public 계약만 `AGENTS.md`, `CLAUDE.md`, 팀 사용서에 반영한다.
 3. 구현 완료와 미완료를 RESULT에서 분리하고 실행한 검증만 기록한다.
-4. 관련 domain publisher validation과 실행형 harness를 실행하고 `git diff --check`를 확인한다.
-5. 빌드·중간 산출물을 제외한 하나의 검증 단위만 commit/push한다.
+4. 변경 기능에 필요한 최소 컴파일, 변경한 JSON/XML parse와 `git diff --check`를 확인한다. 입력·저장·실행 결과는 해당 기능에서 확인하며 Client와 아레나의 화면 확인은 사용자가 직접 한다.
+5. 빌드·중간 산출물을 제외하고 한 기능의 변경을 commit/push 단위로 묶는다. 광역 진단이나 별도 하네스의 실행 여부를 커밋 조건으로 삼지 않는다.
 
 날짜별 진행 로그나 일시적인 오류를 `AGENTS.md`와 `CLAUDE.md`에 누적하지 않는다. 그런 정보는 해당 RESULT에 기록한다. 문서와 코드가 다르면 코드·데이터·실행 결과를 먼저 조사하고 같은 변경에서 문서를 교정한다.
 
@@ -129,17 +129,17 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 
 ## 고정 런타임 계약
 
-- Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
+- Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern` 다섯 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
 - `CHARACTER_SELECT`는 Lobby가 선택 class로 `WORLD_ID::CHARACTER_SELECT_ARENA` Server 승인을 받은 뒤에만 `LV_LOBBY_CLASSSELECT_SL00` visual map을 연다. offline Preview와 `Preview / Server Play` mode 분기는 없다. 진입한 Level은 승인된 socket을 one-shot handoff로 소비하고 `CClientReplication -> CPlayerController -> IPlayerCommandSink`를 사용해 우클릭 이동과 class quick-slot 스킬을 Server snapshot으로 반영한다. class 썸네일 선택은 별도 Confirm 없이 typed class-change command를 보내며 Server가 같은 `PlayerId/NetEntityId`와 살아 있는 위치를 유지한 채 action/movement/cooldown/combo/HP/resource/stance를 새 profile로 초기화한다. 사망 중 변경은 원래 Server spawn의 navigation-projected 위치에서 부활한다. snapshot의 지속 class state가 Client presentation을 transactionally 교체하고 실패하면 기존 character와 상태 메시지를 유지한다. Character Select가 직접 connect/send/approval을 반복하지 않는다. Server는 필수이며 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고 자동 local fallback은 없다. 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Server Arena의 Debug ImGui는 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 중 하나의 stable placement/group ID만 typed command sink로 제출한다. 일반 몬스터와 Lugaru는 Area `SpawnGroups.world.json`을, Valtan은 disabled world template을 Server가 navigation/profile 검증 후 활성화하며 Client local spawn은 금지한다. 즉시 SpawnGroup은 실제 entity commit이 성공한 뒤에만 활성화 결과를 회신하고, 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화한다. Client는 broadcast presentation만 생성하고 Valtan prototype은 batch lazy-load한다. Bern/Valtan도 마지막 Server 승인 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다.
 - `CHARACTER_SELECT_ARENA`는 Server 권위 전투를 그대로 사용하되 session마다 별도 `CGameRoom` simulation을 소유한다. 다른 Character Select session의 player, world entity, HP, damage event는 서로 broadcast하지 않는다. 해당 session이 퇴장하면 그 private simulation의 queued `LEAVE`를 처리하고 audition 상태를 초기화한 뒤 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 계속 world별 shared simulation을 사용한다.
-- Character Select의 `Create Character`는 선택 class와 1~32-byte valid UTF-8 nickname을 process-session pending identity로 stage하고, Lobby의 Server-approved Bern entry와 resource/profile activation 및 실제 `Change_Level(BERN)`이 모두 성공한 뒤에만 created identity로 commit한다. 실패는 pending만 취소하고 이전 created identity를 보존한다. created identity가 없는 direct Valtan/Character Select/Training entry는 process-local `Test-<process-id>` audition nickname을 사용한다. nickname은 Server player/session과 world transfer가 보존해 spawn으로 복제하는 display text일 뿐 lookup, Party identity, 고유성 또는 재실행 후 영구 저장 계약이 아니다. Bern/Valtan nameplate는 `CClientReplication`의 Server-replicated nickname read-only view만 그리며 projection/font 실패는 해당 nameplate만 격리한다.
+- Character Select의 `Create Character`는 선택 class와 1~32-byte valid UTF-8 nickname을 process-session pending identity로 stage하고, Lobby의 Server-approved Bern entry와 resource/profile activation 및 실제 `Change_Level(BERN)`이 모두 성공한 뒤에만 created identity로 commit한다. 실패는 pending만 취소하고 이전 created identity를 보존한다. created identity가 없는 direct Valtan/KoukuSaydon/Character Select/Training entry는 process-local `Test-<process-id>` audition nickname을 사용한다. nickname은 Server player/session과 world transfer가 보존해 spawn으로 복제하는 display text일 뿐 lookup, Party identity, 고유성 또는 재실행 후 영구 저장 계약이 아니다. Bern/Valtan nameplate는 `CClientReplication`의 Server-replicated nickname read-only view만 그리며 projection/font 실패는 해당 nameplate만 격리한다.
 - 2026-09-30 23:59 KST까지 같은 팀 LAN의 공유 Server는 `192.168.0.4:7777`이다. Server listener 기본 bind는 `0.0.0.0`, Client 기본 endpoint는 `192.168.0.4`이며 `Tools/Network/TeamLanEndpoint.json`, `Framework.slnLaunch` profile과 공유 x64 debugger 설정이 같은 계약을 사용한다. `LOSTARK_SERVER_HOST`를 명시하면 그 값을 우선하고 `0.0.0.0`은 Client 접속 주소로 사용하지 않는다. DHCP 주소가 바뀌면 `-AllowExpired`나 개인 `.vcxproj.user`로 우회하지 않고 endpoint 문서, Server/Client 기본값, 팀 사용서와 Network/Server 실행 검증을 같은 변경 단위에서 갱신한다. 격리 harness의 명시적 `127.0.0.1`은 이 공유 endpoint 변경 대상이 아니다.
 - 같은 방 최대 4인 파티는 `IPlayerCommandSink -> Shared -> Server GameRoom -> roster` 계약을 사용한다. nickname은 identity가 아니며 roster 첫 member가 leader다. Bern NPC의 파티 Valtan 입장은 전원의 target admission과 reliable 초기 송신 준비가 끝나기 전에 source player/party/binding을 변경하지 않는다. 준비 실패는 기존 방과 파티를 유지하고 typed party-transfer failure를 표시하며 Lobby admission 거절로 위장하지 않는다. Client local party 생성이나 member별 부분 이동으로 우회하지 않는다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
 - 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
-- 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다.
+- 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 정확히 일곱 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.
@@ -155,7 +155,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 - 아래 담당 표는 파일 수정 권한표가 아니다. 담당 이름은 작업 시작점, 데이터 정본, 런타임
   권위와 우회하면 안 되는 public interface를 설명한다.
 - 기능 담당자는 요청받은 기능의 수직 슬라이스를 끝까지 구현한다. 기능에 Server authority가
-  필요하면 `Data -> Shared -> Server -> Client presentation/UI -> harness`의 필요한 파일을
+  필요하면 `Data -> Shared -> Server -> Client presentation/UI`의 필요한 파일을
   같은 변경 단위에서 직접 수정한다. Server 폴더가 다른 담당으로 표시됐다는 이유로 Client
   mock, 로컬 우회, 문서만 남기고 중단하지 않는다.
 - 교차 영역 수정은 범위 확장이 아니라 기능 완성에 필요한 계약 연결이다. 다만 UI가 socket을
@@ -163,7 +163,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 - 같은 파일에 다른 팀원의 미커밋 변경이 있으면 덮어쓰지 않고 먼저 현재 diff를 보존·조정한다.
   역할 분리는 merge 충돌을 줄이는 기준이지, 필요한 서버·클라이언트 구현을 금지하는 장벽이 아니다.
 - 완료 기준은 한쪽 구현이 아니라 실제 소비자가 연결된 실행 계약이다. 새 command/state/data를
-  추가했다면 관련 publisher, protocol/server contract, Client smoke와 실패 경로까지 함께 검증한다.
+  추가했다면 실제 소비자까지 연결하고 해당 기능의 입력·저장·실행 및 실패 시 기존 항목 보존을 확인한다.
 
 - UI 담당자는 `CLobbyCommandService`와 `CLevelTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
 - 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. Controller는 quick slot 이름과 물리 키만 알고, (class, slot) → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 조회한다. Controller에 skill ID를 하드코딩하지 않는다.
@@ -171,8 +171,8 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 - Character Select와 입장 roster는 `LANCE_MASTER, GUNSLINGER, SLAYER, ARTIST, DIMENSIONMASTER, WARLORD` 여섯 class다. 여섯 class의 quick slot ACTIVE 스킬과 LMB COMBO 평타는 `Data/Balance/PlayerSkills.json`에서 `(characterClass, inputSlot) -> skillId`를 resolve하고 command → Server approval → snapshot → Character presentation 계약을 사용한다. 현재 ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S T V Z ALT_V`, DimensionMaster `Q W E R A S D F T V ALT_V`, Warlord `Q W E R A S D F T X V ALT_V`다. Artist는 `Z` 저무는 달을 사용하고, Warlord는 `X` 전장의 방패와 `Z` 방어 태세 전환을 사용한다. LMB 평타는 각각 `34010/38000/45000/31000/2050010/17000`이고 Server가 `SNAPSHOT_PLAYER::iComboStage`를 확정한다. Client와 Animation Tool은 콤보 단계를 스스로 만들지 않는다.
 - playable skill의 Server 수치 정본은 `Data/Balance/PlayerSkills.json`과 `DamageProfiles.json`, presentation 정본은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`이다. Animation Tool은 Scene Character의 실제 model clip만 현재 class의 skillId에 순서대로 연결해 저장한다. ACTIVE는 하나 이상의 순차 clip, COMBO는 `comboStages`와 정확히 같은 BA 단계 수를 요구한다. `inputSlot`, `skillId`, `skillKind`, timing, damage는 Animation Tool에서 편집하지 않는다. missing/corrupt presentation 문서는 spawn과 Server gameplay를 막지 않고 해당 action 표현만 격리한다. `.skilltiming/.clipmap/.animnotify/.clipseq`와 `Data/Animation/Reference`는 read-only 저작 참고 자료이며 제품 runtime 정본이 아니다. 이동기·스탠스 전환은 아직 별도 수직 슬라이스 범위다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
-- 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
-- 아이템 정의 정본은 `Data/Items/ItemCatalog.json`이다. Server pre-build가 `Publish-ItemCatalog.ps1`로 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하며, `CItemCatalog`은 이 생성물만 읽는다. 누락을 JSON 직접 읽기나 hardcoded fallback으로 숨기지 않는다.
+- 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. 명시적인 `Publish-GameplayBalance.ps1` 실행으로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
+- 아이템 정의 정본은 `Data/Items/ItemCatalog.json`이다. 명시적인 `Publish-ItemCatalog.ps1` 실행으로 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하며, `CItemCatalog`은 이 생성물만 읽는다. 누락을 JSON 직접 읽기나 hardcoded fallback으로 숨기지 않는다.
 - field-level 공식 근거 정본은 `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`이다. publisher는 5 profile, 88 skill definition, 63 damage profile과 Valtan encounter의 모든 저작 field coverage/result 일치를 검사한다. F1 Balance Tool에서 바뀐 field는 receipt 동기화 단계에서 `PROJECT_TUNED`로 분류하며 공식 basis를 수동 유지하지 않는다. Publish 뒤 Server 재시작 전에는 적용 완료가 아니다.
 - 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 정본으로 사용한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
 - Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. `Gameplay.world.json` authoring은 formatVersion 6이며 actor placement, NPC의 optional `behavior`, `triggerBox`, `collisionBox`, gated `destroyable` 구조를 구분한다. 제품 publisher/runtime는 player spawn/NPC/boss, 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter` action을 가진 triggerBox, Server 권위 정적 collisionBox를 지원한다. NPC 제품 presentation은 `Data/Actors/NpcCatalog.json`의 `runtimeStatus=supported` archetype을 모두 지원하며 현재 75종이다. 세부 작업 절차는 `.md/TEAM/NPC_OWNER_HANDOFF.md`를 따른다. `activateSpawnGroup`은 같은 Area의 `SpawnGroups.world.json` stable group ID만 참조하고, `activateEncounter`는 같은 문서의 disabled boss placement ID만 참조한다. movePlayer/changeLevel/activation의 OBB 진입, player collider와 collisionBox의 swept 이동 차단은 Server authority이고 Shared snapshot/spawn/despawn으로 표현한다. changeLevel은 Bern과 Valtan Arena 사이에서만 Server가 source room leave와 target room enter를 확정하고 Client는 `S2C_ENTER_ACCEPTED` 뒤 typed level transition을 제출한다. destroyable과 다른 trigger action은 dynamic navigation·replication·Client presentation이 닫히기 전까지 publisher가 거부하며 authoring parser 존재만으로 제품 지원 완료 처리하지 않는다.
@@ -192,39 +192,38 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.4`로 갱신�
 - `manual first pixel`, `eye smoke`, `visual PASS`, occurrence 승인은 사용자의 서면 관찰과 결정이 있어야 한다. 에이전트가 대신 PASS로 기록하지 않는다.
 - 사용자가 첨부한 이미지는 요청 시 진단·리뷰 입력으로 사용하되 단독 자동 admission이나 완료 증거로 승격하지 않는다. 에이전트가 직접 만든 캡처나 자동 UI 조작 결과는 증거로 사용하지 않는다.
 
-## AI 코드 하네스
+## 코드 작성과 기능 확인
 
 - 코드 작성 전에 실제 호출자, 소유자, 데이터 정본, 실패 소비자를 확인한다. 소비자가 없는 인터페이스와 미래용 placeholder 파일을 추가하지 않는다.
 - 함수는 하나의 의미 단위를 소유하고 이름이 그 단위를 설명해야 한다. `Manager`, `Data`, `Handle`, `Temp` 같은 포괄 이름만으로 새 상태를 숨기지 않는다.
 - 저장 ID에 pointer, Prototype tag, vector index를 쓰지 않는다. switch fallback으로 모르는 enum/ID를 정상값처럼 처리하지 않는다.
 - 파일/네트워크/레벨 로드는 실패 이유를 보존한다. 무한 대기, 부분 commit, silent identity fallback을 금지한다.
-- 새 public 계약에는 정상 사례, 잘못된 version/ID/path, 중복, 중간 실패 rollback을 검증하는 domain validator 또는 실행형 harness를 함께 추가한다.
-- 밸런스 파일을 매 프레임 읽거나 Client만 reload하지 않는다. runtime Hot Reload는 revision, Server stage, room tick commit, 진행 중 action 정책, snapshot revision, Client 동기화와 rollback harness가 한 수직 슬라이스로 닫힐 때만 활성화한다.
-- 완료 전 변경한 데이터의 domain publisher를 `Validate`/`Check` 모드로 실행하고 관련 실행형 harness를 통과시킨다.
+- 새 public 계약은 실제 호출자와 소비자가 사용하는 경로에 연결한다. JSON parse와 필요한 version/ID/path 검사를 유지하고, 실패한 항목 때문에 정상 항목이나 기존 저장 상태를 지우지 않는다. 별도 validator나 하네스를 자동으로 추가하지 않는다.
+- 밸런스 파일을 매 프레임 읽거나 Client만 reload하지 않는다. runtime Hot Reload는 revision, Server stage, room tick commit, 진행 중 action 정책, snapshot revision, Client 동기화와 실패 시 기존 상태 보존을 함께 구현할 때 활성화한다.
+- 데이터 배포 시 해당 domain publisher의 구조 검사를 사용한다. 저작 목록 표시·편집·Save와 일반 컴파일에는 전체 oracle, reference join, publisher를 선행조건으로 붙이지 않는다. 필요한 오류는 해당 항목에 표시하고 정상 항목은 유지한다.
 
 ## Git·문서·완료 보고 계약
 
 - `main`에 직접 작업하지 않는다. 사람 작업 브랜치는 팀 명명 규칙을 따르고 Codex 작업 브랜치는 `codex/<topic>`을 사용한다.
 - 작업을 시작할 때 `git status --short`로 다른 담당자의 변경과 생성물을 구분한다. 소유권이 불명확한 대규모 dirty worktree에서는 자동 stage/commit하지 않는다.
-- 하나의 커밋은 하나의 검증 가능한 계약만 담는다. 코드, 그 코드가 소비하는 JSON/schema, 필요한 project/filter 등록, 대응 harness, PLAN/RESULT 갱신은 같은 변경 단위로 묶는다.
+- 하나의 커밋은 한 기능의 변경만 담는다. 코드, 그 코드가 소비하는 JSON/schema, 필요한 project/filter 등록, PLAN/RESULT 갱신을 같은 변경 단위로 묶는다.
 - `Client/Bin/Resources`는 팀장이 Drive로 직접 관리하는 runtime 입력이며 Git index에 추적하지 않는다. 기능 PR은 Resources-relative asset ID와 필요한 물리 위치만 기록하고 binary payload를 force-add하지 않는다. 전체 물리 팩, 추출 원본, 미참조 자산과 build/intermediate 산출물은 커밋하지 않으며 immutable Resource pack, lock, 별도 Resource manifest, hash publish를 완료 조건으로 만들지 않는다.
 - 계획/결과 문서는 `.md/GB/<MM-DD>/`에 보관한다. `.md/계획서작성규칙.local.md`와 local gotcha는 개인 파일이므로 커밋하지 않는다.
-- 완료 보고 전에 `git diff --check`, JSON/XML parse, 관련 harness, 정본 build/regression을 실행한다. Release에서 의도적으로 제외된 Development tool smoke를 PASS로 기록하지 않는다.
+- 완료 보고에는 변경 기능에 필요한 최소 컴파일, 변경한 JSON/XML parse, `git diff --check`와 실제 입력·저장·실행 확인 결과를 기록한다. 사용자가 아직 하지 않은 화면 확인이나 실행하지 않은 검사를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.
-- 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 domain validator, protocol harness, smoke의 실행 계약으로 바꾼다.
+- 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 해당 기능에서 필요한 수정과 확인을 수행한다.
 - 팀원 인계에는 필요한 `Client/Bin/Resources` 상대 asset ID와 물리 폴더 위치, Drive 전달 준비 여부를 함께 적는다. Runtime EXE/Data ZIP은 `.md/TEAM/RUNTIME_BUILD_DELIVERY_GUIDE.md`를 따르며 Resource ZIP hash나 Hydrate/Verify 결과를 요구하지 않는다.
 
 ## 빌드·검증
 
 ```text
-1. Product: Engine -> UpdateLib -> Shared -> Server -> Client, product CSO closure
-2. Core: Product + NetworkProtocol + 실제 Server Character Select Core(private·shared world 격리) 1회 + 공용 publisher validation
-3. FullDiagnostic: Core + Character Select Party2/Party4 transfer + 변경 domain의 presentation/render/physics/model/server 광역 계약
-4. Client smoke: Lobby, Bern, Valtan, 각 Development scenario는 사용자가 직접 실행·판정
+기본 반복: 변경 기능 최소 컴파일 → 해당 기능 입력·저장 확인 → 사용자 실제 아레나 재생 확인
+Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DLL 배포 포함)
 ```
 
-- 정본 자동화 명령은 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration <Debug|Release>`이며 기본 profile은 `Core`다. 빠른 일상 컴파일은 `-Profile Product`, 변경 domain 광역 진단은 `-Profile FullDiagnostic`을 명시한다. `Framework.sln` 기본 Build는 제품 네 프로젝트만 빌드하고 하네스는 명시 profile에서만 빌드한다. 삭제된 Imported Artist corpus에 결합됐던 EffectRender 광역 프로젝트는 퇴역했다. stage/commit과 resource-root 계약은 현재 Product/V2 focused test가, 실제 V1/V2 compiled-shader WARP draw/readback은 Product CSO closure의 일회성 probe가 소유한다. 수동 smoke에서도 Client 작업 디렉터리는 `Client/Default`여야 한다.
+- 기본 빌드 명령은 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration <Debug|Release>`이며 기본 profile은 `Product`다. Product는 컴파일·링크와 정상 MSBuild 배포를 수행한다. `Framework.sln` 기본 Build도 제품 네 프로젝트만 빌드한다. 광역 진단은 사용자가 요청할 때만 실행한다.
+- runtime 데이터는 변경한 domain의 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. VS pre-build publish가 필요한 경우에만 `LostArkPublishRuntimeData=true`를 설정한다. 생성물 누락은 목록 편집을 막지 않으며 실제 Server 실행 전 준비한다. 수동 smoke의 Client 작업 디렉터리는 `Client/Default`다.
 
-- Engine public header를 바꿨다면 `UpdateLib.bat` 뒤 Client까지 검증한다.
+- Engine public header를 바꿨다면 Product 빌드로 Engine SDK 반영과 Client 컴파일까지 확인한다.
 - 실행 중인 `Client.exe`가 출력물을 점유하면 종료한 뒤 다시 링크한다.
-- 에디터 기능은 빌드만으로 끝내지 않고 실행 레벨, 단축키, 생성, 저장, 재로드, 실패 시 기존 상태 보존까지 확인한다.
+- 에디터 기능은 변경한 입력·저장·재로드와 실패 시 기존 항목 보존을 확인한다. 아레나의 재생 결과가 예상과 다르면 사용자의 실제 관찰을 기준으로 animation benchmark와 해당 family를 조정한다. Client 실행과 육안 확인은 사용자가 직접 한다.

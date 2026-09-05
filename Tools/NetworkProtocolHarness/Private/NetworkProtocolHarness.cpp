@@ -18,6 +18,7 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace LostArk::Shared;
@@ -2173,6 +2174,63 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_DebugTeleportPositionProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_DEBUG_TELEPORT_TO_POSITION request{};
+		request.iRequestSequence = 7u;
+		request.eWorldId = WORLD_ID::VALTAN_ARENA;
+		request.fPositionX = 2.f;
+		request.fPositionY = 10.f;
+		request.fPositionZ = -8.f;
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) &&
+			writer.Get_Buffer().size() == 18u,
+			"Teleport intent carries exact world, sequence and picked XYZ");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_DEBUG_TELEPORT_TO_POSITION decoded{};
+		testRunner.Require(Read_Message(reader, decoded) &&
+			decoded.eWorldId == request.eWorldId && decoded.iRequestSequence == 7u &&
+			decoded.fPositionX == 2.f && decoded.fPositionY == 10.f &&
+			decoded.fPositionZ == -8.f && 0u == reader.Get_RemainingSize(),
+			"Teleport intent round trip");
+		auto bytes = writer.Get_Buffer();
+		bytes.pop_back();
+		CPacketReader shortReader{ bytes };
+		decoded.iRequestSequence = 99u;
+		testRunner.Require(!Read_Message(shortReader, decoded) &&
+			decoded.iRequestSequence == 99u,
+			"Truncated teleport intent preserves caller output");
+		request.fPositionY = (std::numeric_limits<float>::quiet_NaN)();
+		CPacketWriter invalid;
+		testRunner.Require(!Write_Message(invalid, request),
+			"Teleport intent refuses nonfinite picked altitude");
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(DEBUG_TELEPORT_RESULT::END); ++reason)
+		{
+			S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+			result.iRequestSequence = 7u;
+			result.eWorldId = WORLD_ID::VALTAN_ARENA;
+			result.eResult = static_cast<DEBUG_TELEPORT_RESULT>(reason);
+			result.fPositionY = 10.25f;
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				19u == resultWriter.Get_Buffer().size(),
+				"Teleport verdict writer accepts every exact typed reason");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_DEBUG_TELEPORT_TO_POSITION_RESULT read{};
+			testRunner.Require(Read_Message(resultReader, read) &&
+				read.iRequestSequence == 7u && read.eWorldId == result.eWorldId &&
+				read.eResult == result.eResult && read.fPositionY == 10.25f &&
+				0u == resultReader.Get_RemainingSize(),
+				"Teleport verdict echoes correlation, reason and accepted ground");
+		}
+		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE) + 1u,
+			"Teleport packet identities append without renumbering peers");
+	}
+
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2286,8 +2344,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(55u == NETWORK_PROTOCOL_VERSION,
-				"Portal Rush Route Raid Entry Vote And Existing Contracts Use Protocol 55");
+			testRunner.Require(58u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 58");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5406,8 +5464,8 @@ namespace
 		}
 
 		testRunner.Require(
-			55u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 55");
+			58u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 58");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5434,8 +5492,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			55u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 55");
+			58u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 58");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6459,11 +6517,213 @@ namespace
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_RAID_ENTRY_VOTE),
 			"Register Raid Entry Vote Packet Types");
 	}
+
+	void Test_KoukuSaydonPatternAuditionProtocol(TEST_RUNNER& testRunner)
+	{
+		const GameplayDataRevision revision = Make_GameplayDataRevision(91u);
+		constexpr std::uint32_t SOURCE_REVISION = 7u;
+		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST selected{};
+		selected.iRequestSequence = 17u;
+		selected.eOperation =
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+		selected.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		selected.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+		selected.Scope.strBossPlacementId = "boss.kakulsaydon.g1.kouku";
+		selected.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+		selected.Scope.ExpectedGameplayRevision = revision;
+		selected.Scope.iExpectedSourceRevision = SOURCE_REVISION;
+		selected.strPatternId = "KAKULSAYDON_G1_PIZZA";
+
+		CPacketWriter selectedWriter;
+		const bool selectedEncoded = Write_Message(selectedWriter, selected);
+		CPacketReader selectedReader{ selectedWriter.Get_Buffer() };
+		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decodedSelected{};
+		testRunner.Require(selectedEncoded &&
+			Read_Message(selectedReader, decodedSelected) &&
+			0u == selectedReader.Get_RemainingSize() &&
+			decodedSelected.iRequestSequence == selected.iRequestSequence &&
+			decodedSelected.eOperation == selected.eOperation &&
+			decodedSelected.Scope.eWorldId == selected.Scope.eWorldId &&
+			decodedSelected.Scope.strEncounterId == selected.Scope.strEncounterId &&
+			decodedSelected.Scope.strBossPlacementId ==
+				selected.Scope.strBossPlacementId &&
+			decodedSelected.Scope.strBossArchetypeId ==
+				selected.Scope.strBossArchetypeId &&
+			decodedSelected.Scope.ExpectedGameplayRevision == revision &&
+			decodedSelected.Scope.iExpectedSourceRevision == SOURCE_REVISION &&
+			decodedSelected.strPatternId == selected.strPatternId,
+			"KoukuSaydon Play Selected Exact Scope Round Trip");
+
+		auto playAll = selected;
+		playAll.iRequestSequence = 18u;
+		playAll.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL;
+		playAll.strPatternId.clear();
+		CPacketWriter playAllWriter;
+		testRunner.Require(Write_Message(playAllWriter, playAll),
+			"KoukuSaydon Play All Uses Server Product Order");
+
+		auto invalid = selected;
+		invalid.iRequestSequence = 0u;
+		CPacketWriter zeroSequenceWriter;
+		testRunner.Require(!Write_Message(zeroSequenceWriter, invalid),
+			"Reject KoukuSaydon Zero Request Sequence");
+		invalid = selected;
+		invalid.Scope.eWorldId = WORLD_ID::END;
+		CPacketWriter unknownWorldWriter;
+		testRunner.Require(!Write_Message(unknownWorldWriter, invalid),
+			"Reject KoukuSaydon Unknown Wire World");
+		invalid = selected;
+		invalid.Scope.iExpectedSourceRevision = 0u;
+		CPacketWriter zeroSourceRevisionWriter;
+		testRunner.Require(!Write_Message(zeroSourceRevisionWriter, invalid),
+			"Reject KoukuSaydon Zero Product Source Revision");
+		invalid = selected;
+		invalid.strPatternId.clear();
+		CPacketWriter missingSelectedWriter;
+		testRunner.Require(!Write_Message(missingSelectedWriter, invalid),
+			"Reject KoukuSaydon Play Selected Without Pattern");
+		invalid = playAll;
+		invalid.strPatternId = selected.strPatternId;
+		CPacketWriter clientOrderedAllWriter;
+		testRunner.Require(!Write_Message(clientOrderedAllWriter, invalid),
+			"Reject KoukuSaydon Play All Carrying Client Pattern");
+
+		auto truncatedBytes = selectedWriter.Get_Buffer();
+		truncatedBytes.pop_back();
+		CPacketReader truncatedReader{ truncatedBytes };
+		auto unchanged = selected;
+		unchanged.iRequestSequence = 900u;
+		testRunner.Require(!Read_Message(truncatedReader, unchanged) &&
+			900u == unchanged.iRequestSequence,
+			"Reject Truncated KoukuSaydon Request Atomically");
+
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+		result.iRequestSequence = selected.iRequestSequence;
+		result.eOperation = selected.eOperation;
+		result.Scope = selected.Scope;
+		result.strRequestedPatternId = selected.strPatternId;
+		result.eResult = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+		result.iRoomAuditionEpoch = 3u;
+		result.iBossNetEntityId = 101u;
+		result.strResolvedPatternId = selected.strPatternId;
+		result.PinnedGameplayRevision = revision;
+		result.iPinnedSourceRevision = SOURCE_REVISION;
+		CPacketWriter resultWriter;
+		const bool resultEncoded = Write_Message(resultWriter, result);
+		CPacketReader resultReader{ resultWriter.Get_Buffer() };
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT decodedResult{};
+		testRunner.Require(resultEncoded && Read_Message(resultReader, decodedResult) &&
+			0u == resultReader.Get_RemainingSize() &&
+			KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == decodedResult.eResult &&
+			3u == decodedResult.iRoomAuditionEpoch &&
+			101u == decodedResult.iBossNetEntityId &&
+			decodedResult.Scope.ExpectedGameplayRevision == revision &&
+			decodedResult.Scope.iExpectedSourceRevision == SOURCE_REVISION &&
+			decodedResult.PinnedGameplayRevision == revision &&
+			decodedResult.iPinnedSourceRevision == SOURCE_REVISION,
+			"KoukuSaydon Audition Result Round Trip");
+		auto mismatchedResult = result;
+		mismatchedResult.iPinnedSourceRevision = SOURCE_REVISION + 1u;
+		CPacketWriter mismatchedResultWriter;
+		testRunner.Require(!Write_Message(mismatchedResultWriter, mismatchedResult),
+			"Reject KoukuSaydon Result With Mismatched Product Source Pin");
+
+		auto sourceMismatchResult = result;
+		sourceMismatchResult.Scope.iExpectedSourceRevision = SOURCE_REVISION + 1u;
+		sourceMismatchResult.eResult = KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+			REJECTED_SOURCE_REVISION_MISMATCH;
+		sourceMismatchResult.iRoomAuditionEpoch = 0u;
+		sourceMismatchResult.iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		sourceMismatchResult.strResolvedPatternId.clear();
+		sourceMismatchResult.iPatternSequence = 0u;
+		sourceMismatchResult.iStageIndex = 0u;
+		sourceMismatchResult.strReason =
+			"KoukuSaydon Product source revision mismatch";
+		CPacketWriter sourceMismatchResultWriter;
+		const bool sourceMismatchResultEncoded =
+			Write_Message(sourceMismatchResultWriter, sourceMismatchResult);
+		CPacketReader sourceMismatchResultReader{
+			sourceMismatchResultWriter.Get_Buffer() };
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT
+			decodedSourceMismatchResult{};
+		testRunner.Require(sourceMismatchResultEncoded &&
+			Read_Message(sourceMismatchResultReader, decodedSourceMismatchResult) &&
+			0u == sourceMismatchResultReader.Get_RemainingSize() &&
+			KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+				REJECTED_SOURCE_REVISION_MISMATCH ==
+				decodedSourceMismatchResult.eResult &&
+			SOURCE_REVISION + 1u ==
+				decodedSourceMismatchResult.Scope.iExpectedSourceRevision &&
+			SOURCE_REVISION ==
+				decodedSourceMismatchResult.iPinnedSourceRevision,
+			"KoukuSaydon Source Revision Rejection Round Trip");
+
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE lifecycle{};
+		lifecycle.iRequestSequence = selected.iRequestSequence;
+		lifecycle.eOperation = selected.eOperation;
+		lifecycle.Scope = selected.Scope;
+		lifecycle.iRoomAuditionEpoch = 3u;
+		lifecycle.iBossNetEntityId = 101u;
+		lifecycle.strPatternId = selected.strPatternId;
+		lifecycle.iPatternSequence = 4u;
+		lifecycle.iStageIndex = 2u;
+		lifecycle.eState =
+			KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE;
+		lifecycle.PinnedGameplayRevision = revision;
+		lifecycle.iPinnedSourceRevision = SOURCE_REVISION;
+		CPacketWriter lifecycleWriter;
+		const bool lifecycleEncoded = Write_Message(lifecycleWriter, lifecycle);
+		CPacketReader lifecycleReader{ lifecycleWriter.Get_Buffer() };
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE decodedLifecycle{};
+		testRunner.Require(lifecycleEncoded &&
+			Read_Message(lifecycleReader, decodedLifecycle) &&
+			0u == lifecycleReader.Get_RemainingSize() &&
+			KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
+				decodedLifecycle.eState &&
+			4u == decodedLifecycle.iPatternSequence &&
+			2u == decodedLifecycle.iStageIndex &&
+			decodedLifecycle.Scope.ExpectedGameplayRevision == revision &&
+			decodedLifecycle.Scope.iExpectedSourceRevision == SOURCE_REVISION &&
+			decodedLifecycle.PinnedGameplayRevision == revision &&
+			decodedLifecycle.iPinnedSourceRevision == SOURCE_REVISION,
+			"KoukuSaydon Audition Lifecycle Round Trip");
+		auto mismatchedLifecycle = lifecycle;
+		mismatchedLifecycle.iPinnedSourceRevision = SOURCE_REVISION + 1u;
+		CPacketWriter mismatchedLifecycleWriter;
+		testRunner.Require(
+			!Write_Message(mismatchedLifecycleWriter, mismatchedLifecycle),
+			"Reject KoukuSaydon Lifecycle With Mismatched Product Source Pin");
+
+		testRunner.Require(
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST) ==
+				static_cast<std::uint16_t>(PACKET_TYPE::S2C_RAID_ENTRY_VOTE) + 1u &&
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST) + 1u &&
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT) + 1u &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE),
+			"KoukuSaydon Audition Packet Types Are Append Only And Known");
+	}
 }
 
-int main()
+int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-teleport-only")
+	{
+		Test_DebugTeleportPositionProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 
 	Test_EnterWorldRoundTrip(testRunner);
 	Test_PlayerNicknameContract(testRunner);
@@ -6489,6 +6749,7 @@ int main()
 	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_KakulAuthoringCommandProtocol(testRunner);
+	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
@@ -6506,6 +6767,7 @@ int main()
 	Test_ReturnToBernProtocol(testRunner);
 	Test_PartyInviteProtocol(testRunner);
 	Test_RaidEntryVoteProtocol(testRunner);
+	Test_KoukuSaydonPatternAuditionProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);

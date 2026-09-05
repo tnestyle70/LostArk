@@ -25,7 +25,7 @@ CHARACTER_SELECT_SOURCE = (
 BALANCE_SOURCE = REPOSITORY_ROOT / "Client" / "Private" / "BalanceTool.cpp"
 BALANCE_HEADER = REPOSITORY_ROOT / "Client" / "Public" / "BalanceTool.h"
 WORKBENCH_SOURCE = (
-    REPOSITORY_ROOT / "Client" / "Private" / "ActionCompositionWorkbench.cpp"
+    REPOSITORY_ROOT / "Client" / "Private" / "ValtanActionWorkbench.cpp"
 )
 
 
@@ -213,7 +213,7 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
 
         workbench_reload = function_body(
             workbench,
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()",
         )
         balance_reload = workbench_reload.index(
             "m_pBalanceTool->Reload_ValtanSource("
@@ -251,7 +251,7 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
 
         save_body = function_body(
             workbench,
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()",
         )
         self.assertIn("Get_ValtanCanonicalSourceRevision(", save_body)
         self.assertIn(

@@ -88,6 +88,22 @@ public:
 	{
 		return s_pActiveInstance;
 	}
+	void Collect_MinimapMarkers(
+		CClientReplication::MINIMAP_MARKER_SNAPSHOT& outSnapshot) const
+	{
+		m_Replication.Collect_MinimapMarkers(outSnapshot);
+	}
+
+#ifdef _DEBUG
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	// Applies immediately and remembers this arena's value until process exit.
+	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
+#endif
+
+	// The level owns the replicated player anchor used by local authoring previews.
+	bool_t Try_Get_AuthoringPreviewPlacement(
+		float3_t& outPosition, std::string& outStatus) const;
 
 	/* The F1 stage selector submits only stable authored placement IDs through
 	   the typed Server command sink. Until an authored StageMarkers contract is

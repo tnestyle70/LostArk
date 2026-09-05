@@ -311,7 +311,7 @@ namespace Client
 		/* Authoring reloads target the primary replicated Server-authoritative
 		   Valtan, never only the Development preview returned by
 		   CAnimationTargetService. A rejected active reload latches the freshness
-		   gate consumed by Boss Tool Complete Play. */
+		   gate consumed by Valtan Boss Tool Complete Play. */
 		bool_t Reload_PrimaryValtanPresentationAuthoring(
 			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 			std::string& strOutStatus);
@@ -342,6 +342,25 @@ namespace Client
 			Commit_DeferredLocalCharacterClassReplacement();
 		void Collect_PlayerViews(
 			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
+		/* Minimap read model (CMinimapView): the local character's ground position and facing,
+		   every other live player flagged by local party membership, and every live BOSS
+		   entity. Client meters; yaw is clockwise degrees from +Z. Presentation only. */
+		struct MINIMAP_MARKER
+		{
+			f32_t fX = 0.f;
+			f32_t fZ = 0.f;
+			bool_t bParty = false;
+		};
+		struct MINIMAP_MARKER_SNAPSHOT
+		{
+			bool_t hasLocal = false;
+			f32_t fLocalX = 0.f;
+			f32_t fLocalZ = 0.f;
+			f32_t fLocalYawDegrees = 0.f;
+			std::vector<MINIMAP_MARKER> Players;
+			std::vector<MINIMAP_MARKER> Bosses;
+		};
+		void Collect_MinimapMarkers(MINIMAP_MARKER_SNAPSHOT& outSnapshot) const;
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
 		{
 			return m_ValtanPresentationState;
@@ -644,6 +663,8 @@ namespace Client
 			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
+			std::uint32_t iPatternSequence = 0u;
+			std::uint32_t iPatternStageIndex = 0u;
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
 			/* The Server occurrence pin and the R -> M generation admitted by the

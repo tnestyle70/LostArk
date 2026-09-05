@@ -1001,6 +1001,7 @@ function Write-BuildRunEvidence {
 }
 
 Export-ModuleMember -Function @(
+    'Write-BuildAtomicJson',
     'Read-BuildDomainManifest',
     'Get-BuildDomainById',
     'Get-BuildDomainsForProfile',

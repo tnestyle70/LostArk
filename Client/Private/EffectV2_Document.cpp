@@ -426,6 +426,123 @@ namespace
 		Child.fRollDegrees = Child.LocalTransform.vRotation.z;
 		Child.vScale = Child.LocalTransform.vScale;
 	}
+
+	/* formatVersion 1 is the clip-keyed lane (NPC, KoukuSaydon preview bodies):
+	   rows carry no stable bindingId and no pattern/stage scope, and fire from
+	   CEffectV2Runtime::Notify_Clip. Typed fields are filled so v2 consumers
+	   see one shape. */
+	bool_t Parse_ClipLaneBindings(
+		const Client::DATA_JSON_VALUE& Root,
+		std::vector<Client::EFFECT_V2_BINDING>& OutBindings,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* const pRows = Root.Find("bindings");
+		if (nullptr == pRows || !pRows->Is_Array() ||
+			pRows->Get_Array().size() > MAX_BINDINGS)
+		{
+			strOutError = "bindings must be an array with at most 4096 entries.";
+			return false;
+		}
+		std::vector<Client::EFFECT_V2_BINDING> Staged;
+		Staged.reserve(pRows->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& Row : pRows->Get_Array())
+		{
+			if (!Row.Is_Object())
+			{
+				strOutError = "bindings[] entries must be objects.";
+				return false;
+			}
+			Client::EFFECT_V2_BINDING Binding;
+			const Client::DATA_JSON_VALUE* const pEffect = Row.Find("effectId");
+			const Client::DATA_JSON_VALUE* const pGroup = Row.Find("group");
+			const Client::DATA_JSON_VALUE* const pClip = Row.Find("clip");
+			const Client::DATA_JSON_VALUE* const pStart = Row.Find("startMs");
+			const Client::DATA_JSON_VALUE* const pBone = Row.Find("bone");
+			const bool_t bHasEffect = nullptr != pEffect && pEffect->Is_String() &&
+				!pEffect->Get_String().empty();
+			const bool_t bHasGroup = nullptr != pGroup && pGroup->Is_String() &&
+				!pGroup->Get_String().empty();
+			if (bHasEffect == bHasGroup ||
+				(bHasEffect && !Client::CEffectV2Document::Is_ValidEffectId(pEffect->Get_String())) ||
+				(bHasGroup && !Client::CEffectV2Document::Is_ValidEffectId(pGroup->Get_String())) ||
+				nullptr != Row.Find("stage") ||
+				nullptr == pClip || !pClip->Is_String() || pClip->Get_String().empty() ||
+				nullptr == pStart || !pStart->Is_Number() || pStart->Get_Number() < 0.0 ||
+				pStart->Get_Number() > MAX_BINDING_MS ||
+				nullptr == pBone || !pBone->Is_String())
+			{
+				strOutError = "formatVersion 1 bindings[] requires exactly one of effectId/group, clip, startMs (0-600000), bone; stage rows need formatVersion 2.";
+				return false;
+			}
+			Binding.eResourceKind = bHasEffect ?
+				Client::EFFECT_V2_RESOURCE_KIND::LEAF : Client::EFFECT_V2_RESOURCE_KIND::GROUP;
+			Binding.strResourceId = bHasEffect ? pEffect->Get_String() : pGroup->Get_String();
+			Binding.eClockBasis = Client::EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE;
+			Binding.strClipOccurrenceId = pClip->Get_String();
+			Binding.iStartMs = static_cast<uint32_t>(pStart->Get_Number());
+			Binding.strAnchorSlotId = pBone->Get_String();
+
+			bool_t bFollowBone = true;
+			bool_t bStopWithClip = false;
+			int32_t iRotation = static_cast<int32_t>(Client::CEffectV2Object::PIVOT_ROTATION::TARGET_YAW);
+			float3_t vOffset{ 0.f, 0.f, 0.f };
+			f32_t fYawDegrees = 0.f;
+			if (!Read_Bool(Row, "followBone", bFollowBone, strOutError) ||
+				!Read_Enum(Row, "rotation", PIVOT_ROTATION_KEYS,
+					_countof(PIVOT_ROTATION_KEYS), iRotation, strOutError) ||
+				!Read_Bool(Row, "stopWithClip", bStopWithClip, strOutError) ||
+				!Read_FloatArray(Row, "offset", &vOffset.x, 3u, strOutError) ||
+				!Read_Number(Row, "yawDegrees", fYawDegrees, strOutError))
+			{
+				return false;
+			}
+			Binding.eFollowPolicy = bFollowBone ?
+				Client::EFFECT_V2_FOLLOW_POLICY::FOLLOW_SLOT :
+				Client::EFFECT_V2_FOLLOW_POLICY::SNAPSHOT_AT_START;
+			switch (static_cast<Client::CEffectV2Object::PIVOT_ROTATION>(iRotation))
+			{
+			case Client::CEffectV2Object::PIVOT_ROTATION::BONE:
+				Binding.eRotationBasis = Client::EFFECT_V2_ROTATION_BASIS::SLOT;
+				break;
+			case Client::CEffectV2Object::PIVOT_ROTATION::WORLD:
+				Binding.eRotationBasis = Client::EFFECT_V2_ROTATION_BASIS::WORLD;
+				break;
+			default:
+				Binding.eRotationBasis = Client::EFFECT_V2_ROTATION_BASIS::TARGET_YAW;
+				break;
+			}
+			Binding.eStopPolicy = bStopWithClip ?
+				Client::EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END :
+				Client::EFFECT_V2_STOP_POLICY::NATURAL;
+			Binding.LocalTransform.vTranslation = vOffset;
+			Binding.LocalTransform.vRotation = { 0.f, fYawDegrees, 0.f };
+			Binding.LocalTransform.vScale = { 1.f, 1.f, 1.f };
+			for (const Client::EFFECT_V2_BINDING& Existing : Staged)
+			{
+				if (Equal_BindingSemantic(Existing, Binding))
+				{
+					strOutError = "duplicate binding: " + Binding.strResourceId + " / " +
+						Binding.strClipOccurrenceId + " @" +
+						std::to_string(Binding.iStartMs) + "ms";
+					return false;
+				}
+			}
+			Populate_BindingConvenience(Binding);
+			Staged.push_back(std::move(Binding));
+		}
+		OutBindings = std::move(Staged);
+		return true;
+	}
+
+	bool_t Is_ClipLane(const std::vector<Client::EFFECT_V2_BINDING>& Bindings)
+	{
+		return !Bindings.empty() && std::all_of(Bindings.begin(), Bindings.end(),
+			[](const Client::EFFECT_V2_BINDING& Binding)
+			{
+				return Binding.strBindingId.empty() &&
+					Binding.strActionId.empty() && Binding.strStage.empty();
+			});
+	}
 }
 
 std::filesystem::path Client::CEffectV2Document::Document_Directory()
@@ -854,13 +971,16 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 	const DATA_JSON_VALUE* const pArchetype = Root.Find("archetypeId");
 	if (nullptr == pSchema || !pSchema->Is_String() ||
 		pSchema->Get_String() != "lostark.effect-v2-bindings" ||
-		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 2.0 ||
+		nullptr == pVersion || !pVersion->Is_Number() ||
+		(pVersion->Get_Number() != 2.0 && pVersion->Get_Number() != 1.0) ||
 		nullptr == pArchetype || !pArchetype->Is_String() ||
 		pArchetype->Get_String() != strExpectedArchetypeId)
 	{
 		strOutError = "schema/formatVersion/archetypeId mismatch.";
 		return false;
 	}
+	if (pVersion->Get_Number() == 1.0)
+		return Parse_ClipLaneBindings(Root, OutBindings, strOutError);
 	const DATA_JSON_VALUE* pRows = Root.Find("bindings");
 	if (nullptr == pRows || !pRows->Is_Array() ||
 		pRows->Get_Array().size() > MAX_BINDINGS)
@@ -1281,6 +1401,36 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 	const std::string& strArchetypeId,
 	const std::vector<EFFECT_V2_BINDING>& Bindings)
 {
+	if (Is_ClipLane(Bindings))
+	{
+		std::string Text;
+		Text += "{\n";
+		Text += "  \"schema\": \"lostark.effect-v2-bindings\",\n";
+		Text += "  \"formatVersion\": 1,\n";
+		Text += "  \"archetypeId\": " + Json_String(strArchetypeId) + ",\n";
+		Text += "  \"bindings\": [\n";
+		for (size_t iIndex = 0u; iIndex < Bindings.size(); ++iIndex)
+		{
+			const EFFECT_V2_BINDING& Binding = Bindings[iIndex];
+			Text += std::string("    { ") +
+				(Binding.strGroupId.empty() ?
+					"\"effectId\": " + Json_String(Binding.strEffectId) :
+					"\"group\": " + Json_String(Binding.strGroupId)) +
+				", \"clip\": " + Json_String(Binding.strClip) +
+				", \"startMs\": " + std::to_string(Binding.iStartMs) +
+				", \"bone\": " + Json_String(Binding.strBone) +
+				", \"followBone\": " + Json_Bool(Binding.bFollowBone) +
+				", \"rotation\": " + Json_String(Rotation_Key(Binding.eRotation)) +
+				", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) +
+				", \"offset\": " + Json_Float3(Binding.vOffset) +
+				", \"yawDegrees\": " + Json_Number(Binding.fYawDegrees) + " }" +
+				(iIndex + 1u < Bindings.size() ? ",\n" : "\n");
+		}
+		Text += "  ]\n";
+		Text += "}\n";
+		return Text;
+	}
+
 	std::vector<const EFFECT_V2_BINDING*> Sorted;
 	Sorted.reserve(Bindings.size());
 	for (const EFFECT_V2_BINDING& Binding : Bindings)

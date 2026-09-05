@@ -20,7 +20,7 @@ class CompositionPipelineTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.validated = pipeline.load_and_validate_all(ROOT)
 
-    def test_repository_closes_valtan_and_kakul_coverage(self) -> None:
+    def test_repository_closes_valtan_and_kouku_saydon_coverage(self) -> None:
         valtan_product = self.validated[pipeline.BOSS_AUTHORING[0]]["resolved"]
         self.assertEqual(42, len(valtan_product["joinedPatternMaster"]["patterns"]))
         self.assertEqual(
@@ -30,13 +30,13 @@ class CompositionPipelineTests(unittest.TestCase):
                 for row in valtan_product["joinedPatternMaster"]["patterns"]
             ),
         )
-        kakul = self.validated[pipeline.BOSS_AUTHORING[1]]["resolved"]
-        self.assertEqual(4, len(kakul["referenceProfiles"]))
+        kouku_saydon = self.validated[pipeline.BOSS_AUTHORING[1]]["resolved"]
+        self.assertEqual(4, len(kouku_saydon["referenceProfiles"]))
         self.assertEqual(
             349,
             sum(
                 len(row["actionReference"]["actions"])
-                for row in kakul["referenceProfiles"]
+                for row in kouku_saydon["referenceProfiles"]
             ),
         )
 
@@ -142,45 +142,45 @@ class CompositionPipelineTests(unittest.TestCase):
         with self.assertRaisesRegex(pipeline.CompositionError, "fields mismatch"):
             pipeline.project_valtan_shadow_index(malformed_coverage, joined)
 
-    def test_kakul_reference_count_and_revision_reject_drift(self) -> None:
+    def test_kouku_saydon_reference_count_and_revision_reject_drift(self) -> None:
         document = pipeline.read_json(ROOT / pipeline.BOSS_AUTHORING[1])
         bad_count = copy.deepcopy(document)
         bad_count["coverage"]["profiles"][0]["expectedActionCount"] += 1
         with self.assertRaisesRegex(pipeline.CompositionError, "action count drift"):
-            pipeline.validate_boss_document(ROOT, bad_count, "kakul")
+            pipeline.validate_boss_document(ROOT, bad_count, "kouku_saydon")
 
         bad_revision = copy.deepcopy(document)
         bad_revision["coverage"]["profiles"][0]["expectedReferenceRevision"] = "0" * 64
         with self.assertRaisesRegex(
             pipeline.CompositionError, "reference revision drift"
         ):
-            pipeline.validate_boss_document(ROOT, bad_revision, "kakul")
+            pipeline.validate_boss_document(ROOT, bad_revision, "kouku_saydon")
 
-    def test_kakul_owner_headers_and_authority_fail_closed(self) -> None:
+    def test_kouku_saydon_owner_headers_and_authority_fail_closed(self) -> None:
         descriptor = pipeline.read_json(ROOT / pipeline.BOSS_AUTHORING[1])
         original_read = pipeline.read_json
         cases = (
             (
                 ROOT
-                / "Data/Animation/Reference/KakulSaydon/MN_RPCZ_00.actionreference.json",
+                / "Data/Animation/Reference/KoukuSaydon/MN_RPCZ_00.actionreference.json",
                 "schema",
                 "WRONG",
             ),
             (
                 ROOT
-                / "Data/Animation/Authored/KakulSaydon/MN_RPCZ_00.actionbindings.json",
+                / "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.actionbindings.json",
                 "authority",
                 "PRODUCT",
             ),
             (
                 ROOT
-                / "Data/Animation/Authored/KakulSaydon/MN_RPCZ_00.patternbindings.json",
+                / "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json",
                 "schema",
                 "WRONG",
             ),
             (
                 ROOT
-                / "Data/Animation/Authored/KakulSaydon/MN_RPCZ_00.patternbindings.json",
+                / "Data/Animation/Authored/KoukuSaydon/MN_RPCZ_00.patternbindings.json",
                 "authority",
                 "PRODUCT",
             ),
@@ -202,9 +202,9 @@ class CompositionPipelineTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(
                     pipeline.CompositionError,
-                    "Kakul reference-only document is invalid",
+                    "KoukuSaydon reference-only document is invalid",
                 ):
-                    pipeline.validate_boss_document(ROOT, descriptor, "kakul")
+                    pipeline.validate_boss_document(ROOT, descriptor, "kouku_saydon")
 
     def test_external_valtan_owner_contracts_fail_closed(self) -> None:
         animation = pipeline.read_json(ROOT / valtan.BINDINGS_REL)
@@ -350,16 +350,20 @@ class CompositionPipelineTests(unittest.TestCase):
                 pipeline.CompositionError, "duplicate World Sequence instanceId"
             ):
                 pipeline.validate_sequencer_document(
-                    ROOT, arena, "kakulArena", boss_documents
+                    ROOT, arena, "kouku_saydonArena", boss_documents
                 )
 
-    def test_kakul_arena_rejects_malformed_map_owner_values_before_publish(self) -> None:
+    def test_kouku_saydon_arena_rejects_malformed_map_owner_values_before_publish(
+        self,
+    ) -> None:
         original_read = pipeline.read_json
         world_path = (
-            ROOT / pipeline.KAKUL_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+            ROOT /
+            pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
         ).resolve()
         camera_path = (
-            ROOT / pipeline.KAKUL_ARENA_SOURCE_DOCUMENTS["CAMERA_SHOTS"]
+            ROOT /
+            pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["CAMERA_SHOTS"]
         ).resolve()
 
         world_cases: list[tuple[str, dict[str, object], str]] = []
@@ -454,26 +458,26 @@ class CompositionPipelineTests(unittest.TestCase):
                 pipeline.CompositionError
             ):
                 pipeline.validate_sequencer_document(
-                    ROOT, candidate, "kakulArena", boss_documents
+                    ROOT, candidate, "kouku_saydonArena", boss_documents
                 )
 
-        kakul = pipeline.read_json(ROOT / pipeline.BOSS_AUTHORING[1])
-        kakul["sourceDocuments"].append(
+        kouku_saydon = pipeline.read_json(ROOT / pipeline.BOSS_AUTHORING[1])
+        kouku_saydon["sourceDocuments"].append(
             {"role": "UNUSED", "path": "Data/Items/ItemCatalog.json"}
         )
         with self.assertRaisesRegex(pipeline.CompositionError, "role/path closure"):
-            pipeline.validate_boss_document(ROOT, kakul, "kakul")
+            pipeline.validate_boss_document(ROOT, kouku_saydon, "kouku_saydon")
 
         original_read = pipeline.read_json
         valtan_path = (ROOT / pipeline.BOSS_AUTHORING[0]).resolve()
-        kakul_path = (ROOT / pipeline.BOSS_AUTHORING[1]).resolve()
+        kouku_saydon_path = (ROOT / pipeline.BOSS_AUTHORING[1]).resolve()
         valtan_document = original_read(valtan_path)
-        kakul_document = original_read(kakul_path)
+        kouku_saydon_document = original_read(kouku_saydon_path)
 
         def swapped_boss_documents(path: Path) -> dict[str, object]:
             if path.resolve() == valtan_path:
-                return copy.deepcopy(kakul_document)
-            if path.resolve() == kakul_path:
+                return copy.deepcopy(kouku_saydon_document)
+            if path.resolve() == kouku_saydon_path:
                 return copy.deepcopy(valtan_document)
             return original_read(path)
 
@@ -507,7 +511,7 @@ class CompositionPipelineTests(unittest.TestCase):
         unknown["tracks"][0]["payload"]["instanceId"] = "world.sequence.missing"
         with self.assertRaisesRegex(pipeline.CompositionError, "unknown world sequence"):
             pipeline.validate_sequencer_document(
-                ROOT, unknown, "kakulArena", boss_documents
+                ROOT, unknown, "kouku_saydonArena", boss_documents
             )
 
         zero = copy.deepcopy(document)
@@ -518,7 +522,7 @@ class CompositionPipelineTests(unittest.TestCase):
             pipeline.CompositionError, "zero only when tracks is empty"
         ):
             pipeline.validate_sequencer_document(
-                ROOT, zero, "kakulArena", boss_documents
+                ROOT, zero, "kouku_saydonArena", boss_documents
             )
 
     def test_arena_rejects_unimplemented_kind_payload_drift_and_unknown_pattern(self) -> None:
@@ -535,14 +539,14 @@ class CompositionPipelineTests(unittest.TestCase):
             pipeline.CompositionError, "not implemented in formatVersion 1"
         ):
             pipeline.validate_sequencer_document(
-                ROOT, unsupported, "kakulArena", boss_documents
+                ROOT, unsupported, "kouku_saydonArena", boss_documents
             )
 
         extra_payload = copy.deepcopy(document)
         extra_payload["tracks"][0]["payload"]["unexpected"] = True
         with self.assertRaisesRegex(pipeline.CompositionError, "field mismatch"):
             pipeline.validate_sequencer_document(
-                ROOT, extra_payload, "kakulArena", boss_documents
+                ROOT, extra_payload, "kouku_saydonArena", boss_documents
             )
 
         valtan_document = pipeline.read_json(ROOT / pipeline.SEQUENCER_AUTHORING[0])
@@ -563,10 +567,10 @@ class CompositionPipelineTests(unittest.TestCase):
                 ROOT, valtan_document, "valtanArena", boss_documents
             )
 
-        kakul_actor = copy.deepcopy(document)
-        kakul_actor["tracks"] = [
+        kouku_saydon_actor = copy.deepcopy(document)
+        kouku_saydon_actor["tracks"] = [
             {
-                "trackId": "track.kakul.reference-only-pattern",
+                "trackId": "track.kouku_saydon.reference-only-pattern",
                 "kind": "ACTOR_PATTERN",
                 "startMs": 0,
                 "payload": {
@@ -577,7 +581,7 @@ class CompositionPipelineTests(unittest.TestCase):
         ]
         with self.assertRaisesRegex(pipeline.CompositionError, "unknown boss pattern"):
             pipeline.validate_sequencer_document(
-                ROOT, kakul_actor, "kakulArena", boss_documents
+                ROOT, kouku_saydon_actor, "kouku_saydonArena", boss_documents
             )
 
     def test_numeric_tokens_and_native_duration_bound_match_reader(self) -> None:
@@ -592,35 +596,35 @@ class CompositionPipelineTests(unittest.TestCase):
         floating_revision["revision"] = 1.0
         with self.assertRaisesRegex(pipeline.CompositionError, "uint32"):
             pipeline.validate_sequencer_document(
-                ROOT, floating_revision, "kakulArena", boss_documents
+                ROOT, floating_revision, "kouku_saydonArena", boss_documents
             )
 
         too_long = copy.deepcopy(document)
         too_long["durationMs"] = pipeline.MAX_ARENA_DURATION_MS + 1
         with self.assertRaisesRegex(pipeline.CompositionError, "exceeds 3600000"):
             pipeline.validate_sequencer_document(
-                ROOT, too_long, "kakulArena", boss_documents
+                ROOT, too_long, "kouku_saydonArena", boss_documents
             )
 
         too_large_revision = copy.deepcopy(document)
         too_large_revision["revision"] = pipeline.UINT32_MAX + 1
         with self.assertRaisesRegex(pipeline.CompositionError, "uint32"):
             pipeline.validate_sequencer_document(
-                ROOT, too_large_revision, "kakulArena", boss_documents
+                ROOT, too_large_revision, "kouku_saydonArena", boss_documents
             )
 
         floating_version = copy.deepcopy(document)
         floating_version["formatVersion"] = 1.0
         with self.assertRaisesRegex(pipeline.CompositionError, "formatVersion"):
             pipeline.validate_sequencer_document(
-                ROOT, floating_version, "kakulArena", boss_documents
+                ROOT, floating_version, "kouku_saydonArena", boss_documents
             )
 
         null_end = copy.deepcopy(document)
         null_end["tracks"][0]["endMs"] = None
         with self.assertRaisesRegex(pipeline.CompositionError, "uint32"):
             pipeline.validate_sequencer_document(
-                ROOT, null_end, "kakulArena", boss_documents
+                ROOT, null_end, "kouku_saydonArena", boss_documents
             )
 
     def test_native_path_and_array_bounds_match_reader(self) -> None:
@@ -646,7 +650,7 @@ class CompositionPipelineTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(pipeline.CompositionError, "<= 8192"):
             pipeline.validate_sequencer_document(
-                ROOT, arena, "kakulArena", boss_documents
+                ROOT, arena, "kouku_saydonArena", boss_documents
             )
 
     def test_products_are_non_runtime_shadow_read_models(self) -> None:
@@ -730,6 +734,32 @@ class CompositionPipelineTests(unittest.TestCase):
             self.assertEqual(before, after)
             self.assertFalse(
                 any(".stage." in path.name or ".rollback." in path.name for path in output_root.rglob("*"))
+            )
+
+    def test_publish_retires_pre_migration_product_names_only_after_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output_root = Path(temporary) / "Compositions"
+            legacy_paths = [
+                output_root / Path(*Path(relative).parts)
+                for relative in pipeline.LEGACY_PRODUCT_RELATIVE_PATHS
+            ]
+            for path in legacy_paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"legacy generated product\n")
+
+            with self.assertRaisesRegex(pipeline.CompositionError, "injected failure"):
+                pipeline.publish_products(
+                    ROOT, output_root, fail_at="after-first-promote"
+                )
+            self.assertTrue(all(path.is_file() for path in legacy_paths))
+
+            pipeline.publish_products(ROOT, output_root)
+            self.assertTrue(all(not path.exists() for path in legacy_paths))
+            self.assertTrue(
+                (output_root / "Bosses/KoukuSaydonGate1.bosscomposition.json").is_file()
+            )
+            self.assertTrue(
+                (output_root / "Sequences/KoukuSaydonArena.sequencer.json").is_file()
             )
 
     def test_post_commit_backup_cleanup_failure_keeps_new_products(self) -> None:

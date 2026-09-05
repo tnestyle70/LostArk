@@ -163,6 +163,13 @@ struct MODEL_ANIMATION_EVENT_DATA
 	uint64_t stringHash = {};
 };
 
+struct MODEL_ANIMATION_CATALOG_ENTRY
+{
+	string name;
+	f32_t durationTicks = {};
+	f32_t ticksPerSecond = {};
+};
+
 struct MODEL_ANIMATION_DATA
 {
 	string name;

@@ -61,6 +61,7 @@ public:
 	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
 	BeginPopupModal's own behavior. */
 	void Claim_Mouse_This_Frame();
+	bool_t Is_MouseClaimedThisFrame() const { return m_bMouseClaimedThisFrame; }
 	/* Text-input capture for a runtime UI text field (the Create Character nickname box) -- the
 	WM_CHAR half of what ImGui::InputText provided. While active, WndProc (Client.cpp) feeds every
 	committed WM_CHAR UTF-16 unit into a queue the owning screen drains once per frame via

@@ -622,6 +622,19 @@ void Client::CUILayoutRuntime::Set_SlotArcRatio(const string& strId, f32_t fArcR
 	}
 }
 
+void Client::CUILayoutRuntime::Set_SlotUVWindow(const string& strId, f32_t fOffsetU,
+	f32_t fOffsetV, f32_t fScaleU, f32_t fScaleV)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		if (nullptr != Slot.pSprite)
+			Slot.pSprite->Set_UVWindow(float2_t(fOffsetU, fOffsetV), float2_t(fScaleU, fScaleV));
+		return;
+	}
+}
+
 void Client::CUILayoutRuntime::Set_SlotRotation(const string& strId, f32_t fDegrees)
 {
 	for (RUNTIME_SLOT& Slot : m_Slots)

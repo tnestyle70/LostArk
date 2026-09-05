@@ -92,7 +92,7 @@ class ValtanTripleCounterSplitMigrationContract(unittest.TestCase):
             encoding="utf-8", errors="replace"
         )
         workbench = (
-            ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8", errors="replace")
         balance_tool = (ROOT / "Client/Private/BalanceTool.cpp").read_text(
             encoding="utf-8", errors="replace"

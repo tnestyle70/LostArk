@@ -159,13 +159,13 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             REPO_ROOT / "Client/Private/Animation_Tool.cpp"
         ).read_text(encoding="utf-8")
         cls.workbench_h = (
-            REPO_ROOT / "Client/Public/ActionCompositionWorkbench.h"
+            REPO_ROOT / "Client/Public/ValtanActionWorkbench.h"
         ).read_text(encoding="utf-8")
         cls.workbench_cpp = (
-            REPO_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+            REPO_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
         ).read_text(encoding="utf-8")
         cls.boss_cpp = (
-            REPO_ROOT / "Client/Private/BossTool.cpp"
+            REPO_ROOT / "Client/Private/ValtanBossTool.cpp"
         ).read_text(encoding="utf-8")
         cls.client_replication_h = (
             REPO_ROOT / "Client/Public/ClientReplication.h"
@@ -309,9 +309,12 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Remove Selected Sound Row",
             "Sequencer Save joins only dirty Pattern, Sound, and Effect V2 owners",
             "Camera stays in its typed read-only/deep-link boundary",
-            "Effect timing and Sound timing remain unsaved until Save",
         ):
             self.assertIn(token, self.workbench_cpp)
+        self.assertNotIn(
+            "Effect timing and Sound timing remain unsaved until Save",
+            self.workbench_cpp,
+        )
 
         sound_owner = re.search(
             r'OwnerButton\("Sound",\s*DETAIL_OWNER::SOUND,([\s\S]*?)\);',
@@ -363,10 +366,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
 
     def test_one_save_validates_cross_owner_dependencies_before_writes(self) -> None:
         sequence_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage("
+            "bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage("
         )
         sequence_end = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Seek_EffectivePreview(",
+            "bool_t Client::CValtanActionWorkbench::Seek_EffectivePreview(",
             sequence_start,
         )
         sequence_body = self.workbench_cpp[sequence_start:sequence_end]
@@ -376,10 +379,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         )
 
         save_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()"
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()"
         )
         save_end = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(",
             save_start,
         )
         save_body = self.workbench_cpp[save_start:save_end]
@@ -409,10 +412,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
 
     def test_animation_delete_cascades_exact_sound_rows_and_rolls_back_together(self) -> None:
         delete_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Remove_AnimationOccurrence("
+            "bool_t Client::CValtanActionWorkbench::Remove_AnimationOccurrence("
         )
         delete_end = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Duplicate_AnimationOccurrence(",
+            "bool_t Client::CValtanActionWorkbench::Duplicate_AnimationOccurrence(",
             delete_start,
         )
         delete_body = self.workbench_cpp[delete_start:delete_end]
@@ -571,10 +574,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
 
     def test_reload_discard_and_runtime_apply_are_automatic_and_fail_closed(self) -> None:
         reload_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()"
+            "bool_t Client::CValtanActionWorkbench::Reload_Canonical()"
         )
         reload_end = self.workbench_cpp.index(
-            "void Client::CActionCompositionWorkbench::Select_Pattern(",
+            "void Client::CValtanActionWorkbench::Select_Pattern(",
             reload_start,
         )
         reload_body = self.workbench_cpp[reload_start:reload_end]
@@ -650,10 +653,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Get_ServerActivePatternRevision(", self.workbench_cpp
         )
         toolbar_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar("
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar("
         )
         toolbar_end = self.workbench_cpp.index(
-            "void Client::CActionCompositionWorkbench::Render_Browser(",
+            "void Client::CValtanActionWorkbench::Render_Browser(",
             toolbar_start,
         )
         toolbar = self.workbench_cpp[toolbar_start:toolbar_end]
@@ -677,7 +680,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         for token in (
             "const LostArk::Shared::GameplayDataRevision& ExpectedRevision",
             "m_ValtanPatternSoundRuntimeAppliedRevision",
-            "Consumer reload receipt is provisional until Boss Tool revalidates",
+            "Consumer reload receipt is provisional until Valtan Boss Tool revalidates",
             "Invalidate_ValtanCompositionPatternSoundRuntimeApply(",
             "Format_GameplayDataRevision(ExpectedRevision)",
         ):
@@ -698,8 +701,8 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Get_ServerActivePatternRevision(", self.boss_cpp
         )
         toolbar = self.workbench_cpp[
-            self.workbench_cpp.index("bool_t Client::CActionCompositionWorkbench::Render_Toolbar("):
-            self.workbench_cpp.index("void Client::CActionCompositionWorkbench::Render_Browser(")
+            self.workbench_cpp.index("bool_t Client::CValtanActionWorkbench::Render_Toolbar("):
+            self.workbench_cpp.index("void Client::CValtanActionWorkbench::Render_Browser(")
         ]
         self.assertIn("Retry_ValtanCompositionPatternSoundRuntimeApply(", toolbar)
         self.assertIn("m_LastPatternSoundAutoApplyRevision", toolbar)
@@ -719,20 +722,20 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             self.assertIn(token, gate)
 
         can_play_start = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Can_Play_ServerPattern("
+            "bool_t Client::CValtanBossTool::Can_Play_ServerPattern("
         )
         can_play_end = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+            "bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(",
             can_play_start,
         )
         can_play = self.boss_cpp[can_play_start:can_play_end]
         self.assertIn("Acquire_ServerPlaybackAdmission(", can_play)
 
         revision_start = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Acquire_ServerPlaybackAdmission("
+            "bool_t Client::CValtanBossTool::Acquire_ServerPlaybackAdmission("
         )
         revision_end = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Get_ServerPatternOptions(", revision_start
+            "bool_t Client::CValtanBossTool::Get_ServerPatternOptions(", revision_start
         )
         revision_gate = self.boss_cpp[revision_start:revision_end]
         for token in (
@@ -747,10 +750,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             self.assertIn(token, revision_gate)
 
         submit_start = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Submit_SelectedPattern()"
+            "bool_t Client::CValtanBossTool::Submit_SelectedPattern()"
         )
         submit_end = self.boss_cpp.index(
-            "bool_t Client::CBossTool::Restart_SelectedPattern()", submit_start
+            "bool_t Client::CValtanBossTool::Restart_SelectedPattern()", submit_start
         )
         submit = self.boss_cpp[submit_start:submit_end]
         self.assertLess(
@@ -1119,10 +1122,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             legacy_body.index("Set_ValtanStageDraft("),
         )
         save_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Save_Reload()"
+            "bool_t Client::CValtanActionWorkbench::Save_Reload()"
         )
         save_end = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(", save_start
+            "bool_t Client::CValtanActionWorkbench::Render_Toolbar(", save_start
         )
         save_body = self.workbench_cpp[save_start:save_end]
         validation_at = save_body.index(

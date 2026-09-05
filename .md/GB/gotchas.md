@@ -156,9 +156,9 @@ git rev-list --left-right --count HEAD...origin/main
 - Git 관리 `Data` 원본은 Client 프로젝트의 `96.DataFiles` 아래 `None`으로만 노출한다.
 - `Client/Bin/Resources`는 팀장이 관리하는 runtime 입력이다. 존재하지 않는 asset pack lock이나 immutable manifest를 새 완료 조건으로 만들지 않는다.
 
-## 3. 병합 후 필수 감사
+## 3. 병합 후 변경 범위 확인
 
-실행하지 않은 항목을 PASS로 쓰지 않는다.
+실행하지 않은 항목을 PASS로 쓰지 않는다. 아래는 문제별 확인 지점이며 매 변경마다 전부 수행하는 체크리스트가 아니다.
 
 ```text
 1. conflict marker와 unmerged path 0개
@@ -166,9 +166,9 @@ git rev-list --left-right --count HEAD...origin/main
 3. Effect 레거시 파일·symbol·project 등록 0개, G1 파일·등록 존재
 4. Character Preview 공용 경로와 project/filter 등록 확인
 5. 변경 JSON과 XML parse
-6. 관련 focused harness와 Debug build
+6. 변경한 코드의 Debug compile/link
 7. 사용자가 직접 수행한 Character Select 재진입 또는 Effect Tool 수동 smoke의 서면 결과
-8. 변경 domain publisher의 `Validate`/`Check`와 실행형 focused harness
+8. 데이터 배포가 필요한 경우 변경한 domain의 publisher, 재현 중인 오류에 필요한 작은 검사
 9. git diff --check
 10. 잔류 Client/Server process와 listener 확인
 ```
@@ -444,25 +444,16 @@ strict 검증하지만, Effect V2만 만든 격리 fixture에 문서가 없으�
 이유로 건너뛰면 안 된다. 부재 허용, 정상 owner admission, 존재하지만 invalid인 문서의 fail-close를
 세 개의 회귀 경로로 유지한다.
 
-### FullDiagnostic에 포함된 Valtan master를 중복·병렬 실행하지 않는다
+### 변경한 기능만 확인하고 writer 작업을 중복 실행하지 않는다
 
-`FullDiagnostic`은 `Test-ValtanPatternMaster.ps1`의 canonical writer/CAS/hard-crash 회귀를 이미
-포함한다. 같은 checkout에서 이 master를 먼저 독립 실행하거나 다른 agent에 병렬 위임하면 전역
-writer lock을 서로 선점해 `CANONICAL_TRANSACTION_BUSY` 또는
-`Create/Project transaction is active (Win32 33)`이 발생한다. 이는 source/Product 손상이나 제품
-회귀가 아니라 검증끼리 만든 transient contention이다. 실패를 없애려고 stale 파일을 삭제하거나
-schema/admission을 완화하지 않는다.
+일상 수정은 필요한 compile/link 뒤 사용자가 대상 아레나에서 변경한 동작을 확인한다.
+Animation 행을 추가·저장했다면 해당 보스·패턴·행의 저장/재로드/재생을 확인한다. 이 작업을
+다른 보스의 PatternTree, 다른 family, 전체 oracle 또는 광역 회귀 실행의 선행조건으로 묶지 않는다.
+광역 진단은 사용자가 요청할 때만 실행하며 미실행 자체를 완료·커밋 차단 사유로 쓰지 않는다.
 
-- Effect/Sound occurrence 시간만 바꾸는 반복 작업은 focused validator와
-  `RunFullPipeline.bat -DataOnly`로 확인한다. Workbench의 `Publish after Save`까지 성공했다면 같은
-  DataOnly publish도 다시 돌리지 않는다.
-- C++ 또는 Server 실행 의미가 바뀌어 광역 검증이 필요한 최종 시점에만 `FullDiagnostic`을 한 번
-  실행한다. 직전에 standalone Valtan master, Product, Core를 차례로 예열하지 않는다. 상위 profile이
-  이미 포함하는 build와 domain gate를 중복 실행하지 않는다.
-- canonical writer를 여는 publisher/master와 Core/FullDiagnostic은 같은 checkout에서 병렬 실행하지
-  않는다. 병렬 간섭으로 실패한 실행은 제품 회귀 증거로 세지 말고, 자신이 시작한 정확한 process만
-  종료한 뒤 writer가 없는 상태에서 필요한 최상위 profile을 한 번만 직렬 재실행한다.
-- 제품 UI는 실제 짧은 writer 경합에서는 last-good을 보존하고 자동 재시도만 수행한다.
+명시 publish나 진단이 같은 writer를 사용하는 경우에는 중복·병렬 실행하지 않는다.
+경합으로 발생한 `CANONICAL_TRANSACTION_BUSY`는 실제 기능 결함과 구분한다.
+저장 실패 시 기존 항목을 보존하고 재시도가 필요한지 해당 기능의 상태로 알린다.
 
 ### Valtan Composition 확장에서 함께 유지할 저작·투영 계약
 
@@ -565,14 +556,13 @@ Python source validator와 projector는 새 필드를 승인했지만 Client spl
 - 시간 field는 저장/parse만의 계약이 아니다. `firstSpawnOffsetMs`는 Server spawn clock, Client preview,
   Composition과 Animation Tool lane 시작 시각까지 같은 Stage-local clock을 사용해야 한다. UI에서 0으로
   되돌리면 데이터는 맞아도 저작자가 잘못된 타임라인을 보게 된다.
-- Product profile은 제품 바이너리를 만들지만 Valtan native source reader와 Product fallback 하네스를
-  실행하지 않는다. Pattern/Effect schema 변경 완료 증거는 최소 fresh Core이며, bootstrap/runtime 의미가
-  바뀌면 FullDiagnostic Server contract까지 필요하다. 이전에 빌드된 harness EXE는 증거가 아니다.
+- 새 필드를 실제로 소비하는 reader와 실행 경로만 확인한다. Animation/Effect 표현 수정 때문에
+  관계없는 PatternTree, 보스, family의 검증을 함께 요구하지 않는다.
 
-모든 새 Pattern/Effect field 또는 event kind는 아래 matrix의 각 행을 구현하거나, 소비하지 않는 이유를
-명시적 `N/A`로 남긴다. 한 행이라도 확인하지 않은 채 UI에서 보인다는 이유로 완료 처리하지 않는다.
+아래 표는 원인 조사 시 사용하는 소비 경계 참고표다. 작업마다 모든 행을 수행하거나 `N/A` 문서를
+만드는 절차가 아니다. 변경한 값이 저장된 뒤 해당 아레나의 의도한 실행에 도달하는 경로를 확인한다.
 
-| 경계 | 필수 확인 |
+| 경계 | 관련된 경우 확인할 내용 |
 |---|---|
 | owner/writer/helper | stable owner ID, required/optional/null 의미, 단위와 clock, save/reload/CAS rollback |
 | source schema | exact key set, type/range, cross-field owner·배타 조건, generator 재실행 시 보존 |
@@ -585,27 +575,14 @@ Python source validator와 projector는 새 필드를 승인했지만 Client spl
 | presentation/tools | live runtime, local preview, Workbench/Animation/Effect Tool timeline·label·selection에서 동일 단위/offset 사용 |
 | tests | positive survival, wrong type/range, missing owner, conflicting field, wrong trigger/stage, last-good 보존 |
 
-Effect V2 변경은 위 matrix에 더해 leaf/group/binding/BossCatalog owner lane,
-`validate_effect_v2.py`, binding read-set, v1/v2 transaction dispatch, presentation-generation closure,
-C++ Document/Catalog/ActorCatalog/Runtime을 모두 확인한다. inner slot/parameter/group timing 변경은 Product의
-reachable-root 검사만으로 닫히지 않으므로 Core의 catalog·occurrence runtime gate를 반드시 실행한다.
-현재 정본 `Invoke-BuildAndRegression.ps1`의 Core/FullDiagnostic 구간은 Effect V2 catalog와 occurrence
-runtime, Valtan status/response, WorldDestruction ContractTest를 자동 실행한다. Product profile은 빠른
-제품 컴파일이라는 기존 역할을 유지하므로 schema evolution 완료 증거로 Product만 제시하지 않는다.
-
-검증 순서는 오류 가림을 피하도록 고정한다.
-
-1. source validator와 generator/projector를 실행한다.
-2. 실제 현재 split source를 fresh native `CValtanPatternTree`로 끝까지 읽는다.
-3. freshly projected Product를 fresh native `CEncounterPatternReference`로 독립적으로 끝까지 읽는다.
-4. 첫 오류를 고친 뒤 2~3을 처음부터 다시 실행해 다음 가려진 drift를 찾는다.
-5. secondary publisher ContractTest, Effect V2 structural/runtime gates와 Core를 실행한다.
-6. Server 의미가 바뀌면 FullDiagnostic, 마지막으로 사용자 Client visual/audio/gameplay 확인을 수행한다.
+Effect V2의 slot/parameter/group timing 변경은 해당 occurrence의 실제 저장값과 실행 시간을 확인한다.
+문제가 재현되면 그 occurrence의 Document/Catalog/Runtime 경로를 따라가며 필요한 작은 검사만 사용한다.
+전체 catalog·Valtan·WorldDestruction 진단을 매 수정의 완료 조건으로 연결하지 않는다.
 
 오류 메시지는 `v4 field is invalid` 하나로 motion/action/branch 실패를 뭉개지 않는다. 최소
 `document kind + patternId + stageId + field/action family + 위반 predicate`를 남기고, 실패 시 이전 admitted
-tree/reference를 보존한다. unknown key 무시, silent default, fallback schema 완화로 트리를 억지로 띄우면
-source와 Server가 다른 게임을 실행하게 되므로 금지한다.
+tree/reference를 보존한다. 지원하지 않는 실행 항목은 정상값으로 위장하지 않고 그 항목에 오류를
+표시한다. 오류 항목 때문에 다른 정상 패턴·family의 목록, 편집 또는 재생 상태를 초기화하지 않는다.
 
 ### Effect 세대를 한 화면에 합칠 때 backend catalog를 다시 직접 순회하지 않는다
 
@@ -674,26 +651,10 @@ Server 회귀에서는 Pattern ID branch가 `Reset_ValtanBossOnlyAuditionState`�
 `Reset_ValtanAuditionState`를 호출하지 않는지, Flow start branch는 destruction/prop preflight 뒤
 `Reset_ValtanAuditionState`를 호출하는지를 함께 고정한다.
 
-변경 후 최소 검증은 한 도구의 목록 개수만 보는 것으로 끝내지 않는다.
-
-```text
-python -m unittest Tools.ValtanPipeline.test_valtan_pattern_master_v2
-python -m unittest Tools.ValtanPipeline.test_valtan_pattern_tree_contract
-python -m unittest Tools.EffectPipeline.test_effect_tool_valtan_all_effects_contract
-powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode Validate
-powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
-Tools/ValtanPatternAuditionServiceHarness/Bin/Debug/ValtanPatternAuditionServiceHarness.exe
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core
-```
-
-특히 목록/Save/Restart/Arena admission을 바꾼 작업은 Python 정적 검사와 `Product` compile만으로
-완료 처리하지 않는다. current source와 current generated Product를 실제 Client C++ reader로 여는
-native harness가 PASS해야 한다. 과거 Debug harness timestamp가 수정된 C++보다 오래되면 그 결과도
-증거가 아니므로 먼저 다시 build한다.
-
-그 뒤 새 Debug EXE에서 사용자가 `Boss Tool`, `All Effects -> Valtan`, `Composition Patterns`를
-각각 열어 pattern count, category, live action resolve를 확인한다. 한 화면만 복구됐으면 공용 snapshot
-경계가 아직 분리된 것이므로 완료가 아니다.
+목록/Save/Restart/Arena 실행을 바꿨다면 새 Debug EXE에서 사용자가 변경한 경로를 확인한다.
+저장한 animation occurrence가 해당 패턴에 반영되는지, 기존 정상 항목이 유지되는지를 본다.
+다른 도구의 목록 개수, 전체 native harness, 전 보스 publisher 결과를 매 수정의 필수 조건으로 요구하지 않는다.
+목록 표시와 실제 재생은 구분해 보고하고, 실행하지 않은 동작은 확인했다고 기록하지 않는다.
 
 ### `serverMotion`의 takeoff stage는 이름이 아니라 ordered entry다
 

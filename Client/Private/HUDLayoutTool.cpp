@@ -36,6 +36,9 @@ namespace
 		{ "Skill Window",   "UI/SkillWindow/SkillWindow_Layout.json", "UI/SkillWindow/", false },
 		{ "Lobby",          "UI/Lobby/Lobby_Layout.json", "UI/Lobby/TitleBackground/", false },
 		{ "Class Select",   "UI/ClassSelect/ClassSelect_Layout.json", "UI/ClassSelect/", true  },
+		/* Top-right area minimap frame/markers (retail EFUI_MAP minimap.gfx). Map images and
+		markers are placed at runtime; the palette root is deliberately the small control set. */
+		{ "Minimap",        "UI/Minimap/Minimap_Layout.json", "UI/Minimap/", false },
 		/* Target/boss status display -- not the local player's own class (Combat HUD) and not the
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */

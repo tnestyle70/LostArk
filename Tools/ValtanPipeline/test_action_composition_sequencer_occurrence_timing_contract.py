@@ -7,8 +7,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-WORKBENCH_H = ROOT / "Client/Public/ActionCompositionWorkbench.h"
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_H = ROOT / "Client/Public/ValtanActionWorkbench.h"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 
@@ -42,7 +42,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_timeline_rows_keep_clip_qualified_effect_and_point_sound_semantics(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         self.assertIn("!Cue.bUsesStageClock", timeline)
         self.assertIn('Cue.strStopPolicy + "/" +', timeline)
@@ -58,7 +58,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_dependency_preflight_is_full_join_and_fail_closed_for_all_three_lanes(self) -> None:
         validator = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Validate_TimelineDependencyWindows(",
+            "bool_t Client::CValtanActionWorkbench::Validate_TimelineDependencyWindows(",
         )
         for token in (
             "VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission",
@@ -78,7 +78,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_effect_timing_patch_preserves_identity_policy_and_requires_explicit_save(self) -> None:
         patch = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Apply_EffectOccurrenceTiming(",
+            "bool_t Client::CValtanActionWorkbench::Apply_EffectOccurrenceTiming(",
         )
         self.assertIn("VALTAN_PRODUCT_EFFECT_CUE_VIEW Candidate = Current", patch)
         self.assertNotIn("Is_PatternSoundDraftDirty", patch)
@@ -128,7 +128,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_drag_uses_dual_owner_gates_and_frame_local_rows(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         for token in (
             "const std::vector<TIMELINE_ITEM>& TimelineItems = m_TimelineItems",
@@ -159,7 +159,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_animation_drag_routes_across_stage_clocks_as_one_transaction(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         for token in (
             "pTargetStageItem",
@@ -171,7 +171,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         transfer = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Transfer_AnimationOccurrence(",
+            "bool_t Client::CValtanActionWorkbench::Transfer_AnimationOccurrence(",
         )
         for token in (
             "SourceDraft.animationSlots.erase(Found)",
@@ -209,7 +209,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_short_boxes_pack_labels_except_collider_semantic_width(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn(
             "ResolveTimelineDisplayWidthPx(\n\t\t\t\tItem.strLabel, Item.fMinimumDisplayWidthPx)",
@@ -226,7 +226,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_selected_box_toolbar_dispatches_typed_duplicate_and_delete(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn('ImGui::Button("Duplicate Box")', timeline)
         self.assertIn('ImGui::Button("Delete Box")', timeline)
@@ -235,7 +235,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         duplicate = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Duplicate_SelectedTimelineBox(",
         )
         for token in (
             "Duplicate_AnimationOccurrence(",
@@ -246,7 +246,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         delete = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+            "bool_t Client::CValtanActionWorkbench::Delete_SelectedTimelineBox(",
         )
         for token in (
             "Remove_AnimationOccurrence(",
@@ -258,7 +258,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_drawn_timeline_uses_the_same_preview_branch_clock(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
         )
         self.assertIn("Build_PreviewStagePath(", timeline)
         self.assertIn("for (const VALTAN_STAGE_VIEW* const pStage : PreviewStages)", timeline)
@@ -267,7 +267,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         render = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn('ImGui::Button("Play Selected Stage (All Slots)")', render)
         self.assertIn("Build_PreviewStagePath(", render)
@@ -275,7 +275,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_sequencer_exposes_the_common_preview_transport(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn(
             'Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"',
@@ -293,7 +293,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_ruler_active_drag_scrubs_the_effective_arena_preview(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         ruler_start = timeline.index('"##TimelineRuler"')
         ruler_end = timeline.index(
@@ -312,7 +312,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_selected_sequence_actions_are_available_above_the_timeline(self) -> None:
         timeline = body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         self.assertIn('ImGui::Button("Replace Stage Slots")', timeline)
         self.assertIn('ImGui::Button("Append to Stage Slots")', timeline)
@@ -337,7 +337,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def test_successful_play_and_seek_request_composition_preview_ownership(self) -> None:
         play = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(",
+            "bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(",
         )
         self.assertIn("m_bPreviewOwnerClaimRequested = true", play)
         play_call = play.index("Play_ValtanCompositionDraftPattern(")
@@ -349,7 +349,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         seek = body(
             self.source,
-            "bool_t Client::CActionCompositionWorkbench::Seek_EffectivePreview(",
+            "bool_t Client::CValtanActionWorkbench::Seek_EffectivePreview(",
         )
         self.assertIn("m_bPreviewOwnerClaimRequested = true", seek)
         seek_call = seek.index("Seek_ValtanCompositionPattern(")

@@ -2,6 +2,7 @@
 
 #include "Effect_Tool_V2.h"
 #include "ActorCatalog.h"
+#include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
@@ -15,6 +16,7 @@
 #include "Model.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
+#include "Part_Body.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
@@ -1408,6 +1410,99 @@ namespace
 	constexpr f32_t BINDING_FRAME_RATE = 30.f;
 	constexpr const char* VALTAN_TARGET_ARCHETYPE_ID = "BOSS_VALTAN";
 
+	/* Binding owner is the physical skeleton; MN_RPCT_00 shares MN_RPCT_05's
+	   rig and clips, so both save to MN_RPCT_05. */
+	struct KAKUL_PREVIEW_TARGET final
+	{
+		const char* pAssetName;
+		const char* pLabel;
+		const char* pBindingArchetypeId;
+	};
+
+	constexpr std::array<KAKUL_PREVIEW_TARGET, 4u> KAKUL_PREVIEW_TARGETS = {
+		KAKUL_PREVIEW_TARGET{ "MN_RPCZ_00", "Kakul clown, 91 clips", "MN_RPCZ_00" },
+		KAKUL_PREVIEW_TARGET{ "MN_RPCT_05", "Saydon with Kakul parts, 249 clips", "MN_RPCT_05" },
+		KAKUL_PREVIEW_TARGET{ "MN_RPCT_00", "Saydon plain body, same rig as 05", "MN_RPCT_05" },
+		KAKUL_PREVIEW_TARGET{ "MN_RPCT_06", "Large Saydon, own rig, 34 clips", "MN_RPCT_06" },
+	};
+
+	const KAKUL_PREVIEW_TARGET* Find_KakulPreviewTarget(const std::string_view strAssetName)
+	{
+		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
+		{
+			if (strAssetName == Entry.pAssetName)
+				return &Entry;
+		}
+		return nullptr;
+	}
+
+	const ANIMATION_PREVIEW_ASSET* Find_PreviewAsset(const std::string_view strAssetName)
+	{
+		for (const ANIMATION_PREVIEW_ASSET& Asset : ANIMATION_PREVIEW_ASSETS)
+		{
+			if (strAssetName == Asset.pAssetName)
+				return &Asset;
+		}
+		return nullptr;
+	}
+
+	/* The part keeps this pointer; identity leaves the body transform as the
+	   only world root. */
+	const float4x4_t PREVIEW_BODY_PARENT_IDENTITY{
+		1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f };
+
+	bool_t Register_PreviewBodyPrototype(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const ANIMATION_PREVIEW_ASSET& Asset,
+		const uint32_t iLevel,
+		std::string& strOutError)
+	{
+		const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(Asset.pModelAssetId);
+		std::error_code Error;
+		if (ModelPath.empty() || !std::filesystem::is_regular_file(ModelPath, Error))
+		{
+			strOutError = std::string("Preview body model is missing from Resources: ") +
+				Asset.pModelAssetId;
+			return false;
+		}
+		const matrix_t PreviewTransform =
+			XMMatrixScaling(Asset.fPreviewScale, Asset.fPreviewScale, Asset.fPreviewScale) *
+			XMMatrixRotationY(XMConvertToRadians(Asset.fPreviewYawDegrees));
+		std::unique_ptr<CModel> pModel = CModel::Create(
+			pDevice, pContext, MODEL::ANIM, ModelPath.string().c_str(), PreviewTransform);
+		if (nullptr == pModel)
+		{
+			strOutError = std::string("Preview body model failed to decode: ") +
+				Asset.pModelAssetId;
+			return false;
+		}
+		if (nullptr != Asset.pAnimationSetAssetId)
+		{
+			const std::filesystem::path DonorPath =
+				CRuntimeAssetRoot::Resolve(Asset.pAnimationSetAssetId);
+			std::unique_ptr<CModel> pDonor;
+			if (!DonorPath.empty() && std::filesystem::is_regular_file(DonorPath, Error))
+			{
+				pDonor = CModel::Create(
+					pDevice, pContext, MODEL::ANIM, DonorPath.string().c_str(), PreviewTransform);
+			}
+			if (nullptr == pDonor || FAILED(pModel->Attach_AnimationSet(*pDonor)))
+			{
+				strOutError = std::string("Preview animation set is not admitted: ") +
+					Asset.pAnimationSetAssetId;
+				return false;
+			}
+		}
+		if (FAILED(CGameInstance::Get().Add_Prototype(iLevel, Asset.pPrototypeTag, std::move(pModel))))
+		{
+			strOutError = std::string("Preview body prototype registration failed: ") +
+				Asset.pModelAssetId;
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Resolve_ValtanStageAction(
 		const std::string_view strStageKind,
 		LostArk::Shared::WORLD_ENTITY_ACTION& eOutAction)
@@ -1455,8 +1550,13 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
 			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
 	}
-	const bool_t bSpawned = VALTAN_TARGET_ARCHETYPE_ID == strArchetypeId ?
-		Spawn_ValtanTarget(vPosition) : Spawn_NpcTarget(strArchetypeId, vPosition);
+	bool_t bSpawned = false;
+	if (VALTAN_TARGET_ARCHETYPE_ID == strArchetypeId)
+		bSpawned = Spawn_ValtanTarget(vPosition);
+	else if (const KAKUL_PREVIEW_TARGET* pKakul = Find_KakulPreviewTarget(strArchetypeId))
+		bSpawned = Spawn_PreviewBodyTarget(pKakul->pAssetName, pKakul->pBindingArchetypeId, vPosition);
+	else
+		bSpawned = Spawn_NpcTarget(strArchetypeId, vPosition);
 	if (!bSpawned)
 		return false;
 
@@ -1468,7 +1568,8 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		return false;
 	}
 	CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
-	m_strTargetArchetypeId = strArchetypeId;
+	m_strTargetArchetypeId = m_Target.strArchetypeId.empty() ?
+		strArchetypeId : m_Target.strArchetypeId;
 	m_vTargetPosition = vPosition;
 	m_fTargetYawDegrees = 0.f;
 	m_fTargetLastClipSeconds = -1.f;
@@ -1477,8 +1578,10 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		m_strPivotBone = View.pModel->Has_Bone("b_effectroot") ? "b_effectroot" :
 			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
 	}
-	Load_Bindings(strArchetypeId);
-	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character.";
+	Load_Bindings(m_strTargetArchetypeId);
+	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character." +
+		(m_strTargetArchetypeId != strArchetypeId ?
+			" Bindings owner: " + m_strTargetArchetypeId + "." : std::string());
 	return true;
 }
 
@@ -1604,6 +1707,74 @@ bool_t Client::CEffect_Tool_V2::Spawn_ValtanTarget(const float3_t& vPosition)
 	return true;
 }
 
+bool_t Client::CEffect_Tool_V2::Spawn_PreviewBodyTarget(
+	const std::string& strAssetName,
+	const std::string& strBindingArchetypeId,
+	const float3_t& vPosition)
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	const uint32_t iLevel = GameInstance.Get_CurrentLevelID();
+	const ANIMATION_PREVIEW_ASSET* pAsset = Find_PreviewAsset(strAssetName);
+	if (nullptr == pAsset || nullptr == pAsset->pPrototypeTag || nullptr == pAsset->pModelAssetId)
+	{
+		m_strAttachStatus = "Preview body is not an admitted authoring asset: " + strAssetName;
+		return false;
+	}
+
+	CPart_Body::PART_BODY_DESC Desc{};
+	Desc.pParentMatrix = &PREVIEW_BODY_PARENT_IDENTITY;
+	Desc.iPrototypeLevelIndex = iLevel;
+	Desc.strModelTag = pAsset->pPrototypeTag;
+	Desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+	Desc.pInitialAnimation = nullptr;
+	std::shared_ptr<CGameObject> pGameObject;
+	if (FAILED(GameInstance.Add_GameObject_to_Layer(
+		iLevel, TEXT("Prototype_GameObject_Part_Body"), iLevel, TARGET_LAYER_TAG,
+		&Desc, &pGameObject)))
+	{
+		std::string strError;
+		if (!Register_PreviewBodyPrototype(m_pDevice, m_pContext, *pAsset, iLevel, strError))
+		{
+			m_strAttachStatus = strError;
+			return false;
+		}
+		pGameObject.reset();
+		if (FAILED(GameInstance.Add_GameObject_to_Layer(
+			iLevel, TEXT("Prototype_GameObject_Part_Body"), iLevel, TARGET_LAYER_TAG,
+			&Desc, &pGameObject)))
+		{
+			m_strAttachStatus = "Preview body spawn failed: " + strAssetName;
+			return false;
+		}
+	}
+	const std::shared_ptr<CPart_Body> pBody = std::dynamic_pointer_cast<CPart_Body>(pGameObject);
+	const std::shared_ptr<CTransform> pTransform = nullptr != pBody ?
+		std::dynamic_pointer_cast<CTransform>(pBody->Get_Component(g_strTransformComTag)) : nullptr;
+	if (nullptr == pBody || nullptr == pBody->Get_Model() || nullptr == pTransform)
+	{
+		GameInstance.Remove_GameObject_from_Layer(iLevel, TARGET_LAYER_TAG, pGameObject);
+		m_strAttachStatus = "Preview body did not expose an animated CModel.";
+		return false;
+	}
+	pTransform->Set_State(STATE::POSITION,
+		XMVectorSet(vPosition.x, vPosition.y, vPosition.z, 1.f));
+	m_Target = EFFECT_V2_TARGET::From_PreviewBody(pBody, strBindingArchetypeId);
+
+	std::vector<std::string> BoneNames;
+	Collect_BoneNames(pAsset->pModelAssetId, BoneNames);
+	m_TargetBoneNames.clear();
+	for (const std::string& strBone : BoneNames)
+	{
+		if (pBody->Get_Model()->Has_Bone(strBone.c_str()))
+			m_TargetBoneNames.push_back(strBone);
+	}
+
+	const std::shared_ptr<Engine::CModel> pModel = pBody->Get_Model();
+	if (const char_t* pFirstClip = pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex()))
+		Play_TargetClip(pFirstClip, m_bTargetClipLoop);
+	return true;
+}
+
 bool_t Client::CEffect_Tool_V2::Resolve_TargetView(EFFECT_V2_TARGET_VIEW& OutView) const
 {
 	return m_Target.Is_Valid() && CEffectV2Object::Resolve_TargetView(m_Target, OutView);
@@ -1652,10 +1823,13 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 		if (!std::static_pointer_cast<CNpc>(pOwner)->Apply_NetworkState(vPosition, fYawDegrees))
 			return;
 	}
-	else if (EFFECT_V2_TARGET_KIND::VALTAN == m_Target.eKind)
+	else if (EFFECT_V2_TARGET_KIND::VALTAN == m_Target.eKind ||
+		EFFECT_V2_TARGET_KIND::PREVIEW_BODY == m_Target.eKind)
 	{
 		const std::shared_ptr<CTransform> pTransform =
-			std::static_pointer_cast<CValtan>(pOwner)->Get_Transform();
+			EFFECT_V2_TARGET_KIND::VALTAN == m_Target.eKind ?
+				std::static_pointer_cast<CValtan>(pOwner)->Get_Transform() :
+				std::dynamic_pointer_cast<CTransform>(pOwner->Get_Component(g_strTransformComTag));
 		if (nullptr == pTransform)
 			return;
 		pTransform->Set_State(STATE::POSITION,
@@ -1671,6 +1845,10 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 {
 	Update_ValtanTimeline(fTimeDelta);
+	/* NPC and Valtan tick the runtime from their own Update; the tool-owned
+	   preview body has no such owner. */
+	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY == m_Target.eKind && m_Target.Is_Valid())
+		CEffectV2Runtime::Tick(m_Target, m_pDevice, m_pContext);
 	CEffectV2Runtime::Advance_FreeGroups(fTimeDelta, m_pDevice, m_pContext);
 	if (0u != m_iGroupPreviewHandle)
 	{
@@ -2525,7 +2703,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<Engine::CModel> pModel = bHasTarget ? View.pModel : nullptr;
 
-	ImGui::SeparatorText("Target (NPC archetype / Valtan)");
+	ImGui::SeparatorText("Target (NPC archetype / Valtan / KoukuSaydon body)");
 	const std::vector<NPC_ACTOR_ENTRY>& Npcs = CActorCatalog::Get_Npcs();
 	if (ImGui::BeginCombo("Archetype",
 		m_strSelectedArchetypeId.empty() ? "(select)" : m_strSelectedArchetypeId.c_str()))
@@ -2534,6 +2712,13 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			VALTAN_TARGET_ARCHETYPE_ID == m_strSelectedArchetypeId))
 		{
 			m_strSelectedArchetypeId = VALTAN_TARGET_ARCHETYPE_ID;
+		}
+		ImGui::Separator();
+		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
+		{
+			const std::string strLabel = std::string(Entry.pAssetName) + "  (" + Entry.pLabel + ")";
+			if (ImGui::Selectable(strLabel.c_str(), Entry.pAssetName == m_strSelectedArchetypeId))
+				m_strSelectedArchetypeId = Entry.pAssetName;
 		}
 		ImGui::Separator();
 		for (const NPC_ACTOR_ENTRY& Entry : Npcs)

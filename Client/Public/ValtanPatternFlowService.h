@@ -105,7 +105,7 @@ struct VALTAN_PATTERN_FLOW_HARNESS_INPUT final
 };
 #endif
 
-/* Owns the one Debug flow result/lifecycle queue.  Boss Tool submits a saved
+/* Owns the one Debug flow result/lifecycle queue.  Valtan Boss Tool submits a saved
    document revision and only observes this snapshot; it never sends packets
    or advances individual slots itself.  All methods run on the Client main
    thread. */

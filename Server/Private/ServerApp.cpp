@@ -2877,6 +2877,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_PLACEMENT;
 		command.DebugTeleportToPlacement = std::move(request);
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION)
+	{
+		C2S_DEBUG_TELEPORT_TO_POSITION request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_TELEPORT_TO_POSITION");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_POSITION;
+		command.DebugTeleportToPosition = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS)
 	{
 		C2S_CHANGE_CHARACTER_CLASS request{};
@@ -2909,6 +2920,19 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::VALTAN_AUDITION;
 		command.ValtanAudition = request;
+	}
+	else if (frame.ePacketType ==
+		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST)
+	{
+		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload(
+				"C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::KOUKUSAYDON_PATTERN_AUDITION;
+		command.KoukuSaydonPatternAudition = std::move(request);
 	}
 	else if (frame.ePacketType ==
 		PACKET_TYPE::C2S_DEBUG_VALTAN_PATTERN_FLOW_START)

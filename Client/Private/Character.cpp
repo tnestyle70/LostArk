@@ -44,6 +44,7 @@ namespace
 	constexpr f32_t PLAYBACK_SNAP_TICKS = 6.f;
 	constexpr f32_t PLAYBACK_DRIFT_GAIN = 4.f;
 	constexpr f32_t TELEPORT_DISTANCE_SQ = 100.f;
+	constexpr f32_t ATTACHMENT_RELEASE_BLEND_SECONDS = 0.2f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
@@ -1119,6 +1120,89 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 		0.f);
 }
 
+bool_t CCharacter::Apply_NetworkAttachment(
+	const std::shared_ptr<const IPlayerHandGripSocketSource>& pSource,
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot)
+{
+	using namespace LostArk::Shared;
+	PLAYER_HAND_GRIP_LOCAL_OFFSET gripLocalOffset{};
+	if (!m_hasNetworkState || nullptr == pSource ||
+		PLAYER_ATTACHMENT_SLOT::NONE == slot ||
+		slot >= PLAYER_ATTACHMENT_SLOT::END ||
+		!pSource->Try_Get_PlayerHandGripLocalOffset(slot, gripLocalOffset) ||
+		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(gripLocalOffset))
+	{
+		Clear_NetworkAttachment();
+		return false;
+	}
+	m_pAttachmentSocketSource = pSource;
+	m_eAttachmentSlot = slot;
+	m_AttachmentGripLocalOffset = gripLocalOffset;
+	return true;
+}
+
+void CCharacter::Clear_NetworkAttachment()
+{
+	m_pAttachmentSocketSource.reset();
+	m_eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+	m_AttachmentGripLocalOffset = {};
+}
+
+void CCharacter::Update_NetworkAttachmentTransform(const f32_t fTimeDelta)
+{
+	using namespace LostArk::Shared;
+	if (nullptr == m_pTransformCom)
+		return;
+	if (PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction &&
+		PLAYER_ATTACHMENT_SLOT::NONE != m_eAttachmentSlot)
+	{
+		const std::shared_ptr<const IPlayerHandGripSocketSource> pSource =
+			m_pAttachmentSocketSource.lock();
+		PLAYER_HAND_GRIP_SOCKET_VIEW view{};
+		float3_t position{};
+		if (nullptr == pSource ||
+			!pSource->Try_Get_PlayerHandGripSocketView(m_eAttachmentSlot, view) ||
+			!CPlayerHandGripTransform::Compose_WorldPosition(
+				view, m_AttachmentGripLocalOffset, position))
+		{
+			/* The owner is dormant, hidden or missing its bone this frame: the
+			   Server fallback transform Update_NetworkTransform just wrote stays. */
+			return;
+		}
+		m_pTransformCom->Set_State(
+			STATE::POSITION,
+			XMVectorSet(position.x, position.y, position.z, 1.f));
+		m_LastAttachedPosition = position;
+		m_bAttachmentPresented = true;
+		m_fAttachmentReleaseBlendSeconds = -1.f;
+		return;
+	}
+	if (m_bAttachmentPresented)
+	{
+		m_bAttachmentPresented = false;
+		m_fAttachmentReleaseBlendSeconds = 0.f;
+	}
+	if (m_fAttachmentReleaseBlendSeconds < 0.f)
+		return;
+	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		m_fAttachmentReleaseBlendSeconds += fTimeDelta;
+	const f32_t ratio = (std::min)(1.f,
+		m_fAttachmentReleaseBlendSeconds / ATTACHMENT_RELEASE_BLEND_SECONDS);
+	const f32_t eased = ratio * ratio * (3.f - 2.f * ratio);
+	const vector_t networkPosition =
+		m_pTransformCom->Get_State(STATE::POSITION);
+	const vector_t lastAttached = XMVectorSet(
+		m_LastAttachedPosition.x,
+		m_LastAttachedPosition.y,
+		m_LastAttachedPosition.z,
+		1.f);
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSetW(XMVectorLerp(lastAttached, networkPosition, eased), 1.f));
+	if (ratio >= 1.f)
+		m_fAttachmentReleaseBlendSeconds = -1.f;
+}
+
 shared_ptr<CModel> CCharacter::Get_BodyModel() const
 {
 	return m_pBodyModel;
@@ -1164,6 +1248,8 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 		m_fPresentationYawDegrees = yawDegrees;
 		m_fPlaybackServerTick =
 			static_cast<f32_t>(iServerTick) - INTERPOLATION_DELAY_TICKS;
+		m_bAttachmentPresented = false;
+		m_fAttachmentReleaseBlendSeconds = -1.f;
 	}
 	if (!m_hasNetworkState)
 		m_BoneChains.Reset();
@@ -1355,9 +1441,9 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
-		/* The Server-authoritative boss-local attachment snapshot owns translation
-		while the Server reports GRABBED. A neutral loop avoids player root motion
-		fighting the replicated transform every frame; no hand bone is composed. */
+		/* Translation belongs to Update_NetworkAttachmentTransform (owner socket)
+		or, without an owner presentation, to the Server attachment snapshot. A
+		neutral loop keeps class root motion from fighting either writer. */
 		Set_Animation(CHARACTER_ANIM::IDLE, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
@@ -1384,32 +1470,6 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
-	}
-	else if (PLAYER_ACTION_STATE::GRABBED == action)
-	{
-		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
-			return false;
-		if (m_eNetworkAction == action &&
-			m_iLastNetworkActionStartTick == actionStartTick)
-		{
-			return true;
-		}
-		m_pChain = nullptr;
-		m_iChainStage = 0;
-		m_iChainStep = 0;
-		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
-		m_fActionPresentationSeconds = 0.f;
-		Commit_PendingClipChains();
-		/* The Server-authoritative boss-local attachment snapshot owns the
-		transform. Until a dedicated caught pose is authored, hold the existing
-		class hit loop instead of allowing locomotion to run while carried. */
-		if (!Set_Animation(CHARACTER_ANIM::HIT, true))
-			Set_Animation(CHARACTER_ANIM::IDLE, true);
-		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
-		m_iEffectActionStartTick = 0u;
-		m_bHasEffectActionFacingYaw = false;
-		m_fEffectActionFacingYawDegrees = 0.f;
-		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::ESTHER_CAST == action)
 	{
@@ -1508,14 +1568,6 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
-	}
-	else if (PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
-	{
-		m_fActionPresentationSeconds = 0.f;
-		Set_Animation(
-			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
-			true);
-		m_iLastNetworkActionStartTick = 0u;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
 	{
@@ -1926,6 +1978,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 	if (m_hasNetworkState)
 	{
 		Update_NetworkTransform(fTimeDelta);
+		Update_NetworkAttachmentTransform(fTimeDelta);
 	}
 	else
 	{

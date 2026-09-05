@@ -7,6 +7,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "KoukuSaydonBrain.h"
 #include "NpcBehaviorRuntime.h"
 #include "PlayerSkillSystem.h"
 #include "Network/PacketReader.h"
@@ -797,15 +798,16 @@ namespace
 }
 
 int LostArk::Server::Run_ServerGameplayContractTests(
-	const bool dimensionMasterGroundTargetOnly)
+	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly)
 {
 	struct CONTRACT_TEST_RUN_CONTEXT final
 	{
 		bool dimensionMasterGroundTargetOnly = false;
+		bool debugTeleportOnly = false;
 		int result = 1;
 	};
 
-	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, 1 };
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, 1 };
 	const auto runContract = [](void* opaque)
 	{
 		CONTRACT_TEST_RUN_CONTEXT& context =
@@ -816,6 +818,110 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
+	/* The existing contract executable can exercise this transport mutation
+	without running unrelated encounter simulations. */
+	if (context.debugTeleportOnly)
+	{
+		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		{
+			auto room = std::make_unique<CGameRoom>(world);
+			const auto* spawn = room->Find_AvailablePlayerSpawn();
+			SERVER_NAV_POINT ground{};
+			const bool ready = room->Is_Ready() && nullptr != spawn &&
+				room->m_ServerNavigation.Sample_Position(spawn->fPositionX, spawn->fPositionZ, ground);
+			tests.Require(ready, "Teleport loads current world navigation and authored spawn");
+			if (!ready) continue;
+			auto storage = std::make_unique<SERVER_PLAYER>();
+			auto& player = *storage;
+			player.iPlayerId = 123u;
+			player.iNetEntityId = 456u;
+			player.iCurrentHp = player.iMaximumHp = 100u;
+			player.fPositionX = ground.x + 10.f;
+			player.fPositionY = ground.y;
+			player.fPositionZ = ground.z;
+			player.hasMoveGoal = true;
+			player.MovePath.push_back(ground);
+			player.iCurrentSkillId = 34010u;
+			player.eAction = PLAYER_ACTION_STATE::SKILL;
+			C2S_DEBUG_TELEPORT_TO_POSITION request{};
+			request.iRequestSequence = 1u;
+			request.eWorldId = world;
+			request.fPositionX = ground.x;
+			request.fPositionY = ground.y + 100.f;
+			request.fPositionZ = ground.z;
+			auto verdict = room->Apply_DebugTeleportToPosition(player, request);
+#ifndef _DEBUG
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_DISABLED &&
+				player.hasMoveGoal && player.iCurrentSkillId == 34010u,
+				"Release refuses teleport without changing player actions");
+#else
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT &&
+				player.hasMoveGoal && player.MovePath.size() == 1u &&
+				player.iCurrentSkillId == 34010u && player.fPositionX == ground.x + 10.f,
+				"Wrong picked deck preserves transform, skill and path");
+			request.iRequestSequence = 2u;
+			request.fPositionY = ground.y + 0.1f;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::ACCEPTED &&
+				verdict.iRequestSequence == 2u && verdict.eWorldId == world &&
+				verdict.fPositionY == ground.y && player.fPositionX == ground.x &&
+				player.fPositionY == ground.y && player.fPositionZ == ground.z &&
+				!player.hasMoveGoal && player.MovePath.empty() &&
+				player.iCurrentSkillId == INVALID_SKILL_ID && player.iCurrentHp == 100u,
+				"Accepted teleport uses Server ground and clears only own transient action");
+			player.fPositionX += 2.f;
+			const auto duplicate = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(duplicate.eResult == DEBUG_TELEPORT_RESULT::ACCEPTED &&
+				duplicate.fPositionX == ground.x && player.fPositionX == ground.x + 2.f,
+				"Duplicate request replays verdict without applying teleport twice");
+			request.iRequestSequence = 1u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_STALE_SEQUENCE &&
+				player.fPositionX == ground.x + 2.f,
+				"Stale sequence cannot reset position");
+			request.iRequestSequence = 3u;
+			request.eWorldId = WORLD_ID::BERN;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD,
+				"Cross-world teleport intent is refused");
+			request.eWorldId = world;
+			request.fPositionX = 100001.f;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION,
+				"Invalid coordinates rejected before navigation cell conversion");
+			request.iRequestSequence = 4u;
+			request.fPositionX = ground.x;
+			player.iCurrentHp = 0u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE &&
+				player.iCurrentHp == 0u, "Debug movement cannot revive a dead player");
+			player.iCurrentHp = 100u;
+			request.iRequestSequence = 5u;
+			player.bPatternBound = true;
+			player.hasMoveGoal = true;
+			player.iCurrentSkillId = 34010u;
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE &&
+				player.bPatternBound && player.hasMoveGoal && player.iCurrentSkillId == 34010u,
+				"Bound player cannot bypass capture by sending a teleport packet");
+			player.bPatternBound = false;
+			request.iRequestSequence = 6u;
+			SERVER_WORLD_ENTITY blocker{};
+			blocker.iNetEntityId = 789u;
+			blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+			blocker.fPositionX = ground.x;
+			blocker.fPositionY = ground.y;
+			blocker.fPositionZ = ground.z;
+			room->m_WorldEntities.push_back(blocker);
+			verdict = room->Apply_DebugTeleportToPosition(player, request);
+			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_COLLISION &&
+				player.fPositionX == ground.x + 2.f,
+				"Destination overlap refuses teleport into current world entity");
+#endif
+		}
+		std::cout << "failures : " << tests.failures << '\n';
+		return 0 == tests.failures ? 0 : 1;
+	}
 	CGameplayCatalog catalog;
 	const bool catalogLoaded = catalog.Load();
 	if (!catalogLoaded)
@@ -837,6 +943,483 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		catalog.Get_ActiveRevision().Is_Valid(),
 		"Derive a nonzero gameplay data revision from admitted bootstrap bytes");
+	{
+		const auto* koukuParts =
+			catalog.Find_BossParts("BOSS_KAKULSAYDON_G1_KOUKU");
+		const auto* valtanParts = catalog.Find_BossParts("BOSS_VALTAN");
+		const auto* patterns =
+			catalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+		const auto* sequence =
+			catalog.Find_BossPatternSequence("ENCOUNTER_KAKULSAYDON_G1");
+		const std::uint32_t productSourceRevision =
+			CKoukuSaydonBrain::Resolve_ProductSourceRevision(catalog);
+		const auto pizza = nullptr == patterns ?
+			std::vector<BOSS_PATTERN_DEFINITION>::const_iterator{} :
+			std::find_if(patterns->begin(), patterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return "KAKULSAYDON_G1_PIZZA" == pattern.strPatternId;
+				});
+		std::string animationStatus;
+		const bool exactProduct = 0u != productSourceRevision && nullptr != patterns &&
+			patterns->end() != pizza && nullptr != sequence &&
+			"KAKULSAYDON_G1_PLAY_ALL" == sequence->strSequenceId &&
+			1u == sequence->PatternIds.size() &&
+			"KAKULSAYDON_G1_PIZZA" == sequence->PatternIds.front() &&
+			CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+				*pizza, animationStatus);
+		tests.Require(
+			(nullptr == koukuParts || koukuParts->empty()) &&
+			nullptr != valtanParts && !valtanParts->empty(),
+			"Admit an unarmoured KoukuSaydon boss while retaining Valtan exact parts");
+		tests.Require(exactProduct,
+			"Admit the exact KoukuSaydon Pizza animation-only Product sequence");
+
+		if (exactProduct)
+		{
+			SERVER_WORLD_ENTITY boss{};
+			boss.iNetEntityId = 777u;
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+			boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+			boss.strPlacementId = "boss.kakulsaydon.g1.kouku";
+			boss.iCurrentHp = 1000000u;
+			boss.iMaximumHp = 1000000u;
+			boss.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+			CKoukuSaydonBrain brain;
+			std::string status;
+			const bool began = brain.Begin_Pattern(
+				boss, *pizza, catalog.Get_ActiveRevision(), 1u, status);
+			std::vector<std::string> visitedActions;
+			if (began)
+				visitedActions.push_back(boss.strActionId);
+			KOUKUSAYDON_BRAIN_UPDATE_RESULT terminal =
+				KOUKUSAYDON_BRAIN_UPDATE_RESULT::IDLE;
+			for (std::uint32_t tick = 1u; began && tick < 700u; ++tick)
+			{
+				const std::string previousAction = boss.strActionId;
+				terminal = brain.Update(boss, catalog, tick, status);
+				if (KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED == terminal &&
+					boss.strActionId != previousAction)
+				{
+					visitedActions.push_back(boss.strActionId);
+				}
+				if (KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED == terminal ||
+					KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION ==
+						terminal)
+				{
+					break;
+				}
+			}
+			tests.Require(began && 6u == visitedActions.size() &&
+				KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED == terminal &&
+				boss.strPatternId.empty() &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					boss.PatternTerminalReceipt.eResult &&
+				boss.PatternTerminalReceipt.iPatternSequence == boss.iPatternSequence,
+				"Run all six KoukuSaydon Pizza stages on the fixed Server clock");
+
+			BOSS_PATTERN_DEFINITION unsupported = *pizza;
+			unsupported.Stages.front().Actions.push_back({});
+			const bool rejectsAction =
+				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+					unsupported, status);
+			unsupported = *pizza;
+			unsupported.Stages.front().eHitShape = BOSS_PATTERN_HIT_SHAPE::CIRCLE;
+			const bool rejectsHit =
+				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+					unsupported, status);
+			unsupported = *pizza;
+			unsupported.Stages.front().eHitActivationKind =
+				BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW;
+			const bool rejectsHitWindow =
+				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+					unsupported, status);
+			unsupported = *pizza;
+			unsupported.Stages.front().Motion.eKind =
+				BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD;
+			const bool rejectsMotion =
+				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+					unsupported, status);
+			unsupported = *pizza;
+			unsupported.Stages.front().Branches.push_back({
+				BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				unsupported.Stages[1u].strActionId, {} });
+			const bool rejectsBranch =
+				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
+					unsupported, status);
+			tests.Require(rejectsAction && rejectsHit && rejectsHitWindow && rejectsMotion &&
+				rejectsBranch,
+				"Fail closed on KoukuSaydon action hit motion and non-timeout branch data");
+
+#ifdef _DEBUG
+			auto room = std::make_unique<CGameRoom>(
+				WORLD_ID::KAKULSAYDON_ARENA);
+			SERVER_WORLD_ENTITY* liveBoss =
+				room->Find_KoukuSaydonAuditionBoss();
+			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST selected{};
+			selected.iRequestSequence = 2u;
+			selected.eOperation =
+				KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+			selected.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			selected.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+			selected.Scope.strBossPlacementId =
+				"boss.kakulsaydon.g1.kouku";
+			selected.Scope.strBossArchetypeId =
+				"BOSS_KAKULSAYDON_G1_KOUKU";
+			selected.Scope.ExpectedGameplayRevision =
+				room->m_GameplayCatalog.Get_ActiveRevision();
+			selected.Scope.iExpectedSourceRevision =
+				CKoukuSaydonBrain::Resolve_ProductSourceRevision(
+					room->m_GameplayCatalog.Active());
+			selected.strPatternId = "KAKULSAYDON_G1_PIZZA";
+
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT rejected{};
+			auto wrongScope = selected;
+			wrongScope.iRequestSequence = 1u;
+			wrongScope.Scope.strBossPlacementId = "boss.valtan.center";
+			const bool exactScopeRejected = room->Is_Ready() && nullptr != liveBoss &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, wrongScope, rejected) &&
+				CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
+					room->m_KoukuSaydonPatternAudition.ePhase &&
+				room->m_PendingKoukuSaydonPatternAuditionLifecycle.empty();
+
+			auto wrongGameplayRevision = selected;
+			wrongGameplayRevision.iRequestSequence = 1u;
+			wrongGameplayRevision.Scope.ExpectedGameplayRevision.Bytes.front() ^=
+				0xffu;
+			const bool gameplayRevisionRejected = exactScopeRejected &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_REVISION_MISMATCH ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, wrongGameplayRevision, rejected) &&
+				rejected.eResult == KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+					REJECTED_REVISION_MISMATCH &&
+				rejected.Scope.ExpectedGameplayRevision ==
+					wrongGameplayRevision.Scope.ExpectedGameplayRevision &&
+				rejected.PinnedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				rejected.iPinnedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				0u == rejected.iRoomAuditionEpoch &&
+				INVALID_NET_ENTITY_ID == rejected.iBossNetEntityId &&
+				rejected.strResolvedPatternId.empty() &&
+				CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
+					room->m_KoukuSaydonPatternAudition.ePhase &&
+				room->m_PendingKoukuSaydonPatternAuditionLifecycle.empty();
+
+			auto wrongSourceRevision = selected;
+			wrongSourceRevision.iRequestSequence = 1u;
+			wrongSourceRevision.Scope.iExpectedSourceRevision =
+				(std::numeric_limits<std::uint32_t>::max)() ==
+					selected.Scope.iExpectedSourceRevision ?
+					selected.Scope.iExpectedSourceRevision - 1u :
+					selected.Scope.iExpectedSourceRevision + 1u;
+			const bool sourceRevisionRejected = gameplayRevisionRejected &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+					REJECTED_SOURCE_REVISION_MISMATCH ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, wrongSourceRevision, rejected) &&
+				rejected.eResult == KOUKUSAYDON_PATTERN_AUDITION_RESULT::
+					REJECTED_SOURCE_REVISION_MISMATCH &&
+				rejected.Scope.iExpectedSourceRevision ==
+					wrongSourceRevision.Scope.iExpectedSourceRevision &&
+				rejected.PinnedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				rejected.iPinnedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				0u == rejected.iRoomAuditionEpoch &&
+				INVALID_NET_ENTITY_ID == rejected.iBossNetEntityId &&
+				rejected.strResolvedPatternId.empty() &&
+				CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
+					room->m_KoukuSaydonPatternAudition.ePhase &&
+				room->m_PendingKoukuSaydonPatternAuditionLifecycle.empty();
+
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT selectedResult{};
+			const bool selectedQueued = sourceRevisionRejected &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, selected, selectedResult) &&
+				selectedResult.Scope.eWorldId == selected.Scope.eWorldId &&
+				selectedResult.Scope.strEncounterId ==
+					selected.Scope.strEncounterId &&
+				selectedResult.Scope.strBossPlacementId ==
+					selected.Scope.strBossPlacementId &&
+				selectedResult.Scope.strBossArchetypeId ==
+					selected.Scope.strBossArchetypeId &&
+				selectedResult.Scope.ExpectedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				selectedResult.Scope.iExpectedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				selectedResult.PinnedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				selectedResult.iPinnedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				"KAKULSAYDON_G1_PIZZA" ==
+					selectedResult.strResolvedPatternId &&
+				1u == room->m_PendingKoukuSaydonPatternAuditionLifecycle.size() &&
+				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING ==
+					room->m_PendingKoukuSaydonPatternAuditionLifecycle.front().
+						Message.eState;
+
+			bool runtimeAdvanced = selectedQueued;
+			for (std::uint32_t tick = 1u; runtimeAdvanced && tick < 700u; ++tick)
+			{
+				runtimeAdvanced = room->Update_KoukuSaydonBoss(*liveBoss, tick);
+				if (CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
+					room->m_KoukuSaydonPatternAudition.ePhase)
+				{
+					break;
+				}
+			}
+			std::vector<std::uint32_t> liveStageIndices;
+			std::size_t patternCompletedCount = 0u;
+			std::size_t completedCount = 0u;
+			bool exactLifecycleIdentity = selectedQueued;
+			std::uint32_t occurrenceSequence = 0u;
+			for (const auto& targeted :
+				room->m_PendingKoukuSaydonPatternAuditionLifecycle)
+			{
+				const auto& lifecycle = targeted.Message;
+				exactLifecycleIdentity = exactLifecycleIdentity &&
+					8101u == targeted.iSessionId &&
+					selected.iRequestSequence == lifecycle.iRequestSequence &&
+					selected.eOperation == lifecycle.eOperation &&
+					selected.Scope.eWorldId == lifecycle.Scope.eWorldId &&
+					selected.Scope.strEncounterId ==
+						lifecycle.Scope.strEncounterId &&
+					selected.Scope.strBossPlacementId ==
+						lifecycle.Scope.strBossPlacementId &&
+					selected.Scope.strBossArchetypeId ==
+						lifecycle.Scope.strBossArchetypeId &&
+					selected.Scope.ExpectedGameplayRevision ==
+						lifecycle.Scope.ExpectedGameplayRevision &&
+					selected.Scope.ExpectedGameplayRevision ==
+						lifecycle.PinnedGameplayRevision &&
+					selected.Scope.iExpectedSourceRevision ==
+						lifecycle.Scope.iExpectedSourceRevision &&
+					selected.Scope.iExpectedSourceRevision ==
+						lifecycle.iPinnedSourceRevision &&
+					"KAKULSAYDON_G1_PIZZA" == lifecycle.strPatternId;
+				if (KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
+					lifecycle.eState)
+				{
+					liveStageIndices.push_back(lifecycle.iStageIndex);
+					if (0u == occurrenceSequence)
+						occurrenceSequence = lifecycle.iPatternSequence;
+					exactLifecycleIdentity = exactLifecycleIdentity &&
+						occurrenceSequence == lifecycle.iPatternSequence;
+				}
+				else if (KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::
+					PATTERN_COMPLETED == lifecycle.eState)
+				{
+					++patternCompletedCount;
+					exactLifecycleIdentity = exactLifecycleIdentity &&
+						occurrenceSequence == lifecycle.iPatternSequence &&
+						5u == lifecycle.iStageIndex;
+				}
+				else if (KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED ==
+					lifecycle.eState)
+				{
+					++completedCount;
+					exactLifecycleIdentity = exactLifecycleIdentity &&
+						occurrenceSequence == lifecycle.iPatternSequence &&
+						5u == lifecycle.iStageIndex;
+				}
+			}
+			const std::vector<std::uint32_t> expectedLiveStages =
+				{ 0u, 1u, 2u, 3u, 4u, 5u };
+			tests.Require(runtimeAdvanced && exactLifecycleIdentity &&
+				0u != occurrenceSequence &&
+				expectedLiveStages == liveStageIndices &&
+				1u == patternCompletedCount && 1u == completedCount &&
+				CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
+					room->m_KoukuSaydonPatternAudition.ePhase &&
+				liveBoss->strPatternId.empty() &&
+				SERVER_ENTITY_ACTION::IDLE == liveBoss->eAction,
+				"Publish exact KoukuSaydon Pending Active stage Live and terminal lifecycle edges");
+
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT duplicateResult{};
+			const std::size_t lifecycleCountBeforeStaleRequest =
+				room->m_PendingKoukuSaydonPatternAuditionLifecycle.size();
+			auto staleSourceIdentity = selected;
+			staleSourceIdentity.Scope.iExpectedSourceRevision =
+				wrongSourceRevision.Scope.iExpectedSourceRevision;
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT staleSourceResult{};
+			const bool staleSourceRejected =
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_STALE_REQUEST ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, staleSourceIdentity, staleSourceResult) &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_STALE_REQUEST ==
+					staleSourceResult.eResult &&
+				lifecycleCountBeforeStaleRequest ==
+					room->m_PendingKoukuSaydonPatternAuditionLifecycle.size();
+			const bool duplicateReconciled =
+				staleSourceRejected &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, selected, duplicateResult) &&
+				duplicateResult.Scope.ExpectedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				duplicateResult.Scope.iExpectedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				duplicateResult.PinnedGameplayRevision ==
+					selected.Scope.ExpectedGameplayRevision &&
+				duplicateResult.iPinnedSourceRevision ==
+					selected.Scope.iExpectedSourceRevision &&
+				occurrenceSequence == duplicateResult.iPatternSequence &&
+				5u == duplicateResult.iStageIndex;
+
+			auto playAll = selected;
+			playAll.iRequestSequence = 3u;
+			playAll.eOperation =
+				KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL;
+			playAll.strPatternId.clear();
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT playAllResult{};
+			const bool playAllQueued = duplicateReconciled &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
+					room->Evaluate_KoukuSaydonPatternAudition(
+						8101u, playAll, playAllResult) &&
+				sequence->PatternIds ==
+					room->m_KoukuSaydonPatternAudition.PatternIds &&
+				sequence->TransitionPursuitTicks ==
+					room->m_KoukuSaydonPatternAudition.TransitionTicks &&
+				playAllResult.Scope.ExpectedGameplayRevision ==
+					playAll.Scope.ExpectedGameplayRevision &&
+				playAllResult.Scope.iExpectedSourceRevision ==
+					playAll.Scope.iExpectedSourceRevision &&
+				playAllResult.PinnedGameplayRevision ==
+					playAll.Scope.ExpectedGameplayRevision &&
+				playAllResult.iPinnedSourceRevision ==
+					playAll.Scope.iExpectedSourceRevision &&
+				sequence->PatternIds.front() ==
+					playAllResult.strResolvedPatternId;
+			tests.Require(exactScopeRejected && gameplayRevisionRejected &&
+				sourceRevisionRejected && staleSourceRejected &&
+				selectedQueued &&
+				duplicateReconciled && playAllQueued,
+				"Scope Play Selected retries and Play All consume only the Server Product sequence");
+
+			/* Evaluate stages PENDING locally, while Handle sends the result frame
+			   immediately. The room can only flush PENDING/ACTIVE after the fixed
+			   world update, so the real reliable session FIFO must expose the verdict
+			   before either lifecycle edge. */
+			constexpr SESSION_ID FIFO_SESSION = 8102u;
+			auto fifoRoom = std::make_unique<CGameRoom>(
+				WORLD_ID::KAKULSAYDON_ARENA);
+			auto fifoSession = std::make_shared<CClientSession>(
+				FIFO_SESSION, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			fifoSession->m_isSendRunning.store(true);
+			fifoRoom->m_Sessions.emplace(FIFO_SESSION, fifoSession);
+			auto fifoRequest = selected;
+			fifoRequest.iRequestSequence = 1u;
+			fifoRequest.Scope.ExpectedGameplayRevision =
+				fifoRoom->m_GameplayCatalog.Get_ActiveRevision();
+			fifoRequest.Scope.iExpectedSourceRevision =
+				CKoukuSaydonBrain::Resolve_ProductSourceRevision(
+					fifoRoom->m_GameplayCatalog.Active());
+			fifoRoom->Handle_KoukuSaydonPatternAudition(
+				FIFO_SESSION, fifoRequest);
+			fifoRoom->Tick(1.f / 30.f);
+
+			struct KOUKU_FIFO_EDGE final
+			{
+				bool isResult = false;
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT Result{};
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE Lifecycle{};
+			};
+			std::vector<KOUKU_FIFO_EDGE> fifoEdges;
+			for (const auto& outbound : fifoSession->m_OutboundFrames)
+			{
+				if (PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT !=
+						outbound.ePacketType &&
+					PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE !=
+						outbound.ePacketType)
+				{
+					continue;
+				}
+				PACKET_HEADER header{};
+				if (!Read_Packet_Header(outbound.Bytes, header) ||
+					outbound.Bytes.size() < PACKET_HEADER_BYTES)
+				{
+					continue;
+				}
+				CPacketReader reader{ std::span<const std::uint8_t>(
+					outbound.Bytes.data() + PACKET_HEADER_BYTES,
+					outbound.Bytes.size() - PACKET_HEADER_BYTES) };
+				KOUKU_FIFO_EDGE edge{};
+				if (PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT ==
+					header.ePacketType)
+				{
+					edge.isResult = Read_Message(reader, edge.Result) &&
+						0u == reader.Get_RemainingSize();
+					if (edge.isResult)
+						fifoEdges.push_back(std::move(edge));
+				}
+				else if (PACKET_TYPE::
+					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE ==
+						header.ePacketType &&
+					Read_Message(reader, edge.Lifecycle) &&
+					0u == reader.Get_RemainingSize())
+				{
+					fifoEdges.push_back(std::move(edge));
+				}
+			}
+			const bool resultBeforeLifecycle = fifoRoom->Is_Ready() &&
+				3u == fifoEdges.size() && fifoEdges[0u].isResult &&
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
+					fifoEdges[0u].Result.eResult &&
+				!fifoEdges[1u].isResult &&
+				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING ==
+					fifoEdges[1u].Lifecycle.eState &&
+				!fifoEdges[2u].isResult &&
+				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
+					fifoEdges[2u].Lifecycle.eState &&
+				0u == fifoEdges[2u].Lifecycle.iStageIndex &&
+				"KAKULSAYDON_G1_PIZZA" ==
+					fifoEdges[2u].Lifecycle.strPatternId &&
+				fifoRequest.iRequestSequence ==
+					fifoEdges[0u].Result.iRequestSequence &&
+				fifoEdges[0u].Result.iRequestSequence ==
+					fifoEdges[1u].Lifecycle.iRequestSequence &&
+				fifoEdges[0u].Result.iRequestSequence ==
+					fifoEdges[2u].Lifecycle.iRequestSequence;
+			const bool fifoExactRevisionEcho = resultBeforeLifecycle &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[0u].Result.Scope.ExpectedGameplayRevision &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[0u].Result.PinnedGameplayRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[0u].Result.Scope.iExpectedSourceRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[0u].Result.iPinnedSourceRevision &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[1u].Lifecycle.Scope.ExpectedGameplayRevision &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[1u].Lifecycle.PinnedGameplayRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[1u].Lifecycle.Scope.iExpectedSourceRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[1u].Lifecycle.iPinnedSourceRevision &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[2u].Lifecycle.Scope.ExpectedGameplayRevision &&
+				fifoRequest.Scope.ExpectedGameplayRevision ==
+					fifoEdges[2u].Lifecycle.PinnedGameplayRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[2u].Lifecycle.Scope.iExpectedSourceRevision &&
+				fifoRequest.Scope.iExpectedSourceRevision ==
+					fifoEdges[2u].Lifecycle.iPinnedSourceRevision;
+			tests.Require(resultBeforeLifecycle,
+				"Send KoukuSaydon QUEUED result before PENDING and first Active Live edge");
+			tests.Require(fifoExactRevisionEcho,
+				"Echo exact KoukuSaydon gameplay and Product source pins on every FIFO edge");
+			fifoSession->Request_Close();
+#endif
+		}
+	}
 	{
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
@@ -2839,9 +3422,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						runner.bPortalRushTargetLocked &&
 						BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
 							runner.ePatternStageMotionKind &&
-						std::fabs(runner.fPortalRushDistanceM - 12.9903810568f) <
+						std::fabs(runner.fPortalRushDistanceM - 15.5884572681f) <
 							0.001f &&
-						std::fabs(runner.fPortalRushSpeedMps - 9.9926008129f) <
+						std::fabs(runner.fPortalRushSpeedMps - 11.9911209755f) <
 							0.001f &&
 						runner.DependentPatternSequence.PatternIds.empty();
 				}
@@ -2952,7 +3535,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				portalCadenceExact && index < portalSpawnTicks.size(); ++index)
 			{
 				portalCadenceExact =
-					147u == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
+					237u == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
 			}
 			const auto primary = std::find_if(
 				room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
@@ -5285,7 +5868,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t120\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t120\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE";
 		std::string wrappingPortalVolleyBootstrap = bootstrapText;
 		const bool madeWrappingPortalVolley = replaceBootstrapRow(
@@ -5293,7 +5876,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t121\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t121\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		std::string nonEquilateralPortalVolleyBootstrap = bootstrapText;
 		const bool madeNonEquilateralPortalVolley = replaceBootstrapRow(
@@ -5301,7 +5884,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t7.5\t30\t119\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t119\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		const std::string highJumpVolleyRow =
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t"
@@ -15930,7 +16513,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* Phase-three portal charges and their visible runners start together at
 		the three authored radial vertices, wait 300 ms, and traverse the
-		radius-7.5 m triangle without navigation projection. */
+		radius-9 m triangle without navigation projection. */
 		CGameRoom portalRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
 		const bool initializedPortalRoom = portalRoom.Initialize_WorldEntities();
 		portalRoom.m_ServerNavigation = CServerNavigation{};
@@ -15986,7 +16569,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::set<int> portalUndirectedEdgeHeadings;
 		constexpr float DEGREES_TO_RADIANS_TEST =
 			0.01745329251994329577f;
-		constexpr float PORTAL_CIRCUMRADIUS = 7.5f;
+		constexpr float PORTAL_CIRCUMRADIUS = 9.f;
 		for (std::size_t ordinal = 0u;
 			triangleEdgeRoutesExact && ordinal < portalObjects.size(); ++ordinal)
 		{
@@ -16040,7 +16623,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					portalBoss.fPositionY) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fPositionZ -
 					(portalBoss.fPositionZ + startOffsetZ)) < 0.001f &&
-				std::abs(routeLength - 12.9903811f) < 0.001f &&
+				std::abs(routeLength - 15.5884573f) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionX -
 					expectedDirectionX) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionZ -
@@ -16048,8 +16631,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				std::abs(object.LiveState.CurrentPose.fYawDegrees - expectedYaw) <
 					0.001f &&
 				exactUndirectedHeading &&
-				std::abs(object.fSpeedMps - 9.99260081f) < 0.001f &&
-				std::abs(object.fRemainingDistanceM - 12.9903811f) < 0.001f &&
+				std::abs(object.fSpeedMps - 11.9911210f) < 0.001f &&
+				std::abs(object.fRemainingDistanceM - 15.5884573f) < 0.001f &&
 				300u == object.iMovementStartDelayMs &&
 				!object.bExpireOnDistanceEnd &&
 				std::abs(object.fRemainingMilliseconds - 1900.f) < 0.001f &&
@@ -16075,8 +16658,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					(portalBoss.fPositionZ + startOffsetZ + routeZ)) < 0.001f &&
 				std::abs(runner.fYawDegrees - expectedYaw) < 0.001f &&
 				300u == runner.iPortalRushRetargetDelayMs &&
-				std::abs(runner.fPortalRushSpeedMps - 9.99260081f) < 0.001f &&
-				std::abs(runner.fPortalRushDistanceM - 12.9903811f) < 0.001f;
+				std::abs(runner.fPortalRushSpeedMps - 11.9911210f) < 0.001f &&
+				std::abs(runner.fPortalRushDistanceM - 15.5884573f) < 0.001f;
 		}
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> portalSpawned;
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>

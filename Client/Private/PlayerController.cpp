@@ -13,6 +13,7 @@
 #include "UIInputRouter.h"
 
 #include <cmath>
+#include <cstdio>
 
 namespace
 {
@@ -155,8 +156,14 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	m_LastSentSkillAim = {};
 }
 
-void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
+void Client::CPlayerController::Update(
+	const bool_t gameplayCommandsEnabled, const bool_t debugPlacementEnabled)
 {
+#ifdef _DEBUG
+	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled);
+#else
+	(void)debugPlacementEnabled;
+#endif
 	/* One-shot, consumed here regardless of which branch below actually
 	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
 	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
@@ -674,6 +681,14 @@ std::uint8_t Client::CPlayerController::Poll_EstherSlot(
 void Client::CPlayerController::Set_CommandSink(
 	const shared_ptr<IPlayerCommandSink>& commandSink)
 {
+#ifdef _DEBUG
+	if (m_pCommandSink != commandSink)
+	{
+		Cancel_DebugPlayerPlacement();
+		m_pendingDebugPlacementSequence = 0u;
+		m_debugPlacementStatus.clear();
+	}
+#endif
 	m_pCommandSink = commandSink;
 }
 
@@ -706,6 +721,150 @@ bool_t Client::CPlayerController::Request_DebugKillSelf()
 	if (0u == m_iNextActionSequence)
 		m_iNextActionSequence = 1u;
 	return true;
+}
+#endif
+
+#ifdef _DEBUG
+bool_t Client::CPlayerController::Begin_DebugPlayerPlacement(
+	const LostArk::Shared::WORLD_ID worldId)
+{
+	using LostArk::Shared::WORLD_ID;
+	if (!m_debugPlacementEnabled || Is_DebugPlayerPlacementPending() ||
+		m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId))
+	{
+		if (!Is_DebugPlayerPlacementPending())
+			m_debugPlacementStatus = "Move Player requires a live player and F6 free camera.";
+		return false;
+	}
+	Cancel_GroundTargeting();
+	m_debugPlacementWorld = worldId;
+	m_debugPlacementArmed = true;
+	// The button's own press must be released before the viewport can consume a click.
+	m_wasDebugPlacementLeftDown = true;
+	m_debugPlacementStatus = "Click visible ground once. Esc or right-click cancels.";
+	return true;
+}
+
+void Client::CPlayerController::Cancel_DebugPlayerPlacement()
+{
+	if (m_debugPlacementArmed)
+		m_debugPlacementStatus = "Player placement cancelled.";
+	m_debugPlacementArmed = false;
+}
+
+void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled)
+{
+	using namespace LostArk::Shared;
+	m_debugPlacementEnabled = enabled;
+	const bool_t leftDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+	const bool_t leftPressed = leftDown && !m_wasDebugPlacementLeftDown;
+	m_wasDebugPlacementLeftDown = leftDown;
+
+	if (nullptr != m_pCommandSink)
+	{
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
+		while (m_pCommandSink->Consume_DebugTeleportResult(result))
+		{
+			if (0u == m_pendingDebugPlacementSequence ||
+				result.iRequestSequence != m_pendingDebugPlacementSequence ||
+				result.eWorldId != m_debugPlacementWorld)
+				continue;
+			m_pendingDebugPlacementSequence = 0u;
+			m_debugPlacementReplyDelayed = false;
+			switch (result.eResult)
+			{
+			case DEBUG_TELEPORT_RESULT::ACCEPTED:
+			{
+				char status[160]{};
+				sprintf_s(status, "Server moved player to (%.2f, %.2f, %.2f).",
+					result.fPositionX, result.fPositionY, result.fPositionZ);
+				m_debugPlacementStatus = status;
+				break;
+			}
+			case DEBUG_TELEPORT_RESULT::REJECTED_DISABLED:
+				m_debugPlacementStatus = "Move Player requires a Debug Server."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_SESSION:
+				m_debugPlacementStatus = "Server rejected placement: player session is unavailable."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD:
+				m_debugPlacementStatus = "Server rejected placement: the current world changed."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_STALE_SEQUENCE:
+				m_debugPlacementStatus = "Server rejected an old or duplicate placement request."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE:
+				m_debugPlacementStatus = "Server rejected placement: player is dead, falling or captured."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION:
+				m_debugPlacementStatus = "Server rejected placement: invalid picked position."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_NAVIGATION:
+				m_debugPlacementStatus = "Server rejected placement: choose walkable ground."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT:
+				m_debugPlacementStatus = "Server rejected placement: picked surface is not the navigation floor."; break;
+			case DEBUG_TELEPORT_RESULT::REJECTED_COLLISION:
+				m_debugPlacementStatus = "Server rejected placement: player would overlap a blocker."; break;
+			default:
+				m_debugPlacementStatus = "Server returned an unsupported placement result."; break;
+			}
+		}
+	}
+	if (Is_DebugPlayerPlacementPending() && !m_debugPlacementReplyDelayed &&
+		std::chrono::steady_clock::now() - m_debugPlacementSentAt > std::chrono::seconds(5))
+	{
+		m_debugPlacementReplyDelayed = true;
+		m_debugPlacementStatus = "Server reply delayed; placement is not yet confirmed.";
+	}
+	if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink)
+	{
+		if (m_debugPlacementArmed || Is_DebugPlayerPlacementPending())
+			m_debugPlacementStatus = "Player placement ended: player connection is unavailable.";
+		m_debugPlacementArmed = false;
+		m_pendingDebugPlacementSequence = 0u;
+		return;
+	}
+	if (!enabled || Is_PlayerControlCaptured(CCombatHUDViewModel::Get().Get_Player()))
+	{
+		Cancel_DebugPlayerPlacement();
+		return;
+	}
+	if (!m_debugPlacementArmed || GetForegroundWindow() != g_hWnd)
+		return;
+	if (ImGui::GetIO().WantTextInput || CUIInputRouter::Get().Is_TextInputActive())
+		return;
+	if (CGameInstance::Get().Get_DIKeyPressedRaw(DIK_ESCAPE) ||
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80))
+	{
+		Cancel_DebugPlayerPlacement();
+		return;
+	}
+	if (!leftPressed || ImGui::GetIO().WantCaptureMouse ||
+		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+		CGameInstance::Get().IsMouseInputBlocked() ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80))
+		return;
+
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+	CUIInputRouter::Get().Claim_Mouse_This_Frame();
+	m_BasicAttackResendGate.Suppress_UntilRelease();
+	float4_t picked{};
+	if (!CGameInstance::Get().Picking(picked) || !std::isfinite(picked.x) ||
+		!std::isfinite(picked.y) || !std::isfinite(picked.z))
+	{
+		m_debugPlacementStatus = "No surface under cursor. Click visible ground or cancel.";
+		return;
+	}
+	// Only submit intent. The server owns floor projection, reset and the snapshot.
+	if (!m_pCommandSink->Request_DebugTeleportToPosition(
+		m_nextDebugPlacementSequence, picked.x, picked.y, picked.z))
+	{
+		m_debugPlacementStatus = "Could not send placement request. Click again to retry.";
+		return;
+	}
+	m_pendingDebugPlacementSequence = m_nextDebugPlacementSequence;
+	if (0u == ++m_nextDebugPlacementSequence)
+		m_nextDebugPlacementSequence = 1u;
+	m_debugPlacementSentAt = std::chrono::steady_clock::now();
+	m_debugPlacementReplyDelayed = false;
+	m_debugPlacementArmed = false;
+	m_debugPlacementStatus = "Waiting for Server placement approval...";
 }
 #endif
 

@@ -1,6 +1,6 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 6,
+  "formatVersion": 7,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
@@ -133,6 +133,30 @@
       },
       "bodyModelPreScale": 0.01,
       "weaponModelPreScale": 1.0
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCZ_00",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
+      "weaponModel": null,
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
+      "serverProfileId": "boss.kakulsaydon.g1.kouku.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.g1.kouku.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "rpcz00_idle_battle_1",
+        "chase": "rpcz00_run_battle_1",
+        "patternWindup": "rpcz00_att_battle_3_01",
+        "patternActive": "rpcz00_att_battle_3_07",
+        "patternRecovery": "rpcz00_att_battle_3_09",
+        "dead": "rpcz00_dead_1"
+      },
+      "bodyModelPreScale": 0.02,
+      "weaponModelPreScale": null
     }
   ]
 }

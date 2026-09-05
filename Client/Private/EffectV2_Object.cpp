@@ -3,7 +3,9 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Npc.h"
+#include "Part_Body.h"
 #include "RuntimeAssetRoot.h"
+#include "Transform.h"
 #include "Valtan.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
@@ -92,7 +94,10 @@ Client::CEffectV2Object::CEffectV2Object(
 	XMStoreFloat4x4(&m_PivotWorld, XMMatrixIdentity());
 }
 
-Client::CEffectV2Object::~CEffectV2Object() = default;
+Client::CEffectV2Object::~CEffectV2Object()
+{
+	Release_ParticleBuffer(m_pParticleBuffer);
+}
 
 HRESULT Client::CEffectV2Object::Initialize_Prototype()
 {
@@ -133,14 +138,9 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 		break;
 	case SHAPE::SPRITE:
 	case SHAPE::DECAL:
-	{
-		unique_ptr<Engine::CVIBuffer_Rect> Rect =
-			Engine::CVIBuffer_Rect::Create(m_pDevice, m_pContext);
-		if (nullptr == Rect)
+		if (FAILED(Acquire_SharedRect(m_pDevice, m_pContext, m_pRect)))
 			return Fail("Rect buffer creation failed.");
-		m_pRect = std::move(Rect);
 		break;
-	}
 	case SHAPE::PARTICLE:
 	{
 		const uint32_t iCapacity = (std::min)(MAX_PARTICLE_CAPACITY,
@@ -153,13 +153,10 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 			if (m_bSkinned)
 				return Fail("Mesh particles need a static (non-skinned) WModel.");
 		}
-		else
+		else if (FAILED(Acquire_ParticleBuffer(
+			m_pDevice, m_pContext, iCapacity, m_pParticleBuffer)))
 		{
-			unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
-				Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iCapacity);
-			if (nullptr == Buffer)
-				return Fail("Particle buffer creation failed.");
-			m_pParticleBuffer = std::move(Buffer);
+			return Fail("Particle buffer creation failed.");
 		}
 		m_Particles.reserve(iCapacity);
 		m_ParticleInstances.reserve(iCapacity);
@@ -254,6 +251,25 @@ namespace
 	std::unordered_map<std::string, MODEL_CACHE_ENTRY> g_ModelCache;
 	std::map<wstring_t, shared_ptr<Engine::CShader>> g_ShaderCache;
 	std::unordered_map<std::string, ComPtr<ID3D11ShaderResourceView>> g_TextureCache;
+	shared_ptr<Engine::CVIBuffer_Rect> g_SharedRect;
+	/* Free list keyed by rounded capacity. Only the main thread spawns and
+	   destroys CEffectV2Object, so the pool needs no lock; the loader-thread
+	   Prewarm path never touches it. */
+	constexpr uint32_t PARTICLE_POOL_MIN_CAPACITY = 64u;
+	constexpr size_t PARTICLE_POOL_MAX_PER_BUCKET = 64u;
+	std::map<uint32_t, std::vector<shared_ptr<Engine::CVIBuffer_ParticleRect>>>
+		g_ParticleBufferPool;
+
+	/* Round an authored maxParticles up to a power-of-two bucket so that
+	   64/100/128 all reuse the same 128-slot buffers. Capacity only ever
+	   grows to MAX_PARTICLE_CAPACITY. */
+	uint32_t Round_ParticleCapacity(const uint32_t iRequired)
+	{
+		uint32_t iCapacity = PARTICLE_POOL_MIN_CAPACITY;
+		while (iCapacity < iRequired && iCapacity < MAX_PARTICLE_CAPACITY)
+			iCapacity <<= 1u;
+		return (std::min)(iCapacity, MAX_PARTICLE_CAPACITY);
+	}
 }
 
 HRESULT Client::CEffectV2Object::Acquire_Model(
@@ -423,6 +439,66 @@ HRESULT Client::CEffectV2Object::Acquire_Texture(
 	return S_OK;
 }
 
+HRESULT Client::CEffectV2Object::Acquire_SharedRect(
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext,
+	shared_ptr<Engine::CVIBuffer_Rect>& OutRect)
+{
+	if (nullptr == g_SharedRect)
+	{
+		unique_ptr<Engine::CVIBuffer_Rect> Rect =
+			Engine::CVIBuffer_Rect::Create(pDevice, pContext);
+		if (nullptr == Rect)
+			return E_FAIL;
+		g_SharedRect = std::move(Rect);
+	}
+	OutRect = g_SharedRect;
+	return S_OK;
+}
+
+HRESULT Client::CEffectV2Object::Acquire_ParticleBuffer(
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext,
+	const uint32_t iRequiredCapacity,
+	shared_ptr<Engine::CVIBuffer_ParticleRect>& OutBuffer)
+{
+	const uint32_t iCapacity = Round_ParticleCapacity(iRequiredCapacity);
+	if (nullptr != OutBuffer && OutBuffer->Get_Capacity() >= iCapacity)
+		return S_OK;
+	Release_ParticleBuffer(OutBuffer);
+	std::vector<shared_ptr<Engine::CVIBuffer_ParticleRect>>& Bucket =
+		g_ParticleBufferPool[iCapacity];
+	if (!Bucket.empty())
+	{
+		OutBuffer = std::move(Bucket.back());
+		Bucket.pop_back();
+		return S_OK;
+	}
+	unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
+		Engine::CVIBuffer_ParticleRect::Create(pDevice, pContext, iCapacity);
+	if (nullptr == Buffer)
+		return E_FAIL;
+	OutBuffer = std::move(Buffer);
+	return S_OK;
+}
+
+void Client::CEffectV2Object::Release_ParticleBuffer(
+	shared_ptr<Engine::CVIBuffer_ParticleRect>& Buffer)
+{
+	if (nullptr == Buffer)
+		return;
+	/* Only the sole owner may hand a buffer back; a buffer that another
+	   holder still references would otherwise be drawn by two objects. */
+	if (1 == Buffer.use_count())
+	{
+		std::vector<shared_ptr<Engine::CVIBuffer_ParticleRect>>& Bucket =
+			g_ParticleBufferPool[Buffer->Get_Capacity()];
+		if (Bucket.size() < PARTICLE_POOL_MAX_PER_BUCKET)
+			Bucket.push_back(std::move(Buffer));
+	}
+	Buffer.reset();
+}
+
 HRESULT Client::CEffectV2Object::Prewarm(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext,
@@ -468,6 +544,8 @@ void Client::CEffectV2Object::Clear_ResourceCache()
 	g_ModelCache.clear();
 	g_ShaderCache.clear();
 	g_TextureCache.clear();
+	g_SharedRect.reset();
+	g_ParticleBufferPool.clear();
 }
 
 const std::string& Client::CEffectV2Object::Part_Name(const uint32_t iIndex) const
@@ -650,6 +728,20 @@ Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Valtan(
 	return Target;
 }
 
+Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_PreviewBody(
+	const std::shared_ptr<CPart_Body>& pBody,
+	std::string strArchetypeId)
+{
+	EFFECT_V2_TARGET Target;
+	if (nullptr == pBody || strArchetypeId.empty())
+		return Target;
+	Target.eKind = EFFECT_V2_TARGET_KIND::PREVIEW_BODY;
+	Target.pOwner = pBody;
+	Target.pKey = pBody.get();
+	Target.strArchetypeId = std::move(strArchetypeId);
+	return Target;
+}
+
 void Client::CEffectV2Object::Set_FollowTarget(
 	const EFFECT_V2_TARGET& Target,
 	std::string strBone,
@@ -701,6 +793,18 @@ bool_t Client::CEffectV2Object::Resolve_TargetView(
 		OutView.bHasPortalRushRoute =
 			pValtan->Try_Get_PortalRushAnchorMatrices(
 				&OutView.PortalRushStart, &OutView.PortalRushEnd);
+		return true;
+	}
+	case EFFECT_V2_TARGET_KIND::PREVIEW_BODY:
+	{
+		const std::shared_ptr<CPart_Body> pBody = std::static_pointer_cast<CPart_Body>(pOwner);
+		const std::shared_ptr<CTransform> pTransform =
+			std::dynamic_pointer_cast<CTransform>(pBody->Get_Component(g_strTransformComTag));
+		if (nullptr == pBody->Get_Model() || nullptr == pTransform)
+			return false;
+		OutView.pModel = pBody->Get_Model();
+		OutView.BoneRoot = *pTransform->Get_WorldMatrixPtr();
+		OutView.YawBasis = OutView.BoneRoot;
 		return true;
 	}
 	default:
@@ -1060,13 +1164,9 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
 	const bool_t bMeshParticle = Is_MeshParticle();
 	if (!bMeshParticle &&
-		(nullptr == m_pParticleBuffer || m_pParticleBuffer->Get_Capacity() < iMax))
+		FAILED(Acquire_ParticleBuffer(m_pDevice, m_pContext, iMax, m_pParticleBuffer)))
 	{
-		unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
-			Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iMax);
-		if (nullptr == Buffer)
-			return E_FAIL;
-		m_pParticleBuffer = std::move(Buffer);
+		return E_FAIL;
 	}
 	const float4x4_t* pCameraWorld = CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
 	if (nullptr == pCameraWorld)

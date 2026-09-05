@@ -16,9 +16,9 @@ class ValtanPatternSoundOccurrencePinContractTests(unittest.TestCase):
         cls.audition_cpp = read("Client/Private/ValtanPatternAuditionService.cpp")
         cls.flow_h = read("Client/Public/ValtanPatternFlowService.h")
         cls.flow_cpp = read("Client/Private/ValtanPatternFlowService.cpp")
-        cls.boss_cpp = read("Client/Private/BossTool.cpp")
+        cls.boss_cpp = read("Client/Private/ValtanBossTool.cpp")
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
-        cls.workbench_cpp = read("Client/Private/ActionCompositionWorkbench.cpp")
+        cls.workbench_cpp = read("Client/Private/ValtanActionWorkbench.cpp")
         cls.replication_cpp = read("Client/Private/ClientReplication.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.audition_test = read(

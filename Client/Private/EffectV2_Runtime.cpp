@@ -138,6 +138,8 @@ namespace
 		static const std::string ValtanArchetype = VALTAN_ARCHETYPE_ID;
 		if (Client::EFFECT_V2_TARGET_KIND::VALTAN == Target.eKind)
 			return &ValtanArchetype;
+		if (Client::EFFECT_V2_TARGET_KIND::PREVIEW_BODY == Target.eKind)
+			return Target.strArchetypeId.empty() ? nullptr : &Target.strArchetypeId;
 		if (Client::EFFECT_V2_TARGET_KIND::NPC != Target.eKind)
 			return nullptr;
 		const std::shared_ptr<Engine::CGameObject> pOwner = Target.pOwner.lock();

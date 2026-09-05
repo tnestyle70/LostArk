@@ -4,6 +4,7 @@
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
+#include "MinimapView.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -45,10 +46,14 @@
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
-#include "ActionCompositionWorkbench.h"
+#include "KoukuSaydonActionWorkbench.h"
+#include "KoukuSaydonBossTool.h"
+#include "KoukuSaydonPatternAuditionService.h"
+#include "ValtanActionWorkbench.h"
 #include "BalanceTool.h"
-#include "BossTool.h"
+#include "ValtanBossTool.h"
 #include "CameraTool.h"
+#include "Camera_Free.h"
 #include "CharacterPreviewPanel.h"
 #include "ClientReplication.h"
 #include "Effect_Tool.h"
@@ -746,6 +751,7 @@ HRESULT CMainApp::Initialize()
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
+	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -815,6 +821,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
+	Update_Minimap(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
@@ -909,11 +916,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CNetworkManager::Get().Update();
 #ifdef _DEBUG
 	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
-	   Balance, Effect, and Boss Tools. Drain it once per frame here, independent
+	   Balance, Effect, and Valtan Boss Tools. Drain it once per frame here, independent
 	   of which panel is visible or which tree row is expanded. */
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
 	CValtanTuningCommandService::Get().Update();
+	CKoukuSaydonPatternAuditionService::Get().Update();
 #endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	if (ETOUI(LEVEL::LOADING) !=
@@ -941,21 +949,21 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
 	   authority. Consume it before Animation_Tool::Update so reclaiming after a
 	   domain deep-link does not stop the active preview for one extra frame. */
-	if (nullptr != m_pActionCompositionWorkbench &&
-		m_pActionCompositionWorkbench->Consume_PreviewOwnerClaimRequest())
+	if (nullptr != m_pValtanActionWorkbench &&
+		m_pValtanActionWorkbench->Consume_PreviewOwnerClaimRequest())
 	{
-		if (m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::COMPOSITION))
+		if (m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+			nullptr != m_pSequencerTool &&
+			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss())
 		{
-			m_eDebugInputOwner = DEBUG_TOOL::COMPOSITION;
-			m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION;
+			m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
 			m_strToolStatus =
-				"Action Composition Workbench reclaimed viewport/preview input.";
+				"Valtan Action Workbench reclaimed viewport/preview input.";
 		}
 		else
 		{
 			m_strToolStatus =
-				"Preview-owner claim rejected because Action Composition Workbench is not visible.";
+				"Preview-owner claim rejected because Valtan Action Workbench is not visible.";
 		}
 	}
 	if (nullptr != m_pAnimationTool)
@@ -963,8 +971,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		const bool_t bAnimationPreviewOwned =
 			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
-			(IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
-			 DEBUG_TOOL::COMPOSITION == m_eDebugInputOwner);
+			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+			 DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner);
 		m_pAnimationTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
@@ -974,17 +982,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	   reopen its exact local owners, then poll the optional Full DataOnly job. */
 	if (nullptr != m_pBalanceTool)
 		m_pBalanceTool->Update_ValtanSaveJob();
-	if (nullptr != m_pActionCompositionWorkbench)
-		m_pActionCompositionWorkbench->Update_SaveState();
+	if (nullptr != m_pValtanActionWorkbench)
+		m_pValtanActionWorkbench->Update_SaveState();
 	if (nullptr != m_pBalanceTool)
 		m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
 	/* Composition Save receipts are delivered independently of both Developer
 	   Tools visibility and the Composition window's Render call. If Effect Tool
 	   does not exist yet, leave the request pending in the Workbench. */
-	if (nullptr != m_pActionCompositionWorkbench && nullptr != m_pEffectTool)
+	if (nullptr != m_pValtanActionWorkbench && nullptr != m_pEffectTool)
 	{
 		std::string ExpectedValtanSourceRevision;
-		if (m_pActionCompositionWorkbench->Consume_EffectGraphRefreshRequest(
+		if (m_pValtanActionWorkbench->Consume_EffectGraphRefreshRequest(
 				ExpectedValtanSourceRevision))
 		{
 			m_pEffectTool->Request_ValtanGraphRefresh(
@@ -1004,19 +1012,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				"The typed Effect owner preserved its current draft; inspect the owner status.";
 		}
 	}
-	if (nullptr != m_pBossTool)
+	if (nullptr != m_pValtanBossTool)
 	{
-		m_pBossTool->Update(
+		m_pValtanBossTool->Update(
 			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::BOSS),
+				IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
 			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN));
-		if (m_pBossTool->Consume_LogicPatternOpenRequest())
+				IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
+		if (m_pValtanBossTool->Consume_LogicPatternOpenRequest())
 		{
-			(void)EnsureDebugTool(DEBUG_TOOL::LOGIC_PATTERN);
+			(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 		}
 		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
-		if (m_pBossTool->Consume_CameraToolOpenRequest(cameraRequest))
+		if (m_pValtanBossTool->Consume_CameraToolOpenRequest(cameraRequest))
 		{
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
 				nullptr != m_pCameraTool)
@@ -1025,7 +1033,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
-		if (m_pBossTool->Consume_EffectToolOpenRequest(effectRequest))
+		if (m_pValtanBossTool->Consume_EffectToolOpenRequest(effectRequest))
 		{
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
 				nullptr != m_pEffectTool)
@@ -1069,10 +1077,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 	}
-	if (nullptr != m_pActionCompositionWorkbench)
+	if (nullptr != m_pValtanActionWorkbench)
 	{
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
-		if (m_pActionCompositionWorkbench->Consume_EffectToolOpenRequest(
+		if (m_pValtanActionWorkbench->Consume_EffectToolOpenRequest(
 				effectRequest))
 		{
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
@@ -1086,7 +1094,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
-		if (m_pActionCompositionWorkbench->Consume_CameraToolOpenRequest(
+		if (m_pValtanActionWorkbench->Consume_CameraToolOpenRequest(
 				cameraRequest))
 		{
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
@@ -1098,20 +1106,284 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					"Camera Tool opened, but the selected Composition cue needs attention.";
 			}
 		}
-		if (m_pActionCompositionWorkbench->Consume_AnimationToolOpenRequest())
+		if (m_pValtanActionWorkbench->Consume_AnimationToolOpenRequest())
 		{
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
 				nullptr != m_pAnimationTool)
 			{
 				(void)m_pAnimationTool->Open_ValtanWorkspace();
 				m_strToolStatus =
-					"Opened Animation Clip/Sequence Intake beside Action Composition Workbench.";
+					"Opened Animation Clip/Sequence Intake beside Valtan Action Workbench.";
 			}
 		}
-		m_pActionCompositionWorkbench->Set_PreviewOwnerActive(
+		m_pValtanActionWorkbench->Set_PreviewOwnerActive(
 			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
-			DEBUG_TOOL::COMPOSITION == m_eDebugInputOwner);
+			IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+			DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner && nullptr != m_pSequencerTool &&
+			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss());
+	}
+	// Both boss sessions share the physical inventory. Consume each refresh flag
+	// independently so a simultaneous request does not cause a second read next frame.
+	const bool shellResourceRefresh = nullptr != m_pSequencerTool &&
+		m_pSequencerTool->Consume_ResourceRefreshRequest();
+	const bool koukuResourceRefresh = nullptr != m_pKoukuSaydonActionWorkbench &&
+		m_pKoukuSaydonActionWorkbench->Consume_ResourceRefreshRequest();
+	if (shellResourceRefresh || koukuResourceRefresh)
+	{
+		if (SUCCEEDED(EnsureAnimationPreviewBackend()))
+		{
+			std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
+			std::string status;
+			(void)m_pAnimationTool->Read_CompositionAnimationResources(resources, status);
+			std::vector<CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW> sequences;
+			std::vector<COMPOSITION_ANIMATION_SEQUENCE_RESOURCE> sequenceResources;
+			std::string sequenceStatus;
+			const bool_t sequencesLoaded = m_pAnimationTool->Get_ValtanCompositionSequences(
+				sequences, sequenceStatus);
+			if (sequencesLoaded)
+			{
+				for (const auto& sequence : sequences)
+				{
+					COMPOSITION_ANIMATION_SEQUENCE_RESOURCE resourceSequence;
+					resourceSequence.strStableId = sequence.strStableId;
+					resourceSequence.strDisplayName = sequence.strDisplayName;
+					resourceSequence.strProfileId = "Valtan";
+					resourceSequence.strTargetAssetName = "Valtan";
+					for (const auto& clip : sequence.Clips)
+					{
+						const auto native = std::find_if(resources.begin(), resources.end(),
+							[&clip](const auto& candidate) {
+								return candidate.strTargetAssetName == "Valtan" &&
+									candidate.strRuntimeClip == clip.strClipName;
+							});
+						COMPOSITION_ANIMATION_RESOURCE resource;
+						if (native != resources.end()) resource = *native;
+						const std::uint32_t nativeDurationMs = resource.iDurationMs;
+						resource.strTargetAssetName = resource.strProfileId = "Valtan";
+						resource.strRuntimeClip = clip.strClipName;
+						if (!clip.bUsesNativeDuration && clip.iDurationMs > 0u)
+							resource.iDurationMs = clip.iDurationMs;
+						if (nativeDurationMs > 0u && resource.iDurationMs > nativeDurationMs)
+							resource.strEndPolicy = clip.strClipName.find("_loop") != std::string::npos ?
+								"LOOP_TO_WINDOW" : "HOLD_LAST_POSE";
+						resourceSequence.Clips.push_back(std::move(resource));
+					}
+					sequenceResources.push_back(std::move(resourceSequence));
+				}
+			}
+			if (nullptr != m_pSequencerTool)
+				m_pSequencerTool->Set_AnimationResources(resources, status);
+			if (nullptr != m_pKoukuSaydonActionWorkbench)
+			{
+				m_pKoukuSaydonActionWorkbench->Set_ModelResources(std::move(resources), std::move(status));
+				m_pKoukuSaydonActionWorkbench->Set_SequenceResources(
+					std::move(sequenceResources), std::move(sequenceStatus), sequencesLoaded);
+			}
+		}
+		else
+		{
+			m_strToolStatus = "Animation preview backend could not initialize for Resources.";
+			if (nullptr != m_pSequencerTool)
+				m_pSequencerTool->Set_AnimationResources({}, m_strToolStatus);
+		}
+	}
+	if (nullptr != m_pSequencerTool)
+	{
+		COMPOSITION_ANIMATION_RESOURCE resource;
+		if (m_pSequencerTool->Consume_AnimationPreviewRequest(resource))
+		{
+			if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
+			{
+				if (m_pAnimationTool->Preview_CompositionAnimationResource(resource, m_strToolStatus))
+				{
+					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				}
+			}
+			else
+				m_strToolStatus = "Animation preview backend could not initialize for the selected resource.";
+			m_pSequencerTool->Set_AnimationPreviewStatus(m_strToolStatus);
+		}
+	}
+	/* The K Workbench owns only composition data. A click transfers an immutable
+	   occurrence/pattern value to the existing real-CModel preview owner; no
+	   draft pointer or Valtan document crosses this boundary. */
+	std::string previewRouteStatus;
+	if (nullptr != m_pKoukuSaydonActionWorkbench)
+	{
+		m_pKoukuSaydonActionWorkbench->Tick_Background();
+		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
+		if (m_pKoukuSaydonActionWorkbench->Consume_AnimationPreviewRequest(
+				occurrence))
+		{
+			if (SUCCEEDED(EnsureAnimationPreviewBackend()) &&
+				nullptr != m_pAnimationTool)
+			{
+				const bool_t previewed =
+					m_pAnimationTool->Preview_KoukuSaydonCompositionAnimation(
+						occurrence, m_strToolStatus);
+				if (previewed)
+				{
+					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				}
+				else
+					previewRouteStatus = m_strToolStatus;
+			}
+			else
+			{
+				m_strToolStatus =
+					"Animation Tool could not open for KoukuSaydon resource preview.";
+				previewRouteStatus = m_strToolStatus;
+			}
+		}
+
+		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+		std::uint32_t startClockMs = 0u;
+		bool_t startPaused = false;
+		std::string targetAssetName;
+		if (m_pKoukuSaydonActionWorkbench->Consume_PatternPreviewRequest(
+				pattern, startClockMs, startPaused, targetAssetName))
+		{
+			if (SUCCEEDED(EnsureAnimationPreviewBackend()) &&
+				nullptr != m_pAnimationTool)
+			{
+				const bool_t previewed = targetAssetName.empty() ?
+					m_pAnimationTool->Preview_KoukuSaydonCompositionPattern(
+						pattern, m_strToolStatus, startClockMs, startPaused) :
+					m_pAnimationTool->Preview_CompositionResourcePattern(
+						pattern, targetAssetName, m_strToolStatus, startClockMs, startPaused);
+				if (previewed)
+				{
+					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				}
+				else
+					previewRouteStatus = m_strToolStatus;
+			}
+			else
+			{
+				m_strToolStatus =
+					"Animation Tool could not open for KoukuSaydon pattern preview.";
+				previewRouteStatus = m_strToolStatus;
+			}
+		}
+
+		/* Apply transport after a same-frame preview start, then return the
+		   resulting identity and clock together to the Workbench. */
+		KOUKU_PREVIEW_TRANSPORT transport = KOUKU_PREVIEW_TRANSPORT::NONE;
+		std::uint32_t seekMs = 0u;
+		if (m_pKoukuSaydonActionWorkbench->Consume_PreviewTransportRequest(
+				transport, seekMs) &&
+			nullptr != m_pAnimationTool)
+		{
+			std::string transportStatus;
+			switch (transport)
+			{
+			case KOUKU_PREVIEW_TRANSPORT::PAUSE:
+				(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(
+					true, transportStatus);
+				break;
+			case KOUKU_PREVIEW_TRANSPORT::RESUME:
+				(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(
+					false, transportStatus);
+				break;
+			case KOUKU_PREVIEW_TRANSPORT::STOP:
+				(void)m_pAnimationTool->Stop_KoukuCompositionPreview(transportStatus);
+				break;
+			case KOUKU_PREVIEW_TRANSPORT::SEEK:
+				(void)m_pAnimationTool->Seek_KoukuCompositionPreview(
+					seekMs, transportStatus);
+				break;
+			default:
+				break;
+			}
+			if (!transportStatus.empty())
+				m_strToolStatus = transportStatus;
+		}
+
+		std::string serverPatternId;
+		std::uint32_t sourceRevision = 0u;
+		if (m_pKoukuSaydonActionWorkbench->Consume_ServerPlayRequest(
+				serverPatternId, sourceRevision))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) &&
+				nullptr != m_pKoukuSaydonBossTool)
+			{
+				SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
+				(void)m_pKoukuSaydonBossTool->Play_PatternById(
+					serverPatternId, sourceRevision, m_strToolStatus);
+				m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
+				m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
+			}
+			else
+			{
+				m_strToolStatus =
+					"KoukuSaydon Boss Tool could not open for Server Play.";
+			}
+		}
+	}
+	// Apply shared transport after every queued start. A Stop in Resources
+	// must also cancel a Pattern/row start submitted during the same UI frame.
+	if (nullptr != m_pSequencerTool)
+	{
+		CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport =
+			CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE;
+		if (m_pSequencerTool->Consume_AnimationPreviewTransportRequest(transport))
+		{
+			if (nullptr != m_pAnimationTool)
+			{
+				switch (transport)
+				{
+				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE:
+					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
+					break;
+				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME:
+					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
+					break;
+				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP:
+					(void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+					break;
+				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE:
+					break;
+				}
+			}
+			else
+				m_strToolStatus = "No animation preview backend is active.";
+			m_pSequencerTool->Set_AnimationPreviewStatus(m_strToolStatus);
+		}
+	}
+	// Both panes receive the final sampler identity and clock from this frame.
+	if (nullptr != m_pKoukuSaydonActionWorkbench)
+	{
+		if (nullptr != m_pAnimationTool)
+		{
+			const CAnimation_Tool::KOUKU_COMPOSITION_PREVIEW_STATE previewState =
+				m_pAnimationTool->Get_KoukuCompositionPreviewState();
+			KOUKU_PREVIEW_STATE state;
+			state.strPatternId = previewState.strPatternId;
+			state.strStatus = previewRouteStatus.empty() ? previewState.strStatus : previewRouteStatus;
+			state.bPlaying = previewState.bPlaying;
+			state.bPaused = previewState.bPaused;
+			state.iClockMs = previewState.iClockMs;
+			state.iDurationMs = previewState.iDurationMs;
+			m_pKoukuSaydonActionWorkbench->Set_PreviewState(state);
+		}
+		else if (!previewRouteStatus.empty())
+		{
+			KOUKU_PREVIEW_STATE state;
+			state.strStatus = previewRouteStatus;
+			m_pKoukuSaydonActionWorkbench->Set_PreviewState(state);
+		}
+	}
+	if (nullptr != m_pSequencerTool && nullptr != m_pAnimationTool)
+	{
+		const auto previewState = m_pAnimationTool->Get_KoukuCompositionPreviewState();
+		CSequencerTool::ANIMATION_PREVIEW_STATE state;
+		state.strPatternId = previewState.strPatternId;
+		state.strStatus = previewState.strStatus;
+		state.bPlaying = previewState.bPlaying;
+		state.bPaused = previewState.bPaused;
+		state.iClockMs = previewState.iClockMs;
+		state.iDurationMs = previewState.iDurationMs;
+		m_pSequencerTool->Set_AnimationPreviewState(std::move(state));
 	}
 	if (nullptr != m_pCameraTool)
 	{
@@ -1253,9 +1525,8 @@ HRESULT CMainApp::Render()
 			Engine::CProfilerScope developerToolsScope(
 				CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
 			RenderDeveloperTools();
-			/* The authoring workspace is deliberately non-exclusive. Each domain owner
-			   keeps its own window and draft; Resource Files only orchestrates focus and
-			   typed deep-links. */
+			/* The Workbench shell renders one selected boss session. Other domain
+			   tools remain independent windows; every owner retains its own draft. */
 			const auto focusNextWindow = [this](const DEBUG_TOOL eTool)
 			{
 				if (m_eDebugWindowFocusPending != eTool)
@@ -1268,35 +1539,10 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::MAP);
 				m_pMapTool->Render();
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
-				nullptr != m_pActionCompositionWorkbench)
-			{
-				focusNextWindow(DEBUG_TOOL::COMPOSITION);
-				m_pActionCompositionWorkbench->Render();
-			}
-			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-				nullptr != m_pSequencerTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
 			{
 				focusNextWindow(DEBUG_TOOL::SEQUENCER);
 				m_pSequencerTool->Render();
-				if (m_pSequencerTool->Consume_CompositionOpenRequest() &&
-					SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::COMPOSITION)))
-				{
-					m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION;
-				}
-				std::string kakulProfileId;
-				if (m_pSequencerTool->Consume_KakulAnimationOpenRequest(
-						kakulProfileId) &&
-					SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
-					nullptr != m_pAnimationTool)
-				{
-					const bool_t opened =
-						m_pAnimationTool->Open_KakulProfile(kakulProfileId);
-					m_strToolStatus = opened ?
-						"Opened the selected Kakul Composition profile in its Animation authoring owner." :
-						"Animation Tool opened, but the selected Kakul profile was rejected; the current dirty draft was preserved.";
-					m_eDebugWindowFocusPending = DEBUG_TOOL::ANIMATION;
-				}
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
 			}
@@ -1339,19 +1585,27 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::BALANCE);
 				m_pBalanceTool->Render();
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::BOSS) && nullptr != m_pBossTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS) && nullptr != m_pValtanBossTool)
 			{
-				focusNextWindow(DEBUG_TOOL::BOSS);
-				m_pBossTool->Render();
-				if (!m_pBossTool->Is_Open())
-					SetDebugToolVisible(DEBUG_TOOL::BOSS, false);
+				focusNextWindow(DEBUG_TOOL::VALTAN_BOSS);
+				m_pValtanBossTool->Render();
+				if (!m_pValtanBossTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS, false);
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN) && nullptr != m_pBossTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS) &&
+				nullptr != m_pKoukuSaydonBossTool)
 			{
-				focusNextWindow(DEBUG_TOOL::LOGIC_PATTERN);
-				m_pBossTool->Render_LogicPatternWindow();
-				if (!m_pBossTool->Is_LogicPatternOpen())
-					SetDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN, false);
+				focusNextWindow(DEBUG_TOOL::KOUKU_SAYDON_BOSS);
+				m_pKoukuSaydonBossTool->Render();
+				if (!m_pKoukuSaydonBossTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, false);
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN) && nullptr != m_pValtanBossTool)
+			{
+				focusNextWindow(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
+				m_pValtanBossTool->Render_LogicPatternWindow();
+				if (!m_pValtanBossTool->Is_LogicPatternOpen())
+					SetDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::CAMERA) && nullptr != m_pCameraTool)
 			{
@@ -1416,6 +1670,7 @@ HRESULT CMainApp::Render()
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
 	RenderCharacterSelectWindowText();
+	RenderMinimapText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -2116,6 +2371,52 @@ void CMainApp::RenderCharacterSelectWindowText()
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	m_pCharacterSelectWindowView->RenderText();
+}
+
+void CMainApp::Update_Minimap(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pMinimapView)
+		return;
+	/* Each level owns its own CClientReplication, so the active one is asked for the marker
+	snapshot the same way the party window reaches Get_PartyRoster(). */
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	CClientReplication::MINIMAP_MARKER_SNAPSHOT Snapshot{};
+	LEVEL eLevel = LEVEL::END;
+	bool_t bHasSnapshot = false;
+	if (ETOUI(LEVEL::BERN) == iLevel)
+	{
+		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		{
+			pBern->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::BERN;
+			bHasSnapshot = true;
+		}
+	}
+	else if (ETOUI(LEVEL::VALTAN_ARENA) == iLevel)
+	{
+		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+		{
+			pValtanArena->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::VALTAN_ARENA;
+			bHasSnapshot = true;
+		}
+	}
+	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == iLevel)
+	{
+		if (CLevel_KakulSaydonArena* pKakulSaydonArena = CLevel_KakulSaydonArena::Get_Active())
+		{
+			pKakulSaydonArena->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::KAKULSAYDON_ARENA;
+			bHasSnapshot = true;
+		}
+	}
+	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+}
+
+void CMainApp::RenderMinimapText()
+{
+	if (nullptr != m_pMinimapView)
+		m_pMinimapView->RenderText();
 }
 
 void CMainApp::RenderLobbyButtonText()
@@ -4536,7 +4837,18 @@ void CMainApp::RenderDamageNumbers()
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = 1.1;
+	/* Retail damagetext.gfx (EFUI_DAMAGE, class DamageTextCBT2): $YoonGasiIIM 32px centered text
+	on the 1080p stage, driven by two linear tweens. The native side passes the tween values and
+	no shipped data table carries them, so the factory defaults in the decompiled AS3 are the
+	evidence used here: phase 0 (450 ms) holds 32px and drifts 15px up; phase 1 (70 ms) shrinks
+	to 19px, drifts on to 100px up and fades to 0. Stage pixels scale with the viewport height. */
+	constexpr f64_t DAMAGE_PHASE0_SECONDS = 0.45;
+	constexpr f64_t DAMAGE_PHASE1_SECONDS = 0.07;
+	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = DAMAGE_PHASE0_SECONDS + DAMAGE_PHASE1_SECONDS;
+	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
+	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
+	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
+	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
 	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 48u;
 
 	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
@@ -4545,9 +4857,13 @@ void CMainApp::RenderDamageNumbers()
 	the buffer trims from the front. */
 	const std::vector<HUD_DAMAGE_EVENT>& damageEvents =
 		CCombatHUDViewModel::Get().Get_DamageEvents();
+	/* Compare against the cursor as it was before this pass: one snapshot batches every hit of
+	that tick under the same serverTick, so advancing the cursor inside the loop would drop all
+	but the first number of a multi-target hit. */
+	const uint32_t iSpawnedUpToTick = m_iLastRenderedDamageServerTick;
 	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
 	{
-		if (damageEvent.iServerTick <= m_iLastRenderedDamageServerTick)
+		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
 		FLOATING_DAMAGE_NUMBER number{};
 		number.dSpawnSeconds = Product_Now_Seconds();
@@ -4558,7 +4874,8 @@ void CMainApp::RenderDamageNumbers()
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		m_FloatingDamageNumbers.push_back(number);
-		m_iLastRenderedDamageServerTick = damageEvent.iServerTick;
+		m_iLastRenderedDamageServerTick =
+			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
 	}
 	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
@@ -4584,33 +4901,50 @@ void CMainApp::RenderDamageNumbers()
 		return;
 	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	const f32_t textScale = (std::min)(viewportSize.x / 1280.f, viewportSize.y / 720.f);
+	const f32_t stageScale = viewportSize.y / 1080.f;
 
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
-		const f32_t fLifeRatio = (std::clamp)(
-			static_cast<f32_t>((dNow - number.dSpawnSeconds) / DAMAGE_NUMBER_LIFETIME_SECONDS),
-			0.f, 1.f);
-		/* Rises above the real hit position and fades out over the back half of its lifetime,
-		instead of sitting flat on the hit point the whole time. */
+		const f64_t dAge = dNow - number.dSpawnSeconds;
+		f32_t fFontPx = DAMAGE_FONT_PX_START;
+		f32_t fRisePx = 0.f;
+		f32_t fAlpha = 1.f;
+		if (dAge < DAMAGE_PHASE0_SECONDS)
+		{
+			fRisePx = DAMAGE_RISE_PX_PHASE0 * static_cast<f32_t>(dAge / DAMAGE_PHASE0_SECONDS);
+		}
+		else
+		{
+			const f32_t t = (std::clamp)(
+				static_cast<f32_t>((dAge - DAMAGE_PHASE0_SECONDS) / DAMAGE_PHASE1_SECONDS), 0.f, 1.f);
+			fFontPx = DAMAGE_FONT_PX_START + (DAMAGE_FONT_PX_END - DAMAGE_FONT_PX_START) * t;
+			fRisePx = DAMAGE_RISE_PX_PHASE0 + (DAMAGE_RISE_PX_END - DAMAGE_RISE_PX_PHASE0) * t;
+			fAlpha = 1.f - t;
+		}
+		/* Anchored a little above the hit point (the event carries the target's ground position);
+		the tween moves it in screen space from there, like retail's canvas does. */
 		const vector_t vProjected = XMVector3Project(
 			XMVectorSet(
 				number.vWorldPosition.x,
-				number.vWorldPosition.y + 0.4f + 0.6f * fLifeRatio,
+				number.vWorldPosition.y + 1.f,
 				number.vWorldPosition.z,
 				1.f),
 			0.f, 0.f, viewportSize.x, viewportSize.y, 0.f, 1.f,
 			projection, view, XMMatrixIdentity());
 		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
 			continue;
-		const f32_t fAlpha = fLifeRatio < 0.6f ? 1.f : 1.f - (fLifeRatio - 0.6f) / 0.4f;
 		const wstring strAmount = Format_ThousandsSeparated(number.iAmount);
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
+		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
+		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
+		hit by project decision, incoming hits the enemy red (0xFF0000). */
 		const fvector_t vColor = number.isOutgoing ?
-			XMVectorSet(1.f, 0.86f, 0.24f, fAlpha) :
-			XMVectorSet(1.f, 0.28f, 0.22f, fAlpha);
+			XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
+			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
-			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected)),
-			vColor, 0.f, float2_t(0.5f, 0.5f), 0.6f * textScale);
+			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
 	}
 }
 
@@ -4989,8 +5323,10 @@ void CMainApp::Apply_LevelRequest()
 			m_pCharacterPreviewPanel->On_LevelChanged();
 		if (nullptr != m_pAnimationTool)
 			m_pAnimationTool->On_LevelChanged();
-		if (nullptr != m_pActionCompositionWorkbench)
-			m_pActionCompositionWorkbench->On_LevelChanged();
+		if (nullptr != m_pValtanActionWorkbench)
+			m_pValtanActionWorkbench->On_LevelChanged();
+		CKoukuSaydonPatternAuditionService::Get().Reset(
+			"Level changed; no KoukuSaydon Server pattern is Live in this Client session.");
 		if (nullptr != m_pEquipmentAuthoringTool)
 			m_pEquipmentAuthoringTool->On_LevelChanged();
 	#endif
@@ -5115,7 +5451,9 @@ HRESULT CMainApp::ReadyDebugTools()
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
 	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_V2 == eTool ?
-		DEBUG_TOOL::EFFECT : eTool;
+		DEBUG_TOOL::EFFECT :
+		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
+		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
 	const size_t iTool = static_cast<size_t>(eCanonicalTool);
 	return DEBUG_TOOL::NONE != eCanonicalTool &&
 		DEBUG_TOOL::COUNT != eCanonicalTool &&
@@ -5127,7 +5465,9 @@ void CMainApp::SetDebugToolVisible(
 	const bool_t bVisible)
 {
 	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_V2 == eTool ?
-		DEBUG_TOOL::EFFECT : eTool;
+		DEBUG_TOOL::EFFECT :
+		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
+		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
 	const size_t iTool = static_cast<size_t>(eCanonicalTool);
 	if (DEBUG_TOOL::NONE == eCanonicalTool ||
 		DEBUG_TOOL::COUNT == eCanonicalTool ||
@@ -5137,6 +5477,11 @@ void CMainApp::SetDebugToolVisible(
 	}
 
 	m_DebugToolVisible[iTool] = bVisible;
+	if (DEBUG_TOOL::SEQUENCER == eCanonicalTool)
+	{
+		m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH)] = false;
+		m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH)] = false;
+	}
 	if (DEBUG_TOOL::EFFECT == eCanonicalTool)
 	{
 		/* The retired compatibility slot never owns independent visibility. */
@@ -5179,11 +5524,38 @@ void CMainApp::CloseAllDebugTools()
 	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
 }
 
+HRESULT CMainApp::EnsureAnimationPreviewBackend()
+{
+	// Resource clicks need the shared CModel owner, without showing or focusing
+	// the Animation Tool window. Explicit Open Animation still uses EnsureDebugTool.
+	if (nullptr == m_pCharacterPreviewPanel)
+		m_pCharacterPreviewPanel =
+			make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+	if (nullptr == m_pBalanceTool)
+		m_pBalanceTool = make_unique<CBalanceTool>(false);
+	if (nullptr == m_pValtanBossTool)
+		m_pValtanBossTool = make_unique<CValtanBossTool>(
+			make_shared<CNetworkPlayerCommandSink>(), m_pBalanceTool.get());
+	if (nullptr == m_pAnimationTool)
+		m_pAnimationTool = make_unique<CAnimation_Tool>(
+			m_pCharacterPreviewPanel, m_pBalanceTool.get(), m_pValtanBossTool.get());
+	return S_OK;
+}
+
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_V2 == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
+	if (DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
+		DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool)
+	{
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)))
+			return E_FAIL;
+		m_pSequencerTool->Open(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ?
+			COMPOSITION_WORKBENCH_BOSS::VALTAN : COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+		return S_OK;
+	}
 
 	switch (eTool)
 	{
@@ -5197,57 +5569,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		}
 		m_pMapTool->SetOpen(true);
 		break;
-	case DEBUG_TOOL::COMPOSITION:
-		if (nullptr == m_pCharacterPreviewPanel)
-			m_pCharacterPreviewPanel =
-				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
-		if (nullptr == m_pBalanceTool)
-			m_pBalanceTool = make_unique<CBalanceTool>();
-		if (nullptr == m_pBossTool)
-			m_pBossTool = make_unique<CBossTool>(
-				make_shared<CNetworkPlayerCommandSink>(),
-				m_pBalanceTool.get());
-		/* Composition exposes Server Pattern playback without opening the Boss
-		   Tool window.  Admit that owner's canonical inventory on this explicit
-		   tool-open edge so its cheap revision observer is usable immediately;
-		   never hide a rejected load behind a disabled button forever. */
-		{
-			std::string BossGraphStatus;
-			if (!m_pBossTool->Reload_CanonicalGraph(BossGraphStatus))
-				m_strToolStatus =
-					"Composition opened, but Boss Pattern Server playback is read-only: " +
-					BossGraphStatus;
-		}
-		if (nullptr == m_pAnimationTool)
-			m_pAnimationTool = make_unique<CAnimation_Tool>(
-				m_pCharacterPreviewPanel,
-				m_pBalanceTool.get(), m_pBossTool.get());
-		if (nullptr == m_pActionCompositionWorkbench)
-		{
-			m_pActionCompositionWorkbench =
-				make_unique<CActionCompositionWorkbench>(
-					m_pAnimationTool.get(),
-					m_pBalanceTool.get(), m_pBossTool.get());
-		}
-		(void)m_pActionCompositionWorkbench->Open_Valtan();
-		break;
 	case DEBUG_TOOL::ANIMATION:
-		if (nullptr == m_pCharacterPreviewPanel)
-			m_pCharacterPreviewPanel =
-				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
-		/* Workbench orchestrates the existing domain owners.  Construct one
-		   shared Balance draft and one Server audition controller before the
-		   shell; neither underlying window is opened here. */
-		if (nullptr == m_pBalanceTool)
-			m_pBalanceTool = make_unique<CBalanceTool>();
-		if (nullptr == m_pBossTool)
-			m_pBossTool = make_unique<CBossTool>(
-				make_shared<CNetworkPlayerCommandSink>(),
-				m_pBalanceTool.get());
-		if (nullptr == m_pAnimationTool)
-			m_pAnimationTool = make_unique<CAnimation_Tool>(
-				m_pCharacterPreviewPanel,
-				m_pBalanceTool.get(), m_pBossTool.get());
+		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
 		break;
 	case DEBUG_TOOL::EFFECT:
 	{
@@ -5265,10 +5588,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		/* A Save may have completed while the Effect owner did not exist. Hand
 		   over its exact receipt before first-open code can perform an unpinned
 		   canonical refresh. */
-		if (nullptr != m_pActionCompositionWorkbench)
+		if (nullptr != m_pValtanActionWorkbench)
 		{
 			std::string ExpectedValtanSourceRevision;
-			if (m_pActionCompositionWorkbench->
+			if (m_pValtanActionWorkbench->
 					Consume_EffectGraphRefreshRequest(
 						ExpectedValtanSourceRevision))
 			{
@@ -5313,17 +5636,24 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			pProfiler->Set_Enabled(true);
 		break;
 	case DEBUG_TOOL::SEQUENCER:
-		/* The Sequencer reads the Composition Workbench's timeline projection,
-		   so that owner must exist first. Its window opens alongside. */
-		if (FAILED(EnsureDebugTool(DEBUG_TOOL::COMPOSITION)) ||
-			nullptr == m_pActionCompositionWorkbench)
-		{
-			return E_FAIL;
-		}
+		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
+		// Construct both independent sessions without loading the other boss's
+		// documents. The selected session lazily prepares its own frame.
+		if (nullptr == m_pValtanActionWorkbench)
+			m_pValtanActionWorkbench = make_unique<CValtanActionWorkbench>(
+				m_pAnimationTool.get(), m_pBalanceTool.get(), m_pValtanBossTool.get());
+		if (nullptr == m_pKoukuSaydonActionWorkbench)
+			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
 		if (nullptr == m_pSequencerTool)
+		{
 			m_pSequencerTool = make_unique<CSequencerTool>(
-				m_pActionCompositionWorkbench.get(), m_pBossTool.get());
-		m_pSequencerTool->Open();
+				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
+			m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+				CGameInstance::Get().Get_CurrentLevelID() ?
+				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
+		}
+		else
+			m_pSequencerTool->Open();
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
@@ -5335,23 +5665,30 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
 		m_pBalanceTool->Open();
 		break;
-	case DEBUG_TOOL::BOSS:
+	case DEBUG_TOOL::VALTAN_BOSS:
 		if (nullptr == m_pBalanceTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
-		if (nullptr == m_pBossTool)
-			m_pBossTool = make_unique<CBossTool>(
+		(void)m_pBalanceTool->Ensure_Initialized();
+		if (nullptr == m_pValtanBossTool)
+			m_pValtanBossTool = make_unique<CValtanBossTool>(
 				make_shared<CNetworkPlayerCommandSink>(),
 				m_pBalanceTool.get());
-		m_pBossTool->Open();
+		m_pValtanBossTool->Open();
 		break;
-	case DEBUG_TOOL::LOGIC_PATTERN:
+	case DEBUG_TOOL::KOUKU_SAYDON_BOSS:
+		if (nullptr == m_pKoukuSaydonBossTool)
+			m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+		m_pKoukuSaydonBossTool->Open();
+		break;
+	case DEBUG_TOOL::VALTAN_LOGIC_PATTERN:
 		if (nullptr == m_pBalanceTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
-		if (nullptr == m_pBossTool)
-			m_pBossTool = make_unique<CBossTool>(
+		(void)m_pBalanceTool->Ensure_Initialized();
+		if (nullptr == m_pValtanBossTool)
+			m_pValtanBossTool = make_unique<CValtanBossTool>(
 				make_shared<CNetworkPlayerCommandSink>(),
 				m_pBalanceTool.get());
-		m_pBossTool->Open_LogicPattern();
+		m_pValtanBossTool->Open_LogicPattern();
 		break;
 	case DEBUG_TOOL::CAMERA:
 		if (nullptr == m_pCameraTool)
@@ -5372,9 +5709,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	}
 
 	SetDebugToolVisible(eTool, true);
-	/* Logic Pattern is a read-only Server-state blueprint. Opening or focusing
+	/* Valtan Logic Pattern is a read-only Server-state blueprint. Opening or focusing
 	it must not steal the explicit world/preview input owner. */
-	if (DEBUG_TOOL::LOGIC_PATTERN != eTool)
+	if (DEBUG_TOOL::VALTAN_LOGIC_PATTERN != eTool)
 		m_eDebugInputOwner = eTool;
 	m_eDebugWindowFocusPending = eTool;
 	return S_OK;
@@ -5531,6 +5868,69 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 	return false;
 }
 
+void CMainApp::RenderArenaCameraAndPlayerControls()
+{
+	const LEVEL level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+	CLevel_ValtanArena* valtan = LEVEL::VALTAN_ARENA == level ?
+		CLevel_ValtanArena::Get_Active() : nullptr;
+	CLevel_KakulSaydonArena* kouku = LEVEL::KAKULSAYDON_ARENA == level ?
+		CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	shared_ptr<CCamera_Free> camera;
+	CPlayerController* controller = nullptr;
+	if (nullptr != valtan)
+	{
+		camera = valtan->Get_DebugCamera();
+		controller = &valtan->Get_DebugPlayerController();
+	}
+	else if (nullptr != kouku)
+	{
+		camera = kouku->Get_DebugCamera();
+		controller = &kouku->Get_DebugPlayerController();
+	}
+	if (nullptr == camera || nullptr == controller)
+		return;
+	const auto setSpeed = [valtan, kouku](const f32_t speed)
+	{
+		if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
+		else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
+	};
+	ImGui::SeparatorText("Arena Camera / Player");
+	ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : "KoukuSaydon");
+	f32_t speed = camera->Get_FreeMoveSpeed();
+	if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
+		CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
+		"%.1f", ImGuiSliderFlags_AlwaysClamp))
+		setSpeed(speed);
+	if (ImGui::Button("Reset speed to 20 m/s"))
+		setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
+	ImGui::TextDisabled("Shift: x%.0f (%.1f m/s). Saved per arena for this session.",
+		CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
+		camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
+
+	const bool_t freeCamera = !camera->Is_FollowRequested() &&
+		!camera->Is_PresentationOverrideActive();
+	ImGui::BeginDisabled(!freeCamera || controller->Is_DebugPlayerPlacementPending() ||
+		controller->Is_DebugPlayerPlacementArmed());
+	if (ImGui::Button("Move Player"))
+	{
+		const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
+			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+		if (controller->Begin_DebugPlayerPlacement(world))
+			camera->Set_MouseLookEnabled(false);
+	}
+	ImGui::EndDisabled();
+	if (controller->Is_DebugPlayerPlacementArmed())
+	{
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel Pick"))
+			controller->Cancel_DebugPlayerPlacement();
+	}
+	ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
+	ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
+	if (!controller->Get_DebugPlayerPlacementStatus().empty())
+		ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
+}
+
 void CMainApp::RenderDebugLevelNavigation()
 {
 	auto levelName = [](const LEVEL level) -> const char_t*
@@ -5657,7 +6057,7 @@ void CMainApp::RefreshDebugAuthoringSources()
 		"Boss / Pattern", "Valtan Action Composition",
 		"Data/Valtan/Valtan.gameplay.json",
 		"Canonical gameplay source joined with Valtan.presentation.json into the Server and presentation Products.",
-		"Open Composition Workbench", DEBUG_TOOL::COMPOSITION,
+		"Open Action Workbench (Valtan)", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
 		2u,
 		sourceExists(L"Valtan/Valtan.gameplay.json") &&
 			sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
@@ -5665,7 +6065,7 @@ void CMainApp::RefreshDebugAuthoringSources()
 		"Character / Animation", "Valtan Animation & Sequence Source",
 		"Data/Valtan/Valtan.presentation.json",
 		"Writable Pattern animation occurrences, Effect invocations and camera edges. Generated bindings remain read-only Product.",
-		"Open Composition Detail", DEBUG_TOOL::COMPOSITION,
+		"Open Composition Detail", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
 		1u,
 		sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
 	addSource(
@@ -5683,7 +6083,7 @@ void CMainApp::RefreshDebugAuthoringSources()
 		"Sound", "Valtan Pattern Sound Cues",
 		"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
 		"Sound cues joined to stable Pattern and Sequence slots; edited from the integrated Valtan Detail.",
-		"Open Sound Cue Detail", DEBUG_TOOL::COMPOSITION,
+		"Open Sound Cue Detail", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH,
 		1u,
 		sourceExists(L"Animation/Authored/Valtan/Valtan.patternsoundcues.json"), true, false);
 	addSource(
@@ -5697,7 +6097,7 @@ void CMainApp::RefreshDebugAuthoringSources()
 		"Encounter", "Valtan Encounter Runtime",
 		"Data/Encounters/Valtan/ValtanEncounter.json",
 		"Server arena, walls, world events, flow and Complete Play admission documents.",
-		"Open Boss Verification", DEBUG_TOOL::BOSS,
+		"Open Boss Verification", DEBUG_TOOL::VALTAN_BOSS,
 		1u,
 		sourceExists(L"Encounters/Valtan/ValtanEncounter.json"), false, false);
 	addSource(
@@ -5728,25 +6128,25 @@ void CMainApp::OpenDebugAuthoringSource(const size_t iSource)
 	}
 	if (source.bOpenValtanWorkspace)
 	{
-		(void)EnsureDebugTool(DEBUG_TOOL::COMPOSITION);
-		if (nullptr == m_pActionCompositionWorkbench)
+		(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH);
+		if (nullptr == m_pValtanActionWorkbench)
 		{
 			m_strToolStatus =
-				"Valtan sources are present, but Action Composition Workbench is unavailable.";
+				"Valtan sources are present, but Valtan Action Workbench is unavailable.";
 			return;
 		}
 		const bool_t bFullyAdmitted =
-			m_pActionCompositionWorkbench->Open_Valtan();
+			m_pValtanActionWorkbench->Open_Valtan();
 		if (!bFullyAdmitted)
 		{
-			if (!m_pActionCompositionWorkbench->Has_DisplaySnapshot())
+			if (!m_pValtanActionWorkbench->Has_DisplaySnapshot())
 			{
 				m_strToolStatus =
-					"Action Composition Workbench opened, but canonical Product admission was rejected; inspect its diagnostic banner.";
+					"Valtan Action Workbench opened, but canonical Product admission was rejected; inspect its diagnostic banner.";
 				return;
 			}
 			m_strToolStatus =
-				"Action Composition Workbench opened with a canonical Product snapshot in read-only mode; typed source join needs attention before Save or Server playback.";
+				"Valtan Action Workbench opened with a canonical Product snapshot in read-only mode; typed source join needs attention before Save or Server playback.";
 			return;
 		}
 	}
@@ -5783,11 +6183,11 @@ void CMainApp::RefreshDebugResourceFiles()
 		{ "Character / Animation", "Data", dataRoot / L"Animation",
 			"Data/Animation", DEBUG_TOOL::ANIMATION },
 		{ "Boss / Pattern", "Data", dataRoot / L"Valtan",
-			"Data/Valtan", DEBUG_TOOL::COMPOSITION },
+			"Data/Valtan", DEBUG_TOOL::VALTAN_ACTION_WORKBENCH },
 		{ "Boss / Pattern", "Data", dataRoot / L"Encounters",
-			"Data/Encounters", DEBUG_TOOL::BOSS },
+			"Data/Encounters", DEBUG_TOOL::VALTAN_BOSS },
 		{ "Boss / Pattern", "Data", dataRoot / L"Actors",
-			"Data/Actors", DEBUG_TOOL::BOSS },
+			"Data/Actors", DEBUG_TOOL::VALTAN_BOSS },
 		{ "Effect Resource", "Resources", resourceRoot / L"Effect",
 			"Resources/Effect", DEBUG_TOOL::EFFECT },
 		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"Authored",
@@ -5913,18 +6313,18 @@ void CMainApp::RefreshDebugResourceFiles()
 			}),
 		m_DebugResourceFiles.end());
 
-	/* KoukuSaton is a user-facing collection, not a replacement for package or
+	/* KoukuSaydon is a user-facing collection, not a replacement for package or
 	   Area identity. Present the extracted closure under one virtual branch while
 	   keeping paths such as LV_LUT_MIDNIGHTC_ED and MN_RPCT_05 unchanged. */
 	const auto startsWith = [](const string& value, const char_t* prefix)
 	{
 		return 0u == value.rfind(prefix, 0u);
 	};
-	std::vector<DEBUG_RESOURCE_FILE> kakulCollection;
+	std::vector<DEBUG_RESOURCE_FILE> koukuSaydonCollection;
 	for (const DEBUG_RESOURCE_FILE& file : m_DebugResourceFiles)
 	{
 		const string& path = file.strRelativePath;
-		const bool_t isKakul =
+		const bool_t isKoukuSaydonAsset =
 			startsWith(path, "Resources/Map/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/") ||
@@ -5934,10 +6334,8 @@ void CMainApp::RefreshDebugResourceFiles()
 			startsWith(path, "Resources/UI/KoukuSaton/") ||
 			startsWith(path, "Resources/UI/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Resources/Sound/KoukuSaton/") ||
-			startsWith(path, "Data/Animation/Reference/KoukuSaton/") ||
-			startsWith(path, "Data/Animation/Reference/KakulSaydon/") ||
-			startsWith(path, "Data/Animation/Authored/KoukuSaton/") ||
-			startsWith(path, "Data/Animation/Authored/KakulSaydon/") ||
+			startsWith(path, "Data/Animation/Reference/KoukuSaydon/") ||
+			startsWith(path, "Data/Animation/Authored/KoukuSaydon/") ||
 			startsWith(path, "Data/ResourceIntake/LV_LUT_MIDNIGHTC_ED") ||
 			startsWith(path, "Resources/Character/KoukuSaton/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_00/") ||
@@ -5946,19 +6344,19 @@ void CMainApp::RefreshDebugResourceFiles()
 			startsWith(path, "Resources/Character/MN_RPCZ_00/") ||
 			startsWith(path, "Resources/Character/WP_MN_RPCT_05/") ||
 			startsWith(path, "Resources/Character/WP_MN_RPCT_06/");
-		if (!isKakul)
+		if (!isKoukuSaydonAsset)
 			continue;
 		DEBUG_RESOURCE_FILE collectionFile = file;
-		collectionFile.strDomain = "KoukuSaton";
+		collectionFile.strDomain = "KoukuSaydon";
 		collectionFile.strSearchText = lowerAscii(
 			collectionFile.strDomain + " " + collectionFile.strSource + " " +
 			collectionFile.strRelativePath);
-		kakulCollection.push_back(std::move(collectionFile));
+		koukuSaydonCollection.push_back(std::move(collectionFile));
 	}
 	m_DebugResourceFiles.insert(
 		m_DebugResourceFiles.end(),
-		std::make_move_iterator(kakulCollection.begin()),
-		std::make_move_iterator(kakulCollection.end()));
+		std::make_move_iterator(koukuSaydonCollection.begin()),
+		std::make_move_iterator(koukuSaydonCollection.end()));
 	std::stable_sort(
 		m_DebugResourceFiles.begin(), m_DebugResourceFiles.end(),
 		[](const DEBUG_RESOURCE_FILE& left, const DEBUG_RESOURCE_FILE& right)
@@ -5987,37 +6385,33 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 	}
 
 	/* Boss and pattern rows are a joined domain: Workbench owns the lanes and
-	   Boss Tool owns the Server command. Opening both is intentional and does
+	   Valtan Boss Tool owns the Server command. Opening both is intentional and does
 	   not duplicate either runtime. */
 	bool_t bValtanWorkspaceOpened = false;
 	if ("Boss / Pattern" == file.strDomain)
 	{
-		(void)EnsureDebugTool(DEBUG_TOOL::COMPOSITION);
-		if (nullptr != m_pActionCompositionWorkbench &&
+		(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH);
+		if (nullptr != m_pValtanActionWorkbench &&
 			std::string::npos != file.strRelativePath.find("Valtan"))
 		{
 			bValtanWorkspaceOpened =
-				m_pActionCompositionWorkbench->Open_Valtan();
+				m_pValtanActionWorkbench->Open_Valtan();
 		}
 	}
 
-	/* A KoukuSaton action/reference file names a concrete authoring profile, not just
+	/* A KoukuSaydon action/reference file names a concrete authoring profile, not just
 	   the broad Animation domain. Hand that stable profile to Workbench so the
-	   matching physical WModel and action document open together. Other Kakul
+	   matching physical WModel and action document open together. Other KoukuSaydon
 	   resources continue to open only their existing owner Tool. */
-	const bool_t isKakulAnimationPath =
+	const bool_t isKoukuSaydonAnimationPath =
 		0u == file.strRelativePath.rfind(
-			"Data/Animation/Reference/KoukuSaton/", 0u) ||
+			"Data/Animation/Reference/KoukuSaydon/", 0u) ||
 		0u == file.strRelativePath.rfind(
-			"Data/Animation/Reference/KakulSaydon/", 0u) ||
-		0u == file.strRelativePath.rfind(
-			"Data/Animation/Authored/KoukuSaton/", 0u) ||
-		0u == file.strRelativePath.rfind(
-			"Data/Animation/Authored/KakulSaydon/", 0u) ||
+			"Data/Animation/Authored/KoukuSaydon/", 0u) ||
 		0u == file.strRelativePath.rfind(
 			"Resources/Character/KoukuSaton/", 0u);
-	const char_t* pKakulProfile = nullptr;
-	if (isKakulAnimationPath)
+	const char_t* pKoukuSaydonProfile = nullptr;
+	if (isKoukuSaydonAnimationPath)
 	{
 		constexpr const char_t* profiles[] =
 		{
@@ -6028,26 +6422,27 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 		{
 			if (std::string::npos != file.strRelativePath.find(pProfile))
 			{
-				pKakulProfile = pProfile;
+				pKoukuSaydonProfile = pProfile;
 				break;
 			}
 		}
 	}
-	bool_t bKakulProfileOpened = false;
-	if (nullptr != pKakulProfile &&
+	bool_t bKoukuSaydonProfileOpened = false;
+	if (nullptr != pKoukuSaydonProfile &&
 		SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
 		nullptr != m_pAnimationTool)
 	{
-		bKakulProfileOpened = m_pAnimationTool->Open_KakulProfile(pKakulProfile);
+		bKoukuSaydonProfileOpened =
+			m_pAnimationTool->Open_KoukuSaydonProfile(pKoukuSaydonProfile);
 	}
 	m_iSelectedDebugResourceFile = iFile;
-	if (nullptr != pKakulProfile)
+	if (nullptr != pKoukuSaydonProfile)
 	{
-		m_strToolStatus = bKakulProfileOpened ?
+		m_strToolStatus = bKoukuSaydonProfileOpened ?
 			("Selected " + file.strRelativePath +
-				 ". Workbench opened the exact KoukuSaton profile as Local Extracted Action Preview.") :
+				 ". Workbench opened the exact KoukuSaydon profile as Local Extracted Action Preview.") :
 			("Selected " + file.strRelativePath +
-				 ", but the KoukuSaton profile preview could not open. Enter Development and preserve any unsaved draft.");
+				 ", but the KoukuSaydon profile preview could not open. Enter Development and preserve any unsaved draft.");
 		return;
 	}
 	m_strToolStatus = bValtanWorkspaceOpened ?
@@ -6122,15 +6517,15 @@ void CMainApp::RefreshCompletePlayPatternOptions()
 {
 	if (nullptr == m_pBalanceTool)
 		m_pBalanceTool = make_unique<CBalanceTool>();
-	if (nullptr == m_pBossTool)
+	if (nullptr == m_pValtanBossTool)
 	{
-		m_pBossTool = make_unique<CBossTool>(
+		m_pValtanBossTool = make_unique<CValtanBossTool>(
 			make_shared<CNetworkPlayerCommandSink>(),
 			m_pBalanceTool.get());
 	}
 	m_bCompletePlayPatternLoadAttempted = true;
-	std::vector<CBossTool::SERVER_PATTERN_OPTION> options;
-	if (!m_pBossTool->Get_ServerPatternOptions(
+	std::vector<CValtanBossTool::SERVER_PATTERN_OPTION> options;
+	if (!m_pValtanBossTool->Get_ServerPatternOptions(
 			options, m_strCompletePlayStatus))
 	{
 		return;
@@ -6140,7 +6535,7 @@ void CMainApp::RefreshCompletePlayPatternOptions()
 	m_CompletePlayPatternLabels.clear();
 	m_CompletePlayPatternIds.reserve(options.size());
 	m_CompletePlayPatternLabels.reserve(options.size());
-	for (const CBossTool::SERVER_PATTERN_OPTION& option : options)
+	for (const CValtanBossTool::SERVER_PATTERN_OPTION& option : options)
 	{
 		m_CompletePlayPatternIds.push_back(option.strPatternId);
 		m_CompletePlayPatternLabels.push_back(
@@ -6204,7 +6599,7 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 {
 	if (!m_bCompletePlayPatternLoadAttempted)
 		RefreshCompletePlayPatternOptions();
-	if (nullptr == m_pBossTool || m_strCompletePlayPatternId.empty() ||
+	if (nullptr == m_pValtanBossTool || m_strCompletePlayPatternId.empty() ||
 		m_CompletePlayPatternIds.end() == std::find(
 			m_CompletePlayPatternIds.begin(),
 			m_CompletePlayPatternIds.end(), m_strCompletePlayPatternId))
@@ -6214,7 +6609,7 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 		m_strCompletePlayStatus = strOutStatus;
 		return false;
 	}
-	const bool_t submitted = m_pBossTool->Play_ServerPattern(
+	const bool_t submitted = m_pValtanBossTool->Play_ServerPattern(
 		m_strCompletePlayPatternId,
 		strOutStatus);
 	m_strCompletePlayStatus = strOutStatus;
@@ -6226,14 +6621,14 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 	return submitted;
 }
 
-bool_t CMainApp::Debug_OpenBossPatternFlow(std::string& strOutStatus)
+bool_t CMainApp::Debug_OpenValtanPatternFlow(std::string& strOutStatus)
 {
-	if (FAILED(EnsureDebugTool(DEBUG_TOOL::BOSS)) || nullptr == m_pBossTool)
+	if (FAILED(EnsureDebugTool(DEBUG_TOOL::VALTAN_BOSS)) || nullptr == m_pValtanBossTool)
 	{
 		strOutStatus = "Pattern Flow owner could not be opened.";
 		return false;
 	}
-	m_pBossTool->Open_PatternFlow();
+	m_pValtanBossTool->Open_PatternFlow();
 	strOutStatus =
 		"Opened the canonical Boss Pattern Flow owner. Save/Apply and playback remain in that typed owner.";
 	return true;
@@ -6252,11 +6647,11 @@ void CMainApp::RenderCompletePlayControls()
 		"A raw clip or unsaved/unbound asset remains Local Asset Preview and cannot become Complete Play.");
 	ImGui::TextDisabled(
 		"Complete Play resets boss-owned replay state only; the current replicated arena walls, floors, debris, collision, and Nav state are preserved.");
-	if (m_bCompletePlayStatusTracking && nullptr != m_pBossTool)
+	if (m_bCompletePlayStatusTracking && nullptr != m_pValtanBossTool)
 	{
 		std::string serverStatus;
 		bool_t inFlight = false;
-		if (m_pBossTool->Get_ServerPatternStatus(
+		if (m_pValtanBossTool->Get_ServerPatternStatus(
 				m_strCompletePlayTrackedPatternId, serverStatus, inFlight))
 		{
 			m_strCompletePlayStatus = std::move(serverStatus);
@@ -6309,7 +6704,7 @@ void CMainApp::RenderCompletePlayControls()
 	}
 	const bool_t isValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
 		CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t canCompletePlay = nullptr != m_pBossTool &&
+	const bool_t canCompletePlay = nullptr != m_pValtanBossTool &&
 		!m_strCompletePlayPatternId.empty() && isValtanArena;
 	ImGui::BeginDisabled(!canCompletePlay);
 	if (ImGui::Button("Complete Play##GlobalServerPattern"))
@@ -6353,23 +6748,23 @@ void CMainApp::RenderServerArenaActiveControls()
 		{
 			if (nullptr == m_pBalanceTool)
 				m_pBalanceTool = make_unique<CBalanceTool>();
-			if (nullptr == m_pBossTool)
+			if (nullptr == m_pValtanBossTool)
 			{
-				m_pBossTool = make_unique<CBossTool>(
+				m_pValtanBossTool = make_unique<CValtanBossTool>(
 					make_shared<CNetworkPlayerCommandSink>(),
 					m_pBalanceTool.get());
 			}
 
-			CBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
+			CValtanBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
 			std::string readStatus;
-			const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
+			const bool_t ready = m_pValtanBossTool->Get_ServerArenaActiveState(
 				state, readStatus);
 			if (m_bServerArenaPresetStatusTracking)
 			{
 				m_strServerArenaActiveStatus =
-					m_pBossTool->Get_ServerArenaPresetStatus();
+					m_pValtanBossTool->Get_ServerArenaPresetStatus();
 				m_bServerArenaPresetStatusTracking =
-					m_pBossTool->Is_ServerArenaPresetPending();
+					m_pValtanBossTool->Is_ServerArenaPresetPending();
 			}
 			const auto actualCheckbox = [](
 				const char_t* label, const bool_t actual)
@@ -6402,7 +6797,7 @@ void CMainApp::RenderServerArenaActiveControls()
 				{
 					std::string submitStatus;
 					const bool_t submitted =
-						m_pBossTool->Set_ServerArenaPreset(
+						m_pValtanBossTool->Set_ServerArenaPreset(
 							preset, submitStatus);
 					m_strServerArenaActiveStatus = std::move(submitStatus);
 					if (submitted)
@@ -6437,13 +6832,13 @@ void CMainApp::RenderServerArenaActiveControls()
 		ImGui::EndTabItem();
 	}
 
-	if (ImGui::BeginTabItem("KoukuSaton"))
+	if (ImGui::BeginTabItem("KoukuSaydon"))
 	{
 		if (ETOUI(LEVEL::KAKULSAYDON_ARENA) !=
 			CGameInstance::Get().Get_CurrentLevelID())
 		{
 			ImGui::TextDisabled(
-				"Enter KoukuSaton Arena through Server admission. Stage controls never move a local Character directly.");
+				"Enter KoukuSaydon Arena through Server admission. Stage controls never move a local Character directly.");
 		}
 		else if (CLevel_KakulSaydonArena* pKakulArena =
 			CLevel_KakulSaydonArena::Get_Active())
@@ -6456,7 +6851,7 @@ void CMainApp::RenderServerArenaActiveControls()
 			if (stageMarkers.empty())
 			{
 				ImGui::TextDisabled(
-					"No admitted KoukuSaton StageMarkers are available in this Level instance.");
+					"No admitted KoukuSaydon StageMarkers are available in this Level instance.");
 			}
 			for (const auto& marker : stageMarkers)
 			{
@@ -6499,13 +6894,13 @@ void CMainApp::RenderServerArenaActiveControls()
 			if (0u == m_iNextKakulStageTeleportRequestSequence)
 			{
 				m_strKakulStageTeleportStatus =
-					"KoukuSaton stage teleport request sequence is exhausted; restart the Client before another request.";
+					"KoukuSaydon stage teleport request sequence is exhausted; restart the Client before another request.";
 			}
 		}
 		else
 		{
 			ImGui::TextDisabled(
-				"KoukuSaton Arena is selected, but its active Level instance is unavailable.");
+				"KoukuSaydon Arena is selected, but its active Level instance is unavailable.");
 		}
 		ImGui::TextWrapped("%s", m_strKakulStageTeleportStatus.c_str());
 		ImGui::EndTabItem();
@@ -6595,15 +6990,15 @@ void CMainApp::RenderDeveloperTools()
 			ImGui::TableNextColumn();
 			toolButton(pLabel, eTool, true);
 		};
-		toolCell("Boss Tool", DEBUG_TOOL::BOSS);
-		toolCell("Logic Pattern", DEBUG_TOOL::LOGIC_PATTERN);
+		toolCell("Valtan Boss Tool", DEBUG_TOOL::VALTAN_BOSS);
+		toolCell("KoukuSaydon Boss Tool", DEBUG_TOOL::KOUKU_SAYDON_BOSS);
+		toolCell("Valtan Logic Pattern", DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
-		toolCell("Action Composition Workbench", DEBUG_TOOL::COMPOSITION);
+		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
-		toolCell("Sequencer", DEBUG_TOOL::SEQUENCER);
 		toolCell("Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
@@ -6615,15 +7010,15 @@ void CMainApp::RenderDeveloperTools()
 	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 12>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
-			{ DEBUG_TOOL::COMPOSITION, "Action Composition Workbench" },
+			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
-			{ DEBUG_TOOL::SEQUENCER, "Sequencer" },
 			{ DEBUG_TOOL::PROFILER, "Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
 			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
-			{ DEBUG_TOOL::BOSS, "Boss Tool" },
+			{ DEBUG_TOOL::VALTAN_BOSS, "Valtan Boss Tool" },
+			{ DEBUG_TOOL::KOUKU_SAYDON_BOSS, "KoukuSaydon Boss Tool" },
 			{ DEBUG_TOOL::CAMERA, "Camera Tool" },
 			{ DEBUG_TOOL::EQUIPMENT, "Equipment Authoring Tool" },
 		}};
@@ -6662,6 +7057,7 @@ void CMainApp::RenderDeveloperTools()
 	}
 
 	RenderDebugLevelNavigation();
+	RenderArenaCameraAndPlayerControls();
 	RenderDebugResourceFiles();
 	RenderCompletePlayControls();
 	RenderServerArenaActiveControls();
@@ -7352,7 +7748,8 @@ void CMainApp::Free()
 	m_pSequencerTool.reset();
 	m_pProfilerTool.reset();
 	m_pRenderingBenchmark.reset();
-	m_pActionCompositionWorkbench.reset();
+	m_pKoukuSaydonActionWorkbench.reset();
+	m_pValtanActionWorkbench.reset();
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
 	m_pEffectToolV2.reset();
@@ -7362,7 +7759,8 @@ void CMainApp::Free()
 	m_pCharacterPreviewPanel.reset();
 	m_pHUDLayoutTool.reset();
 	m_pBalanceTool.reset();
-	m_pBossTool.reset();
+	m_pKoukuSaydonBossTool.reset();
+	m_pValtanBossTool.reset();
 	m_pCameraTool.reset();
 	m_pMapTool.reset();
 #endif

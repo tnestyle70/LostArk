@@ -19,11 +19,13 @@ class CMapTool;
 class CEffect_Tool;
 class CEffect_Tool_V2;
 class CAnimation_Tool;
-class CActionCompositionWorkbench;
+class CValtanActionWorkbench;
+class CKoukuSaydonActionWorkbench;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
 class CBalanceTool;
-class CBossTool;
+class CValtanBossTool;
+class CKoukuSaydonBossTool;
 class CCameraTool;
 class CCharacterPreviewPanel;
 class CEquipmentAuthoringTool;
@@ -35,6 +37,7 @@ class CInventoryView;
 class CChatWindowView;
 class CPartyWindowView;
 class CCharacterSelectWindowView;
+class CMinimapView;
 class CEstherCutinPresentationService;
 
 
@@ -46,7 +49,8 @@ private:
 	{
 		NONE,
 		MAP,
-		COMPOSITION,
+		VALTAN_ACTION_WORKBENCH,
+		KOUKU_SAYDON_ACTION_WORKBENCH,
 		ANIMATION,
 		EFFECT,
 		/* Compatibility-only route. MainApp canonicalizes it to EFFECT so old
@@ -55,8 +59,9 @@ private:
 		RENDERING,
 		UI,
 		BALANCE,
-		BOSS,
-		LOGIC_PATTERN,
+		VALTAN_BOSS,
+		KOUKU_SAYDON_BOSS,
+		VALTAN_LOGIC_PATTERN,
 		CAMERA,
 		EQUIPMENT,
 		SEQUENCER,
@@ -128,12 +133,12 @@ public:
 	bool_t Debug_SelectCompletePlayPattern(const std::string& strPatternId);
 	const std::string& Debug_GetSelectedCompletePlayPatternId() const;
 	/* Shortcut used by every Complete Play button.  Submission still crosses
-	   CBossTool -> CValtanPatternAuditionService and never resets Arena world,
+	   CValtanBossTool -> CValtanPatternAuditionService and never resets Arena world,
 	   navigation, wall, or debris state. */
 	bool_t Debug_CompletePlaySelected(std::string& strOutStatus);
-	/* Opens the one canonical Boss Tool Flow owner from the integrated
+	/* Opens the one canonical Valtan Boss Tool Flow owner from the integrated
 	   composition shell. */
-	bool_t Debug_OpenBossPatternFlow(std::string& strOutStatus);
+	bool_t Debug_OpenValtanPatternFlow(std::string& strOutStatus);
 #endif
 
 private:
@@ -192,6 +197,10 @@ private:
 	/* 게임 시작/서버 선택/카드 라벨 -- after EndFrame(), same reasoning as
 	RenderLobbyButtonText. */
 	void RenderCharacterSelectWindowText();
+	/* Top-right area minimap: fed from the active Bern/Valtan/KakulSaydon level's replication
+	marker snapshot; hidden everywhere else. */
+	void Update_Minimap(f32_t fTimeDelta);
+	void RenderMinimapText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from
 	UI/Lobby/create_character_button.png), text drawn separately on top. */
@@ -344,10 +353,12 @@ private:
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();
 	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
+	HRESULT EnsureAnimationPreviewBackend();
 	bool_t IsDebugToolVisible(DEBUG_TOOL eTool) const;
 	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
+	void RenderArenaCameraAndPlayerControls();
 	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
 	void RefreshDebugAuthoringSources();
 	void RefreshDebugResourceFiles();
@@ -547,6 +558,9 @@ private:
 	Lobby's "게임 시작" product button over the Lobby. Sprites under LEVEL::STATIC like the
 	Lobby view; Update_CharacterSelectWindow drives it and consumes its intents. */
 	unique_ptr<CCharacterSelectWindowView> m_pCharacterSelectWindowView = { nullptr };
+	/* Retail-style area minimap (Data/UI/Minimap), sprites under LEVEL::STATIC like the other
+	product views; Update_Minimap drives it from the active level's replication. */
+	unique_ptr<CMinimapView> m_pMinimapView = { nullptr };
 	/* Intentionally never constructed anymore -- the K keybind that opened it was removed by
 	product decision, so the window can never open; see the constructor comment. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
@@ -573,13 +587,16 @@ private:
 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CEffect_Tool_V2> m_pEffectToolV2 = { nullptr };
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
-	unique_ptr<CActionCompositionWorkbench> m_pActionCompositionWorkbench =
+	unique_ptr<CValtanActionWorkbench> m_pValtanActionWorkbench =
+		{ nullptr };
+	unique_ptr<CKoukuSaydonActionWorkbench> m_pKoukuSaydonActionWorkbench =
 		{ nullptr };
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CEquipmentAuthoringTool> m_pEquipmentAuthoringTool = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
-	unique_ptr<CBossTool> m_pBossTool = { nullptr };
+	unique_ptr<CValtanBossTool> m_pValtanBossTool = { nullptr };
+	unique_ptr<CKoukuSaydonBossTool> m_pKoukuSaydonBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
 	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
 	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
@@ -614,7 +631,7 @@ private:
 	bool_t m_bServerArenaPresetStatusTracking = false;
 	uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;
 	string m_strKakulStageTeleportStatus =
-		"Enter the Server-approved KoukuSaton Arena to inspect SL01-SL05 stages.";
+		"Enter the Server-approved KoukuSaydon Arena to inspect SL01-SL05 stages.";
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
 	/* Stable identity is the selection authority.  UI indices are derived from
