@@ -58,12 +58,35 @@ MSBuild.exe Tools/ValtanPatternAuditionServiceHarness/Default/ValtanPatternAudit
 Tools/ValtanPatternAuditionServiceHarness/Bin/Debug/ValtanPatternAuditionServiceHarness.exe --kouku-composition-editor-contract
 ```
 
-## G02. 대형 미리보기 후속 상태
+## G02. 대형 동작 배율과 오른손 망치
 
-대형 이름 동작의 요청 배율 100배 및 WP_MN_RPCT_06 오른손 미리보기 부착은 같은 요청의
-후속 변경으로 진행 중이다. 원본 Actor 크기 배율은 아직 입증되지 않았으므로 100배를 원본값으로
-기록하지 않는다. source socket의 오른손 `b_wp_1`/`wp_1_20`과 무기 자체 skeleton은 확인했다.
-최종 미리보기 구현·컴파일 증거와 수동 확인 경계는 해당 변경이 끝난 뒤 이 절에 갱신한다.
+기획 Action의 이름에 `대형` 또는 `large`가 있는 동작은 사용자 요청 100배의 로컬 preview
+배율을 적용한다. RAW clip은 해당 clip 이름으로 판단한다. Sequence는 각 occurrence의 원래
+Action 이름을 조회하며 일반 동작, 정지, 비활성화 시 기본 크기로 돌아간다. 매번 고정 기준
+matrix에서 배율을 계산하므로 반복 재생 때 100배가 누적되지 않는다. 추출된 데이터에서 원본
+Unreal Actor 크기 배율은 입증하지 못했으므로 이 값을 원본 Unreal 배율로 기록하지 않는다.
+
+`MN_RPCT_06` preview는 `WP_MN_RPCT_06` animated CModel을 기존 CPart_Body 경로로
+생성한다. source socket `wp_1_20`의 오른손 `b_wp_1`과 zero offset/rotation, unit scale을
+사용한다. weapon의 별도 5-bone skeleton과 16개 대응 clip을 유지한다. family 3은 body/weapon
+원본 길이가 달라 원본 seconds를 유지하고 weapon 마지막 pose를 hold한다. idle/1_01 등 대응
+clip이 없는 동작은 저장한 bind pose로 복원한다. 별도 원본 시작 offset을 추측하지 않는다.
+
+Engine의 body update 후 및 도구 seek 직후 손 matrix와 weapon pose를 동기화한다. 부착물에는
+부모에 이미 적용된 배율/yaw를 다시 곱하지 않는다. 새 body/weapon 생성 실패 시 staged object를
+제거하고 기존 target을 유지한다. 모델 변경과 preview release에서 부착물도 함께 제거한다.
+
+필요한 Resources-relative asset ID는
+`Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`이다. 물리 폴더는
+`Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며 기존 원본 PC에 모델과
+인접 texture가 있다. 새 binary를 만들거나 Git에 추가하지 않았다. 다른 PC는 팀 Drive의 같은
+폴더가 필요하며 이번 작업에서 Drive 전달 여부를 확인하거나 새 업로드하지 않았다.
+
+Animation_Tool.cpp, CharacterPreviewPanel.cpp, 직접 소비자 MainApp.cpp를 순서대로
+Client Debug `ClCompile`/단일 `SelectedFiles`로 확인했다. 모두 오류 0이며 기존 include의
+C4819 경고는 각각 18/14/34건이다. 로그는
+`out/PR316/compile/client-large-preview-{animation,panel,mainapp}.log`에 있다.
+Client link/실행과 망치 모양·손 정렬의 visual PASS는 수행하지 않았다.
 
 ## G03. 사용자 화면 확인
 

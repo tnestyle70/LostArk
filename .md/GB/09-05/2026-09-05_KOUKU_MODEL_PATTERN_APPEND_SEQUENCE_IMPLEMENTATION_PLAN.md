@@ -25,7 +25,13 @@ Append는 선택한 모델의 패턴에 연결하고, 해당 모델에 패턴이
 순차 clip은 같은 Animation 행에 놓고 겹친 구간만 추가 행을 사용한다.
 빈 공간의 사각 드래그와 Ctrl 선택으로 stable Stage/occurrence ID를 선택하고 Delete 키 또는
 Delete Selected로 하나의 candidate에서 삭제한다. Stage를 지우면 포함된 clip도 같이 지운다.
-Sequencer에도 Save와 dirty/status를 표시한다. 저장·재로드와 CAS 실패 보존을 실제 native 메서드로 확인한다.
+Sequencer 상단은 Save/Play/Stop, 다음 행은 Zoom과 전체 lifetime(ms)/Apply/Fit으로 구성한다.
+전체 lifetime은 기존 Stage clock 합계이며 마지막 Stage의 길이만 조절한다. 이미 배치한 clip의
+끝보다 짧거나 600초를 넘는 값은 기존 draft를 보존하고 거절한다. animation 속도를 자동 변경하지 않는다.
+Selected Box의 Delete/Duplicate는 사각 선택 전체에 적용한다. Stage 복제에는 자식을 포함하고
+동시에 선택한 그 자식을 중복 복제하지 않는다. 새 stable ID를 발급하고 한 candidate로 commit한다.
+Inspector 삭제와 Reload 후 실제로 남아 있는 ID만 선택에 유지한다.
+저장·재로드와 CAS 실패 보존을 실제 native 메서드로 확인한다.
 
 ## G02. 대형 동작 미리보기 배율
 
@@ -33,6 +39,11 @@ Sequencer에도 Save와 dirty/status를 표시한다. 저장·재로드와 CAS �
 사용자가 요청한 100배를 미리보기 표시 배율로 사용하며 원본 Unreal 값으로 표기하지 않는다.
 기존 CModel/preview actor의 Transform을 사용하고 일반 동작 전환 시 기본 배율로 되돌린다.
 실제 적용할 배율과 근거·검증은 RESULT에 기록한다.
+
+대형 세이튼은 기존 `WP_MN_RPCT_06` animated CModel을 기존 `CPart_Body`로 생성하여
+오른손 `b_wp_1`에 붙인다. body와 다른 weapon skeleton을 유지하며 확인된 16개 clip을
+원본 seconds 기준으로 동기화한다. 대응 clip이 없으면 bind pose를 쓰고, 짧은 weapon clip은
+마지막 pose를 유지한다. 생성 실패 시 새 body/weapon을 rollback하여 기존 target을 보존한다.
 
 ## G03. 검증과 반영
 

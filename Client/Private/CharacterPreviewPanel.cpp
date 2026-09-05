@@ -28,6 +28,20 @@
 
 namespace
 {
+	constexpr const char* SAYDON_HAMMER_ASSET = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel";
+	constexpr const wchar_t* SAYDON_HAMMER_PROTOTYPE = L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_WP_MN_RPCT_06";
+	constexpr const char* SAYDON_HAMMER_SOCKET = "b_wp_1";
+
+	std::string Resolve_SaydonHammerClip(const std::string_view bodyClip)
+	{
+		constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
+		if (!bodyClip.starts_with(prefix)) return {};
+		std::string suffix(bodyClip.substr(prefix.size()));
+		if (suffix.starts_with("att_battle_1_")) suffix.insert(11u, "0");
+		else if (suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
+		return "wprpct06_" + suffix;
+	}
+
 	bool_t Try_ResolveRaidPreviewPlacement(const uint32_t currentLevel,
 		float3_t& position, std::string& status)
 	{
@@ -164,6 +178,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 			}
 			float4x4_t& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
 			XMStoreFloat4x4(&root, XMMatrixTranslation(placement.x, placement.y, placement.z));
+			m_PreviewUnscaledParentMatrix = root;
 			CAnimationTargetService::Bind_Preview(body->Get_Model(), asset->pAssetName, root);
 		}
 		m_Status = "Target=LOCAL ARENA PREVIEW | anchor=" + placementSource +
@@ -180,6 +195,82 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		return false;
 	}
 	return Select_Asset(*asset);
+}
+
+bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
+	const shared_ptr<Engine::CModel>& expectedModel, const f32_t multiplier)
+{
+	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+	if (nullptr == body || nullptr == expectedModel || nullptr == m_pPreviewAsset ||
+		body->Get_Model() != expectedModel ||
+		CAnimationTargetService::Resolve_Model() != expectedModel ||
+		!std::isfinite(multiplier) || multiplier <= 0.f)
+		return false;
+	auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
+	XMStoreFloat4x4(&root, XMMatrixScaling(multiplier, multiplier, multiplier) *
+		XMLoadFloat4x4(&m_PreviewUnscaledParentMatrix));
+	CAnimationTargetService::Bind_Preview(expectedModel, m_pPreviewAsset->pAssetName, root);
+	// ImGui can seek after the level update; refresh the existing part's cached
+	// combined matrix immediately without advancing its animation clock.
+	body->Update(0.f);
+	if (const auto weapon = m_pPreviewWeaponObject.lock()) weapon->Update(0.f);
+	Synchronize_PreviewWeapon();
+	return true;
+}
+
+void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
+{
+	if (nullptr == m_pPreviewAsset || std::string_view(m_pPreviewAsset->pAssetName) != "MN_RPCT_06") return;
+	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+	const auto weapon = dynamic_pointer_cast<CPart_Body>(m_pPreviewWeaponObject.lock());
+	if (nullptr == body || nullptr == weapon || nullptr == body->Get_Model() || nullptr == weapon->Get_Model()) return;
+	const auto bodyRoot = dynamic_pointer_cast<CTransform>(body->Get_Component(g_strTransformComTag));
+	const auto bodyModel = body->Get_Model();
+	const auto weaponModel = weapon->Get_Model();
+	if (nullptr == bodyRoot || !bodyModel->Has_Bone(SAYDON_HAMMER_SOCKET)) return;
+	// Source wp_1_20 is b_wp_1 with zero offset/rotation and unit scale.
+	// Its bone already carries the body pretransform; the hammer adds no second
+	// preview scale or yaw. Only the selected actor parent contains the 100x.
+	XMStoreFloat4x4(&m_PreviewWeaponParentMatrices[m_iPreviewParentMatrixIndex],
+		bodyModel->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) *
+		XMLoadFloat4x4(bodyRoot->Get_WorldMatrixPtr()) *
+		XMLoadFloat4x4(&m_PreviewParentMatrices[m_iPreviewParentMatrixIndex]));
+	weaponModel->Set_AnimPaused(true);
+	const auto bodyIndex = bodyModel->Get_CurrentAnimIndex();
+	const char* bodyClip = bodyModel->Get_AnimationName(bodyIndex);
+	const std::string weaponClip = nullptr != bodyClip ? Resolve_SaydonHammerClip(bodyClip) : std::string{};
+	std::uint32_t weaponIndex = 0u;
+	for (; weaponIndex < weaponModel->Get_NumAnimations(); ++weaponIndex)
+	{
+		const char* name = weaponModel->Get_AnimationName(weaponIndex);
+		if (nullptr != name && weaponClip == name) break;
+	}
+	f32_t bodyPosition = 0.f, bodyDuration = 0.f, weaponPosition = 0.f, weaponDuration = 0.f;
+	const f32_t bodyTps = bodyModel->Get_AnimationTickPerSecond(bodyIndex);
+	const f32_t weaponTps = weaponModel->Get_AnimationTickPerSecond(weaponIndex);
+	const bool_t mapped = weaponIndex < weaponModel->Get_NumAnimations() &&
+		bodyModel->Get_AnimationProgress(bodyIndex, bodyPosition, bodyDuration) &&
+		weaponModel->Get_AnimationProgress(weaponIndex, weaponPosition, weaponDuration) &&
+		std::isfinite(bodyTps) && bodyTps > 0.f && std::isfinite(weaponTps) && weaponTps > 0.f;
+	if (mapped)
+	{
+		if (weaponModel->Get_CurrentAnimIndex() != weaponIndex || weaponModel->Is_AnimLoop())
+			(void)weaponModel->Start_Animation(weaponIndex, false);
+		// The family-3 source lengths differ. Preserve source seconds and hold
+		// the hammer's last pose; do not invent an original start delay or retime.
+		(void)weaponModel->Set_AnimTrackPosition(weaponIndex,
+			std::clamp(bodyPosition / bodyTps * weaponTps, 0.f, weaponDuration));
+	}
+	weaponModel->Set_AnimPaused(true);
+	weapon->Update(0.f);
+	if (!mapped)
+	{
+		// No idle/1_01 counterpart exists. Restore the cloned skeleton rest pose
+		// captured before its first animation, rather than playing clip zero.
+		for (std::uint32_t i = 0u; i < m_PreviewWeaponRestPose.size(); ++i)
+			(void)weaponModel->Set_BoneLocalMatrix(i, XMLoadFloat4x4(&m_PreviewWeaponRestPose[i]));
+		weaponModel->Refresh_BoneCombinedMatrices();
+	}
 }
 
 bool_t Client::CCharacterPreviewPanel::Declares_Weapon(
@@ -207,6 +298,7 @@ void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 			previewWeapon);
 	}
 	m_pPreviewWeaponObject.reset();
+	m_PreviewWeaponRestPose.clear();
 
 	if (nullptr == previewObject)
 	{
@@ -288,6 +380,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	shared_ptr<CCharacter> stagedCharacter;
 	shared_ptr<CValtan> stagedValtan;
 	shared_ptr<CPart_Body> stagedBody;
+	std::vector<float4x4_t> stagedWeaponRestPose;
 	if (asset.bPlayableClassBody)
 	{
 		PLAYABLE_CHARACTER_PREVIEW_COMPOSITION composition;
@@ -561,7 +654,55 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			return false;
 		}
 
-		if (Declares_Weapon(asset))
+		if (std::string_view(asset.pAssetName) == "MN_RPCT_06")
+		{
+			const auto rejectHammer = [&](const std::string& reason)
+			{
+				if (nullptr != stagedWeapon)
+					CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedWeapon);
+				CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedObject);
+				m_Status = "Large Saydon hammer preview could not stage: " + reason;
+				return false;
+			};
+			if (!stagedBody->Get_Model()->Has_Bone(SAYDON_HAMMER_SOCKET))
+				return rejectHammer("right-hand bone b_wp_1 is missing");
+			if (!m_PreparedGenericPreviewAssetIds.contains(SAYDON_HAMMER_ASSET))
+			{
+				const auto path = CRuntimeAssetRoot::Resolve(SAYDON_HAMMER_ASSET);
+				unique_ptr<CModel> model;
+				if (!path.empty() && std::filesystem::is_regular_file(path))
+					model = CModel::Create(m_pDevice, m_pContext, MODEL::ANIM, path.string().c_str(), XMMatrixIdentity());
+				if (nullptr == model || FAILED(CGameInstance::Get().Add_Prototype(currentLevel,
+					SAYDON_HAMMER_PROTOTYPE, std::move(model))))
+					return rejectHammer(SAYDON_HAMMER_ASSET);
+				m_PreparedGenericPreviewAssetIds.insert(SAYDON_HAMMER_ASSET);
+			}
+			stagedBody->Update(0.f);
+			XMStoreFloat4x4(&m_PreviewWeaponParentMatrices[stagedParentMatrixIndex],
+				stagedBody->Get_Model()->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) * XMLoadFloat4x4(&stagedParentMatrix));
+			CPart_Body::PART_BODY_DESC weaponDesc{};
+			weaponDesc.pParentMatrix = &m_PreviewWeaponParentMatrices[stagedParentMatrixIndex];
+			weaponDesc.iPrototypeLevelIndex = currentLevel;
+			weaponDesc.strModelTag = SAYDON_HAMMER_PROTOTYPE;
+			weaponDesc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+			if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(currentLevel,
+				TEXT("Prototype_GameObject_Part_Body"), currentLevel, TEXT("Layer_AnimationPreview"), &weaponDesc, &stagedWeapon)))
+				return rejectHammer("animated weapon part creation failed");
+			const auto weapon = dynamic_pointer_cast<CPart_Body>(stagedWeapon);
+			if (nullptr == weapon || nullptr == weapon->Get_Model())
+				return rejectHammer("weapon model is unavailable");
+			const auto weaponModel = weapon->Get_Model();
+			weaponModel->Set_AnimPaused(true);
+			matrix_t local;
+			for (std::uint32_t i = 0u; weaponModel->Get_BoneLocalMatrix(i, local); ++i)
+			{
+				float4x4_t stored;
+				XMStoreFloat4x4(&stored, local);
+				stagedWeaponRestPose.push_back(stored);
+			}
+			if (stagedWeaponRestPose.empty()) return rejectHammer("weapon skeleton rest pose is unavailable");
+		}
+		else if (Declares_Weapon(asset))
 		{
 			const shared_ptr<CTransform> bodyRoot =
 				dynamic_pointer_cast<CTransform>(
@@ -614,10 +755,12 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	   leaves the previous target published and editable. */
 	Release(true);
 	m_iPreviewParentMatrixIndex = stagedParentMatrixIndex;
+	m_PreviewUnscaledParentMatrix = stagedParentMatrix;
 	m_pPreviewObject = stagedObject;
 	/* Published after Release so the drop of the previous selection cannot take
 	   the weapon that was just staged for this one. */
 	m_pPreviewWeaponObject = stagedWeapon;
+	m_PreviewWeaponRestPose = std::move(stagedWeaponRestPose);
 	m_pPreviewAsset = &asset;
 	m_iPreviewLevelIndex = currentLevel;
 	if (nullptr != stagedCharacter)
@@ -649,6 +792,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			(nullptr != stagedWeapon ? " and its socketed weapon" : "") +
 			" 2.5 m to the right of the scene character.";
 	}
+	Synchronize_PreviewWeapon();
 	return true;
 }
 

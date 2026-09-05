@@ -948,3 +948,10 @@ Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한�
 `PRODUCT` 투영과 Server 재생은 현재 Gate 1 몸체 `MN_RPCZ_00` Pattern만 지원한다.
 Saydon과 Large Saydon의 DRAFT 저장이 Gate 1 boss를 다른 모델로 바꾸지는 않는다.
 기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.
+
+대형 이름 Action의 로컬 preview는 요청 배율 100배를 사용하고 일반 동작/정지 시 기준 크기로
+복원한다. 원본 Unreal Actor 배율로 검증된 값은 아니다. Large Saydon의 오른손 `b_wp_1`에는
+기존 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 부착한다.
+무기 자체 skeleton과 대응 clip을 source seconds로 동기화하고, 대응이 없으면 bind pose를 쓴다.
+필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며
+모델과 인접 texture는 팀 Drive Resources 입력으로 전달한다. preview는 Server boss를 바꾸지 않는다.

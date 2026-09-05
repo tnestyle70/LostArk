@@ -737,6 +737,8 @@ private:
 		std::string& strOutStatus) const;
 	void Sample_KoukuSaydonCompositionPreview(
 		const shared_ptr<Engine::CModel>& pModel);
+	void Apply_KoukuSaydonPreviewScale(
+		const shared_ptr<Engine::CModel>& pModel, f32_t multiplier);
 	bool_t Start_PendingKoukuSaydonCompositionPreview(
 		const shared_ptr<Engine::CModel>& pModel);
 	bool_t Start_KoukuSaydonPatternPreview(
@@ -1049,6 +1051,9 @@ private:
 	mutable std::string m_strCompositionAnimationResourceStatus;
 	std::string m_strPendingCompositionPreviewTargetAssetName;
 	std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> m_KoukuCompositionPreviewRows;
+	std::vector<f32_t> m_KoukuCompositionPreviewScales;
+	std::weak_ptr<Engine::CModel> m_KoukuScaledPreviewModel;
+	f32_t m_fKoukuSaydonPatternPreviewScale = 1.f;
 	double m_fKoukuCompositionPreviewClockMs = 0.0;
 	std::uint32_t m_iKoukuCompositionPreviewDurationMs = 0u;
 	std::uint32_t m_iKoukuCompositionInitialAnimation = 0u;

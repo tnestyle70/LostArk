@@ -61,6 +61,27 @@ namespace
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
 	constexpr f32_t DEFAULT_TICK_RATE = 30.f;
+	// User-requested authoring override. No original Unreal actor scale has
+	// been verified in the extracted Action/mesh sources.
+	f32_t Resolve_LargeNamePreviewScale(const std::string_view name)
+	{
+		if (name.find("\xEB\x8C\x80\xED\x98\x95") != std::string_view::npos)
+			return 100.f;
+		std::string lower(name);
+		std::transform(lower.begin(), lower.end(), lower.begin(), [](const char c) {
+			return c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a' - 'A')) : c;
+		});
+		return lower.find("large") != std::string::npos ? 100.f : 1.f;
+	}
+
+	f32_t Resolve_ActionPreviewScale(
+		const Client::KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
+		const std::uint32_t sourceActionId)
+	{
+		const auto action = std::find_if(reference.Actions.begin(), reference.Actions.end(),
+			[sourceActionId](const auto& candidate) { return candidate.iSourceActionId == sourceActionId; });
+		return action != reference.Actions.end() ? Resolve_LargeNamePreviewScale(action->strDisplayName) : 1.f;
+	}
 	constexpr f32_t WORKBENCH_DEFAULT_WIDTH = 900.f;
 	constexpr f32_t WORKBENCH_DEFAULT_HEIGHT = 700.f;
 	constexpr f32_t WORKBENCH_FALLBACK_MIN_WIDTH = 320.f;
@@ -543,7 +564,7 @@ namespace
 				"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05" },
 			KOUKU_SAYDON_ACTION_PROFILE_CONTRACT{
 				"MN_RPCT_06", "Large Saydon",
-				"Dedicated MN_RPCT_06 body/skeleton, scale 1.0x; not a scaled MN_RPCT_05",
+				"Dedicated MN_RPCT_06 body/skeleton; large-named action preview multiplier 100x",
 				"MN_RPCT_06",
 				"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06" },
 			KOUKU_SAYDON_ACTION_PROFILE_CONTRACT{
@@ -1221,6 +1242,7 @@ Client::CAnimation_Tool::CAnimation_Tool(
 
 Client::CAnimation_Tool::~CAnimation_Tool()
 {
+	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 	if (nullptr != m_hValtanPatternCreateProcess)
 	{
 		/* The child owns an all-or-nothing source/Product transaction.  Closing
@@ -1267,7 +1289,16 @@ void Client::CAnimation_Tool::Update(
 	const f32_t fTimeDelta,
 	const bool_t bIsActiveTool)
 {
+	// MainApp calls this after the level updates all parts. Every return path
+	// must publish the hammer after the final body pose, including inactive UI.
+	struct PREVIEW_WEAPON_POSE_SYNC final
+	{
+		CCharacterPreviewPanel* panel;
+		~PREVIEW_WEAPON_POSE_SYNC() { if (nullptr != panel) panel->Synchronize_PreviewWeapon(); }
+	} weaponPoseSync{ m_pPreviewPanel.get() };
 	Poll_ValtanPatternCreateCommand();
+	if (!bIsActiveTool || m_KoukuScaledPreviewModel.lock() != CAnimationTargetService::Resolve_Model())
+		Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 
 	if (m_bKoukuSaydonCompositionAnimationPreviewPending || m_bKoukuSaydonCompositionPatternPreviewPending)
 		(void)Start_PendingKoukuSaydonCompositionPreview(CAnimationTargetService::Resolve_Model());
@@ -3870,6 +3901,7 @@ void Client::CAnimation_Tool::Select_Clip(const shared_ptr<Engine::CModel>& pMod
 			pModel->Set_Animation(i, m_bLoop);
 			pModel->Set_AnimTrackPosition(i, 0.f);
 			m_iSelectedEvent = -1;
+			Apply_KoukuSaydonPreviewScale(pModel, Resolve_LargeNamePreviewScale(clipName));
 			return;
 		}
 	}
@@ -11986,6 +12018,34 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 	Reset_ValtanPatternMasterPreviewState({});
 	Reset_KoukuSaydonPatternPreviewState({});
 	m_KoukuCompositionPreviewRows = std::move(rows);
+	std::unordered_map<std::string, KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT> scaleReferences;
+	for (const auto& row : m_KoukuCompositionPreviewRows)
+	{
+		f32_t scale = 1.f;
+		if (row.strSourceStageId == "RAW")
+			scale = Resolve_LargeNamePreviewScale(row.strRuntimeClip);
+		else if (nullptr != Find_KoukuSaydonActionProfile(row.strProfileId))
+		{
+			auto [entry, inserted] = scaleReferences.try_emplace(row.strProfileId);
+			if (inserted)
+			{
+				std::string bytes, status;
+				const auto path = CKoukuSaydonAnimationActionDocument::Resolve_ReferencePath(row.strProfileId);
+				if (!Read_BoundedFile(path, 16u * 1024u * 1024u, bytes, status) ||
+					!CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(bytes, entry->second, status, true) ||
+					entry->second.strProfileId != row.strProfileId)
+				{
+					entry->second = {};
+					diagnostics += "Preview scale reference unavailable for " + row.strProfileId + ": " + status + ". ";
+				}
+			}
+			scale = Resolve_ActionPreviewScale(entry->second, row.iSourceActionId);
+		}
+		m_KoukuCompositionPreviewScales.push_back(scale);
+	}
+	if (std::find(m_KoukuCompositionPreviewScales.begin(), m_KoukuCompositionPreviewScales.end(), 100.f) !=
+		m_KoukuCompositionPreviewScales.end())
+		diagnostics += "Large-named actions use the requested 100x local preview multiplier; original actor scale is unverified. ";
 	m_strKoukuSaydonPatternPreviewId = previewPatternId;
 	m_iKoukuSaydonPatternPreviewClip = m_KoukuCompositionPreviewRows.size();
 	m_iKoukuCompositionPreviewDurationMs = durationMs;
@@ -12005,6 +12065,18 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
 	if (!diagnostics.empty()) OutputDebugStringA(("[KoukuPreview] " + diagnostics + "\n").c_str());
 	Sample_KoukuSaydonCompositionPreview(pModel);
 	return true;
+}
+
+void Client::CAnimation_Tool::Apply_KoukuSaydonPreviewScale(
+	const shared_ptr<Engine::CModel>& pModel, const f32_t multiplier)
+{
+	const std::string asset = CAnimationTargetService::Resolve_AssetName();
+	if (nullptr != pModel && nullptr != m_pPreviewPanel &&
+		(asset == "MN_RPCZ_00" || asset == "MN_RPCT_00" || asset == "MN_RPCT_05" || asset == "MN_RPCT_06") &&
+		m_pPreviewPanel->Set_PreviewScaleMultiplier(pModel, multiplier) && multiplier != 1.f)
+		m_KoukuScaledPreviewModel = pModel;
+	else if (multiplier == 1.f)
+		m_KoukuScaledPreviewModel.reset();
 }
 
 void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
@@ -12038,6 +12110,7 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 	if (nullptr == selected)
 	{
 		// The leading gap has the immutable pose captured when this preview began.
+		Apply_KoukuSaydonPreviewScale(pModel, 1.f);
 		if (m_iKoukuCompositionInitialAnimation < pModel->Get_NumAnimations())
 		{
 			if (pModel->Get_CurrentAnimIndex() != m_iKoukuCompositionInitialAnimation || pModel->Is_AnimLoop())
@@ -12048,6 +12121,7 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 			(void)pModel->Play_Animation(0.f);
 		}
 		m_iKoukuSaydonPatternPreviewClip = m_KoukuCompositionPreviewRows.size();
+		if (nullptr != m_pPreviewPanel) m_pPreviewPanel->Synchronize_PreviewWeapon();
 		return;
 	}
 	std::uint32_t index = 0u;
@@ -12063,6 +12137,8 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 		!std::isfinite(tps) || tps <= 0.f || !std::isfinite(duration) || duration <= 0.f)
 		return;
 	const std::size_t rowIndex = static_cast<std::size_t>(selected - m_KoukuCompositionPreviewRows.data());
+	Apply_KoukuSaydonPreviewScale(pModel, rowIndex < m_KoukuCompositionPreviewScales.size() ?
+		m_KoukuCompositionPreviewScales[rowIndex] : 1.f);
 	if (m_iKoukuSaydonPatternPreviewClip != rowIndex || pModel->Get_CurrentAnimIndex() != index)
 	{
 		if (!Start_PreviewClip(pModel, selected->strRuntimeClip.c_str(), false, 0.f)) return;
@@ -12075,6 +12151,7 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 	pModel->Set_AnimPaused(true);
 	(void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
 	(void)pModel->Play_Animation(0.f);
+	if (nullptr != m_pPreviewPanel) m_pPreviewPanel->Synchronize_PreviewWeapon();
 }
 
 bool_t Client::CAnimation_Tool::Start_KoukuSaydonPatternPreview(
@@ -12135,6 +12212,7 @@ bool_t Client::CAnimation_Tool::Start_KoukuSaydonPatternPreview(
 			"Valtan Pattern Master yielded to KoukuSaydon Pattern preview.");
 
 	m_KoukuSaydonPatternPreviewClips = Pattern.Clips;
+	m_fKoukuSaydonPatternPreviewScale = Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, Pattern.iSourceActionId);
 	m_strKoukuSaydonPatternPreviewId = Pattern.strPatternId;
 	m_strKoukuSaydonPatternPreviewLabel = strLabel;
 	m_KoukuSaydonPatternPreviewModel = pModel;
@@ -12225,6 +12303,7 @@ bool_t Client::CAnimation_Tool::Activate_KoukuSaydonPatternPreviewClip(
 		return false;
 	}
 	pModel->Set_AnimationSpeed(Clip.fPlayRate);
+	Apply_KoukuSaydonPreviewScale(pModel, m_fKoukuSaydonPatternPreviewScale);
 	pModel->Set_AnimPaused(false);
 	m_bLoop = bLoop;
 	m_bKoukuSaydonPatternPreviewPaused = false;
@@ -12310,6 +12389,9 @@ void Client::CAnimation_Tool::Stop_KoukuSaydonPatternPreview(
 void Client::CAnimation_Tool::Reset_KoukuSaydonPatternPreviewState(
 	const std::string& strStatus)
 {
+	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
+	m_fKoukuSaydonPatternPreviewScale = 1.f;
+	m_KoukuCompositionPreviewScales.clear();
 	m_bKoukuCompositionTimelinePlaying = false;
 	m_strPendingCompositionPreviewTargetAssetName.clear();
 	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
@@ -12344,7 +12426,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 		"it never creates a Server Product boss pattern.");
 
 	ImGui::TextDisabled(
-		"Categories use exact physical models; Large Saydon is MN_RPCT_06 at 1.0x, not a scaled MN_RPCT_05. MN_RPCT_07 is the shared-body alias:");
+		"Categories use exact physical models. Large-named actions use the requested 100x local preview multiplier; original actor scale is unverified. MN_RPCT_07 shares the MN_RPCT_05 body:");
 	for (std::size_t iProfile = 0u;
 		iProfile < KOUKU_SAYDON_ACTION_PROFILES.size(); ++iProfile)
 	{
@@ -12642,6 +12724,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 						{
 							m_iSelectedKoukuSaydonSlot = iSlot;
 							Select_Clip(pModel, EffectiveClip);
+							Apply_KoukuSaydonPreviewScale(pModel, Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, Action.iSourceActionId));
 						}
 						ImGui::PopID();
 					}
@@ -12703,6 +12786,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 								strEditedRuntimeClip = Clip;
 								bEdited = true;
 								Select_Clip(pModel, Clip);
+								Apply_KoukuSaydonPreviewScale(pModel, Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, Action.iSourceActionId));
 							}
 						}
 						ImGui::EndCombo();
@@ -12715,7 +12799,10 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("Preview Effective Clip"))
+					{
 						Select_Clip(pModel, strEditedRuntimeClip);
+						Apply_KoukuSaydonPreviewScale(pModel, Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, Action.iSourceActionId));
+					}
 
 					if (ImGui::InputInt(
 						"Source Start (ms)", &iEditedSourceStartMs))
@@ -12750,6 +12837,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonActionBindings(
 							Action.iSourceActionId, Stage.strStageId,
 							Slot.strSlotId);
 						Select_Clip(pModel, Slot.strRuntimeClip);
+						Apply_KoukuSaydonPreviewScale(pModel, Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, Action.iSourceActionId));
 					}
 					else if (bEdited)
 					{
@@ -12936,6 +13024,8 @@ void Client::CAnimation_Tool::Render_KoukuSaydonPatternAuthoring(
 					{
 						m_iSelectedKoukuSaydonActionClip = iClip;
 						Select_Clip(pModel, strClip);
+						Apply_KoukuSaydonPreviewScale(pModel,
+							Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, pSelectedAction->iSourceActionId));
 					}
 					ImGui::EndDisabled();
 					ImGui::PopID();
@@ -13107,6 +13197,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonPatternAuthoring(
 			{
 				m_iSelectedKoukuSaydonPatternClip = iClip;
 				Select_Clip(pModel, Clip.strRuntimeClip);
+				Apply_KoukuSaydonPreviewScale(pModel, Resolve_ActionPreviewScale(m_KoukuSaydonActionReference, SelectedPattern.iSourceActionId));
 			}
 			ImGui::EndDisabled();
 			ImGui::PopID();
@@ -14345,6 +14436,7 @@ void Client::CAnimation_Tool::Render_AnimationList(const shared_ptr<Engine::CMod
 			pModel->Set_Animation(i, m_bLoop);
 			pModel->Set_AnimTrackPosition(i, 0.f);
 			m_iSelectedEvent = -1;
+			Apply_KoukuSaydonPreviewScale(pModel, Resolve_LargeNamePreviewScale(pName));
 		}
 	}
 
