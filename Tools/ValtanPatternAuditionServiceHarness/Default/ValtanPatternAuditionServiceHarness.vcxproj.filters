@@ -21,6 +21,10 @@
 	<ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossCompositionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonCompositionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonAnimationActionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\CompositionResourceTree.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\EffectV2_Document.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp" />

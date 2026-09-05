@@ -15,6 +15,7 @@ namespace Client
 	{
 		std::string strOccurrenceId;
 		std::string strProfileId;
+		// Action 0 is a valid reference; physical clips use action 0 plus stage RAW.
 		std::uint32_t iSourceActionId = 0u;
 		std::string strSourceStageId;
 		std::string strSourceSlotId;
@@ -45,6 +46,7 @@ namespace Client
 	struct KOUKU_SAYDON_COMPOSITION_PATTERN final
 	{
 		std::string strPatternId;
+		std::string strActorProfileId;
 		std::string strDisplayName;
 		std::string strAuthoringStatus;
 		std::string strCategory;
@@ -61,7 +63,7 @@ namespace Client
 
 	struct KOUKU_SAYDON_COMPOSITION_DOCUMENT final
 	{
-		std::uint32_t iFormatVersion = 1u;
+		std::uint32_t iFormatVersion = 2u;
 		std::uint32_t iRevision = 1u;
 		std::string strCompositionId;
 		std::string strEncounterId;
@@ -94,6 +96,9 @@ namespace Client
 		explicit CKoukuSaydonCompositionDocument(std::filesystem::path path);
 
 		static std::filesystem::path Resolve_Path();
+		static bool_t Is_KnownProfile(std::string_view profileId);
+		// Source profile 07 shares actor 05; unknown profiles return an empty view.
+		static std::string_view Resolve_ActorProfileId(std::string_view sourceProfileId);
 		static bool_t Parse_Text(
 			std::string_view text,
 			KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument,

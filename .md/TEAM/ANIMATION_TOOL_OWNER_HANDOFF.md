@@ -916,3 +916,35 @@ Effect cue를 만들거나 publish하지 않는다. 제품 Pattern 승격은 별
 ID, gameplay Pattern, collider, Effect 또는 Sound를 생성하지 않는다.
 `Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json`은
 현재 authored world/camera track inspection만 제공하며 unified Save/Play나 Server scene runtime이 아니다.
+
+
+### 17.4 Composition의 모델별 Pattern과 Sequence 저장
+
+Composition의 `KoukuSaydon` 아래 Pattern은 `Kouku (MN_RPCZ_00)`,
+`Saydon (MN_RPCT_05)`, `Large Saydon (MN_RPCT_06)` 모델별로 나눈다.
+`MN_RPCT_07` 액션은 실제 몸체가 같은 Saydon Pattern에 넣으며 occurrence의 원래
+`profileId`는 `MN_RPCT_07`로 보존한다. 다른 몸체의 Pattern에는 붙이지 않는다.
+
+Resources의 기획 Action을 Sequence에 붙이면 원본 slot의 clip, source timing과 순서를
+복사한다. 모델에 Pattern이 없으면 첫 Append가 같은 모델의 DRAFT Pattern을 만든다.
+Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 `Delete Selected` 또는
+Delete로 제거한다. Sequence의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다.
+입력 또는 저장 검증이 실패하면 기존 Pattern과 파일을 보존한다.
+
+정본은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`이다. formatVersion 2의
+각 Pattern은 물리 모델 ID인 `actorProfileId`를 명시한다. version 1은 읽을 때 occurrence의
+모델로 owner를 유도하며, 빈 기존 Gate 1 Pattern은 `MN_RPCZ_00`으로 옮긴다. 서로 다른
+모델이 섞였거나 모르는 프로필이 있는 기존 Pattern은 오류 항목으로 격리하고 원문을 보존한다.
+저장은 version 2로 수행한다. 별도의 `*.patternbindings.json` 로컬 Pattern 저장과는 다른
+Composition 저작 문서다.
+
+`sourceActionId = 0`도 유효한 기획 액션이다. 물리 RAW clip은 `sourceActionId = 0`과
+`sourceStageId = RAW`의 조합으로 구별한다. 참조 파일의 누락이나 최신 여부는 Composition
+Save를 막지 않으며 저장된 source ID와 revision 문자열을 보존한다.
+
+DRAFT Pattern은 원본의 긴 기획 Action을 담을 수 있도록 최대 1,024 Stage를 허용하며
+Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한을 유지한다.
+
+`PRODUCT` 투영과 Server 재생은 현재 Gate 1 몸체 `MN_RPCZ_00` Pattern만 지원한다.
+Saydon과 Large Saydon의 DRAFT 저장이 Gate 1 boss를 다른 모델로 바꾸지는 않는다.
+기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.

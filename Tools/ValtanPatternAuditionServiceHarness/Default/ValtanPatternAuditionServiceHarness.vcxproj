@@ -38,7 +38,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/MP /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS;_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;$(ProjectDir)..\..\..\Engine\Public;$(ProjectDir)..\..\..\Engine\External\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 	  <!-- No-PCH Client sources expose legacy global `using namespace std`.
 	       Complete WinSDK COM/RPC declarations first so its `byte` typedef can
 	       never become ambiguous with C++17 std::byte in a later include. -->
@@ -47,6 +47,11 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- Editor contracts call draft methods only. Delay loading keeps the
+           unused ImGui virtual methods from loading Engine or opening a UI. -->
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\EngineSDK\lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Engine.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>Engine.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -81,6 +86,10 @@
 	<ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossCompositionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonCompositionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\KoukuSaydonAnimationActionDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\CompositionResourceTree.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\EffectV2_Document.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp">

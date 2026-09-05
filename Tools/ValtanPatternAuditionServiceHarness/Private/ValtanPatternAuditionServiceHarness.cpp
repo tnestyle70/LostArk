@@ -14,6 +14,7 @@ int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_BossCompositionDocumentContractTests();
+int Run_KoukuCompositionEditorContractTests();
 int Run_ActionCompositionGraphModelContractTests();
 int Run_BossLogicFlowViewModelContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
@@ -1370,8 +1371,16 @@ namespace
 	}
 }
 
-int main()
+int main(const int argc, const char* const argv[])
 {
+	if (argc == 2 && std::string(argv[1]) == "--kouku-composition-editor-contract")
+		return Run_KoukuCompositionEditorContractTests();
+	if (argc != 1)
+	{
+		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
+			"[--kouku-composition-editor-contract]\n";
+		return 2;
+	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{
 		{ "authoritative predecessor and no reset", VerifyAuthoritativePredecessorAndNoReset },
 		{ "A completed before B verdict and PENDING", VerifyCompletionBeforeVerdictAndPending },

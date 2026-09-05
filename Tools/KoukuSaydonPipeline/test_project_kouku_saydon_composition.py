@@ -32,6 +32,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_seed_is_the_exact_six_stage_pizza_reference(self):
         self.validate(copy.deepcopy(self.document))
         self.assertEqual(2, self.document["revision"])
+        self.assertEqual(2, self.document["formatVersion"])
+        self.assertTrue(all(p["actorProfileId"] == "MN_RPCZ_00" for p in self.document["patterns"]))
         self.assertEqual(["KAKULSAYDON_G1_PIZZA"], self.document["playAllPatternIds"])
         self.assertEqual(5, len(self.document["patterns"]))
         pattern = self.pizza(self.document)
@@ -83,7 +85,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         extra["futureFamilies"] = []
         mutations.append(extra)
         wrong_version = copy.deepcopy(self.document)
-        wrong_version["formatVersion"] = 2
+        wrong_version["formatVersion"] = 3
         mutations.append(wrong_version)
         wrong_id = copy.deepcopy(self.document)
         wrong_id["bossPlacementId"] = "boss.kakulsaydon.g1.other"
@@ -256,6 +258,168 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(key=key), mock.patch.object(subject, "load_json") as read:
                 self.validate(document)
                 read.assert_not_called()
+
+    @staticmethod
+    def append_reference_sequence(pattern, profile_id, source_action_id=None):
+        reference = subject.load_json(ROOT / subject.REFERENCE_ROOT / f"{profile_id}.actionreference.json")
+        action = next(
+            action for action in reference["actions"]
+            if (source_action_id is None or action["sourceActionId"] == source_action_id)
+            and any(stage["slots"] for stage in action["stages"])
+        )
+        ordinal = pattern["nextStageOrdinal"]
+        pattern["nextStageOrdinal"] += 1
+        stage = {
+            "stageId": f"STAGE_{ordinal}",
+            "actionId": f"{pattern['patternId']}.stage.{ordinal}",
+            "stageKind": "ACTIVE", "durationMs": 0, "animationOccurrences": [],
+        }
+        for source_stage in action["stages"]:
+            for slot in source_stage["slots"]:
+                occurrence = {
+                    "occurrenceId": f"{pattern['patternId']}.animation.{pattern['nextAnimationOrdinal']}",
+                    "profileId": profile_id, "sourceActionId": action["sourceActionId"],
+                    "sourceStageId": source_stage["stageId"], "sourceSlotId": slot["slotId"],
+                    "referenceRevision": reference["referenceRevision"],
+                    "runtimeClip": slot["runtimeClip"], "startOffsetMs": stage["durationMs"],
+                    "sourceStartMs": slot["sourceStartMs"], "playMs": slot["playMs"],
+                    "playRate": slot["playRate"],
+                    "endPolicy": "LOOP_TO_WINDOW" if slot["loop"] else "EXACT",
+                }
+                pattern["nextAnimationOrdinal"] += 1
+                stage["durationMs"] += slot["playMs"]
+                stage["animationOccurrences"].append(occurrence)
+        pattern["stages"].append(stage)
+        return stage
+
+    def test_known_actor_sequences_roundtrip_and_delete_without_retargeting(self):
+        for profile_id, action_id in (("MN_RPCT_05", 4219811), ("MN_RPCT_06", None),
+                                      ("MN_RPCT_07", None), ("MN_RPCZ_00", 0)):
+            with self.subTest(profile=profile_id):
+                document = copy.deepcopy(self.document)
+                pattern = document["patterns"][0]
+                owner = subject.resolve_actor_profile_id(profile_id)
+                pattern["actorProfileId"] = owner
+                stage = self.append_reference_sequence(pattern, profile_id, action_id)
+                self.validate(document)
+                reopened = json.loads(json.dumps(document, ensure_ascii=False))
+                self.validate(reopened)
+                self.assertEqual(document, reopened)
+                self.assertTrue(all(row["profileId"] == profile_id for row in stage["animationOccurrences"]))
+                if action_id == 4219811:
+                    self.assertEqual(["rpct00_att_battle_12_06"],
+                                     [row["runtimeClip"] for row in stage["animationOccurrences"]])
+                if action_id == 0:
+                    self.assertEqual(["stage-003", "stage-006"],
+                                     [row["sourceStageId"] for row in stage["animationOccurrences"]])
+                pattern["stages"][0]["animationOccurrences"].clear()
+                self.validate(document)
+                pattern["stages"].clear()
+                self.validate(document)
+                self.assertEqual(owner, pattern["actorProfileId"])
+                self.assertEqual(self.document["patterns"][1:], document["patterns"][1:])
+
+    def test_real_249_stage_saydon_action_fits_draft_but_product_stays_bounded(self):
+        document = copy.deepcopy(self.document)
+        draft = document["patterns"][0]
+        draft["actorProfileId"] = "MN_RPCT_05"
+        sequence = self.append_reference_sequence(draft, "MN_RPCT_05", 4219880)
+        self.assertEqual(249, len(sequence["animationOccurrences"]))
+        self.assertEqual(273134, sequence["durationMs"])
+        self.assertEqual(249, len({row["sourceStageId"] for row in sequence["animationOccurrences"]}))
+        draft["stages"] = []
+        for ordinal, row in enumerate(sequence["animationOccurrences"], 1):
+            row["startOffsetMs"] = 0
+            draft["stages"].append({
+                "stageId": f"STAGE_{ordinal}",
+                "actionId": f"{draft['patternId']}.stage.{ordinal}",
+                "stageKind": "ACTIVE", "durationMs": row["playMs"],
+                "animationOccurrences": [row],
+            })
+        draft["nextStageOrdinal"] = 250
+        self.validate(document)
+        self.validate(json.loads(json.dumps(document)))
+        product = self.pizza(document)
+        template = product["stages"][0]
+        product["stages"] = []
+        for ordinal in range(1, 66):
+            stage = copy.deepcopy(template)
+            stage["stageId"] = f"STAGE_{ordinal}"
+            stage["actionId"] = f"{product['patternId']}.stage.{ordinal}"
+            stage["animationOccurrences"][0]["occurrenceId"] = f"{product['patternId']}.animation.{ordinal}"
+            product["stages"].append(stage)
+        product["nextStageOrdinal"] = product["nextAnimationOrdinal"] = 66
+        with self.assertRaisesRegex(subject.CompositionError, "at most 64 rows"):
+            self.validate(document)
+
+    def test_actor_ownership_rejects_cross_model_unknown_and_nonphysical_owner(self):
+        document = copy.deepcopy(self.document)
+        pattern = document["patterns"][0]
+        pattern["actorProfileId"] = "MN_RPCT_05"
+        stage = self.append_reference_sequence(pattern, "MN_RPCT_05", 4219811)
+        for owner in ("MN_RPCZ_00", "MN_RPCT_06", "MN_RPCT_07", "UNKNOWN", ""):
+            with self.subTest(owner=owner):
+                pattern["actorProfileId"] = owner
+                with self.assertRaises(subject.CompositionError):
+                    self.validate(document)
+        pattern["actorProfileId"] = "MN_RPCT_05"
+        stage["animationOccurrences"][0]["profileId"] = "UNKNOWN"
+        with self.assertRaisesRegex(subject.CompositionError, "unknown animation profile"):
+            self.validate(document)
+        stage["animationOccurrences"][0]["profileId"] = "MN_RPCT_07"
+        self.validate(document)
+
+    def test_non_kouku_actor_cannot_publish_as_gate1_boss(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.pizza(document)
+        pattern["actorProfileId"] = "MN_RPCT_05"
+        for stage in pattern["stages"]:
+            stage["animationOccurrences"][0]["profileId"] = "MN_RPCT_05"
+        with self.assertRaisesRegex(subject.CompositionError, "PRODUCT actorProfileId"):
+            self.validate(document)
+
+    def test_legacy_owner_derivation_accepts_alias_and_rejects_mixed_models(self):
+        document = copy.deepcopy(self.document)
+        draft = document["patterns"][0]
+        stage = self.append_reference_sequence(draft, "MN_RPCT_05", 4219811)
+        self.append_reference_sequence(draft, "MN_RPCT_07")
+        document["formatVersion"] = 1
+        for pattern in document["patterns"]:
+            del pattern["actorProfileId"]
+        self.validate(document)
+        stage["animationOccurrences"][0]["profileId"] = "MN_RPCT_06"
+        with self.assertRaisesRegex(subject.CompositionError, "does not match Pattern actorProfileId"):
+            self.validate(document)
+        draft["stages"].clear()
+        self.validate(document)
+
+    def test_v2_requires_explicit_owner_even_for_an_empty_pattern(self):
+        document = copy.deepcopy(self.document)
+        del document["patterns"][0]["actorProfileId"]
+        with self.assertRaises(subject.CompositionError):
+            self.validate(document)
+
+    def test_referenced_action_zero_is_preserved_in_product_source_ids(self):
+        document = copy.deepcopy(self.document)
+        draft = document["patterns"][0]
+        source_stage = self.append_reference_sequence(draft, "MN_RPCZ_00", 0)
+        row = copy.deepcopy(source_stage["animationOccurrences"][0])
+        stage = self.pizza(document)["stages"][0]
+        row["occurrenceId"] = stage["animationOccurrences"][0]["occurrenceId"]
+        stage["animationOccurrences"] = [row]
+        stage["durationMs"] = row["playMs"]
+        self.validate(document)
+        self.assertEqual([0, 4219714], subject.project_encounter(document)["patterns"][0]["sourceActionIds"])
+        row["referenceRevision"] = ""
+        with self.assertRaisesRegex(subject.CompositionError, "lowercase SHA-256"):
+            self.validate(document)
+
+    def test_raw_stage_cannot_claim_a_nonzero_reference_action(self):
+        document = copy.deepcopy(self.document)
+        row = self.pizza(document)["stages"][0]["animationOccurrences"][0]
+        row["sourceStageId"] = "RAW"
+        with self.assertRaisesRegex(subject.CompositionError, "RAW clips must use sourceActionId 0"):
+            self.validate(document)
 
     def test_raw_model_clips_publish_without_extracted_action_metadata(self):
         document = copy.deepcopy(self.document)

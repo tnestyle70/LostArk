@@ -1,12 +1,15 @@
 #include "BossCompositionDocument.h"
+#include "KoukuSaydonActionWorkbench.h"
 #include "ProjectDataRoot.h"
 
 #include <Windows.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -374,6 +377,292 @@ int Run_BossCompositionDocumentContractTests()
 	{
 		std::cerr << "BossCompositionDocumentContractTests: FAIL: " <<
 			error.what() << '\n';
+		return 1;
+	}
+}
+
+
+namespace
+{
+	void RequireEditorStep(const bool succeeded, const std::string& status,
+		const char* const step)
+	{
+		if (!succeeded)
+			throw std::runtime_error(std::string(step) + ": " + status);
+	}
+
+	const Client::KOUKU_SAYDON_COMPOSITION_PATTERN& EditorPattern(
+		const Client::CKoukuSaydonActionWorkbench& workbench,
+		const std::string& patternId)
+	{
+		const auto& patterns = workbench.Get_Composition().Patterns;
+		const auto found = std::find_if(patterns.begin(), patterns.end(),
+			[&](const auto& pattern) { return pattern.strPatternId == patternId; });
+		Require(found != patterns.end(), "editor Pattern was lost");
+		return *found;
+	}
+
+	void RequireEditorRoundtrip(Client::CKoukuSaydonActionWorkbench& workbench)
+	{
+		std::string status;
+		RequireEditorStep(workbench.Save(status), status, "save editor draft");
+		Require(!workbench.Is_Dirty(), "successful Save left the draft dirty");
+		const auto saved = workbench.Get_Composition();
+		RequireEditorStep(workbench.Reload(status), status, "reload saved editor draft");
+		Require(workbench.Get_Composition() == saved,
+			"Save/Reload changed Stage, occurrence, profile, timing or stable ID");
+	}
+
+	void VerifyLegacyEditorMigration(const std::filesystem::path& sourcePath)
+	{
+		using namespace Client;
+		const std::string original = ReadText(sourcePath);
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT source;
+		std::string status;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(original, source, status),
+			status, "parse current composition for legacy fixture");
+		const auto pizza = std::find_if(source.Patterns.begin(), source.Patterns.end(),
+			[](const auto& pattern) { return pattern.strPatternId == "KAKULSAYDON_G1_PIZZA"; });
+		Require(pizza != source.Patterns.end() && pizza->Stages.size() >= 2u,
+			"real Pizza fixture is missing");
+		auto mixed = *pizza;
+		mixed.strPatternId = "KAKULSAYDON_G1_NATIVE_MIXED_LEGACY";
+		mixed.strAuthoringStatus = "DRAFT";
+		for (std::size_t index = 0u; index < mixed.Stages.size(); ++index)
+		{
+			mixed.Stages[index].strActionId = mixed.strPatternId + ".stage." +
+				std::to_string(index + 1u);
+			mixed.Stages[index].AnimationOccurrences.at(0u).strOccurrenceId =
+				mixed.strPatternId + ".animation." + std::to_string(index + 1u);
+		}
+		mixed.Stages[0].AnimationOccurrences[0].strProfileId = "MN_RPCT_05";
+		source.Patterns.push_back(mixed);
+		std::string serialized = CKoukuSaydonCompositionDocument::Serialize(source);
+		Require(ReplaceOnce(serialized, "\"formatVersion\": 2", "\"formatVersion\": 1"),
+			"could not form a legacy v1 document");
+		std::istringstream lines(serialized);
+		std::string line;
+		std::string legacy;
+		while (std::getline(lines, line))
+			if (line.find("\"actorProfileId\"") == std::string::npos)
+				legacy += line + "\n";
+		Require(WriteText(sourcePath, legacy), "could not write legacy scratch fixture");
+		CKoukuSaydonCompositionDocument document;
+		RequireEditorStep(document.Reload_FromPath(sourcePath, status), status,
+			"load legacy document with mixed-model quarantine");
+		const auto candidate = document.Get_LastGood();
+		Require(candidate.iFormatVersion == 2u &&
+			candidate.Patterns[0].strActorProfileId == "MN_RPCZ_00" &&
+			!candidate.Patterns.back().strLoadError.empty() &&
+			!candidate.Patterns.back().strPreservedJson.empty(),
+			"v1 migration lost deterministic owner or mixed-model raw quarantine");
+		const std::string preserved = candidate.Patterns.back().strPreservedJson;
+		RequireEditorStep(document.Save_Atomic(candidate, status), status,
+			"save migrated v2 document with quarantine");
+		CKoukuSaydonCompositionDocument reopened;
+		RequireEditorStep(reopened.Reload_FromPath(sourcePath, status), status,
+			"reopen migrated v2 document");
+		Require(reopened.Get_LastGood().iFormatVersion == 2u &&
+			reopened.Get_LastGood().Patterns.back().strPreservedJson == preserved &&
+			ReadText(sourcePath).find("\"formatVersion\": 2") != std::string::npos,
+			"v2 Save/Reload lost the quarantined legacy source JSON");
+		Require(WriteText(sourcePath, original), "could not restore scratch source for editor test");
+	}
+
+	void VerifyKoukuEditorRoundtrip()
+	{
+		const auto sourceRoot = Client::CProjectDataRoot::Get();
+		const auto scratchRoot = std::filesystem::temp_directory_path() /
+			("LostArkKoukuCompositionEditor-" + std::to_string(GetCurrentProcessId()) +
+			 "-" + std::to_string(GetTickCount64()));
+		const auto dataRoot = scratchRoot / "Data";
+		const auto relativeSource =
+			std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+		const auto sourcePath = dataRoot / relativeSource;
+		Require(CopyFixture(sourceRoot / relativeSource, sourcePath),
+			"could not copy real Kouku composition source");
+		for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06",
+			"MN_RPCT_07", "MN_RPCZ_00" })
+		{
+			const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+				(std::string(profile) + ".actionreference.json");
+			Require(CopyFixture(sourceRoot / relative, dataRoot / relative),
+				"could not copy real Kouku Action reference");
+		}
+		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+		Require(environment.Set(dataRoot), "could not select the scratch Data root");
+		std::cout << "Kouku editor fixture: " << sourcePath.string() << '\n';
+
+		VerifyLegacyEditorMigration(sourcePath);
+		Client::CKoukuSaydonActionWorkbench workbench;
+		std::string status;
+		RequireEditorStep(workbench.Reload(status), status, "load real source");
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_05", status),
+			status, "select Saydon Pattern category");
+		std::string patternId;
+		RequireEditorStep(workbench.Create_Pattern("Native editor roundtrip", "NORMAL",
+			patternId, status), status, "create DRAFT Pattern");
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			4219811u, status), status, "append Saydon Action 4219811 as Stages");
+		const auto firstAppend = EditorPattern(workbench, patternId);
+		Require(firstAppend.strActorProfileId == "MN_RPCT_05" &&
+			firstAppend.Stages.size() == 1u &&
+			firstAppend.Stages[0].AnimationOccurrences.size() == 1u &&
+			firstAppend.Stages[0].iDurationMs == 4333u &&
+			firstAppend.Stages[0].AnimationOccurrences[0].strProfileId == "MN_RPCT_05" &&
+			firstAppend.Stages[0].AnimationOccurrences[0].strRuntimeClip ==
+				"rpct00_att_battle_12_06",
+			"Saydon Action did not preserve its one 4333ms source Stage");
+		const std::string firstStageId = firstAppend.Stages[0].strStageId;
+		RequireEditorStep(workbench.Append_ActionToStage(patternId, firstStageId,
+			"MN_RPCT_05", 4219811u, status), status, "append Action into selected Stage");
+		const auto& combined = EditorPattern(workbench, patternId).Stages[0];
+		Require(combined.AnimationOccurrences.size() == 2u &&
+			combined.AnimationOccurrences[1].iStartOffsetMs == 4333u &&
+			combined.iDurationMs == 8666u,
+			"Append Action to Stage did not preserve ordered source windows");
+
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			0u, status), status, "append real Action ID zero");
+		const auto withIdle = EditorPattern(workbench, patternId);
+		Require(withIdle.Stages.size() == 3u,
+			"Action ID zero did not append exactly its two populated Stages");
+		for (std::size_t index = 1u; index < 3u; ++index)
+		{
+			const auto& row = withIdle.Stages[index].AnimationOccurrences.at(0u);
+			Require(row.iSourceActionId == 0u && row.strProfileId == "MN_RPCT_05" &&
+				row.strSourceStageId == (index == 1u ? "stage-003" : "stage-006") &&
+				row.strSourceSlotId == "animation-000" && row.iPlayMs == 3000u &&
+				!row.strReferenceRevision.empty(),
+				"Action zero was replaced by RAW identity or lost its source Stage");
+		}
+		RequireEditorRoundtrip(workbench);
+
+		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_07",
+			4219905u, status), status, "append Saydon profile 07 physical-model alias");
+		const auto saydon = EditorPattern(workbench, patternId);
+		Require(saydon.strActorProfileId == "MN_RPCT_05" && saydon.Stages.size() == 5u &&
+			saydon.Stages[3].AnimationOccurrences[0].strProfileId == "MN_RPCT_07",
+			"Saydon alias did not preserve source profile 07 and physical owner 05");
+		RequireEditorRoundtrip(workbench);
+
+		const auto beforeCrossModel = workbench.Get_Composition();
+		const std::string savedBeforeCrossModel = ReadText(sourcePath);
+		Require(!workbench.Append_ActionAsStages(patternId, "MN_RPCZ_00", 4219714u, status),
+			"Kouku Action appended to a Saydon-owned Pattern");
+		Require(workbench.Get_Composition() == beforeCrossModel && !workbench.Is_Dirty() &&
+			ReadText(sourcePath) == savedBeforeCrossModel,
+			"cross-model rejection changed draft, owner or saved source");
+
+		Require(!workbench.Set_PatternAuthoringStatus(patternId, "PRODUCT", status),
+			"Saydon authoring Pattern was admitted as the Server Kouku PRODUCT");
+		Require(workbench.Get_Composition() == beforeCrossModel && !workbench.Is_Dirty(),
+			"rejected non-boss PRODUCT changed the saved Saydon draft");
+
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCZ_00", status), status,
+			"select Kouku Pattern category");
+		std::string koukuPatternId;
+		RequireEditorStep(workbench.Create_Pattern("Separate Kouku pattern", "NORMAL",
+			koukuPatternId, status), status, "create separate Kouku-owned Pattern");
+		RequireEditorStep(workbench.Append_ActionAsStages(koukuPatternId, "MN_RPCZ_00",
+			4219714u, status), status, "append Kouku six-Stage Pizza");
+		Require(EditorPattern(workbench, koukuPatternId).strActorProfileId == "MN_RPCZ_00" &&
+			EditorPattern(workbench, koukuPatternId).Stages.size() == 6u,
+			"separate Kouku Pattern lost its owner or source Stages");
+		RequireEditorRoundtrip(workbench);
+		const auto koukuBeforeDelete = EditorPattern(workbench, koukuPatternId);
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_06", status), status,
+			"select empty Large Saydon category");
+		const auto beforeAutoCreate = workbench.Get_Composition();
+		Require(!workbench.Append_ActionAsStages("", "MN_RPCT_06", 999999999u, status),
+			"unknown Action created an automatic Pattern");
+		Require(workbench.Get_Composition() == beforeAutoCreate && !workbench.Is_Dirty(),
+			"failed automatic Append consumed an ordinal or mutated the draft");
+		RequireEditorStep(workbench.Append_ActionAsStages("", "MN_RPCT_06", 4221801u,
+			status), status, "auto-create Large Saydon Pattern with Action append");
+		const std::string largePatternId = workbench.Get_SelectedPatternId();
+		Require(!largePatternId.empty() &&
+			EditorPattern(workbench, largePatternId).strActorProfileId == "MN_RPCT_06" &&
+			EditorPattern(workbench, largePatternId).Stages.size() == 6u &&
+			workbench.Get_Composition().Patterns.size() == beforeAutoCreate.Patterns.size() + 1u &&
+			workbench.Get_Composition().iNextPatternOrdinal == beforeAutoCreate.iNextPatternOrdinal + 1u,
+			"automatic Action Append did not commit one owned Pattern atomically");
+		RequireEditorRoundtrip(workbench);
+		const auto largeBeforeDelete = EditorPattern(workbench, largePatternId);
+		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_05", status), status,
+			"return to Saydon Pattern category");
+		std::string longPatternId;
+		RequireEditorStep(workbench.Create_Pattern("Real 249 Stage Saydon Action", "NORMAL",
+			longPatternId, status), status, "create long reference-action Pattern");
+		RequireEditorStep(workbench.Append_ActionAsStages(longPatternId, "MN_RPCT_05",
+			4219880u, status), status, "append real 249-Stage Saydon Action");
+		const auto longPattern = EditorPattern(workbench, longPatternId);
+		std::uint32_t longDurationMs = 0u;
+		for (const auto& stage : longPattern.Stages)
+		{
+			longDurationMs += stage.iDurationMs;
+			Require(stage.AnimationOccurrences.size() == 1u &&
+				stage.AnimationOccurrences[0].iSourceActionId == 4219880u,
+				"long Action append dropped or duplicated a source slot");
+		}
+		Require(longPattern.Stages.size() == 249u && longDurationMs == 273134u,
+			"long Action was truncated to the old 64-Stage Product capacity");
+		RequireEditorRoundtrip(workbench);
+		const auto longBeforeDelete = EditorPattern(workbench, longPatternId);
+		RequireEditorStep(workbench.Select_PatternById(patternId, status), status,
+			"select Saydon Pattern for batch deletion");
+
+		const auto beforeDelete = EditorPattern(workbench, patternId);
+		const std::string removedStage = beforeDelete.Stages[0].strStageId;
+		const std::string overlappingBox =
+			beforeDelete.Stages[0].AnimationOccurrences[0].strOccurrenceId;
+		const std::string removedBox =
+			beforeDelete.Stages[1].AnimationOccurrences[0].strOccurrenceId;
+		RequireEditorStep(workbench.Delete_TimelineSelection(patternId,
+			{ removedStage }, { overlappingBox, removedBox }, status), status,
+			"delete selected Stage and a box in another Stage");
+		auto expected = beforeDelete;
+		expected.Stages.erase(expected.Stages.begin());
+		expected.Stages[0].AnimationOccurrences.clear();
+		Require(EditorPattern(workbench, patternId) == expected &&
+			EditorPattern(workbench, koukuPatternId) == koukuBeforeDelete &&
+			EditorPattern(workbench, largePatternId) == largeBeforeDelete &&
+			EditorPattern(workbench, longPatternId) == longBeforeDelete,
+			"batch delete changed unselected Stages, counters, timing or the other model");
+		RequireEditorRoundtrip(workbench);
+
+		const auto beforeInvalid = workbench.Get_Composition();
+		Require(!workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
+			999999999u, status), "unknown Action was accepted");
+		Require(!workbench.Delete_TimelineSelection("MISSING_PATTERN",
+			{ removedStage }, {}, status), "missing Pattern accepted batch delete");
+		Require(workbench.Get_Composition() == beforeInvalid && !workbench.Is_Dirty(),
+			"rejected edit changed the admitted draft");
+
+		RequireEditorStep(workbench.Rename_Pattern(patternId, "Unsaved local edit", status),
+			status, "stage edit before stale Save");
+		const auto pending = workbench.Get_Composition();
+		const std::string externalBytes = ReadText(sourcePath) + "\n";
+		Require(WriteText(sourcePath, externalBytes), "could not stage concurrent source edit");
+		Require(!workbench.Save(status), "stale Save overwrote external source edit");
+		Require(ReadText(sourcePath) == externalBytes &&
+			workbench.Get_Composition() == pending && workbench.Is_Dirty(),
+			"stale Save failed to preserve external bytes and unsaved local draft");
+	}
+}
+
+int Run_KoukuCompositionEditorContractTests()
+{
+	try
+	{
+		VerifyKoukuEditorRoundtrip();
+		std::cout << "KoukuCompositionEditorContractTests: append/action-zero/model-owners/"
+			"249-stage/batch-delete/save-reload/CAS passed\n";
+		return 0;
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << "KoukuCompositionEditorContractTests: FAIL: " << error.what() << '\n';
 		return 1;
 	}
 }
