@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 
 #include <filesystem>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -62,11 +63,18 @@ public:
 		const std::filesystem::path& sourcePath,
 		const std::filesystem::path& paintPath,
 		std::string& outStatus);
+	/* authoredHeight is the world Y the caller picked. It only matters for a
+	   FORCE_WALKABLE stroke over a cell the bake left without a surface: that
+	   pair authors floor where there was none, which is the only way to reach
+	   an isolated platform the seam median can never rescue. A non-finite
+	   value keeps the historical behaviour of painting resolved cells only. */
 	bool_t Paint(
 		int32_t cellX,
 		int32_t cellZ,
 		uint32_t brushRadius,
-		NAVGRID_PAINT_OVERRIDE overrideState);
+		NAVGRID_PAINT_OVERRIDE overrideState,
+		f32_t authoredHeight =
+			(std::numeric_limits<f32_t>::quiet_NaN)());
 	bool_t Save_Paint(
 		const std::filesystem::path& paintPath,
 		std::string& outStatus);
