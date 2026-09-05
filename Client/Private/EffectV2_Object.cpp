@@ -3,7 +3,9 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Npc.h"
+#include "Part_Body.h"
 #include "RuntimeAssetRoot.h"
+#include "Transform.h"
 #include "Valtan.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
@@ -726,6 +728,20 @@ Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Valtan(
 	return Target;
 }
 
+Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_PreviewBody(
+	const std::shared_ptr<CPart_Body>& pBody,
+	std::string strArchetypeId)
+{
+	EFFECT_V2_TARGET Target;
+	if (nullptr == pBody || strArchetypeId.empty())
+		return Target;
+	Target.eKind = EFFECT_V2_TARGET_KIND::PREVIEW_BODY;
+	Target.pOwner = pBody;
+	Target.pKey = pBody.get();
+	Target.strArchetypeId = std::move(strArchetypeId);
+	return Target;
+}
+
 void Client::CEffectV2Object::Set_FollowTarget(
 	const EFFECT_V2_TARGET& Target,
 	std::string strBone,
@@ -777,6 +793,18 @@ bool_t Client::CEffectV2Object::Resolve_TargetView(
 		OutView.bHasPortalRushRoute =
 			pValtan->Try_Get_PortalRushAnchorMatrices(
 				&OutView.PortalRushStart, &OutView.PortalRushEnd);
+		return true;
+	}
+	case EFFECT_V2_TARGET_KIND::PREVIEW_BODY:
+	{
+		const std::shared_ptr<CPart_Body> pBody = std::static_pointer_cast<CPart_Body>(pOwner);
+		const std::shared_ptr<CTransform> pTransform =
+			std::dynamic_pointer_cast<CTransform>(pBody->Get_Component(g_strTransformComTag));
+		if (nullptr == pBody->Get_Model() || nullptr == pTransform)
+			return false;
+		OutView.pModel = pBody->Get_Model();
+		OutView.BoneRoot = *pTransform->Get_WorldMatrixPtr();
+		OutView.YawBasis = OutView.BoneRoot;
 		return true;
 	}
 	default:
