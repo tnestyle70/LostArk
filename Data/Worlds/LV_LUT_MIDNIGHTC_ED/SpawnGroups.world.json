@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.world-spawn-groups",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 193,
+  "anchors": [
+    { "anchorId": "anchor.valtan.editor", "position": [0.266000003, 0.5, -46.2719994], "yawDegrees": 11 }
+  ],
+  "spawnGroups": []
+}

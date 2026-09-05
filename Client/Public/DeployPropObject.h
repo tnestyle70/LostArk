@@ -146,6 +146,17 @@ public:
 	   This is deliberately separate from the authored placement transform and
 	   from the persistent destroyable state. End_PhysicsPreview restores both
 	   values exactly, so scrubbing/restarting never dirties map data. */
+	/* A cutscene may walk an animated prop while its clip chain plays. The
+	   pose composes onto the authored placement the same way a world sequence
+	   composes a map placement, and it is dropped together with the authoring
+	   preview so a stopped cutscene never leaves the prop displaced. */
+	bool_t Apply_AnimationAuthoringPose(
+		const float3_t& position,
+		const float4_t& rotationQuaternion);
+	bool_t Get_PlacedRootPose(
+		float3_t& outPosition,
+		float4_t& outRotationQuaternion) const;
+
 	bool_t Begin_PhysicsPreview(DEPLOY_PROP_STATE previewState);
 	bool_t Apply_PhysicsPreviewPose(
 		const float3_t& position,
@@ -289,6 +300,9 @@ private:
 	bool_t m_bPreAuthoringAnimationLoop = false;
 	bool_t m_bPreAuthoringAnimationPaused = false;
 	bool_t m_bAnimationAuthoringPreviewActive = false;
+	bool_t m_bAnimationAuthoringPoseActive = false;
+	float3_t m_AnimationAuthoringPosition = {};
+	float4_t m_AnimationAuthoringRotation = float4_t(0.f, 0.f, 0.f, 1.f);
 	bool_t m_bPhysicsPreviewActive = false;
 	float3_t m_PhysicsPreviewPosition = {};
 	float4_t m_PhysicsPreviewRotation = float4_t(0.f, 0.f, 0.f, 1.f);

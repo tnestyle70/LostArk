@@ -128,6 +128,9 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			{
 				continue;
 			}
+			/* Every authored action runs on the same entry, so a box can
+			   start a cutscene and move the player in one step. The box counts
+			   as fired when any of them commits. */
 			const WORLD_TRIGGER_ACTION& action =
 				trigger.Definition.TriggerActions.front();
 			bool fired = false;

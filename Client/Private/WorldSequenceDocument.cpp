@@ -11,6 +11,7 @@
 #include <limits>
 #include <new>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -428,8 +429,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 				animationTracks->Get_Array())
 			{
 				if (!Is_ExactObject(trackValue,
-					{ "slotId", "clipName", "playbackRate", "loop",
-					  "holdLastFrame" }))
+						{ "slotId", "clipName", "playbackRate", "loop",
+						  "holdLastFrame" }) &&
+					!Is_ExactObject(trackValue,
+						{ "slotId", "clipName", "playbackRate", "loop",
+						  "holdLastFrame", "startMs" }))
 				{
 					outStatus = "World sequence animation track shape is invalid";
 					return false;
@@ -448,6 +452,13 @@ bool_t Client::CWorldSequenceDocument::Load(
 					nullptr == holdLastFrame || !holdLastFrame->Is_Boolean())
 				{
 					outStatus = "World sequence animation track fields are invalid";
+					return false;
+				}
+				const DATA_JSON_VALUE* startMs = trackValue.Find("startMs");
+				if (nullptr != startMs &&
+					!Read_Uint32(startMs, parsedTrack.startMs, MAX_DURATION_MS))
+				{
+					outStatus = "World sequence animation track start is invalid";
 					return false;
 				}
 				parsedTrack.slotId = slotId->Get_String();
@@ -632,7 +643,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< CDataJson::Escape(track.slotId)
 				<< "\", \"clipName\": \""
 				<< CDataJson::Escape(track.clipName)
-				<< "\", \"playbackRate\": " << track.playbackRate
+				<< "\", \"startMs\": " << track.startMs
+					<< ", \"playbackRate\": " << track.playbackRate
 				<< ", \"loop\": " << (track.loop ? "true" : "false")
 				<< ", \"holdLastFrame\": "
 				<< (track.holdLastFrame ? "true" : "false") << " }";
@@ -748,22 +760,47 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				mirrored = keyMirrored;
 			}
 		}
+		/* An animation slot may carry an ordered clip chain, so its rows are
+		   checked against the slot's previous start instead of a plain unique
+		   set. A slot still may not be both a transform and an animation slot. */
+		std::unordered_map<std::string, uint32_t> animationSlotStarts;
 		for (const WORLD_SEQUENCE_ANIMATION_TRACK& track :
 			value.animationTracks)
 		{
-			if (!Is_ValidStableId(track.slotId) ||
-				!slotIds.insert(track.slotId).second || track.clipName.empty() ||
+			const auto chained = animationSlotStarts.find(track.slotId);
+			const bool_t firstOfSlot = animationSlotStarts.end() == chained;
+			/* A slot may carry both a transform track and a clip chain so one
+			   binding can walk an animated prop while it plays. Only a second
+			   animation chain on the same slot is a conflict. */
+			if (!Is_ValidStableId(track.slotId) || track.clipName.empty() ||
 				track.clipName.size() > 128u ||
 				!Is_ValidUtf8DisplayText(track.clipName) ||
 				!std::isfinite(track.playbackRate) || track.playbackRate < 0.05f ||
-				track.playbackRate > 8.f)
+				track.playbackRate > 8.f ||
+				track.startMs >= value.durationMs ||
+				(firstOfSlot && 0u != track.startMs) ||
+				(!firstOfSlot && track.startMs <= chained->second))
 			{
 				outStatus = "Invalid animation track in world sequence template: " +
 					value.sequenceId;
 				return false;
 			}
+			animationSlotStarts[track.slotId] = track.startMs;
 		}
 	}
+
+	/* One binding drives one slot, so a slot whose clips are chained still
+	   needs exactly one. */
+	const auto Count_BoundSlots =
+		[](const WORLD_SEQUENCE_TEMPLATE& value) -> size_t
+	{
+		std::unordered_set<std::string> slots;
+		for (const WORLD_SEQUENCE_TRACK& track : value.tracks)
+			slots.insert(track.slotId);
+		for (const WORLD_SEQUENCE_ANIMATION_TRACK& track : value.animationTracks)
+			slots.insert(track.slotId);
+		return slots.size();
+	};
 
 	std::unordered_set<std::string> instanceIds;
 	for (const WORLD_SEQUENCE_INSTANCE& value : m_Instances)
@@ -774,8 +811,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			value.startDelayMs > MAX_DURATION_MS ||
 			!std::isfinite(value.playbackSpeed) || value.playbackSpeed < 0.05f ||
 			value.playbackSpeed > 8.f ||
-			value.bindings.size() != targetTemplate->tracks.size() +
-				targetTemplate->animationTracks.size())
+			value.bindings.size() != Count_BoundSlots(*targetTemplate))
 		{
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
 			return false;
@@ -801,33 +837,56 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			const std::string uniqueTarget =
 				std::string(TargetKind_ToString(binding.targetKind)) + ":" +
 				binding.targetId;
+			const bool_t hasTransformSlot =
+				targetTemplate->tracks.end() != transformSlot;
+			const bool_t hasAnimationSlot =
+				targetTemplate->animationTracks.end() != animationSlot;
+			/* A Deploy target may carry a transform track alongside its clip
+			   chain so one binding can walk an animated prop while it plays.
+			   A map placement has no clips, so an animation slot there is
+			   still a mistake. */
+			const bool_t bindingShapeIsValid =
+				WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT ==
+					binding.targetKind ?
+				hasAnimationSlot : (hasTransformSlot && !hasAnimationSlot);
 			if (!boundSlots.insert(binding.slotId).second ||
 				!Parse_Uint64Text(binding.targetId, targetId) ||
 				!boundTargets.insert(uniqueTarget).second ||
-				(targetTemplate->tracks.end() == transformSlot &&
-					targetTemplate->animationTracks.end() == animationSlot) ||
-				(targetTemplate->tracks.end() != transformSlot &&
-					targetTemplate->animationTracks.end() != animationSlot))
+				!bindingShapeIsValid)
 			{
 				outStatus = "Invalid binding in world sequence instance: " +
 					value.instanceId;
 				return false;
 			}
-			if (targetTemplate->tracks.end() == transformSlot)
+			/* The binding's own kind decides which target table admits it. A
+			   Deploy slot that also carries a transform track is still a
+			   Deploy binding. */
+			if (WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT == binding.targetKind)
 			{
 				const auto deploy = availableDeployPlacements.find(targetId);
-				if (WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT !=
-						binding.targetKind ||
-					availableDeployPlacements.end() == deploy ||
-					!deploy->second.animationTargetSupported ||
-					deploy->second.animationClips.end() == std::find(
-						deploy->second.animationClips.begin(),
-						deploy->second.animationClips.end(),
-						animationSlot->clipName))
+				if (availableDeployPlacements.end() == deploy ||
+					!deploy->second.animationTargetSupported)
 				{
 					outStatus = "Invalid animated Deploy binding in world sequence instance: " +
 						value.instanceId + "/" + binding.slotId;
 					return false;
+				}
+				/* Every clip of the chain must exist on the prop, not just the
+				   first, so a mistyped later beat fails here instead of part
+				   way through the cutscene. */
+				for (const WORLD_SEQUENCE_ANIMATION_TRACK& track :
+					targetTemplate->animationTracks)
+				{
+					if (track.slotId != binding.slotId)
+						continue;
+					if (deploy->second.animationClips.end() == std::find(
+						deploy->second.animationClips.begin(),
+						deploy->second.animationClips.end(), track.clipName))
+					{
+						outStatus = "Invalid animated Deploy clip in world sequence instance: " +
+							value.instanceId + "/" + track.clipName;
+						return false;
+					}
 				}
 				continue;
 			}
@@ -1006,6 +1065,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			const WORLD_SEQUENCE_ANIMATION_TRACK& rightTrack =
 				right.animationTracks[trackIndex];
 			if (leftTrack.slotId != rightTrack.slotId ||
+				leftTrack.startMs != rightTrack.startMs ||
 				leftTrack.clipName != rightTrack.clipName ||
 				!sameFloat(leftTrack.playbackRate, rightTrack.playbackRate) ||
 				leftTrack.loop != rightTrack.loop ||

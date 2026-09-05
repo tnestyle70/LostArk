@@ -6,6 +6,7 @@
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "PlayerController.h"
+#include "ValtanCinematicCameraDocument.h"
 #include "WorldSequencePlayer.h"
 
 #include <string>
@@ -55,6 +56,19 @@ public:
 		uint32_t iBlendInMs = 0u;
 		uint32_t iBlendOutMs = 0u;
 		uint32_t iPriority = 0u;
+		/* A side scrolling stage keeps one framing and slides it with the
+		   local Character instead of pinning it in place. Both offsets are
+		   added to that Character's position, so the authored eye and lookAt
+		   stay as the pose used while no Character exists. */
+		bool_t followsPlayer = false;
+		float3_t vFollowEyeOffset = {};
+		float3_t vFollowLookAtOffset = {};
+		/* A shot without a track keeps the single authored pose. With one
+		   it is sampled on the bound sequence's own clock by the one
+		   cinematic sampler this project owns, so a second easing or
+		   spline implementation can never drift from it. */
+		bool_t hasCameraTrack = false;
+		VALTAN_CINEMATIC_CAMERA_CUE CameraTrack;
 	};
 
 private:
@@ -99,6 +113,16 @@ public:
 		std::string& outStatus);
 
 private:
+	/* The cutscene is one show spread over several instances. Starting the
+	   named one starts them all and swaps the arena for the cutscene copy. */
+	bool_t Start_PopupBookCutscene(
+		const CWorldSequencePlayer::TARGET_SET& targets,
+		std::string& outStatus);
+	void Apply_CutsceneSetVisible(bool_t cutsceneVisible);
+	/* The cutscene boss is presentation only, so it is taken off the arena
+	   as soon as its sequence stops playing. */
+	void Update_CutsceneBossRetire(
+		const CWorldSequencePlayer::TARGET_SET& targets);
 	bool_t Start_ServerRequestedSequence(
 		const std::string& instanceId,
 		const CWorldSequencePlayer::TARGET_SET& targets,
@@ -120,6 +144,8 @@ private:
 	   them appear already unfolded. */
 	CDeployPropRuntime m_DeployRuntime;
 	CWorldSequencePlayer m_SequencePlayer;
+	bool_t m_bCutsceneBossVisible = false;
+	bool_t m_bCutsceneSetVisible = false;
 	std::unordered_set<uint64_t> m_RaisedPaperBridges;
 	shared_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;
