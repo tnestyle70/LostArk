@@ -20,6 +20,15 @@
     "boss.valtan.twohand",
     "boss.kouku.disarm",
     "boss.kouku.find.star",
-    "boss.kouku.find.heart"
+    "boss.kouku.find.heart",
+    "boss.kouku.card.clober.black",
+    "boss.kouku.card.clober.red",
+    "boss.kouku.card.dia.black",
+    "boss.kouku.card.dia.red",
+    "boss.kouku.card.heart.black",
+    "boss.kouku.card.heart.red",
+    "boss.kouku.card.spade.black",
+    "boss.kouku.card.spade.red",
+    "boss.kouku.dance"
   ]
 }
