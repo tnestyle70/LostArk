@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Network/NetworkIds.h"
+#include "Network/PacketMessages.h"
 #include "Network/PacketType.h"
 
 #include <cstdint>
@@ -56,6 +57,10 @@ namespace Client
 
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		/* The body the committed presentation shows; a snapshot with another
+		form replaces the Character the way a class change does. */
+		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
+			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 
 		std::string strNickName;
 

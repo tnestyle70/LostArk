@@ -82,6 +82,27 @@ namespace Client
 		void Update();
 		void Reset(std::string_view reason = {});
 
+		/* The live arena boss the next request names. The F1 gate buttons set
+		it to the gate boss they raised; despawn returns it to the Gate 1
+		Kouku. A request in flight keeps the scope it was sent with. */
+		void Set_TargetBoss(
+			std::string_view placementId,
+			std::string_view archetypeId);
+		/* Gate activation blocks new playback until its Server results settle.
+		Existing request results and lifecycles continue to be consumed. */
+		void Set_TargetTransitionPending(const bool pending) noexcept
+		{
+			m_bTargetTransitionPending = pending;
+		}
+		[[nodiscard]] const std::string& Get_TargetBossPlacementId() const noexcept
+		{
+			return m_strTargetBossPlacementId;
+		}
+		[[nodiscard]] const std::string& Get_TargetBossArchetypeId() const noexcept
+		{
+			return m_strTargetBossArchetypeId;
+		}
+
 		[[nodiscard]] const KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT&
 			Get_Snapshot() const noexcept
 		{
@@ -111,6 +132,12 @@ namespace Client
 
 	private:
 		KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT m_Snapshot;
+		/* Exact scope of the in-flight request; results and lifecycles must
+		echo it even if the target boss changed afterwards. */
+		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE m_RequestScope{};
+		std::string m_strTargetBossPlacementId = "boss.kakulsaydon.g1.kouku";
+		std::string m_strTargetBossArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+		bool m_bTargetTransitionPending = false;
 		std::uint32_t m_iNextRequestSequence = 1u;
 		std::uint64_t m_iStateStartedAtMilliseconds = 0u;
 	};

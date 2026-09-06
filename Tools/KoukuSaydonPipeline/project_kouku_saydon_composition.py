@@ -242,6 +242,35 @@ def resolve_actor_profile_id(source_profile_id: str) -> str:
     return "MN_RPCT_05" if source_profile_id == "MN_RPCT_07" else source_profile_id
 
 
+BOSS_CATALOG_PATH = Path("Data/Actors/BossCatalog.json")
+ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KAKULSAYDON_"
+
+
+def arena_boss_archetypes_by_profile(root: Path = REPOSITORY_ROOT) -> dict[str, list[str]]:
+    """Physical actor body -> KoukuSaydon arena boss archetypes presenting on it.
+
+    A PRODUCT pattern plays only on a live arena boss whose catalog body is the
+    pattern's actor body, so the join is read from the boss catalog instead of
+    being authored a second time in the composition."""
+    catalog = load_json(root / BOSS_CATALOG_PATH)
+    result: dict[str, set[str]] = {}
+    for boss in catalog.get("bosses", []):
+        if not isinstance(boss, dict):
+            continue
+        archetype_id = boss.get("archetypeId")
+        body_model = boss.get("bodyModel")
+        if not isinstance(archetype_id, str) or not isinstance(body_model, str):
+            continue
+        if not archetype_id.startswith(ARENA_BOSS_ARCHETYPE_PREFIX):
+            continue
+        for profile_id, model_asset_id in REFERENCE_MODEL_ASSET_IDS.items():
+            if resolve_actor_profile_id(profile_id) != profile_id:
+                continue
+            if body_model == model_asset_id + ".wmodel":
+                result.setdefault(profile_id, set()).add(archetype_id)
+    return {profile_id: sorted(ids) for profile_id, ids in result.items()}
+
+
 def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
@@ -459,8 +488,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         stages = _array(pattern["stages"], f"{context} stages",
                         MAX_PRODUCT_STAGES if status == "PRODUCT" else MAX_DRAFT_STAGES)
         if status == "PRODUCT":
-            if actor_profile_id and actor_profile_id != "MN_RPCZ_00":
-                raise CompositionError(f"PRODUCT actorProfileId must use MN_RPCZ_00: {pattern_id}")
+            # Which physical bodies may publish is a catalog join; validate_publishable
+            # applies it at publish time so this pure check never reads a file.
             product_ids.append(pattern_id)
             if pattern["category"] != "MECHANIC":
                 raise CompositionError(
@@ -542,10 +571,6 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 profile_id = _stable_id(
                     occurrence["profileId"], f"{occurrence_context} profileId"
                 )
-                if status == "PRODUCT" and profile_id != "MN_RPCZ_00":
-                    raise CompositionError(
-                        f"PRODUCT boss animation must use MN_RPCZ_00: {occurrence_id}"
-                    )
                 occurrence_actor = resolve_actor_profile_id(profile_id)
                 if not occurrence_actor:
                     raise CompositionError(f"unknown animation profile: {profile_id}")
@@ -632,11 +657,24 @@ def load_and_validate(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
     return product
 
 
-def validate_publishable(document: dict[str, Any]) -> None:
+def validate_publishable(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
     if not document["playAllPatternIds"]:
         raise CompositionError(
             "composition must retain at least one PRODUCT pattern before publish"
         )
+    # A PRODUCT pattern plays on a live arena boss whose catalog body is the
+    # pattern's actor body. The join is read here, at publish time, so the pure
+    # document validation above never touches the catalog.
+    arena_archetypes_by_profile = arena_boss_archetypes_by_profile(root)
+    for pattern in document["patterns"]:
+        if pattern.get("authoringStatus") != "PRODUCT":
+            continue
+        actor_profile_id = _pattern_actor_profile_id(pattern)
+        if actor_profile_id not in arena_archetypes_by_profile:
+            raise CompositionError(
+                "PRODUCT actorProfileId has no KoukuSaydon arena boss body: "
+                f"{pattern['patternId']} ({actor_profile_id or 'unknown'})"
+            )
 
 
 def _pattern_action_id(pattern_id: str) -> str:
@@ -666,11 +704,27 @@ def _project_stage(stage: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def project_encounter(document: dict[str, Any]) -> dict[str, Any]:
+def _pattern_actor_profile_id(source: dict[str, Any]) -> str:
+    actor_profile_id = source.get("actorProfileId")
+    if isinstance(actor_profile_id, str) and actor_profile_id:
+        return actor_profile_id
+    for stage in source["stages"]:
+        for occurrence in stage["animationOccurrences"]:
+            resolved = resolve_actor_profile_id(occurrence["profileId"])
+            if resolved:
+                return resolved
+    return ""
+
+
+def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    arena_archetypes_by_profile = arena_boss_archetypes_by_profile(root)
     patterns: list[dict[str, Any]] = []
     for source in document["patterns"]:
         if source["authoringStatus"] != "PRODUCT":
             continue
+        boss_archetype_ids = list(
+            arena_archetypes_by_profile.get(_pattern_actor_profile_id(source), [])
+        )
         source_action_ids = list(
             dict.fromkeys(
                 occurrence["sourceActionId"]
@@ -690,6 +744,9 @@ def project_encounter(document: dict[str, Any]) -> dict[str, Any]:
                 "displayName": source["displayName"],
                 "actionId": _pattern_action_id(source["patternId"]),
                 "sourceActionIds": source_action_ids,
+                # Arena boss bodies this pattern's clips belong to; the Server
+                # audition plays it only on a live boss of one of them.
+                "bossArchetypeIds": boss_archetype_ids,
                 "selectionMode": "AUDITION_ONLY",
                 "minimumHealthBar": 0,
                 "maximumHealthBar": 0,
@@ -754,9 +811,9 @@ def serialize_json(document: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
-def projected_outputs(document: dict[str, Any]) -> dict[Path, bytes]:
+def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[Path, bytes]:
     return {
-        ENCOUNTER_PATH: serialize_json(project_encounter(document)),
+        ENCOUNTER_PATH: serialize_json(project_encounter(document, root)),
         PRESENTATION_PATH: serialize_json(project_presentation(document)),
     }
 
@@ -840,8 +897,8 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
 
 def run(root: Path, mode: str) -> dict[str, Any]:
     document = load_and_validate(root)
-    validate_publishable(document)
-    outputs = projected_outputs(document)
+    validate_publishable(document, root)
+    outputs = projected_outputs(document, root)
     if mode == "publish":
         publish_outputs(root, outputs)
     else:

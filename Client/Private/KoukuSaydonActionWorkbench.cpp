@@ -1256,6 +1256,55 @@ bool_t Client::CKoukuSaydonActionWorkbench::Move_Stage(
 	return Commit_Candidate(std::move(candidate), "Reordered KoukuSaydon Stage.", outStatus);
 }
 
+bool_t Client::CKoukuSaydonActionWorkbench::Move_SelectedStage(
+	const std::string_view patternId,
+	const int32_t direction,
+	std::string& outStatus)
+{
+	std::string stageId;
+	std::string occurrenceId;
+	if (1u == m_TimelineSelectedStageIds.size() && m_TimelineSelectedOccurrenceIds.empty())
+	{
+		stageId = m_TimelineSelectedStageIds.front();
+	}
+	else if (m_TimelineSelectedStageIds.empty() && 1u == m_TimelineSelectedOccurrenceIds.size())
+	{
+		occurrenceId = m_TimelineSelectedOccurrenceIds.front();
+		const KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(m_Draft, patternId);
+		if (nullptr != pattern)
+		{
+			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern->Stages)
+			{
+				for (const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence :
+					stage.AnimationOccurrences)
+				{
+					if (occurrence.strOccurrenceId == occurrenceId)
+						stageId = stage.strStageId;
+				}
+			}
+		}
+	}
+	if (stageId.empty())
+	{
+		outStatus = m_strStatus =
+			"Select exactly one Stage or one animation box to move it with Left/Right.";
+		return false;
+	}
+	if (!Move_Stage(patternId, stageId, direction, outStatus))
+	{
+		m_strStatus = outStatus;
+		return false;
+	}
+	// The commit rebuilt the draft; reselect the same stable IDs so a second
+	// arrow press keeps moving the same Stage.
+	Select_TimelineBox(stageId, occurrenceId, false);
+	m_strStatus = direction < 0 ?
+		"Moved the Stage one slot earlier (its animation boxes moved with it)." :
+		"Moved the Stage one slot later (its animation boxes moved with it).";
+	outStatus = m_strStatus;
+	return true;
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Set_StageDuration(
 	const std::string_view patternId,
 	const std::string_view stageId,
@@ -3092,18 +3141,33 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		m_TimelineSelectedOccurrenceIds.empty());
 	const bool_t duplicateRequested = ImGui::Button("Duplicate##KoukuSequencerSelection");
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	/* Stage order: one Stage (or the Stage owning one animation box) moves one
+	   slot; its animation boxes are Stage-relative and travel with it. */
+	const bool_t singleBoxSelected =
+		(1u == m_TimelineSelectedStageIds.size() && m_TimelineSelectedOccurrenceIds.empty()) ||
+		(m_TimelineSelectedStageIds.empty() && 1u == m_TimelineSelectedOccurrenceIds.size());
+	ImGui::BeginDisabled(!singleBoxSelected);
+	int32_t moveRequested = 0;
+	if (ImGui::Button("< Earlier##KoukuSequencerSelection")) moveRequested = -1;
+	ImGui::SameLine();
+	if (ImGui::Button("Later >##KoukuSequencerSelection")) moveRequested = 1;
+	ImGui::EndDisabled();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::TextDisabled("%zu Stages + %zu animation boxes%s",
 		m_TimelineSelectedStageIds.size(), m_TimelineSelectedOccurrenceIds.size(),
 		m_strSelectedLogicOccurrenceId.empty() ?
 			(m_strSelectedSummonOccurrenceId.empty() ? "" : " + 1 summon box") : " + 1 logic box");
-	ImGui::TextDisabled("Click: select | Ctrl+click: toggle | drag empty space: box select | Ctrl+drag: add | Delete: remove selection");
+	ImGui::TextDisabled("Click: select | Ctrl+click: toggle | drag empty space: box select | Ctrl+drag: add | Delete: remove selection | Left/Right: move the selected Stage");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
-	if (saveRequested || deleteRequested || duplicateRequested || durationRequested)
+	if (saveRequested || deleteRequested || duplicateRequested || durationRequested ||
+		0 != moveRequested)
 	{
 		std::string status;
-		if (deleteRequested && m_TimelineSelectedStageIds.empty() &&
+		if (0 != moveRequested)
+			(void)Move_SelectedStage(patternId, moveRequested, status);
+		else if (deleteRequested && m_TimelineSelectedStageIds.empty() &&
 			m_TimelineSelectedOccurrenceIds.empty() && !m_strSelectedLogicOccurrenceId.empty())
 			(void)Delete_LogicBox(patternId, m_strSelectedLogicOccurrenceId, status);
 		else if (deleteRequested && m_TimelineSelectedStageIds.empty() &&
@@ -3245,6 +3309,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	std::string editSummonBoxId;
 	std::uint32_t newSummonStartMs = 0u, newSummonDurationMs = 0u;
 	bool_t deleteSummonRequested = false;
+	int32_t moveStageDirection = 0;
 	std::uint32_t stageStartMs = 0u;
 	for (const auto& stage : pattern->Stages)
 	{
@@ -3562,6 +3627,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		else if (!m_strSelectedSummonOccurrenceId.empty())
 			deleteSummonRequested = true;
 	}
+	if (canInteract && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+		!m_bTimelineMarqueeActive && !ImGui::IsAnyItemActive() &&
+		(!m_TimelineSelectedStageIds.empty() || !m_TimelineSelectedOccurrenceIds.empty()))
+	{
+		if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false))
+			moveStageDirection = -1;
+		else if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false))
+			moveStageDirection = 1;
+	}
 	ImGui::SetCursorScreenPos(origin);
 	ImGui::Dummy(ImVec2(timelineWidth, height + 48.f));
 	ImGui::EndChild();
@@ -3572,6 +3646,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		(void)Delete_TimelineSelection(patternId,
 			m_TimelineSelectedStageIds, m_TimelineSelectedOccurrenceIds, status);
 	}
+	else if (0 != moveStageDirection)
+		(void)Move_SelectedStage(patternId, moveStageDirection, status);
 	else if (deleteLogicRequested)
 		(void)Delete_LogicBox(patternId, m_strSelectedLogicOccurrenceId, status);
 	else if (!editLogicBoxId.empty())

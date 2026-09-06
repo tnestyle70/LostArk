@@ -244,7 +244,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v58 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v59 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -344,6 +344,27 @@ revision이 Server-active로 확인되기 전에는 Complete Play와 exact Resta
 보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
 전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
 
+KoukuSaydon Arena의 관문 보스는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`의 disabled boss
+placement(`boss.kakulsaydon.g1.saydon`, `g2.big-saydon`, `g2.kouku`, `g3.saydon`, `bingo.saydon`)이며
+`BOSS_KAKULSAYDON_*` archetype이 `ENCOUNTER_KAKULSAYDON_G1`을 공유한다. Debug F1 `KoukuSaydon Arena`의 관문
+버튼이 typed Server 명령으로 이전 관문 보스 despawn → placement spawn → 플레이어 teleport를 보낸다.
+spawn·teleport 성공 응답 후 HUD focus와 audition target을 확정하며 대기 중 새 관문·재생 요청을 막는다. 관문 보스는 brain 없이 IDLE로 대기하며 Boss Tool `Play Isolated`/`Start Full
+Pattern`과 F1 Complete Play가 audition target 보스에서만 재생한다. Kouku Product pattern은 projector가
+`Data/Actors/BossCatalog.json`의 `bodyModel` join으로 `bossArchetypeIds`를 투영하고 publisher가
+`PATTERNBOSS` 행으로 실으며, Server는 선택 패턴의 target 보스 archetype이 그 목록에 없으면 audition을 거부한다.
+기존 Play All은 저작 순서를 유지하면서 대상 body에 맞는 Product 패턴만 재생하고, 맞는 항목이 없으면 거부한다. 관문
+spawn/despawn·teleport는 Debug Server 전용이다. 보스 spawn은 저작 좌표가 보행 가능 셀이면 그 XZ를 유지하고
+높이만 navgrid에서 샘플하며, 비보행 셀만 가장 가까운 셀 중심으로 투영한다(이 Area의 셀은 4m).
+플레이어는 `PLAYER_SNAPSHOT`의 광기 게이지(`iCurrentMadness/iMaximumMadness`, 최대치는 Server 상수 10000)와
+`eMadnessForm`을 받는다. `CLOWN`이면 `CClientReplication`이 class 변경과 같은 transaction으로 같은 entity를
+MN_RPCT_03 광대 몸체(`Spec_KoukuSaydonClown`, idle/run만)로 교체하고 퀵슬롯은 replicated class를 계속 쓴다.
+F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed 명령
+`C2S_DEBUG_SET_MADNESS_FORM`으로 Server가 소유한 form만 바꾸며 Release는 typed 거부를 돌려준다.
+광기 HUD 바는 `CCombatHUDViewModel::Get_KoukuGimmick()`의 Server 수치를 읽으며, 상태 임계값 49/100은
+최대치 대비 백분율로 적용한다. F1 `Kouku UI Preview`를 명시 활성화한 동안만 표시값을 덮어쓰고,
+해제·session reset 시 최신 snapshot으로 돌아간다. 광대 몸체 교체는 원래 class 스킬을 유지하므로
+실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 게이지 증가·자동 변신·모드별 스킬과 패턴은 후속이다.
+
 `Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
 JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.
 `Data/Compositions/Sequences/*.sequencer.json`도 Camera, World, Effect, UI 본문을 복제하지 않고 하나의
@@ -357,8 +378,13 @@ Stage와 cue 값은 파생 projection이며 새 정본이 아니다.
 `runtimeEligible=false`다. 이 manifest는 공용 Workbench 창을 열거나 편집하기 위한 선행 입력이 아니다.
 `CSequencerTool`는 선택 session에 pane 명령을 전달하며 manifest inspection이나 generated resolved Product를
 두 번째 timeline runtime으로 사용하지 않는다. Valtan은 기존 split owner, KoukuSaydon은 전용 Composition을
-편집한다. 이번 공용 Animation Resources는 Valtan·Ghost·MN_RPCT_00/05/06·MN_RPCZ_00을 제공하며
+편집한다. 이번 공용 Animation Resources는 Valtan·Ghost·MN_RPCT_00/03/05/06·MN_RPCZ_00을 제공하며
 다른 rig의 clip은 preview할 수 있지만 선택 보스 본체의 clip만 해당 보스 Pattern에 Append한다.
+MN_RPCT_03은 RPCT_00/05와 같은 165본 rig의 무채색 세이튼 본체이며 자체 AnimSet이 없어 MN_RPCT_00 PSA 249클립을
+`rpct00_` prefix로 cook한 reference-only preview body다. Server profile이나 boss archetype은 없고, 플레이어의
+`PLAYER_MADNESS_FORM::CLOWN` 아바타 몸체로만 `CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype`이
+admission한다. Workbench의 "대형" 이름 action preview는 catalog `bodyModelPreScale`(대형 세이튼 / MN_RPCT_06 preview
+0.017) 비율과 catalog 뿅망치 배율·회전을 그대로 써서 스폰된 보스와 같은 크기로 보인다.
 로컬 preview는 아레나의 복제된 플레이어 주변 collision-off 모델이고 Server 보스 본체 재생과 구분한다.
 쿠크 Effect/Sound/Camera/Profile/Light/Summon 저작·family 실행은 Animation 연결과 별도 구현 범위다.
 
@@ -379,8 +405,9 @@ transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect�
 `SERVER_COMBAT_OBJECT` 독립 Effect는 replicated world root 경로를 사용한다. saved 문서 decode는
 Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
-`BossCatalog` v5는 본체/유령의 model admission scale을 구분한다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v58의 Server/Client를 함께 빌드·배포해야 한다.
+`BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
+`weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
+사용하려면 gameplay bootstrap v26과 현재 protocol v59의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지

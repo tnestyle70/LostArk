@@ -1,6 +1,6 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 7,
+  "formatVersion": 8,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
@@ -108,7 +108,8 @@
         "dead": "mesh_dead_1"
       },
       "bodyModelPreScale": 0.0001,
-      "weaponModelPreScale": 100.0
+      "weaponModelPreScale": 100.0,
+      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
     },
     {
       "archetypeId": "BOSS_VALTAN_GHOST",
@@ -132,7 +133,8 @@
         "dead": "mesh_dead_1"
       },
       "bodyModelPreScale": 0.01,
-      "weaponModelPreScale": 1.0
+      "weaponModelPreScale": 1.0,
+      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -156,7 +158,133 @@
         "dead": "rpcz00_dead_1"
       },
       "bodyModelPreScale": 0.017,
-      "weaponModelPreScale": null
+      "weaponModelPreScale": null,
+      "weaponModelPreRotationDegrees": null
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "weaponModel": null,
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "serverProfileId": "boss.kakulsaydon.g1.saydon.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.g1.saydon.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "rpct00_idle_battle_1",
+        "chase": "rpct00_run_battle_1",
+        "patternWindup": "rpct00_att_battle_6_04",
+        "patternActive": "rpct00_att_battle_6_02",
+        "patternRecovery": "rpct00_att_battle_6_03",
+        "dead": "rpct00_dead_1"
+      },
+      "bodyModelPreScale": 0.017,
+      "weaponModelPreScale": null,
+      "weaponModelPreRotationDegrees": null
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCT_06",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
+      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
+      "serverProfileId": "boss.kakulsaydon.g2.big-saydon.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.g2.big-saydon.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "mn_rpct_06_sk.ao_idle_battle_1",
+        "chase": "mn_rpct_06_sk.ao_evt2_rpct_move_01",
+        "patternWindup": "mn_rpct_06_sk.ao_att_battle_1_01",
+        "patternActive": "mn_rpct_06_sk.ao_att_battle_1_02",
+        "patternRecovery": "mn_rpct_06_sk.ao_att_battle_1_05",
+        "dead": "mn_rpct_06_sk.ao_dmg_critical_end_1"
+      },
+      "bodyModelPreScale": 0.1,
+      "weaponModelPreScale": 0.001,
+      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCZ_00",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
+      "weaponModel": null,
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
+      "serverProfileId": "boss.kakulsaydon.g2.kouku.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.g2.kouku.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "rpcz00_idle_battle_1",
+        "chase": "rpcz00_run_battle_1",
+        "patternWindup": "rpcz00_att_battle_3_01",
+        "patternActive": "rpcz00_att_battle_3_07",
+        "patternRecovery": "rpcz00_att_battle_3_09",
+        "dead": "rpcz00_dead_1"
+      },
+      "bodyModelPreScale": 0.017,
+      "weaponModelPreScale": null,
+      "weaponModelPreRotationDegrees": null
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "weaponModel": null,
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "serverProfileId": "boss.kakulsaydon.g3.saydon.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.g3.saydon.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "rpct00_idle_battle_1",
+        "chase": "rpct00_run_battle_1",
+        "patternWindup": "rpct00_att_battle_6_04",
+        "patternActive": "rpct00_att_battle_6_02",
+        "patternRecovery": "rpct00_att_battle_6_03",
+        "dead": "rpct00_dead_1"
+      },
+      "bodyModelPreScale": 0.017,
+      "weaponModelPreScale": null,
+      "weaponModelPreRotationDegrees": null
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
+      "presentationScale": 1.0,
+      "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
+      "armorModels": [],
+      "armorParts": [],
+      "combatObjectVisuals": [],
+      "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "serverProfileId": "boss.kakulsaydon.bingo.saydon.server.v1",
+      "clientPresentationId": "boss.kakulsaydon.bingo.saydon.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "rpct00_idle_battle_1",
+        "chase": "rpct00_run_battle_1",
+        "patternWindup": "rpct00_att_battle_6_04",
+        "patternActive": "rpct00_att_battle_6_02",
+        "patternRecovery": "rpct00_att_battle_6_03",
+        "dead": "rpct00_dead_1"
+      },
+      "bodyModelPreScale": 0.017,
+      "weaponModelPreScale": 0.0001,
+      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
     }
   ]
 }

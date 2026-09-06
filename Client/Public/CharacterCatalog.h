@@ -17,5 +17,9 @@ namespace Client
 		//class enum을 받아 해당 CHARACTER_SPEC을 반환한다.
 		static const CHARACTER_SPEC* Find_Spec(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+		/* The KoukuSaydon clown avatar: the colourless Saydon body every class
+		wears while PLAYER_MADNESS_FORM::CLOWN. It carries no class of its own;
+		the Character desc supplies the wearer's class. */
+		static const CHARACTER_SPEC* Find_ClownSpec();
 	};
 }

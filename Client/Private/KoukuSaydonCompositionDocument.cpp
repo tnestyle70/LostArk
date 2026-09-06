@@ -71,6 +71,18 @@ namespace
 		{ "MN_RPCZ_00", "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00" },
 	}};
 
+	/* Physical bodies that a KoukuSaydon arena boss (Data/Actors/BossCatalog.json
+	   BOSS_KAKULSAYDON_* rows) presents on. Only a pattern authored on one of
+	   them can become PRODUCT, because the Server audition plays it on the
+	   live arena boss with that body. The projector re-derives this join from
+	   the catalog; this list is the Workbench pre-check. */
+	bool_t Is_ArenaBossBodyProfile(const std::string_view actorProfileId)
+	{
+		return actorProfileId == "MN_RPCZ_00" ||
+			actorProfileId == "MN_RPCT_05" ||
+			actorProfileId == "MN_RPCT_06";
+	}
+
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char_t* const pName,
@@ -385,7 +397,8 @@ namespace
 					GENERATED_PATTERN_PREFIX, document.iNextPatternOrdinal) ||
 				pattern.strActorProfileId.empty() ||
 				CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(pattern.strActorProfileId) != pattern.strActorProfileId ||
-				(pattern.strAuthoringStatus == "PRODUCT" && pattern.strActorProfileId != "MN_RPCZ_00") ||
+				(pattern.strAuthoringStatus == "PRODUCT" &&
+					!Is_ArenaBossBodyProfile(pattern.strActorProfileId)) ||
 				!Is_DisplayName(pattern.strDisplayName) ||
 				!Is_AuthoringStatus(pattern.strAuthoringStatus) ||
 				!Is_Category(pattern.strCategory) ||

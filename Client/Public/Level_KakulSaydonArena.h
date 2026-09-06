@@ -9,6 +9,7 @@
 #include "ValtanCinematicCameraDocument.h"
 #include "WorldSequencePlayer.h"
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -22,6 +23,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CNpc;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
@@ -95,11 +97,52 @@ public:
 		m_Replication.Collect_MinimapMarkers(outSnapshot);
 	}
 
+	/* Read-only replicated presentation, including the current madness avatar. */
+	shared_ptr<CCharacter> Get_LocalCharacter() const
+	{
+		return m_Replication.Get_LocalCharacter();
+	}
+
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
+
+	/* One F1 "KoukuSaydon Arena" gate button. The Server raises the named
+	   disabled boss placements, moves only this player to the fixed position
+	   through the Debug teleport contract, and the HUD follows one archetype.
+	   Positions are Debug authoring values captured from Move Player; the
+	   Server still validates navigation, height and collision. A gate with a
+	   deferred reason has no navigation yet and only reports that reason. */
+	struct KAKUL_DEBUG_GATE final
+	{
+		const char_t* pLabel = nullptr;
+		std::array<const char_t*, 2> BossPlacementIds = { nullptr, nullptr };
+		float3_t vPlayerPosition = {};
+		const char_t* pHudFocusArchetypeId = nullptr;
+		/* Placement of pHudFocusArchetypeId: the boss the Kouku Boss Tool and
+		   Complete Play target after this gate is raised. Null keeps the
+		   Gate 1 Kouku target. */
+		const char_t* pAuditionPlacementId = nullptr;
+		const char_t* pDeferredReason = nullptr;
+	};
+	static constexpr size_t NO_ACTIVE_DEBUG_GATE = static_cast<size_t>(-1);
+	static const std::array<KAKUL_DEBUG_GATE, 9>& Get_DebugGates();
+	/* Despawns the previous gate bosses, requests this gate's placements,
+	   submits the player teleport, points the HUD and the pattern audition at
+	   the gate boss. Every step is a typed Server command; nothing local is
+	   spawned or moved. */
+	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus);
+	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
+	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
+	bool_t Is_DebugGatePending() const { return NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
+	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
+	/* Debug tuning only: the live body of one arena boss archetype. */
+	std::shared_ptr<CNpc> Debug_FindArenaBossNpc(std::string_view archetypeId) const
+	{
+		return m_Replication.Find_ArenaBossNpc(archetypeId);
+	}
 #endif
 
 	// The level owns the replicated player anchor used by local authoring previews.
@@ -196,6 +239,19 @@ private:
 	f32_t m_fCameraBlendElapsed = 0.f;
 	bool_t m_bCameraShotHeld = false;
 	std::string m_strCameraShotStatus;
+#ifdef _DEBUG
+	/* Debug gate command sequence and the accumulated Server replies shown in
+	   the F1 arena panel. Session state only; never persisted. */
+	std::uint32_t m_iNextDebugGateRequestSequence = 1u;
+	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
+	   that button stays disabled until another gate or Despawn is chosen. */
+	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+	std::unordered_set<std::string> m_DebugGatePendingPlacements;
+	bool_t m_bDebugGateFailed = false;
+	std::string m_strDebugGateStatus =
+		"Choose a gate. The Server raises its bosses and moves only your player.";
+#endif
 	/* One full-screen slot, black, whose alpha is the whole effect. Built
 	   hidden so the first rendered frame after activation cannot flash it. */
 	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;

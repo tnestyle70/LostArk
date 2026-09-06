@@ -2,7 +2,7 @@
   "schema": "lostark.kouku-saydon-pattern-bindings",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 17,
+  "sourceRevision": 50,
   "bindings": [
     {
       "actionId": "kakulsaydon.g1.pizza.windup-a",

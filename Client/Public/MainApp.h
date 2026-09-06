@@ -81,23 +81,6 @@ private:
 		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
 	};
 
-	/* Small, semantic entry points into the canonical authoring owners.  These
-	   are deliberately separate from DEBUG_RESOURCE_FILE: a raw filesystem path
-	   is diagnostic evidence, while one of these rows is an actual edit/open
-	   contract with a known owning Tool. */
-	struct DEBUG_AUTHORING_SOURCE
-	{
-		string strDomain;
-		string strDisplayName;
-		string strCanonicalPath;
-		string strDescription;
-		string strActionLabel;
-		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
-		size_t iDocumentCount = 0u;
-		bool_t bCanonicalSourceReady = false;
-		bool_t bOpenValtanWorkspace = false;
-		bool_t bOpenValtanEffectWorkspace = false;
-	};
 #endif
 
 private:
@@ -377,13 +360,21 @@ private:
 	reroll and sample cooldowns; disabling invalidates the state again. */
 	void RenderKoukuUiPreviewControls();
 	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
-	void RefreshDebugAuthoringSources();
 	void RefreshDebugResourceFiles();
-	void RenderDebugResourceFiles();
-	void OpenDebugAuthoringSource(size_t iSource);
+	/* F1 "KoukuSaydon Arena": gate buttons that ask the Server to raise the
+	   gate bosses, move only this player and point the HUD at the gate boss. */
+	void RenderKoukuSaydonArenaControls();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();
+	/* F1 KoukuSaydon saved-pattern list by gate; Complete Play goes through
+	   CKoukuSaydonBossTool so the Server audition path stays single-owner. */
+	void RenderKoukuSaydonCompletePlayControls();
+	/* Temporary: live big Saydon scale/offset and bingo hammer scale with Save
+	   into the catalog/world JSON. Remove once the values are chosen. */
+	void RenderKoukuSaydonBossTuningControls();
+	void Load_KoukuTuningBaseline();
+	void Save_KoukuTuning();
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RenderDeveloperTools();
@@ -658,8 +649,6 @@ private:
 	bool_t m_bDebugLevelNavigationDeadlineActive = false;
 	string m_strDebugLevelNavigationStatus =
 		"Choose a destination. Gameplay Areas always use the existing Server-approved entry route.";
-	vector<DEBUG_AUTHORING_SOURCE> m_DebugAuthoringSources;
-	bool_t m_bDebugAuthoringSourceRefreshAttempted = false;
 	vector<DEBUG_RESOURCE_FILE> m_DebugResourceFiles;
 	array<char_t, 192> m_DebugResourceSearch = {};
 	bool_t m_bDebugResourceScanAttempted = false;
@@ -673,6 +662,38 @@ private:
 	uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;
 	string m_strKakulStageTeleportStatus =
 		"Enter the Server-approved KoukuSaydon Arena to inspect SL01-SL05 stages.";
+	/* KoukuSaydon Complete Play: inventory comes from the Kouku Boss Tool; the
+	   gate combo only filters the list. Stable pattern ID is the selection. */
+	bool_t m_bKoukuCompletePlayLoadAttempted = false;
+	int32_t m_iKoukuCompletePlayGate = 0;
+	string m_strKoukuCompletePlayPatternId;
+	string m_strKoukuCompletePlayStatus =
+		"Load the KoukuSaydon inventory, pick a gate and a saved pattern, then Complete Play.";
+	/* Temporary tuning slice state (see RenderKoukuSaydonBossTuningControls). */
+	bool_t m_bKoukuTuneLoaded = false;
+	bool_t m_bKoukuTuneBaselineValid = false;
+	string m_strKoukuTuneCatalogBaseline;
+	string m_strKoukuTuneWorldBaseline;
+	f32_t m_fKoukuTuneBigSaydonCatalogScale = 0.f;
+	float3_t m_vKoukuTuneBigSaydonPlacement = {};
+	f32_t m_fKoukuTuneBigSaydonScaleMultiplier = 1.f;
+	float3_t m_vKoukuTuneBigSaydonOffset = {};
+	/* One arena boss placement: its saved yaw and, for a hammer-holding body,
+	   the saved hammer pre-scale/rotation. Offsets and multipliers are the live
+	   edits; Save folds them into the JSON. Order follows KOUKU_TUNE_BOSSES. */
+	struct KOUKU_TUNE_BOSS_ROW
+	{
+		f32_t fBaselineYawDegrees = 0.f;
+		f32_t fYawOffset = 0.f;
+		bool_t bHasWeapon = false;
+		f32_t fHammerCatalogScale = 0.f;
+		f32_t fHammerScaleMultiplier = 1.f;
+		float3_t vHammerCatalogRotation = {};
+		float3_t vHammerRotationBaseline = {};
+		float3_t vHammerRotationOffset = {};
+	};
+	KOUKU_TUNE_BOSS_ROW m_KoukuTuneBosses[5] = {};
+	string m_strKoukuTuneStatus;
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
 	/* Stable identity is the selection authority.  UI indices are derived from

@@ -2490,6 +2490,7 @@
   "characterAndAnimationInventory": {
     "canonicalModels": [
       "MN_RPCT_00",
+      "MN_RPCT_03",
       "MN_RPCT_05",
       "MN_RPCT_06",
       "MN_RPCZ_00"
@@ -2514,6 +2515,26 @@
         "animationSequences": 249,
         "materialInstances": 14,
         "textures": 11
+      },
+      "MN_RPCT_03": {
+        "identity": "Colorless (achromatic) Saydon body; runtime FX dependency FX_MN_RPCT_03 is a direct level package. The source package ships no AnimSet or AnimSequence.",
+        "sourcePackage": "EFGame/ReleasePC/Packages/9G1M8UBM1BZKE7JT4964SVP.upk",
+        "sourcePackageBytes": 6775128,
+        "sourcePackageSha256": "0e52af83cf78f0742769e44269bcc1da03a27f261a31b50bdd7f7acef80fc257",
+        "skeletalMeshes": 1,
+        "sourceAnimSetCount": 0,
+        "animationSource": "MN_RPCT_00",
+        "bodyBoneCount": 165,
+        "animationSourceBoneCount": 165,
+        "bodyAndAnimationBoneNamesAndOrderExact": true,
+        "runtimeCookedSequences": 249,
+        "runtimeClipPrefix": "rpct00_",
+        "sourceToRuntimeClipMappingCount": 249,
+        "runtimeWmodelSha256": "761b872a7ddac1784651f6cd071a3479fd00a746baae11c20b38efad7c31c9f7",
+        "materialInstances": 8,
+        "textures": 11,
+        "cookRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/RemainingCharacterExtraction-20260905",
+        "cookReceipt": "mn-rpct-03-extraction.receipt.json"
       },
       "MN_RPCT_05": {
         "skeletalMeshes": 1,
@@ -2625,6 +2646,7 @@
     "physicalPayload": {
       "runtimeRoots": [
         "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_00",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_03",
         "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05",
         "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_06",
         "Client/Bin/Resources/Character/KoukuSaton/MN_RPCZ_00",
@@ -2633,10 +2655,10 @@
         "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_07",
         "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_08"
       ],
-      "fileCount": 63,
-      "bytes": 519532776,
-      "runtimeWmodelAnimationSectionCount": 640,
-      "aggregateSha256": "b4cfaf6fe785a04aed2f9c8708c91fb46e074470e1038e7eaf56558c44a247d9",
+      "fileCount": 70,
+      "bytes": 712824176,
+      "runtimeWmodelAnimationSectionCount": 889,
+      "aggregateSha256": "70175ceb78ebff5da8e43a58f5c6b09ae34ce2ed02b8741b98dde455b8d40a3d",
       "aggregateAlgorithm": "sha256(utf8(sorted ordinal relativePath<TAB>bytes<TAB>fileSha256<LF>)); root=Character/KoukuSaton; canonical package roots only",
       "externalZeroAnimationCookRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/AnimationClosureAudit-20260830/ZeroAnimationCook",
       "gitTrackedFileCount": 0,
@@ -3108,6 +3130,7 @@
     "mapRuntimeRoot": "Client/Bin/Resources/Map/LV_LUT_MIDNIGHTC_ED",
     "characterPackageRoots": [
       "Character/KoukuSaton/MN_RPCT_00",
+      "Character/KoukuSaton/MN_RPCT_03",
       "Character/KoukuSaton/MN_RPCT_05",
       "Character/KoukuSaton/MN_RPCT_06",
       "Character/KoukuSaton/MN_RPCZ_00",

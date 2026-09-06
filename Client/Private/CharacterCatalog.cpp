@@ -1,11 +1,68 @@
 #include "CharacterCatalog.h"
 
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Logic_Artist.h"
 #include "Logic_DimensionMaster.h"
 #include "Logic_GunSlinger.h"
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
 #include "Logic_Warlord.h"
+
+namespace
+{
+	using namespace Client;
+
+	/* The colourless Saydon body (MN_RPCT_03) as a playable avatar. It has no
+	weapon or equipment, no class logic and no skill binding document, so a
+	skill action keeps the pose it is in; IDLE/RUN come from the rpct00 clip
+	set the body embeds. The class stays the wearer's through CHARACTER_DESC. */
+	const CHARACTER_SPEC Spec_KoukuSaydonClown =
+	{
+		"KoukuSaydonClown",
+		LostArk::Shared::CHARACTER_CLASS_ID::END,
+
+		KOUKU_CLOWN_BODY_PROTOTYPE_TAG,
+		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
+		0u,
+
+		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
+		nullptr,
+		0u,
+
+		nullptr,
+		0u,
+
+		/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
+		ESTHER_CAST. Only locomotion is authored for the avatar today. */
+		{
+			"rpct00_idle_battle_1",
+			"rpct00_run_battle_1",
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+		},
+
+		nullptr,
+
+		nullptr,
+		0u,
+
+		nullptr,
+		0u,
+
+		nullptr,
+		0u,
+	};
+}
+
+const CHARACTER_SPEC* Client::CCharacterCatalog::Find_ClownSpec()
+{
+	return &Spec_KoukuSaydonClown;
+}
 
 const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass)

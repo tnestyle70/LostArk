@@ -190,7 +190,11 @@ void Client::CKoukuMadnessGaugeView::Update(
 		m_pView->Set_SlotPosition(Offset.strId, fAnchorX + Offset.fDx, fAnchorY + Offset.fDy);
 
 	const uint32_t iGauge = (std::min)(State.iMadnessGauge, State.iMadnessMaximum);
-	const int32_t iState = Resolve_State(iGauge);
+	/* Authored thresholds are percentages; Server madness uses 10000 units.
+	Keep the fill ratio precise and normalize only the discrete state lookup. */
+	const uint32_t iGaugePercent = static_cast<uint32_t>(
+		static_cast<std::uint64_t>(iGauge) * 100u / State.iMadnessMaximum);
+	const int32_t iState = Resolve_State(iGaugePercent);
 	if (m_bVisible && m_iLastState >= 0 && iState > m_iLastState)
 		m_fFlashAlpha = 1.f;
 	m_iLastState = iState;

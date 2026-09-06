@@ -218,7 +218,8 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
     if (ImGui::Button("Refresh##CompositionPhysicalAnimation"))
         m_bResourceRefreshRequested = true;
     ImGui::SameLine();
-    ImGui::TextDisabled("6 bodies / %zu clips", m_AnimationResources.size());
+    ImGui::TextDisabled("%zu bodies / %zu clips",
+        COMPOSITION_ANIMATION_TARGET_ASSET_NAMES.size(), m_AnimationResources.size());
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##CompositionPhysicalAnimationSearch", "Search body, clip or package...",
         m_AnimationResourceSearch.data(), m_AnimationResourceSearch.size());

@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 3685,
+  "revision": 3686,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -297,6 +297,71 @@
       "position": [22, -0.05, -62],
       "yawDegrees": 0,
       "enabled": true
+    },
+    {
+      "placementId": "boss.kakulsaydon.g1.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.07,
+        1.32,
+        942.33
+      ],
+      "yawDegrees": 245,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g2.big-saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        10.74,
+        2.68,
+        316.45
+      ],
+      "yawDegrees": 315,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g2.kouku",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        6.36,
+        10.56,
+        321.29
+      ],
+      "yawDegrees": 311,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g3.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.07,
+        1.32,
+        942.33
+      ],
+      "yawDegrees": 245,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.bingo.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.6,
+        0.0,
+        1147.44
+      ],
+      "yawDegrees": 270,
+      "enabled": false
     }
   ]
 }

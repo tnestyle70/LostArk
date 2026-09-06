@@ -110,6 +110,21 @@ function Get-EncounterProfiles {
         (Read-ProjectJson `
             'Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json')
     )
+    # One encounter may own several boss archetypes (the KoukuSaydon arena
+    # gate bosses share the Gate 1 audition encounter). The boss profile
+    # document's encounterId is the join, so a placement archetype is admitted
+    # when its Server profile names this encounter.
+    $bossProfileDocument = Read-ProjectJson 'Data/Balance/BossProfiles.json'
+    $bossArchetypesByEncounter = @{}
+    foreach ($bossProfile in @($bossProfileDocument.bosses)) {
+        $profileEncounterId = [string]$bossProfile.encounterId
+        if (-not $bossArchetypesByEncounter.ContainsKey($profileEncounterId)) {
+            $bossArchetypesByEncounter[$profileEncounterId] =
+                [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        }
+        $null = $bossArchetypesByEncounter[$profileEncounterId].Add(
+            [string]$bossProfile.archetypeId)
+    }
     $profiles = @{}
     foreach ($document in $documents) {
 		$isKoukuSaydon = [string]$document.encounterId -ceq
@@ -199,6 +214,11 @@ function Get-EncounterProfiles {
 			if ($null -ne $pattern.PSObject.Properties['finale']) {
 				$patternProperties += 'finale'
 			}
+			if ($null -ne $pattern.PSObject.Properties['bossArchetypeIds']) {
+				# KoukuSaydon Product names the arena boss bodies a pattern may
+				# play on; the gameplay balance publisher validates the values.
+				$patternProperties += 'bossArchetypeIds'
+			}
 			if ($null -ne $pattern.PSObject.Properties['verticalOffsetM']) {
 				# The gameplay-balance publisher owns the strict value and stage-response
 				# contract.  The world publisher only needs to preserve compatibility
@@ -215,7 +235,7 @@ function Get-EncounterProfiles {
 			}
 			if ([double]$pattern.minimumRange -lt 0.0 -or
 				[double]$pattern.maximumRange -le [double]$pattern.minimumRange -or
-				@($pattern.sourceActionIds).Count -eq 0 -or
+				(-not $isKoukuSaydon -and @($pattern.sourceActionIds).Count -eq 0) -or
 				@($pattern.stages).Count -eq 0) {
 				throw "Encounter pattern timing or range is invalid: $($pattern.patternId)"
 			}
@@ -241,7 +261,18 @@ function Get-EncounterProfiles {
 				}
 			}
 		}
-        $profiles[[string]$document.encounterId] = $document
+        $encounterBossArchetypeIds =
+            [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $null = $encounterBossArchetypeIds.Add([string]$document.bossArchetypeId)
+        if ($bossArchetypesByEncounter.ContainsKey([string]$document.encounterId)) {
+            foreach ($archetypeId in $bossArchetypesByEncounter[[string]$document.encounterId]) {
+                $null = $encounterBossArchetypeIds.Add($archetypeId)
+            }
+        }
+        $profiles[[string]$document.encounterId] = [pscustomobject]@{
+            Document = $document
+            BossArchetypeIds = $encounterBossArchetypeIds
+        }
     }
     return $profiles
 }
@@ -903,7 +934,7 @@ function Convert-WorldDocument {
                 throw "Boss placement requires an encounter ID: $($placement.placementId)"
             }
             $profile = $EncounterProfiles[$encounterId]
-            if ($profile.bossArchetypeId -ne $placement.archetypeId) {
+            if (-not $profile.BossArchetypeIds.Contains([string]$placement.archetypeId)) {
                 throw "Boss placement archetype does not match encounter '$encounterId'."
             }
         }

@@ -73,7 +73,7 @@ def fixture_catalog(
 ) -> dict:
     return {
         "schema": "lostark.boss-catalog",
-        "formatVersion": 7,
+        "formatVersion": 8,
         "bosses": [
             {
                 "archetypeId": "BOSS_VALTAN",

@@ -462,9 +462,20 @@ namespace Client
 #ifdef _DEBUG
 		bool_t Begin_DebugPlayerPlacement(LostArk::Shared::WORLD_ID worldId);
 		void Cancel_DebugPlayerPlacement();
+		/* F1 gate buttons: submits one fixed arena position without a ground
+		pick. Same Server validation, sequence and result path as Move Player. */
+		bool_t Request_DebugTeleportToPosition(
+			LostArk::Shared::WORLD_ID worldId, f32_t x, f32_t y, f32_t z);
 		bool_t Is_DebugPlayerPlacementArmed() const { return m_debugPlacementArmed; }
 		bool_t Is_DebugPlayerPlacementPending() const { return 0u != m_pendingDebugPlacementSequence; }
+		bool_t Did_DebugPlayerPlacementSucceed() const { return m_debugPlacementSucceeded; }
 		const std::string& Get_DebugPlayerPlacementStatus() const { return m_debugPlacementStatus; }
+		/* F1 "Change to Clown" / "Return to Player": asks the Server for the
+		madness form of this player. The snapshot swaps the body; the typed
+		result only reports the verdict here. */
+		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
+		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
+		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
 #endif
 
 		/* One-shot: consumed (cleared) by the next Update() regardless of
@@ -521,7 +532,7 @@ namespace Client
 		/* Left mouse is not a key code, so it is polled after the slot table and
 		only fills a slot the keyboard left empty. */
 		void Poll_BasicAttack(
-			const CHARACTER_SPEC* pSpec,
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			LostArk::Shared::PLAYER_STANCE_ID stance,
 			LostArk::Shared::SKILL_ID& outSkillId,
 			bool_t commandSuppressed);
@@ -580,11 +591,15 @@ namespace Client
 		bool_t m_debugPlacementArmed = false;
 		bool_t m_wasDebugPlacementLeftDown = false;
 		bool_t m_debugPlacementReplyDelayed = false;
+		bool_t m_debugPlacementSucceeded = false;
 		std::uint32_t m_nextDebugPlacementSequence = 1u;
 		std::uint32_t m_pendingDebugPlacementSequence = 0u;
 		LostArk::Shared::WORLD_ID m_debugPlacementWorld = LostArk::Shared::WORLD_ID::END;
 		std::chrono::steady_clock::time_point m_debugPlacementSentAt{};
 		std::string m_debugPlacementStatus;
+		std::uint32_t m_nextDebugMadnessFormSequence = 1u;
+		std::uint32_t m_pendingDebugMadnessFormSequence = 0u;
+		std::string m_debugMadnessFormStatus;
 #endif
 	};
 }

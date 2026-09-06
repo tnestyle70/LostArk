@@ -1444,6 +1444,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
+	std::unordered_set<std::string> patternSourceOwners;
 	std::unordered_set<std::string> patternVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStageVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStagePartDamageOwners;
@@ -2309,6 +2310,37 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			owner->bAuthoringMasterManaged = true;
 		}
+		else if (!fields.empty() && "PATTERNBOSS" == fields[0])
+		{
+			/* One arena boss archetype that may run this KoukuSaydon pattern.
+			The row follows its PATTERN row; the boss itself is validated once
+			every BOSS row is known. */
+			if (4u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]))
+			{
+				m_strStatus = "Boss pattern audition boss row is invalid";
+				return false;
+			}
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss pattern audition boss encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (owners->second.end() == owner ||
+				owner->AuditionBossArchetypeIds.end() != std::find(
+					owner->AuditionBossArchetypeIds.begin(),
+					owner->AuditionBossArchetypeIds.end(), fields[3]) ||
+				owner->AuditionBossArchetypeIds.size() >= 8u)
+			{
+				m_strStatus = "Boss pattern audition boss is missing, duplicated, or over capacity";
+				return false;
+			}
+			owner->AuditionBossArchetypeIds.emplace_back(fields[3]);
+		}
 		else if (!fields.empty() && "PATTERNVERTICALOFFSET" == fields[0])
 		{
 			float verticalOffsetM = 0.f;
@@ -2471,7 +2503,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				!ParseNumber(fields[7], rangeUnits) ||
 				!ParseNumber(fields[8], approachUnits) ||
 				!ParseNumber(fields[9], turnDegrees) ||
-				0u == primaryActionId || shapeCount > 256u ||
+				(0u == primaryActionId && "ENCOUNTER_KAKULSAYDON_G1" != fields[1]) ||
+				shapeCount > 256u ||
 				cooldownMs > 600000u || rangeUnits > 100000u ||
 				approachUnits > 100000u || turnDegrees > 360u ||
 				cooldownTicks != static_cast<std::uint32_t>(
@@ -2491,8 +2524,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				ownerMap->second.begin(), ownerMap->second.end(),
 				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
 				{ return pattern.strPatternId == fields[2]; });
+			const std::string sourceOwnerKey =
+				std::string(fields[1]) + "\n" + std::string(fields[2]);
 			if (ownerMap->second.end() == owner ||
-				0u != owner->iSourcePrimaryActionId)
+				!patternSourceOwners.insert(sourceOwnerKey).second)
 			{
 				m_strStatus =
 					"Boss pattern source timing has no owner or is duplicated";
@@ -4307,9 +4342,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		const auto foundParts = m_BossParts.find(archetypeId);
 		const bool isValtanPrimary = "BOSS_VALTAN" == archetypeId &&
 			"ENCOUNTER_VALTAN" == boss.strEncounterId;
+		/* Every KoukuSaydon arena boss (the Gate 1 Kouku and the Debug gate
+		bosses) shares the Gate 1 animation-audition contract: no parts, no
+		gameplay phase action, MECHANIC audition patterns without a source
+		primary action. */
 		const bool isKoukuSaydonGateOne =
-			"BOSS_KAKULSAYDON_G1_KOUKU" == archetypeId &&
-			"ENCOUNTER_KAKULSAYDON_G1" == boss.strEncounterId;
+			"ENCOUNTER_KAKULSAYDON_G1" == boss.strEncounterId &&
+			archetypeId.starts_with("BOSS_KAKULSAYDON_");
 		if ((m_BossParts.end() == foundParts || foundParts->second.empty()) &&
 			!dependentBossArchetypeIds.contains(archetypeId) &&
 			!isKoukuSaydonGateOne)
@@ -4367,6 +4406,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
+			for (const std::string& auditionArchetypeId :
+				pattern.AuditionBossArchetypeIds)
+			{
+				const auto auditionBoss = m_Bosses.find(auditionArchetypeId);
+				if (!isKoukuSaydonGateOne || m_Bosses.end() == auditionBoss ||
+					auditionBoss->second.strEncounterId != pattern.strEncounterId ||
+					dependentBossArchetypeIds.contains(auditionArchetypeId))
+				{
+					m_strStatus =
+						"Boss pattern audition boss is not an arena boss of its encounter";
+					return false;
+				}
+			}
 			const bool requiresFiniteGraph =
 				BOSS_PATTERN_FINALE_KIND::NONE != pattern.Finale.eKind ||
 				"VALTAN_TRASH" == pattern.strPatternId ||

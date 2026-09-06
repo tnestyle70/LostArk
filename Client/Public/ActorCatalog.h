@@ -110,6 +110,10 @@ struct BOSS_ACTOR_ENTRY final
 	Only a catalog row whose dedicated Client presentation contract admits that
 	shape may use zero; Valtan remains body+weapon exact. */
 	f32_t weaponModelPreScale = {};
+	/* Pitch/yaw/roll in degrees applied to the weapon model before its scale,
+	turning the authored weapon axes onto the socket bone. Zero without a
+	weapon. */
+	float3_t weaponModelPreRotationDegrees = {};
 	std::string bodyModel;
 	std::string weaponModel;
 	/* Skinned armour pieces the boss wears on the body rig. They share the

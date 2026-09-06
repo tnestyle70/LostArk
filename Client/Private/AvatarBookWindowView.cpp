@@ -283,12 +283,13 @@ void Client::CAvatarBookWindowView::Update(const f32_t fTimeDelta,
 		m_pPortraitCharacter.reset();
 		return;
 	}
+	const bool_t bCharacterChanged = m_pPortraitCharacter.lock() != pLocalCharacter;
 	m_pPortraitCharacter = pLocalCharacter;
 	if (nullptr != pLocalCharacter)
 		(void)ConvertUtf8ToWide(pLocalCharacter->Get_NickName(), m_strNickName);
 	else
 		m_strNickName.clear();
-	if (m_bJustOpened || m_eClass != Player.eCharacterClass)
+	if (m_bJustOpened || bCharacterChanged || m_eClass != Player.eCharacterClass)
 	{
 		m_eClass = Player.eCharacterClass;
 		m_strClassName = InfoView.Get_ClassDisplayName(m_eClass);

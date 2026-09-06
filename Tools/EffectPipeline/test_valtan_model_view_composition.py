@@ -85,12 +85,17 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             )
         )
         self.assertEqual(catalog["schema"], "lostark.boss-catalog")
-        self.assertEqual(catalog["formatVersion"], 7)
+        self.assertEqual(catalog["formatVersion"], 8)
         self.assertEqual({row["archetypeId"] for row in catalog["bosses"]},
                          {
                              "BOSS_VALTAN",
                              "BOSS_VALTAN_GHOST",
                              "BOSS_KAKULSAYDON_G1_KOUKU",
+                             "BOSS_KAKULSAYDON_G1_SAYDON",
+                             "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+                             "BOSS_KAKULSAYDON_G2_KOUKU",
+                             "BOSS_KAKULSAYDON_G3_SAYDON",
+                             "BOSS_KAKULSAYDON_BINGO_SAYDON",
                          })
         valtan = next(row for row in catalog["bosses"]
                       if row["archetypeId"] == "BOSS_VALTAN")

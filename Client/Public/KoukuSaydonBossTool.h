@@ -42,10 +42,35 @@ namespace Client
 			std::string_view patternId,
 			std::uint32_t expectedSourceRevision,
 			std::string& outStatus);
+		/* Start Full Pattern: the saved PRODUCT Play All order on the Server. */
+		bool Play_All(std::string& outStatus);
+		/* Read-only inventory for the F1 hub's KoukuSaydon Complete Play list.
+		The tool stays the single owner of reload, selection and Server play. */
+		[[nodiscard]] bool Has_SavedComposition() const noexcept
+		{
+			return m_bHasSavedComposition;
+		}
+		[[nodiscard]] const std::vector<PRODUCT_PATTERN>& Get_ProductPatterns()
+			const noexcept
+		{
+			return m_ProductPatterns;
+		}
+		[[nodiscard]] const std::vector<std::string>& Get_PlayAllPatternIds()
+			const noexcept
+		{
+			return m_PlayAllPatternIds;
+		}
+		[[nodiscard]] std::uint32_t Get_SourceRevision() const noexcept
+		{
+			return m_iSourceRevision;
+		}
+		[[nodiscard]] const std::string& Get_Status() const noexcept
+		{
+			return m_strStatus;
+		}
 
 	private:
 		bool Play_Selected(std::string& outStatus);
-		bool Play_All(std::string& outStatus);
 		void Normalize_Selection();
 		[[nodiscard]] const PRODUCT_PATTERN*
 			Find_SelectedPattern() const;

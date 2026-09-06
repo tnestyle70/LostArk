@@ -20,6 +20,13 @@ public:
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) = 0;
 	virtual bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) = 0;
+	/* Debug F1 clown/player avatar toggle: intent only, the Server owns the
+	form and the snapshot presents it. */
+	virtual bool Request_DebugMadnessForm(
+		std::uint32_t requestSequence,
+		LostArk::Shared::PLAYER_MADNESS_FORM form) = 0;
+	virtual bool Consume_DebugMadnessFormResult(
+		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result) = 0;
 
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,

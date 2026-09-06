@@ -116,6 +116,8 @@ namespace
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
+			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
+			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
@@ -2157,6 +2159,71 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		!Is_Valid_PlayerMadnessForm(message.eForm))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eForm));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_SET_MADNESS_FORM& message)
+{
+	C2S_DEBUG_SET_MADNESS_FORM decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t form = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(form))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eForm = static_cast<PLAYER_MADNESS_FORM>(form);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!Is_Valid_PlayerMadnessForm(decoded.eForm))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_DEBUG_SET_MADNESS_FORM_RESULT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= DEBUG_MADNESS_FORM_RESULT::END ||
+		!Is_Valid_PlayerMadnessForm(message.eActiveForm))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eActiveForm));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_DEBUG_SET_MADNESS_FORM_RESULT& message)
+{
+	S2C_DEBUG_SET_MADNESS_FORM_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	std::uint8_t form = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || !reader.Read_U8(form))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<DEBUG_MADNESS_FORM_RESULT>(result);
+	decoded.eActiveForm = static_cast<PLAYER_MADNESS_FORM>(form);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= DEBUG_MADNESS_FORM_RESULT::END ||
+		!Is_Valid_PlayerMadnessForm(decoded.eActiveForm))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_CHANGE_CHARACTER_CLASS& message)
 {
@@ -2341,6 +2408,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iMaximumResource);
 		writer.Write_U32(player.iCurrentIdentity);
 		writer.Write_U32(player.iMaximumIdentity);
+		writer.Write_U32(player.iCurrentMadness);
+		writer.Write_U32(player.iMaximumMadness);
+		writer.Write_U8(static_cast<std::uint8_t>(player.eMadnessForm));
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
@@ -2509,6 +2579,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
 		std::uint8_t rawPatternBound = 0;
+		std::uint8_t rawMadnessForm = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -2539,6 +2610,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumResource) ||
 			!reader.Read_U32(player.iCurrentIdentity) ||
 			!reader.Read_U32(player.iMaximumIdentity) ||
+			!reader.Read_U32(player.iCurrentMadness) ||
+			!reader.Read_U32(player.iMaximumMadness) ||
+			!reader.Read_U8(rawMadnessForm) ||
+			rawMadnessForm >= static_cast<std::uint8_t>(PLAYER_MADNESS_FORM::END) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(rawPatternBound) ||
@@ -2565,6 +2640,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
 		player.isPatternBound = 0u != rawPatternBound;
+		player.eMadnessForm = static_cast<PLAYER_MADNESS_FORM>(rawMadnessForm);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
