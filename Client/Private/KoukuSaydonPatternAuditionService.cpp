@@ -20,14 +20,16 @@ namespace
 		"BOSS_KAKULSAYDON_G1_KOUKU";
 
 	KOUKUSAYDON_PATTERN_AUDITION_SCOPE Make_Scope(
+		const std::string_view placementId,
+		const std::string_view archetypeId,
 		const GameplayDataRevision& revision,
 		const std::uint32_t sourceRevision)
 	{
 		KOUKUSAYDON_PATTERN_AUDITION_SCOPE scope{};
 		scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 		scope.strEncounterId = ENCOUNTER_ID;
-		scope.strBossPlacementId = BOSS_PLACEMENT_ID;
-		scope.strBossArchetypeId = BOSS_ARCHETYPE_ID;
+		scope.strBossPlacementId = placementId;
+		scope.strBossArchetypeId = archetypeId;
 		scope.ExpectedGameplayRevision = revision;
 		scope.iExpectedSourceRevision = sourceRevision;
 		return scope;
@@ -52,9 +54,9 @@ namespace
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
 			return "Server Play is Debug-only; start the Debug Server.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH:
-			return "The Server room does not match the exact KoukuSaydon Gate 1 scope.";
+			return "The Server room does not match the KoukuSaydon arena boss scope.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_NO_BOSS:
-			return "The admitted KoukuSaydon boss placement is not alive in this room.";
+			return "The target KoukuSaydon boss placement is not spawned; raise it from the F1 gate button first.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BOSS_DEAD:
 			return "The KoukuSaydon boss is dead; re-enter the Arena before replaying.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BUSY:
@@ -106,6 +108,20 @@ const char* Client::Describe_KoukuSaydonPatternAuditionState(
 	}
 }
 
+void Client::CKoukuSaydonPatternAuditionService::Set_TargetBoss(
+	const std::string_view placementId,
+	const std::string_view archetypeId)
+{
+	if (placementId.empty() || archetypeId.empty())
+	{
+		m_strTargetBossPlacementId = BOSS_PLACEMENT_ID;
+		m_strTargetBossArchetypeId = BOSS_ARCHETYPE_ID;
+		return;
+	}
+	m_strTargetBossPlacementId = std::string(placementId);
+	m_strTargetBossArchetypeId = std::string(archetypeId);
+}
+
 bool Client::CKoukuSaydonPatternAuditionService::Play_Selected(
 	const std::string_view patternId,
 	const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
@@ -136,6 +152,11 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 {
 	using namespace LostArk::Shared;
 	Update();
+	if (m_bTargetTransitionPending)
+	{
+		outStatus = "Wait for the Server to confirm the gate transition before starting playback.";
+		return false;
+	}
 	if (KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED != operation &&
 		KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL != operation)
 	{
@@ -179,8 +200,11 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
 	request.iRequestSequence = m_iNextRequestSequence;
 	request.eOperation = operation;
-	request.Scope = Make_Scope(expectedGameplayRevision, expectedSourceRevision);
+	request.Scope = Make_Scope(
+		m_strTargetBossPlacementId, m_strTargetBossArchetypeId,
+		expectedGameplayRevision, expectedSourceRevision);
 	request.strPatternId = patternId;
+	m_RequestScope = request.Scope;
 	if (!network.Send_KoukuSaydonPatternAudition(request))
 	{
 		outStatus = "Could not send KoukuSaydon Server Play.";
@@ -249,9 +273,7 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Result(
 		result.iRequestSequence != m_Snapshot.iRequestSequence ||
 		result.eOperation != m_Snapshot.eOperation ||
 		result.strRequestedPatternId != m_Snapshot.strRequestedPatternId ||
-		!Exact_Scope(result.Scope, Make_Scope(
-			m_Snapshot.ExpectedGameplayRevision,
-			m_Snapshot.iExpectedSourceRevision)))
+		!Exact_Scope(result.Scope, m_RequestScope))
 	{
 		return;
 	}
@@ -297,10 +319,7 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 	if (!m_Snapshot.Is_InFlight() ||
 		lifecycle.iRequestSequence != m_Snapshot.iRequestSequence ||
 		lifecycle.eOperation != m_Snapshot.eOperation ||
-		!Exact_Scope(
-			lifecycle.Scope, Make_Scope(
-				m_Snapshot.ExpectedGameplayRevision,
-				m_Snapshot.iExpectedSourceRevision)) ||
+		!Exact_Scope(lifecycle.Scope, m_RequestScope) ||
 		(0u != m_Snapshot.iRoomAuditionEpoch &&
 		 lifecycle.iRoomAuditionEpoch != m_Snapshot.iRoomAuditionEpoch) ||
 		(INVALID_NET_ENTITY_ID != m_Snapshot.iBossNetEntityId &&
@@ -387,6 +406,9 @@ void Client::CKoukuSaydonPatternAuditionService::Reset(
 	const std::string_view reason)
 {
 	m_Snapshot = {};
+	m_RequestScope = {};
+	m_bTargetTransitionPending = false;
+	Set_TargetBoss({}, {});
 	if (!reason.empty())
 		m_Snapshot.strStatus = reason;
 	m_iStateStartedAtMilliseconds = 0u;

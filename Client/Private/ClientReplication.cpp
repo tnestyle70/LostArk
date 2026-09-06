@@ -50,6 +50,20 @@ namespace
 	constexpr std::string_view KOUKU_SAYDON_ENCOUNTER =
 		"ENCOUNTER_KAKULSAYDON_G1";
 
+	/* Every primary boss of the KoukuSaydon arena: the Gate 1 Kouku and the
+	Debug gate bosses. They share the Gate 1 encounter and the catalog family
+	the presentation service owns; all of them present on a CNpc body. */
+	bool Is_KoukuSaydonArenaBoss(
+		const std::string_view archetypeId,
+		const std::string_view encounterId,
+		const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId)
+	{
+		return LostArk::Shared::INVALID_NET_ENTITY_ID == ownerBossNetEntityId &&
+			encounterId == KOUKU_SAYDON_ENCOUNTER &&
+			Client::CKoukuSaydonPresentationAssetService::Is_ArenaBossArchetype(
+				archetypeId);
+	}
+
 #ifdef _DEBUG
 	Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT g_CombatDebugVisibility = []
 	{
@@ -599,7 +613,10 @@ bool Client::CClientReplication::Has_WorldEntity(
 				!presentation.pNpc.expired()) ||
 			(LostArk::Shared::WORLD_ENTITY_KIND::BOSS == presentation.eKind &&
 				(!presentation.pValtan.expired() ||
-				 (presentation.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
+				 (Is_KoukuSaydonArenaBoss(
+					presentation.strArchetypeId,
+					presentation.strEncounterId,
+					presentation.iOwnerBossNetEntityId) &&
 				  !presentation.pNpc.expired())));
 		if (presentation.strArchetypeId == archetypeId &&
 			hasLivePresentation)
@@ -1408,6 +1425,25 @@ bool Client::CClientReplication::Try_Consume_WorldDestructionLiveEvent(
 	return true;
 }
 
+std::shared_ptr<CNpc> Client::CClientReplication::Find_ArenaBossNpc(
+	const std::string_view archetypeId) const
+{
+	for (const auto& [netEntityId, presentation] : m_WorldEntities)
+	{
+		(void)netEntityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS != presentation.eKind ||
+			presentation.strArchetypeId != archetypeId ||
+			LostArk::Shared::INVALID_NET_ENTITY_ID !=
+				presentation.iOwnerBossNetEntityId)
+		{
+			continue;
+		}
+		if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+			return npc;
+	}
+	return nullptr;
+}
+
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
 	return m_Registry.Resolve(m_LocalCharacterHandle);
@@ -1455,7 +1491,8 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			"Deferred local class replacement lost its stable player identity.";
 		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE;
 	}
-	if (pCurrentRecord->eCharacterClass == Pending.Snapshot.eCharacterClass)
+	if (pCurrentRecord->eCharacterClass == Pending.Snapshot.eCharacterClass &&
+		pCurrentRecord->eMadnessForm == Pending.Snapshot.eMadnessForm)
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
 		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED;
@@ -1918,6 +1955,7 @@ void Client::CClientReplication::Draw_CombatObjectHitAreaDebug()
 
 bool Client::CClientReplication::Create_Character(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+	const LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 	const std::string_view nickName,
 	const float3_t& position,
 	const f32_t yawDegrees,
@@ -1925,23 +1963,40 @@ bool Client::CClientReplication::Create_Character(
 	std::shared_ptr<CCharacter>& outCharacter)
 {
 	outCharacter.reset();
-	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-		m_Desc.pDevice,
-		m_Desc.pContext,
-		m_Desc.iPrototypeLevelIndex,
-		characterClass)))
+	const CHARACTER_SPEC* spec = nullptr;
+	if (LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN == madnessForm)
 	{
-		return false;
+		/* The clown body is the KoukuSaydon colourless Saydon rig. It is
+		admitted once per level like an arena boss body; the class stays the
+		wearer's so its quick slots keep resolving. */
+		if (FAILED(CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
+			m_Desc.pDevice,
+			m_Desc.pContext,
+			m_Desc.iPrototypeLevelIndex)))
+		{
+			return false;
+		}
+		spec = CCharacterCatalog::Find_ClownSpec();
 	}
-
-	const CHARACTER_SPEC* spec =
-		CCharacterCatalog::Find_Spec(characterClass);
+	else
+	{
+		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+			m_Desc.pDevice,
+			m_Desc.pContext,
+			m_Desc.iPrototypeLevelIndex,
+			characterClass)))
+		{
+			return false;
+		}
+		spec = CCharacterCatalog::Find_Spec(characterClass);
+	}
 	if (nullptr == spec)
 		return false;
 
 	CCharacter::CHARACTER_DESC desc{};
 	desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
 	desc.pSpec = spec;
+	desc.eCharacterClass = characterClass;
 	desc.pNavigationPrototypeTag =
 		isLocallyControlled ?
 			m_strLocalPlayerNavigationPrototypeTag.c_str() : nullptr;
@@ -2008,8 +2063,11 @@ bool Client::CClientReplication::Apply_Spawn(
 		spawned.iPlayerId ==
 		CNetworkManager::Get().Get_LocalPlayerId();
 	std::shared_ptr<CCharacter> character;
+	/* Spawn carries no form; the first snapshot replaces the body if the
+	Server already presents this player as a clown. */
 	if (!Create_Character(
 		spawned.eCharacterClass,
+		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL,
 		spawned.strNickName,
 		float3_t(
 			spawned.fPositionX,
@@ -2131,8 +2189,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 					!existing->second.pNpc.expired()) ||
 				(WORLD_ENTITY_KIND::BOSS == existing->second.eKind &&
 				(!existing->second.pValtan.expired() ||
-				 (existing->second.strArchetypeId ==
-					KOUKU_SAYDON_BOSS_ARCHETYPE &&
+				 (Is_KoukuSaydonArenaBoss(
+					existing->second.strArchetypeId,
+					existing->second.strEncounterId,
+					existing->second.iOwnerBossNetEntityId) &&
 				  !existing->second.pNpc.expired())));
 		return hasLivePresentation &&
 			existing->second.eKind == spawned.eKind &&
@@ -2367,11 +2427,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	const BOSS_ACTOR_ENTRY* pBoss =
 		CActorCatalog::Find_Boss(spawned.strArchetypeId);
 	if (spawned.eKind == WORLD_ENTITY_KIND::BOSS && nullptr != pBoss &&
-		spawned.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
-		spawned.strEncounterId == KOUKU_SAYDON_ENCOUNTER &&
-		pBoss->clientPresentationId ==
-			"boss.kakulsaydon.g1.kouku.client.v1" &&
-		INVALID_NET_ENTITY_ID == spawned.iOwnerBossNetEntityId)
+		Is_KoukuSaydonArenaBoss(
+			spawned.strArchetypeId,
+			spawned.strEncounterId,
+			spawned.iOwnerBossNetEntityId))
 	{
 		const std::wstring modelTag =
 			CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag(
@@ -2399,6 +2458,17 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ);
 		desc.fYawDegree = spawned.fYawDegrees;
 		desc.fCollisionRadius = spawned.fCollisionRadius;
+		/* A catalog weapon rides the body's socket bone in its rest pose. The
+		prototype was admitted together with the body just above. */
+		const std::wstring weaponTag =
+			CKoukuSaydonPresentationAssetService::Get_WeaponModelPrototypeTag(
+				spawned.strArchetypeId);
+		if (!weaponTag.empty())
+		{
+			desc.strWeaponModelTag = weaponTag;
+			desc.pWeaponSocketBone =
+				CKoukuSaydonPresentationAssetService::Get_WeaponSocketBone();
+		}
 
 		std::shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -2752,6 +2822,17 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strWorldEntityLayerTag,
 			npc);
+	}
+	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind &&
+		Is_KoukuSaydonArenaBoss(
+			iter->second.strArchetypeId,
+			iter->second.strEncounterId,
+			iter->second.iOwnerBossNetEntityId))
+	{
+		/* Apply_Boss stops the moment the entity leaves the snapshot, so the
+		bar of a despawned arena boss has to be dropped here explicitly. */
+		CCombatHUDViewModel::Get().Clear_BossIfArchetype(
+			iter->second.strArchetypeId);
 	}
 	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
 	{
@@ -3121,7 +3202,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		const bool_t isLocallyControlled = player.iNetEntityId ==
 			CNetworkManager::Get().Get_LocalEntityId();
 		if (nullptr != record &&
-			record->eCharacterClass != player.eCharacterClass)
+			(record->eCharacterClass != player.eCharacterClass ||
+			 record->eMadnessForm != player.eMadnessForm))
 		{
 			if (isLocallyControlled &&
 				m_Desc.bDeferLocalCharacterClassReplacement)
@@ -3459,9 +3541,10 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				CCombatHUDViewModel::Get().Set_BossDeadRaw(true);
 			}
 
-			if (iter->second.strArchetypeId == KOUKU_SAYDON_BOSS_ARCHETYPE &&
-				iter->second.strEncounterId == KOUKU_SAYDON_ENCOUNTER &&
-				INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
+			if (Is_KoukuSaydonArenaBoss(
+					iter->second.strArchetypeId,
+					iter->second.strEncounterId,
+					iter->second.iOwnerBossNetEntityId))
 			{
 				const std::shared_ptr<CNpc> boss = iter->second.pNpc.lock();
 				if (nullptr == boss ||
@@ -3484,7 +3567,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					KOUKU_SAYDON_ACTION_PRESENTATION action;
 					const bool_t hasAction =
 						CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
-							entity.strActionId, action);
+							iter->second.strArchetypeId, entity.strActionId, action);
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
 							action.strClip.c_str(), false,
@@ -3709,6 +3792,7 @@ Client::CClientReplication::Replace_CharacterClass(
 	std::shared_ptr<CCharacter> stagedCharacter;
 	if (!Create_Character(
 		snapshot.eCharacterClass,
+		snapshot.eMadnessForm,
 		oldRecord.strNickName,
 		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 		snapshot.fYawDegrees,
@@ -3722,6 +3806,7 @@ Client::CClientReplication::Replace_CharacterClass(
 
 	NET_PLAYER_RECORD newRecord = oldRecord;
 	newRecord.eCharacterClass = snapshot.eCharacterClass;
+	newRecord.eMadnessForm = snapshot.eMadnessForm;
 	newRecord.fPositionX = snapshot.fPositionX;
 	newRecord.fPositionY = snapshot.fPositionY;
 	newRecord.fPositionZ = snapshot.fPositionZ;
@@ -3768,7 +3853,8 @@ void Client::CClientReplication::Stage_LocalCharacterClassReplacement(
 		m_DeferredLocalCharacterClassReplacement;
 	if (!Pending.isPending ||
 		Pending.Snapshot.iNetEntityId != Snapshot.iNetEntityId ||
-		Pending.Snapshot.eCharacterClass != Snapshot.eCharacterClass)
+		Pending.Snapshot.eCharacterClass != Snapshot.eCharacterClass ||
+		Pending.Snapshot.eMadnessForm != Snapshot.eMadnessForm)
 	{
 		Pending.iGeneration =
 			m_iNextDeferredLocalCharacterClassReplacementGeneration++;

@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.kouku.find.heart",
+  "durationMs": 0,
+  "children": [
+    { "childId": "child.authored.00000", "resource": { "kind": "LEAF", "id": "boss.kouku.find.heart.big_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, -0.5, -0.3], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.authored.00001", "resource": { "kind": "LEAF", "id": "boss.kouku.find.heart.small_1" }, "startMs": 500, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.45, 0.55], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "lostark.kouku-hud-modes",
+  "formatVersion": 1,
+  "madness": {
+    "maximum": 100,
+    "stateThresholds": [
+      49,
+      100
+    ],
+    "holdMs": 15000,
+    "headOffsetMeters": 2.2,
+    "fillTextureByState": [
+      "UI/KoukuSaydon/Madness/madness_fill_state_0.png",
+      "UI/KoukuSaydon/Madness/madness_fill_state_1.png"
+    ]
+  },
+  "modes": [
+    {
+      "id": "POLYMORPH",
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "randomOrder": false,
+      "skills": [
+        {
+          "skillId": 43340,
+          "displayName": "폭탄 던지기",
+          "cooldownMs": 3000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_q.png"
+        },
+        {
+          "skillId": 43341,
+          "displayName": "나팔 불기",
+          "cooldownMs": 7000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_w.png"
+        },
+        {
+          "skillId": 43343,
+          "displayName": "특급 배송",
+          "cooldownMs": 20000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_poly_e.png"
+        }
+      ]
+    },
+    {
+      "id": "MARIO",
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "randomOrder": false,
+      "skills": [
+        {
+          "skillId": 0,
+          "displayName": "마리오 Q",
+          "cooldownMs": 3000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_mario_q.png"
+        },
+        {
+          "skillId": 0,
+          "displayName": "마리오 W",
+          "cooldownMs": 3000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_mario_w.png"
+        }
+      ]
+    },
+    {
+      "id": "DANCE",
+      "emblemSlot": "Kouku_Emblem_Npc",
+      "randomOrder": true,
+      "skills": [
+        {
+          "skillId": 0,
+          "displayName": "댄스 1",
+          "cooldownMs": 1000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_0.png"
+        },
+        {
+          "skillId": 0,
+          "displayName": "댄스 2",
+          "cooldownMs": 1000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_1.png"
+        },
+        {
+          "skillId": 0,
+          "displayName": "댄스 3",
+          "cooldownMs": 1000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_2.png"
+        },
+        {
+          "skillId": 0,
+          "displayName": "댄스 4",
+          "cooldownMs": 1000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_dance_3.png"
+        }
+      ]
+    },
+    {
+      "id": "MAZE",
+      "emblemSlot": "Kouku_Emblem_Pickup",
+      "randomOrder": false,
+      "skills": [
+        {
+          "skillId": 56411,
+          "displayName": "뿅망치 내려치기",
+          "cooldownMs": 2000,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_maze_q.png"
+        }
+      ]
+    }
+  ]
+}

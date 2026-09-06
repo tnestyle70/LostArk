@@ -1,0 +1,11 @@
+아래 명령을 PowerShell에서 실행하면
+"C:\Users\USER\OneDrive\바탕 화면\창술사 스킬 데이터"로 창술사 스킬 데이터가 복사돼.
+
+mkdir 'C:\Users\USER\OneDrive\바탕 화면\창술사 스킬 데이터' -Force
+Copy-Item -LiteralPath 'C:\Users\USER\source\졸업팀폴\LostArk\Client\Bin\Resources\LostArk\Effect\Effect_Tool\SourceCatalog\glaivier_skill_phase_1_3.csv' `
+  -Destination 'C:\Users\USER\OneDrive\바탕 화면\창술사 스킬 데이터' -Force
+Copy-Item -LiteralPath 'C:\Users\USER\source\졸업팀폴\LostArk\Client\Bin\Resources\LostArk\Effect\Effect_Tool\SourceCatalog\glaivier_skill_phase_1_3.json' `
+  -Destination 'C:\Users\USER\OneDrive\바탕 화면\창술사 스킬 데이터' -Force
+
+현재 이 작업공간에는 임시로 보관됨:
+C:\Users\USER\source\졸업팀폴\LostArk\창술사 스킬 데이터

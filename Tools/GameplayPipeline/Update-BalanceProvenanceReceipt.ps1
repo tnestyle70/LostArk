@@ -184,12 +184,12 @@ foreach ($key in $current.Keys) {
     }
 }
 
-# The first KoukuSaydon profile is deliberately a non-final animation-audition
+# Every KoukuSaydon profile is deliberately a non-final animation-audition
 # admission profile.  Its values keep the preview alive and within the current
 # BOSS row grammar; they do not claim extracted or combat-fidelity tuning.
 foreach ($entry in @($receipt.entries | Where-Object {
 	[string]$_.targetDocument -ceq 'Data/Balance/BossProfiles.json' -and
-	[string]$_.targetId -ceq 'boss:BOSS_KAKULSAYDON_G1_KOUKU'
+	[string]$_.targetId -clike 'boss:BOSS_KAKULSAYDON_*'
 })) {
 	$entry.basis = 'PROJECT_TUNED'
 	$entry.source = [pscustomobject]@{

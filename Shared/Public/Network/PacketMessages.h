@@ -581,6 +581,59 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message);
 
+	/* Which body a player presents. NORMAL is the class body; CLOWN is the
+	colourless KoukuSaydon body a full madness gauge turns the player into. */
+	enum class PLAYER_MADNESS_FORM : std::uint8_t
+	{
+		NORMAL,
+		CLOWN,
+		END
+	};
+
+	constexpr bool Is_Valid_PlayerMadnessForm(const PLAYER_MADNESS_FORM form) noexcept
+	{
+		return form < PLAYER_MADNESS_FORM::END;
+	}
+
+	/* Debug F1 "Change to Clown" / "Return to Player". The Server owns the
+	form and replicates it in PLAYER_SNAPSHOT; this only asks for it. */
+	struct C2S_DEBUG_SET_MADNESS_FORM
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		PLAYER_MADNESS_FORM eForm = PLAYER_MADNESS_FORM::NORMAL;
+	};
+
+	enum class DEBUG_MADNESS_FORM_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_DISABLED,
+		REJECTED_SESSION,
+		REJECTED_WRONG_WORLD,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_PLAYER_STATE,
+		REJECTED_SAME_FORM,
+		END
+	};
+
+	struct S2C_DEBUG_SET_MADNESS_FORM_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_MADNESS_FORM_RESULT eResult = DEBUG_MADNESS_FORM_RESULT::REJECTED_SESSION;
+		// The form the player has after this request, accepted or not.
+		PLAYER_MADNESS_FORM eActiveForm = PLAYER_MADNESS_FORM::NORMAL;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_SET_MADNESS_FORM& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_SET_MADNESS_FORM& message);
+	bool Write_Message(CPacketWriter& writer,
+		const S2C_DEBUG_SET_MADNESS_FORM_RESULT& message);
+	bool Read_Message(CPacketReader& reader,
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT& message);
+
 	struct C2S_CHANGE_CHARACTER_CLASS
 	{
 		std::uint32_t iClientSequence = 0;
@@ -718,6 +771,12 @@ namespace LostArk::Shared
 		// the HUD then has nothing to draw.
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
+		/* KoukuSaydon madness gauge and the avatar it drives. Both are Server
+		truth: a maximum of 0 means no Saydon encounter owns the gauge, and the
+		form says which body the Client presents for this player. */
+		std::uint32_t iCurrentMadness = 0;
+		std::uint32_t iMaximumMadness = 0;
+		PLAYER_MADNESS_FORM eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 		bool isCombatReady = true;
 		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
 		late Client present the remaining window without deciding its lifetime. */

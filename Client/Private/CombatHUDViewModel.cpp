@@ -207,6 +207,9 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.iCurrentIdentity = snapshot.iCurrentIdentity;
 	m_Player.iMaximumIdentity = snapshot.iMaximumIdentity;
+	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
+	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
+	m_Player.eMadnessForm = snapshot.eMadnessForm;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;
@@ -218,6 +221,22 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iComboStage = snapshot.iComboStage;
 	m_Player.iActionStartTick = snapshot.iActionStartTick;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
+}
+
+Client::HUD_KOUKU_GIMMICK_STATE Client::CCombatHUDViewModel::Get_KoukuGimmick() const
+{
+#ifdef _DEBUG
+	if (m_KoukuGimmickPreview.isValid)
+		return m_KoukuGimmickPreview;
+#endif
+	HUD_KOUKU_GIMMICK_STATE state{};
+	state.isValid = m_Player.isValid && !m_Player.isPreview &&
+		0u != m_Player.iMaximumMadness;
+	state.iMadnessGauge = m_Player.iCurrentMadness;
+	state.iMadnessMaximum = m_Player.iMaximumMadness;
+	/* The current Server clown form retains the original class skills. Keep
+	the class HUD until gameplay also supplies interaction-mode commands. */
+	return state;
 }
 
 void Client::CCombatHUDViewModel::Build_PlayerSkills(
@@ -274,11 +293,36 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 		{ return left.strInputSlot < right.strInputSlot; });
 }
 
+void Client::CCombatHUDViewModel::Set_BossFocusArchetype(
+	const std::string& archetypeId)
+{
+	if (m_strBossFocusArchetype == archetypeId)
+		return;
+	m_strBossFocusArchetype = archetypeId;
+	if (m_Boss.isValid && !archetypeId.empty() &&
+		m_Boss.strArchetypeId != archetypeId)
+	{
+		m_Boss = {};
+	}
+}
+
+void Client::CCombatHUDViewModel::Clear_BossIfArchetype(
+	const std::string& archetypeId)
+{
+	if (m_Boss.isValid && m_Boss.strArchetypeId == archetypeId)
+		m_Boss = {};
+}
+
 void Client::CCombatHUDViewModel::Apply_Boss(
 	const std::uint32_t serverTick,
 	const std::string& archetypeId,
 	const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
 {
+	if (m_bBossHidden || (!m_strBossFocusArchetype.empty() &&
+		archetypeId != m_strBossFocusArchetype))
+	{
+		return;
+	}
 	m_Boss.isValid = true;
 	m_Boss.strArchetypeId = archetypeId;
 	const auto profile = m_BossProfiles.find(archetypeId);
@@ -391,5 +435,8 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_DeadSceneTextRects = {};
 	m_RaidClearTextRects = {};
 	m_ItemAnnounceTextRects = {};
+#ifdef _DEBUG
+	m_KoukuGimmickPreview = {};
+#endif
 	m_Inventory = {};
 }

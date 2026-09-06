@@ -2,9 +2,12 @@
 
 #include "Camera_Free.h"
 #include "Character.h"
+#include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "KakulArenaHiddenPlacements.h"
+#include "KoukuSaydonPatternAuditionService.h"
+#include "KoukuMadnessGaugeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
@@ -12,7 +15,6 @@
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
-#include "CombatHUDViewModel.h"
 #include "ProjectDataRoot.h"
 #include "UILayoutRuntime.h"
 #include "Transform.h"
@@ -26,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <unordered_set>
 
 namespace
@@ -430,6 +433,10 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 {
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
+#ifdef _DEBUG
+	// The gate focus is this arena's session state; the next level starts neutral.
+	CCombatHUDViewModel::Get().Clear_BossFocus();
+#endif
 	m_PlayerController.Set_LocalCharacter(nullptr);
 	m_PlayerController.Set_CommandSink(nullptr);
 	m_Replication.Reset();
@@ -591,6 +598,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
 		L"UI/KakulFade/KakulFadeUI.json");
 	m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
+	m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -668,11 +677,63 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
-	m_PlayerController.Set_LocalCharacter(localCharacter);
+	// Avatar replacement keeps the same Server player and command sequences.
+	m_PlayerController.Rebind_LocalCharacter(localCharacter);
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
 		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
 		!m_pCamera->Is_PresentationOverrideActive());
+
+#ifdef _DEBUG
+	/* Gate spawn replies arrive one per requested placement. They are Debug
+	   status only; the presentation itself follows the reliable spawn stream. */
+	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
+	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(spawnResult))
+	{
+		const char_t* pResult = "unsupported result";
+		switch (spawnResult.eResult)
+		{
+		case LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED:
+			pResult = "spawned"; break;
+		case LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS:
+			pResult = "already exists"; break;
+		case LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ACTIVATED:
+			pResult = "activated"; break;
+		case LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED:
+			pResult = "rejected by Server"; break;
+		default: break;
+		}
+		if (0u != m_DebugGatePendingPlacements.erase(spawnResult.strPlacementId) &&
+			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::SPAWNED != spawnResult.eResult &&
+			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS != spawnResult.eResult &&
+			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::ACTIVATED != spawnResult.eResult)
+			m_bDebugGateFailed = true;
+		m_strDebugGateStatus += "\n" + spawnResult.strPlacementId + ": " + pResult;
+	}
+	if (Is_DebugGatePending() && m_DebugGatePendingPlacements.empty() &&
+		!m_PlayerController.Is_DebugPlayerPlacementPending())
+	{
+		if (!m_bDebugGateFailed && m_PlayerController.Did_DebugPlayerPlacementSucceed())
+		{
+			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
+			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
+				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
+			CCombatHUDViewModel::Get().Set_BossHidden(nullptr == gate.pHudFocusArchetypeId);
+			CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(
+				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
+				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
+			m_iActiveDebugGate = m_iPendingDebugGate;
+			m_strDebugGateStatus += "\nGate activation confirmed by Server.";
+		}
+		else
+		{
+			m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+			m_strDebugGateStatus += "\nGate activation failed; correct the reported cause and retry.";
+		}
+		m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
+	}
+#endif
 
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
@@ -697,6 +758,11 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CameraShots(fTimeDelta);
 	Update_TriggerMoveFade(fTimeDelta);
 	m_MapRuntime.Update_SelfMotions(fTimeDelta);
+	if (nullptr != m_pMadnessGaugeView)
+	{
+		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
+			CCombatHUDViewModel::Get().Get_KoukuGimmick());
+	}
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
@@ -1137,6 +1203,175 @@ bool_t Client::CLevel_KakulSaydonArena::Set_DebugCameraSpeed(const f32_t metersP
 	if (nullptr == m_pCamera || !m_pCamera->Set_FreeMoveSpeed(metersPerSecond))
 		return false;
 	g_KakulSaydonFreeCameraSpeed = metersPerSecond;
+	return true;
+}
+
+const std::array<Client::CLevel_KakulSaydonArena::KAKUL_DEBUG_GATE, 9>&
+Client::CLevel_KakulSaydonArena::Get_DebugGates()
+{
+	/* Boss positions are the disabled placements in
+	   Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json; only the player
+	   position, the HUD focus and the audition target are Client Debug
+	   values. Labels are UTF-8 byte escapes so the source encoding never
+	   changes them. */
+	static const std::array<KAKUL_DEBUG_GATE, 9> gates = { {
+		// 1관문 - 세이튼
+		KAKUL_DEBUG_GATE{ "1" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
+			{ { "boss.kakulsaydon.g1.saydon", nullptr } },
+			float3_t(-2.84f, 1.32f, 941.02f),
+			"BOSS_KAKULSAYDON_G1_SAYDON", "boss.kakulsaydon.g1.saydon", nullptr },
+		// 2관문 - 대형 세이튼, 쿠크 (HUD and audition follow Kouku)
+		KAKUL_DEBUG_GATE{ "2" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEB\x8C\x80\xED\x98\x95" " " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC" ", " "\xEC\xBF\xA0\xED\x81\xAC",
+			{ { "boss.kakulsaydon.g2.big-saydon", "boss.kakulsaydon.g2.kouku" } },
+			float3_t(3.38f, 10.56f, 323.92f),
+			"BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", nullptr },
+		// 3관문 - 세이튼
+		KAKUL_DEBUG_GATE{ "3" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
+			{ { "boss.kakulsaydon.g3.saydon", nullptr } },
+			float3_t(-2.84f, 1.32f, 941.02f),
+			"BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon", nullptr },
+		// 1마리오 - player only
+		KAKUL_DEBUG_GATE{ "1" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4" " (" "\xED\x94\x8C\xEB\xA0\x88\xEC\x9D\xB4\xEC\x96\xB4\xEB\xA7\x8C" ")",
+			{ { nullptr, nullptr } },
+			float3_t(-1150.f, -11.52f, -909.28f),
+			nullptr, nullptr, nullptr },
+		// 2마리오 ~ 카드미로: no navigation yet
+		KAKUL_DEBUG_GATE{ "2" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
+			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		KAKUL_DEBUG_GATE{ "3" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
+			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		KAKUL_DEBUG_GATE{ "4" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
+			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		KAKUL_DEBUG_GATE{ "\xEC\xB9\xB4\xEB\x93\x9C\xEB\xAF\xB8\xEB\xA1\x9C", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
+			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		// 빙고 - 앵콜을 외친 쿠크세이튼 (Saydon holding the hammer)
+		KAKUL_DEBUG_GATE{ "\xEB\xB9\x99\xEA\xB3\xA0" " - " "\xEC\x95\xB5\xEC\xBD\x9C\xEC\x9D\x84" " " "\xEC\x99\xB8\xEC\xB9\x9C" " " "\xEC\xBF\xA0\xED\x81\xAC\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
+			{ { "boss.kakulsaydon.bingo.saydon", nullptr } },
+			float3_t(-3.4f, 0.f, 1147.44f),
+			"BOSS_KAKULSAYDON_BINGO_SAYDON", "boss.kakulsaydon.bingo.saydon", nullptr },
+	} };
+	return gates;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
+	const size_t gateIndex, std::string& outStatus)
+{
+	const auto& gates = Get_DebugGates();
+	if (gateIndex >= gates.size())
+	{
+		outStatus = m_strDebugGateStatus = "Unknown KoukuSaydon gate index.";
+		return false;
+	}
+	const KAKUL_DEBUG_GATE& gate = gates[gateIndex];
+	const std::string label = nullptr != gate.pLabel ? gate.pLabel : "gate";
+	if (nullptr != gate.pDeferredReason)
+	{
+		outStatus = m_strDebugGateStatus = label + ": " + gate.pDeferredReason;
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink ||
+		nullptr == m_Replication.Get_LocalCharacter())
+	{
+		outStatus = m_strDebugGateStatus =
+			label + ": the replicated local player or command sink is unavailable.";
+		return false;
+	}
+	/* Pre-check before any command leaves: a gate change while the previous
+	   player move is still unanswered would replace the bosses but leave the
+	   player at the old gate. Refusing here keeps boss, HUD and player on the
+	   gate that is already in flight. */
+	if (Is_DebugGatePending() || m_PlayerController.Is_DebugPlayerPlacementPending())
+	{
+		outStatus = m_strDebugGateStatus =
+			label + ": the previous gate's player move is still awaiting the Server; wait for its reply.";
+		return false;
+	}
+	if (0u == m_iNextDebugGateRequestSequence)
+	{
+		outStatus = m_strDebugGateStatus =
+			label + ": gate request sequence is exhausted; restart the Client.";
+		return false;
+	}
+	const std::uint32_t requestSequence = m_iNextDebugGateRequestSequence;
+	if ((std::numeric_limits<std::uint32_t>::max)() == m_iNextDebugGateRequestSequence)
+		m_iNextDebugGateRequestSequence = 0u;
+	else
+		++m_iNextDebugGateRequestSequence;
+
+	/* These ordered commands have separate Server results. Only their
+	   confirmed success commits the active gate, HUD and audition target. */
+	if (!m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(requestSequence))
+	{
+		outStatus = m_strDebugGateStatus = label + ": despawn command was rejected.";
+		return false;
+	}
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
+	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	m_iPendingDebugGate = gateIndex;
+	m_bDebugGateFailed = false;
+	m_DebugGatePendingPlacements.clear();
+	std::size_t spawnRequests = 0u;
+	for (const char_t* pPlacementId : gate.BossPlacementIds)
+	{
+		if (nullptr == pPlacementId)
+			continue;
+		if (!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(pPlacementId))
+		{
+			m_bDebugGateFailed = true;
+			outStatus = m_strDebugGateStatus =
+				label + ": spawn command was rejected for " + pPlacementId;
+			return false;
+		}
+		m_DebugGatePendingPlacements.emplace(pPlacementId);
+		++spawnRequests;
+	}
+	const bool_t teleportSubmitted = m_PlayerController.Request_DebugTeleportToPosition(
+		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA,
+		gate.vPlayerPosition.x, gate.vPlayerPosition.y, gate.vPlayerPosition.z);
+	m_bDebugGateFailed = !teleportSubmitted;
+	char_t summary[256]{};
+	sprintf_s(summary,
+		": despawn + %zu spawn request(s) sent; player -> (%.2f, %.2f, %.2f) %s",
+		spawnRequests, gate.vPlayerPosition.x, gate.vPlayerPosition.y,
+		gate.vPlayerPosition.z, teleportSubmitted ? "submitted" : "not submitted");
+	m_strDebugGateStatus = label + summary;
+	if (!teleportSubmitted)
+	{
+		m_strDebugGateStatus += " (" +
+			m_PlayerController.Get_DebugPlayerPlacementStatus() + ")";
+	}
+	outStatus = m_strDebugGateStatus;
+	return teleportSubmitted;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& outStatus)
+{
+	if (Is_DebugGatePending() || m_PlayerController.Is_DebugPlayerPlacementPending())
+	{
+		outStatus = m_strDebugGateStatus = "Wait for the pending gate request before despawning.";
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink || 0u == m_iNextDebugGateRequestSequence)
+	{
+		outStatus = m_strDebugGateStatus =
+			"Despawn requires the command sink and an available request sequence.";
+		return false;
+	}
+	const std::uint32_t requestSequence = m_iNextDebugGateRequestSequence;
+	if ((std::numeric_limits<std::uint32_t>::max)() == m_iNextDebugGateRequestSequence)
+		m_iNextDebugGateRequestSequence = 0u;
+	else
+		++m_iNextDebugGateRequestSequence;
+	if (!m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(requestSequence))
+	{
+		outStatus = m_strDebugGateStatus = "Despawn command was rejected.";
+		return false;
+	}
+	CCombatHUDViewModel::Get().Clear_BossFocus();
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss("", "");
+	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	outStatus = m_strDebugGateStatus =
+		"Despawn of Debug-activated arena bosses submitted; HUD focus and audition target reset.";
 	return true;
 }
 #endif

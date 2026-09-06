@@ -105,6 +105,11 @@ HRESULT CCharacter::Initialize(void* pArg)
 	const auto pDesc = static_cast<CHARACTER_DESC*>(pArg);
 
 	m_pSpec = pDesc->pSpec;
+	m_eCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END != pDesc->eCharacterClass ?
+			pDesc->eCharacterClass :
+			(nullptr != m_pSpec ? m_pSpec->eCharacterClass :
+				LostArk::Shared::CHARACTER_CLASS_ID::END);
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
 	m_fMoveSpeed = pDesc->fSpeedPerSec > 0.f ?
 		pDesc->fSpeedPerSec : 5.f;
@@ -1829,6 +1834,8 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		pBody->Set_HiddenMeshes(m_pSpec->iBodyHiddenMeshMask);
 	}
 
+	/* An avatar piece the player hid (Set_AvatarPartVisible) neither renders nor covers
+	the default piece underneath, so "has" here means present and shown. */
 	bool_t hasAvatarHead = false;
 	bool_t hasAvatarArmor = false;
 	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
@@ -1836,12 +1843,12 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD ==
 			m_pSpec->pEquipment[index].eSlotKind)
 		{
-			hasAvatarHead = true;
+			hasAvatarHead = !m_isAvatarHeadHidden;
 		}
 		else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR ==
 			m_pSpec->pEquipment[index].eSlotKind)
 		{
-			hasAvatarArmor = true;
+			hasAvatarArmor = !m_isAvatarArmorHidden;
 		}
 	}
 	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
@@ -1855,6 +1862,16 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		}
 		else if (EQUIPMENT_SLOT_KIND::DEFAULT == equipment.eSlotKind &&
 			hasAvatarArmor)
+		{
+			isVisible = false;
+		}
+		else if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD == equipment.eSlotKind &&
+			m_isAvatarHeadHidden)
+		{
+			isVisible = false;
+		}
+		else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR == equipment.eSlotKind &&
+			m_isAvatarArmorHidden)
 		{
 			isVisible = false;
 		}
@@ -1883,6 +1900,44 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 void CCharacter::Restore_DefaultEquipmentVisibility()
 {
 	Apply_DefaultEquipmentVisibility(0u);
+}
+
+bool_t CCharacter::Has_AvatarPart(const EQUIPMENT_SLOT_KIND eKind) const
+{
+	if (nullptr == m_pSpec)
+		return false;
+	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
+	{
+		if (eKind == m_pSpec->pEquipment[index].eSlotKind)
+			return true;
+	}
+	return false;
+}
+
+bool_t CCharacter::Is_AvatarPartVisible(const EQUIPMENT_SLOT_KIND eKind) const
+{
+	if (!Has_AvatarPart(eKind))
+		return false;
+	if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD == eKind)
+		return !m_isAvatarHeadHidden;
+	if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR == eKind)
+		return !m_isAvatarArmorHidden;
+	return false;
+}
+
+void CCharacter::Set_AvatarPartVisible(const EQUIPMENT_SLOT_KIND eKind, const bool_t isVisible)
+{
+	if (!Has_AvatarPart(eKind))
+		return;
+	if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD == eKind)
+		m_isAvatarHeadHidden = !isVisible;
+	else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR == eKind)
+		m_isAvatarArmorHidden = !isVisible;
+	else
+		return;
+	/* Re-derives every default/avatar piece from the new state; a running equipment preview
+	keeps its occupied slots hidden exactly as before. */
+	Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
 }
 
 void CCharacter::Sync_EquipmentPreviewStanceVisibility()
@@ -2291,6 +2346,59 @@ bool_t CCharacter::Try_Get_CurrentFallbackHitRange(
 
 HRESULT CCharacter::Render()
 {
+	return S_OK;
+}
+
+HRESULT CCharacter::Render_PreviewParts(
+	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
+	const uint32_t iAvatarOverrideKinds, const uint32_t iAvatarHiddenKinds)
+{
+	const bool_t wasHeadHidden = m_isAvatarHeadHidden;
+	const bool_t wasArmorHidden = m_isAvatarArmorHidden;
+	constexpr uint32_t HEAD_BIT = 1u << ETOUI(EQUIPMENT_SLOT_KIND::AVATAR_HEAD);
+	constexpr uint32_t ARMOR_BIT = 1u << ETOUI(EQUIPMENT_SLOT_KIND::AVATAR_ARMOR);
+	const bool_t previewHeadHidden = (0u != (iAvatarOverrideKinds & HEAD_BIT)) ?
+		(0u != (iAvatarHiddenKinds & HEAD_BIT)) : wasHeadHidden;
+	const bool_t previewArmorHidden = (0u != (iAvatarOverrideKinds & ARMOR_BIT)) ?
+		(0u != (iAvatarHiddenKinds & ARMOR_BIT)) : wasArmorHidden;
+	const bool_t previewDiffers = nullptr != m_pSpec &&
+		(previewHeadHidden != wasHeadHidden || previewArmorHidden != wasArmorHidden);
+	if (previewDiffers)
+	{
+		m_isAvatarHeadHidden = previewHeadHidden;
+		m_isAvatarArmorHidden = previewArmorHidden;
+		Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
+	}
+	const HRESULT hResult = Render_PreviewPartsInternal(iSkinnedPassIndex, iSocketedPassIndex);
+	if (previewDiffers)
+	{
+		m_isAvatarHeadHidden = wasHeadHidden;
+		m_isAvatarArmorHidden = wasArmorHidden;
+		Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
+	}
+	return hResult;
+}
+
+HRESULT CCharacter::Render_PreviewPartsInternal(
+	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
+{
+	for (auto& Pair : m_PartObjects)
+	{
+		if (CPart_Body* pBody = dynamic_cast<CPart_Body*>(Pair.second.get()))
+		{
+			if (FAILED(pBody->Render_Pass(iSkinnedPassIndex)))
+				return E_FAIL;
+			continue;
+		}
+		if (CPart_Equipment* pEquipment =
+			dynamic_cast<CPart_Equipment*>(Pair.second.get()))
+		{
+			if (!pEquipment->Is_Visible())
+				continue;
+			if (FAILED(pEquipment->Render_Pass(iSkinnedPassIndex, iSocketedPassIndex)))
+				return E_FAIL;
+		}
+	}
 	return S_OK;
 }
 

@@ -343,6 +343,14 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
 		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
+		/* Debug F1 clown/player avatar toggle: swaps only the replicated
+		madness form of this session's player; Release answers REJECTED_DISABLED. */
+		void Handle_DebugSetMadnessForm(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);
+		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT Apply_DebugMadnessForm(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);
@@ -398,6 +406,12 @@ namespace LostArk::Server
 				LostArk::Shared::
 					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult);
 		SERVER_WORLD_ENTITY* Find_KoukuSaydonAuditionBoss();
+		/* The live arena boss a Debug audition scope names: the Gate 1 Kouku or
+		a gate boss raised from a disabled placement. Null when that placement
+		is not currently spawned. */
+		SERVER_WORLD_ENTITY* Find_KoukuSaydonArenaBoss(
+			const std::string& placementId,
+			const std::string& archetypeId);
 		bool Update_KoukuSaydonBoss(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick);
 #ifdef _DEBUG
@@ -726,6 +740,10 @@ namespace LostArk::Server
 		void Handle_DespawnAllWorldEntities(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES& request);
+		/* KoukuSaydon arena form of the Debug revert: removes only the entities
+		raised from disabled bootstrap placements (the F1 gate buttons) and
+		their dependents, keeping the statically enabled Gate 1 Kouku. */
+		bool Despawn_KoukuSaydonArenaDebugEntities();
 		// Bern's Valtan-entry confirm window (right-click a guide NPC). Replaces the
 		// old automatic changeLevel triggerBox OBB fire: validates the requesting
 		// player is still near the named guide NPC world entity, alive, and idle,

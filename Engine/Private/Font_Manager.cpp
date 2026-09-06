@@ -32,7 +32,27 @@ void CFont_Manager::Draw(const wstring& strFontTag, const tchar_t* pText, const 
 	if (nullptr == pFont)
 		return;
 
+	if (m_isClipOutEnabled)
+	{
+		const float2_t vMeasured = pFont->Measure(pText);
+		const f32_t fWidth = vMeasured.x * fScale;
+		const f32_t fHeight = vMeasured.y * fScale;
+		const f32_t fLeft = vPosition.x - fWidth * vOrigin.x;
+		const f32_t fTop = vPosition.y - fHeight * vOrigin.y;
+		const bool_t isOverlapping =
+			fLeft < m_vClipOutRect.x + m_vClipOutRect.z && fLeft + fWidth > m_vClipOutRect.x &&
+			fTop < m_vClipOutRect.y + m_vClipOutRect.w && fTop + fHeight > m_vClipOutRect.y;
+		if (isOverlapping)
+			return;
+	}
+
 	pFont->Draw(pText, vPosition, vColor, fRotation, vOrigin, fScale);
+}
+
+void CFont_Manager::Set_ClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight)
+{
+	m_isClipOutEnabled = true;
+	m_vClipOutRect = float4_t(fX, fY, fWidth, fHeight);
 }
 
 float2_t CFont_Manager::Measure(const wstring& strFontTag, const tchar_t* pText)

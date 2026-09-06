@@ -74,6 +74,12 @@ public:
 	{
 		m_Replication.Collect_MinimapMarkers(outSnapshot);
 	}
+	/* The replicated local player (nullptr until the entry snapshot spawned it) -- read-only
+	   presentation access for the character info window's live portrait. */
+	shared_ptr<CCharacter> Get_LocalCharacter() const
+	{
+		return m_Replication.Get_LocalCharacter();
+	}
 	const shared_ptr<IPlayerCommandSink>& Get_PlayerCommandSink() const
 	{
 		return m_pPlayerCommandSink;

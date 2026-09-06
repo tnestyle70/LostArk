@@ -106,6 +106,26 @@ void Client::CUIInputRouter::Claim_Mouse_This_Frame()
 	m_bMouseClaimedThisFrame = true;
 }
 
+void Client::CUIInputRouter::Set_TopWindowRect(
+	f32_t fScreenX, f32_t fScreenY, f32_t fScreenWidth, f32_t fScreenHeight)
+{
+	m_bHasTopWindow = true;
+	m_fTopWindowX = fScreenX;
+	m_fTopWindowY = fScreenY;
+	m_fTopWindowWidth = fScreenWidth;
+	m_fTopWindowHeight = fScreenHeight;
+	/* Every Draw_Text of every owner (HUD captions, nameplates, other windows) stays under the
+	top window; CMainApp clears this right before the top windows draw their own text. */
+	CGameInstance::Get().Set_TextClipOutRect(fScreenX, fScreenY, fScreenWidth, fScreenHeight);
+}
+
+bool_t Client::CUIInputRouter::Is_UnderTopWindow(f32_t fScreenX, f32_t fScreenY) const
+{
+	return m_bHasTopWindow &&
+		fScreenX >= m_fTopWindowX && fScreenX < m_fTopWindowX + m_fTopWindowWidth &&
+		fScreenY >= m_fTopWindowY && fScreenY < m_fTopWindowY + m_fTopWindowHeight;
+}
+
 void Client::CUIInputRouter::Start_TextInput()
 {
 	m_bTextInputActive = true;
@@ -139,6 +159,9 @@ void Client::CUIInputRouter::End_Frame()
 	if (m_bMouseClaimedThisFrame)
 		CGameInstance::Get().SetInputBlocked(false, true);
 
+	m_bMouseClaimedLastFrame = m_bMouseClaimedThisFrame;
+	m_bHasTopWindow = false;
+	CGameInstance::Get().Clear_TextClipOutRect();
 	m_bLeftDownLastFrame = m_bLeftDownThisFrame;
 	m_bRightDownLastFrame = m_bRightDownThisFrame;
 }

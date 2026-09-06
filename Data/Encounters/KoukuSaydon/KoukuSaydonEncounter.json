@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 17,
+  "sourceRevision": 50,
   "playAllPatternIds": [
     "KAKULSAYDON_G1_PIZZA"
   ],
@@ -21,6 +21,10 @@
       "actionId": "kakulsaydon.g1.pizza",
       "sourceActionIds": [
         4219714
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_G1_KOUKU",
+        "BOSS_KAKULSAYDON_G2_KOUKU"
       ],
       "selectionMode": "AUDITION_ONLY",
       "minimumHealthBar": 0,

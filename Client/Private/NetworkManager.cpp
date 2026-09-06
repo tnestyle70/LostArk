@@ -1386,6 +1386,36 @@ bool CNetworkManager::Try_Consume_DebugTeleportResult(
 	return true;
 }
 
+bool CNetworkManager::Send_DebugSetMadnessForm(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::PLAYER_MADNESS_FORM form)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_SET_MADNESS_FORM message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eForm = form;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugMadnessFormResult(
+	LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result)
+{
+	if (m_DebugMadnessFormResults.empty())
+		return false;
+	result = m_DebugMadnessFormResults.front();
+	m_DebugMadnessFormResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugTeleportToPlacement(
 	const std::uint32_t requestSequence,
 	const std::string_view placementId)
@@ -2133,6 +2163,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_ReplicationEvents.clear();
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
 	m_DebugTeleportResults.clear();
+	m_DebugMadnessFormResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
@@ -3319,6 +3350,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugTeleportResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+	{
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugMadnessFormResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_DebugMadnessFormResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:

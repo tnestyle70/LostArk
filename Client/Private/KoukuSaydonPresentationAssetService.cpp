@@ -28,6 +28,19 @@ namespace
 		"BOSS_KAKULSAYDON_G1_KOUKU";
 	constexpr std::string_view KOUKU_PRESENTATION =
 		"boss.kakulsaydon.g1.kouku.client.v1";
+	/* Every arena boss archetype shares this prefix and this client contract
+	family; the Gate 1 Kouku keeps its exact model prototype tag. */
+	constexpr std::string_view KOUKU_FAMILY_ARCHETYPE_PREFIX =
+		"BOSS_KAKULSAYDON_";
+	constexpr std::string_view KOUKU_FAMILY_PRESENTATION_PREFIX =
+		"boss.kakulsaydon.";
+	constexpr std::string_view KOUKU_FAMILY_PRESENTATION_SUFFIX =
+		".client.v1";
+	constexpr const wchar_t* KOUKU_MODEL_PROTOTYPE_PREFIX =
+		L"Prototype_Component_Model_KoukuSaydon_";
+	constexpr const wchar_t* KOUKU_WEAPON_PROTOTYPE_SUFFIX = L"_Weapon";
+	/* Both Saydon bodies (MN_RPCT_05/06) socket their held weapon here. */
+	constexpr const char_t* KOUKU_WEAPON_SOCKET_BONE = "b_wp_1";
 	constexpr std::string_view BINDING_SCHEMA =
 		"lostark.kouku-saydon-pattern-bindings";
 	constexpr std::uint32_t BINDING_VERSION = 1u;
@@ -38,8 +51,12 @@ namespace
 	std::mutex g_KoukuAssetMutex;
 	std::unordered_map<std::uint32_t, std::unordered_set<std::string>>
 		g_ReadyByLevel;
-	std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>
-		g_ActionPresentations;
+	/* archetypeId -> actionId -> admitted clip row. Keyed per body because the
+	same Product document serves every arena boss and each body owns only the
+	rows whose clip exists on its rig. */
+	std::unordered_map<std::string,
+		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>>
+		g_ActionPresentationsByArchetype;
 	std::string g_Status = "KoukuSaydon presentation has not been loaded.";
 
 	const DATA_JSON_VALUE* Required(
@@ -242,6 +259,25 @@ namespace
 		OutputDebugStringA(("[KoukuSaydonPresentation] " + g_Status + "\n").c_str());
 		return E_FAIL;
 	}
+
+	bool Is_FamilyPresentationId(const std::string_view presentationId)
+	{
+		return presentationId.size() >
+				KOUKU_FAMILY_PRESENTATION_PREFIX.size() +
+				KOUKU_FAMILY_PRESENTATION_SUFFIX.size() &&
+			presentationId.starts_with(KOUKU_FAMILY_PRESENTATION_PREFIX) &&
+			presentationId.ends_with(KOUKU_FAMILY_PRESENTATION_SUFFIX);
+	}
+
+	/* Archetype IDs are stable ASCII tokens, so the widening is a plain copy. */
+	std::wstring Widen_Ascii(const std::string_view value)
+	{
+		std::wstring wide;
+		wide.reserve(value.size());
+		for (const char c : value)
+			wide.push_back(static_cast<wchar_t>(static_cast<unsigned char>(c)));
+		return wide;
+	}
 }
 
 void Client::CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
@@ -249,22 +285,103 @@ void Client::CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
 {
 	std::scoped_lock lock{ g_KoukuAssetMutex };
 	g_ReadyByLevel.erase(iLevelIndex);
-	g_ActionPresentations.clear();
+	g_ActionPresentationsByArchetype.clear();
 	g_Status = "KoukuSaydon presentation is waiting for Product admission.";
+}
+
+bool_t Client::CKoukuSaydonPresentationAssetService::Is_ArenaBossArchetype(
+	const std::string_view archetypeId)
+{
+	if (!archetypeId.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX) ||
+		!Is_StableToken(archetypeId))
+	{
+		return false;
+	}
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(archetypeId);
+	return nullptr != actor &&
+		Is_FamilyPresentationId(actor->clientPresentationId);
 }
 
 std::wstring Client::CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag(
 	const std::string_view archetypeId)
 {
-	if (archetypeId != KOUKU_ARCHETYPE)
+	if (archetypeId == KOUKU_ARCHETYPE)
+		return L"Prototype_Component_Model_KoukuSaydon_MN_RPCZ_00";
+	if (!Is_ArenaBossArchetype(archetypeId))
 		return {};
-	return L"Prototype_Component_Model_KoukuSaydon_MN_RPCZ_00";
+	return KOUKU_MODEL_PROTOTYPE_PREFIX + Widen_Ascii(archetypeId);
+}
+
+std::wstring
+Client::CKoukuSaydonPresentationAssetService::Get_WeaponModelPrototypeTag(
+	const std::string_view archetypeId)
+{
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(archetypeId);
+	if (nullptr == actor || actor->weaponModel.empty() ||
+		!Is_ArenaBossArchetype(archetypeId))
+	{
+		return {};
+	}
+	return Get_ModelPrototypeTag(archetypeId) + KOUKU_WEAPON_PROTOTYPE_SUFFIX;
+}
+
+const char_t*
+Client::CKoukuSaydonPresentationAssetService::Get_WeaponSocketBone()
+{
+	return KOUKU_WEAPON_SOCKET_BONE;
 }
 
 const wchar_t*
 Client::CKoukuSaydonPresentationAssetService::Get_GameObjectPrototypeTag()
 {
 	return KOUKU_OBJECT_PROTOTYPE;
+}
+
+HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const std::uint32_t iLevelIndex)
+{
+	/* The clown avatar is not a catalog boss: MN_RPCT_03 has no Server
+	profile or archetype. It shares the Saydon rig, clip set and admission
+	scale, so the same 0.017 that admits MN_RPCT_05 applies here. */
+	constexpr std::string_view CLOWN_BODY_ASSET =
+		"Character/KoukuSaton/MN_RPCT_03/MN_RPCT_03.wmodel";
+	constexpr f32_t CLOWN_BODY_PRE_SCALE = 0.017f;
+	constexpr std::string_view CLOWN_READY_KEY = "avatar.kouku-saydon.clown";
+	constexpr const char_t* CLOWN_IDLE_CLIP = "rpct00_idle_battle_1";
+	constexpr const char_t* CLOWN_RUN_CLIP = "rpct00_run_battle_1";
+	if (nullptr == pDevice || nullptr == pContext || iLevelIndex >= ETOUI(LEVEL::END))
+		return E_INVALIDARG;
+
+	std::scoped_lock lock{ g_KoukuAssetMutex };
+	auto& ready = g_ReadyByLevel[iLevelIndex];
+	if (ready.contains(std::string(CLOWN_READY_KEY)))
+		return S_FALSE;
+	const std::filesystem::path bodyPath = CRuntimeAssetRoot::Resolve(CLOWN_BODY_ASSET);
+	if (bodyPath.empty())
+		return Reject("KoukuSaydon clown body asset path is invalid.");
+	/* CCharacter turns every playable body with the same -90 degree admission
+	yaw (see CPlayableCharacterAssetService); the avatar follows that so it
+	faces where the class body faced. */
+	unique_ptr<Engine::CModel> body = Engine::CModel::Create(
+		pDevice, pContext, MODEL::ANIM, bodyPath.string().c_str(),
+		XMMatrixScaling(CLOWN_BODY_PRE_SCALE, CLOWN_BODY_PRE_SCALE, CLOWN_BODY_PRE_SCALE) *
+		XMMatrixRotationY(XMConvertToRadians(-90.f)));
+	if (nullptr == body || 0u == body->Get_NumMeshes() ||
+		0u == body->Get_SkeletonHash() || !body->Has_Animations())
+	{
+		return Reject("KoukuSaydon clown body has no usable animated geometry.");
+	}
+	if (!Has_Clip(*body, CLOWN_IDLE_CLIP) || !Has_Clip(*body, CLOWN_RUN_CLIP))
+		return Reject("KoukuSaydon clown body is missing its idle/run clips.");
+	std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
+	staged.emplace_back(KOUKU_CLOWN_BODY_PROTOTYPE_TAG, std::move(body));
+	if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
+		return Reject("KoukuSaydon clown body prototype commit failed.");
+	ready.insert(std::string(CLOWN_READY_KEY));
+	g_Status = "KoukuSaydon clown body admitted.";
+	return S_OK;
 }
 
 HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
@@ -274,7 +391,7 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	const std::string_view archetypeId)
 {
 	if (nullptr == pDevice || nullptr == pContext ||
-		iLevelIndex >= ETOUI(LEVEL::END) || archetypeId != KOUKU_ARCHETYPE)
+		iLevelIndex >= ETOUI(LEVEL::END) || !Is_ArenaBossArchetype(archetypeId))
 	{
 		return E_INVALIDARG;
 	}
@@ -284,9 +401,13 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	if (ready.contains(std::string(archetypeId)))
 		return S_FALSE;
 
+	const bool_t isGateOneKouku = archetypeId == KOUKU_ARCHETYPE;
 	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(archetypeId);
-	if (nullptr == actor || actor->clientPresentationId != KOUKU_PRESENTATION ||
-		!actor->weaponModel.empty() || 0.f != actor->weaponModelPreScale)
+	if (nullptr == actor ||
+		(isGateOneKouku &&
+		 (actor->clientPresentationId != KOUKU_PRESENTATION ||
+		  !actor->weaponModel.empty() || 0.f != actor->weaponModelPreScale)) ||
+		(!actor->weaponModel.empty() && actor->weaponModelPreScale <= 0.f))
 	{
 		return Reject("No exact embedded-body KoukuSaydon boss catalog row exists.");
 	}
@@ -307,6 +428,37 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	if (!Has_Clip(*body, actor->presentationClips.idle))
 		return Reject("KoukuSaydon body is missing the catalog idle clip.");
 
+	/* The weapon is a second animated model held in its rest pose from the
+	body's socket bone. Its own pre-transform converts the weapon's authored
+	units; the socket bone matrix later adds the body's pre-transform. */
+	unique_ptr<Engine::CModel> weapon;
+	if (!actor->weaponModel.empty())
+	{
+		if (!body->Has_Bone(KOUKU_WEAPON_SOCKET_BONE))
+			return Reject("KoukuSaydon body has no weapon socket bone for its catalog weapon.");
+		const std::filesystem::path weaponPath =
+			CRuntimeAssetRoot::Resolve(actor->weaponModel);
+		if (weaponPath.empty())
+			return Reject("KoukuSaydon weapon asset path is invalid.");
+		/* The catalog rotation turns the weapon's authored axes onto the
+		socket's before the scale; the scale is uniform, so the order only
+		documents the intent. */
+		const f32_t weaponScale = actor->weaponModelPreScale;
+		const float3_t& weaponRotation = actor->weaponModelPreRotationDegrees;
+		weapon = Engine::CModel::Create(
+			pDevice, pContext, MODEL::ANIM, weaponPath.string().c_str(),
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(weaponRotation.x),
+				XMConvertToRadians(weaponRotation.y),
+				XMConvertToRadians(weaponRotation.z)) *
+			XMMatrixScaling(weaponScale, weaponScale, weaponScale));
+		if (nullptr == weapon || 0u == weapon->Get_NumMeshes())
+			return Reject("KoukuSaydon weapon has no usable geometry.");
+	}
+
+	/* One Product binding document serves every arena boss; the loader keeps
+	only the rows whose clip exists on this body, so a Saydon pattern never
+	resolves on the Kouku rig and vice versa. */
 	std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> bindings;
 	std::string bindingStatus;
 	if (!Load_PresentationBindings(*body, bindings, bindingStatus))
@@ -315,32 +467,41 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 		bindingStatus = "Animation bindings unavailable; boss body remains usable: " + bindingStatus;
 		OutputDebugStringA(("[KoukuSaydonPresentation] " + bindingStatus + "\n").c_str());
 	}
+	bindingStatus = std::string(archetypeId) + ": " + bindingStatus;
 
 	std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
 	staged.emplace_back(Get_ModelPrototypeTag(archetypeId), std::move(body));
-	staged.emplace_back(KOUKU_OBJECT_PROTOTYPE, CNpc::Create(pDevice, pContext));
+	if (nullptr != weapon)
+		staged.emplace_back(Get_WeaponModelPrototypeTag(archetypeId), std::move(weapon));
+	/* One CNpc game-object prototype serves every arena boss of this level;
+	it is committed with the first admitted archetype only. */
+	if (ready.empty())
+		staged.emplace_back(KOUKU_OBJECT_PROTOTYPE, CNpc::Create(pDevice, pContext));
 	for (const auto& [tag, prototype] : staged)
 	{
-		(void)tag;
-		if (nullptr == prototype)
+		if (tag.empty() || nullptr == prototype)
 			return Reject("KoukuSaydon presentation prototype creation failed.");
 	}
 	if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
 		return Reject("KoukuSaydon presentation prototype commit failed.");
 
-	g_ActionPresentations = std::move(bindings);
+	g_ActionPresentationsByArchetype[std::string(archetypeId)] = std::move(bindings);
 	ready.insert(std::string(archetypeId));
 	g_Status = std::move(bindingStatus);
 	return S_OK;
 }
 
 bool_t Client::CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
+	const std::string_view archetypeId,
 	const std::string_view actionId,
 	KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation)
 {
 	std::scoped_lock lock{ g_KoukuAssetMutex };
-	const auto found = g_ActionPresentations.find(std::string(actionId));
-	if (found == g_ActionPresentations.end())
+	const auto owner = g_ActionPresentationsByArchetype.find(std::string(archetypeId));
+	if (owner == g_ActionPresentationsByArchetype.end())
+		return false;
+	const auto found = owner->second.find(std::string(actionId));
+	if (found == owner->second.end())
 		return false;
 	outPresentation = found->second;
 	return true;

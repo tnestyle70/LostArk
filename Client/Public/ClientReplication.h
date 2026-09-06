@@ -336,6 +336,9 @@ namespace Client
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
+		arena boss archetype, or null while that boss is not replicated. */
+		std::shared_ptr<CNpc> Find_ArenaBossNpc(std::string_view archetypeId) const;
 		bool_t Try_Get_DeferredLocalCharacterClassReplacement(
 			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
 		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
@@ -471,8 +474,12 @@ namespace Client
 		bool_t Load_CombatObjectHitAreaDebug(std::string& strOutStatus);
 		void Draw_CombatObjectHitAreaDebug();
 #endif
+		/* The form picks the body: NORMAL is the class spec, CLOWN the
+		KoukuSaydon colourless body on the same class (skills keep resolving
+		through the class the desc carries). */
 		bool Create_Character(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+			LostArk::Shared::PLAYER_MADNESS_FORM madnessForm,
 			std::string_view nickName,
 			const float3_t& position,
 			f32_t yawDegrees,

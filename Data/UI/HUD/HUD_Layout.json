@@ -6346,6 +6346,96 @@
         "loop": true,
         "additive": false
       }
+    },
+    {
+      "id": "Kouku_Emblem_Npc",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 626.4,
+        "y": 626.066667,
+        "width": 94.2,
+        "height": 94.2
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/KoukuSaydon/Hud/emblem_interaction_npc_mask.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Kouku_Emblem_Pickup",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 626.1,
+        "y": 630.733333,
+        "width": 94.8,
+        "height": 91.8
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/KoukuSaydon/Hud/emblem_interaction_pickup_gear.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

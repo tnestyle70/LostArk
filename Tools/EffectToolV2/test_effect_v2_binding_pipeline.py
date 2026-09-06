@@ -1028,8 +1028,18 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             }
         self.assertEqual(
             {
+                "boss.kouku.card.clober.black": 2,
+                "boss.kouku.card.clober.red": 2,
+                "boss.kouku.card.dia.black": 2,
+                "boss.kouku.card.dia.red": 2,
+                "boss.kouku.card.heart.black": 2,
+                "boss.kouku.card.heart.red": 2,
+                "boss.kouku.card.spade.black": 2,
+                "boss.kouku.card.spade.red": 2,
+                "boss.kouku.dance": 8,
                 "boss.kouku.disarm": 3,
-                "boss.kouku.find.star": 2,
+                "boss.kouku.find.heart": 2,
+                "boss.kouku.find.star": 6,
                 "boss.valtan.axe": 9,
                 "boss.valtan.blackhole": 1,
                 "boss.valtan.breathe": 5,
@@ -1052,7 +1062,17 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         )
         self.assertEqual(
             {
+                "boss.kouku.card.clober.black": 10000,
+                "boss.kouku.card.clober.red": 10000,
+                "boss.kouku.card.dia.black": 10000,
+                "boss.kouku.card.dia.red": 10000,
+                "boss.kouku.card.heart.black": 10000,
+                "boss.kouku.card.heart.red": 10000,
+                "boss.kouku.card.spade.black": 10000,
+                "boss.kouku.card.spade.red": 10000,
+                "boss.kouku.dance": 40000,
                 "boss.kouku.disarm": 10000,
+                "boss.kouku.find.heart": 3500,
                 "boss.kouku.find.star": 2000,
                 "boss.valtan.axe": 5600,
                 "boss.valtan.blackhole": 10000,

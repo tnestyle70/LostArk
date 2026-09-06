@@ -35,10 +35,10 @@ struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
 	std::vector<COMPOSITION_ANIMATION_RESOURCE> Clips;
 };
 
-inline constexpr std::array<const char*, 6u>
+inline constexpr std::array<const char*, 7u>
 	COMPOSITION_ANIMATION_TARGET_ASSET_NAMES = {
 		"Valtan", "Valtan_Ghost_MN_RPBF_02",
-		"MN_RPCT_00", "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00" };
+		"MN_RPCT_00", "MN_RPCT_03", "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00" };
 
 inline bool Is_CompositionAnimationTargetAsset(const std::string_view name)
 {

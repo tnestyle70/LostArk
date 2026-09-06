@@ -728,6 +728,8 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Bool(*pParams, "maskWarp", P.bMaskWarp, strOutError) ||
 		!Read_Number(*pParams, "alphaInEnd", P.fAlphaInEnd, strOutError) ||
 		!Read_Number(*pParams, "alphaOutStart", P.fAlphaOutStart, strOutError) ||
+		!Read_Number(*pParams, "scaleInEnd", P.fScaleInEnd, strOutError) ||
+		!Read_Number(*pParams, "scaleOutStart", P.fScaleOutStart, strOutError) ||
 		!Read_Enum(*pParams, "blend", BLEND_KEYS, _countof(BLEND_KEYS), iBlend, strOutError) ||
 		!Read_Bool(*pParams, "billboard", P.bBillboard, strOutError) ||
 		!Read_Bool(*pParams, "depthTest", P.bDepthTest, strOutError) ||
@@ -1300,6 +1302,8 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += std::string("    \"maskWarp\": ") + Json_Bool(P.bMaskWarp) + ",\n";
 	Text += "    \"alphaInEnd\": " + Json_Number(P.fAlphaInEnd) + ",\n";
 	Text += "    \"alphaOutStart\": " + Json_Number(P.fAlphaOutStart) + ",\n";
+	Text += "    \"scaleInEnd\": " + Json_Number(P.fScaleInEnd) + ",\n";
+	Text += "    \"scaleOutStart\": " + Json_Number(P.fScaleOutStart) + ",\n";
 	Text += "    \"blend\": " + Json_String(BLEND_KEYS[static_cast<size_t>(P.eBlend)]) + ",\n";
 	Text += std::string("    \"billboard\": ") + Json_Bool(P.bBillboard) + ",\n";
 	Text += std::string("    \"depthTest\": ") + Json_Bool(P.bDepthTest) + ",\n";

@@ -35,6 +35,19 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(
 	return CNetworkManager::Get().Try_Consume_DebugTeleportResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugMadnessForm(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::PLAYER_MADNESS_FORM form)
+{
+	return CNetworkManager::Get().Send_DebugSetMadnessForm(requestSequence, form);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugMadnessFormResult(
+	LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugMadnessFormResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

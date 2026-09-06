@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <unordered_set>
+#include <utility>
 
 namespace
 {
@@ -77,6 +78,30 @@ bool LostArk::Server::CKoukuSaydonBrain::Is_GateOneBoss(
 		KOUKUSAYDON_G1_ENCOUNTER_ID == boss.strEncounterId &&
 		KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID == boss.strArchetypeId &&
 		KOUKUSAYDON_G1_BOSS_PLACEMENT_ID == boss.strPlacementId;
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Is_ArenaBoss(
+	const LostArk::Shared::WORLD_ID worldId,
+	const SERVER_WORLD_ENTITY& boss) noexcept
+{
+	return LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId &&
+		WORLD_BOOTSTRAP_KIND::BOSS == boss.eKind &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == boss.iOwnerBossNetEntityId &&
+		KOUKUSAYDON_G1_ENCOUNTER_ID == boss.strEncounterId &&
+		boss.strArchetypeId.starts_with(
+			KOUKUSAYDON_ARENA_BOSS_ARCHETYPE_PREFIX);
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Is_ArenaBossPlacement(
+	const LostArk::Shared::WORLD_ID worldId,
+	const WORLD_BOOTSTRAP_PLACEMENT& placement) noexcept
+{
+	return LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId &&
+		!placement.isEnabled &&
+		WORLD_BOOTSTRAP_KIND::BOSS == placement.eKind &&
+		KOUKUSAYDON_G1_ENCOUNTER_ID == placement.strEncounterId &&
+		placement.strArchetypeId.starts_with(
+			KOUKUSAYDON_ARENA_BOSS_ARCHETYPE_PREFIX);
 }
 
 bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
@@ -162,6 +187,62 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			return false;
 		}
 	}
+	status.clear();
+	return true;
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Select_AnimationOnlySequence(
+	const std::vector<BOSS_PATTERN_DEFINITION>& definitions,
+	const BOSS_PATTERN_SEQUENCE_DEFINITION& sequence,
+	const std::string_view bossArchetypeId,
+	std::vector<std::string>& outPatternIds,
+	std::vector<std::uint32_t>& outTransitionTicks,
+	std::string& status)
+{
+	if (sequence.PatternIds.empty() ||
+		sequence.PatternIds.size() != sequence.iExpectedStepCount ||
+		sequence.TransitionPursuitTicks.size() + 1u != sequence.PatternIds.size())
+	{
+		status = "KoukuSaydon Product pattern sequence is unavailable";
+		return false;
+	}
+	std::vector<std::string> selectedPatterns;
+	std::vector<std::uint32_t> selectedTransitions;
+	std::size_t previousSelectedIndex = 0u;
+	for (std::size_t index = 0u; index < sequence.PatternIds.size(); ++index)
+	{
+		const std::string& patternId = sequence.PatternIds[index];
+		const auto pattern = std::find_if(definitions.begin(), definitions.end(),
+			[&patternId](const BOSS_PATTERN_DEFINITION& candidate)
+			{ return candidate.strPatternId == patternId; });
+		if (definitions.end() == pattern)
+		{
+			status = "KoukuSaydon Product sequence names an unknown pattern: " + patternId;
+			return false;
+		}
+		if (!Validate_AnimationOnlyPattern(*pattern, status))
+			return false;
+		const bool admitted = pattern->AuditionBossArchetypeIds.empty() ?
+			KOUKUSAYDON_G1_BOSS_ARCHETYPE_ID == bossArchetypeId :
+			pattern->AuditionBossArchetypeIds.end() != std::find(
+				pattern->AuditionBossArchetypeIds.begin(),
+				pattern->AuditionBossArchetypeIds.end(), bossArchetypeId);
+		if (!admitted)
+			continue;
+		if (!selectedPatterns.empty())
+			selectedTransitions.push_back(
+				sequence.TransitionPursuitTicks[previousSelectedIndex]);
+		selectedPatterns.push_back(patternId);
+		previousSelectedIndex = index;
+	}
+	if (selectedPatterns.empty())
+	{
+		status = "KoukuSaydon Play All has no Product pattern for the target boss: " +
+			std::string{ bossArchetypeId };
+		return false;
+	}
+	outPatternIds = std::move(selectedPatterns);
+	outTransitionTicks = std::move(selectedTransitions);
 	status.clear();
 	return true;
 }

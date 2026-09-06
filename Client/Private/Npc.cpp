@@ -235,11 +235,7 @@ void CNpc::Update(f32_t fTimeDelta)
 	{
 		m_pModelCom->Play_Animation(fTimeDelta);
 	}
-	if (nullptr != m_pColliderCom)
-	{
-		m_pColliderCom->Update(XMLoadFloat4x4(
-			m_pTransformCom->Get_WorldMatrixPtr()));
-	}
+	Update_CombatCollider();
 	CEffectV2Runtime::Tick(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		m_pDevice, m_pContext);
@@ -263,14 +259,22 @@ void CNpc::Apply_ImmediateTransform(
 	const float3_t& position,
 	const f32_t yawDegrees)
 {
+	float3_t drawn = position;
+	f32_t drawnYaw = yawDegrees;
+#ifdef _DEBUG
+	m_vDebugUnadjustedPosition = position;
+	m_fDebugUnadjustedYawDegrees = yawDegrees;
+	drawn.x += m_vDebugPresentationOffset.x;
+	drawn.y += m_vDebugPresentationOffset.y;
+	drawn.z += m_vDebugPresentationOffset.z;
+	drawnYaw += m_fDebugPresentationYawOffset;
+#endif
 	m_pTransformCom->Set_State(STATE::POSITION,
-		XMVectorSet(position.x, position.y, position.z, 1.f));
-	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
-	if (nullptr != m_pColliderCom)
-	{
-		m_pColliderCom->Update(XMLoadFloat4x4(
-			m_pTransformCom->Get_WorldMatrixPtr()));
-	}
+		XMVectorSet(drawn.x, drawn.y, drawn.z, 1.f));
+	// Rotation keeps the transform's current scale, so a Debug scale set once
+	// through Set_DebugPresentationScale survives every replicated pose.
+	m_pTransformCom->Rotation(0.f, drawnYaw, 0.f);
+	Update_CombatCollider();
 }
 
 void CNpc::Update_NetworkTransform(const f32_t fTimeDelta)
@@ -280,13 +284,108 @@ void CNpc::Update_NetworkTransform(const f32_t fTimeDelta)
 	NPC_NETWORK_TRANSFORM_FRAME frame{};
 	if (!m_NetworkTransformInterpolator.Advance(fTimeDelta, frame))
 		return;
+	float3_t drawn = frame.vPosition;
+	f32_t drawnYaw = frame.fYawDegrees;
+#ifdef _DEBUG
+	m_vDebugUnadjustedPosition = frame.vPosition;
+	m_fDebugUnadjustedYawDegrees = frame.fYawDegrees;
+	drawn.x += m_vDebugPresentationOffset.x;
+	drawn.y += m_vDebugPresentationOffset.y;
+	drawn.z += m_vDebugPresentationOffset.z;
+	drawnYaw += m_fDebugPresentationYawOffset;
+#endif
 	m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
-		frame.vPosition.x,
-		frame.vPosition.y,
-		frame.vPosition.z,
+		drawn.x,
+		drawn.y,
+		drawn.z,
 		1.f));
-	m_pTransformCom->Rotation(0.f, frame.fYawDegrees, 0.f);
+	m_pTransformCom->Rotation(0.f, drawnYaw, 0.f);
 }
+
+void CNpc::Update_CombatCollider()
+{
+	if (nullptr == m_pColliderCom || nullptr == m_pTransformCom)
+		return;
+	matrix_t world = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+#ifdef _DEBUG
+	// Presentation tuning must not move or resize the Server-radius mirror.
+	if (m_fDebugPresentationScale != 1.f ||
+		m_vDebugPresentationOffset.x != 0.f || m_vDebugPresentationOffset.y != 0.f ||
+		m_vDebugPresentationOffset.z != 0.f)
+	{
+		for (size_t axis = 0u; axis < 3u; ++axis)
+			world.r[axis] = XMVector3Normalize(world.r[axis]);
+		world.r[3] = XMVectorSet(m_vDebugUnadjustedPosition.x,
+			m_vDebugUnadjustedPosition.y, m_vDebugUnadjustedPosition.z, 1.f);
+	}
+#endif
+	m_pColliderCom->Update(world);
+}
+
+#ifdef _DEBUG
+void CNpc::Set_DebugWeaponScale(const f32_t fScale)
+{
+	if (std::isfinite(fScale) && fScale > 0.f && fScale <= 10000.f)
+		m_fDebugWeaponScale = fScale;
+}
+
+void CNpc::Set_DebugWeaponRotation(
+	const float3_t& vCatalogDegrees, const float3_t& vTargetDegrees)
+{
+	if (!std::isfinite(vCatalogDegrees.x) || !std::isfinite(vCatalogDegrees.y) ||
+		!std::isfinite(vCatalogDegrees.z) || !std::isfinite(vTargetDegrees.x) ||
+		!std::isfinite(vTargetDegrees.y) || !std::isfinite(vTargetDegrees.z))
+	{
+		return;
+	}
+	const matrix_t catalogRotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(vCatalogDegrees.x), XMConvertToRadians(vCatalogDegrees.y),
+		XMConvertToRadians(vCatalogDegrees.z));
+	const matrix_t targetRotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(vTargetDegrees.x), XMConvertToRadians(vTargetDegrees.y),
+		XMConvertToRadians(vTargetDegrees.z));
+	// A pure rotation's transpose is its inverse. R(catalog) * delta then
+	// equals R(saved Euler), including mixed axes and Save/Reload in one run.
+	XMStoreFloat4x4(&m_DebugWeaponRotation,
+		XMMatrixTranspose(catalogRotation) * targetRotation);
+}
+
+void CNpc::Set_DebugPresentationScale(const f32_t fScale)
+{
+	if (!std::isfinite(fScale) || fScale <= 0.f || nullptr == m_pTransformCom)
+		return;
+	m_fDebugPresentationScale = fScale;
+	m_pTransformCom->Scale(fScale, fScale, fScale);
+}
+
+void CNpc::Set_DebugPresentationOffset(const float3_t& vOffset)
+{
+	if (!std::isfinite(vOffset.x) || !std::isfinite(vOffset.y) ||
+		!std::isfinite(vOffset.z))
+	{
+		return;
+	}
+	m_vDebugPresentationOffset = vOffset;
+	if (nullptr != m_pTransformCom)
+		m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+			m_vDebugUnadjustedPosition.x + vOffset.x,
+			m_vDebugUnadjustedPosition.y + vOffset.y,
+			m_vDebugUnadjustedPosition.z + vOffset.z, 1.f));
+	Update_CombatCollider();
+}
+
+void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
+{
+	if (!std::isfinite(fYawOffsetDegrees))
+		return;
+	m_fDebugPresentationYawOffset = fYawOffsetDegrees;
+	// Rotation keeps the current scale; the collider re-reads the Server yaw.
+	if (nullptr != m_pTransformCom)
+		m_pTransformCom->Rotation(0.f,
+			m_fDebugUnadjustedYawDegrees + fYawOffsetDegrees, 0.f);
+	Update_CombatCollider();
+}
+#endif
 
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
@@ -313,6 +412,38 @@ HRESULT CNpc::Render()
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
+			return E_FAIL;
+	}
+	if (nullptr != m_pWeaponModelCom)
+	{
+		/* The socket bone matrix already carries the body's pre-transform, so
+		the weapon world is bone x body world with no second scale or yaw. */
+		float4x4_t weaponWorld{};
+#ifdef _DEBUG
+		const f32_t weaponScale = m_fDebugWeaponScale;
+		const matrix_t weaponLocal = XMLoadFloat4x4(&m_DebugWeaponRotation) *
+			XMMatrixScaling(weaponScale, weaponScale, weaponScale);
+#else
+		const matrix_t weaponLocal = XMMatrixIdentity();
+#endif
+		XMStoreFloat4x4(&weaponWorld,
+			weaponLocal *
+			m_pModelCom->Get_BoneMatrix(m_strWeaponSocketBone.c_str()) *
+			XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+		if (FAILED(m_pShaderCom->Bind_Matrix("g_WorldMatrix", &weaponWorld)))
+			return E_FAIL;
+		const uint32_t iNumWeaponMeshes = m_pWeaponModelCom->Get_NumMeshes();
+		for (uint32_t i = 0; i < iNumWeaponMeshes; ++i)
+		{
+			if (FAILED(Bind_DeferredMaterialInputs(
+					*m_pWeaponModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
+				FAILED(m_pWeaponModelCom->Bind_BoneMatrices(
+					m_pShaderCom, "g_BoneMatrices", i)) ||
+				FAILED(m_pShaderCom->Begin(0)) ||
+				FAILED(m_pWeaponModelCom->Render(i)))
+				return E_FAIL;
+		}
+		if (FAILED(m_pTransformCom->Bind_ShaderResource(m_pShaderCom, "g_WorldMatrix")))
 			return E_FAIL;
 	}
 	if (m_fOutlineWidth > 0.f)
@@ -354,6 +485,28 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 		m_pModelCom)))
 		return E_FAIL;
 	m_strModelTag = pDesc->strModelTag;
+
+	if (!pDesc->strWeaponModelTag.empty() || nullptr != pDesc->pWeaponSocketBone)
+	{
+		if (pDesc->strWeaponModelTag.empty() ||
+			nullptr == pDesc->pWeaponSocketBone ||
+			'\0' == pDesc->pWeaponSocketBone[0] ||
+			!m_pModelCom->Has_Bone(pDesc->pWeaponSocketBone))
+		{
+			return E_INVALIDARG;
+		}
+		if (FAILED(__super::Add_Component(
+			pDesc->iPrototypeLevelIndex,
+			pDesc->strWeaponModelTag,
+			TEXT("Com_WeaponModel"),
+			m_pWeaponModelCom)))
+			return E_FAIL;
+		m_strWeaponSocketBone = pDesc->pWeaponSocketBone;
+		/* Freeze the prototype's initial pose until weapon clip synchronization
+		is authored. Cloning does not restore the skeleton's bind pose. */
+		m_pWeaponModelCom->Set_AnimPaused(true);
+		m_pWeaponModelCom->Refresh_BoneCombinedMatrices();
+	}
 
 	if (pDesc->fCollisionRadius > 0.f)
 	{

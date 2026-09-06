@@ -137,6 +137,20 @@ void Client::CChatWindowView::Render(
 	if (!m_bInputOpen)
 		return;
 
+	/* While the field owns input, the cursor over the log/input bar belongs to the chat window
+	-- a click there must not reach CPlayerController (CMainApp folds the claim into its gameplay
+	mouse block; last frame's, since this runs after its Update). */
+	for (const char* pSlotId : { "Chat_LogPanelBg", "Chat_InputBar" })
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight) &&
+			CUIInputRouter::Get().Is_Hovered(fX, fY, fWidth, fHeight,
+				m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+		{
+			CUIInputRouter::Get().Claim_Mouse_This_Frame();
+		}
+	}
+
 	/* Actively typing keeps the window from fading out mid-sentence even past 30s, and
 	re-asserts the engine's keyboard block every frame the field owns input -- MainApp's own
 	per-frame SetInputBlocked runs before this, so a fast Q/W/E/R press right as focus lands
@@ -287,9 +301,14 @@ void Client::CChatWindowView::RenderText()
 		if (vMeasured.y <= 0.f)
 			return 0.f;
 		const f32_t fScale = (fTargetHeight / vMeasured.y) * fUiScale;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,
-			float2_t(fScreenX, fScreenCenterY),
-			vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+		/* Under the character info window (drawn over this panel) the piece is skipped but
+		still advances -- this text pass runs after every sprite. */
+		if (!CUIInputRouter::Get().Is_UnderTopWindow(fScreenX, fScreenCenterY))
+		{
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,
+				float2_t(fScreenX, fScreenCenterY),
+				vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+		}
 		return vMeasured.x * fScale;
 	};
 
@@ -332,11 +351,12 @@ void Client::CChatWindowView::RenderText()
 		constexpr const wchar_t* NORMAL_LABEL = L"\xC77C\xBC18";
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), NORMAL_LABEL);
-		if (vMeasured.y > 0.f)
+		const float2_t vNormalPos((fNormalX + fNormalW * 0.5f) * fScaleX,
+			(fNormalY + fNormalH * 0.5f) * fScaleY);
+		if (vMeasured.y > 0.f && !CUIInputRouter::Get().Is_UnderTopWindow(vNormalPos.x, vNormalPos.y))
 		{
 			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), NORMAL_LABEL,
-				float2_t((fNormalX + fNormalW * 0.5f) * fScaleX,
-					(fNormalY + fNormalH * 0.5f) * fScaleY),
+				vNormalPos,
 				Colors::White, 0.f, float2_t(0.5f, 0.5f),
 				(TEXT_HEIGHT / vMeasured.y) * fUiScale);
 		}

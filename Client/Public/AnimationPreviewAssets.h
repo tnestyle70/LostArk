@@ -171,7 +171,21 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_00/MN_RPCT_00.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_00",
 		false,
-		0.02f,
+		0.017f,
+		-90.f,
+		true
+	},
+	/* Colorless Saydon body from the same 165-bone rig as MN_RPCT_00/05; its
+	   package ships no AnimSet, so the cook bakes the MN_RPCT_00 PSA pair. */
+	ANIMATION_PREVIEW_ASSET
+	{
+		"kakulsaydon.mn-rpct-03",
+		"[KoukuSaydon Reference] MN_RPCT_03 colorless Saydon body, RPCT_00 rig (249 clips)",
+		"MN_RPCT_03",
+		"Character/KoukuSaton/MN_RPCT_03/MN_RPCT_03.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_03",
+		false,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -183,7 +197,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_05",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -195,7 +209,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCT_06",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},
@@ -207,7 +221,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCZ_00",
 		false,
-		0.02f,
+		0.017f,
 		-90.f,
 		true
 	},

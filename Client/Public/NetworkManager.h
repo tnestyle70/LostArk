@@ -205,6 +205,12 @@ public:
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ);
 	bool Try_Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result);
+	/* Debug F1 clown/player avatar toggle. The Server owns the form; the
+	snapshot is the only accepted presentation result. */
+	bool Send_DebugSetMadnessForm(
+		std::uint32_t requestSequence, LostArk::Shared::PLAYER_MADNESS_FORM form);
+	bool Try_Consume_DebugMadnessFormResult(
+		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
 		std::uint32_t requestSequence,
 		std::string_view placementId);
@@ -496,6 +502,8 @@ private:
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
 	std::deque<LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT>
 		m_DebugTeleportResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
+		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>

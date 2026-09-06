@@ -39,6 +39,13 @@ Character Select의 `Create Character`는 선택 class와 공통 validator를 �
 
 2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.4:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.4/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.4:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
+쿠크 아레나의 광기 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. 기본 공급자는
+v59 `PLAYER_SNAPSHOT.iCurrentMadness/iMaximumMadness`이며 10000 단위 값을 백분율 임계값에 맞춰 표시한다.
+F1 `Kouku UI Preview`는 Debug 표시 전용 override다. 해제·session reset 시 실제 수치로 복귀한다.
+현재 광대 변신은 원래 class의 스킬 입력을 유지하므로 POLYMORPH/MARIO/DANCE/MAZE 모드는 명시적인
+UI preview에서만 표시한다. 해당 모드의 키·스킬·애니메이션·패턴 연결은 후속 기능이다.
+캐릭터 정보창과 아바타 도감은 아레나의 현재 복제 캐릭터를 읽고, 같은 class의 광대 교체도 목록 갱신 경계로 본다.
+
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
 
 빠른 endpoint 교체와 실제 4인 LAN, loopback 격리 테스트의 실행 체크리스트는

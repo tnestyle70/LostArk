@@ -38,6 +38,19 @@ function Assert-JsonString([object]$Value, [string]$Context) {
     if ($Value -isnot [string]) { throw "$Context must be a JSON string." }
 }
 
+# Required fields must all be present; optional ones may be absent. Nothing else is allowed.
+function Assert-Properties([object]$Value, [string[]]$Required, [string[]]$Optional, [string]$Context) {
+    $actual = @($Value.PSObject.Properties.Name)
+    foreach ($name in $Required) {
+        if ($actual -cnotcontains $name) { throw "$Context is missing field '$name'." }
+    }
+    foreach ($name in $actual) {
+        if (($Required -cnotcontains $name) -and ($Optional -cnotcontains $name)) {
+            throw "$Context has an unknown field '$name'."
+        }
+    }
+}
+
 $itemDocument = Read-JsonDocument 'Data/Items/ItemCatalog.json'
 Assert-ExactProperties $itemDocument @('schema', 'formatVersion', 'items') 'item catalog document'
 Assert-JsonString $itemDocument.schema 'item catalog schema'
@@ -54,7 +67,10 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
 $itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemRows = [Collections.Generic.List[string]]::new()
 foreach ($item in $items) {
-    Assert-ExactProperties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') 'item'
+    # equipSlot/characterClass/grade are Client presentation fields (character info window slots,
+    # inventory grade art); the Server bootstrap row below never carries them.
+    Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
+        @('equipSlot', 'characterClass', 'grade') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -63,6 +79,20 @@ foreach ($item in $items) {
     Assert-JsonString $item.category 'item category'
     if ($item.category -ne 'combat' -and $item.category -ne 'use') {
         throw "item category must be 'combat' or 'use': $($item.itemId)"
+    }
+    foreach ($optional in @('equipSlot', 'characterClass', 'grade')) {
+        if ($null -ne $item.PSObject.Properties[$optional]) {
+            Assert-JsonString $item.$optional "item $optional"
+        }
+    }
+    if ($null -ne $item.PSObject.Properties['equipSlot']) {
+        $slots = @('weapon', 'helmet', 'shoulder', 'top', 'pants', 'gloves', 'necklace', 'earring', 'ring', 'stone', 'bracelet', 'avatarHead', 'avatarOutfit')
+        if ($slots -cnotcontains $item.equipSlot) { throw "item equipSlot is unknown: $($item.itemId)" }
+    }
+    if ($null -ne $item.PSObject.Properties['grade']) {
+        if (@('normal', 'rare', 'epic', 'legend', 'relic', 'ancient', 'avatar') -cnotcontains $item.grade) {
+            throw "item grade is unknown: $($item.itemId)"
+        }
     }
     if ($item.itemId -notmatch $stableIdPattern) {
         throw "item itemId is not a stable ID: '$($item.itemId)'"

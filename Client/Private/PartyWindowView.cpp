@@ -2,6 +2,7 @@
 
 #include "GameInstance.h"
 #include "ReplicatedPlayerHealth.h"
+#include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -162,6 +163,41 @@ void Client::CPartyWindowView::Render()
 
 		m_pView->Set_SlotVisible(strLeader, Member.isLeader);
 	}
+
+	/* The cursor over the roster (title bar down to the last member's bar) belongs to the
+	roster, not to CPlayerController -- CMainApp folds the claim into its gameplay mouse block
+	(last frame's, since this runs after its Update). */
+	{
+		f32_t fLeft = 0.f, fTop = 0.f, fRight = 0.f, fBottom = 0.f;
+		bool_t bHasRect = false;
+		const auto Fn_Union = [&](const string& strId)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pView->Get_SlotRect(strId, fX, fY, fWidth, fHeight))
+				return;
+			if (!bHasRect)
+			{
+				fLeft = fX; fTop = fY; fRight = fX + fWidth; fBottom = fY + fHeight;
+				bHasRect = true;
+				return;
+			}
+			fLeft = (std::min)(fLeft, fX);
+			fTop = (std::min)(fTop, fY);
+			fRight = (std::max)(fRight, fX + fWidth);
+			fBottom = (std::max)(fBottom, fY + fHeight);
+		};
+		Fn_Union("PartyWindow_TitleBg");
+		for (size_t iRow = 0; iRow < m_Members.size() && iRow < MAX_ROWS; ++iRow)
+		{
+			Fn_Union(Row_SlotId("PartyWindow_Symbol_", iRow));
+			Fn_Union(Row_SlotId("PartyWindow_HpBg_", iRow));
+		}
+		if (bHasRect && CUIInputRouter::Get().Is_Hovered(fLeft, fTop, fRight - fLeft, fBottom - fTop,
+			m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+		{
+			CUIInputRouter::Get().Claim_Mouse_This_Frame();
+		}
+	}
 }
 
 void Client::CPartyWindowView::RenderText()
@@ -186,6 +222,10 @@ void Client::CPartyWindowView::RenderText()
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pText);
 		if (vMeasured.y <= 0.f)
+			return;
+		/* Under the character info window (drawn over this roster) the glyph is skipped --
+		this text pass runs after every sprite. */
+		if (CUIInputRouter::Get().Is_UnderTopWindow(fX * fScaleX, fCenterY * fScaleY))
 			return;
 		const f32_t fScale = (fTargetHeight / vMeasured.y) * fUiScale;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,

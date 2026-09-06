@@ -1316,9 +1316,9 @@ Assert-ExactProperties $bossCatalogDocument @(
 	'schema','formatVersion','bosses') 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
-	'boss presentation catalog formatVersion' 7 7
+	'boss presentation catalog formatVersion' 8 8
 if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
-	[uint32]$bossCatalogDocument.formatVersion -ne 7 -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 8 -or
 	$bossCatalogDocument.bosses -isnot [Array]) {
 	throw 'Boss presentation catalog header is invalid.'
 }
@@ -1328,7 +1328,27 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 		'weaponModel','armorModels','armorParts','combatObjectVisuals',
 		'animationSetId','serverProfileId','clientPresentationId',
 		'presentationStatus','presentationClips','bodyModelPreScale',
-		'weaponModelPreScale') 'boss presentation row'
+		'weaponModelPreScale','weaponModelPreRotationDegrees') 'boss presentation row'
+	# v8: a weapon row carries three finite pitch/yaw/roll degrees that turn the
+	# authored weapon axes onto the socket bone; a weaponless row keeps null.
+	$weaponRotation = $presentationBoss.weaponModelPreRotationDegrees
+	if ($null -eq $presentationBoss.weaponModel) {
+		if ($null -ne $weaponRotation) {
+			throw "A weaponless boss must keep weaponModelPreRotationDegrees null: $($presentationBoss.archetypeId)"
+		}
+	}
+	else {
+		if ($weaponRotation -isnot [Array] -or @($weaponRotation).Count -ne 3) {
+			throw "weaponModelPreRotationDegrees must hold exactly three numbers: $($presentationBoss.archetypeId)"
+		}
+		foreach ($degrees in @($weaponRotation)) {
+			Assert-JsonNumber $degrees 'boss presentation weaponModelPreRotationDegrees'
+			if ([double]::IsNaN([double]$degrees) -or [double]::IsInfinity([double]$degrees) -or
+				[math]::Abs([double]$degrees) -gt 360.0) {
+				throw "weaponModelPreRotationDegrees is out of range: $($presentationBoss.archetypeId)"
+			}
+		}
+	}
 	Assert-JsonString $presentationBoss.archetypeId `
 		'boss presentation archetypeId'
 	Assert-StableId $presentationBoss.archetypeId `
@@ -1347,6 +1367,11 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	}
 	$isWeaponlessKouku = [string]$presentationBoss.archetypeId -ceq
 		'BOSS_KAKULSAYDON_G1_KOUKU'
+	# Every KoukuSaydon arena boss shares the Gate 1 audition body contract: an
+	# embedded body with an optional socketed weapon. Only the original Gate 1
+	# Kouku row keeps its exact-value admission below.
+	$isKoukuSaydonFamily = [string]$presentationBoss.archetypeId -clike
+		'BOSS_KAKULSAYDON_*'
 	if ($isWeaponlessKouku) {
 		if ($null -ne $presentationBoss.weaponModel -or
 			$null -ne $presentationBoss.weaponModelPreScale -or
@@ -1361,13 +1386,43 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 			[string]$presentationBoss.animationSetId -cne
 			'Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel' -or
 			[double]$presentationBoss.presentationScale -ne 1.0 -or
-			[double]$presentationBoss.bodyModelPreScale -ne 0.02 -or
+			[double]$presentationBoss.bodyModelPreScale -ne 0.017 -or
 			@($presentationBoss.armorModels).Count -ne 0 -or
 			@($presentationBoss.armorParts).Count -ne 0 -or
 			@($presentationBoss.combatObjectVisuals).Count -ne 0 -or
 			[string]$presentationBoss.presentationClips.idle -cne
 			'rpcz00_idle_battle_1') {
 			throw 'The KoukuSaydon body-only presentation admission is invalid.'
+		}
+	}
+	elseif ($isKoukuSaydonFamily) {
+		if ([string]$presentationBoss.clientPresentationId -cnotlike
+				'boss.kakulsaydon.*.client.v1' -or
+			[string]$presentationBoss.serverProfileId -cnotlike
+				'boss.kakulsaydon.*.server.v1' -or
+			[string]$presentationBoss.bodyModel -cnotlike
+				'Character/KoukuSaton/*.wmodel' -or
+			@($presentationBoss.armorModels).Count -ne 0 -or
+			@($presentationBoss.armorParts).Count -ne 0 -or
+			@($presentationBoss.combatObjectVisuals).Count -ne 0) {
+			throw "The KoukuSaydon family presentation admission is invalid: $($presentationBoss.archetypeId)"
+		}
+		if ($null -eq $presentationBoss.weaponModel) {
+			if ($null -ne $presentationBoss.weaponModelPreScale) {
+				throw "A weaponless KoukuSaydon boss must keep weaponModelPreScale null: $($presentationBoss.archetypeId)"
+			}
+		}
+		else {
+			Assert-JsonString $presentationBoss.weaponModel `
+				'boss presentation weaponModel'
+			Assert-JsonNumber $presentationBoss.weaponModelPreScale `
+				'boss presentation weaponModelPreScale'
+			if ([string]$presentationBoss.weaponModel -cnotlike
+					'Character/KoukuSaton/*.wmodel' -or
+				[double]$presentationBoss.weaponModelPreScale -le 0.0 -or
+				[double]$presentationBoss.weaponModelPreScale -gt 100.0) {
+				throw "The KoukuSaydon socketed weapon admission is invalid: $($presentationBoss.archetypeId)"
+			}
 		}
 	}
 	else {
@@ -3049,7 +3104,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 		'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
-		'stages') 'KoukuSaydon encounter pattern'
+		'bossArchetypeIds','stages') 'KoukuSaydon encounter pattern'
 	foreach ($field in @(
 		'patternId','category','targetPolicy','aimPolicy','displayName','actionId',
 		'selectionMode','armorRequirement','phaseRequirement')) {
@@ -3101,7 +3156,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	foreach ($sourceActionId in @($koukuPattern.sourceActionIds)) {
 		Assert-JsonInteger $sourceActionId `
 			"KoukuSaydon $($koukuPattern.patternId) sourceActionId" `
-			1 ([uint32]::MaxValue)
+			0 ([uint32]::MaxValue)
 		if (-not $koukuSourceActionIds.Add([uint32]$sourceActionId)) {
 			throw "KoukuSaydon pattern sourceActionId is duplicated: $($koukuPattern.patternId)"
 		}
@@ -3115,6 +3170,34 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		(Format-InvariantFloat $koukuPattern.maximumRange `
 			'KoukuSaydon pattern maximumRange'),
 		@($koukuPattern.stages).Count, 'ANY', 'ANY', 0) -join "`t"))
+	# The arena boss bodies this pattern's clips belong to. The Server audition
+	# admits a live boss of one of these archetypes only; every entry must be a
+	# KoukuSaydon arena boss profile of the same encounter.
+	if ($koukuPattern.bossArchetypeIds -isnot [Array] -or
+		@($koukuPattern.bossArchetypeIds).Count -lt 1 -or
+		@($koukuPattern.bossArchetypeIds).Count -gt 8) {
+		throw "KoukuSaydon pattern bossArchetypeIds must name 1-8 arena bosses: $($koukuPattern.patternId)"
+	}
+	$koukuPatternBossIds =
+		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	foreach ($patternBossId in @($koukuPattern.bossArchetypeIds)) {
+		Assert-JsonString $patternBossId `
+			"KoukuSaydon $($koukuPattern.patternId) bossArchetypeId"
+		Assert-StableId $patternBossId `
+			"KoukuSaydon $($koukuPattern.patternId) bossArchetypeId"
+		$patternBoss = @($bossDocument.bosses | Where-Object {
+			[string]$_.archetypeId -ceq [string]$patternBossId })
+		if ($patternBoss.Count -ne 1 -or
+			[string]$patternBoss[0].encounterId -cne
+				[string]$koukuEncounterDocument.encounterId -or
+			[string]$patternBossId -cnotlike 'BOSS_KAKULSAYDON_*' -or
+			-not $koukuPatternBossIds.Add([string]$patternBossId)) {
+			throw "KoukuSaydon pattern bossArchetypeId is not an arena boss of its encounter: $($koukuPattern.patternId)/$patternBossId"
+		}
+		$patternRows.Add((@(
+			'PATTERNBOSS', $koukuEncounterDocument.encounterId,
+			$koukuPattern.patternId, [string]$patternBossId) -join "`t"))
+	}
 	$patternRows.Add((@(
 		'PATTERNPOLICY', $koukuEncounterDocument.encounterId,
 		$koukuPattern.patternId, $koukuPattern.category, 1, 1,

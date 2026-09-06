@@ -189,6 +189,14 @@ namespace Client
 			std::string_view stageId,
 			int32_t direction,
 			std::string& outStatus);
+		/* Left/Right arrow and the Selected Box "< Earlier" / "Later >" buttons.
+		   Moves the single selected Stage, or the Stage owning the single
+		   selected animation box, one slot and keeps it selected. Animation
+		   boxes are Stage-relative, so they travel with their Stage. */
+		bool_t Move_SelectedStage(
+			std::string_view patternId,
+			int32_t direction,
+			std::string& outStatus);
 		bool_t Set_StageDuration(
 			std::string_view patternId,
 			std::string_view stageId,

@@ -25,6 +25,13 @@ namespace Client
 		// the item-upgrade window) or "use" (consumables/materials/currency,
 		// shown under the Use filter). Display/filter-only, never sent to Server.
 		std::string strCategory;
+		/* Optional Client-only equipment presentation (absent = not equipment): the character
+		info window slot this item fills ("weapon", "helmet", "shoulder", "top", "pants", "gloves",
+		"necklace", "earring", "ring", "stone", "bracelet"), the class it belongs to ("Warlord",
+		empty = any) and the grade background it is drawn on ("legend", "relic", ...). */
+		std::string strEquipSlot;
+		std::string strCharacterClass;
+		std::string strGrade;
 	};
 
 	class CItemCatalog final

@@ -239,6 +239,13 @@ public:
 		expose an Outline pass (esther) honour it. */
 		f32_t fOutlineWidth = {};
 		float4_t vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
+		/* Optional socketed weapon: a second animated CModel prototype drawn in
+		its rest pose from one bone of the body skeleton. Both fields are set
+		together or neither is; a socket the body lacks fails the clone instead
+		of drawing the weapon at the origin. Unit conversion is baked into the
+		weapon prototype's pre-transform, so no scale travels here. */
+		wstring_t strWeaponModelTag;
+		const char_t* pWeaponSocketBone = { nullptr };
 	} NPC_DESC;
 
 	/* Esther summons (Sillian / Wei / Bahuntur) draw with a white silhouette
@@ -287,6 +294,27 @@ public:
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
 	}
+	/* F1 tuning only. The scale multiplies the drawn body transform, the
+	offset shifts the drawn body from its replicated position, and the weapon
+	multiplier scales the socketed weapon. None of them reaches the Server or
+	the collider authority; they exist so a catalog value can be chosen by eye
+	before it is saved. */
+	void Set_DebugPresentationScale(f32_t fScale);
+	void Set_DebugPresentationOffset(const float3_t& vOffset);
+	/* Added to the replicated yaw of every drawn pose; the collider keeps the
+	Server yaw. Lets a placement yawDegrees be chosen by eye before saving. */
+	void Set_DebugPresentationYawOffset(f32_t fYawOffsetDegrees);
+	void Set_DebugWeaponScale(f32_t fScale);
+	/* Match the saved Euler rotation despite the catalog rotation already
+	baked into this Client's weapon prototype. */
+	void Set_DebugWeaponRotation(
+		const float3_t& vCatalogDegrees, const float3_t& vTargetDegrees);
+	f32_t Get_DebugPresentationScale() const { return m_fDebugPresentationScale; }
+	const float3_t& Get_DebugPresentationOffset() const { return m_vDebugPresentationOffset; }
+	const float3_t& Get_DebugUnadjustedPosition() const { return m_vDebugUnadjustedPosition; }
+	f32_t Get_DebugUnadjustedYawDegrees() const { return m_fDebugUnadjustedYawDegrees; }
+	f32_t Get_DebugPresentationYawOffset() const { return m_fDebugPresentationYawOffset; }
+	f32_t Get_DebugWeaponScale() const { return m_fDebugWeaponScale; }
 #endif
 
 public:
@@ -301,6 +329,10 @@ private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	wstring_t m_strModelTag;
+	/* Rest-pose weapon riding m_strWeaponSocketBone of the body; null when the
+	desc declared none. It never starts a clip of its own. */
+	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };
+	std::string m_strWeaponSocketBone;
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
@@ -316,6 +348,17 @@ private:
 	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = { false };
+	f32_t m_fDebugPresentationScale = 1.f;
+	float3_t m_vDebugPresentationOffset = {};
+	float3_t m_vDebugUnadjustedPosition = {};
+	f32_t m_fDebugPresentationYawOffset = 0.f;
+	f32_t m_fDebugUnadjustedYawDegrees = 0.f;
+	f32_t m_fDebugWeaponScale = 1.f;
+	float4x4_t m_DebugWeaponRotation = {
+		1.f, 0.f, 0.f, 0.f,
+		0.f, 1.f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f,
+		0.f, 0.f, 0.f, 1.f };
 #endif
 
 private:
@@ -325,6 +368,7 @@ private:
 		const float3_t& position,
 		f32_t yawDegrees);
 	void Update_NetworkTransform(f32_t fTimeDelta);
+	void Update_CombatCollider();
 
 public:
 	static unique_ptr<CNpc> Create(ComPtr<ID3D11Device> pDevice,
