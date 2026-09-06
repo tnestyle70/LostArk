@@ -1,0 +1,8 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "MN_RPCT_05",
+  "bindings": [
+    { "group": "boss.kouku.find.star", "clip": "rpct00_att_battle_20_06", "startMs": 1466, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 }
+  ]
+}

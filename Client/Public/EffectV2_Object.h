@@ -229,6 +229,8 @@ public:
 		bool_t bMaskWarp = false;
 		f32_t fAlphaInEnd = 0.f;
 		f32_t fAlphaOutStart = 1.f;
+		f32_t fScaleInEnd = 0.f;
+		f32_t fScaleOutStart = 1.f;
 		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
 		bool_t bBillboard = true;
 		bool_t bDepthTest = true;
@@ -318,6 +320,7 @@ public:
 	f32_t Life_Ratio() const;
 	f32_t Dissolve_Amount() const;
 	f32_t Alpha_Envelope() const;
+	f32_t Scale_Envelope() const;
 	bool_t Has_Texture(const TEXTURE_INPUT eInput) const
 	{
 		return nullptr != m_Textures[static_cast<size_t>(eInput)];

@@ -1029,7 +1029,8 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         self.assertEqual(
             {
                 "boss.kouku.disarm": 3,
-                "boss.kouku.find.star": 2,
+                "boss.kouku.find.heart": 2,
+                "boss.kouku.find.star": 6,
                 "boss.valtan.axe": 9,
                 "boss.valtan.blackhole": 1,
                 "boss.valtan.breathe": 5,
@@ -1053,6 +1054,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         self.assertEqual(
             {
                 "boss.kouku.disarm": 10000,
+                "boss.kouku.find.heart": 3500,
                 "boss.kouku.find.star": 2000,
                 "boss.valtan.axe": 5600,
                 "boss.valtan.blackhole": 10000,
