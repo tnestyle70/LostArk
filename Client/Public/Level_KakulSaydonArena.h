@@ -24,6 +24,7 @@ NS_BEGIN(Client)
 class CCamera_Free;
 class CCharacter;
 class CNpc;
+class CTrigger_Box;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
@@ -203,6 +204,15 @@ private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
 
+#ifdef _DEBUG
+	/* The three arena-side `_go` boxes are the only way into the Mario
+	   stages and each is 2x1x2m of empty air, so nobody can find them
+	   without a wire. This draws them through the same authoring box the
+	   Map Editor and Bern already use; it reads the authored document and
+	   owns no gameplay state. */
+	bool_t Ready_DebugStageEntryTriggers(const std::string& areaId);
+#endif
+
 private:
 	CMapPlacementRuntime m_MapRuntime;
 	/* The authored deploy catalog carries both paper levers and both paper
@@ -265,6 +275,11 @@ private:
 	float3_t m_vTriggerMoveFadeLastPosition = {};
 	bool_t m_bTriggerMoveFadeHasLastPosition = false;
 	bool_t m_bTriggerMoveFadeArmed = false;
+
+#ifdef _DEBUG
+	std::vector<shared_ptr<CTrigger_Box>> m_DebugStageEntryTriggers;
+#endif
+
 	static CLevel_KakulSaydonArena* s_pActiveInstance;
 
 public:

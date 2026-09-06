@@ -5,7 +5,13 @@
 
 namespace LostArk::Shared
 {
-	/* 58 adds correlated Debug teleport-to-ground intent and Server verdicts.
+	/* 60 combines two contracts that each shipped independently as 59:
+	the interact-gated trigger box and the Debug KoukuSaydon madness-form
+	toggle. Neither v59 peer is wire-compatible with the combined enum.
+	59 adds the interact-gated trigger box: the Server offers a prompt to
+	the one session standing in such a box, and that session asks for the box
+	to run. The Server still owns entry, validation and the action itself.
+	58 adds correlated Debug teleport-to-ground intent and Server verdicts.
 	57 pins the authored KoukuSaydon Product source revision independently
 	from the gameplay bootstrap hash across request, verdict, and lifecycle.
 	56 adds the exact-scope Debug KoukuSaydon animation-pattern audition
@@ -36,7 +42,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 59;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 60;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -262,7 +268,15 @@ namespace LostArk::Shared
 		// Debug KoukuSaydon madness form: the F1 clown/player avatar toggle.
 		// Release keeps the type known and answers with a typed rejection.
 		C2S_DEBUG_SET_MADNESS_FORM,
-		S2C_DEBUG_SET_MADNESS_FORM_RESULT
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT,
+
+		// An authored trigger box may ask before it acts. The Server sends the
+		// prompt edge to the single session standing in the box and withdraws it
+		// on the way out; that session answers with the request. Entry testing,
+		// re-validation on request, and the action all stay Server-owned -- the
+		// Client only draws the offer and forwards the key press.
+		S2C_INTERACT_PROMPT,
+		C2S_INTERACT_TRIGGER
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -347,6 +361,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
 		case PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM:
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+		case PACKET_TYPE::S2C_INTERACT_PROMPT:
+		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
 			return true;
 		default:
 			return  false;

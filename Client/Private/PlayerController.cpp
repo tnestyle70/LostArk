@@ -310,6 +310,7 @@ void Client::CPlayerController::Update(
 		Poll_SkillSlots(true, useRawKeyboard, character,
 			ignoredSkill, ignoredRelease);
 		(void)Poll_EstherSlot(true, useRawKeyboard);
+		(void)Poll_InteractKey(true, useRawKeyboard);
 		m_wasRightMouseDown = isRightMouseDown;
 		return;
 	}
@@ -467,6 +468,23 @@ void Client::CPlayerController::Update(
 				if (0 == m_iNextActionSequence)
 					m_iNextActionSequence = 1;
 			}
+		}
+	}
+
+	if (Poll_InteractKey(
+		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard) &&
+		nullptr != commandSink)
+	{
+		/* Only the box the Server is offering right now can be answered; with
+		   no offer standing the press is simply nothing. */
+		const std::string& offered =
+			CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+		if (!offered.empty() &&
+			commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
+		{
+			++m_iNextActionSequence;
+			if (0 == m_iNextActionSequence)
+				m_iNextActionSequence = 1;
 		}
 	}
 
@@ -679,6 +697,24 @@ std::uint8_t Client::CPlayerController::Poll_EstherSlot(
 		m_wasEstherKeyDown[index] = isDown;
 	}
 	return pressedSlot;
+}
+
+bool_t Client::CPlayerController::Poll_InteractKey(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard)
+{
+	const int8_t state = m_CaptureInputGate.Is_Blocked(DIK_G) ?
+		static_cast<int8_t>(0) :
+		(useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyStateRaw(DIK_G) :
+			CGameInstance::Get().Get_DIKeyState(DIK_G));
+	const bool_t isDown = 0 != (state & 0x80);
+	const bool_t pressed =
+		!isKeyboardBlocked && isDown && !m_wasInteractKeyDown;
+	/* Committed regardless of the block so releasing under a block cannot
+	   leave a stale edge waiting to fire on the next unblocked frame. */
+	m_wasInteractKeyDown = isDown;
+	return pressed;
 }
 
 void Client::CPlayerController::Set_CommandSink(

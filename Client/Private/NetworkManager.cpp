@@ -771,7 +771,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.4";
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.1";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -1513,6 +1513,28 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_InteractTrigger(
+	const std::uint32_t requestSequence,
+	const std::string_view triggerPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_INTERACT_TRIGGER message{};
+	message.iRequestSequence = requestSequence;
+	message.strTriggerPlacementId = std::string{ triggerPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_INTERACT_TRIGGER,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -3676,6 +3698,20 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY;
 		event.WorldSequencePlay = std::move(play);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_INTERACT_PROMPT:
+	{
+		S2C_INTERACT_PROMPT prompt{};
+		if (!Read_Message(reader, prompt) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::INTERACT_PROMPT;
+		event.InteractPrompt = std::move(prompt);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}

@@ -1848,6 +1848,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_ConfirmNpcEntry(
 				command.iSessionId, command.ConfirmNpcEntry);
 			break;
+		case ROOM_COMMAND_TYPE::INTERACT_TRIGGER:
+			Handle_InteractTrigger(
+				command.iSessionId, command.InteractTrigger);
+			break;
 		case ROOM_COMMAND_TYPE::RETURN_TO_BERN:
 			Handle_ReturnToBern(
 				command.iSessionId, command.ReturnToBern);
@@ -1894,6 +1898,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		m_Players, m_WorldEntities, m_GameplayCatalog,
 		fixedDeltaSeconds, updateTick, m_TickDamageEvents);
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+	std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 	bool evaluatePlayerTriggers = true;
 #ifdef _DEBUG
 	evaluatePlayerTriggers = WORLD_ID::VALTAN_ARENA != m_eWorldId ||
@@ -1943,8 +1948,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				return activated;
 			}
 			return false;
-		});
+		},
+		promptEdges);
 	}
+	for (const SERVER_INTERACT_PROMPT_EDGE& edge : promptEdges)
+		Send_InteractPrompt(edge);
 	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
@@ -4467,6 +4475,88 @@ std::uint32_t LostArk::Server::CGameRoom::Place_PartyForCutscene(
 		++placed;
 	}
 	return placed;
+}
+
+void LostArk::Server::CGameRoom::Send_InteractPrompt(
+	const SERVER_INTERACT_PROMPT_EDGE& edge)
+{
+	using namespace LostArk::Shared;
+
+	const auto player = m_Players.find(edge.iPlayerId);
+	if (m_Players.end() == player)
+		return;
+	const std::shared_ptr<CClientSession> session =
+		Find_Session(player->second.iSessionId);
+	if (nullptr == session)
+		return;
+	S2C_INTERACT_PROMPT message{};
+	message.strTriggerPlacementId = edge.strTriggerPlacementId;
+	message.bAvailable = edge.bAvailable;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	if (!session->Send_Frame(
+		PACKET_TYPE::S2C_INTERACT_PROMPT, writer.Get_Buffer()))
+	{
+		session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_InteractTrigger(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_INTERACT_TRIGGER& request)
+{
+	using namespace LostArk::Shared;
+
+	const auto playerId = m_PlayerIdBySessionId.find(sessionId);
+	if (m_PlayerIdBySessionId.end() == playerId)
+		return;
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+	const std::uint32_t actionTick = 0u == m_iServerTick ? 1u : m_iServerTick;
+	if (!m_ServerTriggerSystem.Activate_Interact(
+		playerId->second,
+		request.strTriggerPlacementId,
+		m_Players,
+		actionTick,
+		transfers,
+		[this](const WORLD_TRIGGER_ACTION_KIND kind,
+			const std::string& targetId)
+		{
+			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
+			{
+				Broadcast_WorldSequencePlay(targetId);
+				return true;
+			}
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
+				return m_SpawnGroupRuntime.Activate(targetId);
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
+				return Activate_Encounter(targetId);
+			return false;
+		}))
+	{
+		return;
+	}
+	/* A gated box can move worlds like any other, so its transfer is staged
+	   through the same pending list the tick uses. */
+	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
+	{
+		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
+			continue;
+		const bool alreadyStaged = std::any_of(
+			m_PendingWorldTransfers.begin(),
+			m_PendingWorldTransfers.end(),
+			[staged = transfer.iSessionId](
+				const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == staged;
+			});
+		if (!alreadyStaged)
+			m_PendingWorldTransfers.push_back(std::move(transfer));
+	}
+	/* The offer is spent: withdraw it so the Client stops drawing the key.
+	   A repeatable box re-offers on the next entry edge. */
+	Send_InteractPrompt({ playerId->second,
+		request.strTriggerPlacementId, false });
 }
 
 void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(

@@ -260,9 +260,11 @@
         "Server/Bin/DataFiles/Navigation/*.navgrid",
         "Server/Bin/DataFiles/Navigation/*.navblockers",
         "Server/Bin/DataFiles/Navigation/*.navpolicy",
+        "Server/Bin/DataFiles/Navigation/*.navregions",
         "Client/Bin/DataFiles/Navigation/*.navgrid",
         "Client/Bin/DataFiles/Navigation/*.navblockers",
-        "Client/Bin/DataFiles/Navigation/*.navpolicy"
+        "Client/Bin/DataFiles/Navigation/*.navpolicy",
+        "Client/Bin/DataFiles/Navigation/*.navregions"
       ],
       "requiredOutputPatterns": [
         "Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",

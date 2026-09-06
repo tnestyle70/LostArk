@@ -373,6 +373,24 @@ bool Client::CClientReplication::Update()
 			Apply_ChatReceived(event.ChatReceived);
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::INTERACT_PROMPT:
+			/* Withdrawal only clears an offer that is still the current one, so
+			   a late withdrawal for a box already replaced cannot blank the new
+			   offer. */
+			if (event.InteractPrompt.bAvailable)
+			{
+				m_strInteractPromptTriggerId =
+					event.InteractPrompt.strTriggerPlacementId;
+			}
+			else if (m_strInteractPromptTriggerId ==
+				event.InteractPrompt.strTriggerPlacementId)
+			{
+				m_strInteractPromptTriggerId.clear();
+			}
+			CCombatHUDViewModel::Get().Set_InteractPromptTriggerId(
+				m_strInteractPromptTriggerId);
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY:
 			/* Queued rather than played here: the level owns the sequence
 			   player and drains this on its own update. */

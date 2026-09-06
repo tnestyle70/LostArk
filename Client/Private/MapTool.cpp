@@ -58,6 +58,14 @@ namespace
 	   walking the document instead of a hand written list. */
 	constexpr const char* KAKUL_ORIGINAL_INSTANCE_PREFIX =
 		"world.sequence.instance.original_";
+	/* Every imported Mario stage sequence shares this prefix, so the loop
+	   picks them up from the document rather than a list that would fall
+	   behind the next import. */
+	constexpr const char* KAKUL_MARIO_INSTANCE_PREFIX =
+		"world.sequence.instance.mario_";
+	/* Rewind this far before the authored end. One slow frame is well
+	   inside it, which is what keeps an instance from ever finishing. */
+	constexpr f32_t KAKUL_MARIO_LOOP_REWIND_MARGIN_MS = 120.f;
 	/* The pop-up book. Its unfold clip runs 2370ms; the arena instances start
 	   with it and hold their folded pose until each group is due. */
 	constexpr const char* KAKUL_BOOK_INSTANCE_ID =
@@ -1011,6 +1019,37 @@ void Client::CMapTool::Update(
 		CMapEditorWorkspaceService::Is_Active();
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
 	Update_EditorAreaPreload();
+	/* The editor is where this content is checked, so the same idle motion
+	   the arena level plays runs here as well. Rebinding is keyed on the
+	   area id, which is what changes when the workspace switches maps. */
+	if (isMapAuthoringLevel)
+	{
+		const EDITOR_AREA_DESCRIPTOR* motionArea = Get_ActiveEditorArea();
+		const std::string motionAreaId = nullptr != motionArea ?
+			motionArea->areaId : m_Catalog.Get_AreaId();
+		if (motionAreaId != m_strSelfMotionAreaId)
+		{
+			m_strSelfMotionAreaId = motionAreaId;
+			m_fSelfMotionElapsedSeconds = 0.f;
+			m_SelfMotionModels.clear();
+			(void)CMapPlacementRuntime::Read_SelfMotions(
+				motionAreaId, m_Placements, m_SelfMotions);
+		}
+		if (!m_SelfMotions.empty() && std::isfinite(fTimeDelta))
+		{
+			m_fSelfMotionElapsedSeconds += fTimeDelta;
+			if (m_fSelfMotionElapsedSeconds >
+				CMapPlacementRuntime::SELF_MOTION_WRAP_SECONDS)
+			{
+				m_fSelfMotionElapsedSeconds -=
+					CMapPlacementRuntime::SELF_MOTION_WRAP_SECONDS;
+			}
+			CMapPlacementRuntime::Sample_SelfMotions(
+				m_SelfMotions, m_fSelfMotionElapsedSeconds,
+				m_iAuthoringLevelIndex, m_Catalog, m_SelfMotionModels,
+				m_Placements);
+		}
+	}
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Update(
@@ -1275,9 +1314,18 @@ void Client::CMapTool::Render_WorldOverlay(bool_t isAssetTest)
 		return;
 
 	if (NAVIGATION_MODE::BAKE == m_eNavigationMode)
+	{
 		Render_NavigationBoundsOverlay();
+		/* Bake mode used to draw the bounds alone, which is exactly the mode
+		   a staged bake has to be visible in: the numbers say how many cells
+		   were found, and this says where they landed. */
+		if (m_bNavigationBakePreviewReady)
+			Render_NavigationOverlay();
+	}
 	else
+	{
 		Render_NavigationOverlay();
+	}
 }
 
 void Client::CMapTool::Render_WorldNpcRouteOverlay()
@@ -1794,8 +1842,18 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 		return;
 	const EDITOR_CAMERA_SHOT* bound = nullptr;
 	f32_t elapsedMs = 0.f;
+	/* Holding a clock means the panel is judging one shot. Letting the
+	   highest priority shot that happens to be playing win would show a
+	   different cutscene than the one the editor has open. */
+	const bool_t editingOneShot = 0.f <= m_fCutsceneScrubMs &&
+		m_iSelectedCameraShot < m_CameraShots.size();
 	for (const EDITOR_CAMERA_SHOT& shot : m_CameraShots)
 	{
+		if (editingOneShot &&
+			&shot != &m_CameraShots[m_iSelectedCameraShot])
+		{
+			continue;
+		}
 		/* A bound shot with fewer than two keys is still a shot: the product
 		   level holds its single pose for the cutscene, so the preview must
 		   show the same thing instead of leaving the free camera alone. */
@@ -2413,6 +2471,11 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	else
 	{
 		m_ArenaRisePlayer.Set_Paused(false);
+		/* Rewind before advancing: an instance that finishes inside Update is
+		   dropped, and restarting it then would take its ending pose as the
+		   new baseline. */
+		Update_MarioSequenceLoop(
+			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
 		m_ArenaRisePlayer.Update(
 			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
 	}
@@ -2427,7 +2490,12 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 		Apply_CutsceneArenaVisibility(false);
 		m_Status = "Original cutscene finished: arena handed back";
 	}
-	else if (m_bCutsceneOriginalRunning)
+	/* The original cutscene is not the only clock a camera track can ride:
+	   a stage intro has its own sequence. Drive the track whenever that
+	   cutscene runs, and also while the editor is holding a clock for key
+	   work, which is what Hold Cutscene and Play This Key set up. A plain
+	   loop preview still leaves the free camera alone. */
+	else if (m_bCutsceneOriginalRunning || 0.f <= m_fCutsceneScrubMs)
 	{
 		Apply_CutsceneCameraTrack(fTimeDelta);
 	}
@@ -2599,6 +2667,202 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 	return rejected.empty();
 }
 
+bool_t Client::CMapTool::Is_ShotCutsceneClockPlaying(
+	const EDITOR_CAMERA_SHOT& shot) const
+{
+	/* A shot with no sequence has no clock, so its track can never
+	   play. Reporting the Area cutscene instead would light up the key
+	   buttons for a shot they cannot move. */
+	if (shot.sequenceInstanceId.empty())
+		return false;
+	return m_ArenaRisePlayer.Is_Playing(shot.sequenceInstanceId);
+}
+
+bool_t Client::CMapTool::Ensure_ShotCutsceneClock(
+	const EDITOR_CAMERA_SHOT& shot)
+{
+	if (shot.sequenceInstanceId.empty())
+	{
+		/* No sequence means no clock of its own. Starting the Area
+		   cutscene here would preview a different shot entirely, so
+		   report the gap instead of showing the wrong thing. */
+		m_CameraShotStatus = "This shot names no Sequence Instance, so it has no clock to play: " + shot.shotId;
+		return false;
+	}
+	if (m_ArenaRisePlayer.Is_Playing(shot.sequenceInstanceId))
+		return true;
+	/* The original cutscene owns prop and arena state besides its
+	   clock, so a shot bound to it still starts through that path. */
+	const size_t originalLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	if (shot.sequenceInstanceId.size() >= originalLength &&
+		0 == shot.sequenceInstanceId.compare(0, originalLength,
+			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+	{
+		return Play_CutsceneOriginalRise();
+	}
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_CameraShotStatus = "Camera track needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_CameraShotStatus = "Sequence document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	/* Only this shot's own sequence starts. Stopping the others would
+	   throw away whatever preview the editor already has running. */
+	if (!m_ArenaRisePlayer.Play(shot.sequenceInstanceId, targets))
+	{
+		m_CameraShotStatus = "Camera track sequence could not start: " +
+			shot.sequenceInstanceId;
+		return false;
+	}
+	m_CameraShotStatus = "Camera track clock started: " +
+		shot.sequenceInstanceId;
+	return true;
+}
+
+bool_t Client::CMapTool::Toggle_MarioSequenceLoop()
+{
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_MarioWalkStatus = "Sequence loop needs a loaded Area";
+		return false;
+	}
+	if (m_bMarioSequenceLoopRunning)
+	{
+		/* Stopping mid sequence would leave the props wherever the lap got
+		   to. Rewinding to the opening frame first puts the stage back in
+		   the state a trigger is supposed to find it in, and does it without
+		   reloading the Area, which would discard unsaved authoring. */
+		(void)m_ArenaRisePlayer.Seek_AllToMs(0.f, targets);
+		m_ArenaRisePlayer.Stop_All(targets);
+		m_MarioLoopInstanceIds.clear();
+		m_bMarioSequenceLoopRunning = false;
+		m_MarioWalkStatus = "Sequence loop stopped at the opening frame";
+		return true;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_MarioWalkStatus = "Sequence document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	const size_t prefixLength = strlen(KAKUL_MARIO_INSTANCE_PREFIX);
+	m_MarioLoopInstanceIds.clear();
+	for (const WORLD_SEQUENCE_INSTANCE& instance :
+		m_ArenaRisePlayer.Get_Document().Get_Instances())
+	{
+		if (instance.instanceId.size() < prefixLength ||
+			0 != instance.instanceId.compare(0, prefixLength,
+				KAKUL_MARIO_INSTANCE_PREFIX))
+		{
+			continue;
+		}
+		if (instance.enabled)
+			m_MarioLoopInstanceIds.push_back(instance.instanceId);
+	}
+	if (m_MarioLoopInstanceIds.empty())
+	{
+		m_MarioWalkStatus = "No Mario sequences in this Area";
+		return false;
+	}
+	/* A held scrub writes the clock instead of advancing it, which would
+	   freeze the loop on one frame. */
+	m_fCutsceneScrubMs = -1.f;
+	m_fCutsceneLoopStartMs = -1.f;
+	m_fCutsceneLoopEndMs = -1.f;
+	size_t started = 0;
+	std::string rejected;
+	for (const std::string& instanceId : m_MarioLoopInstanceIds)
+	{
+		if (m_ArenaRisePlayer.Play(instanceId, targets))
+		{
+			++started;
+			continue;
+		}
+		if (!rejected.empty())
+			rejected += ", ";
+		rejected += instanceId.substr(prefixLength);
+	}
+	if (0 == started)
+	{
+		m_MarioLoopInstanceIds.clear();
+		m_MarioWalkStatus = "Sequence loop could not start: " + rejected;
+		return false;
+	}
+	m_bMarioSequenceLoopRunning = true;
+	m_MarioWalkStatus = "Sequence loop running: " + std::to_string(started) +
+		" of " + std::to_string(m_MarioLoopInstanceIds.size()) + " sequences" +
+		(rejected.empty() ? "" : ", unavailable: " + rejected);
+	return true;
+}
+
+void Client::CMapTool::Update_MarioSequenceLoop(
+	const f32_t fTimeDelta,
+	const CWorldSequencePlayer::TARGET_SET& targets)
+{
+	if (!m_bMarioSequenceLoopRunning || !std::isfinite(fTimeDelta))
+		return;
+	const f32_t stepMs = (std::max)(0.f, fTimeDelta) * 1000.f;
+	bool_t interrupted = false;
+	for (const std::string& instanceId : m_MarioLoopInstanceIds)
+	{
+		const WORLD_SEQUENCE_INSTANCE* instance =
+			m_ArenaRisePlayer.Get_Document().Find_Instance(instanceId);
+		const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ?
+			nullptr :
+			m_ArenaRisePlayer.Get_Document().Find_Template(instance->templateId);
+		if (nullptr == sequence)
+			continue;
+		f32_t elapsedMs = 0.f;
+		if (!m_ArenaRisePlayer.Try_GetElapsedMs(instanceId, elapsedMs))
+		{
+			/* Something else took the player -- a cutscene preview stops every
+			   instance. Playing again here would adopt the pose that stop left
+			   behind as the new baseline and drift the props a little further
+			   each lap, so end the loop and let it be started again. */
+			interrupted = true;
+			break;
+		}
+		const f32_t rewindAtMs =
+			static_cast<f32_t>(sequence->durationMs) -
+			KAKUL_MARIO_LOOP_REWIND_MARGIN_MS;
+		if (elapsedMs + stepMs >= rewindAtMs)
+		{
+			/* Still active, so this rewinds the clock and keeps the baseline
+			   the first start captured. */
+			(void)m_ArenaRisePlayer.Play(instanceId, targets);
+		}
+	}
+	if (interrupted)
+	{
+		m_MarioLoopInstanceIds.clear();
+		m_bMarioSequenceLoopRunning = false;
+		m_MarioWalkStatus = "Sequence loop ended: another preview took the sequence player";
+	}
+}
+
 void Client::CMapTool::Render_CutsceneArenaPreview()
 {
 	if (!ImGui::CollapsingHeader("Cutscene Arena Preview"))
@@ -2694,6 +2958,20 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 			m_MarioWalkStage.c_str(), m_iMarioWalkNextStop,
 			m_MarioWalkStops.size(),
 			static_cast<double>(m_fMarioWalkSeconds));
+	}
+	ImGui::SeparatorText("Sequence Loop");
+	ImGui::TextWrapped(
+		"Replays every authored Mario sequence for as long as it is on, so the motion a trigger is meant to start can be watched while the trigger box is placed. Editor preview only: nothing is saved, and stopping rewinds the props to the opening frame each stage begins on.");
+	if (ImGui::Button(m_bMarioSequenceLoopRunning ?
+		"Stop Sequence Loop" : "Loop All Mario Sequences"))
+	{
+		(void)Toggle_MarioSequenceLoop();
+	}
+	if (m_bMarioSequenceLoopRunning)
+	{
+		ImGui::SameLine();
+		ImGui::Text("looping %zu sequences",
+			m_MarioLoopInstanceIds.size());
 	}
 	ImGui::TextDisabled("%s", m_MarioWalkStatus.c_str());
 }
@@ -7902,7 +8180,7 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 		}
 
 		std::error_code sourceError;
-		const bool_t hasSource = std::filesystem::is_regular_file(
+		bool_t hasSource = std::filesystem::is_regular_file(
 			active->navigationSource, sourceError);
 		if (IsFileInspectionFailure(sourceError) ||
 			(!hasSource && !active->allowNavigationBootstrap))
@@ -7912,17 +8190,59 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 			return false;
 		}
 
-		m_NavigationSourcePath = active->navigationSource;
-		m_NavigationPaintPath = active->navigationPaint;
-		m_RuntimeBlockerPath = active->navigationBlockers;
-		m_NavigationRuntimePath.clear();
+		std::string manifestStatus;
+		(void)CMapNavigationContract::Read_RegionManifest(
+			active->areaId, m_NavigationRegions, manifestStatus);
+		/* The descriptor owns the Area's base grid. A selected detail region is
+		   a different grid beside it, so its paths come from the contract. */
+		if (!m_NavigationRegionId.empty())
+		{
+			MAP_NAVIGATION_CONTRACT selectedContract;
+			std::string selectedStatus;
+			if (!Resolve_SelectedNavigationContract(
+				selectedContract, selectedStatus))
+			{
+				m_NavigationStatus = selectedStatus;
+				return false;
+			}
+			m_NavigationSourcePath = selectedContract.sourcePath;
+			m_NavigationPaintPath = selectedContract.paintPath;
+			m_RuntimeBlockerPath = selectedContract.blockerPath;
+			m_NavigationRuntimePath = selectedContract.runtimePath;
+			/* The gate above asked whether the Area's base grid exists. A
+			   region is judged on its own file: a missing one is the normal
+			   state of a region that has not been baked yet, and the bake is
+			   what creates it, so bootstrap is always allowed here. */
+			std::error_code regionSourceError;
+			hasSource = std::filesystem::is_regular_file(
+				m_NavigationSourcePath, regionSourceError);
+			if (IsFileInspectionFailure(regionSourceError))
+			{
+				m_NavigationStatus =
+					"Could not inspect navigation region source: " +
+					m_NavigationSourcePath.string();
+				return false;
+			}
+		}
+		else
+		{
+			m_NavigationSourcePath = active->navigationSource;
+			m_NavigationPaintPath = active->navigationPaint;
+			m_RuntimeBlockerPath = active->navigationBlockers;
+			m_NavigationRuntimePath.clear();
+		}
 		if (!hasSource)
 		{
 			m_NavigationDocument = CNavGridPaintDocument{};
 			m_RuntimeBlockerDocument = CNavRuntimeBlockerDocument{};
-			m_NavigationBakeDesc = NAVGRID_BAKE_DESC{};
-			m_NavigationStatus =
-				"Navigation bootstrap: place Nav Bounds and Bake";
+			/* Bounds placed before creating the region are the bounds meant
+			   for it. Only a base bootstrap starts from nothing. */
+			if (m_NavigationRegionId.empty())
+				m_NavigationBakeDesc = NAVGRID_BAKE_DESC{};
+			m_NavigationStatus = m_NavigationRegionId.empty() ?
+				"Navigation bootstrap: place Nav Bounds and Bake" :
+				"Region " + m_NavigationRegionId +
+				" has no bake yet: place Nav Bounds and Bake";
 			return false;
 		}
 
@@ -7930,12 +8250,15 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 		CNavGridPaintDocument stagedNavigation;
 		CNavRuntimeBlockerDocument stagedBlockers;
 		if (!stagedNavigation.Load(
-			active->navigationSource,
-			active->navigationPaint,
+			m_NavigationSourcePath,
+			m_NavigationPaintPath,
 			status) ||
-			stagedNavigation.Get_Desc().areaId != active->areaId ||
+			stagedNavigation.Get_Desc().areaId !=
+				(m_NavigationRegionId.empty() ?
+					active->areaId :
+					active->areaId + "." + m_NavigationRegionId) ||
 			!stagedBlockers.Load(
-				active->navigationBlockers,
+				m_RuntimeBlockerPath,
 				stagedNavigation.Get_Desc(),
 				status))
 		{
@@ -7967,8 +8290,10 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 
 	MAP_NAVIGATION_CONTRACT stagedContract;
 	std::string stagedStatus;
-	if (!CMapNavigationContract::Resolve_Area(
-		m_Catalog.Get_AreaId(), stagedContract, stagedStatus))
+	std::string manifestStatus;
+	(void)CMapNavigationContract::Read_RegionManifest(
+		m_Catalog.Get_AreaId(), m_NavigationRegions, manifestStatus);
+	if (!Resolve_SelectedNavigationContract(stagedContract, stagedStatus))
 	{
 		m_NavigationStatus = stagedStatus;
 		return false;
@@ -8022,7 +8347,8 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 		stagedContract.areaId)
 	{
 		m_NavigationStatus =
-			"NavGrid source area does not match active map area";
+			"NavGrid source area does not match the selected grid: " +
+			stagedContract.areaId;
 		return false;
 	}
 
@@ -8252,15 +8578,30 @@ bool_t Client::CMapTool::Save_Navigation()
 			m_NavigationStatus = "Navigation authoring is unavailable";
 			return false;
 		}
-		if (!HasSameNavigationPath(
-			m_NavigationSourcePath, active->navigationSource) ||
-			!HasSameNavigationPath(
-				m_NavigationPaintPath, active->navigationPaint) ||
-			!HasSameNavigationPath(
-				m_RuntimeBlockerPath, active->navigationBlockers))
+		MAP_NAVIGATION_CONTRACT expected;
+		std::string expectedStatus;
+		if (!Resolve_SelectedNavigationContract(expected, expectedStatus))
+		{
+			m_NavigationStatus = expectedStatus;
+			return false;
+		}
+		/* A selected detail region is a different grid beside the descriptor
+		   base, so the guard pins the exact selected paths instead. */
+		const std::filesystem::path& expectedSource =
+			m_NavigationRegionId.empty() ?
+			active->navigationSource : expected.sourcePath;
+		const std::filesystem::path& expectedPaint =
+			m_NavigationRegionId.empty() ?
+			active->navigationPaint : expected.paintPath;
+		const std::filesystem::path& expectedBlockers =
+			m_NavigationRegionId.empty() ?
+			active->navigationBlockers : expected.blockerPath;
+		if (!HasSameNavigationPath(m_NavigationSourcePath, expectedSource) ||
+			!HasSameNavigationPath(m_NavigationPaintPath, expectedPaint) ||
+			!HasSameNavigationPath(m_RuntimeBlockerPath, expectedBlockers))
 		{
 			m_NavigationStatus =
-				"Navigation paths do not match the immutable active Area";
+				"Navigation paths do not match the selected grid";
 			return false;
 		}
 		if (m_DestructionDocument.Is_Ready())
@@ -8276,7 +8617,7 @@ bool_t Client::CMapTool::Save_Navigation()
 
 		std::string status;
 		if (!m_NavigationDocument.Save_Paint(
-			active->navigationPaint, status))
+			expectedPaint, status))
 		{
 			m_NavigationStatus = status;
 			return false;
@@ -8284,7 +8625,7 @@ bool_t Client::CMapTool::Save_Navigation()
 		if (EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS ==
 				active->navigationPolicy &&
 			!m_RuntimeBlockerDocument.Save(
-				active->navigationBlockers, status))
+				expectedBlockers, status))
 		{
 			m_NavigationStatus = status;
 			return false;
@@ -8297,6 +8638,204 @@ bool_t Client::CMapTool::Save_Navigation()
 	m_NavigationStatus =
 		"Navigation save is only available in the Map Editor workspace";
 	return false;
+}
+
+bool_t Client::CMapTool::Resolve_SelectedNavigationContract(
+	MAP_NAVIGATION_CONTRACT& outContract,
+	std::string& outStatus) const
+{
+	/* In the Map Editor workspace the active descriptor owns the Area identity
+	   and the catalog may not carry it, so the base grid path never went
+	   through the catalog either. Regions have to resolve from the same
+	   authority or they name a grid that does not exist. */
+	const EDITOR_AREA_DESCRIPTOR* active =
+		CMapEditorWorkspaceService::Is_Active() ?
+		Get_ActiveEditorArea() : nullptr;
+	const std::string& areaId = nullptr != active ?
+		active->areaId : m_Catalog.Get_AreaId();
+	if (areaId.empty())
+	{
+		outStatus = "Active navigation Area is unknown";
+		return false;
+	}
+	if (m_NavigationRegionId.empty())
+	{
+		return CMapNavigationContract::Resolve_Area(
+			areaId, outContract, outStatus);
+	}
+	return CMapNavigationContract::Resolve_Region(
+		areaId, m_NavigationRegionId, outContract, outStatus);
+}
+
+bool_t Client::CMapTool::Select_NavigationRegion(std::string regionId)
+{
+	if (!regionId.empty() &&
+		!CMapNavigationContract::Is_ValidRegionId(regionId))
+	{
+		m_NavigationStatus = "Navigation region ID is invalid";
+		return false;
+	}
+	if (regionId == m_NavigationRegionId)
+		return true;
+
+	const std::string previous = m_NavigationRegionId;
+	m_NavigationRegionId = regionId;
+	if (Load_NavigationDocument())
+		return true;
+
+	/* A region whose navsource does not exist yet is not a failed switch: it
+	   is the state every region is created in, and Bake is what writes the
+	   file. Keeping the selection is what makes that bake land on the
+	   region's own paths instead of the Area's base grid. */
+	if (!regionId.empty())
+	{
+		MAP_NAVIGATION_CONTRACT contract;
+		std::string contractStatus;
+		std::error_code sourceError;
+		if (Resolve_SelectedNavigationContract(contract, contractStatus) &&
+			!std::filesystem::exists(contract.sourcePath, sourceError) &&
+			!sourceError)
+		{
+			m_eNavigationMode = NAVIGATION_MODE::BAKE;
+			m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
+			m_bNavigationStrokeActive = false;
+			return true;
+		}
+	}
+
+	/* A region without a baked navsource is a normal state, and so is a
+	   corrupt one: either way the editor must not keep showing the previous
+	   grid's cells under the new selection. Load_NavigationDocument already
+	   left an empty document and a status, so the selection only goes back
+	   when the previous grid still loads. */
+	/* Keep why the switch failed: reloading the previous grid succeeds and
+	   would otherwise overwrite the message with its own success text. */
+	const std::string failure = m_NavigationStatus;
+	m_NavigationRegionId = previous;
+	if (!Load_NavigationDocument())
+		m_NavigationRegionId = regionId;
+	m_NavigationStatus = failure;
+	return false;
+}
+
+bool_t Client::CMapTool::Commit_NavigationRegionManifest()
+{
+	if (m_NavigationRegionId.empty())
+		return true;
+
+	const std::string& areaId = m_Catalog.Get_AreaId();
+	std::vector<MAP_NAVIGATION_REGION> staged;
+	std::string status;
+	if (!CMapNavigationContract::Read_RegionManifest(areaId, staged, status))
+	{
+		m_NavigationStatus = status;
+		return false;
+	}
+
+	const auto existing = std::find_if(
+		staged.begin(),
+		staged.end(),
+		[this](const MAP_NAVIGATION_REGION& region)
+		{
+			return region.regionId == m_NavigationRegionId;
+		});
+	if (existing != staged.end())
+	{
+		existing->stepHeight = m_NewNavigationRegionStepHeight;
+	}
+	else
+	{
+		MAP_NAVIGATION_REGION added;
+		added.regionId = m_NavigationRegionId;
+		added.stepHeight = m_NewNavigationRegionStepHeight;
+		staged.push_back(std::move(added));
+	}
+
+	if (!CMapNavigationContract::Write_RegionManifest(areaId, staged, status))
+	{
+		m_NavigationStatus = status;
+		return false;
+	}
+	m_NavigationRegions = std::move(staged);
+	m_NavigationStatus = status;
+	return true;
+}
+
+void Client::CMapTool::Render_NavigationRegionControls()
+{
+	ImGui::SeparatorText("Grid");
+	const EDITOR_AREA_DESCRIPTOR* activeArea =
+		CMapEditorWorkspaceService::Is_Active() ?
+		Get_ActiveEditorArea() : nullptr;
+	const std::string& areaId = nullptr != activeArea ?
+		activeArea->areaId : m_Catalog.Get_AreaId();
+	const std::string baseLabel = areaId + " (base)";
+	const std::string preview = m_NavigationRegionId.empty() ?
+		baseLabel : m_NavigationRegionId;
+	if (ImGui::BeginCombo("Region", preview.c_str()))
+	{
+		if (ImGui::Selectable(
+			baseLabel.c_str(),
+			m_NavigationRegionId.empty()))
+		{
+			Select_NavigationRegion(std::string{});
+		}
+		/* Selecting reloads the document, which refills m_NavigationRegions.
+		   Copy what is needed and stop iterating the vector being replaced. */
+		std::string pickedRegionId;
+		f32_t pickedStepHeight = m_NewNavigationRegionStepHeight;
+		for (const MAP_NAVIGATION_REGION& region : m_NavigationRegions)
+		{
+			if (ImGui::Selectable(
+				region.regionId.c_str(),
+				region.regionId == m_NavigationRegionId))
+			{
+				pickedRegionId = region.regionId;
+				pickedStepHeight = region.stepHeight;
+				break;
+			}
+		}
+		ImGui::EndCombo();
+		if (!pickedRegionId.empty())
+		{
+			m_NewNavigationRegionStepHeight = pickedStepHeight;
+			Select_NavigationRegion(pickedRegionId);
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Regions"))
+	{
+		std::string status;
+		(void)CMapNavigationContract::Read_RegionManifest(
+			areaId, m_NavigationRegions, status);
+		m_NavigationStatus = status;
+	}
+
+	ImGui::InputText(
+		"New Region ID",
+		m_NewNavigationRegionId,
+		sizeof(m_NewNavigationRegionId));
+	ImGui::DragFloat(
+		"Region Step Height",
+		&m_NewNavigationRegionStepHeight,
+		0.05f,
+		0.f,
+		10.f);
+	const std::string newRegionId = m_NewNavigationRegionId;
+	ImGui::BeginDisabled(
+		!CMapNavigationContract::Is_ValidRegionId(newRegionId));
+	if (ImGui::Button("Create Region"))
+	{
+		/* Selecting a region with no navsource yet fails on purpose: the panel
+		   drops into Bake with empty documents, which is exactly the state
+		   needed to place Nav Bounds for it. */
+		Select_NavigationRegion(newRegionId);
+		m_eNavigationMode = NAVIGATION_MODE::BAKE;
+	}
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"A region is a finer grid over part of this Area. Place Nav Bounds "
+		"around the whole stage it covers, then Bake.");
 }
 
 bool_t Client::CMapTool::Try_PickNavigationCell(
@@ -13833,7 +14372,7 @@ void Client::CMapTool::Render_CameraShotSection()
 
 			/* Hold the running cutscene so a key is judged against the frame it
 			   actually governs instead of guessed from a still. */
-			bool_t cutscenePlaying = Is_CutsceneOriginalPlaying();
+			bool_t cutscenePlaying = Is_ShotCutsceneClockPlaying(shot);
 			const bool_t cutsceneHeld = 0.f <= m_fCutsceneScrubMs;
 			if (ImGui::Button(cutsceneHeld ? "Resume Cutscene" : "Hold Cutscene"))
 			{
@@ -13849,7 +14388,7 @@ void Client::CMapTool::Render_CameraShotSection()
 					/* Start the cutscene here if no other panel has, so the
 					   camera work never depends on visiting another tab. */
 					if (!cutscenePlaying)
-						cutscenePlaying = Play_CutsceneOriginalRise();
+						cutscenePlaying = Ensure_ShotCutsceneClock(shot);
 					f32_t nowMs = 0.f;
 					if (!shot.sequenceInstanceId.empty())
 					{
@@ -13991,8 +14530,8 @@ void Client::CMapTool::Render_CameraShotSection()
 					}
 					else
 					{
-						if (!Is_CutsceneOriginalPlaying())
-							(void)Play_CutsceneOriginalRise();
+						if (!Is_ShotCutsceneClockPlaying(shot))
+							(void)Ensure_ShotCutsceneClock(shot);
 						/* The key owns the stretch from the previous key to the
 						   next one, so the loop shows the whole move it steers
 						   rather than a single frozen instant. */
@@ -14128,6 +14667,9 @@ void Client::CMapTool::Render_NavigationPanel()
 			"Navigation authoring is disabled for this Area.");
 		return;
 	}
+
+	Render_NavigationRegionControls();
+	ImGui::Separator();
 
 	if (ImGui::RadioButton(
 		"Bake",
@@ -14457,7 +14999,12 @@ void Client::CMapTool::Render_NavigationDiagnostics()
 
 void Client::CMapTool::Render_NavigationOverlay()
 {
-	if (!m_NavigationDocument.Is_Ready() ||
+	/* A staged bake is drawn instead of the live grid: it is the whole point
+	   of the preview that the cells you are about to get are on screen before
+	   anything is written. A region baked for the first time has no document
+	   yet, so the preview alone is enough to draw. */
+	const bool_t drawPreview = m_bNavigationBakePreviewReady;
+	if ((!m_NavigationDocument.Is_Ready() && !drawPreview) ||
 		nullptr == m_pContext ||
 		nullptr == m_pNavigationRenderResources ||
 		nullptr == m_pNavigationRenderResources->pBatch ||
@@ -14479,16 +15026,27 @@ void Client::CMapTool::Render_NavigationOverlay()
 	const float4_t green(0.1f, 1.f, 0.2f, 1.f);
 	const float4_t yellow(1.f, 0.85f, 0.05f, 1.f);
 	const float4_t magenta(1.f, 0.15f, 0.85f, 1.f);
-	const NAVGRID_AUTHORING_DESC& desc =
+	/* Preview cells read cyan and orange so a staged grid is never mistaken
+	   for the one currently saved. */
+	const float4_t previewWalkable(0.15f, 0.95f, 0.85f, 1.f);
+	const float4_t previewBlocked(1.f, 0.55f, 0.1f, 1.f);
+	const NAVGRID_AUTHORING_DESC& desc = drawPreview ?
+		m_NavigationBakePreview.desc :
 		m_NavigationDocument.Get_Desc();
 	const f32_t halfCell = desc.cellSize * 0.5f;
+	const uint32_t overlayCellCount = drawPreview ?
+		static_cast<uint32_t>(m_NavigationBakePreview.cells.size()) :
+		m_NavigationDocument.Get_CellCount();
 
 	resources.pBatch->Begin();
-	for (uint32_t index = 0;
-		index < m_NavigationDocument.Get_CellCount();
-		++index)
+	for (uint32_t index = 0; index < overlayCellCount; ++index)
 	{
-		const NAVGRID_AUTHORING_CELL_STATE state =
+		const NAVGRID_AUTHORING_CELL_STATE state = drawPreview ?
+			(!m_NavigationBakePreview.cells[index].surfaceResolved ?
+				NAVGRID_AUTHORING_CELL_STATE::NO_SURFACE :
+				m_NavigationBakePreview.cells[index].baseWalkable ?
+				NAVGRID_AUTHORING_CELL_STATE::WALKABLE :
+				NAVGRID_AUTHORING_CELL_STATE::BLOCKED) :
 			m_NavigationDocument.Get_CellState(index);
 		if (!m_bShowUnresolvedCells &&
 			NAVGRID_AUTHORING_CELL_STATE::NO_SURFACE == state)
@@ -14504,12 +15062,38 @@ void Client::CMapTool::Render_NavigationOverlay()
 		const f32_t worldZ =
 			desc.originZ +
 			(static_cast<f32_t>(cellZ) + 0.5f) * desc.cellSize;
-		if (!Is_CellInsideNavigationBounds(worldX, worldZ))
+		if (drawPreview)
+		{
+			/* The grid is the axis-aligned box of a possibly rotated bounds,
+			   so its corners can fall outside the box the user placed. The
+			   staged desc carries those bounds; the saved document does not
+			   describe this grid at all yet. */
+			const f32_t previewRadians =
+				XMConvertToRadians(desc.bake.yawDegrees);
+			const f32_t previewCosine = std::cos(previewRadians);
+			const f32_t previewSine = std::sin(previewRadians);
+			const f32_t offsetX = worldX - desc.bake.position.x;
+			const f32_t offsetZ = worldZ - desc.bake.position.z;
+			const f32_t localX =
+				previewCosine * offsetX - previewSine * offsetZ;
+			const f32_t localZ =
+				previewSine * offsetX + previewCosine * offsetZ;
+			if (std::abs(localX) > desc.bake.size.x * 0.5f + 0.00001f ||
+				std::abs(localZ) > desc.bake.size.z * 0.5f + 0.00001f)
+			{
+				continue;
+			}
+		}
+		else if (!Is_CellInsideNavigationBounds(worldX, worldZ))
+		{
 			continue;
+		}
 
 		const f32_t displayHeight =
 			NAVGRID_AUTHORING_CELL_STATE::NO_SURFACE == state ?
 			desc.bake.position.y - desc.bake.size.y * 0.5f :
+			drawPreview ?
+			m_NavigationBakePreview.cells[index].height :
 			m_NavigationDocument.Get_CellHeight(index);
 		const float3_t center(
 			worldX,
@@ -14517,6 +15101,7 @@ void Client::CMapTool::Render_NavigationOverlay()
 			worldZ);
 
 		const bool_t isSelectedRuntimeCell =
+			!drawPreview &&
 			NAVIGATION_MODE::DESTRUCTION_AREA ==
 				m_eNavigationMode &&
 			m_RuntimeBlockerDocument.Is_CellInRegion(
@@ -14524,6 +15109,9 @@ void Client::CMapTool::Render_NavigationOverlay()
 				index);
 		const float4_t& color = isSelectedRuntimeCell ?
 			magenta :
+			drawPreview ?
+			(NAVGRID_AUTHORING_CELL_STATE::WALKABLE != state ?
+				previewBlocked : previewWalkable) :
 			NAVGRID_AUTHORING_CELL_STATE::WALKABLE != state ?
 			yellow :
 			green;
@@ -15134,8 +15722,21 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 	return true;
 }
 
-bool_t Client::CMapTool::Bake_Navigation()
+void Client::CMapTool::Discard_NavigationBakePreview()
 {
+	m_bNavigationBakePreviewReady = false;
+	m_bNavigationBakePreviewLayoutChanged = false;
+	m_iNavigationBakePreviewWalkable = {};
+	m_NavigationBakePreview = NAVGRID_BAKE_RESULT{};
+}
+
+bool_t Client::CMapTool::Preview_NavigationBake()
+{
+	/* Everything here happens in memory. The bounds can be wrong, the cell
+	   size can be wrong, and nothing on disk changes: the numbers this leaves
+	   behind are what the panel shows before Apply is offered at all. */
+	Discard_NavigationBakePreview();
+
 	if (!Is_ValidNavigationBakeDesc(m_NavigationBakeDesc))
 	{
 		m_NavigationBakeStatus =
@@ -15143,10 +15744,14 @@ bool_t Client::CMapTool::Bake_Navigation()
 		return false;
 	}
 
+	const std::string bakeGridId = m_NavigationRegionId.empty() ?
+		m_Catalog.Get_AreaId() :
+		m_Catalog.Get_AreaId() + "." + m_NavigationRegionId;
+
 	NAVGRID_AUTHORING_DESC nextDesc;
 	std::string status;
 	if (!CNavGridBaker::Build_Desc(
-		m_Catalog.Get_AreaId(),
+		bakeGridId,
 		m_NavigationBakeDesc,
 		nextDesc,
 		status))
@@ -15155,40 +15760,18 @@ bool_t Client::CMapTool::Bake_Navigation()
 		return false;
 	}
 
-	const bool_t hasCurrentNavigation =
-		m_NavigationDocument.Is_Ready();
-
 	const NAVGRID_AUTHORING_DESC* currentDesc =
-		hasCurrentNavigation ?
+		m_NavigationDocument.Is_Ready() ?
 		&m_NavigationDocument.Get_Desc() :
 		nullptr;
-
 	const bool_t layoutChanged =
 		nullptr == currentDesc ||
 		currentDesc->areaId != nextDesc.areaId ||
 		currentDesc->width != nextDesc.width ||
 		currentDesc->height != nextDesc.height ||
-		std::abs(currentDesc->cellSize - nextDesc.cellSize) >
-			0.000001f ||
-		std::abs(currentDesc->originX - nextDesc.originX) >
-			0.000001f ||
-		std::abs(currentDesc->originZ - nextDesc.originZ) >
-			0.000001f;
-
-	const bool_t hasAuthoredCells =
-		hasCurrentNavigation &&
-		(0 != m_NavigationDocument.Get_BlockedCount() ||
-			0 != m_RuntimeBlockerDocument.Get_RegionCount());
-
-	if (layoutChanged &&
-		hasAuthoredCells &&
-		!m_bNavigationBakeResetConfirmed)
-	{
-		m_bNavigationBakeResetPending = true;
-		m_NavigationBakeStatus =
-			"Grid layout changed; confirm reset of paint and regions";
-		return false;
-	}
+		std::abs(currentDesc->cellSize - nextDesc.cellSize) > 0.000001f ||
+		std::abs(currentDesc->originX - nextDesc.originX) > 0.000001f ||
+		std::abs(currentDesc->originZ - nextDesc.originZ) > 0.000001f;
 
 	std::vector<NAVGRID_BAKE_PLACEMENT> placements;
 	if (!Collect_NavigationBakePlacements(placements, status))
@@ -15199,13 +15782,58 @@ bool_t Client::CMapTool::Bake_Navigation()
 
 	NAVGRID_BAKE_RESULT result;
 	if (!CNavGridBaker::Build(
-		m_Catalog.Get_AreaId(),
+		bakeGridId,
 		m_NavigationBakeDesc,
 		placements,
 		result,
 		status))
 	{
 		m_NavigationBakeStatus = status;
+		return false;
+	}
+
+	uint32_t walkable = {};
+	for (const NAV_SOURCE_CELL& cell : result.cells)
+	{
+		if (cell.surfaceResolved && cell.baseWalkable)
+			++walkable;
+	}
+
+	m_NavigationBakePreview = std::move(result);
+	m_bNavigationBakePreviewLayoutChanged = layoutChanged;
+	m_iNavigationBakePreviewWalkable = walkable;
+	m_bNavigationBakePreviewReady = true;
+	m_bNavigationBakeResetConfirmed = false;
+	m_bNavigationBakeResetPending = false;
+	m_NavigationBakeStatus = status;
+	return true;
+}
+bool_t Client::CMapTool::Bake_Navigation()
+{
+	/* Only reachable through Preview_NavigationBake, so the grid being written
+	   is exactly the one whose numbers the panel showed. This is the single
+	   step that touches disk. */
+	if (!m_bNavigationBakePreviewReady)
+	{
+		m_NavigationBakeStatus = "Run Bake Preview before applying";
+		return false;
+	}
+
+	std::string status;
+	const bool_t layoutChanged = m_bNavigationBakePreviewLayoutChanged;
+	const NAVGRID_BAKE_RESULT& result = m_NavigationBakePreview;
+
+	const bool_t hasAuthoredCells =
+		m_NavigationDocument.Is_Ready() &&
+		(0 != m_NavigationDocument.Get_BlockedCount() ||
+			0 != m_RuntimeBlockerDocument.Get_RegionCount());
+	if (layoutChanged &&
+		hasAuthoredCells &&
+		!m_bNavigationBakeResetConfirmed)
+	{
+		m_bNavigationBakeResetPending = true;
+		m_NavigationBakeStatus =
+			"Grid layout changed; confirm reset of paint and regions";
 		return false;
 	}
 
@@ -15342,6 +15970,11 @@ bool_t Client::CMapTool::Bake_Navigation()
 	}
 
 	cleanupBackups();
+	/* Registered only after the navsource exists, so the manifest never names
+	   a grid the publisher cannot read. */
+	if (!m_NavigationRegionId.empty() && !Commit_NavigationRegionManifest())
+		return false;
+	Discard_NavigationBakePreview();
 	m_eNavigationMode = NAVIGATION_MODE::WALKABILITY;
 	m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 	m_bNavigationBakeResetConfirmed = false;
@@ -15409,6 +16042,60 @@ void Client::CMapTool::Render_NavigationBakeControls()
 		changed = true;
 	}
 
+	/* Position is the box centre, so Size alone pulls both faces inward: a face
+	   already lined up on the target drifts off it while you shrink the other
+	   side. These fields move one face and leave the opposite one exactly where
+	   it is, which is the anchored model Bottom Y and Height from Bottom
+	   already use for the vertical axis. The values run along the box's own
+	   axes, so at yaw 0 they are literally world X and Z. */
+	const f32_t boundsRadians =
+		XMConvertToRadians(m_NavigationBakeDesc.yawDegrees);
+	const f32_t boundsAxisXx = std::cos(boundsRadians);
+	const f32_t boundsAxisXz = -std::sin(boundsRadians);
+	const f32_t boundsAxisZx = std::sin(boundsRadians);
+	const f32_t boundsAxisZz = std::cos(boundsRadians);
+	const f32_t centerAlongX =
+		m_NavigationBakeDesc.position.x * boundsAxisXx +
+		m_NavigationBakeDesc.position.z * boundsAxisXz;
+	const f32_t centerAlongZ =
+		m_NavigationBakeDesc.position.x * boundsAxisZx +
+		m_NavigationBakeDesc.position.z * boundsAxisZz;
+
+	f32_t spanX[2] =
+	{
+		centerAlongX - m_NavigationBakeDesc.size.x * 0.5f,
+		centerAlongX + m_NavigationBakeDesc.size.x * 0.5f,
+	};
+	if (ImGui::DragFloat2("X Min / Max", spanX, 0.1f) &&
+		spanX[1] - spanX[0] >= 0.1f)
+	{
+		/* The field the user did not drag keeps its displayed value, so that
+		   face stays pinned no matter which side is being moved. */
+		const f32_t movedCenter = (spanX[0] + spanX[1]) * 0.5f;
+		const f32_t centerDelta = movedCenter - centerAlongX;
+		m_NavigationBakeDesc.position.x += boundsAxisXx * centerDelta;
+		m_NavigationBakeDesc.position.z += boundsAxisXz * centerDelta;
+		m_NavigationBakeDesc.size.x = spanX[1] - spanX[0];
+		changed = true;
+	}
+
+	f32_t spanZ[2] =
+	{
+		centerAlongZ - m_NavigationBakeDesc.size.z * 0.5f,
+		centerAlongZ + m_NavigationBakeDesc.size.z * 0.5f,
+	};
+	if (ImGui::DragFloat2("Z Min / Max", spanZ, 0.1f) &&
+		spanZ[1] - spanZ[0] >= 0.1f)
+	{
+		const f32_t movedCenter = (spanZ[0] + spanZ[1]) * 0.5f;
+		const f32_t centerDelta = movedCenter - centerAlongZ;
+		m_NavigationBakeDesc.position.x += boundsAxisZx * centerDelta;
+		m_NavigationBakeDesc.position.z += boundsAxisZz * centerDelta;
+		m_NavigationBakeDesc.size.z = spanZ[1] - spanZ[0];
+		changed = true;
+	}
+
+
 	f32_t height = m_NavigationBakeDesc.size.y;
 	if (ImGui::DragFloat(
 		"Height from Bottom",
@@ -15450,10 +16137,51 @@ void Client::CMapTool::Render_NavigationBakeControls()
 			0.f,
 			89.f) ||
 		changed;
+
+	/* Bake refuses anything past the one-million-cell cap, and at a fine cell
+	   size a large box crosses it easily. The same arithmetic Build_Desc uses
+	   is shown here so the limit is an edit-time number instead of a failed
+	   bake after the bounds are already placed. */
+	const f32_t previewCos = std::abs(std::cos(boundsRadians));
+	const f32_t previewSin = std::abs(std::sin(boundsRadians));
+	const f32_t previewHalfX =
+		previewCos * m_NavigationBakeDesc.size.x * 0.5f +
+		previewSin * m_NavigationBakeDesc.size.z * 0.5f;
+	const f32_t previewHalfZ =
+		previewSin * m_NavigationBakeDesc.size.x * 0.5f +
+		previewCos * m_NavigationBakeDesc.size.z * 0.5f;
+	const f64_t previewWidth = m_NavigationBakeDesc.cellSize > 0.f ?
+		std::ceil((previewHalfX * 2.f) / m_NavigationBakeDesc.cellSize) : 0.0;
+	const f64_t previewHeight = m_NavigationBakeDesc.cellSize > 0.f ?
+		std::ceil((previewHalfZ * 2.f) / m_NavigationBakeDesc.cellSize) : 0.0;
+	const f64_t previewCells = previewWidth * previewHeight;
+	const bool_t previewOverCap = previewCells >
+		static_cast<f64_t>(CNavGridPaintDocument::MAX_CELL_COUNT);
+	if (previewOverCap)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.4f, 0.4f, 1.f),
+			"Grid: %.0f x %.0f = %.0f cells (over the 1,000,000 cap)",
+			previewWidth,
+			previewHeight,
+			previewCells);
+	}
+	else
+	{
+		ImGui::Text(
+			"Grid: %.0f x %.0f = %.0f cells",
+			previewWidth,
+			previewHeight,
+			previewCells);
+	}
+
 	if (changed)
 	{
 		m_bNavigationBakeResetConfirmed = false;
 		m_bNavigationBakeResetPending = false;
+		/* The staged grid belongs to the bounds it was built from, so an edit
+		   to those bounds retires it rather than leaving stale numbers up. */
+		Discard_NavigationBakePreview();
 		m_NavigationBakeStatus =
 			m_NavigationBakeDesc.isReady ?
 			"Needs Bake" :
@@ -15463,20 +16191,86 @@ void Client::CMapTool::Render_NavigationBakeControls()
 	ImGui::BeginDisabled(
 		!Is_ValidNavigationBakeDesc(m_NavigationBakeDesc) ||
 		NAV_BOUNDS_STATE::PLACING == m_eNavigationBoundsState);
-	if (ImGui::Button("Bake##NavigationBakeCommand"))
-		Bake_Navigation();
+	if (ImGui::Button("Bake Preview##NavigationBakePreview"))
+		Preview_NavigationBake();
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("(builds in memory; nothing is written yet)");
 
-	if (m_bNavigationBakeResetPending)
+	if (m_bNavigationBakePreviewReady)
 	{
-		ImGui::SameLine();
-		if (ImGui::Button("Confirm Reset and Rebake"))
+		const NAVGRID_AUTHORING_DESC& previewDesc =
+			m_NavigationBakePreview.desc;
+		const uint64_t previewCellCount =
+			static_cast<uint64_t>(previewDesc.width) * previewDesc.height;
+		ImGui::SeparatorText("Bake Preview");
+		ImGui::Text(
+			"Grid %u x %u @ %.3f m  origin (%.2f, %.2f)",
+			previewDesc.width,
+			previewDesc.height,
+			previewDesc.cellSize,
+			previewDesc.originX,
+			previewDesc.originZ);
+		ImGui::Text(
+			"Scanned %u placements, %llu triangles",
+			m_NavigationBakePreview.placementCount,
+			static_cast<unsigned long long>(
+				m_NavigationBakePreview.triangleCount));
+		/* A box aimed at nothing still bakes: it just resolves almost no
+		   surface. Seeing that here is the difference between noticing now
+		   and noticing after the paint is already gone. */
+		if (0u == m_NavigationBakePreview.resolvedCellCount)
 		{
-			m_bNavigationBakeResetConfirmed = true;
-			Bake_Navigation();
+			ImGui::TextColored(
+				ImVec4(1.f, 0.4f, 0.4f, 1.f),
+				"Found no surface at all - the bounds are probably off target");
 		}
-		ImGui::TextDisabled(
-			"Grid coordinates changed. Manual blockers and runtime regions will reset.");
+		else
+		{
+			ImGui::Text(
+				"Surface on %u of %llu cells, %u walkable",
+				m_NavigationBakePreview.resolvedCellCount,
+				static_cast<unsigned long long>(previewCellCount),
+				m_iNavigationBakePreviewWalkable);
+		}
+		if (m_bNavigationBakePreviewLayoutChanged &&
+			m_NavigationDocument.Is_Ready())
+		{
+			const uint32_t blocked =
+				m_NavigationDocument.Get_BlockedCount();
+			const uint32_t forced =
+				m_NavigationDocument.Get_ForcedWalkableCount();
+			const uint32_t heights =
+				m_NavigationDocument.Get_HeightOverrideCount();
+			if (0u != blocked || 0u != forced || 0u != heights)
+			{
+				ImGui::TextColored(
+					ImVec4(1.f, 0.4f, 0.4f, 1.f),
+					"Applying deletes authored paint: %u blocked, "
+					"%u forced walkable, %u height overrides",
+					blocked,
+					forced,
+					heights);
+			}
+		}
+
+		if (ImGui::Button("Apply Bake##NavigationBakeApply"))
+			Bake_Navigation();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel##NavigationBakeCancel"))
+		{
+			Discard_NavigationBakePreview();
+			m_NavigationBakeStatus = "Bake preview discarded";
+		}
+		if (m_bNavigationBakeResetPending)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button("Confirm Reset and Rebake"))
+			{
+				m_bNavigationBakeResetConfirmed = true;
+				Bake_Navigation();
+			}
+		}
 	}
 
 	ImGui::TextWrapped(

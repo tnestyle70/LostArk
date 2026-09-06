@@ -226,6 +226,17 @@ namespace Client
 		bar HUD never disappeared. CClientReplication::Apply_WorldEntityDespawn calls this
 		explicitly for a despawned BOSS-kind entity instead. */
 		void Clear_Boss() { m_Boss = {}; }
+		/* The interact-gated trigger box the Server is offering this player, or
+		   empty when none. Read-only view: the Server decides both when it
+		   appears and when it goes away. */
+		void Set_InteractPromptTriggerId(const std::string& triggerPlacementId)
+		{
+			m_strInteractPromptTriggerId = triggerPlacementId;
+		}
+		const std::string& Get_InteractPromptTriggerId() const
+		{
+			return m_strInteractPromptTriggerId;
+		}
 		/* Debug arena focus. While a focus archetype is set, Apply_Boss keeps only
 		that boss, so a room holding several primary bosses shows the one the F1
 		gate button chose. An empty focus restores "last primary boss wins". */
@@ -389,6 +400,7 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
+		std::string m_strInteractPromptTriggerId;
 		bool m_bBossDeadRaw = false;
 		std::string m_strBossFocusArchetype;
 		bool m_bBossHidden = false;

@@ -102,6 +102,14 @@ bool Client::CNetworkPlayerCommandSink::Request_SkillAim(
 		aimZ);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_InteractTrigger(
+	const std::uint32_t clientSequence,
+	const std::string& triggerPlacementId)
+{
+	return CNetworkManager::Get().Send_InteractTrigger(
+		clientSequence, triggerPlacementId);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_RevivePlayer(
 	const std::uint32_t clientSequence)
 {

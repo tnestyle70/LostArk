@@ -543,6 +543,11 @@ namespace Client
 		std::uint8_t Poll_EstherSlot(
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
+		/* True on the frame G goes down. The controller does not know whether
+		   an offer is standing -- Update checks that before submitting. */
+		bool_t Poll_InteractKey(
+			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard);
 		void Cancel_GroundTargeting();
 #ifdef _DEBUG
 		void Update_DebugPlayerPlacement(bool_t enabled);
@@ -552,6 +557,7 @@ namespace Client
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
 
+		bool_t m_wasInteractKeyDown = false;
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;

@@ -17926,7 +17926,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		triggerPlayer.iMaximumHp = 100;
 		triggerPlayers.emplace(1, triggerPlayer);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers, {});
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
+		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers, {}, promptEdges);
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
@@ -17945,9 +17946,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
 			!triggerPlayers.begin()->second.TriggerMove.isActive,
 			"Complete movePlayer at exact authored destination");
-		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers, {});
+		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers, {}, promptEdges);
 		triggerPlayers.begin()->second.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers, {});
+		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers, {}, promptEdges);
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
@@ -17984,7 +17985,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		player.iMaximumHp = 100;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-		triggerSystem.Evaluate_Entries(players, 20, transfers, {});
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
+		triggerSystem.Evaluate_Entries(players, 20, transfers, {}, promptEdges);
 		tests.Require(
 			1u == transfers.size() &&
 			7u == transfers.front().iSessionId &&
@@ -17993,7 +17995,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				transfers.front().eCharacterClass &&
 			"TriggerTransfer" == transfers.front().strNickName,
 			"Emit one typed Server world transfer request on OBB entry");
-		triggerSystem.Evaluate_Entries(players, 21, transfers, {});
+		triggerSystem.Evaluate_Entries(players, 21, transfers, {}, promptEdges);
 			tests.Require(
 			transfers.empty(),
 			"Do not repeat a triggerOnce world transfer while occupied");
@@ -18025,6 +18027,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		player.iMaximumHp = 100;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::size_t activationCount = 0u;
 		triggerSystem.Evaluate_Entries(
 			players,
@@ -18041,7 +18044,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				}
 				++activationCount;
 				return true;
-			});
+			},
+				promptEdges);
 		tests.Require(
 			1u == activationCount && transfers.empty(),
 			"Dispatch typed activateSpawnGroup target on OBB entry");
@@ -18053,7 +18057,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			{
 				++activationCount;
 				return true;
-			});
+			},
+				promptEdges);
 		tests.Require(
 			1u == activationCount,
 			"Do not repeat a triggerOnce spawn-group activation while occupied");
@@ -18089,6 +18094,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		player.iMaximumHp = 100u;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::size_t activationCount = 0u;
 		triggerSystem.Evaluate_Entries(
 			players, 41u, transfers,
@@ -18096,7 +18102,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			{
 				++activationCount;
 				return true;
-			});
+			},
+				promptEdges);
 #ifdef _DEBUG
 		const SERVER_PLAYER& moving = players.begin()->second;
 		tests.Require(
@@ -18150,6 +18157,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		player.iMaximumHp = 100u;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::string activatedTargetId;
 		std::size_t activationCount = 0u;
 		triggerSystem.Evaluate_Entries(
@@ -18162,7 +18170,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				++activationCount;
 				activatedTargetId = targetId;
 				return true;
-			});
+			},
+				promptEdges);
 		tests.Require(
 			1u == activationCount &&
 			"spawn.valtan.stage01" == activatedTargetId &&
@@ -18196,6 +18205,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		player.iMaximumHp = 100;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::size_t activationCount = 0u;
 		triggerSystem.Evaluate_Entries(
 			players,
@@ -18212,7 +18222,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				}
 				++activationCount;
 				return true;
-			});
+			},
+				promptEdges);
 		tests.Require(
 			1u == activationCount && transfers.empty(),
 			"Dispatch typed activateEncounter target on OBB entry");
@@ -19358,6 +19369,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			triggerPlayer.fPositionZ = bossTrigger->fPositionZ;
 		}
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::uint32_t encounterActivationCount = 0u;
 		raidRoom.m_ServerTriggerSystem.Evaluate_Entries(
 			raidRoom.m_Players,
@@ -19371,7 +19383,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					return false;
 				++encounterActivationCount;
 				return raidRoom.Activate_Encounter(targetId);
-			});
+			},
+				promptEdges);
 		auto bossBeforeReset = std::find_if(
 			raidRoom.m_WorldEntities.begin(),
 			raidRoom.m_WorldEntities.end(),
@@ -19458,7 +19471,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					return false;
 				++encounterActivationCount;
 				return raidRoom.Activate_Encounter(targetId);
-			});
+			},
+				promptEdges);
 		const auto bossAfterReset = std::find_if(
 			raidRoom.m_WorldEntities.begin(),
 			raidRoom.m_WorldEntities.end(),
@@ -27012,6 +27026,181 @@ int LostArk::Server::Run_ServerNavigationContractTests()
 		tallStepNavigation.Load("NAV_LOS_CONTRACT") &&
 		!tallStepNavigation.Has_LineOfSight(2.5f, 3.5f, 3.5f, 3.5f),
 		"Retain the LOS height-interpolation limit when deck-step policy is disabled");
+	/* Detail regions: a finer grid nested inside an Area answers every query
+	   whose first point lies inside it, and the base grid answers the rest. */
+	const auto writeRegionGrid = [&](
+		const wchar_t* gridStem,
+		const std::uint32_t width,
+		const std::uint32_t height,
+		const float cellSize,
+		const float originX,
+		const float originZ,
+		const float cellHeight)
+	{
+		std::ofstream grid(
+			invalidPolicyRoot / L"Navigation" /
+				(std::wstring(gridStem) + L".navgrid"),
+			std::ios::binary | std::ios::trunc);
+		grid.write(reinterpret_cast<const char*>(&width), sizeof(width));
+		grid.write(reinterpret_cast<const char*>(&height), sizeof(height));
+		grid.write(reinterpret_cast<const char*>(&cellSize), sizeof(cellSize));
+		grid.write(reinterpret_cast<const char*>(&originX), sizeof(originX));
+		grid.write(reinterpret_cast<const char*>(&originZ), sizeof(originZ));
+		const std::size_t cellCount =
+			static_cast<std::size_t>(width) * height;
+		const std::uint8_t walkable = 1u;
+		for (std::size_t index = 0u; index < cellCount; ++index)
+		{
+			grid.write(
+				reinterpret_cast<const char*>(&walkable), sizeof(walkable));
+		}
+		for (std::size_t index = 0u; index < cellCount; ++index)
+		{
+			grid.write(
+				reinterpret_cast<const char*>(&cellHeight), sizeof(cellHeight));
+		}
+		grid.close();
+		return grid.good();
+	};
+	const auto writeRegionPolicy = [&](
+		const wchar_t* gridStem,
+		const char* gridId,
+		const float stepHeight)
+	{
+		std::ofstream policy(
+			invalidPolicyRoot / L"Navigation" /
+				(std::wstring(gridStem) + L".navpolicy"),
+			std::ios::binary | std::ios::trunc);
+		policy << "LOSTARK_NAVIGATION_POLICY 1 \"" << gridId << "\" " <<
+			stepHeight << '\n';
+		policy.close();
+		return policy.good();
+	};
+	const auto writeRegionManifest = [&](const char* text)
+	{
+		std::ofstream manifest(
+			invalidPolicyRoot / L"Navigation" /
+				L"NAV_REGION_CONTRACT.navregions",
+			std::ios::binary | std::ios::trunc);
+		manifest << text;
+		manifest.close();
+		return manifest.good();
+	};
+	const bool regionFixtureReady =
+		writeRegionGrid(L"NAV_REGION_CONTRACT", 4u, 4u, 1.f, 0.f, 0.f, 0.f) &&
+		writeRegionPolicy(L"NAV_REGION_CONTRACT", "NAV_REGION_CONTRACT", 1.f) &&
+		writeRegionGrid(
+			L"NAV_REGION_CONTRACT.fine", 4u, 4u, 0.5f, 1.f, 1.f, 2.f) &&
+		writeRegionPolicy(
+			L"NAV_REGION_CONTRACT.fine", "NAV_REGION_CONTRACT.fine", 0.75f) &&
+		writeRegionManifest(
+			"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 1\n"
+			"REGION \"fine\" 0.75\n");
+	CServerNavigation regionNavigation;
+	const bool regionLoaded = regionFixtureReady &&
+		regionNavigation.Load("NAV_REGION_CONTRACT");
+	tests.Require(
+		regionLoaded && 1u == regionNavigation.Get_RegionCount() &&
+		std::abs(regionNavigation.Get_CellSize() - 0.5f) < 0.000001f &&
+		std::abs(
+			regionNavigation.Get_MaximumTraversalStepHeight() - 1.f) <
+			0.000001f,
+		"Load a detail region beside its base grid and report the finer cell size");
+	SERVER_NAV_POINT insideRegion{};
+	SERVER_NAV_POINT outsideRegion{};
+	tests.Require(
+		regionLoaded &&
+		regionNavigation.Sample_Position(1.25f, 1.25f, insideRegion) &&
+		std::abs(insideRegion.y - 2.f) < 0.000001f &&
+		regionNavigation.Sample_Position(0.5f, 0.5f, outsideRegion) &&
+		std::abs(outsideRegion.y) < 0.000001f,
+		"Answer a point inside the region from the region grid and the rest from the base grid");
+	std::vector<SERVER_NAV_POINT> regionPath;
+	bool regionPathStaysInside = regionLoaded && regionNavigation.Find_Path(
+		1.25f, 1.25f, 2.75f, 2.75f, regionPath) && !regionPath.empty();
+	for (const SERVER_NAV_POINT& point : regionPath)
+	{
+		regionPathStaysInside = regionPathStaysInside &&
+			std::abs(point.y - 2.f) < 0.000001f &&
+			point.x >= 1.f && point.x < 3.f &&
+			point.z >= 1.f && point.z < 3.f;
+	}
+	std::vector<SERVER_NAV_POINT> escapePath;
+	const bool regionPathCannotLeave = regionLoaded &&
+		regionNavigation.Find_Path(1.25f, 1.25f, 0.5f, 0.5f, escapePath) &&
+		(escapePath.empty() ||
+			(escapePath.back().x >= 1.f && escapePath.back().z >= 1.f));
+	tests.Require(
+		regionPathStaysInside && regionPathCannotLeave,
+		"Path inside a region on its own cells and never walk out of it on foot");
+	CServerNavigation missingRegionNavigation;
+	tests.Require(
+		regionFixtureReady && writeRegionManifest(
+			"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 1\n"
+			"REGION \"missing\" 0.75\n") &&
+		!missingRegionNavigation.Load("NAV_REGION_CONTRACT") &&
+		!missingRegionNavigation.Is_Loaded(),
+		"Reject a region manifest whose grid files are missing and leave nothing loaded");
+	CServerNavigation mismatchedStepNavigation;
+	tests.Require(
+		regionFixtureReady && writeRegionManifest(
+			"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 1\n"
+			"REGION \"fine\" 0.5\n") &&
+		!mismatchedStepNavigation.Load("NAV_REGION_CONTRACT"),
+		"Reject a region whose manifest step differs from its published policy");
+	CServerNavigation overlappingNavigation;
+	tests.Require(
+		regionFixtureReady &&
+		writeRegionGrid(
+			L"NAV_REGION_CONTRACT.overlap", 4u, 4u, 0.5f, 2.f, 2.f, 2.f) &&
+		writeRegionPolicy(
+			L"NAV_REGION_CONTRACT.overlap",
+			"NAV_REGION_CONTRACT.overlap",
+			0.75f) &&
+		writeRegionManifest(
+			"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 2\n"
+			"REGION \"fine\" 0.75\n"
+			"REGION \"overlap\" 0.75\n") &&
+		!overlappingNavigation.Load("NAV_REGION_CONTRACT"),
+		"Reject two regions whose footprints overlap");
+	bool blockerFixtureReady = regionFixtureReady && writeRegionManifest(
+		"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 1\n"
+		"REGION \"fine\" 0.75\n");
+	if (blockerFixtureReady)
+	{
+		std::ofstream regionBlockers(
+			invalidPolicyRoot / L"Navigation" /
+				L"NAV_REGION_CONTRACT.fine.navblockers",
+			std::ios::binary | std::ios::trunc);
+		regionBlockers <<
+			"LOSTARK_NAVGRID_BLOCKERS 1 \"NAV_REGION_CONTRACT.fine\" "
+			"4 4 0.5 1 1 1\n"
+			"REGION \"contract.region.wall\" "
+			"\"contract.region.wall.open\" 0 1\n"
+			"1 1\n";
+		regionBlockers.close();
+		blockerFixtureReady = regionBlockers.good();
+	}
+	CServerNavigation blockedRegionNavigation;
+	tests.Require(
+		blockerFixtureReady &&
+		!blockedRegionNavigation.Load("NAV_REGION_CONTRACT"),
+		"Reject runtime blockers declared inside a detail region");
+	std::error_code regionCleanupError;
+	fs::remove(
+		invalidPolicyRoot / L"Navigation" /
+			L"NAV_REGION_CONTRACT.fine.navblockers",
+		regionCleanupError);
+	fs::remove(
+		invalidPolicyRoot / L"Navigation" / L"NAV_REGION_CONTRACT.navregions",
+		regionCleanupError);
+	CServerNavigation manifestlessNavigation;
+	tests.Require(
+		regionFixtureReady &&
+		manifestlessNavigation.Load("NAV_REGION_CONTRACT") &&
+		0u == manifestlessNavigation.Get_RegionCount() &&
+		std::abs(manifestlessNavigation.Get_CellSize() - 1.f) < 0.000001f,
+		"Load an Area without a region manifest exactly as before");
 	SetEnvironmentVariableW(
 		L"LOSTARK_SERVER_DATA_ROOT", hadConfiguredRoot ? pathBuffer.data() : nullptr);
 	fs::remove_all(invalidPolicyRoot, fixtureError);

@@ -121,6 +121,10 @@ namespace LostArk::Server
 		float fHalfExtentY = 0.f;
 		float fHalfExtentZ = 0.f;
 		bool isTriggerOnce = true;
+		/* False runs the actions the moment a player's body enters the box.
+		   True holds them until that player asks, so the Server offers a prompt
+		   on entry and runs nothing until the request arrives. */
+		bool requiresInteract = false;
 		std::vector<WORLD_TRIGGER_ACTION> TriggerActions;
 		bool bHasNpcBehavior = false;
 		WORLD_NPC_BEHAVIOR_DESCRIPTOR NpcBehavior;
