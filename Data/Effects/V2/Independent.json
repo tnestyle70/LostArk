@@ -3,8 +3,7 @@
   "formatVersion": 1,
   "effects": [
     "boss.valtan.egg.black_1",
-    "boss.valtan.egg.black_2",
-    "boss.kouku.find.heart.smoke_1"
+    "boss.valtan.egg.black_2"
   ],
   "groups": [
     "boss.valtan.blackhole",
