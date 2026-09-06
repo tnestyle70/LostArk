@@ -4203,6 +4203,9 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Multiplied with Color Mul below over each particle's life.");
+		ImGui::DragFloat2("Hue Shift (deg min/max)", &E.vHueShiftRange.x, 1.f, -360.f, 360.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Random per-particle hue rotation of Color Start/End. 0..360 = full rainbow.");
 		int32_t iColumns = static_cast<int32_t>(E.iTileColumns);
 		int32_t iRows = static_cast<int32_t>(E.iTileRows);
 		ImGui::SetNextItemWidth(90.f);

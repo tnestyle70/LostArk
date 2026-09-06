@@ -1037,7 +1037,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.kouku.card.spade.black": 2,
                 "boss.kouku.card.spade.red": 2,
                 "boss.kouku.dance": 8,
-                "boss.kouku.disarm": 3,
+                "boss.kouku.disarm": 21,
                 "boss.kouku.find.heart": 2,
                 "boss.kouku.find.star": 6,
                 "boss.valtan.axe": 9,

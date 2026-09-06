@@ -1,25 +1,25 @@
 {
   "schema": "lostark.effect-v2",
   "formatVersion": 1,
-  "effectId": "boss.kouku.disarm.converge_1",
-  "effectType": "Mesh",
+  "effectId": "boss.kouku.disarm.star.decal_1",
+  "effectType": "Decal",
   "slots": {
-    "mesh": "Effect/KakulSaydon/Meshes/fx_sm_00/fm_a_cylinder_002.wmodel",
-    "base": "Effect/Esther/Thirain/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+    "mesh": "",
+    "base": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_a_decal_020.dds",
     "noise": "",
-    "mask": "Effect/Esther/Thirain/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+    "mask": "",
     "emissive": "",
-    "dissolve": ""
+    "dissolve": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_atypical_076_2_cl.dds"
   },
   "params": {
-    "position": { "start": [0.0, 0.1, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
+    "position": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
     "rotation": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
-    "scale": { "start": [10.0, 1.0, 10.0], "end": [1.0, 1.0, 1.0], "lerp": false },
+    "scale": { "start": [1.0, 1.0, 1.0], "end": [1.0, 1.0, 1.0], "lerp": false },
     "velocity": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
     "colorOffset": [0.0, 0.0, 0.0, 0.0],
     "colorOffsetEnd": [0.0, 0.0, 0.0, 0.0],
     "colorOffsetLerp": false,
-    "colorMul": [1.0, 1.0, 1.0, 0.6],
+    "colorMul": [1.0, 1.0, 1.0, 1.0],
     "colorMulEnd": [1.0, 1.0, 1.0, 0.0],
     "colorMulLerp": false,
     "colorClipChannel": "Alpha",
@@ -30,28 +30,28 @@
     "ghostAlpha": 0.0,
     "outlineWidth": 0.0,
     "outlineColor": [1.0, 1.0, 1.0, 1.0],
-    "bloomIntensity": 7.0,
+    "bloomIntensity": 1.0,
     "distortionIntensity": 0.0,
     "uvStart": [0.0, 0.0],
-    "uvSpeed": [0.0, -2.0],
-    "uvTileCount": [1.0, 2.0],
+    "uvSpeed": [0.0, 0.0],
+    "uvTileCount": [1.0, 1.0],
     "noiseStrength": 0.0,
     "noiseScale": 1.0,
     "noisePan": [0.0, 0.0],
-    "dissolveStart": 0.85,
-    "dissolveInEnd": 0.15,
-    "dissolveSoftness": 0.301,
-    "dissolveWarp": true,
+    "dissolveStart": 1.0,
+    "dissolveInEnd": 0.078,
+    "dissolveSoftness": 0.05,
+    "dissolveWarp": false,
     "maskWarp": false,
     "alphaInEnd": 0.0,
-    "alphaOutStart": 0.85,
+    "alphaOutStart": 1.0,
     "scaleInEnd": 0.0,
     "scaleOutStart": 1.0,
     "blend": "Alpha",
-    "billboard": true,
+    "billboard": false,
     "depthTest": true,
-    "softFadeDistance": 0.5,
-    "lifetime": 7.0,
+    "softFadeDistance": 0.0,
+    "lifetime": 9.0,
     "loop": false,
     "playRate": 1.0,
     "meshPreScale": 0.01,
@@ -79,6 +79,7 @@
       "sizeEnd": [0.0, 0.0],
       "rotationRange": [0.0, 0.0],
       "spinRange": [0.0, 0.0],
+      "hueShiftRange": [0.0, 0.0],
       "colorStart": [1.0, 1.0, 1.0, 1.0],
       "colorEnd": [1.0, 1.0, 1.0, 0.0],
       "alignment": "Camera",
@@ -93,10 +94,10 @@
       "meshSpinMax": [0.0, 0.0, 0.0]
     },
     "decal": {
-      "size": [1.0, 1.0],
-      "depth": 0.5,
+      "size": [1.0, 20.0],
+      "depth": 0.2,
       "edgeFade": 0.0,
-      "normalCutoff": 0.5
+      "normalCutoff": -1.0
     },
     "trail": {
       "maxPoints": 64,
@@ -122,6 +123,5 @@
     }
   },
   "parts": [
-    { "index": 0, "visible": true, "base": "" }
   ]
 }

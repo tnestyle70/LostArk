@@ -797,6 +797,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_FloatArray(*pParticle, "sizeEnd", &E.vSizeEnd.x, 2u, strOutError) ||
 			!Read_FloatArray(*pParticle, "rotationRange", &E.vRotationRange.x, 2u, strOutError) ||
 			!Read_FloatArray(*pParticle, "spinRange", &E.vSpinRange.x, 2u, strOutError) ||
+			!Read_FloatArray(*pParticle, "hueShiftRange", &E.vHueShiftRange.x, 2u, strOutError) ||
 			!Read_FloatArray(*pParticle, "colorStart", &E.vColorStart.x, 4u, strOutError) ||
 			!Read_FloatArray(*pParticle, "colorEnd", &E.vColorEnd.x, 4u, strOutError) ||
 			!Read_Enum(*pParticle, "alignment", ALIGNMENT_KEYS,
@@ -1339,6 +1340,7 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"sizeEnd\": " + Json_Float2(E.vSizeEnd) + ",\n";
 	Text += "      \"rotationRange\": " + Json_Float2(E.vRotationRange) + ",\n";
 	Text += "      \"spinRange\": " + Json_Float2(E.vSpinRange) + ",\n";
+	Text += "      \"hueShiftRange\": " + Json_Float2(E.vHueShiftRange) + ",\n";
 	Text += "      \"colorStart\": " + Json_Float4(E.vColorStart) + ",\n";
 	Text += "      \"colorEnd\": " + Json_Float4(E.vColorEnd) + ",\n";
 	Text += "      \"alignment\": " + Json_String(
