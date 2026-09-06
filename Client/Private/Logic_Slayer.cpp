@@ -101,6 +101,17 @@ const CHARACTER_SPEC Spec_Slayer =
 	},
 
 	&Create_Logic,
+
+	nullptr,
+	0u,
+
+	nullptr,
+	0u,
+
+	nullptr,
+	0u,
+
+	"WR_F",
 };
 
 NS_END

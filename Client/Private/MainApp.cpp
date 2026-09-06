@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "MainApp.h"
+#include "BossImmuneGaugeView.h"
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
@@ -722,6 +723,8 @@ HRESULT CMainApp::Initialize()
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
 	Hide_BossHealthBar();
+	m_pBossImmuneGaugeView = std::make_unique<CBossImmuneGaugeView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Esther/EstherUI.json");
@@ -831,7 +834,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
-	Update_EstherGauge();
+	Update_BossImmuneGauge(fTimeDelta);
+	Update_EstherGauge(fTimeDelta);
 	if (nullptr != m_pEstherCutinService)
 		m_pEstherCutinService->Update(fTimeDelta);
 
@@ -1462,9 +1466,16 @@ HRESULT CMainApp::Render()
 			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+		/* The customizing screen is a full-screen product overlay on the same Level: the class
+		HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
+		raid-entry preview above. */
+		const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
+			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
+				nullptr != CLevel_CharacterSelect::Get_Active() &&
+				CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
 		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
 			supportsAuthoredHUD && !skillWindowOpenForPreview &&
-			!isCharSelectDebugPreviewOpen)
+			!isCharSelectOverlayOpen)
 		{
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
@@ -1668,7 +1679,14 @@ HRESULT CMainApp::Render()
 #else
 	const bool_t isCharSelectDebugPreviewOpenForText = false;
 #endif
-	if (!isCharSelectDebugPreviewOpenForText)
+	/* The customizing screen is a full-screen product overlay on the same Level: the class
+	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
+	raid-entry preview above. */
+	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpenForText ||
+		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+			nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+	if (!isCharSelectOverlayOpen)
 	{
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
@@ -1705,8 +1723,9 @@ HRESULT CMainApp::Render()
 		{
 			// Same gate as Update_ArenaSpawnButtons's own image draw -- these are
 			// its text labels, drawn from this separate text pass.
-			if (!isCharSelectDebugPreviewOpenForText)
+			if (!isCharSelectOverlayOpen)
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			pCharacterSelect->Render_CustomizingText();
 #ifdef _DEBUG
 			pCharacterSelect->Render_RaidEntryDebugPreviewText();
 #endif
@@ -1781,10 +1800,17 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 #else
 	const bool_t isCharSelectDebugPreviewOpen = false;
 #endif
+	/* The customizing screen is a full-screen product overlay on the same Level: the class
+	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
+	raid-entry preview above. */
+	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
+		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+			nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
 
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
 		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
 		Hide_CombatHUD();
@@ -4038,6 +4064,23 @@ void CMainApp::Hide_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
+void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pBossImmuneGaugeView)
+		return;
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	m_pBossImmuneGaugeView->Update(fTimeDelta,
+		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen);
+}
+
 void CMainApp::Update_BossHealthBar()
 {
 	if (nullptr == m_pBossUIView)
@@ -4065,9 +4108,16 @@ void CMainApp::Update_BossHealthBar()
 #else
 	const bool_t isCharSelectDebugPreviewOpen = false;
 #endif
+	/* The customizing screen is a full-screen product overlay on the same Level: the class
+	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
+	raid-entry preview above. */
+	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
+		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+			nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
 		!boss.isValid || 0u == boss.iMaximumHp)
 	{
 		Hide_BossHealthBar();
@@ -4787,16 +4837,16 @@ void CMainApp::Hide_EstherUI()
 		return;
 	constexpr const char_t* ESTHER_ALL_SLOTS[] = {
 		"Esther_HeaderFrame",
-		"Esther_Slot1_Frame", "Esther_Slot1_Icon", "Esther_Slot1_Ready",
-		"Esther_Slot2_Frame", "Esther_Slot2_Icon", "Esther_Slot2_Ready",
-		"Esther_Slot3_Frame", "Esther_Slot3_Icon", "Esther_Slot3_Ready",
+		"Esther_Slot1_Frame", "Esther_Slot1_KeyBg", "Esther_Slot1_Icon", "Esther_Slot1_Ready",
+		"Esther_Slot2_Frame", "Esther_Slot2_KeyBg", "Esther_Slot2_Icon", "Esther_Slot2_Ready",
+		"Esther_Slot3_Frame", "Esther_Slot3_KeyBg", "Esther_Slot3_Icon", "Esther_Slot3_Ready",
 		"Esther_GaugeTrack", "Esther_GaugeFill",
 	};
 	for (const char_t* pSlotId : ESTHER_ALL_SLOTS)
 		m_pEstherUIView->Set_SlotVisible(pSlotId, false);
 }
 
-void CMainApp::Update_EstherGauge()
+void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pEstherUIView)
 		return;
@@ -4826,9 +4876,9 @@ void CMainApp::Update_EstherGauge()
 	boss/player HP bars. The 3 Ready glows only show at full gauge. */
 	constexpr const char_t* ESTHER_STATIC_SLOTS[] = {
 		"Esther_HeaderFrame",
-		"Esther_Slot1_Frame", "Esther_Slot1_Icon",
-		"Esther_Slot2_Frame", "Esther_Slot2_Icon",
-		"Esther_Slot3_Frame", "Esther_Slot3_Icon",
+		"Esther_Slot1_Frame", "Esther_Slot1_KeyBg", "Esther_Slot1_Icon",
+		"Esther_Slot2_Frame", "Esther_Slot2_KeyBg", "Esther_Slot2_Icon",
+		"Esther_Slot3_Frame", "Esther_Slot3_KeyBg", "Esther_Slot3_Icon",
 		"Esther_GaugeTrack",
 	};
 	for (const char_t* pSlotId : ESTHER_STATIC_SLOTS)
@@ -4855,17 +4905,21 @@ void CMainApp::Update_EstherGauge()
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", bReady);
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", bReady);
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", bReady);
+	/* The ready glow is the real 30-frame EpicSkillAbleSlotEffect flipbook; it only
+	advances while the view is updated. */
+	m_pEstherUIView->Update(fTimeDelta);
 }
 
 void CMainApp::RenderEstherGaugeText()
 {
-	/* Same gates as Update_EstherGauge -- this label is that window's own caption, so it must
+	/* Same gates as Update_EstherGauge -- these labels belong to that window, so they must
 	disappear and reappear together with the art instead of floating without it. */
-	if (nullptr == m_pEstherUIView ||
-		ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
-	{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isRaidArena =
+		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
+		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
+	if (nullptr == m_pEstherUIView || !isRaidArena)
 		return;
-	}
 	const uint32_t maximum =
 		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
 	if (0u == maximum ||
@@ -4875,37 +4929,43 @@ void CMainApp::RenderEstherGaugeText()
 		return;
 	}
 
-	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
-	if (!m_pEstherUIView->Get_SlotRect(
-		"Esther_GaugeTrack", fTrackX, fTrackY, fTrackWidth, fTrackHeight))
-	{
-		return;
-	}
-
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
 	const float textScaleX = vTextViewportSize.x / 1280.f;
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
+	/* Retail epicskill.gfx arkSlot keyBind: a 12px label centred on the key plate under each
+	portrait, white until the gauge is full and gold (#FFD200) once the skills are usable. The
+	Controller's Esther keys are Ctrl+Z/X/C, shown the way retail abbreviates them. */
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
-	const wchar_t* pLabel = gauge >= maximum ?
-		L"ESTHER READY  Ctrl+Z/X/C" : L"ESTHER";
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
-	/* ~12 reference px tall, centered above the track's own top edge -- matching the old
-	ImGui-font label's placement (its default font was ~13 screen px). */
-	constexpr f32_t LABEL_HEIGHT = 12.f;
-	const f32_t fScale = (vMeasured.y > 0.f) ? (LABEL_HEIGHT / vMeasured.y) : 1.f;
-	const f32_t fCenterX = fTrackX + fTrackWidth * 0.5f;
-	const f32_t fCenterY = fTrackY - 2.f - LABEL_HEIGHT * 0.5f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-		float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
-		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
-		fScale * textUiScale);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-		XMVectorSet(214.f / 255.f, 238.f / 255.f, 1.f, 1.f), 0.f, float2_t(0.5f, 0.5f),
-		fScale * textUiScale);
+	const vector_t vColor = gauge >= maximum ?
+		XMVectorSet(1.f, 210.f / 255.f, 0.f, 1.f) : Colors::White;
+	struct ESTHER_KEY_LABEL { const char_t* pPlateSlot; const wchar_t* pLabel; };
+	constexpr ESTHER_KEY_LABEL KEY_LABELS[] = {
+		{ "Esther_Slot1_KeyBg", L"C+Z" },
+		{ "Esther_Slot2_KeyBg", L"C+X" },
+		{ "Esther_Slot3_KeyBg", L"C+C" },
+	};
+	constexpr f32_t LABEL_HEIGHT = 12.f * (2.f / 3.f);
+	for (const ESTHER_KEY_LABEL& Label : KEY_LABELS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pEstherUIView->Get_SlotRect(Label.pPlateSlot, fX, fY, fWidth, fHeight))
+			continue;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+		const f32_t fScale = (vMeasured.y > 0.f) ? (LABEL_HEIGHT / vMeasured.y) : 1.f;
+		/* Retail text box sits at plate y+5 with a 22px box: centre 16px below the plate top. */
+		const f32_t fCenterX = fX + fWidth * 0.5f;
+		const f32_t fCenterY = fY + 16.f * (2.f / 3.f);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+			float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+			fScale * textUiScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
 }
 
 void CMainApp::Update_SkillIcons()

@@ -91,6 +91,13 @@ namespace Client
 		std::uint32_t iMaximumShield = 0;
 		std::uint32_t iResponseProgress = 0;
 		std::uint32_t iResponseThreshold = 0;
+		/* Replicated ground position of the boss entity, for gauges drawn at the boss
+		in world space (CBossImmuneGaugeView). False for the Debug boss preview, which
+		has no entity. */
+		bool hasPosition = false;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
 		std::uint32_t iServerTick = 0;
 		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
 			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;

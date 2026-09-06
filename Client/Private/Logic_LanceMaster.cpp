@@ -172,6 +172,8 @@ const CHARACTER_SPEC Spec_LanceMaster =
 
 	BoneChains,
 	static_cast<uint32_t>(size(BoneChains)),
+
+	"FT",
 };
 
 NS_END

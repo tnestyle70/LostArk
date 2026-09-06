@@ -24,6 +24,7 @@ class CValtanActionWorkbench;
 class CKoukuSaydonActionWorkbench;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
+class CBossImmuneGaugeView;
 class CBalanceTool;
 class CValtanBossTool;
 class CKoukuSaydonBossTool;
@@ -276,6 +277,9 @@ private:
 	pass -- keeps showing its last state instead of simply not being drawn that frame. */
 	void Update_BossHealthBar();
 	void Hide_BossHealthBar();
+	/* Pattern check gauge under the boss (CBossImmuneGaugeView), same level/window gate as
+	Update_BossHealthBar; shown only while the Server reports a response threshold. */
+	void Update_BossImmuneGauge(f32_t fTimeDelta);
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
@@ -317,7 +321,7 @@ private:
 	Update(). Hides everything (Hide_EstherUI) when the snapshot says the world has no Esther
 	roster (maximum 0) or outside VALTAN_ARENA -- unlike the old ImGui pass, these slots live
 	under LEVEL::STATIC and keep their last state unless told otherwise. */
-	void Update_EstherGauge();
+	void Update_EstherGauge(f32_t fTimeDelta);
 	void Hide_EstherUI();
 	/* The "ESTHER"/"ESTHER READY  Ctrl+Z/X/C" label above the gauge track -- LOA-font
 	Draw_Text in the post-EndFrame text pass, same split as every other HUD label. */
@@ -418,6 +422,7 @@ private:
 	isn't part of the always-on top/bottom menu chrome (Screen UI) either, so it owns its own
 	document/tab instead of being folded into either. */
 	unique_ptr<CUILayoutRuntime> m_pBossUIView = { nullptr };
+	unique_ptr<CBossImmuneGaugeView> m_pBossImmuneGaugeView = { nullptr };
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
 	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own

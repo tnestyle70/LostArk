@@ -7,6 +7,7 @@
 #include "CharacterSpec.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "EstherActionSoundCueDocument.h"
+#include "FaceCustomizeApplier.h"
 #include "NavPathFollower.h"
 #include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
@@ -220,6 +221,23 @@ public:
 		uint32_t occupiedSlotsMask,
 		std::string& outError);
 	bool_t Reset_EquipmentPreview(std::string& outError);
+	/* Face customizing sliders (retail add_*_ui additive poses), presentation only.
+	Empty for classes whose spec names no face slider race. */
+	bool_t Has_FaceSliders() const {
+		return m_FaceCustomize.Get_SliderCount() > 0;
+	}
+	const CFaceCustomizeApplier& Get_FaceCustomize() const {
+		return m_FaceCustomize;
+	}
+	bool_t Set_FaceSliderWeight(size_t iSlider, f32_t fWeight) {
+		return m_FaceCustomize.Set_Weight(iSlider, fWeight);
+	}
+	void Reset_FaceSliders() {
+		m_FaceCustomize.Reset_Weights();
+	}
+	/* Hides every HEAD-slot equipment part (helmet, avatar head) so the face can
+	be inspected; true restores the normal default/avatar visibility rule. */
+	void Set_HeadPartsVisible(bool_t isVisible);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
 	}
@@ -347,6 +365,8 @@ private:
 	/* Negative when no release blend is running. */
 	f32_t m_fAttachmentReleaseBlendSeconds = { -1.f };
 	CBoneChainSimulation m_BoneChains;
+	FACE_SLIDER_DOCUMENT m_FaceSliderDocument;
+	CFaceCustomizeApplier m_FaceCustomize;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
 	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */
@@ -358,6 +378,9 @@ private:
 private:
 	HRESULT Ready_Components();
 	HRESULT Ready_PartObjects();
+	/* Loads the spec's face slider document and resolves it against the body
+	skeleton. Failure is isolated: the character keeps working without sliders. */
+	void Load_FaceSliders();
 	void Set_Locomotion(bool_t isMoving);
 	/* Applies the state Set_Locomotion decided on. Idle arrives here only after
 	LOCOMOTION_IDLE_DELAY_SECONDS without a run in between. */

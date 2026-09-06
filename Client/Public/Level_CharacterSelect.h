@@ -19,6 +19,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CCustomizingView;
 class CUILayoutRuntime;
 class CCharacterSelectArenaSpawnGate;
 class CRaidEntryPreviewView;
@@ -88,6 +89,12 @@ private:
 	bool_t Confirm_CreateCharacter();
 	void Cancel_CreateCharacter();
 	void Render_CreateCharacterModal();
+	/* Drives the retail customizing screen: consumes the Create Character button edge to
+	open it, applies its camera orbit and head-part reveal while it is up, and turns its
+	decide/back edges into the nickname step and the way back to the class roster. */
+	void Update_Customizing(f32_t fTimeDelta);
+	void Open_Customizing();
+	void Close_Customizing();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_CreateCharacterProductInputHost();
 	void Render_ProductStatus();
@@ -135,6 +142,11 @@ public:
 	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
 	instead of a second CUILayoutRuntime of its own. */
 	void Render_ArenaSpawnLabels();
+	/* The customizing screen's own LOA-font labels, same post-EndFrame pass. */
+	void Render_CustomizingText();
+	/* True while the customizing screen owns the screen: CMainApp hides the combat HUD
+	chrome behind it the same way it does for the Debug raid-entry preview. */
+	bool_t Is_CustomizingOpen() const;
 #ifdef _DEBUG
 	/* Same split as Render_ArenaSpawnLabels just above, plus the
 	   GetForegroundDrawList() submission-order requirement
@@ -186,6 +198,7 @@ private:
 
 	CMapPlacementRuntime m_MapRuntime;
 	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };
+	unique_ptr<CCustomizingView> m_pCustomizingView;
 	int32_t m_iExpandedCategory = -1;
 	MODE m_eMode = MODE::CONNECTING;
 	size_t m_iSelectedClassIndex = 0;

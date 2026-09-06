@@ -12,6 +12,7 @@
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
+#include "CustomizingView.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
@@ -217,6 +218,9 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	Update_ClassList();
 	Update_ArenaSpawnButtons();
 
+	m_pCustomizingView = std::make_unique<CCustomizingView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
+
 #ifdef _DEBUG
 	m_pDebugRaidEntryPreviewView =
 		std::make_unique<CRaidEntryPreviewView>(
@@ -266,7 +270,7 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 #else
 	const bool_t isRaidEntryDebugPreviewOpenForClassList = false;
 #endif
-	if (isRaidEntryDebugPreviewOpenForClassList)
+	if (isRaidEntryDebugPreviewOpenForClassList || Is_CustomizingOpen())
 	{
 		Hide_ClassList();
 		Hide_ArenaSpawnButtons();
@@ -276,6 +280,7 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		Update_ClassList();
 		Update_ArenaSpawnButtons();
 	}
+	Update_Customizing(fTimeDelta);
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -434,7 +439,7 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 
 bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
-	if (m_isCreateCharacterModalOpen ||
+	if (m_isCreateCharacterModalOpen || Is_CustomizingOpen() ||
 		MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
 		Is_ClassPresentationPreparationPending() ||
 		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
@@ -903,7 +908,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	}
 	if (Is_ProductPointerHovered())
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
-	if (!m_isCreateCharacterModalOpen &&
+	if (!m_isCreateCharacterModalOpen && !Is_CustomizingOpen() &&
 		!Is_ClassPresentationPreparationPending())
 	{
 		m_PlayerController.Update(
@@ -1523,12 +1528,97 @@ void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 	/* Used to be an invisible ImGui window purely so OpenPopup/BeginPopupModal had a host --
 	the modal is now CUI_Sprite art + CUIInputRouter WM_CHAR capture with no ImGui in it, so
 	only the click-consume and per-frame modal drive remain. */
+	Render_CreateCharacterModal();
+}
+
+bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const
+{
+	return nullptr != m_pCustomizingView && m_pCustomizingView->Is_Open();
+}
+
+void CLevel_CharacterSelect::Open_Customizing()
+{
+	if (nullptr == m_pCustomizingView)
+		return;
+	m_pCustomizingView->Open();
+	m_strStatus =
+		"Customizing: drag to rotate, wheel to zoom, then press the decide button.";
+}
+
+void CLevel_CharacterSelect::Close_Customizing()
+{
+	if (nullptr == m_pCustomizingView)
+		return;
+	m_pCustomizingView->Close();
+	/* Everything this screen borrowed goes back: the class-roster framing and the head
+	equipment it hid to expose the face. */
+	if (nullptr != m_pCamera)
+	{
+		m_pCamera->Set_PositionOffset(CharacterSelectCameraPositionOffset());
+		m_pCamera->Set_LookOffset(CharacterSelectCameraLookOffset());
+	}
+	if (nullptr != m_pActiveCharacter)
+		m_pActiveCharacter->Set_HeadPartsVisible(true);
+	m_strStatus = "Server Arena active. Select a class thumbnail, then test its skill keys.";
+}
+
+void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pCustomizingView)
+		return;
+
 	if (m_hasCreateCharacterButtonClick)
 	{
 		m_hasCreateCharacterButtonClick = false;
-		Open_CreateCharacterModal();
+		if (!m_pCustomizingView->Is_Open() && !m_isCreateCharacterModalOpen &&
+			MODE::SERVER_ARENA == m_eMode)
+		{
+			/* The same left-click edge that opened this screen must not also reach one of its
+			own widgets on the frame it appears. */
+			Open_Customizing();
+			return;
+		}
 	}
-	Render_CreateCharacterModal();
+	if (!m_pCustomizingView->Is_Open())
+		return;
+	/* Leaving the arena for any reason (disconnect, transfer, failure) takes the screen with
+	it -- its sprites would otherwise keep their last state over whatever comes next. */
+	if (MODE::SERVER_ARENA != m_eMode)
+	{
+		Close_Customizing();
+		return;
+	}
+	/* The nickname step draws on top and owns the pointer; the customizing art stays exactly
+	as it was behind it instead of competing for the same clicks. */
+	if (m_isCreateCharacterModalOpen)
+		return;
+
+	m_pCustomizingView->Update(fTimeDelta, m_pActiveCharacter);
+	if (m_pCustomizingView->Try_Consume_Back())
+	{
+		Close_Customizing();
+		return;
+	}
+	if (m_pCustomizingView->Try_Consume_Decide())
+	{
+		Open_CreateCharacterModal();
+		return;
+	}
+	if (nullptr != m_pCamera)
+	{
+		m_pCamera->Set_PositionOffset(m_pCustomizingView->Get_CameraPositionOffset());
+		m_pCamera->Set_LookOffset(m_pCustomizingView->Get_CameraLookOffset());
+	}
+	/* Re-applied every frame: a class change or a replicated respawn builds a fresh character
+	wearing its default helmet again. */
+	if (nullptr != m_pActiveCharacter)
+		m_pActiveCharacter->Set_HeadPartsVisible(false);
+}
+
+void CLevel_CharacterSelect::Render_CustomizingText()
+{
+	if (nullptr != m_pCustomizingView)
+		m_pCustomizingView->Render_Text();
 }
 
 void CLevel_CharacterSelect::Render_ProductStatus()

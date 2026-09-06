@@ -153,6 +153,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 	activates the solver. */
 	m_BoneChains.Initialize(
 		m_pBodyModel, m_pSpec->pBoneChains, m_pSpec->iNumBoneChains);
+	Load_FaceSliders();
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -1902,6 +1903,26 @@ void CCharacter::Restore_DefaultEquipmentVisibility()
 	Apply_DefaultEquipmentVisibility(0u);
 }
 
+void CCharacter::Set_HeadPartsVisible(const bool_t isVisible)
+{
+	if (nullptr == m_pSpec)
+		return;
+	if (isVisible)
+	{
+		if (m_isEquipmentPreviewActive)
+			Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
+		else
+			Restore_DefaultEquipmentVisibility();
+		return;
+	}
+	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
+	{
+		const EQUIPMENT_PART_SPEC& equipment = m_pSpec->pEquipment[index];
+		if (EQUIPMENT_PRESENTATION_SLOT::HEAD == equipment.ePresentationSlot)
+			Set_PartVisible(equipment.pPartTag, false);
+	}
+}
+
 bool_t CCharacter::Has_AvatarPart(const EQUIPMENT_SLOT_KIND eKind) const
 {
 	if (nullptr == m_pSpec)
@@ -2078,9 +2099,32 @@ void CCharacter::Update(f32_t fTimeDelta)
 	Update_CameraShakeCues();
 }
 
+void CCharacter::Load_FaceSliders()
+{
+	if (nullptr == m_pSpec || nullptr == m_pSpec->pFaceSliderRace ||
+		nullptr == m_pBodyModel)
+	{
+		return;
+	}
+	std::string error;
+	if (!m_FaceSliderDocument.Load(m_pSpec->pFaceSliderRace, error))
+	{
+		OutputDebugStringA(("[Character] face sliders unavailable: " + error + "\n").c_str());
+		return;
+	}
+	if (!m_FaceCustomize.Initialize(m_pBodyModel, m_FaceSliderDocument))
+		OutputDebugStringA("[Character] face sliders: no slider bone matched the body skeleton.\n");
+}
+
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	__super::Late_Update(fTimeDelta);
+
+	/* Face sliders compose onto whatever the animation posed this frame; they
+	run before the chains so a hair chain hanging off the head sees the final
+	head pose. */
+	if (nullptr != m_pBodyModel)
+		m_FaceCustomize.Apply(m_pBodyModel);
 
 	/* The chains solve here and not in Update because snapshot application
 	runs in the level update, between the two: a skill seek replays the clip

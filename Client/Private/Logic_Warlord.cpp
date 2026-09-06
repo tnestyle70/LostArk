@@ -196,6 +196,8 @@ const CHARACTER_SPEC Spec_Warlord =
 
 	BoneChains,
 	static_cast<uint32_t>(size(BoneChains)),
+
+	"WR",
 };
 
 NS_END
