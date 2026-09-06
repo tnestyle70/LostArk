@@ -504,6 +504,7 @@ def _validate_leaf_params(
             ("sizeEnd", 2, (0.0, 0.0)),
             ("rotationRange", 2, (0.0, 0.0)),
             ("spinRange", 2, (0.0, 0.0)),
+            ("hueShiftRange", 2, (0.0, 0.0)),
             ("colorStart", 4, (1.0, 1.0, 1.0, 1.0)),
             ("colorEnd", 4, (1.0, 1.0, 1.0, 0.0)),
             ("meshRotationMin", 3, (0.0, 0.0, 0.0)),

@@ -143,6 +143,7 @@ public:
 		float2_t vSizeEnd = { 0.f, 0.f };
 		float2_t vRotationRange = { 0.f, 0.f };
 		float2_t vSpinRange = { 0.f, 0.f };
+		float2_t vHueShiftRange = { 0.f, 0.f };
 		float4_t vColorStart = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vColorEnd = { 1.f, 1.f, 1.f, 0.f };
 		PARTICLE_ALIGNMENT eAlignment = PARTICLE_ALIGNMENT::CAMERA;
@@ -278,6 +279,7 @@ private:
 		f32_t fLifetime = 1.f;
 		f32_t fRotationDegrees = 0.f;
 		f32_t fSpinDegrees = 0.f;
+		f32_t fHueShiftDegrees = 0.f;
 		float3_t vMeshRotationDegrees = { 0.f, 0.f, 0.f };
 		float3_t vMeshSpinDegrees = { 0.f, 0.f, 0.f };
 	};

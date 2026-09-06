@@ -1123,6 +1123,7 @@ void Client::CEffectV2Object::Spawn_Particle()
 	Particle.fLifetime = (std::max)(0.001f, Random_Range(P.vLifetime.x, P.vLifetime.y));
 	Particle.fRotationDegrees = Random_Range(P.vRotationRange.x, P.vRotationRange.y);
 	Particle.fSpinDegrees = Random_Range(P.vSpinRange.x, P.vSpinRange.y);
+	Particle.fHueShiftDegrees = Random_Range(P.vHueShiftRange.x, P.vHueShiftRange.y);
 	Particle.vMeshRotationDegrees = {
 		Random_Range(P.vMeshRotationMin.x, P.vMeshRotationMax.x),
 		Random_Range(P.vMeshRotationMin.y, P.vMeshRotationMax.y),
@@ -1257,8 +1258,17 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 			InstanceWorld.r[3] = XMVectorSetW(Position, 1.f);
 		}
 		XMStoreFloat4x4(&Instance.World, InstanceWorld);
-		XMStoreFloat4(&Instance.Color, XMVectorLerp(
-			XMLoadFloat4(&P.vColorStart), XMLoadFloat4(&P.vColorEnd), fLife));
+		vector_t Color = XMVectorLerp(
+			XMLoadFloat4(&P.vColorStart), XMLoadFloat4(&P.vColorEnd), fLife);
+		if (0.f != Particle.fHueShiftDegrees)
+		{
+			const vector_t HSV = XMColorRGBToHSV(XMVectorSetW(Color, 1.f));
+			const f32_t fHue = XMVectorGetX(HSV) + Particle.fHueShiftDegrees / 360.f;
+			const vector_t Shifted = XMColorHSVToRGB(
+				XMVectorSetX(HSV, fHue - std::floor(fHue)));
+			Color = XMVectorSetW(Shifted, XMVectorGetW(Color));
+		}
+		XMStoreFloat4(&Instance.Color, Color);
 		const uint32_t iFrame = P.bSubUVOverLife ?
 			(std::min)(iFrames - 1u, static_cast<uint32_t>(fLife * static_cast<f32_t>(iFrames))) : 0u;
 		Instance.UVTransform = float4_t(
