@@ -555,6 +555,28 @@ void Client::CUILayoutRuntime::Set_SlotTexture(const string& strId, const string
 	}
 }
 
+void Client::CUILayoutRuntime::Set_SlotTextureSRV(
+	const string& strId, ComPtr<ID3D11ShaderResourceView> pSRV)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		if (nullptr != Slot.pSprite)
+			Slot.pSprite->Set_Texture(pSRV);
+		return;
+	}
+}
+
+vector<string> Client::CUILayoutRuntime::Get_SlotIds() const
+{
+	vector<string> Ids;
+	Ids.reserve(m_Slots.size());
+	for (const RUNTIME_SLOT& Slot : m_Slots)
+		Ids.push_back(Slot.strId);
+	return Ids;
+}
+
 void Client::CUILayoutRuntime::Set_SlotPosition(const string& strId, f32_t fX, f32_t fY)
 {
 	for (RUNTIME_SLOT& Slot : m_Slots)

@@ -34,6 +34,8 @@ class CSequencerTool;
 class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
+class CCharacterInfoWindowView;
+class CAvatarBookWindowView;
 class CChatWindowView;
 class CPartyWindowView;
 class CCharacterSelectWindowView;
@@ -419,7 +421,6 @@ private:
 	untouched. Every level display in this preview (left list, right 재련 단계 ladder, center
 	현재/다음, success detail) reads through the same helper so they can never drift out of sync. */
 	unordered_map<string, int32_t> m_ItemUpgradeLevels;
-	bool_t m_bPDown = false;
 	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
 	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
 	0 until the button is clicked, holds at 100 once the fill completes. Also read directly by
@@ -567,6 +568,11 @@ private:
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
 	bool_t m_bIDown = false;
+	/* Not _DEBUG-gated: P opens the retail character info window during real gameplay. Its
+	live portrait renders in Render() before the world pass (see Render_Portrait). */
+	unique_ptr<CCharacterInfoWindowView> m_pCharacterInfoView = { nullptr };
+	unique_ptr<CAvatarBookWindowView> m_pAvatarBookView = { nullptr };
+	bool_t m_bCharacterInfoKeyDown = false;
 	/* Combat HUD's Item_1..4 quick slots (HUD_Layout.json). Which itemId each one holds is a
 	Client-local binding only, set by dragging an item out of CInventoryView and dropping it on
 	one of these four rects -- the Server has no concept of a quick slot, only an inventory by

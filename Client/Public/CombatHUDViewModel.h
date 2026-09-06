@@ -258,6 +258,18 @@ namespace Client
 		void Debug_Set_Esther_Preview(bool enable);
 
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
+		/* Display-only attack power from Data/Balance/PlayerProfiles.json for the character info
+		window; false when the class has no profile row. The Server stays the only authority. */
+		bool Try_Get_ProfileAttackPower(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+			std::uint32_t& outAttackPower) const
+		{
+			const auto it = m_PlayerProfiles.find(characterClass);
+			if (it == m_PlayerProfiles.end())
+				return false;
+			outAttackPower = it->second.iAttackPower;
+			return true;
+		}
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
 		/* Set from either the raw incoming WORLD_ENTITY_SNAPSHOT.eAction or the
 		reliable DEAD despawn. The latter is the normal terminal edge because the

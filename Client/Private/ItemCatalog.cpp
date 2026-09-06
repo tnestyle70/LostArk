@@ -100,6 +100,15 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		definition.strIconPath = iconPath->Get_String();
 		definition.iHealPercent = static_cast<std::uint32_t>(healPercent->Get_Number());
 		definition.strCategory = category->Get_String();
+		const auto ReadOptionalText = [&value](const char* pKey, std::string& outText)
+		{
+			const DATA_JSON_VALUE* pText = value.Find(pKey);
+			if (nullptr != pText && pText->Get_Type() == DATA_JSON_TYPE::STRING)
+				outText = pText->Get_String();
+		};
+		ReadOptionalText("equipSlot", definition.strEquipSlot);
+		ReadOptionalText("characterClass", definition.strCharacterClass);
+		ReadOptionalText("grade", definition.strGrade);
 
 		for (const ITEM_DEFINITION& existing : staged)
 		{

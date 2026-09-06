@@ -75,6 +75,11 @@ void CPart_Body::Late_Update(f32_t fTimeDelta)
 
 HRESULT CPart_Body::Render()
 {
+	return Render_Pass(0u);
+}
+
+HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
+{
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -88,7 +93,7 @@ HRESULT CPart_Body::Render()
 				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(0)) ||
+			FAILED(m_pShaderCom->Begin(iPassIndex)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

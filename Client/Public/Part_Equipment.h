@@ -62,6 +62,9 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Shadow() override;
+	/* Same draw as Render() through explicit technique passes -- skinned pieces use the body
+	shader, socketed (weapon) pieces the static-mesh shader, whose pass tables differ. */
+	HRESULT Render_Pass(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }

@@ -35,6 +35,9 @@
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "AvatarBookWindowView.h"
+#include "UILabelFont.h"
+#include "CharacterInfoWindowView.h"
 #include "InventoryView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
@@ -752,6 +755,12 @@ HRESULT CMainApp::Initialize()
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	/* Last of the runtime windows on purpose: its sprites join Layer_UI last and draw over the
+	inventory/chat/party panels while it is open (it also registers itself as the router's top
+	window so their text passes stay underneath). */
+	m_pCharacterInfoView = std::make_unique<CCharacterInfoWindowView>(m_pDevice, m_pContext);
+	/* Opened from the character info window's avatar page, drawn over it: constructed last. */
+	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -792,33 +801,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bIDown = iDown;
 	}
 
-	/* Same reasoning/gating as K/I above: P is a free normal gameplay keybind, not an F1/F6
-	tool-switch key. Toggles the debug-only Item Upgrade static art preview (see the
-	m_pItemUpgradeView declaration comment in MainApp.h). */
-	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput &&
+	/* P is the retail character info window keybind (same gating as I above). */
+	if (nullptr != m_pCharacterInfoView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t pDown = windowFocused &&
+		const bool_t keyDown = windowFocused &&
 			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
-		if (pDown && !m_bPDown)
+		if (keyDown && !m_bCharacterInfoKeyDown)
 		{
-			if (m_bItemUpgradePreviewVisible)
-			{
-				m_bItemUpgradePreviewVisible = false;
-				Hide_ItemUpgrade();
-				// Closing mid-wait must not leave the looping wait sound behind with no
-				// screen visible to end it.
-				CGameInstance::Get().Stop_LoopingSound();
-			}
-			else
-			{
-				Open_ItemUpgradeWindow();
-			}
+			m_pCharacterInfoView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pCharacterInfoView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 		}
-		m_bPDown = pDown;
+		m_bCharacterInfoKeyDown = keyDown;
 	}
+
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
@@ -905,8 +907,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
 		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
 		CUIInputRouter::Get().Is_TextInputActive();
-	const bool_t mouseCaptured = nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused);
+	/* A runtime UI window (inventory, character info, party, chat) that has the cursor claims
+	the mouse through CUIInputRouter; without folding that in here this call would re-open the
+	gameplay mouse for CPlayerController's tick right after End_Frame() closed it, so a left
+	click on the panel became a basic attack underneath. Last frame's claim covers the windows
+	that only hover-claim during Render (after this point). */
+	const bool_t mouseCaptured = (nullptr != m_pImGuiLayer &&
+		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused)) ||
+		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+		CUIInputRouter::Get().Was_MouseClaimedLastFrame();
 	CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
 	CGameInstance::Get().SetMouseButtonBlocked(
 		DIM::LB,
@@ -1411,6 +1420,13 @@ HRESULT CMainApp::Render()
 		return hBeginResult;
 	}
 
+	/* The character info window's live portrait draws into its own target here, before the
+	world/UI pass whose CI_Preview sprite samples it. */
+	if (nullptr != m_pCharacterInfoView)
+		(void)m_pCharacterInfoView->Render_Portrait();
+	if (nullptr != m_pAvatarBookView)
+		(void)m_pAvatarBookView->Render_Portrait();
+
 	const HRESULT hWorldResult = CGameInstance::Get().Render();
 	if (FAILED(hWorldResult))
 	{
@@ -1711,6 +1727,16 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pPartyWindowView)
 		m_pPartyWindowView->RenderText();
 
+	/* The topmost runtime windows draw their text last: everything above was clipped out of the
+	top window's rect (CUIInputRouter::Set_TopWindowRect -> CGameInstance::Set_TextClipOutRect),
+	these two draw with the clip cleared -- the info window's own labels skip the avatar book's
+	rect through Set_Covered while the book is open. */
+	CGameInstance::Get().Clear_TextClipOutRect();
+	if (nullptr != m_pCharacterInfoView)
+		m_pCharacterInfoView->Render_Text();
+	if (nullptr != m_pAvatarBookView)
+		m_pAvatarBookView->Render_Text();
+
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
 	left-button edge state forward for next frame and applies SetInputBlocked for anything
@@ -1761,6 +1787,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		last state across a level change unless told otherwise, same as this HUD's own. */
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
+		if (nullptr != m_pCharacterInfoView)
+			m_pCharacterInfoView->Hide();
+		if (nullptr != m_pAvatarBookView)
+			m_pAvatarBookView->Hide();
 		return;
 	}
 
@@ -2115,6 +2145,44 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
+	if (nullptr != m_pCharacterInfoView)
+	{
+		/* Each level owns its own CClientReplication, the same way the party window above
+		asks the active level for its roster. */
+		shared_ptr<CCharacter> pLocalCharacter;
+		if (ETOUI(LEVEL::BERN) == currentLevel)
+		{
+			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+				pLocalCharacter = pBern->Get_LocalCharacter();
+		}
+		else if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
+		{
+			if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+				pLocalCharacter = pValtanArena->Get_LocalCharacter();
+		}
+		else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
+		{
+			if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+				pLocalCharacter = pCharacterSelect->Get_LocalCharacter();
+		}
+		m_pCharacterInfoView->Update(fTimeDelta, pLocalCharacter, player);
+		if (nullptr != m_pAvatarBookView)
+		{
+			/* The avatar-page avatar book button toggles the book; the book lives only while the
+			info window is open (its slot map / avatar item ids come from that window). */
+			if (m_pCharacterInfoView->Take_AvatarBookRequest())
+			{
+				if (m_pAvatarBookView->Is_Open())
+					m_pAvatarBookView->Close();
+				else
+					m_pAvatarBookView->Open();
+			}
+			if (!m_pCharacterInfoView->Is_Open())
+				m_pAvatarBookView->Close();
+			m_pCharacterInfoView->Set_Covered(m_pAvatarBookView->Is_Open());
+			m_pAvatarBookView->Update(fTimeDelta, pLocalCharacter, player, *m_pCharacterInfoView);
+		}
+	}
 
 	/* Advances every keyframe-animation slot the per-class blocks above played (and any
 	flipbooks, though this document has none) -- must run after them so a Play call issued this
@@ -4987,6 +5055,23 @@ HRESULT CMainApp::Ready_Fonts()
 			sourceFontPath.c_str())))
 		{
 			return E_FAIL;
+		}
+	}
+
+	/* Small-label variants of two of the fonts above, Lanczos pre-downsampled offline to each
+	line-spacing step in UILabelFont::BAKED_SIZES (the originals are baked at 32-42 px in 4-bit
+	BC2 and blur when SpriteBatch resamples them for 10-18 px labels; the windows draw these
+	1:1). They ship with the UI folder, so a missing file is not fatal: UILabelFont::Resolve
+	falls back to the full-size font when a tag is absent. */
+	for (const wchar_t* pFamily : { L"YG760", L"YoonGasiIIM" })
+	{
+		for (const int32_t iSize : UILabelFont::BAKED_SIZES)
+		{
+			const wstring strTag = wstring(L"Font_") + pFamily + L"_" + std::to_wstring(iSize);
+			const wstring strFile = wstring(L"UI/Fonts/") + pFamily + L"_" + std::to_wstring(iSize) + L".spritefont";
+			const filesystem::path smallFontPath = CRuntimeAssetRoot::Resolve(strFile);
+			if (smallFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(strTag, smallFontPath.c_str())))
+				OutputDebugStringW((L"[Fonts] optional small label font missing: " + strFile + L"\n").c_str());
 		}
 	}
 

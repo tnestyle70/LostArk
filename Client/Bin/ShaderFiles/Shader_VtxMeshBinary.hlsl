@@ -571,6 +571,77 @@ BlendState BS_DeferredEmissiveOverlay
     RenderTargetWriteMask[4] = 0x07;
 };
 
+
+/* Forward-lit preview pass for the character info window's live portrait: socketed weapon
+   parts share this static-mesh shader, so the skinned shader's ScreenCutin look is mirrored
+   here (same light/hemisphere/rim terms, this file's own diffuse/tint/normal inputs). */
+float3 g_CutinLightDirection = float3(-0.45f, -0.75f, 0.35f);
+
+float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
+{
+    float4 diffuse = SampleMapDiffuse(input.vTexcoord, input.vWorldPos.xyz);
+    diffuse *= g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
+    if (0 != g_HasDyeMask)
+    {
+        float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        float3 tint = g_DyeDiffuseColor.rgb;
+        tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
+        tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
+        tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
+        diffuse.rgb *= tint;
+    }
+    float3 normal = normalize(input.vNormal.xyz);
+    if (0 != g_HasNormalTexture)
+    {
+        float4 encodedNormal =
+            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+        float3 tangentNormal;
+        if (encodedNormal.b <= 0.0001f)
+        {
+            float2 tangentXY = encodedNormal.rg * 2.f - 1.f;
+            float tangentZ = sqrt(saturate(1.f - dot(tangentXY, tangentXY)));
+            tangentNormal = float3(tangentXY, tangentZ);
+        }
+        else
+        {
+            tangentNormal = normalize(encodedNormal.xyz * 2.f - 1.f);
+        }
+        float3x3 tangentToWorld = float3x3(
+            normalize(input.vTangent.xyz),
+            normalize(input.vBinormal.xyz) * -1.f,
+            normal);
+        normal = normalize(mul(tangentNormal, tangentToWorld));
+    }
+    const float3 cameraPosition =
+        -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    const float3 toCamera = normalize(cameraPosition - input.vWorldPos.xyz);
+    /* Portrait studio lighting rides the camera (the character can face any world
+       direction): key from the camera's upper left, softer fill from the lower right,
+       plus the hemisphere/rim terms. g_CutinLightDirection stays as an extra world key. */
+    const float3 cameraRight = normalize(float3(g_ViewMatrix._11, g_ViewMatrix._21, g_ViewMatrix._31));
+    const float3 cameraUp = normalize(float3(g_ViewMatrix._12, g_ViewMatrix._22, g_ViewMatrix._32));
+    const float3 cameraLook = normalize(float3(g_ViewMatrix._13, g_ViewMatrix._23, g_ViewMatrix._33));
+    const float3 keyLight = normalize(-cameraLook + cameraUp * 0.6f - cameraRight * 0.5f);
+    const float3 fillLight = normalize(-cameraLook - cameraUp * 0.15f + cameraRight * 0.7f);
+    const float3 worldLight = normalize(-g_CutinLightDirection);
+    const float diffuseLight =
+        saturate(dot(normal, keyLight)) * 0.85f +
+        saturate(dot(normal, fillLight)) * 0.35f +
+        saturate(dot(normal, worldLight)) * 0.25f;
+    const float hemisphere = 0.5f + saturate(normal.y) * 0.2f;
+    const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f) * 0.15f;
+    float3 color = diffuse.rgb * (hemisphere + diffuseLight) + rim;
+    if (0 != g_HasEmissiveTexture)
+    {
+        float3 emissive =
+            g_EmissiveTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        color += emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
+    }
+    return float4(color, 1.f);
+}
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -744,5 +815,17 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DEFERRED_EMISSIVE_OVERLAY();
+    }
+
+    /* Index 19: character info window portrait (see CCharacterInfoWindowView). Appended last so
+       every existing pass index above stays where its consumers expect it. */
+    pass ScreenCutin
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
     }
 }

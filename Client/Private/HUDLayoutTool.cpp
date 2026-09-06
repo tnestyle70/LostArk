@@ -53,6 +53,14 @@ namespace
 		been located yet, so the 30 Inventory_Slot_* markers are position-only (empty layers) for
 		now -- real slot border art is a follow-up, not fabricated here. */
 		{ "Inventory UI",   "UI/Inventory/InventoryUI.json", "UI/Inventory/", false },
+		/* Character info window (P) -- retail characterinfo.gfx equipment tab, every rect the
+		1920x1080 placement trace scaled by 2/3 around a centred window origin; shared V2 window/
+		tab/button skins and the equipment slot silhouettes come from shareImageV2, the item icons
+		from the EFUI_ICONATLAS pages (CCharacterInfoWindowView). */
+		{ "Character Info", "UI/CharacterInfo/CharacterInfo_Layout.json", "UI/CharacterInfo/", false },
+		/* Avatar book (아바타 도감) window content, avatarbook.gfx + preview.gfx camera controls
+		(CAvatarBookWindowView). */
+		{ "Avatar Book", "UI/AvatarBook/AvatarBook_Layout.json", "UI/AvatarBook/", false },
 		/* Item enhancement (장비 재련) window content. itemupgrade.gfx (the original source for this
 		document) turned out to be an outdated/wrong-version window -- confirmed against a real
 		current in-game screenshot and against itembuilduplevel.gfx's identical `enhance.*` loc-key

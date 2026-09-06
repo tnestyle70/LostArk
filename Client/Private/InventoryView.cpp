@@ -93,6 +93,19 @@ void Client::CInventoryView::Update(
 	Update_Drag();
 	Update_CategoryTabs();
 	Update_Items(items);
+
+	/* Anything over the panel belongs to the panel -- a click on it must not fall through to
+	CPlayerController as a basic attack / move (CMainApp folds this claim into its per-frame
+	SetInputBlocked). */
+	{
+		f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelWidth = 0.f, fPanelHeight = 0.f;
+		if (m_pBackgroundView->Get_SlotRect("Inventory_PanelBg", fPanelX, fPanelY, fPanelWidth, fPanelHeight) &&
+			CUIInputRouter::Get().Is_Hovered(fPanelX, fPanelY, fPanelWidth, fPanelHeight,
+				m_pBackgroundView->Get_ResolutionWidth(), m_pBackgroundView->Get_ResolutionHeight()))
+		{
+			CUIInputRouter::Get().Claim_Mouse_This_Frame();
+		}
+	}
 }
 
 void Client::CInventoryView::Render_Text()
@@ -127,11 +140,16 @@ void Client::CInventoryView::Render_Text()
 	constexpr f32_t TITLE_HEIGHT_FRACTION = 0.45f;
 	const f32_t fScale = (vMeasured.y > 0.f) ?
 		(fTitleHeight * TITLE_HEIGHT_FRACTION / vMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strTitle.c_str(),
-		float2_t(
-			(fTitleX + fTitleWidth * 0.5f) * textScaleX,
-			(fTitleY + fTitleHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	/* Glyphs under the character info window (drawn over this panel) are skipped, not
+	drawn on top of it -- this text pass runs after every sprite. */
+	const float2_t vTitlePos(
+		(fTitleX + fTitleWidth * 0.5f) * textScaleX,
+		(fTitleY + fTitleHeight * 0.5f) * textScaleY);
+	if (!CUIInputRouter::Get().Is_UnderTopWindow(vTitlePos.x, vTitlePos.y))
+	{
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strTitle.c_str(),
+			vTitlePos, Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
 
 	/* Per-slot stack counts and the hovered item's name, resolved from the same
 	(items, category filter) pair Update_Items drew the icons from so a filtered view never
@@ -193,6 +211,8 @@ void Client::CInventoryView::Render_Text()
 		/* Bottom-right of the slot, with the same 1px dark drop shadow the drawlist used. */
 		const float2_t vQuantityPos(
 			(fX + fWidth - 3.f) * textScaleX, (fY + fHeight - 3.f) * textScaleY);
+		if (Router.Is_UnderTopWindow(vQuantityPos.x, vQuantityPos.y))
+			continue;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strQuantity.c_str(),
 			float2_t(vQuantityPos.x + 1.f, vQuantityPos.y + 1.f),
 			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f,
@@ -218,11 +238,12 @@ void Client::CInventoryView::Render_Text()
 
 			const float2_t vTooltipMeasured =
 				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strTooltip.c_str());
-			if (vTooltipMeasured.y > 0.f)
+			const float2_t vTooltipPos(
+				fHoveredX * textScaleX, (fHoveredY - 4.f) * textScaleY);
+			if (vTooltipMeasured.y > 0.f &&
+				!Router.Is_UnderTopWindow(vTooltipPos.x, vTooltipPos.y))
 			{
 				const f32_t fTooltipScale = (12.f / vTooltipMeasured.y) * textUiScale;
-				const float2_t vTooltipPos(
-					fHoveredX * textScaleX, (fHoveredY - 4.f) * textScaleY);
 				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strTooltip.c_str(),
 					float2_t(vTooltipPos.x + 1.f, vTooltipPos.y + 1.f),
 					XMVectorSet(0.f, 0.f, 0.f, 230.f / 255.f), 0.f,
@@ -236,6 +257,7 @@ void Client::CInventoryView::Render_Text()
 
 void Client::CInventoryView::Update_Drag()
 {
+	Clamp_ToScreen();
 	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
 	CUIInputRouter& Router = CUIInputRouter::Get();
@@ -272,6 +294,11 @@ void Client::CInventoryView::Update_Drag()
 	if (0.f == fDeltaX && 0.f == fDeltaY)
 		return;
 
+	Move_Panel(fDeltaX, fDeltaY);
+}
+
+void Client::CInventoryView::Move_Panel(const f32_t fDeltaX, const f32_t fDeltaY)
+{
 	constexpr const char* STATIC_SLOT_IDS[] = {
 		"Inventory_PanelBg", "Inventory_Title", "Inventory_Button1",
 		"Inventory_CraftingButton", "Inventory_GemButton", "Inventory_BottomBars",
@@ -298,6 +325,22 @@ void Client::CInventoryView::Update_Drag()
 		if (m_pBackgroundView->Get_SlotRect(strIconId, fIconX, fIconY, fIconWidth, fIconHeight))
 			m_pBackgroundView->Set_SlotPosition(strIconId, fIconX + fDeltaX, fIconY + fDeltaY);
 	}
+}
+
+void Client::CInventoryView::Clamp_ToScreen()
+{
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pBackgroundView->Get_SlotRect("Inventory_PanelBg", fX, fY, fWidth, fHeight))
+		return;
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+	f32_t fDeltaX = 0.f, fDeltaY = 0.f;
+	if (fX < 0.f) fDeltaX = -fX;
+	else if (fX + fWidth > fRefWidth) fDeltaX = fRefWidth - (fX + fWidth);
+	if (fY < 0.f) fDeltaY = -fY;
+	else if (fY + fHeight > fRefHeight) fDeltaY = fRefHeight - (fY + fHeight);
+	if (0.f != fDeltaX || 0.f != fDeltaY)
+		Move_Panel(fDeltaX, fDeltaY);
 }
 
 void Client::CInventoryView::Update_CategoryTabs()

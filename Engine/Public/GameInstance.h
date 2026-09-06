@@ -116,6 +116,9 @@ public: /* For.Font_Manager */
 	HRESULT Add_Font(const wstring& strFontTag, const tchar_t* pFontFilePath);
 	void Draw_Text(const wstring& strFontTag, const tchar_t* pText, const float2_t& vPosition, fvector_t vColor = Colors::White, f32_t fRotation = 0.f, const float2_t& vOrigin = float2_t(0.f, 0.f), f32_t fScale = 1.f);
 	float2_t Measure_Text(const wstring& strFontTag, const tchar_t* pText);
+	/* See CFont_Manager::Set_ClipOutRect: screen rect Draw_Text refuses to draw over. */
+	void Set_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	void Clear_TextClipOutRect();
 
 public: /* For.Target_Manager */
 	HRESULT Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);

@@ -330,7 +330,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_top.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -636,7 +636,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_head_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_helmet.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -871,7 +871,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_shoulder_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_shoulder.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -884,7 +884,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_top.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -897,7 +897,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_bottom_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_pants.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -910,7 +910,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_glove_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_gloves.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -973,7 +973,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_weapon_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_weapon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -1071,7 +1071,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_top.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -1130,7 +1130,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 0 },
       "layers": [
-        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/Items/LanceMaster/destinyblaze_top.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
