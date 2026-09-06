@@ -1,121 +1,1063 @@
 {
-  "schema": "lostark.camera-shots",
-  "formatVersion": 1,
-  "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 56,
-  "shots": [
-    {
-      "shotId": "shot.1",
-      "sequenceInstanceId": "world.sequence.instance.circusfinale",
-      "box": { "center": [52.5, 10, -87.5], "halfExtents": [32.5, 15, 27.5], "yawDegrees": 0 },
-      "eye": [38.8578, 4.65774, -75.0091],
-      "lookAt": [46.3628, 4.30222, -81.6082],
-      "fovYDegrees": 60,
-      "blendInMs": 6000,
-      "blendOutMs": 1500,
-      "priority": 10
-    },
-    {
-      "shotId": "shot.mario1",
-      "sequenceInstanceId": "",
-      "box": { "center": [-1181.55, -11.5, -942.25], "halfExtents": [45, 25, 45], "yawDegrees": 0 },
-      "eye": [-1194.87, -8.5, -930.142],
-      "lookAt": [-1181.55, -8.5, -942.25],
-      "fovYDegrees": 50,
-      "blendInMs": 900,
-      "blendOutMs": 900,
-      "priority": 20,
-      "follow": { "eyeOffset": [-13.319, 3, 12.108], "lookAtOffset": [0, 3, 0] }
-    },
-    {
-      "shotId": "shot.mario2",
-      "sequenceInstanceId": "",
-      "box": { "center": [-1426.3, -5, -1205.9], "halfExtents": [60, 30, 60], "yawDegrees": 0 },
-      "eye": [-1448.83, -0.5, -1191.02],
-      "lookAt": [-1426.3, -0.5, -1205.9],
-      "fovYDegrees": 50,
-      "blendInMs": 900,
-      "blendOutMs": 900,
-      "priority": 20,
-      "follow": { "eyeOffset": [-22.53, 4.5, 14.879], "lookAtOffset": [0, 4.5, 0] }
-    },
-    {
-      "shotId": "shot.kouku.book",
-      "sequenceInstanceId": "world.sequence.instance.original_kouku",
-      "box": { "center": [0, 8, 737.28], "halfExtents": [60, 50, 60], "yawDegrees": 0 },
-      "eye": [-6.435, 2.275, 743.708],
-      "lookAt": [2.121, 2.459, 735.295],
-      "fovYDegrees": 54.18,
-      "blendInMs": 300,
-      "blendOutMs": 1200,
-      "priority": 20,
-      "cameraTrack": {
-        "durationMs": 37800,
-        "interpolation": "LINEAR",
-        "easing": "LINEAR",
-        "keyframes": [
-          { "sceneId": "shot.kouku.book.k00", "timeMs": 0, "eye": [14.876, 89.358, 861.881], "lookAt": [14.144, 82.775, 851.874], "fovYDegrees": 49.09 },
-          { "sceneId": "shot.kouku.book.k01", "timeMs": 300, "eye": [-0.979, 82.412, 855.279], "lookAt": [-0.414, 75.959, 845.178], "fovYDegrees": 57.94 },
-          { "sceneId": "shot.kouku.book.k02", "timeMs": 600, "eye": [-15.555, 75.035, 846.051], "lookAt": [-13.634, 68.722, 836.029], "fovYDegrees": 57.77 },
-          { "sceneId": "shot.kouku.book.k03", "timeMs": 900, "eye": [-27.762, 67.496, 834.823], "lookAt": [-24.506, 61.33, 825.057], "fovYDegrees": 57.57 },
-          { "sceneId": "shot.kouku.book.k04", "timeMs": 1200, "eye": [-36.932, 60.064, 822.578], "lookAt": [-32.444, 54.047, 813.216], "fovYDegrees": 57.36 },
-          { "sceneId": "shot.kouku.book.k05", "timeMs": 1500, "eye": [-42.88, 53.009, 810.454], "lookAt": [-37.33, 47.138, 801.581], "fovYDegrees": 57.13 },
-          { "sceneId": "shot.kouku.book.k06", "timeMs": 1800, "eye": [-45.847, 46.599, 799.54], "lookAt": [-39.452, 40.867, 791.158], "fovYDegrees": 56.88 },
-          { "sceneId": "shot.kouku.book.k07", "timeMs": 2100, "eye": [-46.353, 41.103, 790.738], "lookAt": [-39.361, 35.498, 782.756], "fovYDegrees": 56.62 },
-          { "sceneId": "shot.kouku.book.k08", "timeMs": 2300, "eye": [-45.622, 38.08, 786.379], "lookAt": [-38.381, 32.551, 778.568], "fovYDegrees": 56.44 },
-          { "sceneId": "shot.kouku.book.k09", "timeMs": 2700, "eye": [-42.404, 33.746, 781.463], "lookAt": [-35.019, 28.342, 773.7], "fovYDegrees": 56.07 },
-          { "sceneId": "shot.kouku.book.k10", "timeMs": 3800, "eye": [-33.431, 25.015, 772.161], "lookAt": [-25.947, 19.913, 764.289], "fovYDegrees": 54.96 },
-          { "sceneId": "shot.kouku.book.k11", "timeMs": 4600, "eye": [-28.139, 20.366, 766.682], "lookAt": [-20.599, 15.453, 758.743], "fovYDegrees": 54.12 },
-          { "sceneId": "shot.kouku.book.k12", "timeMs": 5500, "eye": [-23.552, 16.677, 761.935], "lookAt": [-15.966, 11.932, 753.939], "fovYDegrees": 53.19 },
-          { "sceneId": "shot.kouku.book.k13", "timeMs": 6200, "eye": [-21.063, 14.826, 759.361], "lookAt": [-13.453, 10.173, 751.333], "fovYDegrees": 52.5 },
-          { "sceneId": "shot.kouku.book.k14", "timeMs": 7200, "eye": [-18.886, 13.296, 757.11], "lookAt": [-11.258, 8.718, 749.056], "fovYDegrees": 51.6 },
-          { "sceneId": "shot.kouku.book.k15", "timeMs": 9500, "eye": [-16.177, 11.497, 754.309], "lookAt": [-8.529, 7.01, 746.223], "fovYDegrees": 50.22 },
-          { "sceneId": "shot.kouku.book.k16", "timeMs": 9599, "eye": [-16.177, 11.497, 754.309], "lookAt": [-8.529, 7.01, 746.223], "fovYDegrees": 50.22 },
-          { "sceneId": "shot.kouku.book.k17", "timeMs": 9600, "eye": [-1.67, 2.665, 739.21], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 33.81 },
-          { "sceneId": "shot.kouku.book.k18", "timeMs": 12000, "eye": [-1.17, 2.465, 738.36], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 25.86 },
-          { "sceneId": "shot.kouku.book.k19", "timeMs": 12099, "eye": [-1.17, 2.465, 738.36], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 25.86 },
-          { "sceneId": "shot.kouku.book.k20", "timeMs": 12100, "eye": [-1.439, 2.698, 738.772], "lookAt": [6.847, 3.142, 730.103], "fovYDegrees": 28.89 },
-          { "sceneId": "shot.kouku.book.k21", "timeMs": 12400, "eye": [-2.693, 2.477, 740.047], "lookAt": [5.625, 3.669, 731.48], "fovYDegrees": 41.59 },
-          { "sceneId": "shot.kouku.book.k22", "timeMs": 12800, "eye": [-5.598, 2.124, 742.979], "lookAt": [2.71, 4.305, 734.599], "fovYDegrees": 60.28 },
-          { "sceneId": "shot.kouku.book.k23", "timeMs": 13100, "eye": [-7.456, 1.968, 744.844], "lookAt": [0.835, 4.42, 736.523], "fovYDegrees": 64.05 },
-          { "sceneId": "shot.kouku.book.k24", "timeMs": 14000, "eye": [-8.878, 1.812, 746.269], "lookAt": [-0.614, 4.495, 737.992], "fovYDegrees": 66.65 },
-          { "sceneId": "shot.kouku.book.k25", "timeMs": 15400, "eye": [-9.694, 1.759, 747.079], "lookAt": [-1.441, 4.389, 738.775], "fovYDegrees": 67.38 },
-          { "sceneId": "shot.kouku.book.k26", "timeMs": 15500, "eye": [-9.544, 1.778, 746.928], "lookAt": [-1.262, 4.294, 738.617], "fovYDegrees": 64.06 },
-          { "sceneId": "shot.kouku.book.k27", "timeMs": 15609, "eye": [-7.673, 1.97, 745.047], "lookAt": [0.873, 3.233, 736.718], "fovYDegrees": 31.55 },
-          { "sceneId": "shot.kouku.book.k28", "timeMs": 15729, "eye": [-6.62, 2.079, 743.989], "lookAt": [2.035, 2.596, 735.693], "fovYDegrees": 15.51 },
-          { "sceneId": "shot.kouku.book.k29", "timeMs": 16519, "eye": [-6.67, 2.09, 744.04], "lookAt": [1.964, 2.504, 735.716], "fovYDegrees": 16.76 },
-          { "sceneId": "shot.kouku.book.k30", "timeMs": 16658, "eye": [-5.65, 2.284, 743.097], "lookAt": [2.896, 2.765, 734.687], "fovYDegrees": 15.35 },
-          { "sceneId": "shot.kouku.book.k31", "timeMs": 16800, "eye": [-1.273, 2.711, 738.878], "lookAt": [5.761, 2.533, 729.946], "fovYDegrees": 16.31 },
-          { "sceneId": "shot.kouku.book.k32", "timeMs": 16943, "eye": [-1.783, 2.718, 739.164], "lookAt": [6.149, 2.55, 729.796], "fovYDegrees": 11.23 },
-          { "sceneId": "shot.kouku.book.k33", "timeMs": 17086, "eye": [-1.668, 2.768, 739.156], "lookAt": [5.881, 2.37, 729.573], "fovYDegrees": 5.78 },
-          { "sceneId": "shot.kouku.book.k34", "timeMs": 17228, "eye": [-1.668, 2.768, 739.156], "lookAt": [5.881, 2.37, 729.573], "fovYDegrees": 5.78 },
-          { "sceneId": "shot.kouku.book.k35", "timeMs": 17229, "eye": [-8.981, 1.648, 757.238], "lookAt": [-4.087, 2.354, 746.304], "fovYDegrees": 17.01 },
-          { "sceneId": "shot.kouku.book.k36", "timeMs": 17515, "eye": [-9.04, 1.648, 757.212], "lookAt": [-4.312, 2.545, 746.219], "fovYDegrees": 24.25 },
-          { "sceneId": "shot.kouku.book.k37", "timeMs": 17943, "eye": [-9.18, 1.648, 757.149], "lookAt": [-4.653, 2.809, 746.096], "fovYDegrees": 25.22 },
-          { "sceneId": "shot.kouku.book.k38", "timeMs": 18943, "eye": [-9.908, 1.87, 757.218], "lookAt": [-5.006, 2.84, 746.308], "fovYDegrees": 25.85 },
-          { "sceneId": "shot.kouku.book.k39", "timeMs": 19372, "eye": [-10.481, 2.167, 757.491], "lookAt": [-5.249, 2.826, 746.712], "fovYDegrees": 24.85 },
-          { "sceneId": "shot.kouku.book.k40", "timeMs": 20372, "eye": [-12.272, 3.117, 758.337], "lookAt": [-6.262, 3.016, 747.951], "fovYDegrees": 14.77 },
-          { "sceneId": "shot.kouku.book.k41", "timeMs": 22229, "eye": [-17.988, 5.993, 761.149], "lookAt": [-10.752, 4.786, 751.653], "fovYDegrees": 17.3 },
-          { "sceneId": "shot.kouku.book.k42", "timeMs": 23086, "eye": [-20.434, 7.211, 761.307], "lookAt": [-12.675, 5.53, 752.308], "fovYDegrees": 18.37 },
-          { "sceneId": "shot.kouku.book.k43", "timeMs": 23943, "eye": [-21.436, 7.973, 759.634], "lookAt": [-13.203, 5.836, 751.17], "fovYDegrees": 19.22 },
-          { "sceneId": "shot.kouku.book.k44", "timeMs": 25229, "eye": [-21.684, 8.633, 756.102], "lookAt": [-12.815, 5.955, 748.475], "fovYDegrees": 19.99 },
-          { "sceneId": "shot.kouku.book.k45", "timeMs": 26515, "eye": [-23.046, 8.658, 754.185], "lookAt": [-13.524, 5.883, 747.429], "fovYDegrees": 16.3 },
-          { "sceneId": "shot.kouku.book.k46", "timeMs": 26656, "eye": [-23.046, 8.658, 754.185], "lookAt": [-13.524, 5.883, 747.429], "fovYDegrees": 16.3 },
-          { "sceneId": "shot.kouku.book.k47", "timeMs": 26657, "eye": [-2.45, 1.425, 741.381], "lookAt": [1.665, 4.298, 730.481], "fovYDegrees": 75.54 },
-          { "sceneId": "shot.kouku.book.k48", "timeMs": 27372, "eye": [-2.589, 1.432, 741.302], "lookAt": [2.567, 5.629, 731.311], "fovYDegrees": 47.86 },
-          { "sceneId": "shot.kouku.book.k49", "timeMs": 27800, "eye": [-2.635, 1.439, 741.266], "lookAt": [2.754, 5.849, 731.493], "fovYDegrees": 38.73 },
-          { "sceneId": "shot.kouku.book.k50", "timeMs": 29229, "eye": [-2.67, 1.49, 741.179], "lookAt": [3.519, 5.5, 731.712], "fovYDegrees": 36.24 },
-          { "sceneId": "shot.kouku.book.k51", "timeMs": 30229, "eye": [-2.812, 1.532, 741.015], "lookAt": [2.738, 5.802, 731.27], "fovYDegrees": 32.74 },
-          { "sceneId": "shot.kouku.book.k52", "timeMs": 31372, "eye": [-2.96, 1.591, 740.804], "lookAt": [4.937, 5.002, 732.437], "fovYDegrees": 28.71 },
-          { "sceneId": "shot.kouku.book.k53", "timeMs": 32943, "eye": [-3.135, 1.691, 740.581], "lookAt": [4.391, 4.192, 731.575], "fovYDegrees": 29.61 },
-          { "sceneId": "shot.kouku.book.k54", "timeMs": 33943, "eye": [-3.268, 1.772, 740.587], "lookAt": [5.665, 4.539, 733.069], "fovYDegrees": 31.89 },
-          { "sceneId": "shot.kouku.book.k55", "timeMs": 34372, "eye": [-3.244, 1.824, 740.576], "lookAt": [5.4, 4.605, 732.73], "fovYDegrees": 33.52 },
-          { "sceneId": "shot.kouku.book.k56", "timeMs": 34657, "eye": [-3.747, 1.925, 741.086], "lookAt": [4.662, 4.238, 732.844], "fovYDegrees": 35.42 },
-          { "sceneId": "shot.kouku.book.k57", "timeMs": 35086, "eye": [-5.983, 2.251, 743.266], "lookAt": [2.564, 2.615, 734.85], "fovYDegrees": 52.31 },
-          { "sceneId": "shot.kouku.book.k58", "timeMs": 35229, "eye": [-6.218, 2.28, 743.495], "lookAt": [2.337, 2.464, 735.083], "fovYDegrees": 54.18 },
-          { "sceneId": "shot.kouku.book.k59", "timeMs": 37800, "eye": [-6.435, 2.275, 743.708], "lookAt": [2.121, 2.459, 735.295], "fovYDegrees": 54.18 }
-        ]
-      }
-    }
-  ]
+ "schema": "lostark.camera-shots",
+ "formatVersion": 1,
+ "areaId": "LV_LUT_MIDNIGHTC_ED",
+ "revision": 61,
+ "shots": [
+  {
+   "shotId": "shot.1",
+   "sequenceInstanceId": "world.sequence.instance.circusfinale",
+   "box": {
+    "center": [
+     52.5,
+     10,
+     -87.5
+    ],
+    "halfExtents": [
+     32.5,
+     15,
+     27.5
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    38.8578,
+    4.65774,
+    -75.0091
+   ],
+   "lookAt": [
+    46.3628,
+    4.30222,
+    -81.6082
+   ],
+   "fovYDegrees": 60,
+   "blendInMs": 6000,
+   "blendOutMs": 1500,
+   "priority": 10
+  },
+  {
+   "shotId": "shot.mario1",
+   "sequenceInstanceId": "",
+   "box": {
+    "center": [
+     -1181.55,
+     -11.5,
+     -942.25
+    ],
+    "halfExtents": [
+     45,
+     25,
+     45
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    -1194.87,
+    -8.5,
+    -930.142
+   ],
+   "lookAt": [
+    -1181.55,
+    -8.5,
+    -942.25
+   ],
+   "fovYDegrees": 50,
+   "blendInMs": 900,
+   "blendOutMs": 900,
+   "priority": 20,
+   "follow": {
+    "eyeOffset": [
+     -13.319,
+     3,
+     12.108
+    ],
+    "lookAtOffset": [
+     0,
+     3,
+     0
+    ]
+   }
+  },
+  {
+   "shotId": "shot.mario2",
+   "sequenceInstanceId": "",
+   "box": {
+    "center": [
+     -1426.3,
+     -5,
+     -1205.9
+    ],
+    "halfExtents": [
+     60,
+     30,
+     60
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    -1448.83,
+    -0.5,
+    -1191.02
+   ],
+   "lookAt": [
+    -1426.3,
+    -0.5,
+    -1205.9
+   ],
+   "fovYDegrees": 50,
+   "blendInMs": 900,
+   "blendOutMs": 900,
+   "priority": 20,
+   "follow": {
+    "eyeOffset": [
+     -22.53,
+     4.5,
+     14.879
+    ],
+    "lookAtOffset": [
+     0,
+     4.5,
+     0
+    ]
+   }
+  },
+  {
+   "shotId": "shot.kouku.book",
+   "sequenceInstanceId": "world.sequence.instance.original_kouku",
+   "box": {
+    "center": [
+     0,
+     8,
+     737.28
+    ],
+    "halfExtents": [
+     60,
+     50,
+     60
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    -6.435,
+    2.275,
+    743.708
+   ],
+   "lookAt": [
+    2.121,
+    2.459,
+    735.295
+   ],
+   "fovYDegrees": 54.18,
+   "blendInMs": 300,
+   "blendOutMs": 1200,
+   "priority": 20,
+   "cameraTrack": {
+    "durationMs": 37800,
+    "interpolation": "LINEAR",
+    "easing": "LINEAR",
+    "keyframes": [
+     {
+      "sceneId": "shot.kouku.book.k00",
+      "timeMs": 0,
+      "eye": [
+       14.876,
+       89.358,
+       861.881
+      ],
+      "lookAt": [
+       14.144,
+       82.775,
+       851.874
+      ],
+      "fovYDegrees": 49.09
+     },
+     {
+      "sceneId": "shot.kouku.book.k01",
+      "timeMs": 300,
+      "eye": [
+       -0.979,
+       82.412,
+       855.279
+      ],
+      "lookAt": [
+       -0.414,
+       75.959,
+       845.178
+      ],
+      "fovYDegrees": 57.94
+     },
+     {
+      "sceneId": "shot.kouku.book.k02",
+      "timeMs": 600,
+      "eye": [
+       -15.555,
+       75.035,
+       846.051
+      ],
+      "lookAt": [
+       -13.634,
+       68.722,
+       836.029
+      ],
+      "fovYDegrees": 57.77
+     },
+     {
+      "sceneId": "shot.kouku.book.k03",
+      "timeMs": 900,
+      "eye": [
+       -27.762,
+       67.496,
+       834.823
+      ],
+      "lookAt": [
+       -24.506,
+       61.33,
+       825.057
+      ],
+      "fovYDegrees": 57.57
+     },
+     {
+      "sceneId": "shot.kouku.book.k04",
+      "timeMs": 1200,
+      "eye": [
+       -36.932,
+       60.064,
+       822.578
+      ],
+      "lookAt": [
+       -32.444,
+       54.047,
+       813.216
+      ],
+      "fovYDegrees": 57.36
+     },
+     {
+      "sceneId": "shot.kouku.book.k05",
+      "timeMs": 1500,
+      "eye": [
+       -42.88,
+       53.009,
+       810.454
+      ],
+      "lookAt": [
+       -37.33,
+       47.138,
+       801.581
+      ],
+      "fovYDegrees": 57.13
+     },
+     {
+      "sceneId": "shot.kouku.book.k06",
+      "timeMs": 1800,
+      "eye": [
+       -45.847,
+       46.599,
+       799.54
+      ],
+      "lookAt": [
+       -39.452,
+       40.867,
+       791.158
+      ],
+      "fovYDegrees": 56.88
+     },
+     {
+      "sceneId": "shot.kouku.book.k07",
+      "timeMs": 2100,
+      "eye": [
+       -46.353,
+       41.103,
+       790.738
+      ],
+      "lookAt": [
+       -39.361,
+       35.498,
+       782.756
+      ],
+      "fovYDegrees": 56.62
+     },
+     {
+      "sceneId": "shot.kouku.book.k08",
+      "timeMs": 2300,
+      "eye": [
+       -45.622,
+       38.08,
+       786.379
+      ],
+      "lookAt": [
+       -38.381,
+       32.551,
+       778.568
+      ],
+      "fovYDegrees": 56.44
+     },
+     {
+      "sceneId": "shot.kouku.book.k09",
+      "timeMs": 2700,
+      "eye": [
+       -42.404,
+       33.746,
+       781.463
+      ],
+      "lookAt": [
+       -35.019,
+       28.342,
+       773.7
+      ],
+      "fovYDegrees": 56.07
+     },
+     {
+      "sceneId": "shot.kouku.book.k10",
+      "timeMs": 3800,
+      "eye": [
+       -33.431,
+       25.015,
+       772.161
+      ],
+      "lookAt": [
+       -25.947,
+       19.913,
+       764.289
+      ],
+      "fovYDegrees": 54.96
+     },
+     {
+      "sceneId": "shot.kouku.book.k11",
+      "timeMs": 4600,
+      "eye": [
+       -28.139,
+       20.366,
+       766.682
+      ],
+      "lookAt": [
+       -20.599,
+       15.453,
+       758.743
+      ],
+      "fovYDegrees": 54.12
+     },
+     {
+      "sceneId": "shot.kouku.book.k12",
+      "timeMs": 5500,
+      "eye": [
+       -23.552,
+       16.677,
+       761.935
+      ],
+      "lookAt": [
+       -15.966,
+       11.932,
+       753.939
+      ],
+      "fovYDegrees": 53.19
+     },
+     {
+      "sceneId": "shot.kouku.book.k13",
+      "timeMs": 6200,
+      "eye": [
+       -21.063,
+       14.826,
+       759.361
+      ],
+      "lookAt": [
+       -13.453,
+       10.173,
+       751.333
+      ],
+      "fovYDegrees": 52.5
+     },
+     {
+      "sceneId": "shot.kouku.book.k14",
+      "timeMs": 7200,
+      "eye": [
+       -18.886,
+       13.296,
+       757.11
+      ],
+      "lookAt": [
+       -11.258,
+       8.718,
+       749.056
+      ],
+      "fovYDegrees": 51.6
+     },
+     {
+      "sceneId": "shot.kouku.book.k15",
+      "timeMs": 9500,
+      "eye": [
+       -16.177,
+       11.497,
+       754.309
+      ],
+      "lookAt": [
+       -8.529,
+       7.01,
+       746.223
+      ],
+      "fovYDegrees": 50.22
+     },
+     {
+      "sceneId": "shot.kouku.book.k16",
+      "timeMs": 9599,
+      "eye": [
+       -16.177,
+       11.497,
+       754.309
+      ],
+      "lookAt": [
+       -8.529,
+       7.01,
+       746.223
+      ],
+      "fovYDegrees": 50.22
+     },
+     {
+      "sceneId": "shot.kouku.book.k17",
+      "timeMs": 9600,
+      "eye": [
+       -1.67,
+       2.665,
+       739.21
+      ],
+      "lookAt": [
+       7.103,
+       2.722,
+       729.671
+      ],
+      "fovYDegrees": 33.81
+     },
+     {
+      "sceneId": "shot.kouku.book.k18",
+      "timeMs": 12000,
+      "eye": [
+       -1.17,
+       2.465,
+       738.36
+      ],
+      "lookAt": [
+       7.103,
+       2.722,
+       729.671
+      ],
+      "fovYDegrees": 25.86
+     },
+     {
+      "sceneId": "shot.kouku.book.k19",
+      "timeMs": 12099,
+      "eye": [
+       -1.17,
+       2.465,
+       738.36
+      ],
+      "lookAt": [
+       7.103,
+       2.722,
+       729.671
+      ],
+      "fovYDegrees": 25.86
+     },
+     {
+      "sceneId": "shot.kouku.book.k20",
+      "timeMs": 12100,
+      "eye": [
+       -1.439,
+       2.698,
+       738.772
+      ],
+      "lookAt": [
+       6.847,
+       3.142,
+       730.103
+      ],
+      "fovYDegrees": 28.89
+     },
+     {
+      "sceneId": "shot.kouku.book.k21",
+      "timeMs": 12400,
+      "eye": [
+       -2.693,
+       2.477,
+       740.047
+      ],
+      "lookAt": [
+       5.625,
+       3.669,
+       731.48
+      ],
+      "fovYDegrees": 41.59
+     },
+     {
+      "sceneId": "shot.kouku.book.k22",
+      "timeMs": 12800,
+      "eye": [
+       -5.598,
+       2.124,
+       742.979
+      ],
+      "lookAt": [
+       2.71,
+       4.305,
+       734.599
+      ],
+      "fovYDegrees": 60.28
+     },
+     {
+      "sceneId": "shot.kouku.book.k23",
+      "timeMs": 13100,
+      "eye": [
+       -7.456,
+       1.968,
+       744.844
+      ],
+      "lookAt": [
+       0.835,
+       4.42,
+       736.523
+      ],
+      "fovYDegrees": 64.05
+     },
+     {
+      "sceneId": "shot.kouku.book.k24",
+      "timeMs": 14000,
+      "eye": [
+       -8.878,
+       1.812,
+       746.269
+      ],
+      "lookAt": [
+       -0.614,
+       4.495,
+       737.992
+      ],
+      "fovYDegrees": 66.65
+     },
+     {
+      "sceneId": "shot.kouku.book.k25",
+      "timeMs": 15400,
+      "eye": [
+       -9.694,
+       1.759,
+       747.079
+      ],
+      "lookAt": [
+       -1.441,
+       4.389,
+       738.775
+      ],
+      "fovYDegrees": 67.38
+     },
+     {
+      "sceneId": "shot.kouku.book.k26",
+      "timeMs": 15500,
+      "eye": [
+       -9.544,
+       1.778,
+       746.928
+      ],
+      "lookAt": [
+       -1.262,
+       4.294,
+       738.617
+      ],
+      "fovYDegrees": 64.06
+     },
+     {
+      "sceneId": "shot.kouku.book.k27",
+      "timeMs": 15609,
+      "eye": [
+       -7.673,
+       1.97,
+       745.047
+      ],
+      "lookAt": [
+       0.873,
+       3.233,
+       736.718
+      ],
+      "fovYDegrees": 31.55
+     },
+     {
+      "sceneId": "shot.kouku.book.k28",
+      "timeMs": 15729,
+      "eye": [
+       -6.62,
+       2.079,
+       743.989
+      ],
+      "lookAt": [
+       2.035,
+       2.596,
+       735.693
+      ],
+      "fovYDegrees": 15.51
+     },
+     {
+      "sceneId": "shot.kouku.book.k29",
+      "timeMs": 16519,
+      "eye": [
+       -6.67,
+       2.09,
+       744.04
+      ],
+      "lookAt": [
+       1.964,
+       2.504,
+       735.716
+      ],
+      "fovYDegrees": 16.76
+     },
+     {
+      "sceneId": "shot.kouku.book.k30",
+      "timeMs": 16658,
+      "eye": [
+       -5.65,
+       2.284,
+       743.097
+      ],
+      "lookAt": [
+       2.896,
+       2.765,
+       734.687
+      ],
+      "fovYDegrees": 15.35
+     },
+     {
+      "sceneId": "shot.kouku.book.k31",
+      "timeMs": 16800,
+      "eye": [
+       -1.273,
+       2.711,
+       738.878
+      ],
+      "lookAt": [
+       5.761,
+       2.533,
+       729.946
+      ],
+      "fovYDegrees": 16.31
+     },
+     {
+      "sceneId": "shot.kouku.book.k32",
+      "timeMs": 16943,
+      "eye": [
+       -1.783,
+       2.718,
+       739.164
+      ],
+      "lookAt": [
+       6.149,
+       2.55,
+       729.796
+      ],
+      "fovYDegrees": 11.23
+     },
+     {
+      "sceneId": "shot.kouku.book.k33",
+      "timeMs": 17086,
+      "eye": [
+       -1.668,
+       2.768,
+       739.156
+      ],
+      "lookAt": [
+       5.881,
+       2.37,
+       729.573
+      ],
+      "fovYDegrees": 5.78
+     },
+     {
+      "sceneId": "shot.kouku.book.k34",
+      "timeMs": 17228,
+      "eye": [
+       -1.668,
+       2.768,
+       739.156
+      ],
+      "lookAt": [
+       5.881,
+       2.37,
+       729.573
+      ],
+      "fovYDegrees": 5.78
+     },
+     {
+      "sceneId": "shot.kouku.book.k35",
+      "timeMs": 17229,
+      "eye": [
+       -8.981,
+       1.648,
+       757.238
+      ],
+      "lookAt": [
+       -4.087,
+       2.354,
+       746.304
+      ],
+      "fovYDegrees": 17.01
+     },
+     {
+      "sceneId": "shot.kouku.book.k36",
+      "timeMs": 17515,
+      "eye": [
+       -9.04,
+       1.648,
+       757.212
+      ],
+      "lookAt": [
+       -4.312,
+       2.545,
+       746.219
+      ],
+      "fovYDegrees": 24.25
+     },
+     {
+      "sceneId": "shot.kouku.book.k37",
+      "timeMs": 17943,
+      "eye": [
+       -9.18,
+       1.648,
+       757.149
+      ],
+      "lookAt": [
+       -4.653,
+       2.809,
+       746.096
+      ],
+      "fovYDegrees": 25.22
+     },
+     {
+      "sceneId": "shot.kouku.book.k38",
+      "timeMs": 18943,
+      "eye": [
+       -9.908,
+       1.87,
+       757.218
+      ],
+      "lookAt": [
+       -5.006,
+       2.84,
+       746.308
+      ],
+      "fovYDegrees": 25.85
+     },
+     {
+      "sceneId": "shot.kouku.book.k39",
+      "timeMs": 19372,
+      "eye": [
+       -10.481,
+       2.167,
+       757.491
+      ],
+      "lookAt": [
+       -5.249,
+       2.826,
+       746.712
+      ],
+      "fovYDegrees": 24.85
+     },
+     {
+      "sceneId": "shot.kouku.book.k40",
+      "timeMs": 20372,
+      "eye": [
+       -12.272,
+       3.117,
+       758.337
+      ],
+      "lookAt": [
+       -6.262,
+       3.016,
+       747.951
+      ],
+      "fovYDegrees": 14.77
+     },
+     {
+      "sceneId": "shot.kouku.book.k41",
+      "timeMs": 22229,
+      "eye": [
+       -17.988,
+       5.993,
+       761.149
+      ],
+      "lookAt": [
+       -10.752,
+       4.786,
+       751.653
+      ],
+      "fovYDegrees": 17.3
+     },
+     {
+      "sceneId": "shot.kouku.book.k42",
+      "timeMs": 23086,
+      "eye": [
+       -20.434,
+       7.211,
+       761.307
+      ],
+      "lookAt": [
+       -12.675,
+       5.53,
+       752.308
+      ],
+      "fovYDegrees": 18.37
+     },
+     {
+      "sceneId": "shot.kouku.book.k43",
+      "timeMs": 23943,
+      "eye": [
+       -21.436,
+       7.973,
+       759.634
+      ],
+      "lookAt": [
+       -13.203,
+       5.836,
+       751.17
+      ],
+      "fovYDegrees": 19.22
+     },
+     {
+      "sceneId": "shot.kouku.book.k44",
+      "timeMs": 25229,
+      "eye": [
+       -21.684,
+       8.633,
+       756.102
+      ],
+      "lookAt": [
+       -12.815,
+       5.955,
+       748.475
+      ],
+      "fovYDegrees": 19.99
+     },
+     {
+      "sceneId": "shot.kouku.book.k45",
+      "timeMs": 26515,
+      "eye": [
+       -23.046,
+       8.658,
+       754.185
+      ],
+      "lookAt": [
+       -13.524,
+       5.883,
+       747.429
+      ],
+      "fovYDegrees": 16.3
+     },
+     {
+      "sceneId": "shot.kouku.book.k46",
+      "timeMs": 26656,
+      "eye": [
+       -23.046,
+       8.658,
+       754.185
+      ],
+      "lookAt": [
+       -13.524,
+       5.883,
+       747.429
+      ],
+      "fovYDegrees": 16.3
+     },
+     {
+      "sceneId": "shot.kouku.book.k47",
+      "timeMs": 26657,
+      "eye": [
+       -2.45,
+       1.425,
+       741.381
+      ],
+      "lookAt": [
+       1.665,
+       4.298,
+       730.481
+      ],
+      "fovYDegrees": 75.54
+     },
+     {
+      "sceneId": "shot.kouku.book.k48",
+      "timeMs": 27372,
+      "eye": [
+       -2.589,
+       1.432,
+       741.302
+      ],
+      "lookAt": [
+       2.567,
+       5.629,
+       731.311
+      ],
+      "fovYDegrees": 47.86
+     },
+     {
+      "sceneId": "shot.kouku.book.k49",
+      "timeMs": 27800,
+      "eye": [
+       -2.635,
+       1.439,
+       741.266
+      ],
+      "lookAt": [
+       2.754,
+       5.849,
+       731.493
+      ],
+      "fovYDegrees": 38.73
+     },
+     {
+      "sceneId": "shot.kouku.book.k50",
+      "timeMs": 29229,
+      "eye": [
+       -2.67,
+       1.49,
+       741.179
+      ],
+      "lookAt": [
+       3.519,
+       5.5,
+       731.712
+      ],
+      "fovYDegrees": 36.24
+     },
+     {
+      "sceneId": "shot.kouku.book.k51",
+      "timeMs": 30229,
+      "eye": [
+       -2.812,
+       1.532,
+       741.015
+      ],
+      "lookAt": [
+       2.738,
+       5.802,
+       731.27
+      ],
+      "fovYDegrees": 32.74
+     },
+     {
+      "sceneId": "shot.kouku.book.k52",
+      "timeMs": 31372,
+      "eye": [
+       -2.96,
+       1.591,
+       740.804
+      ],
+      "lookAt": [
+       4.937,
+       5.002,
+       732.437
+      ],
+      "fovYDegrees": 28.71
+     },
+     {
+      "sceneId": "shot.kouku.book.k53",
+      "timeMs": 32943,
+      "eye": [
+       -3.135,
+       1.691,
+       740.581
+      ],
+      "lookAt": [
+       4.391,
+       4.192,
+       731.575
+      ],
+      "fovYDegrees": 29.61
+     },
+     {
+      "sceneId": "shot.kouku.book.k54",
+      "timeMs": 33943,
+      "eye": [
+       -3.268,
+       1.772,
+       740.587
+      ],
+      "lookAt": [
+       5.665,
+       4.539,
+       733.069
+      ],
+      "fovYDegrees": 31.89
+     },
+     {
+      "sceneId": "shot.kouku.book.k55",
+      "timeMs": 34372,
+      "eye": [
+       -3.244,
+       1.824,
+       740.576
+      ],
+      "lookAt": [
+       5.4,
+       4.605,
+       732.73
+      ],
+      "fovYDegrees": 33.52
+     },
+     {
+      "sceneId": "shot.kouku.book.k56",
+      "timeMs": 34657,
+      "eye": [
+       -3.747,
+       1.925,
+       741.086
+      ],
+      "lookAt": [
+       4.662,
+       4.238,
+       732.844
+      ],
+      "fovYDegrees": 35.42
+     },
+     {
+      "sceneId": "shot.kouku.book.k57",
+      "timeMs": 35086,
+      "eye": [
+       -5.983,
+       2.251,
+       743.266
+      ],
+      "lookAt": [
+       2.564,
+       2.615,
+       734.85
+      ],
+      "fovYDegrees": 52.31
+     },
+     {
+      "sceneId": "shot.kouku.book.k58",
+      "timeMs": 35229,
+      "eye": [
+       -6.218,
+       2.28,
+       743.495
+      ],
+      "lookAt": [
+       2.337,
+       2.464,
+       735.083
+      ],
+      "fovYDegrees": 54.18
+     },
+     {
+      "sceneId": "shot.kouku.book.k59",
+      "timeMs": 37800,
+      "eye": [
+       -6.435,
+       2.275,
+       743.708
+      ],
+      "lookAt": [
+       2.121,
+       2.459,
+       735.295
+      ],
+      "fovYDegrees": 54.18
+     }
+    ]
+   }
+  }
+ ]
 }

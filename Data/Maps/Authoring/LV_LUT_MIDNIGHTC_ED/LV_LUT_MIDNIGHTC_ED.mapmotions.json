@@ -1,0 +1,976 @@
+{
+  "schema": "lostark.map-self-motions",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 1,
+  "motions": [
+    {
+      "placementId": "10011184818400596228",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "10040903919274040758",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "10066280448961616580",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "10098364178936746189",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "10184506932759676762",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "10279645109054043183",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "10455216691530936679",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "10466369283347237410",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "10639728782882910474",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "10721082866087603317",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "10721683529207676133",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "10850561428113575334",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "10875029760673948324",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "10926092917502696717",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "11044111193847612061",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "11114645965818183934",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "11146399220075503253",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "11192487181435776813",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "11203965374409710803",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "11310699022985865122",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "11336344547119363667",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "11341855587403637218",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "11443339823544280930",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "11735355803597737367",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "11757484570408390831",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "11774646470963322094",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "11867407990791352146",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "11907412630105219910",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "11922194711535370581",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "11937325450500262560",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "12043621487186806290",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "12408399104266533582",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "12409301604858307841",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "12524893302099565760",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "12553003129141284769",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "12570488072133380459",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "12599360968894400056",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "12629318806300489149",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "12661819760358078694",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "12734379545301110700",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "12895643782805421468",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "12934116249143662970",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "13095472946435897975",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "13202108376655465195",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "13320558600212232274",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "13494403636747284297",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "13509572939909403928",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "13579317509196500170",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "13618408641909864893",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "13655077014737825175",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "13660076103718828516",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "13704721574025606997",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "13978966647272005104",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "14272368870008980454",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "14419950393869168813",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "14522087131298917198",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "14524127796367473633",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "14629414701315533786",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "14806520120504979472",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "14885594010842858414",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "15027329990336592047",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "15184076146584273058",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "15199243694558967042",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "15281630489300477462",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.0420329570770264
+    },
+    {
+      "placementId": "15288889709850186987",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "15439960024985898907",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "15476221249979932651",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "15534777403021067702",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "15625072859035036671",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "15639082347362911632",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "15685978563948628282",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "15757313717189850618",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "15773659726923014176",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "15792599323285316399",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "15895087372478306511",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "15950876325688504688",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "16163887473215327567",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "16263504519477591354",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "16297166391868894442",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "16314453238476377481",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "16533748256113118948",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "16617684905203946835",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "16690196497974096106",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "16710014764570900541",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "16813129851501297905",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "16830162609626649461",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "16869997498495193306",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "17127784263002338049",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "17132527967270796564",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "17381984614019385505",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "17451358916406562179",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "17663070534669971611",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "17733091881624981414",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "17758252202812301720",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "17760591219954454670",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "17773971162965469539",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "17846145496520172253",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "17888225198757686921",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "17962537360242925400",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "18077602985189646235",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1461994647979736
+    },
+    {
+      "placementId": "18101345020421591091",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "18259299239162358049",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "18341064972904214139",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "18361690164128727930",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "18385347070387381472",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "18432774856902689882",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.9448814392089844
+    },
+    {
+      "placementId": "9256692658033394620",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "9283158415745164445",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "9316656516973805631",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1884348392486572
+    },
+    {
+      "placementId": "9353325018367874809",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "9372661912413006788",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "9394453898859161848",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.3839704990386963
+    },
+    {
+      "placementId": "9516528076871714659",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 4.732639312744141
+    },
+    {
+      "placementId": "9580321162202207983",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.1519196033477783
+    },
+    {
+      "placementId": "9655642833941632513",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "9677503287342044248",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944101333618164
+    },
+    {
+      "placementId": "9749131831907303712",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.8476498126983643
+    },
+    {
+      "placementId": "9751025614442002913",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.944103240966797
+    },
+    {
+      "placementId": "9753844346203106167",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 3.284322500228882
+    },
+    {
+      "placementId": "9777731229663868166",
+      "kind": "ROTATION_ACYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 0.0,
+      "range": 0.0,
+      "startPhaseSeconds": 0.0
+    },
+    {
+      "placementId": "9973554458594849032",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 10.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.9458816051483154
+    }
+  ]
+}

@@ -41,6 +41,33 @@ namespace
 			});
 	}
 
+	/* Is_ExactObject plus keys that may be absent. A document written
+	   before an optional field existed stays readable, and a key outside
+	   both lists is still rejected. */
+	bool_t Is_ExactObjectWithOptional(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> required,
+		const std::initializer_list<const char_t*> optional)
+	{
+		if (!value.Is_Object())
+			return false;
+		if (!std::all_of(required.begin(), required.end(),
+			[&value](const char_t* key)
+			{
+				return nullptr != value.Find(key);
+			}))
+		{
+			return false;
+		}
+		size_t allowed = required.size();
+		for (const char_t* key : optional)
+		{
+			if (nullptr != value.Find(key))
+				++allowed;
+		}
+		return value.Get_Object().size() == allowed;
+	}
+
 	bool_t Read_Position(
 		const DATA_JSON_VALUE* value,
 		float3_t& outPosition)
@@ -359,9 +386,10 @@ bool_t Client::CWorldGameplayDocument::Load(
 			(actorPlacement && !npcPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "archetypeId", "encounterId",
 			  "position", "yawDegrees", "enabled" })) ||
-			(triggerPlacement && !Is_ExactObject(value,
+			(triggerPlacement && !Is_ExactObjectWithOptional(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
-			  "halfExtents", "triggerOnce", "events" })) ||
+			  "halfExtents", "triggerOnce", "events" },
+			{ "requiresInteract" })) ||
 			(collisionPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
 			  "halfExtents" })) ||
@@ -434,6 +462,17 @@ bool_t Client::CWorldGameplayDocument::Load(
 				return false;
 			}
 			record.isTriggerOnce = triggerOnce->Get_Boolean();
+			const DATA_JSON_VALUE* requiresInteract =
+				value.Find("requiresInteract");
+			if (nullptr != requiresInteract)
+			{
+				if (!requiresInteract->Is_Boolean())
+				{
+					outStatus = "Gameplay trigger requiresInteract is invalid";
+					return false;
+				}
+				record.requiresInteract = requiresInteract->Get_Boolean();
+			}
 			for (const DATA_JSON_VALUE& eventValue : events->Get_Array())
 			{
 				const DATA_JSON_VALUE* eventType = eventValue.Find("type");
@@ -854,8 +893,12 @@ bool_t Client::CWorldGameplayDocument::Save(
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind)
 		{
 			output << ",\n      \"triggerOnce\": "
-				<< (record.isTriggerOnce ? "true" : "false")
-				<< ",\n      \"events\": [";
+				<< (record.isTriggerOnce ? "true" : "false");
+			/* Written only when set, so the many ungated boxes keep the
+			   exact shape they had before this field existed. */
+			if (record.requiresInteract)
+				output << ",\n      \"requiresInteract\": true";
+			output << ",\n      \"events\": [";
 			for (size_t eventIndex = 0; eventIndex < record.triggerEvents.size(); ++eventIndex)
 			{
 				const WORLD_TRIGGER_EVENT& event = record.triggerEvents[eventIndex];

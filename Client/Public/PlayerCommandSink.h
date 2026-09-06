@@ -52,6 +52,12 @@ public:
 		float aimZ) = 0;
 	virtual bool Request_RevivePlayer(
 		std::uint32_t clientSequence) = 0;
+	/* Answers an interact-gated trigger box the Server is currently offering.
+	   Names only the box; the Server re-tests that this player is still
+	   standing in it before anything runs. */
+	virtual bool Request_InteractTrigger(
+		std::uint32_t clientSequence,
+		const std::string& triggerPlacementId) = 0;
 	// Same-room-only party invite -- targetNetEntityId names another player
 	// currently replicated in this room (right-clicked locally).
 	virtual bool Request_PartyInvite(

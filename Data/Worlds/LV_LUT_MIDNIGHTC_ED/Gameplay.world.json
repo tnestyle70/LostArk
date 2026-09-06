@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 3685,
+  "revision": 8092,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -85,7 +85,19 @@
       "halfExtents": [2, 0.5, 2],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [2.89700, 1.31800, 740.49400], "durationSeconds": 1.5, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [2.89700007, 1.31799996, 740.494019], "durationSeconds": 1.5, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "Mario1_Intro",
+      "kind": "triggerBox",
+      "position": [-1148.703, -11.5246, -910.572998],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [3, 2, 3],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m1_intro" }
       ]
     },
     {
@@ -97,16 +109,16 @@
       "halfExtents": [1, 0.5, 1],
       "triggerOnce": true,
       "events": [
-        { "type": "movePlayer", "targetPosition": [-1148.70300, -11.52460, -910.57300], "durationSeconds": 1.5, "arcHeight": 0.0 }
+        { "type": "movePlayer", "targetPosition": [-1148.703, -11.5246, -910.572998], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
     },
     {
       "placementId": "Mario2_Trigger_1",
       "kind": "triggerBox",
-      "position": [-1442.823, -10.7480001, -1187.66797],
-      "yawDegrees": 0,
+      "position": [-1440.58997, -9.02043438, -1184.66699],
+      "yawDegrees": -56,
       "enabled": true,
-      "halfExtents": [6, 4, 6],
+      "halfExtents": [1, 0.5, 1],
       "triggerOnce": true,
       "events": [
         { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m2_spin" }
@@ -115,38 +127,417 @@
     {
       "placementId": "Mario2_Trigger_2",
       "kind": "triggerBox",
-      "position": [-1437.90002, -3.50699997, -1203.745],
-      "yawDegrees": 0,
+      "position": [-1447.71704, -9.02043533, -1196.14404],
+      "yawDegrees": 34,
       "enabled": true,
-      "halfExtents": [6, 4, 6],
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1443.92004, -6.46000004, -1196.52002], "durationSeconds": 0.699999988, "arcHeight": 1.79999995 }
+      ]
+    },
+    {
+      "placementId": "Mario2_Trigger_3",
+      "kind": "triggerBox",
+      "position": [-1433.92102, -6.46043491, -1194.82104],
+      "yawDegrees": -9.5,
+      "enabled": false,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": []
+    },
+    {
+      "placementId": "Mario2_Trigger_4",
+      "kind": "triggerBox",
+      "position": [-1418.71301, -6.46043444, -1191.37927],
+      "yawDegrees": 78,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1419.72998, -3.9000001, -1195.22998], "durationSeconds": 0.699999988, "arcHeight": 1.79999995 }
+      ]
+    },
+    {
+      "placementId": "Mario2_Trigger_5",
+      "kind": "triggerBox",
+      "position": [-1425.13196, -3.90043521, -1201.03198],
+      "yawDegrees": 46.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
       "triggerOnce": true,
       "events": [
         { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m2_29" }
       ]
     },
     {
-      "placementId": "Mario2_Trigger_3",
+      "placementId": "Mario2_Trigger_6",
       "kind": "triggerBox",
-      "position": [-1434.55298, -6.35200024, -1194.427],
-      "yawDegrees": 0,
+      "position": [-1435.396, -3.90043545, -1210.83752],
+      "yawDegrees": 47,
+      "enabled": false,
+      "halfExtents": [2, 0.5, 1],
+      "triggerOnce": true,
+      "events": []
+    },
+    {
+      "placementId": "Mario2_Trigger_7",
+      "kind": "triggerBox",
+      "position": [-1446.08301, -3.90043497, -1221.57202],
+      "yawDegrees": 46.5,
       "enabled": true,
-      "halfExtents": [6, 4, 6],
+      "halfExtents": [2, 1, 2],
       "triggerOnce": true,
       "events": [
-        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m2_deco" }
+        { "type": "movePlayer", "targetPosition": [0.703000009, 1.29900515, 738.098999], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
     },
     {
-      "placementId": "Mario2_Trigger_4",
+      "placementId": "Mario2_go",
       "kind": "triggerBox",
-      "position": [-1439.80505, -3.50699997, -1215.125],
-      "yawDegrees": 0,
+      "position": [0.703000009, 1.29900515, 738.098999],
+      "yawDegrees": 40,
       "enabled": true,
-      "halfExtents": [6, 4, 6],
+      "halfExtents": [1, 0.5, 1],
       "triggerOnce": true,
       "events": [
-        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m2_sway" }
+        { "type": "movePlayer", "targetPosition": [-1434.48999, -9.02000999, -1175.96997], "durationSeconds": 1.5, "arcHeight": 0 }
       ]
+    },
+    {
+      "placementId": "Mario3_Trigger_1",
+      "kind": "triggerBox",
+      "position": [-1893.76904, -11.5270224, -1656.33215],
+      "yawDegrees": 21,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_45" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_10",
+      "kind": "triggerBox",
+      "position": [-1913.87903, -6.40875864, -1685.15601],
+      "yawDegrees": 56,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1907.51001, -8.97000027, -1679.81995], "durationSeconds": 0.699999988, "arcHeight": 1 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_11",
+      "kind": "triggerBox",
+      "position": [-1919.51001, -8.96702194, -1684.41699],
+      "yawDegrees": 68.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_52" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_12",
+      "kind": "triggerBox",
+      "position": [-1932.651, -8.96702194, -1689.995],
+      "yawDegrees": 68.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1.69099998, 1.31762564, 735.915039], "durationSeconds": 1.5, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_2",
+      "kind": "triggerBox",
+      "position": [-1889.50098, -8.96702194, -1658.63098],
+      "yawDegrees": 32,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_48" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_3",
+      "kind": "triggerBox",
+      "position": [-1889.95996, -6.407022, -1662.03296],
+      "yawDegrees": 37,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_49" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_4",
+      "kind": "triggerBox",
+      "position": [-1898.26294, -11.5270214, -1666.60498],
+      "yawDegrees": 24.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1893.98999, -8.47000027, -1663.72998], "durationSeconds": 0.600000024, "arcHeight": 1.20000005 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_5",
+      "kind": "triggerBox",
+      "position": [-1887.07605, -8.96702194, -1654.48804],
+      "yawDegrees": 34.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1887.85999, -6.40999985, -1659.82996], "durationSeconds": 0.600000024, "arcHeight": 1.20000005 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_6",
+      "kind": "triggerBox",
+      "position": [-1895.953, -6.40702295, -1669.22095],
+      "yawDegrees": 37.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1911.43201, -3.84800005, -1684.83496], "durationSeconds": 0.300000012, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_7",
+      "kind": "triggerBox",
+      "position": [-1911.43201, -3.84771752, -1684.83496],
+      "yawDegrees": 49,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_50" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_8",
+      "kind": "triggerBox",
+      "position": [-1919.52905, -3.84771729, -1691.70398],
+      "yawDegrees": 49.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1925.26697, -6.04899979, -1692.71594], "durationSeconds": 0.600000024, "arcHeight": 1 }
+      ]
+    },
+    {
+      "placementId": "Mario3_Trigger_9",
+      "kind": "triggerBox",
+      "position": [-1919.76697, -6.40875912, -1689.01599],
+      "yawDegrees": 56,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_51" }
+      ]
+    },
+    {
+      "placementId": "Mario3_go",
+      "kind": "triggerBox",
+      "position": [-1.69099998, 1.31762564, 735.915039],
+      "yawDegrees": 44,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1889.68994, -11.5299997, -1646.20996], "durationSeconds": 1.5, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_1",
+      "kind": "triggerBox",
+      "position": [-1637.97095, -20.4904346, -1407.42395],
+      "yawDegrees": 43.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_33" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_10",
+      "kind": "triggerBox",
+      "position": [-1623.82397, -12.8104353, -1438.38696],
+      "yawDegrees": 58,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card03" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_11",
+      "kind": "triggerBox",
+      "position": [-1620.5, -12.8104362, -1441.73206],
+      "yawDegrees": 55,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card04" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_12",
+      "kind": "triggerBox",
+      "position": [-1618.90906, -12.8104353, -1445.68604],
+      "yawDegrees": 56.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card05" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_13",
+      "kind": "triggerBox",
+      "position": [-1615.255, -12.8104362, -1450.40991],
+      "yawDegrees": 61,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-3.90100002, 1.31762564, 733.617004], "durationSeconds": 1.5, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_2",
+      "kind": "triggerBox",
+      "position": [-1646.79895, -20.4904366, -1416.57764],
+      "yawDegrees": 47.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "requiresInteract": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1656, -20.49, -1425.09], "durationSeconds": 0.7, "arcHeight": 1.5 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_3",
+      "kind": "triggerBox",
+      "position": [-1655.99951, -20.4904366, -1425.09131],
+      "yawDegrees": 48,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "requiresInteract": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1654.01, -17.93, -1428.75], "durationSeconds": 0.6, "arcHeight": 1.2 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_4",
+      "kind": "triggerBox",
+      "position": [-1638.79797, -17.9304333, -1419.71704],
+      "yawDegrees": 10.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_swing" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_5",
+      "kind": "triggerBox",
+      "position": [-1628.62805, -17.9304371, -1420.724],
+      "yawDegrees": 4,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1626.71, -15.37, -1423.92], "durationSeconds": 0.6, "arcHeight": 1.2 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_6",
+      "kind": "triggerBox",
+      "position": [-1649.01001, -17.9304352, -1438.84595],
+      "yawDegrees": 65,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1646.27, -15.37, -1436.38], "durationSeconds": 0.6, "arcHeight": 1.2 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_7",
+      "kind": "triggerBox",
+      "position": [-1632.71204, -15.3704367, -1426.81494],
+      "yawDegrees": 57.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1629.37, -11.97, -1430.88], "durationSeconds": 0.7, "arcHeight": 1.5 }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_8",
+      "kind": "triggerBox",
+      "position": [-1629.36804, -11.9700003, -1430.88403],
+      "yawDegrees": 57,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card01" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Tigger_9",
+      "kind": "triggerBox",
+      "position": [-1625.41797, -12.8104353, -1434.66602],
+      "yawDegrees": 56.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card02" }
+      ]
+    },
+    {
+      "placementId": "Mario4_go",
+      "kind": "triggerBox",
+      "position": [-3.90100002, 1.31762564, 733.617004],
+      "yawDegrees": 45.5,
+      "enabled": true,
+      "halfExtents": [1, 0.5, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [-1632.57, -20.49, -1400.92], "durationSeconds": 1.5, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "boss.kakulsaydon.g1.kouku",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [22, -0.0500000007, -62],
+      "yawDegrees": 0,
+      "enabled": true
     },
     {
       "placementId": "jump.1",
@@ -288,15 +679,6 @@
       "position": [-2, 1.317626, 942],
       "yawDegrees": 0,
       "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.g1.kouku",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [22, -0.05, -62],
-      "yawDegrees": 0,
-      "enabled": true
     }
   ]
 }

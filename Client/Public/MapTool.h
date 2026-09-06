@@ -13,6 +13,7 @@
 #include "WorldDestructionDocument.h"
 #include "NavGridBaker.h"
 #include "NavGridPaintDocument.h"
+#include "MapNavigationContract.h"
 #include "NavRuntimeBlockerDocument.h"
 #include "WorldGameplayDocument.h"
 #include "SpawnGroupDocument.h"
@@ -290,6 +291,19 @@ private:
 	   limit, so previewing the whole arena starts all of them together. */
 	bool_t Play_CutsceneArenaRise();
 	bool_t Play_CutsceneOriginalRise();
+	/* The camera track runs on the clock of the sequence its own shot
+	   names, so key editing asks about that sequence rather than about
+	   the one cutscene this Area happens to ship with. */
+	bool_t Is_ShotCutsceneClockPlaying(
+		const EDITOR_CAMERA_SHOT& shot) const;
+	bool_t Ensure_ShotCutsceneClock(const EDITOR_CAMERA_SHOT& shot);
+	/* Replays every authored Mario sequence for as long as the editor asks,
+	   so a trigger box can be placed against motion that is on screen
+	   instead of against a coordinate. */
+	bool_t Toggle_MarioSequenceLoop();
+	void Update_MarioSequenceLoop(
+		f32_t fTimeDelta,
+		const CWorldSequencePlayer::TARGET_SET& targets);
 	void Render_Palette(f32_t childHeight);
 	void Render_Hierarchy(f32_t childHeight);
 	void Render_Inspector();
@@ -311,6 +325,20 @@ private:
 		const std::string& conditionId,
 		bool_t value);
 	bool_t Save_Navigation();
+	/* Resolves the paths of the grid currently selected in the Navigation
+	   panel: the Area's base grid when no region is selected, otherwise
+	   "<AreaId>.<regionId>". */
+	bool_t Resolve_SelectedNavigationContract(
+		MAP_NAVIGATION_CONTRACT& outContract,
+		std::string& outStatus) const;
+	/* Switches the panel to another grid and reloads its documents. A failed
+	   load restores the previous selection so the editor never shows one
+	   grid's paint over another grid's cells. */
+	bool_t Select_NavigationRegion(std::string regionId);
+	/* Adds the freshly baked region to the Area manifest. Called only after
+	   Bake_Navigation has written its navsource. */
+	bool_t Commit_NavigationRegionManifest();
+	void Render_NavigationRegionControls();
 	bool_t Load_CameraShots(const EDITOR_AREA_DESCRIPTOR& descriptor);
 	bool_t Save_CameraShots();
 	void Render_CameraShotSection();
@@ -325,6 +353,11 @@ private:
 		f32_t& outWorldY) const;
 	bool_t Try_PaintNavigation();
 	bool_t Try_PlaceNavigationBounds();
+	/* Bake is split so pressing it is not already the irreversible act.
+	   Preview builds the grid in memory and reports what it found; only
+	   Bake_Navigation writes navsource and drops the incompatible paint. */
+	bool_t Preview_NavigationBake();
+	void Discard_NavigationBakePreview();
 	bool_t Bake_Navigation();
 	bool_t Collect_NavigationBakePlacements(
 		std::vector<NAVGRID_BAKE_PLACEMENT>& outPlacements,
@@ -536,6 +569,13 @@ private:
 	std::unordered_set<std::string> m_FavoriteAssetIds;
 
 	vector<PLACED_ENTRY> m_Placements;
+	/* Idle EFActorMotion for the loaded area, bound to the entries above.
+	   Rebound when the active area changes so a stale index never writes
+	   onto a different placement. */
+	vector<MAP_RUNTIME_SELF_MOTION_ENTRY> m_SelfMotions;
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>> m_SelfMotionModels;
+	std::string m_strSelfMotionAreaId;
+	f32_t m_fSelfMotionElapsedSeconds = 0.f;
 	vector<STATIC_BATCH_ENTRY> m_StaticBatches;
 	DEPLOY_PROP_STATE m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
 	ENVIRONMENT_PHASE m_EnvironmentPhase = ENVIRONMENT_PHASE::BASELINE;
@@ -549,6 +589,10 @@ private:
 	   from what the cutscene will actually do. */
 	CWorldSequencePlayer m_ArenaRisePlayer;
 	bool_t m_bArenaRiseAreaLoaded = false;
+	/* The Mario instances resolved once when the loop starts, so the
+	   document is not walked every frame. Empty means the loop is off. */
+	vector<std::string> m_MarioLoopInstanceIds;
+	bool_t m_bMarioSequenceLoopRunning = false;
 	/* Negative means no cutscene is running. Stays at zero while the arena
 	   instances play and counts up once they have settled, so the book can be
 	   despawned after a short hold. */
@@ -712,6 +756,12 @@ private:
 	std::string m_NavigationBakeStatus = "Create Nav Bounds";
 	bool_t m_bNavigationBakeResetConfirmed = false;
 	bool_t m_bNavigationBakeResetPending = false;
+	/* The staged bake between Preview and Apply. Nothing here has touched
+	   disk yet, so discarding it leaves the current navigation untouched. */
+	bool_t m_bNavigationBakePreviewReady = false;
+	bool_t m_bNavigationBakePreviewLayoutChanged = false;
+	uint32_t m_iNavigationBakePreviewWalkable = {};
+	NAVGRID_BAKE_RESULT m_NavigationBakePreview;
 
 	NAVIGATION_EDIT_ACTION m_eNavigationEditAction =
 		NAVIGATION_EDIT_ACTION::APPLY;
@@ -720,6 +770,16 @@ private:
 	   draw them on the Nav Bounds floor. On a large bake they outnumber the
 	   real surface cells and hide it, so they stay off unless asked for. */
 	bool_t m_bShowUnresolvedCells = false;
+
+	/* Empty means the Area's base grid. Otherwise the region whose grid id is
+	   "<AreaId>.<regionId>"; every navigation path in this tool then points at
+	   that grid instead. */
+	std::string m_NavigationRegionId;
+	/* The Area manifest as loaded, so the combo does not read the file every
+	   frame. Rewritten by Commit_NavigationRegionManifest. */
+	std::vector<MAP_NAVIGATION_REGION> m_NavigationRegions;
+	char m_NewNavigationRegionId[33] = "stage1";
+	f32_t m_NewNavigationRegionStepHeight = 1.f;
 
 	CNavGridPaintDocument m_NavigationDocument;
 	CNavRuntimeBlockerDocument m_RuntimeBlockerDocument;

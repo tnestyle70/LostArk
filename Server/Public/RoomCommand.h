@@ -36,6 +36,7 @@ namespace LostArk::Server
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
+		INTERACT_TRIGGER,
 		RETURN_TO_BERN,
 		PARTY_INVITE,
 		PARTY_INVITE_RESPOND,
@@ -95,6 +96,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_ITEM UseItem;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
+		LostArk::Shared::C2S_INTERACT_TRIGGER InteractTrigger;
 		LostArk::Shared::C2S_RETURN_TO_BERN ReturnToBern;
 		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;

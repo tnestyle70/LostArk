@@ -107,14 +107,81 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 	return true;
 }
 
-void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
+bool LostArk::Server::CServerTriggerSystem::Run_Action(
+	RUNTIME_TRIGGER& trigger,
+	SERVER_PLAYER& player,
+	const std::uint32_t actionStartTick,
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+	const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+		const std::string&)>& activateTarget) const
+{
+	const WORLD_TRIGGER_ACTION& action =
+		trigger.Definition.TriggerActions.front();
+	bool fired = false;
+	if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
+	{
+		fired = Begin_MovePlayer(player, action, actionStartTick);
+	}
+	else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
+	{
+		SERVER_WORLD_TRANSFER_REQUEST transfer{};
+		fired = Build_WorldTransfer(player, action, transfer);
+		if (fired)
+			outTransfers.push_back(std::move(transfer));
+	}
+	else if ((WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == action.eKind ||
+		WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind ||
+		WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == action.eKind) &&
+		activateTarget)
+	{
+		fired = activateTarget(action.eKind, action.strTargetId);
+	}
+	if (fired && trigger.Definition.isTriggerOnce)
+		trigger.hasFired = true;
+	return fired;
+}
+
+bool LostArk::Server::CServerTriggerSystem::Activate_Interact(
+	const LostArk::Shared::PLAYER_ID playerId,
+	const std::string& triggerPlacementId,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 	const std::uint32_t actionStartTick,
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
 	const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 		const std::string&)>& activateTarget)
 {
+	const auto found = players.find(playerId);
+	if (players.end() == found || 0u == found->second.iCurrentHp)
+		return false;
+	for (RUNTIME_TRIGGER& trigger : m_Triggers)
+	{
+		if (trigger.Definition.strPlacementId != triggerPlacementId ||
+			!trigger.Definition.requiresInteract ||
+			trigger.Definition.TriggerActions.empty() ||
+			(trigger.Definition.isTriggerOnce && trigger.hasFired))
+		{
+			continue;
+		}
+		/* The offer was sent when they entered; they may have walked out since,
+		   so membership is tested again rather than trusted. */
+		if (!Contains(trigger, found->second))
+			return false;
+		return Run_Action(trigger, found->second, actionStartTick,
+			outTransfers, activateTarget);
+	}
+	return false;
+}
+
+void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const std::uint32_t actionStartTick,
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+	const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+		const std::string&)>& activateTarget,
+	std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges)
+{
 	outTransfers.clear();
+	outPromptEdges.clear();
 	for (RUNTIME_TRIGGER& trigger : m_Triggers)
 	{
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
@@ -123,16 +190,25 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			if (0u == player.iCurrentHp || !Contains(trigger, player))
 				continue;
 			currentInside.insert(playerId);
-			if (trigger.PlayersInside.contains(playerId) ||
+			const bool wasInside = trigger.PlayersInside.contains(playerId);
+			if (trigger.Definition.requiresInteract)
+			{
+				/* A gated box runs nothing on entry. It offers, once, on the
+				   edge; the request decides whether anything happens. A spent
+				   one-shot has nothing left to offer. */
+				if (!wasInside && !(trigger.Definition.isTriggerOnce &&
+					trigger.hasFired))
+				{
+					outPromptEdges.push_back({ playerId,
+						trigger.Definition.strPlacementId, true });
+				}
+				continue;
+			}
+			if (wasInside ||
 				(trigger.Definition.isTriggerOnce && trigger.hasFired))
 			{
 				continue;
 			}
-			/* Every authored action runs on the same entry, so a box can
-			   start a cutscene and move the player in one step. The box counts
-			   as fired when any of them commits. */
-			const WORLD_TRIGGER_ACTION& action =
-				trigger.Definition.TriggerActions.front();
 			bool fired = false;
 #ifdef _DEBUG
 			WORLD_TRIGGER_ACTION bypassMove{};
@@ -145,23 +221,9 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			}
 			else
 #endif
-			if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
 			{
-				fired = Begin_MovePlayer(player, action, actionStartTick);
-			}
-			else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
-			{
-				SERVER_WORLD_TRANSFER_REQUEST transfer{};
-				fired = Build_WorldTransfer(player, action, transfer);
-				if (fired)
-					outTransfers.push_back(std::move(transfer));
-			}
-			else if ((WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == action.eKind ||
-				WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind ||
-				WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == action.eKind) &&
-				activateTarget)
-			{
-				fired = activateTarget(action.eKind, action.strTargetId);
+				fired = Run_Action(trigger, player, actionStartTick,
+					outTransfers, activateTarget);
 			}
 #ifdef _DEBUG
 			/* Stage_Boss keeps its real activateEncounter action, then places the
@@ -174,9 +236,24 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 				/* Placement is completed inside the typed helper. */
 			}
 #endif
+			/* The Debug bypass fires without going through Run_Action, so the
+			   one-shot latch is still set here for that path. */
 			if (fired && trigger.Definition.isTriggerOnce)
 			{
 				trigger.hasFired = true;
+			}
+		}
+		/* Leaving withdraws the offer, so a Client never keeps a prompt for a
+		   box it has walked out of. */
+		if (trigger.Definition.requiresInteract)
+		{
+			for (const LostArk::Shared::PLAYER_ID previous : trigger.PlayersInside)
+			{
+				if (!currentInside.contains(previous))
+				{
+					outPromptEdges.push_back({ previous,
+						trigger.Definition.strPlacementId, false });
+				}
 			}
 		}
 		trigger.PlayersInside = std::move(currentInside);

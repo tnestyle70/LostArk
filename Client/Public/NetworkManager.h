@@ -212,6 +212,11 @@ public:
 	proximity to the named guide NPC and answers through the same
 	S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow the old automatic
 	changeLevel trigger used -- no separate result message. */
+	/* Answers the prompt the Server last offered. Carries only the box's own
+	   id -- the Server re-tests that this player is still inside it. */
+	bool Send_InteractTrigger(
+		std::uint32_t requestSequence,
+		std::string_view triggerPlacementId);
 	bool Send_ConfirmNpcEntry(
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId);

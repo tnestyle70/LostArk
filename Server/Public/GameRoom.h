@@ -734,6 +734,13 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		// The player pressed the key an interact-gated trigger box offered.
+		// Names only the box; the trigger system re-tests that this player is
+		// still standing in it before anything runs, so a stale or forged
+		// request changes nothing.
+		void Handle_InteractTrigger(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_INTERACT_TRIGGER& request);
 		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
 		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
 		// a cleared VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
@@ -806,6 +813,9 @@ namespace LostArk::Server
 		   instance started. Presentation only: the Server keeps no sequence
 		   state, so a session that joins later simply misses a played edge. */
 		void Broadcast_WorldSequencePlay(const std::string& instanceId);
+		/* Offers or withdraws one interact-gated box for the one player it
+		   concerns. Unlike the sequence broadcast this is never room-wide. */
+		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);
 		/* The pop-up book cutscene opens the tent arena, so the room's living
 		   players stand on it while the sequence plays. Returns how many were
 		   placed; zero means this sequence stages nobody. */

@@ -131,6 +131,10 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	bool_t isEnabled = true;
 	float3_t halfExtents = float3_t(1.f, 1.f, 1.f);
 	bool_t isTriggerOnce = true;
+	/* Optional on a trigger box. A gated box offers a prompt on entry
+	   and runs its action only once the Server accepts the interact
+	   request, so a document written before this field reads as false. */
+	bool_t requiresInteract = false;
 	std::vector<WORLD_TRIGGER_EVENT> triggerEvents;
 	uint64_t deployRuntimePlacementId = 0;
 	WORLD_DESTROYABLE_STATE eInitialState = WORLD_DESTROYABLE_STATE::INTACT;

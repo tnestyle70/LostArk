@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -26,6 +27,49 @@ struct MAP_RUNTIME_PLACED_ENTRY
 	std::wstring layerTag;
 	shared_ptr<CMapAssetObject> object;
 	shared_ptr<CMapStaticBatchObject> batch;
+};
+
+/* One EFActorMotion oscillator lifted from the original stage. The stage
+   authors gave these no start and no end: a placement carrying one rocks
+   on its axis for as long as the map is loaded, which is why they are not
+   sequences and need no trigger. Every placement starts at its own phase,
+   so a row of identical cards reads as a wave rather than one motion. */
+enum class MAP_SELF_MOTION_KIND : uint8_t
+{
+	ROTATION_CYCLIC,
+	ROTATION_ACYCLIC,
+	LOCATION_CYCLIC,
+	LOCATION_ACYCLIC,
+};
+
+enum class MAP_SELF_MOTION_AXIS : uint8_t
+{
+	X,
+	Y,
+	Z,
+};
+
+struct MAP_SELF_MOTION
+{
+	uint64_t placementId = {};
+	MAP_SELF_MOTION_KIND kind = MAP_SELF_MOTION_KIND::ROTATION_CYCLIC;
+	MAP_SELF_MOTION_AXIS axis = MAP_SELF_MOTION_AXIS::X;
+	/* Seconds for one full swing. Zero means the authored row carried no
+	   cycle, which only happens for the acyclic kinds. */
+	f32_t cycleSeconds = 0.f;
+	/* Degrees for a rotation, metres for a translation. */
+	f32_t range = 0.f;
+	f32_t startPhaseSeconds = 0.f;
+};
+
+struct MAP_RUNTIME_SELF_MOTION_ENTRY
+{
+	MAP_SELF_MOTION motion;
+	/* The placed pose the oscillation is measured from, captured once so a
+	   replay never accumulates onto an already-offset transform. */
+	float3_t basePosition = {};
+	float4_t baseRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	size_t placementIndex = 0u;
 };
 
 struct MAP_RUNTIME_STATIC_BATCH_ENTRY
@@ -63,6 +107,32 @@ public:
 	{
 		return m_Placements;
 	}
+	/* Reads <AreaId>.mapmotions.json and binds each row to a live placement.
+	   A missing document is not an error: most areas author none. */
+	bool_t Load_SelfMotions(const std::string& areaId);
+	/* Same work against a caller-owned placement vector, so the Map Editor
+	   -- which keeps its own entries rather than a runtime -- shows the
+	   idle motion its authors are checking. */
+	static bool_t Read_SelfMotions(
+		const std::string& areaId,
+		const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+		std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY>& outMotions);
+	static void Sample_SelfMotions(
+		const std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY>& motions,
+		f32_t elapsedSeconds,
+		uint32_t levelIndex,
+		const CMapAssetCatalog& catalog,
+		std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+		std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements);
+	/* Wraps far enough out that float precision stays fine, on a multiple of
+	   both authored cycles so nothing jumps at the seam. */
+	static constexpr f32_t SELF_MOTION_WRAP_SECONDS = 840.f;
+	/* Advances every bound oscillator and writes the sampled pose onto its
+	   placement. Sequence playback writes the same transforms, so a sequence
+	   driving a placement wins for as long as it runs. */
+	void Update_SelfMotions(f32_t fTimeDelta);
+	size_t Get_SelfMotionCount() const { return m_SelfMotions.size(); }
+
 	bool_t Try_Get_PlacementBounds(
 		float3_t& outMinimum,
 		float3_t& outMaximum) const;
@@ -138,6 +208,12 @@ private:
 	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
 	CMapAssetCatalog m_Catalog;
 	std::vector<MAP_RUNTIME_PLACED_ENTRY> m_Placements;
+	std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY> m_SelfMotions;
+	f32_t m_fSelfMotionElapsedSeconds = 0.f;
+	/* Batched placements need a model to rebuild their instance from; the
+	   clone is kept per asset so an oscillating batch does not clone one
+	   every frame. */
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>> m_SelfMotionModels;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> m_StaticBatches;
 	std::string m_Status = "Map runtime not loaded";
 };

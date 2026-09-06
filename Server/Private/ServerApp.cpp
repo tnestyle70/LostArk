@@ -3183,6 +3183,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
 		command.ConfirmNpcEntry = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACT_TRIGGER)
+	{
+		C2S_INTERACT_TRIGGER request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_INTERACT_TRIGGER");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::INTERACT_TRIGGER;
+		command.InteractTrigger = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_RETURN_TO_BERN)
 	{
 		C2S_RETURN_TO_BERN request{};

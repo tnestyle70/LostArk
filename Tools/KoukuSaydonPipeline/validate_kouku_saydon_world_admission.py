@@ -592,10 +592,91 @@ def _parse_navgrid(root: Path, relative: Path, stage: _Stage) -> _NavGrid | None
     return _NavGrid(width, height, cell_size, origin_x, origin_z, walkable, heights)
 
 
+def _parse_region_manifest(
+    root: Path, area_id: str, stage: _Stage
+) -> list[tuple[str, float]]:
+    """Reads Data/Navigation/<AreaId>.navregions.
+
+    A missing manifest means the Area has no detail regions, which is the
+    normal state and not a finding.
+    """
+    relative = Path(f"Data/Navigation/{area_id}.navregions")
+    path = root / relative
+    if not path.is_file():
+        return []
+    try:
+        tokens = path.read_text(encoding="utf-8").split()
+    except OSError as error:
+        stage.issue("navigation.regions.unreadable", relative, str(error))
+        return []
+    if len(tokens) < 4 or tokens[0] != "LOSTARK_NAVGRID_REGIONS" or tokens[1] != "1":
+        stage.issue("navigation.regions.invalid", relative, "header is invalid")
+        return []
+    if tokens[2].strip('"') != area_id:
+        stage.issue("navigation.regions.area.mismatch", relative, tokens[2])
+        return []
+    try:
+        count = int(tokens[3])
+    except ValueError:
+        stage.issue(
+            "navigation.regions.invalid", relative, "region count is not an integer"
+        )
+        return []
+    if count > 64 or len(tokens) != 4 + 3 * count:
+        stage.issue("navigation.regions.invalid", relative, f"expected {count} rows")
+        return []
+    regions: list[tuple[str, float]] = []
+    seen: set[str] = set()
+    for index in range(count):
+        row = tokens[4 + 3 * index : 7 + 3 * index]
+        region_id = row[1].strip('"')
+        if row[0] != "REGION" or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", region_id):
+            stage.issue(
+                "navigation.regions.invalid", relative, f"row {index} is invalid"
+            )
+            return []
+        if region_id in seen:
+            stage.issue("navigation.regions.duplicate", relative, region_id)
+            return []
+        seen.add(region_id)
+        try:
+            step = float(row[2])
+        except ValueError:
+            stage.issue(
+                "navigation.regions.invalid", relative, f"row {index} step is invalid"
+            )
+            return []
+        if not math.isfinite(step) or step < 0.0:
+            stage.issue(
+                "navigation.regions.invalid", relative, f"row {index} step is invalid"
+            )
+            return []
+        regions.append((region_id, step))
+    return regions
+
+
+def _select_grid(
+    grids: list[tuple[str, _NavGrid]], x: float, z: float
+) -> tuple[str, _NavGrid] | None:
+    """Same dispatch as CServerNavigation::Select_Region.
+
+    grids[0] is the base grid; the rest are detail regions in manifest order.
+    The first region whose footprint contains the point owns it.
+    """
+    for grid_id, grid in grids[1:]:
+        max_x = grid.origin_x + grid.width * grid.cell_size
+        max_z = grid.origin_z + grid.height * grid.cell_size
+        if grid.origin_x <= x < max_x and grid.origin_z <= z < max_z:
+            return grid_id, grid
+    return grids[0] if grids else None
+
+
 def _validate_spawn_nav(
-    spawns: list[dict[str, Any]], grid: _NavGrid | None, stage: _Stage
+    spawns: list[dict[str, Any]],
+    grids: list[tuple[str, _NavGrid]],
+    stage: _Stage,
 ) -> None:
-    if grid is None:
+    if not grids:
         return
     for spawn in spawns:
         position = spawn.get("position")
@@ -606,13 +687,17 @@ def _validate_spawn_nav(
             x, y, z = (float(value) for value in position)
         except (TypeError, ValueError):
             continue
+        selected = _select_grid(grids, x, z)
+        if selected is None:
+            continue
+        grid_id, grid = selected
         cell_x = math.floor((x - grid.origin_x) / grid.cell_size)
         cell_z = math.floor((z - grid.origin_z) / grid.cell_size)
         if not (0 <= cell_x < grid.width and 0 <= cell_z < grid.height):
             stage.issue(
                 "navigation.spawn.outside",
                 GAMEPLAY_PATH,
-                f"{placement_id}: cell=({cell_x},{cell_z})",
+                f"{placement_id}: grid={grid_id} cell=({cell_x},{cell_z})",
             )
             continue
         index = cell_z * grid.width + cell_x
@@ -620,13 +705,13 @@ def _validate_spawn_nav(
             stage.issue(
                 "navigation.spawn.blocked",
                 GAMEPLAY_PATH,
-                f"{placement_id}: cell=({cell_x},{cell_z}) is not walkable",
+                f"{placement_id}: grid={grid_id} cell=({cell_x},{cell_z}) is not walkable",
             )
         if abs(y - grid.heights[index]) > 0.25:
             stage.issue(
                 "navigation.spawn.height",
                 GAMEPLAY_PATH,
-                f"{placement_id}: worldY={y} navY={grid.heights[index]}",
+                f"{placement_id}: grid={grid_id} worldY={y} navY={grid.heights[index]}",
             )
 
 
@@ -819,7 +904,28 @@ def _validate_product(
     server_grid_path = Path(f"Server/Bin/DataFiles/Navigation/{AREA_ID}.navgrid")
     client_grid_path = Path(f"Client/Bin/DataFiles/Navigation/{AREA_ID}.navgrid")
     grid = _parse_navgrid(root, server_grid_path, stage)
-    _validate_spawn_nav(spawns, grid, stage)
+    grids: list[tuple[str, _NavGrid]] = []
+    if grid is not None:
+        grids.append((AREA_ID, grid))
+    for region_id, _step in _parse_region_manifest(root, AREA_ID, stage):
+        region_grid_id = f"{AREA_ID}.{region_id}"
+        region_server = Path(
+            f"Server/Bin/DataFiles/Navigation/{region_grid_id}.navgrid"
+        )
+        region_client = Path(
+            f"Client/Bin/DataFiles/Navigation/{region_grid_id}.navgrid"
+        )
+        region_grid = _parse_navgrid(root, region_server, stage)
+        if region_grid is not None:
+            grids.append((region_grid_id, region_grid))
+        _require_same_bytes(
+            root,
+            region_server,
+            region_client,
+            stage,
+            "navigation.client-server.drift",
+        )
+    _validate_spawn_nav(spawns, grids, stage)
     _require_same_bytes(
         root,
         server_grid_path,

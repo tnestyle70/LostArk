@@ -4630,6 +4630,74 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const S2C_INTERACT_PROMPT& message)
+{
+	if (message.strTriggerPlacementId.empty() ||
+		message.strTriggerPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES)
+	{
+		return false;
+	}
+	if (!writer.Write_String(
+		message.strTriggerPlacementId, MAX_NPC_PLACEMENT_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U8(message.bAvailable ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_INTERACT_PROMPT& message)
+{
+	S2C_INTERACT_PROMPT decoded{};
+	std::uint8_t available = 0u;
+	if (!reader.Read_String(
+			decoded.strTriggerPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		!reader.Read_U8(available) || available > 1u ||
+		decoded.strTriggerPlacementId.empty())
+	{
+		return false;
+	}
+	decoded.bAvailable = 1u == available;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_INTERACT_TRIGGER& message)
+{
+	if (0u == message.iRequestSequence ||
+		message.strTriggerPlacementId.empty() ||
+		message.strTriggerPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	return writer.Write_String(
+		message.strTriggerPlacementId, MAX_NPC_PLACEMENT_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_INTERACT_TRIGGER& message)
+{
+	C2S_INTERACT_TRIGGER decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(
+			decoded.strTriggerPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		0u == decoded.iRequestSequence ||
+		decoded.strTriggerPlacementId.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_CONFIRM_NPC_ENTRY& message)
 {
 	if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||

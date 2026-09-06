@@ -78,6 +78,14 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
+한 Area 안에서 스테이지마다 필요한 정밀도가 다르면 세부 영역 격자를 쓴다.
+`Data/Navigation/<AreaId>.navregions`에 `REGION "<regionId>" <stepHeight>` 행을 두면
+MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cell Size로 Bake한다.
+영역은 자기가 덮는 스테이지의 걷는 범위 전체를 덮어야 한다. 플레이어가 걸어서 영역
+밖으로 나가는 지형에는 쓰지 않는다. 영역끼리 겹치면 publisher와 Server가 모두 거부하고,
+영역에는 runtime blocker를 둘 수 없다. 매니페스트가 없으면 Area는 기본 격자 하나로
+종전과 동일하게 동작한다.
+
 `World Sequence`는 정적 map placement의 상대 위치·회전·크기·표시 상태를 시간축으로
 편집하는 재사용 저작 레이어다. `templates`는 여러 배치에서 다시 쓰는 연출 정의,
 `instances`는 template slot과 stable placement ID의 Area별 연결을 소유한다. MapTool의

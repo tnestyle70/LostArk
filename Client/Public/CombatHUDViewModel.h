@@ -184,6 +184,17 @@ namespace Client
 		bar HUD never disappeared. CClientReplication::Apply_WorldEntityDespawn calls this
 		explicitly for a despawned BOSS-kind entity instead. */
 		void Clear_Boss() { m_Boss = {}; }
+		/* The interact-gated trigger box the Server is offering this player, or
+		   empty when none. Read-only view: the Server decides both when it
+		   appears and when it goes away. */
+		void Set_InteractPromptTriggerId(const std::string& triggerPlacementId)
+		{
+			m_strInteractPromptTriggerId = triggerPlacementId;
+		}
+		const std::string& Get_InteractPromptTriggerId() const
+		{
+			return m_strInteractPromptTriggerId;
+		}
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
@@ -311,6 +322,7 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
+		std::string m_strInteractPromptTriggerId;
 		bool m_bBossDeadRaw = false;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;

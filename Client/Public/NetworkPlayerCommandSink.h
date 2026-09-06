@@ -46,6 +46,9 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ) override;
+	bool Request_InteractTrigger(
+		std::uint32_t clientSequence,
+		const std::string& triggerPlacementId) override;
 	bool Request_RevivePlayer(
 		std::uint32_t clientSequence) override;
 #ifdef _DEBUG

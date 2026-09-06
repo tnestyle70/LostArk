@@ -573,9 +573,17 @@ function Convert-WorldDocument {
 			continue
 		}
 		if ($placement.kind -eq 'triggerBox') {
-			Assert-ExactProperties $placement @(
+			# requiresInteract is optional: a box without it runs on entry, which is
+			# what every box authored before the prompt existed expects.
+			$hasInteract = $null -ne $placement.PSObject.Properties['requiresInteract']
+			$triggerProperties = @(
 				'placementId','kind','position','yawDegrees','enabled',
-				'halfExtents','triggerOnce','events') "$relativePath triggerBox"
+				'halfExtents','triggerOnce','events')
+			if ($hasInteract) { $triggerProperties += 'requiresInteract' }
+			Assert-ExactProperties $placement $triggerProperties "$relativePath triggerBox"
+			if ($hasInteract -and $placement.requiresInteract -isnot [bool]) {
+				throw "Trigger requiresInteract must be a JSON Boolean: $($placement.placementId)"
+			}
 			if (@($placement.halfExtents).Count -ne 3) {
 				throw "Trigger halfExtents must contain exactly three numbers: $($placement.placementId)"
 			}
@@ -598,7 +606,8 @@ function Convert-WorldDocument {
 				(Format-InvariantFloat $placement.halfExtents[1]),
 				(Format-InvariantFloat $placement.halfExtents[2]),
 				$(if ($placement.triggerOnce) { '1' } else { '0' }),
-				[string]$events.Count)
+				[string]$events.Count,
+				$(if ($hasInteract -and $placement.requiresInteract) { '1' } else { '0' }))
 			foreach ($event in $events) {
 				if ($event.type -eq 'movePlayer') {
 					Assert-ExactProperties $event @(
@@ -926,7 +935,7 @@ function Convert-WorldDocument {
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t7`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t8`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }

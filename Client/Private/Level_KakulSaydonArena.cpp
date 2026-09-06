@@ -13,8 +13,11 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "CombatHUDViewModel.h"
+#include "ProjectDataRoot.h"
 #include "UILayoutRuntime.h"
 #include "Transform.h"
+#include "Trigger_Box.h"
+#include "WorldGameplayDocument.h"
 
 #include <algorithm>
 #include <cstring>
@@ -576,6 +579,14 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	/* Built here rather than on first use so a trigger move never waits on a
 	   JSON load, and hidden immediately because Render() can run before the
 	   first Update() on the frame this Level is activated. */
+	/* Most of this stage's life is EFActorMotion rather than matinee: cards
+	   rocking, floor pieces turning. An absent document is not an error. */
+	if (!m_MapRuntime.Load_SelfMotions(std::string(KAKULSAYDON_AREA_ID)))
+	{
+		OutputDebugStringA(
+			"[Level_KakulSaydonArena] Self-motion document was rejected.\n");
+	}
+
 	m_pTriggerMoveFadeView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
 		L"UI/KakulFade/KakulFadeUI.json");
@@ -603,6 +614,17 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	{
 		return E_FAIL;
 	}
+
+#ifdef _DEBUG
+	/* A missing wire is a missing wire, not a reason to keep the arena
+	   shut, so this reports and carries on. */
+	if (!Ready_DebugStageEntryTriggers(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(
+			"[Level_KakulSaydonArena] Debug stage entry Trigger Box "
+			"presentation failed.\n");
+	}
+#endif
 
 	return S_OK;
 }
@@ -674,6 +696,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CutsceneBossRetire(targets);
 	Update_CameraShots(fTimeDelta);
 	Update_TriggerMoveFade(fTimeDelta);
+	m_MapRuntime.Update_SelfMotions(fTimeDelta);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
@@ -884,7 +907,27 @@ bool_t Client::CLevel_KakulSaydonArena::Request_PaperBridgeUnfold(
 
 HRESULT Client::CLevel_KakulSaydonArena::Render()
 {
-	return __super::Render();
+	const HRESULT drawn = __super::Render();
+	if (FAILED(drawn))
+		return drawn;
+	/* Drawn last so it sits over the scene. The text only reports what the
+	   Server is offering -- pressing G submits a command and the Server
+	   decides, so nothing here can move the player by itself. */
+	const std::string& offered =
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+	if (!offered.empty())
+	{
+		/* ASCII only: this file carries no other non-ASCII byte and has no BOM,
+		   so a UTF-8 Korean literal here is read back in the system codepage. */
+		static const tchar_t* const PROMPT = TEXT("[ G ]");
+		const float2_t size = CGameInstance::Get().Measure_Text(
+			TEXT("Font_YoonGasiIIM"), PROMPT);
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), PROMPT,
+			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.62f),
+			Colors::White, 0.f, float2_t(size.x * 0.5f, size.y * 0.5f), 1.f);
+	}
+	return drawn;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
@@ -1668,6 +1711,118 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 	if (nullptr == shot && isBlendFinished)
 		Release_CameraShot();
 }
+
+#ifdef _DEBUG
+bool_t Client::CLevel_KakulSaydonArena::Ready_DebugStageEntryTriggers(
+	const std::string& areaId)
+{
+	/* Arena-side entrances only. Every stage also carries its own trigger
+	   boxes a kilometre away, and drawing those here would say nothing
+	   about where a player is supposed to stand when the arena opens. */
+	static constexpr std::string_view STAGE_ENTRY_SUFFIX = "_go";
+
+	const std::filesystem::path documentPath = CProjectDataRoot::Resolve(
+		std::filesystem::path("Worlds") /
+		areaId /
+		"Gameplay.world.json");
+	std::error_code pathError;
+	if (documentPath.empty() ||
+		!std::filesystem::is_regular_file(documentPath, pathError) ||
+		pathError)
+	{
+		OutputDebugStringA((
+			"[Level_KakulSaydonArena] Debug gameplay document is "
+			"unavailable: " + documentPath.string() + "\n").c_str());
+		return false;
+	}
+
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(documentPath, areaId, status))
+	{
+		OutputDebugStringA((
+			"[Level_KakulSaydonArena] Debug gameplay document rejected: " +
+			status + "\n").c_str());
+		return false;
+	}
+
+	std::vector<shared_ptr<CTrigger_Box>> staged;
+	const auto rollback = [&staged]()
+	{
+		for (const shared_ptr<CTrigger_Box>& triggerBox : staged)
+		{
+			if (nullptr == triggerBox)
+				continue;
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::KAKULSAYDON_ARENA),
+				TEXT("Layer_DebugWorldGameplay"),
+				static_pointer_cast<CGameObject>(triggerBox));
+		}
+		staged.clear();
+	};
+
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		document.Get_Placements())
+	{
+		const bool_t isStageEntryTrigger =
+			placement.isEnabled &&
+			WORLD_PLACEMENT_KIND::TRIGGER_BOX == placement.eKind &&
+			1u == placement.triggerEvents.size() &&
+			WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER ==
+				placement.triggerEvents.front().eKind &&
+			placement.placementId.ends_with(STAGE_ENTRY_SUFFIX);
+		if (!isStageEntryTrigger)
+			continue;
+
+		CTrigger_Box::TRIGGER_BOX_DESC desc{};
+		desc.placementId = placement.placementId;
+		desc.position = placement.position;
+		desc.halfExtents = placement.halfExtents;
+		desc.yawDegrees = placement.yawDegrees;
+		desc.isEnabled = true;
+
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			TEXT("Prototype_GameObject_TriggerBox"),
+			ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			TEXT("Layer_DebugWorldGameplay"),
+			&desc,
+			&gameObject)))
+		{
+			rollback();
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena] Debug Trigger Box clone failed: " +
+				placement.placementId + "\n").c_str());
+			return false;
+		}
+
+		shared_ptr<CTrigger_Box> triggerBox =
+			dynamic_pointer_cast<CTrigger_Box>(gameObject);
+		if (nullptr == triggerBox)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::KAKULSAYDON_ARENA),
+				TEXT("Layer_DebugWorldGameplay"),
+				gameObject);
+			rollback();
+			OutputDebugStringA((
+				"[Level_KakulSaydonArena] Debug Trigger Box type mismatch: " +
+				placement.placementId + "\n").c_str());
+			return false;
+		}
+
+		triggerBox->Set_AuthoringVisible(true);
+		staged.push_back(std::move(triggerBox));
+	}
+
+	m_DebugStageEntryTriggers = std::move(staged);
+	OutputDebugStringA((
+		"[Level_KakulSaydonArena] Debug stage entry Trigger Boxes ready: " +
+		std::to_string(m_DebugStageEntryTriggers.size()) + "\n").c_str());
+	return true;
+}
+#endif
 
 unique_ptr<Client::CLevel_KakulSaydonArena>
 Client::CLevel_KakulSaydonArena::Create(

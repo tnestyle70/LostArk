@@ -1753,6 +1753,39 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
 
+	// Offered to the one session standing in an interact-gated trigger box, and
+	// withdrawn when it leaves. bAvailable false clears whatever the Client is
+	// showing; the placement id is carried both ways so a stale offer can never
+	// answer for a different box.
+	struct S2C_INTERACT_PROMPT
+	{
+		std::string strTriggerPlacementId;
+		bool bAvailable = false;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_INTERACT_PROMPT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_INTERACT_PROMPT& message);
+
+	// The player pressed the offered key. Same shape as C2S_CONFIRM_NPC_ENTRY:
+	// the Server re-tests that this player is still inside that exact box before
+	// running its action, so a replayed or forged request changes nothing.
+	struct C2S_INTERACT_TRIGGER
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strTriggerPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_INTERACT_TRIGGER& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_INTERACT_TRIGGER& message);
+
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only. No target to
 	// name -- the button has no proximity requirement -- so this is just a
 	// request sequence, same shape as C2S_DESPAWN_ALL_WORLD_ENTITIES.
