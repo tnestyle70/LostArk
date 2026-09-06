@@ -5,6 +5,7 @@
 #include "LobbyCommandService.h"
 #include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
+#include "CombatHUDViewModel.h"
 
 #include <chrono>
 #include <filesystem>
@@ -178,6 +179,16 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
+	/* KoukuSaydon interaction mode over the combat HUD (retail quickslot.gfx
+	quickSlotTypeMc): when HUD_KOUKU_GIMMICK_STATE names a mode, the class identity
+	block and the T/V slots hide, the mode's interaction emblem shows, and Q..F carry
+	that mode's icons / empty slots with the mode cooldown pies. Runs after
+	Update_SkillIcons/Update_SkillCooldowns so it overrides their Q..F results; with
+	no mode it only re-hides the appended emblem slots every frame. */
+	void Update_KoukuHudMode();
+	/* Data/UI/KoukuSaydon/KoukuHudModes.json -> m_KoukuHudModes (fail-closed: a
+	missing/invalid file leaves the list empty, so no mode can ever show). */
+	void Load_KoukuHudModes();
 	/* Lobby = retail server-select screen: the looping title movie, the one-shot logo reveal,
 	the server list rows (LobbyServers.json), the 접속(서버 선택) button that opens the
 	character-select window while the Lobby is idle, and the 종료/뒤로/환경설정 icon buttons --
@@ -361,6 +372,10 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
+	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
+	reroll and sample cooldowns; disabling invalidates the state again. */
+	void RenderKoukuUiPreviewControls();
 	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
 	void RefreshDebugAuthoringSources();
 	void RefreshDebugResourceFiles();
@@ -386,6 +401,26 @@ private:
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
 	STATIC UI document so the always-on HUD draws underneath all of them. */
 	unique_ptr<CUILayoutRuntime> m_pHUDRuntimeView = { nullptr };
+	/* One KoukuSaydon interaction mode (KoukuHudModes.json "modes[]"): which
+	appended emblem slot to show and which icons fill Q..F, in list order unless the
+	gimmick state reorders them. Slots without a skill stay the plain empty slot. */
+	struct KOUKU_HUD_MODE_SKILL
+	{
+		string strDisplayName;
+		string strIconPath;
+	};
+	struct KOUKU_HUD_MODE_DEF
+	{
+		string strId;
+		string strEmblemSlot;
+		bool_t bRandomOrder = false;
+		vector<KOUKU_HUD_MODE_SKILL> Skills;
+	};
+	vector<KOUKU_HUD_MODE_DEF> m_KoukuHudModes;
+#ifdef _DEBUG
+	bool_t m_bKoukuUiPreview = false;
+	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
+#endif
 	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same as m_pInventoryView/m_pItemUpgradeView. The boss
 	health bar isn't tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and

@@ -65,6 +65,7 @@
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
     <ClInclude Include="..\Public\CharacterSelectWindowView.h" />
     <ClInclude Include="..\Public\MinimapView.h" />
+    <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
@@ -278,6 +279,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\CharacterSelectWindowView.cpp" />
     <ClCompile Include="..\Private\MinimapView.cpp" />
+    <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
@@ -644,6 +646,8 @@
     <None Include="..\..\Data\UI\Lobby\LobbyServers.json" />
     <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json" />
     <None Include="..\..\Data\UI\Minimap\Minimap_Layout.json" />
+    <None Include="..\..\Data\UI\KoukuSaydon\MadnessGauge_Layout.json" />
+    <None Include="..\..\Data\UI\KoukuSaydon\KoukuHudModes.json" />
     <None Include="..\..\Data\UI\Minimap\MinimapAreas.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />
