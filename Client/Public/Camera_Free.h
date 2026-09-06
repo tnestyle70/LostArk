@@ -77,6 +77,12 @@ public:
 	{
 		return m_vPositionOffset;
 	}
+	/* Point the follow camera looks at, relative to the follow target. */
+	void Set_LookOffset(const float3_t& vLookOffset);
+	const float3_t& Get_LookOffset() const
+	{
+		return m_vLookOffset;
+	}
 
 private:
 	void Update_Shortcuts();

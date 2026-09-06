@@ -145,6 +145,18 @@ bool_t CCamera_Free::Set_FreeMoveSpeed(const f32_t metersPerSecond)
 	return true;
 }
 
+void CCamera_Free::Set_LookOffset(
+	const float3_t& vLookOffset)
+{
+	if (!std::isfinite(vLookOffset.x) ||
+		!std::isfinite(vLookOffset.y) ||
+		!std::isfinite(vLookOffset.z))
+	{
+		return;
+	}
+	m_vLookOffset = vLookOffset;
+}
+
 void CCamera_Free::Set_PositionOffset(
 	const float3_t& vPositionOffset)
 {

@@ -343,6 +343,10 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.iMaximumShield = snapshot.BossCombat.iMaximumShield;
 	m_Boss.iResponseProgress = snapshot.BossCombat.iResponseProgress;
 	m_Boss.iResponseThreshold = snapshot.BossCombat.iResponseThreshold;
+	m_Boss.hasPosition = true;
+	m_Boss.fPositionX = snapshot.fPositionX;
+	m_Boss.fPositionY = snapshot.fPositionY;
+	m_Boss.fPositionZ = snapshot.fPositionZ;
 	m_Boss.iServerTick = serverTick;
 	m_Boss.eAction = snapshot.eAction;
 	m_Boss.strActionId = snapshot.strActionId;
@@ -377,8 +381,13 @@ void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
 	m_Boss.iMaximumStagger = 1000u;
 	m_Boss.iCurrentShield = 0u;
 	m_Boss.iMaximumShield = 0u;
-	m_Boss.iResponseProgress = 0u;
-	m_Boss.iResponseThreshold = 0u;
+	/* Sample pattern check so the HUD Layout Tool can place the immune gauge. */
+	m_Boss.iResponseProgress = 420u;
+	m_Boss.iResponseThreshold = 1000u;
+	m_Boss.hasPosition = false;
+	m_Boss.fPositionX = 0.f;
+	m_Boss.fPositionY = 0.f;
+	m_Boss.fPositionZ = 0.f;
 	m_Boss.iServerTick = 0u;
 	m_Boss.eAction = LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 	m_Boss.strActionId.clear();

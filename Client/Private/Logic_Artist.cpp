@@ -173,6 +173,8 @@ const CHARACTER_SPEC Spec_Artist =
 
 	BoneChains,
 	static_cast<uint32_t>(size(BoneChains)),
+
+	"SP",
 };
 
 NS_END

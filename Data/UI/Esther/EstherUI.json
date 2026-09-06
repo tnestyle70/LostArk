@@ -1,164 +1,781 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default"],
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
   "slots": [
     {
       "id": "Esther_HeaderFrame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": -4.47496223, "y": 48.8718643, "width": 213, "height": 128 },
+      "rect": {
+        "x": -4.474962,
+        "y": 48.871864,
+        "width": 218.0,
+        "height": 134.666667
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_header_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_group_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot1_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 22.893961, "y": 87, "width": 45, "height": 45 },
+      "rect": {
+        "x": 7.525038,
+        "y": 90.205197,
+        "width": 76.666667,
+        "height": 58.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Esther_Slot1_KeyBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 7.525038,
+        "y": 126.871864,
+        "width": 71.333333,
+        "height": 20.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Esther/epic_keybind_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot1_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 34.2561531, "y": 97.9419098, "width": 24, "height": 24 },
+      "rect": {
+        "x": 28.858371,
+        "y": 101.538531,
+        "width": 31.333333,
+        "height": 31.333333
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_portrait_sillian.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/esther_portrait_sillian.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot1_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 21.212883, "y": 84.8986664, "width": 54, "height": 48 },
+      "rect": {
+        "x": -3.808295,
+        "y": 69.538531,
+        "width": 96.0,
+        "height": 96.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_ready.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/ReadyGlow/ready_00.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/Esther/ReadyGlow/ready_00.png",
+          "UI/Esther/ReadyGlow/ready_01.png",
+          "UI/Esther/ReadyGlow/ready_02.png",
+          "UI/Esther/ReadyGlow/ready_03.png",
+          "UI/Esther/ReadyGlow/ready_04.png",
+          "UI/Esther/ReadyGlow/ready_05.png",
+          "UI/Esther/ReadyGlow/ready_06.png",
+          "UI/Esther/ReadyGlow/ready_07.png",
+          "UI/Esther/ReadyGlow/ready_08.png",
+          "UI/Esther/ReadyGlow/ready_09.png",
+          "UI/Esther/ReadyGlow/ready_10.png",
+          "UI/Esther/ReadyGlow/ready_11.png",
+          "UI/Esther/ReadyGlow/ready_12.png",
+          "UI/Esther/ReadyGlow/ready_13.png",
+          "UI/Esther/ReadyGlow/ready_14.png",
+          "UI/Esther/ReadyGlow/ready_15.png",
+          "UI/Esther/ReadyGlow/ready_16.png",
+          "UI/Esther/ReadyGlow/ready_17.png",
+          "UI/Esther/ReadyGlow/ready_18.png",
+          "UI/Esther/ReadyGlow/ready_19.png",
+          "UI/Esther/ReadyGlow/ready_20.png",
+          "UI/Esther/ReadyGlow/ready_21.png",
+          "UI/Esther/ReadyGlow/ready_22.png",
+          "UI/Esther/ReadyGlow/ready_23.png",
+          "UI/Esther/ReadyGlow/ready_24.png",
+          "UI/Esther/ReadyGlow/ready_25.png",
+          "UI/Esther/ReadyGlow/ready_26.png",
+          "UI/Esther/ReadyGlow/ready_27.png",
+          "UI/Esther/ReadyGlow/ready_28.png",
+          "UI/Esther/ReadyGlow/ready_29.png"
+        ],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot2_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 81.959465, "y": 87, "width": 45, "height": 45 },
+      "rect": {
+        "x": 59.525038,
+        "y": 90.205197,
+        "width": 76.666667,
+        "height": 58.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Esther_Slot2_KeyBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 59.525038,
+        "y": 126.871864,
+        "width": 71.333333,
+        "height": 20.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Esther/epic_keybind_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot2_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 93.7419205, "y": 97.9419098, "width": 24, "height": 24 },
+      "rect": {
+        "x": 80.858371,
+        "y": 101.538531,
+        "width": 31.333333,
+        "height": 31.333333
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_portrait_wei.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/esther_portrait_wei.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot2_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 80.6987381, "y": 86.1594696, "width": 54, "height": 48 },
+      "rect": {
+        "x": 48.191705,
+        "y": 69.538531,
+        "width": 96.0,
+        "height": 96.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_ready.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/ReadyGlow/ready_00.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/Esther/ReadyGlow/ready_00.png",
+          "UI/Esther/ReadyGlow/ready_01.png",
+          "UI/Esther/ReadyGlow/ready_02.png",
+          "UI/Esther/ReadyGlow/ready_03.png",
+          "UI/Esther/ReadyGlow/ready_04.png",
+          "UI/Esther/ReadyGlow/ready_05.png",
+          "UI/Esther/ReadyGlow/ready_06.png",
+          "UI/Esther/ReadyGlow/ready_07.png",
+          "UI/Esther/ReadyGlow/ready_08.png",
+          "UI/Esther/ReadyGlow/ready_09.png",
+          "UI/Esther/ReadyGlow/ready_10.png",
+          "UI/Esther/ReadyGlow/ready_11.png",
+          "UI/Esther/ReadyGlow/ready_12.png",
+          "UI/Esther/ReadyGlow/ready_13.png",
+          "UI/Esther/ReadyGlow/ready_14.png",
+          "UI/Esther/ReadyGlow/ready_15.png",
+          "UI/Esther/ReadyGlow/ready_16.png",
+          "UI/Esther/ReadyGlow/ready_17.png",
+          "UI/Esther/ReadyGlow/ready_18.png",
+          "UI/Esther/ReadyGlow/ready_19.png",
+          "UI/Esther/ReadyGlow/ready_20.png",
+          "UI/Esther/ReadyGlow/ready_21.png",
+          "UI/Esther/ReadyGlow/ready_22.png",
+          "UI/Esther/ReadyGlow/ready_23.png",
+          "UI/Esther/ReadyGlow/ready_24.png",
+          "UI/Esther/ReadyGlow/ready_25.png",
+          "UI/Esther/ReadyGlow/ready_26.png",
+          "UI/Esther/ReadyGlow/ready_27.png",
+          "UI/Esther/ReadyGlow/ready_28.png",
+          "UI/Esther/ReadyGlow/ready_29.png"
+        ],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot3_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 140.478531, "y": 87, "width": 45, "height": 45 },
+      "rect": {
+        "x": 111.525038,
+        "y": 90.205197,
+        "width": 76.666667,
+        "height": 58.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Esther_Slot3_KeyBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 111.525038,
+        "y": 126.871864,
+        "width": 71.333333,
+        "height": 20.666667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Esther/epic_keybind_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot3_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 151.840714, "y": 97.9419174, "width": 24, "height": 24 },
+      "rect": {
+        "x": 132.858371,
+        "y": 101.538531,
+        "width": 31.333333,
+        "height": 31.333333
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_portrait_bahuntur.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/esther_portrait_bahuntur.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_Slot3_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 138.797501, "y": 86.1594543, "width": 54, "height": 48 },
+      "rect": {
+        "x": 100.191705,
+        "y": 69.538531,
+        "width": 96.0,
+        "height": 96.0
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_slot_ready.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/ReadyGlow/ready_00.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/Esther/ReadyGlow/ready_00.png",
+          "UI/Esther/ReadyGlow/ready_01.png",
+          "UI/Esther/ReadyGlow/ready_02.png",
+          "UI/Esther/ReadyGlow/ready_03.png",
+          "UI/Esther/ReadyGlow/ready_04.png",
+          "UI/Esther/ReadyGlow/ready_05.png",
+          "UI/Esther/ReadyGlow/ready_06.png",
+          "UI/Esther/ReadyGlow/ready_07.png",
+          "UI/Esther/ReadyGlow/ready_08.png",
+          "UI/Esther/ReadyGlow/ready_09.png",
+          "UI/Esther/ReadyGlow/ready_10.png",
+          "UI/Esther/ReadyGlow/ready_11.png",
+          "UI/Esther/ReadyGlow/ready_12.png",
+          "UI/Esther/ReadyGlow/ready_13.png",
+          "UI/Esther/ReadyGlow/ready_14.png",
+          "UI/Esther/ReadyGlow/ready_15.png",
+          "UI/Esther/ReadyGlow/ready_16.png",
+          "UI/Esther/ReadyGlow/ready_17.png",
+          "UI/Esther/ReadyGlow/ready_18.png",
+          "UI/Esther/ReadyGlow/ready_19.png",
+          "UI/Esther/ReadyGlow/ready_20.png",
+          "UI/Esther/ReadyGlow/ready_21.png",
+          "UI/Esther/ReadyGlow/ready_22.png",
+          "UI/Esther/ReadyGlow/ready_23.png",
+          "UI/Esther/ReadyGlow/ready_24.png",
+          "UI/Esther/ReadyGlow/ready_25.png",
+          "UI/Esther/ReadyGlow/ready_26.png",
+          "UI/Esther/ReadyGlow/ready_27.png",
+          "UI/Esther/ReadyGlow/ready_28.png",
+          "UI/Esther/ReadyGlow/ready_29.png"
+        ],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_GaugeTrack",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 22.8718224, "y": 137.822357, "width": 164, "height": 18 },
+      "rect": {
+        "x": 10.858371,
+        "y": 142.205197,
+        "width": 172.0,
+        "height": 16.666667
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_gauge_track.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_gauge_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "Esther_GaugeFill",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 23.2186012, "y": 140.007721, "width": 163, "height": 14 },
+      "rect": {
+        "x": 17.525038,
+        "y": 143.538531,
+        "width": 158.0,
+        "height": 14.666667
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Esther/esther_gauge_fill_gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Esther/epic_gauge_track.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

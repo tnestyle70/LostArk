@@ -579,6 +579,12 @@
     <ClCompile Include="..\Private\BoneChainSimulation.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\FaceCustomizeApplier.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\FaceSliderDocument.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -696,6 +702,9 @@
     <ClCompile Include="..\Private\SkillWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CustomizingView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\InventoryView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -733,6 +742,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BossImmuneGaugeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
@@ -1096,6 +1108,12 @@
     <ClInclude Include="..\Public\BoneChainSimulation.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\FaceCustomizeApplier.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\FaceSliderDocument.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Character.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -1225,6 +1243,9 @@
     <ClInclude Include="..\Public\SkillWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CustomizingView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\InventoryView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1271,6 +1292,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\KoukuMadnessGaugeView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BossImmuneGaugeView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -2000,6 +2024,9 @@
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\UI\BossUI\BossUI.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json">
