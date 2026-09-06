@@ -36,6 +36,9 @@
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "AvatarBookWindowView.h"
+#include "UILabelFont.h"
+#include "CharacterInfoWindowView.h"
 #include "InventoryView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
@@ -406,7 +409,8 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::BERN) ||
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	if (!m_bItemUpgradePreviewVisible || !isSupportedLevel)
 	{
 		Hide_ItemUpgrade();
@@ -710,6 +714,7 @@ HRESULT CMainApp::Initialize()
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/HUD/HUD_Layout.json");
 	Hide_CombatHUD();
+	Load_KoukuHudModes();
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
@@ -754,6 +759,12 @@ HRESULT CMainApp::Initialize()
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	/* Last of the runtime windows on purpose: its sprites join Layer_UI last and draw over the
+	inventory/chat/party panels while it is open (it also registers itself as the router's top
+	window so their text passes stay underneath). */
+	m_pCharacterInfoView = std::make_unique<CCharacterInfoWindowView>(m_pDevice, m_pContext);
+	/* Opened from the character info window's avatar page, drawn over it: constructed last. */
+	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -794,33 +805,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bIDown = iDown;
 	}
 
-	/* Same reasoning/gating as K/I above: P is a free normal gameplay keybind, not an F1/F6
-	tool-switch key. Toggles the debug-only Item Upgrade static art preview (see the
-	m_pItemUpgradeView declaration comment in MainApp.h). */
-	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput &&
+	/* P is the retail character info window keybind (same gating as I above). */
+	if (nullptr != m_pCharacterInfoView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t pDown = windowFocused &&
+		const bool_t keyDown = windowFocused &&
 			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
-		if (pDown && !m_bPDown)
+		if (keyDown && !m_bCharacterInfoKeyDown)
 		{
-			if (m_bItemUpgradePreviewVisible)
-			{
-				m_bItemUpgradePreviewVisible = false;
-				Hide_ItemUpgrade();
-				// Closing mid-wait must not leave the looping wait sound behind with no
-				// screen visible to end it.
-				CGameInstance::Get().Stop_LoopingSound();
-			}
-			else
-			{
-				Open_ItemUpgradeWindow();
-			}
+			m_pCharacterInfoView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pCharacterInfoView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 		}
-		m_bPDown = pDown;
+		m_bCharacterInfoKeyDown = keyDown;
 	}
+
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
@@ -907,8 +911,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
 		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
 		CUIInputRouter::Get().Is_TextInputActive();
-	const bool_t mouseCaptured = nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused);
+	/* A runtime UI window (inventory, character info, party, chat) that has the cursor claims
+	the mouse through CUIInputRouter; without folding that in here this call would re-open the
+	gameplay mouse for CPlayerController's tick right after End_Frame() closed it, so a left
+	click on the panel became a basic attack underneath. Last frame's claim covers the windows
+	that only hover-claim during Render (after this point). */
+	const bool_t mouseCaptured = (nullptr != m_pImGuiLayer &&
+		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused)) ||
+		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+		CUIInputRouter::Get().Was_MouseClaimedLastFrame();
 	CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
 	CGameInstance::Get().SetMouseButtonBlocked(
 		DIM::LB,
@@ -1413,6 +1424,13 @@ HRESULT CMainApp::Render()
 		return hBeginResult;
 	}
 
+	/* The character info window's live portrait draws into its own target here, before the
+	world/UI pass whose CI_Preview sprite samples it. */
+	if (nullptr != m_pCharacterInfoView)
+		(void)m_pCharacterInfoView->Render_Portrait();
+	if (nullptr != m_pAvatarBookView)
+		(void)m_pAvatarBookView->Render_Portrait();
+
 	const HRESULT hWorldResult = CGameInstance::Get().Render();
 	if (FAILED(hWorldResult))
 	{
@@ -1713,6 +1731,16 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pPartyWindowView)
 		m_pPartyWindowView->RenderText();
 
+	/* The topmost runtime windows draw their text last: everything above was clipped out of the
+	top window's rect (CUIInputRouter::Set_TopWindowRect -> CGameInstance::Set_TextClipOutRect),
+	these two draw with the clip cleared -- the info window's own labels skip the avatar book's
+	rect through Set_Covered while the book is open. */
+	CGameInstance::Get().Clear_TextClipOutRect();
+	if (nullptr != m_pCharacterInfoView)
+		m_pCharacterInfoView->Render_Text();
+	if (nullptr != m_pAvatarBookView)
+		m_pAvatarBookView->Render_Text();
+
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
 	left-button edge state forward for next frame and applies SetInputBlocked for anything
@@ -1739,7 +1767,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
 	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
 	const bool_t skillWindowOpen =
@@ -1764,6 +1793,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		last state across a level change unless told otherwise, same as this HUD's own. */
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
+		if (nullptr != m_pCharacterInfoView)
+			m_pCharacterInfoView->Hide();
+		if (nullptr != m_pAvatarBookView)
+			m_pAvatarBookView->Hide();
 		return;
 	}
 
@@ -2116,8 +2149,52 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SkillCooldowns();
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
+	Update_KoukuHudMode();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
+	if (nullptr != m_pCharacterInfoView)
+	{
+		/* Each level owns its own CClientReplication, the same way the party window above
+		asks the active level for its roster. */
+		shared_ptr<CCharacter> pLocalCharacter;
+		if (ETOUI(LEVEL::BERN) == currentLevel)
+		{
+			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+				pLocalCharacter = pBern->Get_LocalCharacter();
+		}
+		else if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
+		{
+			if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+				pLocalCharacter = pValtanArena->Get_LocalCharacter();
+		}
+		else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
+		{
+			if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+				pLocalCharacter = pCharacterSelect->Get_LocalCharacter();
+		}
+		else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+		{
+			if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
+				pLocalCharacter = pKoukuArena->Get_LocalCharacter();
+		}
+		m_pCharacterInfoView->Update(fTimeDelta, pLocalCharacter, player);
+		if (nullptr != m_pAvatarBookView)
+		{
+			/* The avatar-page avatar book button toggles the book; the book lives only while the
+			info window is open (its slot map / avatar item ids come from that window). */
+			if (m_pCharacterInfoView->Take_AvatarBookRequest())
+			{
+				if (m_pAvatarBookView->Is_Open())
+					m_pAvatarBookView->Close();
+				else
+					m_pAvatarBookView->Open();
+			}
+			if (!m_pCharacterInfoView->Is_Open())
+				m_pAvatarBookView->Close();
+			m_pCharacterInfoView->Set_Covered(m_pAvatarBookView->Is_Open());
+			m_pAvatarBookView->Update(fTimeDelta, pLocalCharacter, player, *m_pCharacterInfoView);
+		}
+	}
 
 	/* Advances every keyframe-animation slot the per-class blocks above played (and any
 	flipbooks, though this document has none) -- must run after them so a Play call issued this
@@ -2131,7 +2208,8 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		return;
 	}
@@ -2181,8 +2259,21 @@ void CMainApp::RenderQuickSlotKeyLabels()
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
+	/* T/V are hidden by the KoukuSaydon interaction mode (Update_KoukuHudMode); a
+	label over a hidden slot would float on the emblem. */
+	const HUD_KOUKU_GIMMICK_STATE& koukuLabelState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const bool_t bKoukuModeLabels = koukuLabelState.isValid &&
+		HUD_KOUKU_HUD_MODE::NONE != koukuLabelState.eHudMode &&
+		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
 	for (const KEY_LABEL& Label : LABELS)
+	{
+		if (bKoukuModeLabels &&
+			(0 == std::strcmp(Label.pSlotId, "Skill_T") || 0 == std::strcmp(Label.pSlotId, "Skill_V")))
+		{
+			continue;
+		}
 		DrawKeyLabel(Label.pSlotId, Label.pLabel);
+	}
 
 	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
 	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
@@ -2191,6 +2282,176 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	doesn't apply to it, so both the Artist and Warlord cases produced a mispositioned label.
 	Skip until there's a real anchor to read (either from the keyframe document's own bounds, or
 	a dedicated non-keyframe slot). */
+}
+
+namespace
+{
+	constexpr const char* KOUKU_SLOT_KEYS[HUD_KOUKU_SLOT_COUNT] =
+		{ "Q", "W", "E", "R", "A", "S", "D", "F" };
+	constexpr const char* KOUKU_EMBLEM_SLOTS[] = { "Kouku_Emblem_Npc", "Kouku_Emblem_Pickup" };
+	/* Slots the retail interaction layout drops entirely (no T/V column). */
+	constexpr const char* KOUKU_HIDDEN_SLOTS[] =
+	{
+		"Skill_T", "Skill_T_Icon", "Skill_T_Frame", "Skill_T_Cooldown", "Skill_T_Flash",
+		"Skill_V", "Skill_V_Icon", "Skill_V_Frame", "Skill_V_Cooldown", "Skill_V_Flash",
+		"Skill_V_Edge1", "Skill_V_Edge2",
+	};
+
+	const char* KoukuHudModeId(const HUD_KOUKU_HUD_MODE eMode)
+	{
+		switch (eMode)
+		{
+		case HUD_KOUKU_HUD_MODE::POLYMORPH: return "POLYMORPH";
+		case HUD_KOUKU_HUD_MODE::MARIO: return "MARIO";
+		case HUD_KOUKU_HUD_MODE::DANCE: return "DANCE";
+		case HUD_KOUKU_HUD_MODE::MAZE: return "MAZE";
+		default: return nullptr;
+		}
+	}
+}
+
+void CMainApp::Load_KoukuHudModes()
+{
+	m_KoukuHudModes.clear();
+	const filesystem::path DataPath =
+		CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
+	ifstream Stream(DataPath, ios::binary);
+	if (!Stream.is_open())
+	{
+		OutputDebugStringA("[KoukuHudMode] KoukuHudModes.json missing -- no interaction mode can show.\n");
+		return;
+	}
+	const string Text((istreambuf_iterator<char>(Stream)), istreambuf_iterator<char>());
+	DATA_JSON_VALUE Root;
+	string Error;
+	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	{
+		OutputDebugStringA(("[KoukuHudMode] KoukuHudModes.json parse failed: " + Error + "\n").c_str());
+		return;
+	}
+	const DATA_JSON_VALUE* pModes = Root.Find("modes");
+	if (nullptr == pModes || !pModes->Is_Array())
+		return;
+
+	vector<KOUKU_HUD_MODE_DEF> Staged;
+	for (const DATA_JSON_VALUE& Value : pModes->Get_Array())
+	{
+		if (!Value.Is_Object())
+			return;
+		KOUKU_HUD_MODE_DEF Mode{};
+		const DATA_JSON_VALUE* pId = Value.Find("id");
+		const DATA_JSON_VALUE* pEmblem = Value.Find("emblemSlot");
+		const DATA_JSON_VALUE* pSkills = Value.Find("skills");
+		if (nullptr == pId || !pId->Is_String() || pId->Get_String().empty() ||
+			nullptr == pEmblem || !pEmblem->Is_String() ||
+			nullptr == pSkills || !pSkills->Is_Array() ||
+			pSkills->Get_Array().size() > HUD_KOUKU_SLOT_COUNT)
+		{
+			OutputDebugStringA("[KoukuHudMode] KoukuHudModes.json has an invalid mode entry -- file rejected.\n");
+			return;
+		}
+		Mode.strId = pId->Get_String();
+		Mode.strEmblemSlot = pEmblem->Get_String();
+		if (const DATA_JSON_VALUE* pRandom = Value.Find("randomOrder");
+			nullptr != pRandom && pRandom->Is_Boolean())
+		{
+			Mode.bRandomOrder = pRandom->Get_Boolean();
+		}
+		for (const DATA_JSON_VALUE& Skill : pSkills->Get_Array())
+		{
+			const DATA_JSON_VALUE* pIcon = Skill.Is_Object() ? Skill.Find("iconPath") : nullptr;
+			if (nullptr == pIcon || !pIcon->Is_String() || pIcon->Get_String().empty())
+			{
+				OutputDebugStringA("[KoukuHudMode] KoukuHudModes.json skill without iconPath -- file rejected.\n");
+				return;
+			}
+			KOUKU_HUD_MODE_SKILL Entry{};
+			Entry.strIconPath = pIcon->Get_String();
+			if (const DATA_JSON_VALUE* pName = Skill.Find("displayName");
+				nullptr != pName && pName->Is_String())
+			{
+				Entry.strDisplayName = pName->Get_String();
+			}
+			Mode.Skills.push_back(std::move(Entry));
+		}
+		Staged.push_back(std::move(Mode));
+	}
+	m_KoukuHudModes = std::move(Staged);
+}
+
+void CMainApp::Update_KoukuHudMode()
+{
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	const float4_t vCooldownTint = float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
+
+	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t bActive = kouku.isValid &&
+		HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode &&
+		ETOUI(LEVEL::KAKULSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID();
+	const KOUKU_HUD_MODE_DEF* pMode = nullptr;
+	if (bActive)
+	{
+		const char* pModeId = KoukuHudModeId(kouku.eHudMode);
+		for (const KOUKU_HUD_MODE_DEF& Mode : m_KoukuHudModes)
+		{
+			if (nullptr != pModeId && Mode.strId == pModeId)
+			{
+				pMode = &Mode;
+				break;
+			}
+		}
+	}
+
+	/* Update_CombatHUD turns every slot on first, so the appended emblem slots
+	must be re-hidden every frame the mode is off. */
+	for (const char* pEmblemSlot : KOUKU_EMBLEM_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(pEmblemSlot, false);
+	if (nullptr == pMode)
+		return;
+
+	/* No class owns this name, so every ownerClass slot (identity blocks) hides. */
+	m_pHUDRuntimeView->Set_ActiveOwnerClass("KoukuSaydonInteraction");
+	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
+	m_pHUDRuntimeView->Set_SlotVisible(pMode->strEmblemSlot, true);
+
+	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+	{
+		const string strKey = KOUKU_SLOT_KEYS[i];
+		const string strIconSlot = "Skill_" + strKey + "_Icon";
+		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
+
+		const int32_t iSkillIndex = kouku.ModeSkillIndexBySlot[i];
+		const bool_t bHasSkill = iSkillIndex >= 0 &&
+			static_cast<size_t>(iSkillIndex) < pMode->Skills.size();
+		if (bHasSkill)
+		{
+			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
+				pMode->Skills[static_cast<size_t>(iSkillIndex)].strIconPath);
+		}
+		/* No skill = the plain dark slot, exactly what the retail interaction layout
+		shows for its unused keys. */
+		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, bHasSkill);
+
+		const uint32_t iEndTick = kouku.CooldownEndTicks[i];
+		const uint32_t iRemaining = (bHasSkill && iEndTick > player.iServerTick) ?
+			iEndTick - player.iServerTick : 0u;
+		if (0u == iRemaining)
+		{
+			m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, 0.f);
+			m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, false);
+			continue;
+		}
+		const f32_t fRemainingSeconds = static_cast<f32_t>(iRemaining) / SERVER_TICK_HZ;
+		const f32_t fTotalSeconds = kouku.CooldownDurationTicks[i] > 0u ?
+			static_cast<f32_t>(kouku.CooldownDurationTicks[i]) / SERVER_TICK_HZ : fRemainingSeconds;
+		const f32_t fFraction = fTotalSeconds > 0.f ?
+			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
+		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, vCooldownTint);
+		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fFraction);
+		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, true);
+	}
 }
 
 void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
@@ -3685,7 +3946,8 @@ void CMainApp::RenderSkillCooldownText()
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		return;
 	}
@@ -3789,7 +4051,8 @@ void CMainApp::Update_BossHealthBar()
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 	/* Same reasoning as Update_ClassList's own gate -- the O-key raid-entry preview's left info
@@ -4037,7 +4300,8 @@ void CMainApp::RenderBossHealthBarText()
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		return;
 	}
@@ -4798,7 +5062,8 @@ void CMainApp::RenderCombatHUDText()
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		return;
 	}
@@ -4839,7 +5104,8 @@ void CMainApp::RenderDamageNumbers()
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		return;
 	}
@@ -4996,6 +5262,23 @@ HRESULT CMainApp::Ready_Fonts()
 			sourceFontPath.c_str())))
 		{
 			return E_FAIL;
+		}
+	}
+
+	/* Small-label variants of two of the fonts above, Lanczos pre-downsampled offline to each
+	line-spacing step in UILabelFont::BAKED_SIZES (the originals are baked at 32-42 px in 4-bit
+	BC2 and blur when SpriteBatch resamples them for 10-18 px labels; the windows draw these
+	1:1). They ship with the UI folder, so a missing file is not fatal: UILabelFont::Resolve
+	falls back to the full-size font when a tag is absent. */
+	for (const wchar_t* pFamily : { L"YG760", L"YoonGasiIIM" })
+	{
+		for (const int32_t iSize : UILabelFont::BAKED_SIZES)
+		{
+			const wstring strTag = wstring(L"Font_") + pFamily + L"_" + std::to_wstring(iSize);
+			const wstring strFile = wstring(L"UI/Fonts/") + pFamily + L"_" + std::to_wstring(iSize) + L".spritefont";
+			const filesystem::path smallFontPath = CRuntimeAssetRoot::Resolve(strFile);
+			if (smallFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(strTag, smallFontPath.c_str())))
+				OutputDebugStringW((L"[Fonts] optional small label font missing: " + strFile + L"\n").c_str());
 		}
 	}
 
@@ -5938,6 +6221,104 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
 	if (!controller->Get_DebugPlayerPlacementStatus().empty())
 		ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
+	if (nullptr != kouku)
+		RenderKoukuUiPreviewControls();
+}
+
+void CMainApp::RenderKoukuUiPreviewControls()
+{
+	ImGui::SeparatorText("Kouku UI Preview (Debug)");
+	CCombatHUDViewModel& viewModel = CCombatHUDViewModel::Get();
+	// Replication reset clears the override when the arena session ends.
+	m_bKoukuUiPreview = viewModel.Is_KoukuGimmickPreviewEnabled();
+	const KOUKU_HUD_MODE_DEF* pMode = nullptr;
+	for (const KOUKU_HUD_MODE_DEF& Mode : m_KoukuHudModes)
+	{
+		const char* pModeId = KoukuHudModeId(m_KoukuUiPreview.eHudMode);
+		if (nullptr != pModeId && Mode.strId == pModeId)
+		{
+			pMode = &Mode;
+			break;
+		}
+	}
+	/* Skill k -> slot k in list order; the dance mode shuffles the four so QWER
+	differs per activation, the way the real gimmick randomises it. */
+	const auto assignSlots = [this, &pMode]()
+	{
+		for (std::int8_t& iIndex : m_KoukuUiPreview.ModeSkillIndexBySlot)
+			iIndex = -1;
+		for (uint32_t& iTick : m_KoukuUiPreview.CooldownEndTicks)
+			iTick = 0u;
+		if (nullptr == pMode)
+			return;
+		const size_t iCount = (std::min)(pMode->Skills.size(), HUD_KOUKU_SLOT_COUNT);
+		vector<std::int8_t> Order;
+		for (size_t k = 0; k < iCount; ++k)
+			Order.push_back(static_cast<std::int8_t>(k));
+		if (pMode->bRandomOrder)
+		{
+			std::mt19937 Rng(static_cast<uint32_t>(
+				std::chrono::steady_clock::now().time_since_epoch().count()));
+			std::shuffle(Order.begin(), Order.end(), Rng);
+		}
+		for (size_t k = 0; k < iCount; ++k)
+			m_KoukuUiPreview.ModeSkillIndexBySlot[k] = Order[k];
+	};
+
+	bool_t bChanged = false;
+	if (ImGui::Checkbox("Enable preview##Kouku", &m_bKoukuUiPreview))
+		bChanged = true;
+	int32_t iGauge = static_cast<int32_t>(m_KoukuUiPreview.iMadnessGauge);
+	if (ImGui::SliderInt("Madness gauge##Kouku", &iGauge, 0, 100))
+	{
+		m_KoukuUiPreview.iMadnessGauge = static_cast<uint32_t>(iGauge);
+		bChanged = true;
+	}
+	constexpr const char* MODE_LABELS[] =
+		{ "None", "Polymorph (clown)", "Mario", "Dance", "Card maze" };
+	int32_t iMode = static_cast<int32_t>(m_KoukuUiPreview.eHudMode);
+	if (ImGui::Combo("HUD mode##Kouku", &iMode, MODE_LABELS,
+		static_cast<int32_t>(sizeof(MODE_LABELS) / sizeof(MODE_LABELS[0]))))
+	{
+		m_KoukuUiPreview.eHudMode = static_cast<HUD_KOUKU_HUD_MODE>(iMode);
+		pMode = nullptr;
+		for (const KOUKU_HUD_MODE_DEF& Mode : m_KoukuHudModes)
+		{
+			const char* pModeId = KoukuHudModeId(m_KoukuUiPreview.eHudMode);
+			if (nullptr != pModeId && Mode.strId == pModeId)
+			{
+				pMode = &Mode;
+				break;
+			}
+		}
+		assignSlots();
+		bChanged = true;
+	}
+	if (ImGui::Button("Reroll slot order##Kouku"))
+	{
+		assignSlots();
+		bChanged = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Start 5s cooldowns##Kouku"))
+	{
+		const uint32_t iTick = viewModel.Get_Player().iServerTick;
+		for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+		{
+			if (m_KoukuUiPreview.ModeSkillIndexBySlot[i] < 0)
+				continue;
+			m_KoukuUiPreview.CooldownDurationTicks[i] = 150u;
+			m_KoukuUiPreview.CooldownEndTicks[i] = iTick + 150u;
+		}
+		bChanged = true;
+	}
+	if (bChanged)
+	{
+		m_KoukuUiPreview.isValid = m_bKoukuUiPreview;
+		m_KoukuUiPreview.iMadnessMaximum = 100u;
+		viewModel.Debug_Set_KoukuGimmickPreview(m_KoukuUiPreview);
+	}
+	ImGui::TextDisabled("Preview only (no Server truth). Modes: %zu loaded.", m_KoukuHudModes.size());
 }
 
 void CMainApp::RenderDebugLevelNavigation()

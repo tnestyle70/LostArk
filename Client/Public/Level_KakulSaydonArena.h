@@ -27,6 +27,9 @@ class CNpc;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
+class CUILayoutRuntime;
+class CKoukuMadnessGaugeView;
+
 class CLevel_KakulSaydonArena final : public CLevel
 {
 public:
@@ -92,6 +95,12 @@ public:
 		CClientReplication::MINIMAP_MARKER_SNAPSHOT& outSnapshot) const
 	{
 		m_Replication.Collect_MinimapMarkers(outSnapshot);
+	}
+
+	/* Read-only replicated presentation, including the current madness avatar. */
+	shared_ptr<CCharacter> Get_LocalCharacter() const
+	{
+		return m_Replication.Get_LocalCharacter();
 	}
 
 #ifdef _DEBUG
@@ -183,6 +192,11 @@ private:
 	bool_t Load_StageMarkers(std::string& outStatus);
 	bool_t Load_CameraShots(std::string& outStatus);
 	void Update_CameraShots(f32_t fTimeDelta);
+	/* The arena and the Mario gimmick are more than a kilometre apart, so a
+	   trigger move between them is hidden behind a black screen instead of
+	   letting the camera travel that distance on screen. Server owns the
+	   move; this only reads the action state it already replicates. */
+	void Update_TriggerMoveFade(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;
 	void Release_CameraShot();
@@ -238,6 +252,19 @@ private:
 	std::string m_strDebugGateStatus =
 		"Choose a gate. The Server raises its bosses and moves only your player.";
 #endif
+	/* One full-screen slot, black, whose alpha is the whole effect. Built
+	   hidden so the first rendered frame after activation cannot flash it. */
+	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;
+	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
+	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
+	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;
+	f32_t m_fTriggerMoveFadeAlpha = 0.f;
+	/* Speed gate. The short hops share TRIGGER_MOVE with the stage
+	   transition, so the fade arms only once the character is seen moving
+	   far faster than any hop can. */
+	float3_t m_vTriggerMoveFadeLastPosition = {};
+	bool_t m_bTriggerMoveFadeHasLastPosition = false;
+	bool_t m_bTriggerMoveFadeArmed = false;
 	static CLevel_KakulSaydonArena* s_pActiveInstance;
 
 public:

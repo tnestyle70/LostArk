@@ -71,6 +71,48 @@ Kouku Product는 다른 세션이 올린 composition revision 50 기준으로 �
 
 ## 4. 남은 경계
 
-- 광기 게이지 증가·가득 참 → 자동 광대 변신·지속 시간·HUD 바: 없음(상수 0/10000, Debug 버튼만).
+- 광기 게이지 증가·가득 참 → 자동 광대 변신·지속 시간: 없음(상수 0/10000, Debug 버튼만). HUD 바는 아래 PR325 통합에서 기존 UI에 연결했다.
 - 진짜 쿠크 찾기 45° 시야각, 방패 반사 45° cone, 댄스타임 최대 HP% 피해: Logic 런타임 슬라이스(계획서 G05)로 후속. 저작 Logic 박스는 이름만 있다.
 - 튜닝 슬라이스는 값 확정 뒤 제거한다.
+
+## 5. PR325 최신 main 통합
+
+기준은 기능 HEAD `30766d3a732f8cda92e51cf90d9231a787fa8ba5`와 PR324·326·327·328이 병합된
+main `683b9e60f491d9ff2c781ca8599d0d5e8400b879`다. 이전 main 대상 미완료 merge와 publisher 산출물은
+`out/PR325Merge/pre-latest-main/`에 원본 바이트로 보존한 뒤 최신 main을 다시 병합했다.
+
+### 구현 상태
+
+- 충돌 6개 파일을 문맥별로 해결했다. Debug gate, Release fade·광기 view, class getter와 avatar API,
+  MN_RPCT_03 preview, BossCatalog v8·8행과 모든 무기 회전을 함께 유지했다.
+- world revision은 3686이다. stable ID·field별 3-way 비교에서 main 맵 변경과 disabled boss 5개가 모두
+  보존됐으며 최종 placement 32개, 중복 0개다. navigation과 sequence 참조도 최신 main을 유지한다.
+- 기존 UI의 광기 read model을 실제 Server 수치에 연결했다. F1 표시 override와 분리하고, 해제·session
+  reset 시 실제 값으로 복귀한다. 상태 임계값은 10000 raw가 아닌 최대치 대비 백분율로 계산한다.
+- 실제 CLOWN은 원래 class 스킬을 유지하므로 인터랙션 모드로 자동 전환하지 않는다.
+- 쿠크 아레나의 현재 복제 캐릭터를 CharacterInfo·AvatarBook에 연결하고, 같은 class의 몸체 교체도
+  AvatarBook 목록·preview mask·선택 셀을 갱신하도록 수정했다.
+- 고정 world revision 테스트를 병합 결과 3686에 맞췄다. main 유입 문서의 마지막 빈 줄 1개도 정리했다.
+
+### 자동 검증
+
+| 검사 | 결과 | 증거 (`out/PR325Merge/latest-main/`) |
+|---|---|---|
+| Debug Product | Engine → Shared → Server → Client 컴파일·링크·SDK/shader/DLL 배포 성공 | `product-debug.log`, `out/BuildPipeline/runs/20260906T055948159Z-debug-product.json` |
+| 새 Server 계약 테스트 | 1159 PASS, failures 0 | `server-contract.log` |
+| Kouku runtime inputs·Effect V2 bindings·Release Client surface | 29 tests OK | `python-focused.log` |
+| Gameplay·Items·Navigation·World·Map publisher | 모두 Publish 성공; Items 46개, Kouku world 32개 | `*-publish.log` |
+| 변경 JSON/XML parse | 26개 성공 | `parsed-files.json` |
+| BossCatalog/world 3-way 의미 비교 | field·stable ID 변경 손실 없음 | `semantic-merge.json` |
+| `git diff --check` | 성공 | 최종 stage 검사 |
+
+컴파일에는 기존 encoding·shader·DirectXTK PDB 경고가 남아 있다. Client 실행·UI 조작·시각 확인은
+이번 통합에서 수행하지 않았다. publisher가 바꾼 기존 추적 runtime Map 파일 4개는 별도 백업하고
+Git index 내용으로 복귀했으며, 빌드 산출물과 Resources는 추가하지 않는다.
+
+### 수동 검증 및 다음 단계
+
+사용자는 `Server + Client` profile을 `Ctrl+F5`로 실행한 뒤 Lobby → KoukuSaydon에서 F1
+`Kouku UI Preview` Enable/Disable과 49/100 표시, 세션 재진입, P 정보창·아바타 도감의 광대 변신/복귀를 확인한다.
+새 HUD에 기반한 모드별 키 바인딩·애니메이션·Server 스킬 및 패턴은 사용자 요청대로 main 동기화 후
+사용자가 생성하는 새 브랜치에서 진행한다. 이번 PR에서는 해당 gameplay를 활성화하지 않았다.

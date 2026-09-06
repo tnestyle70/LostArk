@@ -250,12 +250,23 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     const float3 cameraPosition =
         -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
     const float3 toCamera = normalize(cameraPosition - input.vWorldPos.xyz);
-    const float3 light = normalize(-g_CutinLightDirection);
-    const float diffuseLight = saturate(dot(normal, light));
-    const float hemisphere = 0.38f + saturate(normal.y) * 0.18f;
-    const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f) * 0.12f;
+    /* Portrait studio lighting rides the camera (the character can face any world
+       direction): key from the camera's upper left, softer fill from the lower right,
+       plus the hemisphere/rim terms. g_CutinLightDirection stays as an extra world key. */
+    const float3 cameraRight = normalize(float3(g_ViewMatrix._11, g_ViewMatrix._21, g_ViewMatrix._31));
+    const float3 cameraUp = normalize(float3(g_ViewMatrix._12, g_ViewMatrix._22, g_ViewMatrix._32));
+    const float3 cameraLook = normalize(float3(g_ViewMatrix._13, g_ViewMatrix._23, g_ViewMatrix._33));
+    const float3 keyLight = normalize(-cameraLook + cameraUp * 0.6f - cameraRight * 0.5f);
+    const float3 fillLight = normalize(-cameraLook - cameraUp * 0.15f + cameraRight * 0.7f);
+    const float3 worldLight = normalize(-g_CutinLightDirection);
+    const float diffuseLight =
+        saturate(dot(normal, keyLight)) * 0.85f +
+        saturate(dot(normal, fillLight)) * 0.35f +
+        saturate(dot(normal, worldLight)) * 0.25f;
+    const float hemisphere = 0.5f + saturate(normal.y) * 0.2f;
+    const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f) * 0.15f;
 
-    float3 color = diffuse.rgb * (hemisphere + diffuseLight * 0.72f) + rim;
+    float3 color = diffuse.rgb * (hemisphere + diffuseLight) + rim;
     if (0 != g_HasEmissiveTexture)
     {
         float3 emissive =

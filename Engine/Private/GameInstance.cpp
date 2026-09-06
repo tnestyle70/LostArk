@@ -513,6 +513,16 @@ float2_t CGameInstance::Measure_Text(const wstring& strFontTag, const tchar_t* p
 	return m_pFont_Manager->Measure(strFontTag, pText);
 }
 
+void CGameInstance::Set_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight)
+{
+	m_pFont_Manager->Set_ClipOutRect(fX, fY, fWidth, fHeight);
+}
+
+void CGameInstance::Clear_TextClipOutRect()
+{
+	m_pFont_Manager->Clear_ClipOutRect();
+}
+
 HRESULT CGameInstance::Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor)
 {
 	return m_pTarget_Manager->Add_RenderTarget(strTargetTag, iWidth, iHeight, ePixelFormat, vClearColor);	

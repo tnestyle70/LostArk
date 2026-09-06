@@ -5,6 +5,7 @@
 #include "LobbyCommandService.h"
 #include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
+#include "CombatHUDViewModel.h"
 
 #include <chrono>
 #include <filesystem>
@@ -34,6 +35,8 @@ class CSequencerTool;
 class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
+class CCharacterInfoWindowView;
+class CAvatarBookWindowView;
 class CChatWindowView;
 class CPartyWindowView;
 class CCharacterSelectWindowView;
@@ -159,6 +162,16 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
+	/* KoukuSaydon interaction mode over the combat HUD (retail quickslot.gfx
+	quickSlotTypeMc): when HUD_KOUKU_GIMMICK_STATE names a mode, the class identity
+	block and the T/V slots hide, the mode's interaction emblem shows, and Q..F carry
+	that mode's icons / empty slots with the mode cooldown pies. Runs after
+	Update_SkillIcons/Update_SkillCooldowns so it overrides their Q..F results; with
+	no mode it only re-hides the appended emblem slots every frame. */
+	void Update_KoukuHudMode();
+	/* Data/UI/KoukuSaydon/KoukuHudModes.json -> m_KoukuHudModes (fail-closed: a
+	missing/invalid file leaves the list empty, so no mode can ever show). */
+	void Load_KoukuHudModes();
 	/* Lobby = retail server-select screen: the looping title movie, the one-shot logo reveal,
 	the server list rows (LobbyServers.json), the 접속(서버 선택) button that opens the
 	character-select window while the Lobby is idle, and the 종료/뒤로/환경설정 icon buttons --
@@ -342,6 +355,10 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
+	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
+	reroll and sample cooldowns; disabling invalidates the state again. */
+	void RenderKoukuUiPreviewControls();
 	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
 	void RefreshDebugResourceFiles();
 	/* F1 "KoukuSaydon Arena": gate buttons that ask the Server to raise the
@@ -375,6 +392,26 @@ private:
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
 	STATIC UI document so the always-on HUD draws underneath all of them. */
 	unique_ptr<CUILayoutRuntime> m_pHUDRuntimeView = { nullptr };
+	/* One KoukuSaydon interaction mode (KoukuHudModes.json "modes[]"): which
+	appended emblem slot to show and which icons fill Q..F, in list order unless the
+	gimmick state reorders them. Slots without a skill stay the plain empty slot. */
+	struct KOUKU_HUD_MODE_SKILL
+	{
+		string strDisplayName;
+		string strIconPath;
+	};
+	struct KOUKU_HUD_MODE_DEF
+	{
+		string strId;
+		string strEmblemSlot;
+		bool_t bRandomOrder = false;
+		vector<KOUKU_HUD_MODE_SKILL> Skills;
+	};
+	vector<KOUKU_HUD_MODE_DEF> m_KoukuHudModes;
+#ifdef _DEBUG
+	bool_t m_bKoukuUiPreview = false;
+	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
+#endif
 	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same as m_pInventoryView/m_pItemUpgradeView. The boss
 	health bar isn't tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and
@@ -410,7 +447,6 @@ private:
 	untouched. Every level display in this preview (left list, right 재련 단계 ladder, center
 	현재/다음, success detail) reads through the same helper so they can never drift out of sync. */
 	unordered_map<string, int32_t> m_ItemUpgradeLevels;
-	bool_t m_bPDown = false;
 	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
 	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
 	0 until the button is clicked, holds at 100 once the fill completes. Also read directly by
@@ -558,6 +594,11 @@ private:
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
 	bool_t m_bIDown = false;
+	/* Not _DEBUG-gated: P opens the retail character info window during real gameplay. Its
+	live portrait renders in Render() before the world pass (see Render_Portrait). */
+	unique_ptr<CCharacterInfoWindowView> m_pCharacterInfoView = { nullptr };
+	unique_ptr<CAvatarBookWindowView> m_pAvatarBookView = { nullptr };
+	bool_t m_bCharacterInfoKeyDown = false;
 	/* Combat HUD's Item_1..4 quick slots (HUD_Layout.json). Which itemId each one holds is a
 	Client-local binding only, set by dragging an item out of CInventoryView and dropping it on
 	one of these four rects -- the Server has no concept of a quick slot, only an inventory by

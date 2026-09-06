@@ -241,7 +241,7 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
         self.assertEqual("lostark.world-gameplay", world["schema"])
         self.assertEqual(6, world["formatVersion"])
         self.assertEqual("LV_LUT_MIDNIGHTC_ED", world["areaId"])
-        self.assertEqual(1868, world["revision"])
+        self.assertEqual(3686, world["revision"])
         self.assertEqual(
             {
                 "placementId": KOUKU_PLACEMENT_ID,

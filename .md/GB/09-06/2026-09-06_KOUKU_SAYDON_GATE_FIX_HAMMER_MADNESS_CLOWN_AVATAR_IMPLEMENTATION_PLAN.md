@@ -2,7 +2,7 @@
 
 > 문서 종류: 구현 계획서 (버그 수정 + 튜닝 + 수치 확장 + Debug 아바타 교체)
 >
-> 상태: 실측 완료 / G01~G04 즉시 구현 / G05(Logic 런타임) 결정값 고정·후속
+> 상태: G01~G04 구현·자동 검증 완료 / PR325 최신 main 통합 완료 / G05(Logic 런타임) 후속, 사용자 화면 확인 전
 >
 > 기준 브랜치: `codex/kouku-scale-1p7` (관문 스폰·HUD·G05 재생 위에 얹는다)
 >
@@ -12,7 +12,7 @@
 
 1. **관문 1·3 버튼이 성공한다.** Server 보스 spawn이 저작 좌표를 4m navgrid 셀 중심으로 옮기지 않는다.
 2. **뿅망치가 맞는 크기로 보인다.** 빙고 세이튼 `weaponModelPreScale 0.0001`, 대형 세이튼도 뿅망치를 들고 `0.001`. F1 튜닝 슬라이스에 대형 세이튼 yaw 행이 생기고 Save가 `yawDegrees`를 쓴다.
-3. **광기 게이지 수치가 플레이어에 존재한다.** `SERVER_PLAYER`·`PLAYER_SNAPSHOT`(protocol 59)·`CCombatHUDViewModel`이 `current/maximum`을 나른다. HUD 바는 이번 범위 밖.
+3. **광기 게이지 수치가 플레이어에 존재한다.** `SERVER_PLAYER`·`PLAYER_SNAPSHOT`(protocol 59)·`CCombatHUDViewModel`이 `current/maximum`을 나른다. PR325 통합에서 main의 기존 HUD 바에 수치를 연결했다. 증가·자동 변신·모드별 스킬 구현은 후속이다.
 4. **F1 `Change to Clown` / `Return to Player`가 플레이어 몸체를 무채색 세이튼(MN_RPCT_03)으로 바꾸고 되돌린다.** 바뀐 몸체로 idle/run이 재생되고 우클릭 이동이 그대로 된다. 교체는 Server가 소유한 `eMadnessForm`을 snapshot으로 받아 같은 entity presentation을 transactionally 교체한다(class 변경과 같은 경로).
 5. **G05 결정값을 고정한다.** 진짜 쿠크 찾기 = 플레이어 시야각 45°, 방패 반사 = 보스 forward 45° cone 안 공격은 공격자에게 반사, 댄스타임 timeout = 최대 HP 퍼센트 피해(50000의 10% = 5000). 구현은 Logic 런타임 슬라이스로 후속.
 
@@ -75,7 +75,7 @@
 | R4 | 대형 세이튼·쿠크·세이튼 rotation 행 + Save | 슬라이스가 아레나 boss placement 5개(`KOUKU_TUNE_BOSSES`) 각각에 `yaw offset` 행을 두고 live `CNpc::Set_DebugPresentationYawOffset`, Save가 각 placement `yawDegrees`를 patch | G02 |
 | R4-b | 뿅망치 rotation 조절·저장 | `BossCatalog.json` v8 `weaponModelPreRotationDegrees [pitch, yaw, roll]`(무기 row 필수, 무기 없는 row null). Client `CActorCatalog` 16속성, Kouku/Valtan 무기 admission이 회전을 굽고, `CNpc::Set_DebugWeaponRotationOffset`로 live 조절, Save가 배열을 patch. v7을 고정하던 소비자(publisher, `valtan_presentation_generation.py`, `valtan_native_animation_inventory.py`, `validate_effect_v2.py`, python 테스트 4개) 전부 v8 | G02 |
 | R4-c | 대형 세이튼 preview를 저장된 scale로 | `Animation_Tool.cpp`의 "대형" 100배 상수 대신 catalog `bodyModelPreScale / MN_RPCT_06 preview 0.017`(현재 5.88배), preview 뿅망치 admission도 catalog 배율·회전 | G02 |
-| R5 | 광기 게이지 수치 확장, 상수 0/10000 | `iCurrentMadness/iMaximumMadness` Server·snapshot(v59)·HUD ViewModel. 최대치는 `SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM = 10000` 상수, 현재 0. 증가 로직·HUD 바는 후속 | G03 |
+| R5 | 광기 게이지 수치 확장, 상수 0/10000 | `iCurrentMadness/iMaximumMadness` Server·snapshot(v59)·HUD ViewModel. 최대치는 `SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM = 10000` 상수, 현재 0. 기존 HUD 바 연결 완료, 증가 로직은 후속 | G03 |
 | R6 | F1 `Change to Clown` / `Return to Player` | Debug typed 명령 → Server `eMadnessForm` → snapshot → Client가 `Spec_KoukuSaydonClown`(MN_RPCT_03, idle/run)으로 같은 entity 교체. class·스킬 슬롯은 유지 | G04 |
 | R7 | 진짜 쿠크 찾기 45° 시야각, 방패 반사 45° cone, 댄스타임 최대HP% 피해 | Logic 런타임 슬라이스 결정값으로 고정(§7). 구현 후속 | G05 |
 
@@ -191,6 +191,6 @@ S2C snapshot → CClientReplication::Apply_Snapshot
 
 ## 7. 고정된 결정과 미결
 
-- 고정: 광기 게이지는 **플레이어** 수치, 가득 차면 **플레이어**가 광대(MN_RPCT_03)로 변한다(이전 계획서의 "보스 변신" 가정은 폐기). 변신 지속 시간·게이지 증가 원인·HUD 바·광대 상태 스킬 제한은 Logic 런타임과 함께 정한다.
+- 고정: 광기 게이지는 **플레이어** 수치, 가득 차면 **플레이어**가 광대(MN_RPCT_03)로 변한다(이전 계획서의 "보스 변신" 가정은 폐기). 변신 지속 시간·게이지 증가 원인·광대 상태 스킬 제한은 Logic 런타임과 함께 정한다. 기존 HUD 바는 PR325 통합에서 연결했다.
 - 고정(G05): 시야각 45°, 반사 cone 45°, timeout 최대 HP 퍼센트 피해.
 - 미결: 광대 몸체의 forward가 class 몸체와 다르면(-90° admission 차이) 사용자 확인 뒤 `Spec_KoukuSaydonClown` admission에 회전을 더한다. 대형 세이튼 뿅망치 유효 배율은 슬라이스로 확정한다.

@@ -39,6 +39,10 @@ namespace
 		/* Top-right area minimap frame/markers (retail EFUI_MAP minimap.gfx). Map images and
 		markers are placed at runtime; the palette root is deliberately the small control set. */
 		{ "Minimap",        "UI/Minimap/Minimap_Layout.json", "UI/Minimap/", false },
+		/* KoukuSaydon madness gauge (retail indicator.gfx madnessGauge). Authored around
+		the Madness_Anchor slot; CKoukuMadnessGaugeView moves the whole group to the local
+		character's head point at runtime, so only the offsets between slots matter here. */
+		{ "Kouku Madness",  "UI/KoukuSaydon/MadnessGauge_Layout.json", "UI/KoukuSaydon/Madness/", false },
 		/* Target/boss status display -- not the local player's own class (Combat HUD) and not the
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */
@@ -53,6 +57,14 @@ namespace
 		been located yet, so the 30 Inventory_Slot_* markers are position-only (empty layers) for
 		now -- real slot border art is a follow-up, not fabricated here. */
 		{ "Inventory UI",   "UI/Inventory/InventoryUI.json", "UI/Inventory/", false },
+		/* Character info window (P) -- retail characterinfo.gfx equipment tab, every rect the
+		1920x1080 placement trace scaled by 2/3 around a centred window origin; shared V2 window/
+		tab/button skins and the equipment slot silhouettes come from shareImageV2, the item icons
+		from the EFUI_ICONATLAS pages (CCharacterInfoWindowView). */
+		{ "Character Info", "UI/CharacterInfo/CharacterInfo_Layout.json", "UI/CharacterInfo/", false },
+		/* Avatar book (아바타 도감) window content, avatarbook.gfx + preview.gfx camera controls
+		(CAvatarBookWindowView). */
+		{ "Avatar Book", "UI/AvatarBook/AvatarBook_Layout.json", "UI/AvatarBook/", false },
 		/* Item enhancement (장비 재련) window content. itemupgrade.gfx (the original source for this
 		document) turned out to be an outdated/wrong-version window -- confirmed against a real
 		current in-game screenshot and against itembuilduplevel.gfx's identical `enhance.*` loc-key

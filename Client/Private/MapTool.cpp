@@ -8301,7 +8301,8 @@ bool_t Client::CMapTool::Save_Navigation()
 
 bool_t Client::CMapTool::Try_PickNavigationCell(
 	int32_t& outCellX,
-	int32_t& outCellZ) const
+	int32_t& outCellZ,
+	f32_t& outWorldY) const
 {
 	if (!m_NavigationDocument.Is_Ready())
 		return false;
@@ -8316,17 +8317,20 @@ bool_t Client::CMapTool::Try_PickNavigationCell(
 		return false;
 	}
 
-	return m_NavigationDocument.Has_ResolvedHeight(
-		m_NavigationDocument.To_Index(
-			outCellX,
-			outCellZ));
+	/* A cell the bake left without a surface used to fail the pick outright,
+	   which is why an isolated platform could not be selected at all. The cell
+	   only has to lie inside the grid; the paint decides what an unresolved
+	   cell means for the chosen action. */
+	outWorldY = picked.y;
+	return std::isfinite(outWorldY);
 }
 
 bool_t Client::CMapTool::Try_PaintNavigation()
 {
 	int32_t cellX = {};
 	int32_t cellZ = {};
-	if (!Try_PickNavigationCell(cellX, cellZ))
+	f32_t pickedWorldY = {};
+	if (!Try_PickNavigationCell(cellX, cellZ, pickedWorldY))
 		return false;
 
 	bool_t changed = false;
@@ -8366,7 +8370,8 @@ bool_t Client::CMapTool::Try_PaintNavigation()
 			cellX,
 			cellZ,
 			m_iBrushRadius,
-			overrideState);
+			overrideState,
+			pickedWorldY);
 	}
 
 	if (changed)

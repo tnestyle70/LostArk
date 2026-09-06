@@ -168,6 +168,42 @@ namespace Client
 		std::wstring strSuffix;
 	};
 
+	/* KoukuSaydon arena HUD mode. Retail switches the quick-slot frame into an
+	"interaction" layout for the clown polymorph, the Mario side-scroll, the dance
+	time and the card maze: the class emblem swaps to an interaction emblem and the
+	Q..F row keeps only that mode's skills. Which mode is active is Server truth
+	(or the Debug preview until the Server contract exists); the HUD only draws it. */
+	enum class HUD_KOUKU_HUD_MODE : std::uint8_t
+	{
+		NONE,
+		POLYMORPH,
+		MARIO,
+		DANCE,
+		MAZE,
+	};
+
+	/* Q W E R A S D F in this order -- the same order Update_SkillIcons walks. */
+	constexpr std::size_t HUD_KOUKU_SLOT_COUNT = 8;
+
+	struct HUD_KOUKU_GIMMICK_STATE
+	{
+		bool isValid = false;
+		/* Madness (retail ZoneContentsGauge 3708100): 0..iMadnessMaximum, drawn under
+		the local character by CKoukuMadnessGaugeView. */
+		std::uint32_t iMadnessGauge = 0;
+		std::uint32_t iMadnessMaximum = 100;
+		HUD_KOUKU_HUD_MODE eHudMode = HUD_KOUKU_HUD_MODE::NONE;
+		/* Per quick slot (Q..F): index into the active mode's skill list from
+		KoukuHudModes.json, or -1 for an empty slot. The dance mode shuffles this;
+		the HUD never decides the order itself. */
+		std::int8_t ModeSkillIndexBySlot[HUD_KOUKU_SLOT_COUNT] =
+			{ -1, -1, -1, -1, -1, -1, -1, -1 };
+		/* Server-tick cooldowns for the mode skills sitting in each slot, same
+		semantics as HUD_SKILL_STATE (end <= server tick means ready). */
+		std::uint32_t CooldownEndTicks[HUD_KOUKU_SLOT_COUNT] = {};
+		std::uint32_t CooldownDurationTicks[HUD_KOUKU_SLOT_COUNT] = {};
+	};
+
 	class CCombatHUDViewModel final
 	{
 	public:
@@ -273,7 +309,33 @@ namespace Client
 		all RenderEstherGauge checks to skip drawing. Never touches Server truth. */
 		void Debug_Set_Esther_Preview(bool enable);
 
+#ifdef _DEBUG
+		/* The explicit F1 override never replaces the replicated player values.
+		Disabling it exposes the latest snapshot immediately. */
+		void Debug_Set_KoukuGimmickPreview(const HUD_KOUKU_GIMMICK_STATE& state)
+		{
+			m_KoukuGimmickPreview = state;
+		}
+		bool Is_KoukuGimmickPreviewEnabled() const
+		{
+			return m_KoukuGimmickPreview.isValid;
+		}
+#endif
+		HUD_KOUKU_GIMMICK_STATE Get_KoukuGimmick() const;
+
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
+		/* Display-only attack power from Data/Balance/PlayerProfiles.json for the character info
+		window; false when the class has no profile row. The Server stays the only authority. */
+		bool Try_Get_ProfileAttackPower(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+			std::uint32_t& outAttackPower) const
+		{
+			const auto it = m_PlayerProfiles.find(characterClass);
+			if (it == m_PlayerProfiles.end())
+				return false;
+			outAttackPower = it->second.iAttackPower;
+			return true;
+		}
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
 		/* Set from either the raw incoming WORLD_ENTITY_SNAPSHOT.eAction or the
 		reliable DEAD despawn. The latter is the normal terminal edge because the
@@ -337,6 +399,9 @@ namespace Client
 		HUD_DEADSCENE_TEXT_RECTS m_DeadSceneTextRects;
 		HUD_RAIDCLEAR_TEXT_RECTS m_RaidClearTextRects;
 		HUD_ITEMANNOUNCE_TEXT_RECTS m_ItemAnnounceTextRects;
+#ifdef _DEBUG
+		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmickPreview;
+#endif
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};

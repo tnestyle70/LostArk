@@ -102,6 +102,14 @@ public:
 	LostArk::Shared::CHARACTER_CLASS_ID Get_CharacterClass() const {
 		return m_eCharacterClass;
 	}
+	/* Avatar pieces (EQUIPMENT_SLOT_KIND::AVATAR_HEAD / AVATAR_ARMOR) the class spec declares.
+	Hiding one is a real unequip on the world character: the avatar part stops rendering and
+	the default piece it covered shows again (the portrait draws the same parts). The character
+	info window's eye toggles do NOT use this -- they only pass a preview mask to
+	Render_PreviewParts. A kind the spec has no part for reports false and ignores the call. */
+	bool_t Has_AvatarPart(EQUIPMENT_SLOT_KIND eKind) const;
+	bool_t Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind) const;
+	void Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind, bool_t isVisible);
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
 	uint32_t Get_PrototypeLevelIndex() const
 	{
@@ -226,6 +234,17 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	/* Draws every part again with explicit forward passes (the character info window portrait
+	renders into its own target with the preview camera bound in CPipeLine beforehand). The
+	normal frame render is untouched: parts still queue themselves in Late_Update. */
+	/* Avatar preview override for this draw only: for every kind whose bit
+	(1 << ETOUI(EQUIPMENT_SLOT_KIND)) is in iAvatarOverrideKinds, the piece is hidden when the
+	same bit is in iAvatarHiddenKinds and shown otherwise, regardless of the real equip state
+	(character info eye toggles, avatar book try-on). Kinds outside the override keep their real
+	state. Part visibility is re-derived for this draw and restored right after; the world
+	character is untouched -- real equip/unequip goes through Set_AvatarPartVisible. */
+	HRESULT Render_PreviewParts(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
+		uint32_t iAvatarOverrideKinds = 0u, uint32_t iAvatarHiddenKinds = 0u);
 
 private:
 	const CHARACTER_SPEC* m_pSpec = { nullptr };
@@ -330,6 +349,9 @@ private:
 	CBoneChainSimulation m_BoneChains;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
+	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */
+	bool_t m_isAvatarHeadHidden = false;
+	bool_t m_isAvatarArmorHidden = false;
 	std::vector<std::pair<wstring_t,
 		LostArk::Shared::PLAYER_STANCE_ID>> m_EquipmentPreviewPartStances;
 
@@ -360,6 +382,7 @@ private:
 		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
 		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
+	HRESULT Render_PreviewPartsInternal(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
 	void Apply_DefaultEquipmentVisibility(uint32_t occupiedSlotsMask);
 	void Restore_DefaultEquipmentVisibility();
 	void Sync_EquipmentPreviewStanceVisibility();

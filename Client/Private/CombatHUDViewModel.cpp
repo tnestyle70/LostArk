@@ -223,6 +223,22 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }
 
+Client::HUD_KOUKU_GIMMICK_STATE Client::CCombatHUDViewModel::Get_KoukuGimmick() const
+{
+#ifdef _DEBUG
+	if (m_KoukuGimmickPreview.isValid)
+		return m_KoukuGimmickPreview;
+#endif
+	HUD_KOUKU_GIMMICK_STATE state{};
+	state.isValid = m_Player.isValid && !m_Player.isPreview &&
+		0u != m_Player.iMaximumMadness;
+	state.iMadnessGauge = m_Player.iCurrentMadness;
+	state.iMadnessMaximum = m_Player.iMaximumMadness;
+	/* The current Server clown form retains the original class skills. Keep
+	the class HUD until gameplay also supplies interaction-mode commands. */
+	return state;
+}
+
 void Client::CCombatHUDViewModel::Build_PlayerSkills(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const std::uint32_t serverTick,
@@ -419,5 +435,8 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_DeadSceneTextRects = {};
 	m_RaidClearTextRects = {};
 	m_ItemAnnounceTextRects = {};
+#ifdef _DEBUG
+	m_KoukuGimmickPreview = {};
+#endif
 	m_Inventory = {};
 }

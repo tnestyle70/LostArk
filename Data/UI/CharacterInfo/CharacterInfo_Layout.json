@@ -1,0 +1,8023 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "CI_WinBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 286.6667,
+        "y": 131.0,
+        "width": 706.6667,
+        "height": 458.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/win_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PanelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 296.0,
+        "y": 182.3333,
+        "width": 690.6667,
+        "height": 402.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/panel_tile.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_TopDeco",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 532.0,
+        "y": 151.0,
+        "width": 217.3333,
+        "height": 12.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/win_top_deco.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Close",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 969.3333,
+        "y": 141.6667,
+        "width": 12.6667,
+        "height": 10.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/win_close_normal.png",
+          "hoverPath": "UI/CharacterInfo/win_close_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Tab_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 297.3333,
+        "y": 157.0,
+        "width": 112.2799,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/tab_normal.png",
+          "hoverPath": "UI/CharacterInfo/tab_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Tab_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 412.0,
+        "y": 157.0,
+        "width": 112.2799,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/tab_normal.png",
+          "hoverPath": "UI/CharacterInfo/tab_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Tab_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 526.6667,
+        "y": 157.0,
+        "width": 112.2799,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/tab_normal.png",
+          "hoverPath": "UI/CharacterInfo/tab_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Tab_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 641.3333,
+        "y": 157.0,
+        "width": 112.9316,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/tab_normal.png",
+          "hoverPath": "UI/CharacterInfo/tab_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Tab_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 756.6667,
+        "y": 157.0,
+        "width": 112.9316,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/tab_normal.png",
+          "hoverPath": "UI/CharacterInfo/tab_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_LeftGrad",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 524.0,
+        "y": 211.0,
+        "width": 46.0,
+        "height": 346.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/left_grad.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_RightGrad",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 211.0,
+        "width": 46.0,
+        "height": 346.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/right_grad.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_Preview",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 577.3333,
+        "y": 211.0,
+        "width": 238.0,
+        "height": 326.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/panel_tile.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ItemLevelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 848.6667,
+        "y": 201.6667,
+        "width": 144.6667,
+        "height": 121.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/itemlevel_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_CombatPointBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 856.0,
+        "y": 275.0,
+        "width": 130.6667,
+        "height": 53.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/combat_point_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_CombatIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 860.3333,
+        "y": 282.3333,
+        "width": 10.0,
+        "height": 10.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/combat_icon_dealer.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BasicTitleBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 856.6667,
+        "y": 311.6667,
+        "width": 129.3333,
+        "height": 34.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/ability_title_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotShadowR",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 792.6667,
+        "y": 225.6667,
+        "width": 73.3333,
+        "height": 259.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_shadow_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 236.3333,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 239.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 241.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_helmet.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 241.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 241.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 275.6667,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 279.0,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 281.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_shoulder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 280.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 280.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 315.0,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 318.3333,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 320.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_top.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 319.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 319.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 354.3333,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 357.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 359.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_pants.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 359.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 359.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 393.6667,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 397.0,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 399.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_gloves.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 398.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 398.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_L5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 536.6667,
+        "y": 433.0,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_l.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_L5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 436.3333,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_L5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 438.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_weapon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_L5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 437.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_L5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 541.4267,
+        "y": 437.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_legend.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_Lock",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 540.0,
+        "y": 475.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_Lock",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 477.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 236.3333,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 239.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 241.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_necklace.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 241.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 241.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 275.6667,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 279.0,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 281.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_earring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 280.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 280.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 315.0,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 318.3333,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 320.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_earring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 319.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 319.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 354.3333,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 357.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 359.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_ring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 359.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 359.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 393.6667,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_r.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 397.0,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 399.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_ring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 398.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 398.4267,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotOutline_R5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 815.3333,
+        "y": 433.0,
+        "width": 40.0,
+        "height": 40.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_outline_stone.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 438.3333,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 822.6667,
+        "y": 440.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_stone.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 822.0933,
+        "y": 439.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 822.0933,
+        "y": 439.76,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotBorder_R6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 818.6667,
+        "y": 475.6667,
+        "width": 34.6667,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/slot_border.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotSil_R6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.6667,
+        "y": 477.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/sil_bracelet.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotGrade_R6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 477.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SlotIcon_R6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 820.0933,
+        "y": 477.0933,
+        "width": 30.4733,
+        "height": 30.4733
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_relic.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_HelmCheck",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 516.0,
+        "y": 245.0,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_EnhanceCheck",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 519.3333,
+        "y": 443.0,
+        "width": 24.6667,
+        "height": 27.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/enhance_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetNameBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 522.6667,
+        "y": 215.6667,
+        "width": 142.0,
+        "height": 20.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_name_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 520.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_1.png",
+          "hoverPath": "UI/CharacterInfo/preset_tab_1_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 558.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_2.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 596.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 610.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 648.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 672.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 686.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 710.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 724.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 748.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 762.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 786.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 800.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 824.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 838.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetTab_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 862.6667,
+        "y": 186.3333,
+        "width": 37.9991,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_tab_disable.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLock_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 876.0,
+        "y": 191.6667,
+        "width": 11.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_lock.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetEditBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 901.3333,
+        "y": 187.0,
+        "width": 41.9965,
+        "height": 22.6656
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetEditIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 914.6667,
+        "y": 189.0,
+        "width": 17.3333,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_edit_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLoadBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 944.0,
+        "y": 187.0,
+        "width": 41.9965,
+        "height": 22.6656
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_PresetLoadIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 956.6667,
+        "y": 189.6667,
+        "width": 20.0,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/preset_load_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AccCheckBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 804.0,
+        "y": 216.3333,
+        "width": 50.0,
+        "height": 18.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/acc_check_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AccCheckBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 823.3333,
+        "y": 218.3333,
+        "width": 27.3333,
+        "height": 14.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/checkbox_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AccCheckDot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 826.0,
+        "y": 221.0,
+        "width": 8.6667,
+        "height": 8.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/checkbox_off_dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AccFind",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 806.0,
+        "y": 217.0,
+        "width": 17.3333,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/acc_check_find.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_CombatTitleBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 856.6667,
+        "y": 385.0,
+        "width": 129.3333,
+        "height": 34.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/ability_title_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_DetailBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 856.8667,
+        "y": 559.0,
+        "width": 129.3337,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_DetailIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 864.8667,
+        "y": 563.0,
+        "width": 16.0,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/detail_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ToggleFrame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 608.0,
+        "y": 533.6667,
+        "width": 177.3333,
+        "height": 22.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/toggle_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ToggleEquip",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 609.3333,
+        "y": 535.0,
+        "width": 87.3333,
+        "height": 19.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/toggle_normal.png",
+          "hoverPath": "UI/CharacterInfo/toggle_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ToggleEquipSym",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 615.3333,
+        "y": 538.3333,
+        "width": 14.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/toggle_equip_sym.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ToggleAvatar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 696.0,
+        "y": 535.0,
+        "width": 87.3333,
+        "height": 19.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/toggle_normal.png",
+          "hoverPath": "UI/CharacterInfo/toggle_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ToggleAvatarSym",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 702.0,
+        "y": 537.6667,
+        "width": 14.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/toggle_avatar_sym.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_HonorBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 614.6667,
+        "y": 563.0,
+        "width": 163.3333,
+        "height": 20.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/honor_bg.png",
+          "hoverPath": "UI/CharacterInfo/honor_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BasicInfoBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 296.0,
+        "y": 183.0,
+        "width": 226.6667,
+        "height": 157.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/basicinfo_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BasicInfoShadow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 296.0,
+        "y": 182.3333,
+        "width": 222.6667,
+        "height": 121.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/basicinfo_shadow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ClassSymBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 373.3333,
+        "y": 192.3333,
+        "width": 68.0,
+        "height": 68.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/classsym_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ClassSym",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 380.0,
+        "y": 197.6667,
+        "width": 55.3333,
+        "height": 55.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/class_warlord.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_SettingIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 492.6667,
+        "y": 195.0,
+        "width": 12.6667,
+        "height": 12.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/setting_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRow_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 295.3333,
+        "y": 340.3333,
+        "width": 226.6667,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_row_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRowIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 299.3333,
+        "y": 343.0,
+        "width": 14.0,
+        "height": 12.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_icon_title.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRow_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 295.3333,
+        "y": 363.6667,
+        "width": 226.6667,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_row_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRowIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 299.3333,
+        "y": 366.3333,
+        "width": 12.0,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_icon_guild.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRow_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 295.3333,
+        "y": 387.0,
+        "width": 226.6667,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_row_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_InfoRowIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 299.3333,
+        "y": 389.6667,
+        "width": 16.6667,
+        "height": 14.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_icon_town.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 296.0,
+        "y": 433.6667,
+        "width": 224.6667,
+        "height": 75.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/gear_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearSlotBg_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 346.6667,
+        "y": 464.3333,
+        "width": 34.0,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/gear_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearSlotBg_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 391.3333,
+        "y": 464.3333,
+        "width": 34.0,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/gear_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearSlotBg_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 436.0,
+        "y": 464.3333,
+        "width": 34.0,
+        "height": 34.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/gear_slot_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 369.3333,
+        "y": 436.3333,
+        "width": 16.0,
+        "height": 14.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/gear_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_GearHelp",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 434.0,
+        "y": 435.0,
+        "width": 16.6667,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/help_btn.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 296.0,
+        "y": 493.0,
+        "width": 224.6667,
+        "height": 76.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/arkpassive_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 366.0,
+        "y": 496.3333,
+        "width": 13.3333,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/arkpassive_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPill_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 310.6667,
+        "y": 523.6667,
+        "width": 53.3333,
+        "height": 21.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/arkpassive_pill_0.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPill_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 385.3333,
+        "y": 523.6667,
+        "width": 53.3333,
+        "height": 21.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/arkpassive_pill_1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPill_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 460.0,
+        "y": 523.6667,
+        "width": 53.3333,
+        "height": 21.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/arkpassive_pill_2.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 262.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 299.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 262.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 299.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 337.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 422.3333,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 814.0,
+        "y": 459.6667,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarFrame_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 542.0,
+        "y": 385.0,
+        "width": 29.3333,
+        "height": 29.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/avatar_slot_frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 520.6667,
+        "y": 264.3333,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 520.6667,
+        "y": 301.6667,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 839.3333,
+        "y": 264.3333,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 839.3333,
+        "y": 301.6667,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 839.3333,
+        "y": 339.0,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 839.3333,
+        "y": 424.3333,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 839.3333,
+        "y": 461.6667,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarCheck_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 520.6667,
+        "y": 387.0,
+        "width": 25.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/helm_check_off.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ExpeditionBadge",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 305.3334,
+        "y": 254.3333,
+        "width": 33.3333,
+        "height": 25.7333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/expedition_mark.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ItemLevelInfo",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 970.6667,
+        "y": 213.0,
+        "width": 16.6667,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/info_btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BasicHelp",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 970.6667,
+        "y": 321.6667,
+        "width": 16.6667,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/help_btn.png",
+          "hoverPath": "UI/CharacterInfo/help_btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_CombatHelp",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 970.6667,
+        "y": 395.0,
+        "width": 16.6667,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/help_btn.png",
+          "hoverPath": "UI/CharacterInfo/help_btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_HonorIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 653.3334,
+        "y": 562.3333,
+        "width": 33.3333,
+        "height": 20.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/honor_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_HonorInfo",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 727.3334,
+        "y": 564.3333,
+        "width": 16.6667,
+        "height": 17.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/info_btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/info_btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPillIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 313.3334,
+        "y": 524.3333,
+        "width": 16.6667,
+        "height": 18.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/ark_icon_evolution.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPillIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 388.0,
+        "y": 525.0,
+        "width": 18.0096,
+        "height": 17.334
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/ark_icon_realization.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_ArkPillIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 462.6667,
+        "y": 524.3333,
+        "width": 18.6667,
+        "height": 18.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/ark_icon_leaf.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 544.0,
+        "y": 264.3333,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 544.0,
+        "y": 301.6667,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 816.0,
+        "y": 264.3333,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 816.0,
+        "y": 301.6667,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 816.0,
+        "y": 339.0,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 816.0,
+        "y": 424.3333,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 816.0,
+        "y": 461.6667,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_AvatarIcon_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 544.0,
+        "y": 387.0,
+        "width": 25.3333,
+        "height": 25.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/grade_avatar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BottomLeftBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 295.3334,
+        "y": 555.6667,
+        "width": 140.0,
+        "height": 28.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/btn_normal.png",
+          "hoverPath": "UI/CharacterInfo/btn_over.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "CI_BottomLeftIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 302.6667,
+        "y": 557.6667,
+        "width": 16.6667,
+        "height": 24.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/CharacterInfo/enhance_sym.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    }
+  ]
+}

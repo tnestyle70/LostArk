@@ -1,0 +1,40 @@
+{
+  "schema": "lostark.avatarbook-display",
+  "formatVersion": 1,
+  "_comment": "Display-only strings/camera for the avatar book window (no Server truth for avatar collections yet). tabNames index = category tab k. Grid contents come from Data/Items/ItemCatalog.json items with grade avatar.",
+  "tabNames": [
+    "전체",
+    "무기",
+    "머리",
+    "얼굴 1",
+    "얼굴 2",
+    "상의",
+    "하의",
+    "악기",
+    "이동 효과",
+    "세트"
+  ],
+  "classComboText": "",
+  "categoryComboText": "전체",
+  "alignComboText": "기본 순",
+  "searchPlaceholder": "아바타 이름 검색",
+  "favoriteCount": "0",
+  "avatarPoint": "아바타 포인트 0",
+  "portrait": {
+    "distance": 3.4,
+    "eyeHeight": 1.05,
+    "lookHeight": 0.95,
+    "fovDegrees": 35.0,
+    "yawDegrees": 0.0
+  },
+  "previewSlotIndices": {
+    "_comment": "AB_SlotBg_k of the mannequin's right column (top: hat=4, glasses=5, mask=6, top=8, pants=10, weapon=0, instrument=2, move effect=11). head = AVATAR_HEAD, outfit = AVATAR_ARMOR.",
+    "head": 4,
+    "outfit": 8
+  },
+  "previewShowCheckIndices": {
+    "_comment": "AB_ShowCheck_k (showItem_k) eye toggle beside each mannequin row.",
+    "head": 1,
+    "outfit": 4
+  }
+}

@@ -360,7 +360,10 @@ spawn/despawn·teleport는 Debug Server 전용이다. 보스 spawn은 저작 좌
 MN_RPCT_03 광대 몸체(`Spec_KoukuSaydonClown`, idle/run만)로 교체하고 퀵슬롯은 replicated class를 계속 쓴다.
 F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed 명령
 `C2S_DEBUG_SET_MADNESS_FORM`으로 Server가 소유한 form만 바꾸며 Release는 typed 거부를 돌려준다.
-게이지 증가·가득 참 판정·HUD 바는 아직 없다.
+광기 HUD 바는 `CCombatHUDViewModel::Get_KoukuGimmick()`의 Server 수치를 읽으며, 상태 임계값 49/100은
+최대치 대비 백분율로 적용한다. F1 `Kouku UI Preview`를 명시 활성화한 동안만 표시값을 덮어쓰고,
+해제·session reset 시 최신 snapshot으로 돌아간다. 광대 몸체 교체는 원래 class 스킬을 유지하므로
+실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 게이지 증가·자동 변신·모드별 스킬과 패턴은 후속이다.
 
 `Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
 JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.

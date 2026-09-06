@@ -52,6 +52,13 @@ public:
 	changes after this view is built (a button's hover texture). Applies to the slot's BASE
 	(first) layer only. Empty path reverts to the slot's authored texture. */
 	void Set_SlotTexture(const string& strId, const string& strAssetPath);
+	/* Same base-layer override with an already-created SRV (a render target the caller owns and
+	refreshes every frame -- the character info window's live portrait). nullptr reverts to the
+	slot's authored texture. */
+	void Set_SlotTextureSRV(const string& strId, ComPtr<ID3D11ShaderResourceView> pSRV);
+	/* Every authored/runtime slot id in document order -- for a window that moves or hides all
+	of its own slots without keeping a parallel id list by hand. */
+	vector<string> Get_SlotIds() const;
 	/* Overrides a slot's authored top-left position at runtime (size unchanged) -- for a menu
 	that has to appear wherever the player clicked, keyed off its own authored relative offset
 	from some anchor slot, rather than always drawing at its authored position (the Party

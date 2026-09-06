@@ -13,14 +13,24 @@ namespace
 
     struct FOpenScope final
     {
-        uint32_t NameId = 0;
-        uint32_t Depth = 0;
-        uint64_t BeginTick = 0;
+        uint32_t NameId;
+        uint32_t Depth;
+        uint64_t BeginTick;
     };
 
     /* Each thread owns its own nesting stack. A token is the index into this
-       stack on the thread that began the scope. */
-    thread_local std::vector<FOpenScope> t_OpenScopes;
+       stack on the thread that began the scope.
+       Kept trivially constructible (fixed array, no std::vector) on purpose: a thread_local
+       with a dynamic initializer runs on every thread the process ever creates -- D3D driver,
+       FMOD and PhysX workers included -- and the debug STL vector's heap-allocated container
+       proxy then shows up in the CRT exit leak dump for every such thread still alive at
+       shutdown. */
+    struct FOpenScopeStack final
+    {
+        FOpenScope Scopes[MAX_OPEN_SCOPES_PER_THREAD];
+        uint32_t Count;
+    };
+    thread_local FOpenScopeStack t_OpenScopes{};
 }
 
 HRESULT CProfiler::Initialize(
@@ -123,8 +133,8 @@ uint32_t CProfiler::Begin_Scope(std::string_view name)
 {
     if (!m_Enabled.load(std::memory_order_relaxed))
         return UINT32_MAX;
-    std::vector<FOpenScope>& openScopes = t_OpenScopes;
-    if (openScopes.size() >= MAX_OPEN_SCOPES_PER_THREAD)
+    FOpenScopeStack& openScopes = t_OpenScopes;
+    if (openScopes.Count >= MAX_OPEN_SCOPES_PER_THREAD)
     {
         std::lock_guard lock(m_Mutex);
         ++m_DroppedCpuScopes;
@@ -133,23 +143,23 @@ uint32_t CProfiler::Begin_Scope(std::string_view name)
 
     FOpenScope open{};
     open.NameId = Intern_Name(name);
-    open.Depth = static_cast<uint32_t>(openScopes.size());
+    open.Depth = openScopes.Count;
     open.BeginTick = Query_Tick();
-    openScopes.push_back(open);
-    return static_cast<uint32_t>(openScopes.size() - 1u);
+    openScopes.Scopes[openScopes.Count] = open;
+    return openScopes.Count++;
 }
 
 void CProfiler::End_Scope(uint32_t token) noexcept
 {
-    std::vector<FOpenScope>& openScopes = t_OpenScopes;
-    if (token >= openScopes.size())
+    FOpenScopeStack& openScopes = t_OpenScopes;
+    if (token >= openScopes.Count)
         return;
 
     const uint64_t endTick = Query_Tick();
-    const FOpenScope open = openScopes[token];
+    const FOpenScope open = openScopes.Scopes[token];
     /* Unwinding to the token also closes any inner scope whose End_Scope was
        skipped, so a mismatched pair cannot corrupt later depths. */
-    openScopes.resize(token);
+    openScopes.Count = token;
     if (!m_Enabled.load(std::memory_order_relaxed))
         return;
 

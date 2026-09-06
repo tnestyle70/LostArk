@@ -65,6 +65,7 @@
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
     <ClInclude Include="..\Public\CharacterSelectWindowView.h" />
     <ClInclude Include="..\Public\MinimapView.h" />
+    <ClInclude Include="..\Public\KoukuMadnessGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
@@ -123,6 +124,10 @@
 
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
+    <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
+    <ClInclude Include="..\Public\CharacterPortraitRenderer.h" />
+    <ClInclude Include="..\Public\AvatarBookWindowView.h" />
+    <ClInclude Include="..\Public\UILabelFont.h" />
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
@@ -274,6 +279,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\CharacterSelectWindowView.cpp" />
     <ClCompile Include="..\Private\MinimapView.cpp" />
+    <ClCompile Include="..\Private\KoukuMadnessGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
@@ -315,6 +321,9 @@
 
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
+    <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
+    <ClCompile Include="..\Private\CharacterPortraitRenderer.cpp" />
+    <ClCompile Include="..\Private\AvatarBookWindowView.cpp" />
     <ClCompile Include="..\Private\SkillWindowView.cpp" />
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
@@ -620,6 +629,10 @@
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
+    <None Include="..\..\Data\UI\CharacterInfo\CharacterInfo_Layout.json" />
+    <None Include="..\..\Data\UI\CharacterInfo\CharacterInfoDisplay.json" />
+    <None Include="..\..\Data\UI\AvatarBook\AvatarBook_Layout.json" />
+    <None Include="..\..\Data\UI\AvatarBook\AvatarBookDisplay.json" />
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
@@ -633,6 +646,8 @@
     <None Include="..\..\Data\UI\Lobby\LobbyServers.json" />
     <None Include="..\..\Data\UI\CharacterSelect\CharacterSelectWindow_Layout.json" />
     <None Include="..\..\Data\UI\Minimap\Minimap_Layout.json" />
+    <None Include="..\..\Data\UI\KoukuSaydon\MadnessGauge_Layout.json" />
+    <None Include="..\..\Data\UI\KoukuSaydon\KoukuHudModes.json" />
     <None Include="..\..\Data\UI\Minimap\MinimapAreas.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json" />

@@ -1,0 +1,198 @@
+{
+  "schema": "lostark.characterinfo-display",
+  "formatVersion": 1,
+  "_comment": "Display-only values the character info window shows where the project has no Server truth yet. Nickname/class/max HP/attack power come from the live snapshot and PlayerProfiles.json. Equipment icons/grades come from Data/Items/ItemCatalog.json through equippedItemIds; an empty id leaves the slot silhouette.",
+  "itemLevel": "1556.00",
+  "combatPower": "23.14",
+  "characterLevel": "Lv.60",
+  "expeditionLevel": "67",
+  "title": "환경운동가",
+  "guild": "가입 길드가 없습니다.",
+  "estate": "Lv.16 영지",
+  "presetName": "장비프리셋",
+  "honor": "0",
+  "combatStats": [
+    {
+      "name": "치명",
+      "value": "106"
+    },
+    {
+      "name": "특화",
+      "value": "39"
+    },
+    {
+      "name": "제압",
+      "value": "40"
+    },
+    {
+      "name": "신속",
+      "value": "36"
+    },
+    {
+      "name": "인내",
+      "value": "35"
+    },
+    {
+      "name": "숙련",
+      "value": "41"
+    }
+  ],
+  "arkPassivePoints": [
+    "86",
+    "22",
+    "12"
+  ],
+  "portrait": {
+    "_comment": "Camera in front of the replicated character: distance/heights in world metres, fov in degrees, yaw = extra turn around the character's up axis (0 = facing the camera).",
+    "distance": 3.2,
+    "eyeHeight": 1.05,
+    "lookHeight": 0.95,
+    "fovDegrees": 35.0,
+    "yawDegrees": 0.0
+  },
+  "classes": {
+    "Warlord": {
+      "displayName": "워로드",
+      "symbol": "UI/CharacterInfo/class_warlord.png",
+      "equippedItemIds": {
+        "weapon": "EQUIP_WARLORD_HONORWHISPER_WEAPON",
+        "helmet": "EQUIP_WARLORD_HONORWHISPER_HELMET",
+        "shoulder": "EQUIP_WARLORD_HONORWHISPER_SHOULDER",
+        "top": "EQUIP_WARLORD_HONORWHISPER_TOP",
+        "pants": "EQUIP_WARLORD_HONORWHISPER_PANTS",
+        "gloves": "EQUIP_WARLORD_HONORWHISPER_GLOVES",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "",
+        "outfit": ""
+      }
+    },
+    "LanceMaster": {
+      "displayName": "창술사",
+      "symbol": "UI/CharacterInfo/class_lancemaster.png",
+      "equippedItemIds": {
+        "weapon": "EQUIP_LANCEMASTER_HONORWHISPER_WEAPON",
+        "helmet": "EQUIP_LANCEMASTER_HONORWHISPER_HELMET",
+        "shoulder": "EQUIP_LANCEMASTER_HONORWHISPER_SHOULDER",
+        "top": "EQUIP_LANCEMASTER_HONORWHISPER_TOP",
+        "pants": "EQUIP_LANCEMASTER_HONORWHISPER_PANTS",
+        "gloves": "EQUIP_LANCEMASTER_HONORWHISPER_GLOVES",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "AVATAR_LANCEMASTER_MOKOKO_HEAD",
+        "outfit": "AVATAR_LANCEMASTER_MOKOKO_OUTFIT"
+      }
+    },
+    "Gunslinger": {
+      "displayName": "건슬링어",
+      "symbol": "UI/CharacterInfo/class_gunslinger.png",
+      "equippedItemIds": {
+        "weapon": "",
+        "helmet": "",
+        "shoulder": "",
+        "top": "",
+        "pants": "",
+        "gloves": "",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "",
+        "outfit": ""
+      }
+    },
+    "Slayer": {
+      "displayName": "슬레이어",
+      "symbol": "UI/CharacterInfo/class_slayer.png",
+      "equippedItemIds": {
+        "weapon": "",
+        "helmet": "",
+        "shoulder": "",
+        "top": "",
+        "pants": "",
+        "gloves": "",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "",
+        "outfit": ""
+      }
+    },
+    "Artist": {
+      "displayName": "도화가",
+      "symbol": "UI/CharacterInfo/class_artist.png",
+      "equippedItemIds": {
+        "weapon": "EQUIP_ARTIST_HONORWHISPER_WEAPON",
+        "helmet": "EQUIP_ARTIST_HONORWHISPER_HELMET",
+        "shoulder": "EQUIP_ARTIST_HONORWHISPER_SHOULDER",
+        "top": "EQUIP_ARTIST_HONORWHISPER_TOP",
+        "pants": "EQUIP_ARTIST_HONORWHISPER_PANTS",
+        "gloves": "EQUIP_ARTIST_HONORWHISPER_GLOVES",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "",
+        "outfit": ""
+      }
+    },
+    "DimensionMaster": {
+      "displayName": "디멘션마스터",
+      "symbol": "UI/CharacterInfo/class_dimensionmaster.png",
+      "equippedItemIds": {
+        "weapon": "EQUIP_DIMENSIONMASTER_HONORWHISPER_WEAPON",
+        "helmet": "EQUIP_DIMENSIONMASTER_HONORWHISPER_HELMET",
+        "shoulder": "EQUIP_DIMENSIONMASTER_HONORWHISPER_SHOULDER",
+        "top": "EQUIP_DIMENSIONMASTER_HONORWHISPER_TOP",
+        "pants": "EQUIP_DIMENSIONMASTER_HONORWHISPER_PANTS",
+        "gloves": "EQUIP_DIMENSIONMASTER_HONORWHISPER_GLOVES",
+        "necklace": "ACC_NECKLACE_A",
+        "earring1": "ACC_EARRING_A",
+        "earring2": "ACC_EARRING_B",
+        "ring1": "ACC_RING_A",
+        "ring2": "ACC_RING_B",
+        "stone": "ACC_ABILITYSTONE_A",
+        "bracelet": "ACC_BRACELET_A"
+      },
+      "equippedAvatarItemIds": {
+        "head": "",
+        "outfit": ""
+      }
+    }
+  },
+  "avatarSlotIndices": {
+    "_comment": "Avatar page slot index (CI_AvatarFrame_k / CI_AvatarCheck_k, retail slot0..7) per avatar part kind. head = AVATAR_HEAD, outfit = AVATAR_ARMOR in CHARACTER_SPEC.",
+    "head": 1,
+    "outfit": 2
+  }
+}

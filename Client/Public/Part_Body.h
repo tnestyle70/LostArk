@@ -52,6 +52,9 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Shadow() override;
+	/* Same draw as Render() through an explicit technique pass -- the character info window
+	portrait renders the live parts a second time with the forward ScreenCutin pass. */
+	HRESULT Render_Pass(uint32_t iPassIndex);
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
