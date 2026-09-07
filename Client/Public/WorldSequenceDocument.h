@@ -40,6 +40,8 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string objectId;
 	std::string displayName;
 	std::string modelAssetId;
+	// Resource category and default anchor for its authored states (Map/Character).
+	std::string anchorKind = "WORLD";
 	std::string diffuseTextureAssetId;
 	f32_t modelPreScale = 0.01f;
 	bool_t animated = false;

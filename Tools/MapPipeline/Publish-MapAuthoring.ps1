@@ -1380,7 +1380,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1394,9 +1394,13 @@ function Read-WorldSequenceDocument {
                 throw "Invalid world object resource: $($resource.objectId)"
             }
             Assert-SequenceVector $resource.scale 'World object scale' $true
+            if ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cnotin @('WORLD','PLAYER')) {
+                throw 'World object resource anchor must be WORLD or PLAYER'
+            }
             $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne ''
             if ($alias) {
                 if ($resource.sequenceInstanceId -isnot [string] -or $resource.sequenceInstanceId -cnotmatch $stableId -or
+                    ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cne 'WORLD') -or
                     $resource.modelAssetId -ne '' -or $resource.animated -or
                     ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId'] -and $resource.diffuseTextureAssetId -ne '')) {
                     throw 'World object alias must refer only to an existing sequence instance'

@@ -87,3 +87,24 @@ public 계약 변경은 CLAUDE와 팀 Animation/Area 사용서에 반영하고 �
 
 사용자는 Server + Client profile의 Ctrl+F5로 시작하고 Lobby → KoukuSaydon → F1 → World Object Tool에서
 목록·slot·키·저장·재로드와 아레나 재생을 확인한다. 에이전트는 Client/UI 실행·캡처와 최종 화면 판정을 하지 않는다.
+
+## G06. 사용자 검증 후 독립 패널·앵커·Play 수정
+
+2026-09-07 첨부 Action Workbench 화면을 기준으로 Object Resources는 왼쪽, Object Sequencer는 아래,
+Object Detail은 오른쪽의 독립 ImGui 창으로 분리한다. 기존 SequencerTool의 첫 배치·Windows 메뉴·
+Reset Window Layout 방식을 따르며 사용자가 창을 이동·크기 조절할 수 있게 한다. F1 Tools 목록에서 연다.
+
+Resource에 optional `anchorKind`(WORLD/PLAYER)를 저장한다. UI는 Map/Character로 표시하고 Create와
+Resources 분류가 같은 값을 사용한다. 필드가 없던 v3 리소스는 Map으로 읽고 기존 instance anchor는 보존한다.
+리소스 anchor 변경은 연결된 상태에 적용하고 새 상태가 그 anchor를 사용한다. 배치 alias는 Map에 고정한다.
+기존 문서 parser/Save/동등성 검사와 Map publisher에 같은 계약을 연결한다.
+
+저장된 모델 상태가 최초 플레이어 spawn에 고정돼 현재 관문에서 멀리 생성되는 문제를 해결한다.
+기본 저작 preview는 현재 캐릭터 앞쪽에서 재생하고 명시 선택으로 저장 Map 위치에서 재생한다.
+이 preview offset은 저장 위치를 바꾸지 않으며 배치된 커튼·룰렛에는 적용하지 않는다.
+생성 개수·위치와 모델/texture/anchor/render 실패 상태를 Object Sequencer에 표시한다.
+새 clip 없는 animated 모델도 rest pose의 bone combined matrix를 준비한다.
+
+Player Follow Camera의 위치·각도·FOV·응답값 편집은 기존 Level setter로 즉시 반영하고
+Save만 영구 JSON 저장을 수행한다. 다른 맵이나 카메라 연출 중에는 해당 카메라를 덮어쓰지 않는다.
+사용자가 이미 저장한 WorldSequence·RenderingProfiles dirty 원본을 보존한다.

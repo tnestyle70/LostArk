@@ -17,7 +17,7 @@
 - 저장 ID: `world.object.kouku.card`
 - 모델/alias: `Character/KoukuSaton/MN_RHOC_00/MN_RHOC_00.wmodel`
 - 근거: Npc 480642 `뒤집혀진 빈 카드`; LookInfo `EFDLChar_MN_RHOC_00.MN_RHOC_00` → MN_RHOC_00_SK / MN_RHOC_00_MI / MN_RHOC_00_Ani.
-- 단위/배수: modelPreScale=1, scale=2.
+- 단위/배수: modelPreScale=0.01, scale=2.
 - 애니메이션: 14; `mn_rhoc_00_sk.ao_idle_normal_1`.
 - 텍스처: `textures/mn_rhoc_00_{d,n,s}.dds`
 
@@ -26,7 +26,7 @@
 - 저장 ID: `world.object.kouku.joker_card`
 - 모델/alias: `Character/KoukuSaton/MN_RHOC_00-1/MN_RHOC_00-1.wmodel`
 - 근거: Npc 480643 `뒤집혀진 조커 카드`; LookInfo `EFDLChar_MN_RHOC_00-1.MN_RHOC_00-1` → 같은 카드 mesh/AnimSet + MN_RHOC_00-1_MI. 재질 variant를 실제 별도 WModel로 cook했다.
-- 단위/배수: modelPreScale=1, scale=2.
+- 단위/배수: modelPreScale=0.01, scale=2.
 - 애니메이션: 14; `mn_rhoc_00_sk.ao_idle_normal_1`.
 - 텍스처: `textures/mn_rhoc_00-1_{d,n,s}.dds`
 
@@ -44,7 +44,7 @@
 - 저장 ID: `world.object.kouku.seto`
 - 모델/alias: `Character/KoukuSaton/MN_PPCT_00/MN_PPCT_00.wmodel`
 - 근거: Npc 480708/480709 `카드미로 세토 로밍형/돌진형`; LookInfo MN_PPCT_00 → MN_PPCT_00_SK_LOC_INT / MN_PPCT_00_Ani. 4 material slot의 실제 diffuse/normal/specular와 두 emissive를 연결했다.
-- 단위/배수: modelPreScale=1, scale=1.
+- 단위/배수: modelPreScale=0.01, scale=1.
 - 애니메이션: 68; `Seto_idle_normal_1`.
 - 텍스처: `textures/mn_ppct_00_1_{c,n,s}_loc_int.dds`, `mn_ppct_00_1_em.dds`, `mn_ppct_00_2_{c,n,s,em}.dds`, `mn_ppct_00_{c,n,s}.dds`
 
@@ -62,7 +62,7 @@
 - 저장 ID: `world.object.kouku.hook`
 - 모델/alias: `Character/KoukuSaton/MN_UMAX_00/MN_UMAX_00.wmodel`
 - 근거: Npc 480710 `갈고리`; LookInfo MN_UMAX_00 → MN_UMAX_00_SK / MN_UMAX_00_MI / MN_UMAX_00_Ani.
-- 단위/배수: modelPreScale=1, scale=1.15.
+- 단위/배수: modelPreScale=0.01, scale=1.15.
 - 애니메이션: 9; `Hook_idle_normal_1`.
 - 텍스처: `textures/mn_umax_00_d_loc_int.dds`, `mn_umax_00_{n,s}.dds`
 
@@ -71,7 +71,7 @@
 - 저장 ID: `world.object.kouku.bingo_bomb`
 - 모델/alias: `Character/KoukuSaton/MN_RHCN_01/MN_RHCN_01.wmodel`
 - 근거: Npc 480724 `해골이 그려져있는 폭탄_빙고` → EFDLChar_MN_RHCN_01.MN_RHCN_01; 실제 MN_RHCN_01_SK / MN_RHCN_01_MI / MN_RHCN_01_Ani.
-- 단위/배수: modelPreScale=1, scale=2.
+- 단위/배수: modelPreScale=0.01, scale=2.
 - 애니메이션: 5; `Bomb_idle_normal_1`.
 - 텍스처: `textures/mn_rhcn_01_d_loc_int.dds`, `mn_rhcn_01_{n,s}.dds`
 
@@ -106,7 +106,7 @@
 
 추출 원본은 `C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/WorldObjectExtraction-20260907`에 있다. 설치된 게임의 `EFGame/data1.lpk` Projectile, `data2.lpk` Npc/SkillEffect, `data3.lpk` Action, `data4.lpk` LookInfo를 기존 `LpkReader`와 `LostArk.Archive.Core.Lpk.LpkDbDecryptor`로 읽었다. 원본 `.loa`와 SQLite DB는 리소스 식별 참고용으로 외부 추출 폴더에만 보존하며 제품 runtime으로 배포하지 않는다.
 
-UModel CLI의 `-export`, 저장소 `Cook-ActorXWModel.ps1`, `ModelAssetConverter.exe`, `retime_wmodel_from_psa.py`를 사용했다. 카드/조커/세토/갈고리/폭탄은 skeleton+clip을 유지하고, 발사 칼날은 원본 glTF 정적 geometry를 CModel WModel로 cook했다. Effect Tool의 particle 런타임을 두 번째 모델 경로로 추가하지 않는다. 새 skinned cook은 기본 ActorX scale-down으로 정점이 m 단위이므로 modelPreScale=1이고, 기존 공/빙고 및 scale100 정적 칼날은 cm WModel이므로 .01이다. 카드/조커2, 갈고리1.15, 빙고폭탄2 배수는 해당 Npc ModelSize의 200/115/200에서 가져왔다.
+UModel CLI의 `-export`, 저장소 `Cook-ActorXWModel.ps1`, `ModelAssetConverter.exe`, `retime_wmodel_from_psa.py`를 사용했다. 카드/조커/세토/갈고리/폭탄은 skeleton+clip을 유지하고, 발사 칼날은 원본 glTF 정적 geometry를 CModel WModel로 cook했다. Effect Tool의 particle 런타임을 두 번째 모델 경로로 추가하지 않는다. skinned cook의 raw vertex는 m 단위지만 실제 CMesh skin 행렬에는 skeleton의 scale100이 남아 있다. 09-07 재검증에서 bind/clip 행렬까지 적용한 bounds로 확인하여 이 5종의 modelPreScale을 .01로 교정했다. 기존 공/빙고 및 scale100 정적 칼날도 .01을 유지한다. 카드/조커2, 갈고리1.15, 빙고폭탄2의 저작 배수는 보존했다.
 
 세토는 긴 armature 이름에 의한 40-byte clip 이름 잘림을 피하려고 실제 cooker의 `ArmatureExportName=Seto`를 사용했다. Hook/Bomb도 짧은 prefix를 쓴다. 원본 PSA의 혼합 29.999998/30Hz를 30Hz로 bake한 뒤 원래 clip rate를 복원했다. source rate를 바꾼 상태로 배포하지 않았다.
 

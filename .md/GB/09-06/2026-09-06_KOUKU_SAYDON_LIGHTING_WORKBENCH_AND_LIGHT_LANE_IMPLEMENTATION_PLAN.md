@@ -368,3 +368,37 @@ F1 Developer Tools의 Rendering Workbench에서 Level category `KoukuSaydon`을 
 - Scene Profile의 `blendMs`는 기존 저장 계약이며 현재 profile 전환은 즉시 적용이다. 이번 G00~G05는 보간 기능을 추가하지 않는다.
 - modifier catalog, light group blend, token restore, 새 protocol, Effect V2 light family와 전역 light scheduler는 범위에 넣지 않는다.
 - 다른 팀의 미커밋 변경을 되돌리지 않는다. 실행하지 않은 검증과 사용자가 하지 않은 화면 확인을 완료로 기록하지 않는다.
+
+
+## 8. 09-07 사용자 검증 후 리소스 용도·독립 창·Sequencer 확장
+
+현재 Character/Boss Spot preview는 사용자 확인을 받았다. 저장한 Directional 값과 기존 조명 재생을 보존한다.
+Light Resources는 왼쪽, Light Sequencer는 아래, Light Detail과 Rendering Workbench는 오른쪽의
+독립 창으로 나눈다. 기존 Action Workbench의 첫 배치·Windows 메뉴·레이아웃 초기화 방식을 따른다.
+
+Light Resources의 상위 용도는 Map Profile / Scene Profile / Anchor Light다.
+Map Profile은 현재 Level의 기본 Directional과 맵 배치 조명, Scene Profile은 패턴에서 쓰는
+기존 RenderingProfiles의 분위기 profile, Anchor Light는 기존 LightResources의 Map/Character/Boss 정의다.
+Create는 용도와 광원 종류(Direction/Point/Spot)를 구분하고 해당 기존 정본에만 저장한다.
+Create Light와 All Lights, profile 생성·목록은 모두 Light Resources가 소유한다.
+
+Light Detail은 선택 조명과 scene 분위기의 편집·저장을, Rendering Workbench는 Level의 FXAA/SSAO/Bloom 등
+quality와 benchmark를 소유한다. 같은 광원 정본을 두 번째 저장소에 복사하지 않는다.
+Light Sequencer는 선택 리소스의 Lifetime, Play/Pause/Stop/Seek를 기존 preview 제출 경로에 연결한다.
+Map 재생은 임시 preview 문서를 사용하고 저장 배치 enabled나 profile 값을 파괴하지 않는다.
+기본 Directional은 기존 Scene 광원을 편집하며 중복 transient Directional을 생성하지 않는다.
+
+사용자 편집 원본을 보존하고 관련 codec/publisher 검증과 Debug Product 빌드 후 실행 준비를 마친다.
+추가 화면 확인은 사용자가 직접 하며 자동 시각 PASS는 기록하지 않는다.
+
+
+### 8.1 암전과 전원 Spot 패턴 연결
+
+기존 scene.kakulsaydon.find-true-dark.v1은 ID를 유지하고 optional displayName에 씬프로필_암전을 저장한다.
+RenderingProfiles codec·publisher와 Light Resources/Detail/Sequencer가 같은 이름을 소비한다.
+기존 LightResources 두 항목도 ID와 튜닝값을 유지하면서 스포트라이트_캐릭터 / 스포트라이트_세이튼으로 표시한다.
+
+진짜 세이튼 찾기는 기존 Scene 창 2007~26134ms를 보존하고 두 Spot을 같은 창에 배치한다.
+댄스타임은 0~31467ms, 룰렛은 0~33669ms에 Scene Profile과 두 Spot을 배치한다.
+Character 조명은 같은 방 Server snapshot의 현재 캐릭터 전원을 대상으로 하며 HP로 제외하지 않는다.
+Server가 확정한 patternId/startTick/sequence를 기존 Client presentation이 소비한다. 별도 protocol은 추가하지 않는다.

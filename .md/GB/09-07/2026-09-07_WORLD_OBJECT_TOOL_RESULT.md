@@ -143,3 +143,44 @@ finite XYZ·bounds·walkable 검사는 유지했다. 사용자 저장 `(10.24,8.
 통합 검증 로그는 `out/WorldObjectMerge/`, 데이터 보존 감사는 `out/PRConflictMerge/`에 있다.
 이전 main 문서·참고 TXT의 기존 공백은 무관한 변경으로 정리하지 않았다.
 Client/UI 실행·화면 검증은 하지 않았다. 사용자 요청에 따라 PR merge 뒤 로컬 main을 pull하여 동기화한다.
+
+
+## G06. 09-07 독립 패널·미리보기·카메라 실시간 반영
+
+작업 브랜치는 codex/world-object-light-workspaces다. 사용자 검증 후 F1 메뉴를 Tools로 옮기고,
+왼쪽 Object Resources / 아래 Object Sequencer / 오른쪽 Object Detail을 독립 ImGui 창으로 나눴다.
+각 창은 이동·크기 조절·닫기·Windows 메뉴 재열기·Reset layout을 지원한다. Resources의 Map/Character 분류와
+Create anchor는 resource.anchorKind(WORLD/PLAYER)에 저장하며, 리소스 anchor 변경은 연결 상태에도 반영한다.
+이전 v3 문서의 무필드 리소스는 WORLD로 읽는다. 커튼/룰렛 alias는 Map에 고정한다.
+Create는 용량·Map 위치를 먼저 검사하고 리소스와 상태를 함께 commit한다. 실패하면 기존 draft와 이름을 유지하며
+팝업에 실패 이유를 표시한다. 어느 Object 창을 클릭해도 다음 Update에서 도구 입력 소유권을 유지한다.
+
+모델 상태 11개는 이전 첫 진입 위치 (3.29,8.64,-8.69)에 저장되어 있었다. Preview at Character를 기본으로 켜서
+Map 모델 상태의 debug preview만 현재 캐릭터 위치로 옮긴다. 저장 위치와 커튼/룰렛은 변경하지 않는다.
+끄면 authored 위치를 사용한다. 실제 생성 수·첫 위치와 anchor 대기·모델/texture/shader 실패 원인을 상태에 표시한다.
+스킨 모델에 animation track이 없을 때도 rest combined bone matrix를 초기화한다.
+
+카드/조커/세토/갈고리/빙고폭탄의 raw vertex만으로 modelPreScale=1이라고 판단한 이전 기록을 교정했다.
+실제 CMesh skin 행렬과 idle clip 시작/중간/끝 15 sample에는 skeleton scale100이 남아 있었으므로 5종의
+modelPreScale을 .01로 수정했다. 사용자 state key와 scale 배수는 보존했다. 적용 후 bounds는 유한하며
+카드 2.825×.047×1.836m, 세토 1.332×2.462×1.548m, 갈고리 .805×9.394×.226m,
+폭탄 1.338×1.635×1.338m다. 이 수치는 렌더 전 변환 진단이며 화면 품질 PASS가 아니다.
+
+Player Follow Camera는 Position/Pitch/Yaw/Roll/Focus/FOV/Response 편집 시 현재 Level setter로 즉시 반영한다.
+Reload/Reset도 즉시 preview하며 Save만 영구 저장한다. 다른 맵 draft나 실행 중인 camera sequence에는 적용하지 않는다.
+
+| 실행한 검증 | 결과 |
+|---|---|
+| 최종 Debug Product | PASS, out/BuildPipeline/runs/20260907T030125810Z-debug-product.json; Engine→Shared→Server→Client 및 정상 배포 |
+| WorldSequence publisher 계약 | 26/26 PASS; WORLD/PLAYER resource anchor와 잘못된 종류·alias 검사 포함 |
+| Map Publish | v3/revision149, 3231 placements/7 files, source/runtime semantic equality |
+| skin 수치 진단 | 5종×3 clip 시각의 finite bounds; world-object-skin-bounds-review.json |
+| 사용자 저장본 보존 | 작업 시작 snapshot 대비 WorldSequence는 revision과 5개 modelPreScale만 변경; final-data-preservation.json |
+| 구조·공백 | 변경 JSON 9개 parse와 git diff --check PASS; 변경 XML 없음 |
+| 입력·저장·재생 화면 | 실행하지 않음. 독립 패널 Save/Reload와 실제 GPU 화면은 사용자 확인 대기 |
+
+이번 검증 로그는 out/ObjectLightWorkspace/에 있다. 기존 C4819/C4828/LNK4099 경고는 남고 빌드 오류는 없다.
+Client/UI는 실행·조작·캡처하지 않았다. 사용자가 종료했다고 알려준 EXE는 다시 띄우지 않았다.
+Server + Client profile을 Ctrl+F5로 시작한 뒤 Lobby → KoukuSaydon → F1 Tools → World Object Tool →
+Map 리소스/상태 선택 → Object Sequencer Play로 확인한다. 창 배치가 필요하면 Windows → Reset layout을 사용한다.
+기존 사용자 미커밋 파일을 보존했으며 자동 stage/commit/push는 하지 않았다.

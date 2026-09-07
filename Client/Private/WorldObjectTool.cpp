@@ -84,7 +84,15 @@ CWorldObjectTool::~CWorldObjectTool()
 void CWorldObjectTool::Open()
 {
     m_Open = true;
+    m_ResourcesOpen = m_SequencerOpen = m_DetailOpen = true;
     if (!m_Ready) Load_Source();
+}
+
+bool CWorldObjectTool::Consume_InteractionRequest()
+{
+    const bool requested = m_InteractionRequested;
+    m_InteractionRequested = false;
+    return requested;
 }
 
 void CWorldObjectTool::Deactivate()
@@ -231,7 +239,7 @@ bool CWorldObjectTool::Begin_Preview()
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     if (!level) { m_Status = "World object preview requires the active KoukuSaydon arena."; return false; }
     if (!m_Document.Find_Instance(m_SelectedInstance)) { m_Status = "Select or create an object state."; return false; }
-    if (!level->Debug_BeginWorldObjectPreview(m_Document, m_SelectedInstance, m_Status)) return false;
+    if (!level->Debug_BeginWorldObjectPreview(m_Document, m_SelectedInstance, m_Status, m_PreviewAtCharacter)) return false;
     m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
     return true;
 }
@@ -297,9 +305,9 @@ void CWorldObjectTool::Select_State(const std::string& id)
     Stop_Preview(); m_SelectedInstance = id; m_SelectedTrack = 0; m_SelectedKey = 0; m_ClockMs = 0.f;
 }
 
-void CWorldObjectTool::Create_Object()
+bool CWorldObjectTool::Create_Object()
 {
-    if (!m_NewObjectName[0]) { m_Status = "Enter an object name."; return; }
+    if (!m_NewObjectName[0]) { m_Status = "Enter an object name."; return false; }
     WORLD_SEQUENCE_OBJECT_RESOURCE resource;
     for (uint32_t index = 1; index < UINT32_MAX; ++index)
     {
@@ -307,49 +315,180 @@ void CWorldObjectTool::Create_Object()
         if (!m_Document.Find_ObjectResource(resource.objectId)) break;
     }
     resource.displayName = m_NewObjectName.data();
-    m_Document.Get_ObjectResources().push_back(resource); Mark_Dirty(); Select_Object(resource.objectId);
-    std::snprintf(m_NewStateName.data(), m_NewStateName.size(), "Default"); Create_State();
+    resource.anchorKind = m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
+    WORLD_SEQUENCE_TEMPLATE sequence;
+    WORLD_SEQUENCE_INSTANCE instance;
+    if (!Build_State(resource, "Default", sequence, instance)) return false;
+    m_Document.Get_ObjectResources().push_back(resource);
+    m_Document.Get_Templates().push_back(std::move(sequence));
+    m_Document.Get_Instances().push_back(std::move(instance));
+    Mark_Dirty(); Select_Object(resource.objectId);
     m_NewObjectName[0] = 0;
+    m_NewStateName[0] = 0;
+    return true;
 }
 
 void CWorldObjectTool::Create_State()
 {
     auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     if (!resource || !resource->sequenceInstanceId.empty() || !m_NewStateName[0]) return;
-    if (m_Document.Get_Templates().size() >= CWorldSequenceDocument::MAX_TEMPLATE_COUNT ||
-        m_Document.Get_Instances().size() >= CWorldSequenceDocument::MAX_INSTANCE_COUNT)
-    { m_Status = "World sequence document capacity reached."; return; }
     WORLD_SEQUENCE_TEMPLATE sequence;
     WORLD_SEQUENCE_INSTANCE instance;
-    for (uint32_t index = 1; index < UINT32_MAX; ++index)
-    {
-        sequence.sequenceId = resource->objectId + ".state." + std::to_string(index);
-        instance.instanceId = sequence.sequenceId + ".instance";
-        if (!m_Document.Find_Template(sequence.sequenceId) && !m_Document.Find_Instance(instance.instanceId)) break;
-    }
-    sequence.displayName = m_NewStateName.data(); sequence.durationMs = 2000;
-    WORLD_SEQUENCE_TRACK track; track.slotId = "object"; track.keys.push_back({});
-    WORLD_SEQUENCE_TRANSFORM_KEY end; end.timeMs = sequence.durationMs; track.keys.push_back(end);
-    sequence.tracks.push_back(track);
-    instance.templateId = sequence.sequenceId;
-    instance.bindings.push_back({"object", WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE, resource->objectId});
-    if (auto* level = CLevel_KakulSaydonArena::Get_Active())
-    {
-        std::string status;
-        if (!level->Try_Get_AuthoringPreviewPlacement(instance.position, status))
-            m_Status = "State created at explicit World position (0,0,0); player seed unavailable: " + status;
-    }
+    if (!Build_State(*resource, m_NewStateName.data(), sequence, instance)) return;
     m_Document.Get_Templates().push_back(std::move(sequence));
     m_Document.Get_Instances().push_back(instance); Mark_Dirty(); Select_State(instance.instanceId);
     m_NewStateName[0] = 0;
 }
 
+bool CWorldObjectTool::Build_State(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
+    const std::string& stateName, WORLD_SEQUENCE_TEMPLATE& sequence, WORLD_SEQUENCE_INSTANCE& instance)
+{
+    if (m_Document.Get_Templates().size() >= CWorldSequenceDocument::MAX_TEMPLATE_COUNT ||
+        m_Document.Get_Instances().size() >= CWorldSequenceDocument::MAX_INSTANCE_COUNT)
+    { m_Status = "World sequence document capacity reached."; return false; }
+    for (uint32_t index = 1; index < UINT32_MAX; ++index)
+    {
+        sequence.sequenceId = resource.objectId + ".state." + std::to_string(index);
+        instance.instanceId = sequence.sequenceId + ".instance";
+        if (!m_Document.Find_Template(sequence.sequenceId) && !m_Document.Find_Instance(instance.instanceId)) break;
+    }
+    sequence.displayName = stateName; sequence.durationMs = 2000;
+    WORLD_SEQUENCE_TRACK track; track.slotId = "object"; track.keys.push_back({});
+    WORLD_SEQUENCE_TRANSFORM_KEY end; end.timeMs = sequence.durationMs; track.keys.push_back(end);
+    sequence.tracks.push_back(track);
+    instance.templateId = sequence.sequenceId;
+    instance.anchorKind = resource.anchorKind;
+    instance.bindings.push_back({"object", WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE, resource.objectId});
+    if (instance.anchorKind == "WORLD")
+    {
+        auto* level = CLevel_KakulSaydonArena::Get_Active();
+        if (!level)
+        { m_Status = "Map state creation requires the active KoukuSaydon arena."; return false; }
+        if (!level->Try_Get_AuthoringPreviewPlacement(instance.position, m_Status))
+        {
+            m_Status = "Map state needs the current character placement: " + m_Status;
+            return false;
+        }
+    }
+    return true;
+}
+
+void CWorldObjectTool::Change_ResourceAnchor(
+    WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& anchorKind)
+{
+    if (resource.anchorKind == anchorKind || !resource.sequenceInstanceId.empty()) return;
+    float3_t position{};
+    if (anchorKind == "WORLD")
+    {
+        auto* level = CLevel_KakulSaydonArena::Get_Active();
+        if (!level || !level->Try_Get_AuthoringPreviewPlacement(position, m_Status))
+        { m_Status = "Map anchor needs the current character placement: " + m_Status; return; }
+    }
+    resource.anchorKind = anchorKind;
+    for (const auto& id : StateIds(resource))
+    {
+        auto* instance = m_Document.Find_Instance(id);
+        if (!instance || instance->anchorKind == anchorKind) continue;
+        instance->anchorKind = anchorKind;
+        instance->position = position;
+    }
+    Mark_Dirty();
+    m_Status = anchorKind == "PLAYER" ?
+        "Character anchor applied to this resource's states; offsets start at the character origin." :
+        "Map anchor applied to this resource's states at the current character position.";
+}
+
 void CWorldObjectTool::Render()
 {
     if (!m_Open) return;
-    ImGui::SetNextWindowSize(ImVec2(1150.f, 930.f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("World Object Tool", &m_Open)) { ImGui::End(); return; }
-    ImGui::TextUnformatted("KoukuSaydon / World Object Resources");
+    const auto* viewport = ImGui::GetMainViewport();
+    const ImVec2 origin = viewport ? viewport->WorkPos : ImVec2(0.f, 0.f);
+    const ImVec2 available = viewport ? viewport->WorkSize : ImVec2(1600.f, 900.f);
+    constexpr float margin = 8.f, gap = 8.f;
+    const float width = (std::max)(1.f, available.x - margin * 2.f - gap * 2.f);
+    const float height = (std::max)(1.f, available.y - margin * 2.f);
+    const float leftWidth = width * .23f, rightWidth = width * .24f;
+    const float centerWidth = width - leftWidth - rightWidth;
+    const float leftX = origin.x + margin, centerX = leftX + leftWidth + gap;
+    const float rightX = centerX + centerWidth + gap, topY = origin.y + margin;
+    const ImGuiCond condition = m_ResetLayoutRequested ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+    m_ResetLayoutRequested = false;
+    const auto beginPane = [&](const char* name, bool& visible, const ImVec2 position, const ImVec2 size)
+    {
+        ImGui::SetNextWindowPos(position, condition);
+        ImGui::SetNextWindowSize(size, condition);
+        const bool expanded = ImGui::Begin(name, &visible, ImGuiWindowFlags_MenuBar);
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0))
+            m_InteractionRequested = true;
+        if (expanded) Render_WindowMenu();
+        return expanded;
+    };
+
+    if (m_ResourcesOpen)
+    {
+        if (beginPane("Object Resources###WorldObjectResourcesWindow", m_ResourcesOpen,
+            {leftX, topY}, {leftWidth, height}))
+        {
+            if (m_Ready) Render_Resources();
+            else
+            {
+                if (ImGui::Button("Reload Source")) Load_Source();
+                ImGui::TextWrapped("%s", m_Status.c_str());
+            }
+            Render_PhysicalResources();
+        }
+        ImGui::End();
+    }
+    if (m_SequencerOpen)
+    {
+        if (beginPane("Object Sequencer###WorldObjectSequencerWindow", m_SequencerOpen,
+            {centerX, topY + height * .57f}, {centerWidth, height * .43f}))
+        {
+            Render_Toolbar();
+            auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+            auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+            if (sequence) Render_Sequence(*sequence);
+            else ImGui::TextDisabled("Select an object and state in Object Resources.");
+        }
+        ImGui::End();
+    }
+    if (m_DetailOpen)
+    {
+        if (beginPane("Object Detail###WorldObjectDetailWindow", m_DetailOpen,
+            {rightX, topY}, {rightWidth, height}))
+        {
+            if (m_Ready) Render_Detail();
+            else ImGui::TextDisabled("Load Object Resources to edit an object.");
+        }
+        ImGui::End();
+    }
+    if (!m_ResourcesOpen && !m_SequencerOpen && !m_DetailOpen) m_Open = false;
+    if (!m_Open) Stop_Preview();
+}
+
+void CWorldObjectTool::Render_WindowMenu()
+{
+    if (!ImGui::BeginMenuBar()) return;
+    if (ImGui::BeginMenu("Windows"))
+    {
+        ImGui::MenuItem("Object Resources", nullptr, &m_ResourcesOpen);
+        ImGui::MenuItem("Object Sequencer", nullptr, &m_SequencerOpen);
+        ImGui::MenuItem("Object Detail", nullptr, &m_DetailOpen);
+        ImGui::Separator();
+        if (ImGui::MenuItem("Show All")) m_ResourcesOpen = m_SequencerOpen = m_DetailOpen = true;
+        if (ImGui::MenuItem("Reset Window Layout"))
+        {
+            m_ResourcesOpen = m_SequencerOpen = m_DetailOpen = true;
+            m_ResetLayoutRequested = true;
+        }
+        if (ImGui::MenuItem("Close World Object Tool")) m_Open = false;
+        ImGui::EndMenu();
+    }
+    ImGui::EndMenuBar();
+}
+
+void CWorldObjectTool::Render_Toolbar()
+{
     if (ImGui::Button("Reload Source"))
     {
         if (m_Dirty) ImGui::OpenPopup("Reload object source?");
@@ -376,62 +515,89 @@ void CWorldObjectTool::Render()
     }
     ImGui::EndDisabled();
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
-    if (m_PreviewActive) ImGui::TextDisabled("%s / %.0f ms", m_PreviewStatus.c_str(), m_ClockMs);
-    if (m_Ready)
-    {
-        Render_Resources();
-        ImGui::SeparatorText("Object Detail / State Sequencer");
-        if (ImGui::BeginChild("ObjectDetailScroll", ImVec2(0, (std::max)(300.f, ImGui::GetContentRegionAvail().y - 250.f)), true)) Render_Detail();
-        ImGui::EndChild();
-    }
-    Render_PhysicalResources();
-    ImGui::End();
-    if (!m_Open) Stop_Preview();
 }
 
 void CWorldObjectTool::Render_Resources()
 {
-    ImGui::SeparatorText("Object Resources");
-    ImGui::SetNextItemWidth(230.f); ImGui::InputTextWithHint("##ObjectSearch", "Search object name", m_ObjectSearch.data(), m_ObjectSearch.size());
-    ImGui::SameLine(); ImGui::SetNextItemWidth(180.f); ImGui::InputTextWithHint("##NewObjectName", "New object name", m_NewObjectName.data(), m_NewObjectName.size());
-    ImGui::SameLine(); if (ImGui::Button("Create Object")) Create_Object();
-    if (ImGui::BeginTable("ObjectResourceTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+    if (ImGui::Button("Create Object"))
     {
-        ImGui::TableSetupColumn("Object", ImGuiTableColumnFlags_WidthStretch, .5f);
-        ImGui::TableSetupColumn("States", ImGuiTableColumnFlags_WidthStretch, .5f);
-        ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);
-        if (ImGui::BeginChild("ObjectNames", ImVec2(0, 135.f), true))
+        m_CreateObjectFailed = false;
+        ImGui::OpenPopup("Create Object Resource");
+    }
+    ImGui::SameLine(); ImGui::TextDisabled("%zu resources", m_Document.Get_ObjectResources().size());
+    if (ImGui::BeginPopupModal("Create Object Resource", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::InputTextWithHint("Name", "New object name", m_NewObjectName.data(), m_NewObjectName.size());
+        ImGui::Combo("Anchor Type", &m_NewObjectAnchor, "Map\0Character\0");
+        ImGui::TextUnformatted(m_NewObjectAnchor == 0 ?
+            "Map: seed the state at the current character position, then keep it fixed." :
+            "Character: create at each living character with a local offset.");
+        ImGui::BeginDisabled(!m_NewObjectName[0]);
+        if (ImGui::Button("Create"))
         {
-            const auto search = Lower(m_ObjectSearch.data());
+            m_CreateObjectFailed = !Create_Object();
+            if (!m_CreateObjectFailed) ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        if (m_CreateObjectFailed) ImGui::TextWrapped("%s", m_Status.c_str());
+        ImGui::EndPopup();
+    }
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##ObjectSearch", "Search object or state", m_ObjectSearch.data(), m_ObjectSearch.size());
+    const float treeHeight = (std::max)(180.f, ImGui::GetContentRegionAvail().y * .48f);
+    if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
+    {
+        const auto search = Lower(m_ObjectSearch.data());
+        for (const char* anchor : {"WORLD", "PLAYER"})
+        {
+            const char* category = std::string(anchor) == "WORLD" ? "Map" : "Character";
+            size_t count = 0;
+            for (const auto& resource : m_Document.Get_ObjectResources()) if (resource.anchorKind == anchor) ++count;
+            const std::string categoryLabel = std::string(category) + " (" + std::to_string(count) + ")";
+            if (!ImGui::TreeNodeEx(anchor, ImGuiTreeNodeFlags_DefaultOpen, "%s", categoryLabel.c_str())) continue;
             for (const auto& resource : m_Document.Get_ObjectResources())
             {
-                if (!search.empty() && Lower(resource.displayName + " " + resource.objectId).find(search) == std::string::npos) continue;
+                if (resource.anchorKind != anchor) continue;
+                const auto states = StateIds(resource);
+                bool matches = search.empty() || Lower(resource.displayName + " " + resource.objectId).find(search) != std::string::npos;
+                if (!matches)
+                    for (const auto& id : states)
+                    {
+                        const auto* state = m_Document.Find_Instance(id);
+                        const auto* sequence = state ? m_Document.Find_Template(state->templateId) : nullptr;
+                        if (sequence && Lower(sequence->displayName).find(search) != std::string::npos) { matches = true; break; }
+                    }
+                if (!matches) continue;
                 ImGui::PushID(resource.objectId.c_str());
                 const auto label = resource.displayName + (resource.sequenceInstanceId.empty() && resource.modelAssetId.empty() ? " [assign model]" : "");
-                if (ImGui::Selectable(label.c_str(), m_SelectedObject == resource.objectId)) Select_Object(resource.objectId);
+                const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                    ImGuiTreeNodeFlags_SpanAvailWidth | (m_SelectedObject == resource.objectId ? ImGuiTreeNodeFlags_Selected : 0);
+                if (!search.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                const bool open = ImGui::TreeNodeEx("Resource", flags, "%s", label.c_str());
+                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Object(resource.objectId);
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", resource.objectId.c_str());
+                if (open)
+                {
+                    for (const auto& id : states)
+                    {
+                        const auto* instance = m_Document.Find_Instance(id);
+                        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+                        ImGui::PushID(id.c_str());
+                        if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), id == m_SelectedInstance))
+                        { m_SelectedObject = resource.objectId; Select_State(id); }
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
+                        ImGui::PopID();
+                    }
+                    if (states.empty()) ImGui::TextDisabled("No states");
+                    ImGui::TreePop();
+                }
                 ImGui::PopID();
             }
+            ImGui::TreePop();
         }
-        ImGui::EndChild(); ImGui::TableSetColumnIndex(1);
-        if (ImGui::BeginChild("ObjectStates", ImVec2(0, 135.f), true))
-        {
-            const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-            if (resource)
-            {
-                for (const auto& id : StateIds(*resource))
-                {
-                    const auto* instance = m_Document.Find_Instance(id);
-                    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-                    ImGui::PushID(id.c_str());
-                    if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), id == m_SelectedInstance)) Select_State(id);
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
-                    ImGui::PopID();
-                }
-            }
-        }
-        ImGui::EndChild(); ImGui::EndTable();
     }
+    ImGui::EndChild();
 }
 
 void CWorldObjectTool::Render_Detail()
@@ -441,6 +607,12 @@ void CWorldObjectTool::Render_Detail()
     bool changed = EditText("Object Name", resource->displayName);
     ImGui::TextDisabled("%s", resource->objectId.c_str());
     const bool alias = !resource->sequenceInstanceId.empty();
+    int resourceAnchor = resource->anchorKind == "PLAYER" ? 1 : 0;
+    ImGui::BeginDisabled(alias);
+    if (ImGui::Combo("Anchor Type", &resourceAnchor, "Map\0Character\0"))
+        Change_ResourceAnchor(*resource, resourceAnchor == 1 ? "PLAYER" : "WORLD");
+    ImGui::EndDisabled();
+    if (alias) ImGui::TextDisabled("Placed objects keep their Map anchor.");
     if (alias)
         ImGui::TextWrapped("Placed object sequence: %s. This editor updates its existing tracks and bindings.", resource->sequenceInstanceId.c_str());
     else
@@ -451,22 +623,22 @@ void CWorldObjectTool::Render_Detail()
         changed |= ImGui::DragFloat("Model Import Scale", &resource->modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::DragFloat3("Object Scale", &resource->scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::Checkbox("Animated Model", &resource->animated);
-        ImGui::SetNextItemWidth(200.f); ImGui::InputTextWithHint("##NewState", "New state name", m_NewStateName.data(), m_NewStateName.size());
+        ImGui::SetNextItemWidth((std::max)(80.f, ImGui::GetContentRegionAvail().x - 90.f));
+        ImGui::InputTextWithHint("##NewState", "New state name", m_NewStateName.data(), m_NewStateName.size());
         ImGui::SameLine();
         if (ImGui::Button("Add State")) { if (changed) Mark_Dirty(); Create_State(); return; }
     }
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!sequence) { if (changed) Mark_Dirty(); return; }
+    ImGui::SeparatorText("State");
     changed |= EditText("State Name", sequence->displayName);
     ImGui::TextDisabled("%s", instance->instanceId.c_str());
     changed |= ImGui::Checkbox("Enabled", &instance->enabled);
     if (!alias)
     {
-        int anchor = instance->anchorKind == "PLAYER" ? 1 : 0;
-        if (ImGui::Combo("Creation Anchor", &anchor, "World\0Character\0"))
-        { instance->anchorKind = anchor == 1 ? "PLAYER" : "WORLD"; changed = true; }
-        changed |= ImGui::DragFloat3(instance->anchorKind == "PLAYER" ? "Character Offset" : "World Position", &instance->position.x, .01f);
+        ImGui::TextDisabled("Creation Anchor: %s", instance->anchorKind == "PLAYER" ? "Character" : "Map");
+        changed |= ImGui::DragFloat3(instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
         if (ImGui::Button("Use Current Character Position"))
         {
             if (instance->anchorKind == "PLAYER") { instance->position = {}; changed = true; }
@@ -535,13 +707,13 @@ void CWorldObjectTool::Render_Detail()
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
     }
     if (changed) Mark_Dirty();
-    Render_Sequence(*sequence);
+    ImGui::SeparatorText("Selected Key");
     Render_KeyEditor(*sequence);
 }
 
 void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
 {
-    ImGui::SeparatorText("Sequencer");
+    ImGui::SeparatorText(sequence.displayName.c_str());
     if (ImGui::Button(m_Playing ? "Pause" : "Play"))
     {
         if (m_Playing) m_Playing = false;
@@ -549,6 +721,20 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     }
     ImGui::SameLine(); if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
     ImGui::SameLine(); ImGui::Checkbox("Loop", &m_Loop);
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const auto* selectedInstance = m_Document.Find_Instance(m_SelectedInstance);
+    if (resource && resource->sequenceInstanceId.empty() && selectedInstance && selectedInstance->anchorKind == "WORLD")
+    {
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter))
+        {
+            m_PreviewDirty = m_PreviewActive;
+            if (m_PreviewActive) Seek(m_ClockMs);
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
+    }
+    if (m_PreviewActive) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
     float clock = m_ClockMs;
     if (ImGui::SliderFloat("Clock (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
@@ -556,7 +742,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, sequence.durationMs * m_Zoom * .001f);
     const float pixelsPerMs = width / sequence.durationMs;
     const float height = 28.f + rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size());
-    if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::min)(280.f, height + 22.f)), true, ImGuiWindowFlags_HorizontalScrollbar))
+    if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
         CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), sequence.durationMs, pixelsPerMs * 1000.f);
@@ -736,7 +922,7 @@ void CWorldObjectTool::Rebuild_PhysicalTree()
 
 void CWorldObjectTool::Render_PhysicalResources()
 {
-    ImGui::SeparatorText("Physical Resources / Slot Assignment");
+    ImGui::SeparatorText("Physical Resources");
     if (!m_PhysicalScanned)
     {
         Scan_PhysicalResources({"Effect", "Map", "Deploy", "Character"}, m_PhysicalAssets, m_PhysicalStatus);
@@ -744,11 +930,12 @@ void CWorldObjectTool::Render_PhysicalResources()
     }
     if (ImGui::Button("Refresh Files"))
     { Scan_PhysicalResources({"Effect", "Map", "Deploy", "Character"}, m_PhysicalAssets, m_PhysicalStatus); Rebuild_PhysicalTree(); }
-    ImGui::SameLine(); ImGui::SetNextItemWidth(165.f);
-    if (ImGui::Combo("Assign Slot", &m_PhysicalSlot, "Model (.wmodel)\0Diffuse (.dds)\0")) Rebuild_PhysicalTree();
-    ImGui::SameLine(); ImGui::SetNextItemWidth(220.f);
+    ImGui::SetNextItemWidth(-1.f);
+    if (ImGui::Combo("##AssignSlot", &m_PhysicalSlot, "Model (.wmodel)\0Diffuse (.dds)\0")) Rebuild_PhysicalTree();
+    ImGui::SetNextItemWidth(-1.f);
     if (ImGui::InputTextWithHint("##PhysicalSearch", "Search full relative path", m_PhysicalSearch.data(), m_PhysicalSearch.size())) Rebuild_PhysicalTree();
-    ImGui::TextDisabled("%s / %zu matching files", m_PhysicalStatus.c_str(), m_PhysicalTree.iRecursiveLeafCount);
+    ImGui::TextDisabled("%zu matching files", m_PhysicalTree.iRecursiveLeafCount);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_PhysicalStatus.c_str());
     if (ImGui::BeginChild("PhysicalResourceFolders", ImVec2(0, (std::max)(120.f, ImGui::GetContentRegionAvail().y)), true))
     {
         RenderResourceTree(m_PhysicalTree, [this](size_t index) {

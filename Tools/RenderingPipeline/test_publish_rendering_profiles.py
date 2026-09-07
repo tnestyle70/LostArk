@@ -163,6 +163,41 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertEqual(published, destination.read_bytes())
 
+    def test_display_name_is_optional_and_korean_name_round_trips(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        for profile in document["profiles"]:
+            profile.pop("displayName", None)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "RenderingProfiles.json"
+            destination = Path(temporary_directory) / "RenderingProfiles.runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Validate")
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.find-true-dark.v1")
+            dark["displayName"] = "씬프로필_암전"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(document, json.loads(destination.read_bytes()))
+
+    def test_invalid_display_name_preserves_previous_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "RenderingProfiles.json"
+            destination = Path(temporary_directory) / "RenderingProfiles.runtime.json"
+            self.write_document(source, self.source_document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            previous = destination.read_bytes()
+            for name in ("", 42, "가" * 86, "bad\u0000name"):
+                with self.subTest(name=name):
+                    document = copy.deepcopy(self.source_document)
+                    document["profiles"][0]["displayName"] = name
+                    self.write_document(source, document)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("displayName", result.stdout + result.stderr)
+                    self.assertEqual(previous, destination.read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()

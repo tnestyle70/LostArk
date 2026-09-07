@@ -21,7 +21,8 @@ GAZE_ID = "KAKULSAYDON_G1_PATTERN_2"
 
 def copy_repository_inputs(root: Path) -> None:
     """The files a temp-root projection reads beside the composition."""
-    for relative in (subject.BOSS_CATALOG_PATH, WORLD_SEQUENCES, Path(f"Data/Maps/Authoring/{subject.AREA_ID}/{subject.AREA_ID}.mapplacements")):
+    for relative in (subject.BOSS_CATALOG_PATH, subject.LIGHT_RESOURCES_PATH,
+                     WORLD_SEQUENCES, Path(f"Data/Maps/Authoring/{subject.AREA_ID}/{subject.AREA_ID}.mapplacements")):
         destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, destination)
@@ -97,7 +98,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             {row["displayName"]: row["sequenceInstanceId"] for row in self.document["worlds"]},
         )
         self.assertEqual(
-            {"씬프로필_진짜쿠크세이튼찾기": "scene.kakulsaydon.find-true-dark.v1"},
+            {"씬프로필_암전": "scene.kakulsaydon.find-true-dark.v1"},
             {row["displayName"]: row["renderingProfileId"] for row in self.document["sceneProfiles"]},
         )
         roulette = self.find(self.document, ROULETTE_ID)
@@ -105,6 +106,21 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(1, len(roulette["worldOccurrences"]))
         self.assertEqual(1, len(self.find(self.document, DANCE_ID)["worldOccurrences"]))
         self.assertEqual(1, len(self.find(self.document, GAZE_ID)["sceneProfileOccurrences"]))
+        resources = {row["resourceId"]: row for row in self.document["presentationResources"]}
+        for pattern_id in (GAZE_ID, DANCE_ID, ROULETTE_ID):
+            with self.subTest(pattern=pattern_id):
+                pattern = self.find(self.document, pattern_id)
+                self.assertEqual(1, len(pattern["sceneProfileOccurrences"]))
+                scene = pattern["sceneProfileOccurrences"][0]
+                lights = [row for row in pattern["presentationOccurrences"]
+                          if resources[row["resourceId"]]["kind"] == "LIGHT"]
+                self.assertEqual(2, len(lights))
+                self.assertEqual({("light.runtime.1", "PLAYER"), ("light.runtime.2", "BOSS")},
+                                 {(resources[row["resourceId"]]["assetId"], row["anchorKind"]) for row in lights})
+                for row in lights:
+                    self.assertEqual((scene["startMs"], scene["durationMs"]),
+                                     (row["startMs"], row["durationMs"]))
+                    self.assertTrue(row["followBoss"])
 
     def test_rejects_unknown_fields_versions_ids_and_non_integer_revision(self):
         mutations = []
@@ -565,6 +581,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 "formatVersion",
                 "bossArchetypeId",
                 "sourceRevision",
+                "lightResourceRevision",
                 "bindings", "patterns",
             },
             set(presentation),
@@ -1108,8 +1125,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         fixture["lightResourceId"] = "light.test.character"
         path.write_bytes(subject.serialize_json({
             "schema": "lostark.light-resources", "formatVersion": 1, "revision": revision,
-            "nextLightResourceOrdinal": 1,
-            "lights": lights if lights is not None else [fixture],
+            "nextLightResourceOrdinal": source["nextLightResourceOrdinal"],
+            "lights": [*source["lights"], *(lights if lights is not None else [fixture])],
         }))
 
     def test_light_anchors_project_without_server_gameplay_rows(self):

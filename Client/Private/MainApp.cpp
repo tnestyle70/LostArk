@@ -1847,6 +1847,8 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::WORLD_OBJECT);
 				m_pWorldObjectTool->Render();
+				if (m_pWorldObjectTool->Consume_InteractionRequest())
+					m_eDebugInputOwner = DEBUG_TOOL::WORLD_OBJECT;
 				if (!m_pWorldObjectTool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
@@ -6274,6 +6276,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	}
 	case DEBUG_TOOL::RENDERING:
 		if (nullptr == m_RenderingProfiles.Get_ActiveProfile()) return E_FAIL;
+		m_bLightResourcesWindowVisible = true;
+		m_bLightDetailWindowVisible = true;
+		m_bLightSequencerWindowVisible = true;
+		m_bRenderingQualityWindowVisible = true;
 		m_bRenderQualityDraftInitialized = false;
 		if (nullptr == m_pRenderingBenchmark)
 			m_pRenderingBenchmark = make_unique<CRenderingBenchmark>();
@@ -6642,41 +6648,47 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		else (void)CArenaCameraProfile::Load(map, draft, status);
 		m_ArenaCameraDraftLoaded[index] = true;
 	}
-	ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
-	ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
-		"%.3f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::TextDisabled("Response 0: immediate follow. Edits are a draft until Apply or Save.");
-	ImGui::BeginDisabled(!active || !camera || camera->Is_PresentationOverrideActive());
-	if (ImGui::Button("Apply / Follow current map"))
+	const bool canPreview = active && camera && !camera->Is_PresentationOverrideActive();
+	const auto preview = [&]()
 	{
+		if (!canPreview) return;
 		const bool applied = index == 0u ? characterSelect->Set_FollowCameraProfile(draft, status) :
 			kouku->Set_FollowCameraProfile(draft, status);
 		if (applied) camera->Set_FollowEnabled(true);
-	}
+	};
+	bool edited = false;
+	ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
+	edited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
+		"%.3f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	edited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	if (edited) preview();
+	ImGui::TextDisabled("Changes preview live. Save keeps them for the next entry. Response 0: immediate follow.");
+	ImGui::BeginDisabled(!canPreview);
+	if (ImGui::Button("Follow current map")) preview();
 	ImGui::SameLine();
 	if (ImGui::Button("Read current camera")) useCurrent();
 	ImGui::EndDisabled();
 	if (!active) ImGui::TextDisabled("Save this map, then enter it to apply its settings.");
 	else if (camera && camera->Is_PresentationOverrideActive())
-		ImGui::TextDisabled("A camera sequence is active. Apply after it ends.");
+		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
 	if (ImGui::Button("Save camera settings"))
 	{
 		if (CArenaCameraProfile::Save(map, draft, status))
-			status += " Saved for the next entry; Apply changes the current camera.";
+			status += " Saved for the next entry.";
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Reload saved")) (void)CArenaCameraProfile::Load(map, draft, status);
+	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status)) preview();
 	ImGui::SameLine();
 	if (ImGui::Button("Reset draft"))
 	{
 		draft = CArenaCameraProfile::Default(map);
-		status = "Default values loaded into draft. Apply or Save to use them.";
+		status = "Default values loaded. Save to keep them.";
+		preview();
 	}
 	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
 	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
@@ -8550,6 +8562,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
+		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
@@ -8557,8 +8570,6 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
 		ImGui::EndTable();
 	}
-	ImGui::SeparatorText("World");
-	toolButton("World Object Tool", DEBUG_TOOL::WORLD_OBJECT, true);
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
 	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 13>
@@ -8830,89 +8841,128 @@ void CMainApp::RenderDeveloperTools()
 
 void CMainApp::RenderRenderingWorkbench()
 {
-	m_bRenderingLightsTabActive = false;
-	if (!ImGui::Begin("Rendering Workbench", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{ ImGui::End(); return; }
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (m_iRenderingLastLevel != currentLevel)
-	{
-		m_iRenderingLastLevel = currentLevel;
-		if (const auto* descriptor = CLevelRegistry::Find(static_cast<LEVEL>(currentLevel)))
-		{
-			m_eRenderingSelectedLevel = descriptor->eLevel;
-			m_strRenderingSelectedProfileId = descriptor->pRenderingProfileId;
-			m_bRenderQualityDraftInitialized = false;
-		}
-	}
-	static constexpr LEVEL levels[] = { LEVEL::LOBBY, LEVEL::CHARACTER_SELECT, LEVEL::BERN,
-		LEVEL::VALTAN_ARENA, LEVEL::KAKULSAYDON_ARENA, LEVEL::DEVELOPMENT };
-	static constexpr const char* names[] = { "Lobby", "Character Select", "Bern", "Valtan", "KoukuSaydon", "Development" };
-	int selectedLevel = 0;
-	for (int i = 0; i < 6; ++i) if (levels[i] == m_eRenderingSelectedLevel) selectedLevel = i;
-	if (ImGui::Combo("Level category", &selectedLevel, names, 6))
-	{
-		m_eRenderingSelectedLevel = levels[selectedLevel];
-		if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
-			m_strRenderingSelectedProfileId = descriptor->pRenderingProfileId;
-	}
-	if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
-		m_strRenderingQualityProfileId = descriptor->pRenderingProfileId;
-	if (m_strRenderingSelectedProfileId.empty())
-		m_strRenderingSelectedProfileId = m_RenderingProfiles.Get_ActiveProfileId();
-	if (ImGui::BeginCombo("Scene profile", m_strRenderingSelectedProfileId.c_str()))
-	{
-		for (const auto& id : m_RenderingProfiles.Collect_ProfileIds())
-			if (ImGui::Selectable(id.c_str(), id == m_strRenderingSelectedProfileId))
-				m_strRenderingSelectedProfileId = id;
-		ImGui::EndCombo();
-	}
-	const auto syncDraft = [this]()
-	{
-		if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
-		{
-			m_SceneRenderingDraft = *profile;
-			m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
-			m_strRenderingDraftProfileId = profile->strProfileId;
-			m_bRenderQualityDraftInitialized = true;
-		}
-	};
-	if (!m_bRenderQualityDraftInitialized || m_strRenderingDraftProfileId != m_strRenderingSelectedProfileId)
-		syncDraft();
-	const auto* pActiveProfile = m_RenderingProfiles.Get_ActiveProfile();
-	if (!pActiveProfile || !m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
-	{ ImGui::TextWrapped("Selected rendering profile is unavailable."); ImGui::End(); return; }
-	ImGui::Text("Active profile: %s", m_RenderingProfiles.Get_ActiveProfileId().c_str());
-	if (ImGui::Button("Activate Selected"))
-	{
-		if (m_RenderingProfiles.Activate_LevelProfile(m_strRenderingQualityProfileId, m_strRenderingStatus) &&
-			m_strRenderingSelectedProfileId != m_strRenderingQualityProfileId)
-			m_RenderingProfiles.Activate_Profile(m_strRenderingSelectedProfileId, m_strRenderingStatus);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Level Base"))
-	{
-		if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
-			m_strRenderingSelectedProfileId = descriptor->pRenderingProfileId;
-		syncDraft();
-	}
-	ImGui::InputText("New profile ID", m_szRenderingNewProfileId, sizeof(m_szRenderingNewProfileId));
-	if (ImGui::Button("Duplicate As"))
-	{
-		if (m_RenderingProfiles.Duplicate_Profile(m_strRenderingSelectedProfileId, m_szRenderingNewProfileId, m_strRenderingStatus))
-		{ m_strRenderingSelectedProfileId = m_szRenderingNewProfileId; syncDraft(); }
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Delete Selected Profile"))
-	{
-		if (m_RenderingProfiles.Delete_Profile(m_strRenderingSelectedProfileId, m_strRenderingStatus))
-		{ m_strRenderingSelectedProfileId = m_RenderingProfiles.Get_ActiveProfileId(); syncDraft(); }
-	}
-	if (!ImGui::BeginTabBar("RenderingWorkbenchTabs")) { ImGui::End(); return; }
-	if (ImGui::BeginTabItem("Light Resources"))
-	{ m_bRenderingLightsTabActive = true; RenderLightingWorkbench(); ImGui::EndTabItem(); }
-	if (ImGui::BeginTabItem("Rendering Quality / Scene Profile"))
-	{
-
+    const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+    if (m_iRenderingLastLevel != currentLevel)
+    {
+        m_iRenderingLastLevel = currentLevel;
+        if (const auto* descriptor = CLevelRegistry::Find(static_cast<LEVEL>(currentLevel)))
+        {
+            m_eRenderingSelectedLevel = descriptor->eLevel;
+            m_strRenderingSelectedProfileId = descriptor->pRenderingProfileId;
+            m_bRenderQualityDraftInitialized = false;
+        }
+    }
+    if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
+        m_strRenderingQualityProfileId = descriptor->pRenderingProfileId;
+    if (m_strRenderingSelectedProfileId.empty())
+        m_strRenderingSelectedProfileId = m_RenderingProfiles.Get_ActiveProfileId();
+    const auto syncDraft = [this]()
+    {
+        if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
+        {
+            m_SceneRenderingDraft = *profile;
+            m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
+            m_strRenderingDraftProfileId = profile->strProfileId;
+            m_bRenderQualityDraftInitialized = true;
+        }
+    };
+    if (!m_bRenderQualityDraftInitialized || m_strRenderingDraftProfileId != m_strRenderingSelectedProfileId)
+        syncDraft();
+    const bool resetLayout = m_bResetLightingLayout;
+    m_bResetLightingLayout = false;
+    const auto beginPane = [this, resetLayout](const char* title, bool_t& visible, const int pane)
+    {
+        if (!visible) return false;
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 origin = viewport->WorkPos;
+        const ImVec2 available = viewport->WorkSize;
+        constexpr float margin = 8.f;
+        constexpr float gap = 8.f;
+        const float width = (std::max)(1.f, available.x - margin * 2.f - gap * 2.f);
+        const float height = (std::max)(1.f, available.y - margin * 2.f);
+        const float leftWidth = width * .24f;
+        const float rightWidth = width * .28f;
+        const float centerWidth = width - leftWidth - rightWidth;
+        const float rightX = origin.x + margin + leftWidth + gap + centerWidth + gap;
+        ImVec2 position(origin.x + margin, origin.y + margin);
+        ImVec2 size(leftWidth, height);
+        if (pane == 1)
+        {
+            position = ImVec2(rightX, origin.y + margin);
+            size = ImVec2(rightWidth, height * .48f);
+        }
+        else if (pane == 2)
+        {
+            position = ImVec2(origin.x + margin + leftWidth + gap, origin.y + margin + height * .66f);
+            size = ImVec2(centerWidth, height * .34f);
+        }
+        else if (pane == 3)
+        {
+            position = ImVec2(rightX, origin.y + margin + height * .48f + gap);
+            size = ImVec2(rightWidth, height * .52f - gap);
+        }
+        const ImGuiCond condition = resetLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+        ImGui::SetNextWindowPos(position, condition);
+        ImGui::SetNextWindowSize(size, condition);
+        const bool expanded = ImGui::Begin(title, &visible, ImGuiWindowFlags_MenuBar);
+        if (expanded && ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("Windows"))
+            {
+                ImGui::MenuItem("Light Resources", nullptr, &m_bLightResourcesWindowVisible);
+                ImGui::MenuItem("Light Detail", nullptr, &m_bLightDetailWindowVisible);
+                ImGui::MenuItem("Light Sequencer", nullptr, &m_bLightSequencerWindowVisible);
+                ImGui::MenuItem("Rendering Workbench", nullptr, &m_bRenderingQualityWindowVisible);
+                if (ImGui::MenuItem("Show All"))
+                    m_bLightResourcesWindowVisible = m_bLightDetailWindowVisible =
+                        m_bLightSequencerWindowVisible = m_bRenderingQualityWindowVisible = true;
+                if (ImGui::MenuItem("Reset Layout"))
+                {
+                    m_bResetLightingLayout = true;
+                    m_bLightResourcesWindowVisible = m_bLightDetailWindowVisible =
+                        m_bLightSequencerWindowVisible = m_bRenderingQualityWindowVisible = true;
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+        if (!expanded) ImGui::End();
+        return expanded;
+    };
+    if (beginPane("Light Resources###LightResourcesWindowV1", m_bLightResourcesWindowVisible, 0))
+    {
+        static constexpr LEVEL levels[] = { LEVEL::LOBBY, LEVEL::CHARACTER_SELECT, LEVEL::BERN,
+            LEVEL::VALTAN_ARENA, LEVEL::KAKULSAYDON_ARENA, LEVEL::DEVELOPMENT };
+        static constexpr const char* names[] = { "Lobby", "Character Select", "Bern", "Valtan", "KoukuSaydon", "Development" };
+        int selectedLevel = 0;
+        for (int i = 0; i < 6; ++i) if (levels[i] == m_eRenderingSelectedLevel) selectedLevel = i;
+        if (ImGui::Combo("Level category", &selectedLevel, names, 6))
+        {
+            m_eRenderingSelectedLevel = levels[selectedLevel];
+            if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
+                m_strRenderingSelectedProfileId = m_strRenderingQualityProfileId = descriptor->pRenderingProfileId;
+            StopLightingPreview();
+            syncDraft();
+        }
+        RenderLightingWorkbench();
+        ImGui::End();
+    }
+    if (beginPane("Light Detail###LightDetailWindowV1", m_bLightDetailWindowVisible, 1))
+    {
+        RenderLightDetail();
+        ImGui::End();
+    }
+    if (beginPane("Light Sequencer###LightSequencerWindowV1", m_bLightSequencerWindowVisible, 2))
+    {
+        RenderLightSequencer();
+        ImGui::End();
+    }
+    if (beginPane("Rendering Workbench###RenderingQualityWindowV1", m_bRenderingQualityWindowVisible, 3))
+    {
+        const auto* pActiveProfile = m_RenderingProfiles.Get_ActiveProfile();
+        if (!pActiveProfile || !m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
+        { ImGui::TextWrapped("Selected rendering profile is unavailable."); ImGui::End(); return; }
+        ImGui::Text("Selected Level quality: %s", m_strRenderingQualityProfileId.c_str());
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	ImGui::Text("Pipeline: legacy_deferred_v1");
 	ImGui::Text("Scene profile: %s", m_strRenderingDraftProfileId.c_str());
@@ -8962,16 +9012,6 @@ void CMainApp::RenderRenderingWorkbench()
 		}
 		m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
 		if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId)) m_SceneRenderingDraft = *profile;
-	};
-	const auto applyScene = [this]()
-	{
-		m_RenderingProfiles.Update_Profile(
-			m_SceneRenderingDraft, m_strRenderingStatus);
-		if (const SCENE_RENDERING_PROFILE* pProfile =
-			m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
-		{
-			m_SceneRenderingDraft = *pProfile;
-		}
 	};
 
 	bool_t globalChanged = false;
@@ -9055,141 +9095,6 @@ void CMainApp::RenderRenderingWorkbench()
 		applyGlobal();
 	}
 
-	bool_t sceneChanged = false;
-	ImGui::SeparatorText("Active Scene Artistic Profile");
-	sceneChanged |= ImGui::DragFloat3(
-		"Light Direction", &m_SceneRenderingDraft.Light.vDirection.x,
-		0.01f, -8.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat3(
-		"Diffuse RGB", &m_SceneRenderingDraft.Light.vDiffuse.x,
-		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat3(
-		"Ambient RGB", &m_SceneRenderingDraft.Light.vAmbient.x,
-		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat3(
-		"Specular RGB", &m_SceneRenderingDraft.Light.vSpecular.x,
-		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Exposure Multiplier", &m_SceneRenderingDraft.fExposureMultiplier,
-		0.005f, 0.1f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Bloom Intensity Multiplier",
-		&m_SceneRenderingDraft.fBloomIntensityMultiplier,
-		0.005f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::Checkbox(
-		"Directional Shadow Enabled",
-		&m_SceneRenderingDraft.ShadowSettings.bEnabled);
-	ImGui::BeginDisabled(!m_SceneRenderingDraft.ShadowSettings.bEnabled);
-	sceneChanged |= ImGui::DragFloat3(
-		"Shadow Focus", &m_SceneRenderingDraft.vShadowFocus.x,
-		0.1f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Light Distance", &m_SceneRenderingDraft.fShadowDistance,
-		0.1f, 0.1f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Coverage Width",
-		&m_SceneRenderingDraft.ShadowSettings.fOrthographicWidth,
-		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Coverage Height",
-		&m_SceneRenderingDraft.ShadowSettings.fOrthographicHeight,
-		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Near", &m_SceneRenderingDraft.ShadowSettings.fNear,
-		0.01f, 0.0001f, 100000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Far", &m_SceneRenderingDraft.ShadowSettings.fFar,
-		0.1f, 0.0001f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Depth Bias", &m_SceneRenderingDraft.ShadowSettings.fDepthBias,
-		0.00005f, 0.f, 0.05f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Normal Bias", &m_SceneRenderingDraft.ShadowSettings.fNormalBias,
-		0.001f, 0.f, 10.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Shadow Strength", &m_SceneRenderingDraft.ShadowSettings.fStrength,
-		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Shadow uses a fixed 2048 depth map with 3x3 PCF; light eye is derived from focus and scene direction.");
-
-	ImGui::SeparatorText("Height Fog");
-	sceneChanged |= ImGui::Checkbox(
-		"Height Fog Enabled", &m_SceneRenderingDraft.Fog.bEnabled);
-	ImGui::BeginDisabled(!m_SceneRenderingDraft.Fog.bEnabled);
-	sceneChanged |= ImGui::ColorEdit3(
-		"Fog Color", &m_SceneRenderingDraft.Fog.vColor.x);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Top Height", &m_SceneRenderingDraft.Fog.fTopHeight,
-		0.25f, -10000.f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Height Falloff", &m_SceneRenderingDraft.Fog.fHeightFalloff,
-		0.002f, 0.0001f, 4.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Density", &m_SceneRenderingDraft.Fog.fDensity,
-		0.01f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Start Distance", &m_SceneRenderingDraft.Fog.fStartDistance,
-		0.25f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Maximum Opacity", &m_SceneRenderingDraft.Fog.fMaximumOpacity,
-		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Drift Speed", &m_SceneRenderingDraft.Fog.fDriftSpeed,
-		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Drift Height", &m_SceneRenderingDraft.Fog.fDriftHeightAmplitude,
-		0.05f, 0.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Fog Drift Density", &m_SceneRenderingDraft.Fog.fDriftDensityAmplitude,
-		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-
-	ImGui::SeparatorText("Cloud Banks");
-	/* The authored value is a fraction; the slider speaks percent because that
-	   is how the map coverage is judged by eye. */
-	f32_t fFogCoveragePercent =
-		m_SceneRenderingDraft.Fog.fCoveragePercent * 100.f;
-	if (ImGui::DragFloat("Map Coverage", &fFogCoveragePercent,
-		0.5f, 0.f, 100.f, "%.0f%%", ImGuiSliderFlags_AlwaysClamp))
-	{
-		m_SceneRenderingDraft.Fog.fCoveragePercent =
-			fFogCoveragePercent * 0.01f;
-		sceneChanged = true;
-	}
-	sceneChanged |= ImGui::DragFloat(
-		"Wind Direction X", &m_SceneRenderingDraft.Fog.fWindDirectionX,
-		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Wind Direction Z", &m_SceneRenderingDraft.Fog.fWindDirectionZ,
-		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Wind Speed", &m_SceneRenderingDraft.Fog.fWindSpeed,
-		0.05f, 0.f, 200.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Patch Scale", &m_SceneRenderingDraft.Fog.fPatchScale,
-		0.0005f, 0.0001f, 1.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-	sceneChanged |= ImGui::DragFloat(
-		"Patch Softness", &m_SceneRenderingDraft.Fog.fPatchSoftness,
-		0.005f, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::TextDisabled(
-		"Coverage 100%% is one blanket. Lower it and the fog breaks into banks that the wind walks across world XZ; Patch Scale sets their size.");
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Fog fills below Top Height and is applied in the deferred combine, so effects and the blend group stay clear of it.");
-	if (sceneChanged)
-	{
-		m_SceneRenderingDraft.Light.vDirection.w = 0.f;
-		m_SceneRenderingDraft.Light.vDiffuse.w = 1.f;
-		m_SceneRenderingDraft.Light.vAmbient.w = 1.f;
-		m_SceneRenderingDraft.Light.vSpecular.w = 1.f;
-		m_SceneRenderingDraft.ShadowSettings.fFar = (std::max)(
-			m_SceneRenderingDraft.ShadowSettings.fFar,
-			m_SceneRenderingDraft.ShadowSettings.fNear + 0.0001f);
-		applyScene();
-	}
-	ImGui::TextDisabled(
-		"Effective Exposure/Bloom = selected quality base x scene multiplier.");
-
 	ImGui::SeparatorText("Selected Quality A/B Actions");
 	if (ImGui::Button("Reset Selected Quality Defaults"))
 	{
@@ -9245,11 +9150,8 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
 	ImGui::TextDisabled(
 		"Save changes Authored only; Publish validates/promotes Runtime; Reload commits atomically.");
-	ImGui::EndTabItem();
-	}
-	ImGui::EndTabBar();
-	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
 	ImGui::End();
+	}
 }
 
 void CMainApp::RenderProfilerOverlay()

@@ -21,6 +21,7 @@ public:
     void Update(f32_t seconds, bool_t active);
     void Render();
     bool_t Is_Open() const { return m_Open; }
+    bool Consume_InteractionRequest();
     // Only a saved document may become a Workbench resource inventory.
     const CWorldSequenceDocument* Get_SavedDocument() const { return m_Ready ? &m_SavedDocument : nullptr; }
     uint64_t Get_SavedGeneration() const { return m_SavedGeneration; }
@@ -39,8 +40,13 @@ private:
     void Select_Object(const std::string& id);
     void Select_State(const std::string& id);
     std::vector<std::string> StateIds(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource) const;
-    void Create_Object();
+    bool Create_Object();
     void Create_State();
+    bool Build_State(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& stateName,
+        WORLD_SEQUENCE_TEMPLATE& sequence, WORLD_SEQUENCE_INSTANCE& instance);
+    void Change_ResourceAnchor(WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& anchorKind);
+    void Render_WindowMenu();
+    void Render_Toolbar();
     void Render_Resources();
     void Render_Detail();
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
@@ -49,6 +55,12 @@ private:
     void Rebuild_PhysicalTree();
 
     bool m_Open = false;
+    bool m_ResourcesOpen = true;
+    bool m_SequencerOpen = true;
+    bool m_DetailOpen = true;
+    bool m_ResetLayoutRequested = false;
+    bool m_InteractionRequested = false;
+    bool m_PreviewAtCharacter = true;
     bool m_Ready = false;
     bool m_Dirty = false;
     bool m_PreviewActive = false;
@@ -76,6 +88,8 @@ private:
     size_t m_SelectedKey = 0;
     uint64_t m_SavedGeneration = 0;
     std::array<char, 128> m_NewObjectName{};
+    int m_NewObjectAnchor = 0;
+    bool m_CreateObjectFailed = false;
     std::array<char, 128> m_NewStateName{};
     std::array<char, 256> m_ObjectSearch{};
     std::array<char, 256> m_PhysicalSearch{};

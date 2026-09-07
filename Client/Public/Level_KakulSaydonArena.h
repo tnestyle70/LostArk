@@ -202,7 +202,8 @@ public:
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
-	bool_t Debug_BeginWorldObjectPreview(const CWorldSequenceDocument&, const std::string& instanceId, std::string& status);
+	bool_t Debug_BeginWorldObjectPreview(const CWorldSequenceDocument&, const std::string& instanceId,
+		std::string& status, bool_t previewAtCharacter = true);
 	bool_t Debug_SampleWorldObjectPreview(f32_t clockMs, std::string& status);
 	void Debug_StopWorldObjectPreview();
 #endif

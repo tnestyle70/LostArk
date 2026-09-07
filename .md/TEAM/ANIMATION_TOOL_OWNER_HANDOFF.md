@@ -991,14 +991,17 @@ Dance/Roulette의 `resetBossToSpawn`은 Server 패턴 시작 때 적용된다. W
 네 회차로 저작하고 speed 1로 샘플한다. 모든 판정 창은 WORLD 표시 수명 안에 있어야 한다.
 저작 값은 단일 Composition 정본에 저장하고 명시 publish 후 Server를 재시작한다.
 
-F1 World → World Object Tool에서 카드·조커카드·공·세토·칼날·갈고리·빙고폭탄·빙고와
-기존 커튼·룰렛을 편집한다. Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
+F1 Tools → World Object Tool에서 카드·조커카드·공·세토·칼날·갈고리·빙고폭탄·빙고와
+기존 커튼·룰렛을 편집한다. Object Resources는 왼쪽, Object Sequencer는 아래, Object Detail은 오른쪽의 독립 창이다.
+Resources의 Map/Character 분류와 Create의 anchor는 resource.anchorKind(WORLD/PLAYER)에 저장하고 상태 생성에 사용한다.
+Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
 상대 경로만 저장한다. 카드의 들썩임·뒤집힘은 별도 named state로 두되 같은 모델을 공유한다.
-Object Detail의 Transform/animation timeline과 velocity/acceleration/self spin/revolution,
+Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
 마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
-살아 있는 복제 플레이어마다 적용되고 World는 저작 위치에 고정된다.
+살아 있는 복제 플레이어마다 적용되고 Map은 저작 위치에 고정된다. Object Tool의 Preview at Character는
+모델 상태의 Map preview만 현재 캐릭터 위치로 옮기고 저장 위치와 커튼/룰렛 배치는 유지한다.
 
 `Save` → `Publish Area` 후 Action Workbench → Resources → World에서 상태를 선택해
 Append한다. Save는 source와 연결 placement의 외부 변경을 검사하고, Publish 성공 뒤 runtime을
@@ -1028,15 +1031,21 @@ SCENE_PROFILE은 기존 정의·배치를 유지한다. 다른 pattern의 잘못
 | Collider debugRender | 기본 true의 debug wire 표시 스위치이며 gameplay 판정을 끄지 않음 |
 | WORLD companionEffectResourceId / EFFECT worldOccurrenceId | 같은 Composition EFFECT 정의 및 같은 pattern WORLD box 연결, Preview/Append 동반 배치 |
 | LIGHT assetId/defaultAnchorKind | LightResources catalog 또는 해당 Area v2 map light의 stable ID. 색·cone을 Composition에 복제하지 않음 |
-| LIGHT anchorKind/brightnessMultiplier | MAP 고정 world 위치, PLAYER 살아 있는 복제 캐릭터마다 1개, BOSS 현재 pattern 소유자. 수명·fade·밝기 배율 적용 |
+| LIGHT anchorKind/brightnessMultiplier | MAP 고정 world 위치, PLAYER 같은 방에 존재하는 복제 캐릭터마다 1개, BOSS 현재 pattern 소유자. 수명·fade·밝기 배율 적용 |
 
-조명 저작은 Rendering Workbench의 Level 선택 → Light Resources → Map/Character/Boss에서 한다.
+조명 저작은 F1 Tools → Rendering Workbench의 Level 선택 후 독립 Light Resources에서 한다.
+Create Light와 All Lights는 Map Profile / Scene Profile / Anchor Light로 나누며 Anchor Light 아래에 Map/Character/Boss가 있다.
+Light Detail과 품질 전용 Rendering Workbench는 별도 창이고, 아래 Light Sequencer에서 Play/Pause/Seek/Stop한다.
+Scene/Map preview 종료 시 이전 상태를 복구한다. 단일 Character 리소스 audition은 로컬 캐릭터를 사용하고,
+Composition preview와 Server Product는 같은 방의 Server snapshot에 존재하는 모든 캐릭터에게 조명을 적용한다.
 Character/Boss 리소스는 Save Light → Publish Light로 LightResources runtime을 배포하고,
 Action Workbench → Resources → Light에서 선택 → Append selected Light로 패턴에 놓는다.
 같은 위치의 맵 조명을 패턴에서 재사용할 때는 해당 v2 map light ID를 참조한다. Map 고정 조명은 기존 Layer 수명을,
 Append한 조명은 box 수명을 따르므로 중첩 배치가 필요하지 않으면 맵 원본의 enabled를 끈다.
 Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이나 Server gameplay 판정을 추가하지 않는다.
 패턴의 Scene Profile은 Level base qualityOverride를 상속하므로 쿠크 전용 품질 튜닝이 패턴 전환으로 사라지지 않는다.
+씬프로필_암전은 기존 scene.kakulsaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
+이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
 `dissolveStart/dissolveEnd`는 정규화 수명 내 dissolve-out 시작/종료 시점이며
 `0 <= start < end <= 1`이다. box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.

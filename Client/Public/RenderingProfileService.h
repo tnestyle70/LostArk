@@ -14,6 +14,8 @@ NS_BEGIN(Client)
 struct SCENE_RENDERING_PROFILE final
 {
 	string strProfileId;
+	string strDisplayName;
+	const string& Get_DisplayName() const { return strDisplayName.empty() ? strProfileId : strDisplayName; }
 	bool_t bHasQualityOverride = false;
 	RENDER_QUALITY_SETTINGS QualityOverride{};
 	LIGHT_DESC Light{};
@@ -56,7 +58,7 @@ public:
 	const SCENE_RENDERING_PROFILE* Find_Profile(string_view id) const;
 	const RENDER_QUALITY_SETTINGS& Get_ProfileQuality(string_view id) const;
 	bool_t Update_Profile(const SCENE_RENDERING_PROFILE& profile, string& status);
-	bool_t Duplicate_Profile(string_view sourceId, string_view newId, string& status);
+	bool_t Duplicate_Profile(string_view sourceId, string_view newId, string& status, string_view displayName = {});
 	bool_t Delete_Profile(string_view id, string& status);
 	void Protect_ProfileIds(const vector<string>& ids);
 	const string& Get_LevelQualityProfileId() const { return m_strLevelQualityProfileId; }

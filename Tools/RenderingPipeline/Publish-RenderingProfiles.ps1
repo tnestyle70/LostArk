@@ -221,6 +221,14 @@ function Assert-RenderingProfileDocument([object]$Document) {
         [StringComparer]::Ordinal)
     foreach ($profile in $profiles) {
         $profileFields = @('profileId', 'exposureMultiplier', 'bloomIntensityMultiplier', 'light', 'shadow', 'fog')
+        if ($null -ne $profile.PSObject.Properties['displayName']) {
+            $profileFields += 'displayName'
+            if ($profile.displayName -isnot [string] -or [string]::IsNullOrEmpty($profile.displayName) -or
+                $profile.displayName.Contains([string][char]0) -or
+                [Text.UTF8Encoding]::new($false, $true).GetByteCount($profile.displayName) -gt 256) {
+                throw 'profile.displayName must contain 1 to 256 valid UTF-8 bytes without NUL.'
+            }
+        }
         $quality = $global
         if ($null -ne $profile.PSObject.Properties['qualityOverride']) {
             $profileFields += 'qualityOverride'

@@ -75,6 +75,13 @@ namespace
 			});
 	}
 
+	bool_t Is_DisplayName(const string& value)
+	{
+		return value.empty() || (value.size() <= 256u && value.find('\0') == string::npos &&
+			MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+				static_cast<int>(value.size()), nullptr, 0) > 0);
+	}
+
 	bool_t Read_Float(
 		const DATA_JSON_VALUE& object,
 		const char_t* pName,
@@ -373,13 +380,16 @@ bool_t CRenderingProfileService::Update_Profile(const SCENE_RENDERING_PROFILE& p
 	return true;
 }
 
-bool_t CRenderingProfileService::Duplicate_Profile(string_view sourceId, string_view newId, string& status)
+bool_t CRenderingProfileService::Duplicate_Profile(string_view sourceId, string_view newId, string& status, string_view displayName)
 {
 	const auto* source = Find_Profile(sourceId);
 	if (!source || !Is_StableId(string(newId)) || Has_Profile(newId) || m_Catalog.Profiles.size() >= MAXIMUM_PROFILE_COUNT)
 	{ status = "Duplicate requires an existing source and a unique stable profile ID (maximum 32)."; return false; }
 	SCENE_RENDERING_PROFILE copy = *source;
 	copy.strProfileId = string(newId);
+	copy.strDisplayName = string(displayName);
+	if (!Is_DisplayName(copy.strDisplayName))
+	{ status = "Display name must contain at most 256 valid UTF-8 bytes without NUL."; return false; }
 	// A new scene mood inherits the owning Level quality instead of freezing its current base.
 	copy.bHasQualityOverride = false;
 	m_Catalog.Profiles.emplace(copy.strProfileId, copy);
@@ -527,6 +537,12 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			  "bloomIntensityMultiplier", "light", "shadow", "fog" }) &&
 			!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier", "bloomIntensityMultiplier",
+			  "light", "shadow", "fog", "qualityOverride" }) &&
+			!Has_ExactFields(value,
+			{ "profileId", "displayName", "exposureMultiplier", "bloomIntensityMultiplier",
+			  "light", "shadow", "fog" }) &&
+			!Has_ExactFields(value,
+			{ "profileId", "displayName", "exposureMultiplier", "bloomIntensityMultiplier",
 			  "light", "shadow", "fog", "qualityOverride" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
@@ -567,6 +583,12 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			return false;
 		}
 		profile.strProfileId = pId->Get_String();
+		if (const DATA_JSON_VALUE* name = value.Find("displayName"))
+		{
+			if (!name->Is_String() || name->Get_String().empty() || !Is_DisplayName(name->Get_String()))
+			{ strOutStatus = "Scene profile displayName must contain 1 to 256 valid UTF-8 bytes without NUL."; return false; }
+			profile.strDisplayName = name->Get_String();
+		}
 		const DATA_JSON_VALUE* pType = Required(
 			*pLight, "type", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* pShadowEnabled = Required(
@@ -755,7 +777,7 @@ bool_t CRenderingProfileService::Validate_Profile(
 {
 	const float4_t& direction = Profile.Light.vDirection;
 	const SHADOW_SETTINGS& shadow = Profile.ShadowSettings;
-	const bool_t valid = Is_StableId(Profile.strProfileId) &&
+	const bool_t valid = Is_StableId(Profile.strProfileId) && Is_DisplayName(Profile.strDisplayName) &&
 		LIGHT::DIRECTIONAL == Profile.Light.eType &&
 		Is_FiniteRange(direction.x, -64.f, 64.f) &&
 		Is_FiniteRange(direction.y, -64.f, 64.f) &&
@@ -901,6 +923,8 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			Write_Quality(output, profile.QualityOverride);
 			output << ",\n";
 		}
+		if (!profile.strDisplayName.empty())
+			output << "      \"displayName\": " << Quote(profile.strDisplayName) << ",\n";
 		output << "      \"profileId\": " << Quote(profileId) << ",\n"
 			"      \"exposureMultiplier\": " << profile.fExposureMultiplier << ",\n"
 			"      \"bloomIntensityMultiplier\": " <<

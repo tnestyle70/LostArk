@@ -33,6 +33,7 @@ public:
     bool_t Is_Visible() const { return m_Visible; }
     void Hide() { m_Visible = false; }
     const float4x4_t& Get_SampledWorld() const { return m_World; }
+    const std::string& Get_RenderStatus() const { return m_RenderStatus; }
 private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     shared_ptr<Engine::CModel> m_Model;
@@ -40,5 +41,6 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_Diffuse;
     float4x4_t m_World{};
     bool_t m_Visible = false;
+    std::string m_RenderStatus;
 };
 NS_END

@@ -7,6 +7,8 @@
 #include "RuntimeAssetRoot.h"
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 using namespace Client;
 using namespace Engine;
@@ -71,13 +73,17 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
     {
         if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
         const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
-        if (!resource || resource->modelAssetId.empty() || !targets.device || !targets.context) return false;
+        if (!resource || resource->modelAssetId.empty())
+        { m_Status = "World Object model binding is unavailable: " + binding.targetId; return false; }
+        if (!targets.device || !targets.context)
+        { m_Status = "World Object render device is unavailable."; return false; }
         auto model = m_ObjectModels.find(resource->objectId);
         if (model == m_ObjectModels.end())
         {
             OBJECT_MODEL staged;
             const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
-            if (path.empty()) return false;
+            if (path.empty())
+            { m_Status = "World Object model path is invalid: " + resource->modelAssetId; return false; }
             staged.model = CModel::Create(targets.device, targets.context,
                 resource->animated ? MODEL::ANIM : MODEL::NONANIM, path.string().c_str(),
                 XMMatrixScaling(resource->modelPreScale, resource->modelPreScale, resource->modelPreScale));
@@ -92,6 +98,11 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                     nullptr, &staged.diffuse)) || !staged.diffuse)
                 { m_Status = "World Object texture admission failed: " + resource->diffuseTextureAssetId; return false; }
             }
+            if (!staged.diffuse)
+                for (uint32_t mesh = 0; mesh < staged.model->Get_NumMeshes(); ++mesh)
+                    if (!staged.model->Has_MaterialTexture(mesh, aiTextureType_DIFFUSE))
+                    { m_Status = "World Object diffuse texture is unavailable: " + resource->modelAssetId +
+                        " (mesh " + std::to_string(mesh) + ")"; return false; }
             model = m_ObjectModels.emplace(resource->objectId, std::move(staged)).first;
         }
         if (sequence)
@@ -150,16 +161,47 @@ bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, f
     return true;
 }
 
+std::string CWorldSequencePlayer::Get_ObjectSampleStatus(const std::string& instanceId) const
+{
+    const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+        [&](const auto& value) { return value.instanceId == instanceId; });
+    if (active == m_Active.end()) return "World Object preview is not active.";
+    if (!active->objectSampleStatus.empty()) return active->objectSampleStatus;
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    if (!instance) return "World Object preview instance is unavailable.";
+    const bool hasObjects = std::any_of(instance->bindings.begin(), instance->bindings.end(),
+        [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
+    if (!hasObjects) return "Placed World Object state sampled at its authored map placement.";
+    size_t visible = 0;
+    const CWorldSequenceObject* first = nullptr;
+    for (const auto& entry : active->objects)
+        if (entry.object && entry.object->Is_Visible())
+        { ++visible; if (!first) first = entry.object.get(); }
+    if (!first) return "World Object: 0 visible (outside lifetime or hidden by the current key).";
+    const auto& world = first->Get_SampledWorld();
+    std::ostringstream status;
+    status << "World Object: " << visible << " visible, first position (" << std::fixed << std::setprecision(2)
+        << world._41 << ", " << world._42 << ", " << world._43 << ").";
+    return status.str();
+}
+
 bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
     const WORLD_SEQUENCE_INSTANCE& instance, const WORLD_SEQUENCE_TEMPLATE& sequence,
     const TARGET_SET& targets, const f32_t localMs, const bool_t visible)
 {
+    active.objectSampleStatus.clear();
     for (auto& entry : active.objects) entry.object->Hide();
-    if (!visible) return true;
+    if (!visible || std::none_of(instance.bindings.begin(), instance.bindings.end(),
+        [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; })) return true;
     std::vector<PLAYER_ANCHOR> anchors;
     if (instance.anchorKind == "PLAYER")
     {
         if (targets.playerAnchors) anchors = targets.playerAnchors();
+        if (anchors.empty())
+        {
+            active.objectSampleStatus = "World Object Character anchor is waiting for a living replicated player.";
+            return true;
+        }
     }
     else
     {
@@ -174,7 +216,8 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
         const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
         const auto model = m_ObjectModels.find(binding.targetId);
         const auto* track = Find_Track(sequence, binding.slotId);
-        if (!resource || model == m_ObjectModels.end()) return false;
+        if (!resource || model == m_ObjectModels.end())
+        { m_Status = "World Object model was not prepared: " + binding.targetId; return false; }
         for (const auto& anchor : anchors)
             for (uint32_t emitter = 0; emitter < motion.count; ++emitter)
             {
@@ -194,7 +237,8 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                     shared_ptr<CGameObject> staged;
                     if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
                         CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex,
-                        CWorldSequenceObject::LAYER_TAG, &desc, &staged))) return false;
+                        CWorldSequenceObject::LAYER_TAG, &desc, &staged)))
+                    { m_Status = "World Object clone/shader creation failed: " + resource->objectId; return false; }
                     active.objects.push_back({binding.slotId, anchor.entityId, emitter, targets.levelIndex,
                         dynamic_pointer_cast<CWorldSequenceObject>(staged)});
                     found = active.objects.end() - 1;
@@ -222,7 +266,8 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 for (int axis = 0; axis < 3; ++axis)
                 {
                     const float length = XMVectorGetX(XMVector3LengthSq(basis.r[axis]));
-                    if (!std::isfinite(length) || length < 1e-6f) return false;
+                    if (!std::isfinite(length) || length < 1e-6f)
+                    { m_Status = "World Object anchor transform is invalid: " + resource->objectId; return false; }
                     basis.r[axis] = XMVectorSetW(XMVector3Normalize(basis.r[axis]), 0.f);
                 }
                 const matrix_t rotation = XMMatrixRotationQuaternion(XMLoadFloat4(&key.rotationQuaternion)) *
@@ -235,7 +280,12 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 XMStoreFloat4x4(&stored, world);
                 f32_t windowEnd = 0.f;
                 const auto* animation = Find_AnimationTrackAt(sequence, binding.slotId, ageMs, windowEnd);
-                if (!found->object || !found->object->Sample(stored, key.visible, animation, ageMs, windowEnd)) return false;
+                if (!found->object)
+                { m_Status = "World Object clone type is invalid: " + resource->objectId; return false; }
+                if (!found->object->Get_RenderStatus().empty())
+                { m_Status = found->object->Get_RenderStatus() + " / " + resource->objectId; return false; }
+                if (!found->object->Sample(stored, key.visible, animation, ageMs, windowEnd))
+                { m_Status = "World Object transform/animation sample failed: " + resource->objectId; return false; }
             }
     }
     return true;
