@@ -257,12 +257,15 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			characterTransform);
 		if (nullptr == pBodyModel)
 			return E_FAIL;
-		/* Shared clips (the Esther summon cast) ship as a meshless animation
-		set; attaching is fail-closed on skeleton hash and clip collisions. */
-		if (!pActor->animationSetModel.empty())
+		/* Shared clips the class borrows rather than cooks into its body -- the
+		Esther summon cast, the character-creation idle -- ship as separate
+		animation sets. Attaching is fail-closed on skeleton hash and clip
+		collisions, so one bad set fails this class's admission rather than
+		leaving the character half-built. */
+		for (const std::string& animationSetModel : pActor->animationSetModels)
 		{
 			const std::filesystem::path animSetPath =
-				CRuntimeAssetRoot::Resolve(pActor->animationSetModel);
+				CRuntimeAssetRoot::Resolve(animationSetModel);
 			if (animSetPath.empty())
 				return E_FAIL;
 			const unique_ptr<CModel> pAnimSet = CModel::Create(

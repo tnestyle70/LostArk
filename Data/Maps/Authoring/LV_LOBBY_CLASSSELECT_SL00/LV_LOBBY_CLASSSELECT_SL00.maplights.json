@@ -1,0 +1,205 @@
+{
+ "schema": "lostark.map-light-presentation",
+ "formatVersion": 2,
+ "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+ "provenance": "PROJECT_AUTHORED",
+ "nextLightOrdinal": 8,
+ "lights": [
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlightmovable_0.86",
+   "displayName": "pointlightmovable_0 / pointlightcomponent_264",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": false,
+   "position": [
+    -767.241641,
+    -137.718057,
+    174.448184
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 40.0,
+   "falloffExponent": 4.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.92549,
+    0.811765,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlightmovable_36.87",
+   "displayName": "pointlightmovable_36 / pointlightcomponent_275",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": false,
+   "position": [
+    -782.517578,
+    -121.444844,
+    198.812148
+   ],
+   "rotationDegrees": [
+    -0.0,
+    111.071777,
+    0.0
+   ],
+   "rangeMeters": 62.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "brightness": 0.3
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlightmovable_39.88",
+   "displayName": "pointlightmovable_39 / pointlightcomponent_275",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": false,
+   "position": [
+    -760.944062,
+    -118.098037,
+    190.24252
+   ],
+   "rotationDegrees": [
+    -0.0,
+    111.071777,
+    0.0
+   ],
+   "rangeMeters": 40.96,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "brightness": 0.0
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlightmovable_47.89",
+   "displayName": "pointlightmovable_47 / pointlightcomponent_275",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    -770.813125,
+    -140.882324,
+    196.40082
+   ],
+   "rotationDegrees": [
+    -0.0,
+    111.071777,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "brightness": 4.0
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlightmovable_48.90",
+   "displayName": "pointlightmovable_48 / pointlightcomponent_275",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    -770.608047,
+    -140.472324,
+    196.096777
+   ],
+   "rotationDegrees": [
+    -0.0,
+    111.071777,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    0.662745,
+    0.760784,
+    1.0,
+    1.0
+   ],
+   "brightness": 1.0
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.pointlight_0_lc.91",
+   "displayName": "pointlight_0_lc / pointlight_0_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    -772.750469,
+    -137.533105,
+    198.932949
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 15.664692,
+   "falloffExponent": 4.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.92549,
+    0.811765,
+    1.0
+   ],
+   "brightness": 0.65
+  },
+  {
+   "lightId": "light.lv_lobby_classselect_sl00.spotlightmovable_0.99",
+   "displayName": "spotlightmovable_0 / spotlightcomponent_0",
+   "kind": "SPOT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    -789.854688,
+    -135.716162,
+    206.228379
+   ],
+   "rotationDegrees": [
+    49.394531,
+    62.490234,
+    0.0
+   ],
+   "rangeMeters": 8.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 2.0,
+   "outerConeDegrees": 7.0,
+   "color": [
+    1.0,
+    0.760784,
+    0.615686,
+    1.0
+   ],
+   "brightness": 40.0
+  }
+ ]
+}

@@ -238,6 +238,7 @@ private:
 	(which simply wasn't called and drew nothing), these slots live under LEVEL::STATIC and would
 	otherwise keep showing across a level change or while closed. */
 	void Update_ItemUpgrade(f32_t fTimeDelta);
+	void Update_CustomizingSceneProfile();
 	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
 	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
@@ -433,6 +434,9 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	CRenderingProfileService m_RenderingProfiles;
+	/* Set while the character-creation screen holds the dark stage profile, so the
+	swap happens on the open/close edge instead of every frame. */
+	string m_strSceneProfileBeforeCustomizing;
 	CLightResourceCatalog m_LightResources;
 	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };

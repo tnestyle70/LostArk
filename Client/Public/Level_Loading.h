@@ -73,6 +73,16 @@ private:
 	   of fabricating an overall percentage. */
 	f32_t							m_fDisplayProgress = 0.f;
 	f32_t							m_fIndeterminateProgress = 0.f;
+	/* Successive lanes (Effect document staging, Product target settling, the Level worker)
+	   each report against their own denominator, so the raw fraction above jumps backwards
+	   whenever the reporting lane changes. These keep what the player sees monotonic: the
+	   target only ever rises, and the drawn value eases toward it instead of teleporting.
+	   Neither fabricates a percentage -- they only filter the values the lanes publish. */
+	f32_t							m_fTargetProgress = 0.f;
+	f32_t							m_fShownProgress = 0.f;
+	/* Once any lane has published a real fraction the bar stays a filling bar. Dropping back
+	   to the sliding segment between lanes is what made it look like it was thrashing. */
+	bool_t							m_hasDeterminateProgress = false;
 
 	wstring_t						m_strTitleText;
 	wstring_t						m_strTipText;
