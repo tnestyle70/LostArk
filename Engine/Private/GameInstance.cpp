@@ -311,6 +311,15 @@ bool_t CGameInstance::IsMouseInputBlocked() const
 }
 
 #ifdef _WIN64
+uint64_t CGameInstance::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs)
+{ return m_pSound_Manager ? m_pSound_Manager->Play_SoundCue(path, volume, ageMs) : 0u; }
+void CGameInstance::Pause_SoundCue(uint64_t handle, bool_t paused)
+{ if (m_pSound_Manager) m_pSound_Manager->Pause_SoundCue(handle, paused); }
+void CGameInstance::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
+{ if (m_pSound_Manager) m_pSound_Manager->Seek_SoundCue(handle, ageMs); }
+void CGameInstance::Stop_SoundCue(uint64_t handle)
+{ if (m_pSound_Manager) m_pSound_Manager->Stop_SoundCue(handle); }
+
 HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
 {
 	return m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume);

@@ -37,7 +37,8 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 		return E_FAIL;
 
 	auto pDesc = static_cast<CAMERA_FREE_DESC*>(pArg);
-	if (!std::isfinite(pDesc->fSpeedPerSec) || pDesc->fSpeedPerSec <= 0.f)
+	if (!std::isfinite(pDesc->fSpeedPerSec) || pDesc->fSpeedPerSec <= 0.f ||
+		!std::isfinite(pDesc->fFollowRollDegrees))
 		return E_INVALIDARG;
 	m_fInitialMoveSpeed = pDesc->fSpeedPerSec;
 	m_fFreeMoveSpeed = pDesc->fSpeedPerSec;
@@ -47,6 +48,7 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 	m_vPositionOffset = pDesc->vPositionOffset;
 	m_vLookOffset = pDesc->vLookOffset;
 	m_fFollowResponse = pDesc->fFollowResponse;
+	m_fFollowRollDegrees = pDesc->fFollowRollDegrees;
 	m_allowCapturedKeyboardInput = pDesc->allowCapturedKeyboardInput;
 	m_bFollowRequested = pDesc->isFollowEnabled;
 	m_bFollowEnabled =
@@ -57,6 +59,11 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
 
+	if (0.f != m_fFollowRollDegrees)
+	{
+		Apply_FollowRoll();
+		__super::Update_PipeLine();
+	}
 	m_fBaseFovy = m_fFovy;
 	m_vAppliedShakeOffset = {};
 	CCameraShakeService::Clear();
@@ -170,6 +177,54 @@ void CCamera_Free::Set_PositionOffset(
 	m_vPositionOffset = vPositionOffset;
 }
 
+bool_t CCamera_Free::Set_FollowPose(
+	const float3_t& vPositionOffset,
+	const float3_t& vLookOffset,
+	const f32_t rollDegrees,
+	const f32_t fovYDegrees,
+	const f32_t followResponse)
+{
+	if (nullptr == m_pTransformCom ||
+		!std::isfinite(vPositionOffset.x) || !std::isfinite(vPositionOffset.y) ||
+		!std::isfinite(vPositionOffset.z) || !std::isfinite(vLookOffset.x) ||
+		!std::isfinite(vLookOffset.y) || !std::isfinite(vLookOffset.z) ||
+		!std::isfinite(rollDegrees) || !std::isfinite(fovYDegrees) ||
+		fovYDegrees <= 1.f || fovYDegrees >= 179.f ||
+		!std::isfinite(followResponse) || followResponse < 0.f)
+	{
+		return false;
+	}
+	const vector_t direction = XMLoadFloat3(&vLookOffset) - XMLoadFloat3(&vPositionOffset);
+	const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(direction));
+	const f32_t horizontalSquared =
+		(vLookOffset.x - vPositionOffset.x) * (vLookOffset.x - vPositionOffset.x) +
+		(vLookOffset.z - vPositionOffset.z) * (vLookOffset.z - vPositionOffset.z);
+	if (!std::isfinite(lengthSquared) || lengthSquared <= 0.000001f ||
+		horizontalSquared <= lengthSquared * 0.000001f)
+	{
+		return false;
+	}
+
+	// An active cinematic keeps the visible pose; the next follow frame uses
+	// these settings without changing ownership or the user's F6 mode.
+	if (!Is_PresentationOverrideActive())
+		Remove_AppliedCameraShake();
+	m_vPositionOffset = vPositionOffset;
+	m_vLookOffset = vLookOffset;
+	m_fFollowRollDegrees = rollDegrees;
+	m_fFollowResponse = followResponse;
+	m_fBaseFovy = fovYDegrees;
+	m_bFollowInitialized = false;
+	if (!Is_PresentationOverrideActive())
+	{
+		m_fFovy = fovYDegrees;
+		if (m_bFollowEnabled)
+			Update_FollowCamera(0.f);
+		__super::Update_PipeLine();
+	}
+	return true;
+}
+
 void CCamera_Free::Frame_Area(
 	const float3_t& center,
 	const f32_t radius)
@@ -277,6 +332,19 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 
 	m_pTransformCom->LookAt(
 		XMLoadFloat3(&m_vCurrentLookAt));
+	if (0.f != m_fFollowRollDegrees)
+		Apply_FollowRoll();
+}
+
+void CCamera_Free::Apply_FollowRoll()
+{
+	const matrix_t rotation = XMMatrixRotationAxis(
+		XMVector3Normalize(m_pTransformCom->Get_State(STATE::LOOK)),
+		XMConvertToRadians(m_fFollowRollDegrees));
+	m_pTransformCom->Set_State(STATE::RIGHT, XMVector3TransformNormal(
+		m_pTransformCom->Get_State(STATE::RIGHT), rotation));
+	m_pTransformCom->Set_State(STATE::UP, XMVector3TransformNormal(
+		m_pTransformCom->Get_State(STATE::UP), rotation));
 }
 
 void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)

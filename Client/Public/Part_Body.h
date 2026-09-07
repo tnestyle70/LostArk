@@ -43,6 +43,9 @@ public:
 		m_iHiddenMeshMask = iHiddenMeshMask;
 	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
+	/* Uses the same local x parent composition as the rendered body, including
+	   parent edits made after the level update by an authoring tool. */
+	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOutWorld) const;
 
 public:
 	virtual HRESULT Initialize_Prototype() override;

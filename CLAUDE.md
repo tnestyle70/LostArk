@@ -244,7 +244,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v59 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v64 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -407,7 +407,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v59의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v64의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -469,9 +469,30 @@ gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입�
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
-MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 point-light presentation 계약이다.
+KoukuSaydon의 F1 World → `World Object Tool`은 저장 Object/상태 목록, Object Detail,
+Composition과 같은 timeline, 하단 Physical Resources 폴더 선택을 제공한다. 모델과 DDS는
+Effect/Map/Deploy/Character 실제 Resources-relative 경로로 선택하며 파일을 상태별로 복제하지 않는다.
+정본은 `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json`
+formatVersion 3이다. `Save` 후 `Publish Area`가 기존 Map publisher로 runtime을 배포한다.
+기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
+`objectResources`는 CModel 모델·diffuse·기본 scale 또는 기존 sequence alias를,
+template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
+WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
+Action Workbench World Resources에서 저장 상태를 Append하면 box `durationMs`를 Server가
+protocol 64 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리하고 placement를 복구한다.
+충돌·피해 판정은 기존 Server gameplay 경계에 남는다. Client/UI 실행과 화면 판정은 사용자가 한다.
+
+MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
 source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
 `Client/Bin/DataFiles/Map/<AreaId>.maplights.json`이며 둘 중 하나만 선언할 수 없다.
+쿠크 Area의 formatVersion 2는 Directional/Point/Spot, 이름·enabled·위치·회전·cone·색·밝기를 저장하며 빈 목록도 허용한다.
+Valtan의 imported v1 22개는 읽기 전용으로 유지한다. F1 Rendering Workbench 상단에서 Level을 선택한 뒤
+Light Resources의 Map/Character/Boss 카테고리에서 저작한다. Default Directional Light는 선택 Scene Profile의
+기존 광원을 같은 Detail에서 편집·저장하는 행이며, maplights에 두 번째 기본 방향광을 복제하지 않는다.
+Character/Boss 재사용 조명은 `Data/Rendering/Authored/LightResources.json`을 저장하고
+`Tools/RenderingPipeline/Publish-LightResources.ps1 -Mode Publish`로 `Client/Bin/DataFiles/Rendering/LightResources.runtime.json`에 배포한다.
+쿠크 Action Workbench의 Light 탭은 이 리소스와 같은 Area의 v2 map light ID를 참조해 lifetime과 Map/Character/Boss anchor를 배치한다.
+Level base profile의 `qualityOverride`는 패턴 Scene Profile 전환 중에도 해당 Level의 품질 정본으로 유지한다.
 `Publish-MapAuthoring.ps1`이 visual placement와 같은 transaction으로 strict validate/publish하고,
 MapTool은 source를, 제품 Level은 runtime을 기존 `CPresentation_Manager` transient light 경로로 제출한다.
 Valtan은 이 pair를 필수로 선언하며 누락·손상 시 이전 editor Area 보존 또는 제품 Level 진입 실패로

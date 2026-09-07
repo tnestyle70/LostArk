@@ -5,7 +5,10 @@
 #include "LobbyCommandService.h"
 #include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
+#include "LightResourceCatalog.h"
+#include "AreaLightAuthoringSession.h"
 #include "CombatHUDViewModel.h"
+#include "ArenaCameraProfile.h"
 
 #include <chrono>
 #include <filesystem>
@@ -22,6 +25,7 @@ class CEffect_Tool_V2;
 class CAnimation_Tool;
 class CValtanActionWorkbench;
 class CKoukuSaydonActionWorkbench;
+class CKoukuSaydonPresentationPlayer;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
 class CBossImmuneGaugeView;
@@ -33,6 +37,8 @@ class CCharacterPreviewPanel;
 class CEquipmentAuthoringTool;
 class CProfilerTool;
 class CSequencerTool;
+class CWorldObjectTool;
+class CWorldSequenceDocument;
 class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
@@ -70,6 +76,7 @@ private:
 		EQUIPMENT,
 		SEQUENCER,
 		PROFILER,
+		WORLD_OBJECT,
 		COUNT
 	};
 
@@ -359,6 +366,7 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	void RenderArenaFollowCameraSettings();
 	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
 	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
 	reroll and sample cooldowns; disabling invalidates the state again. */
@@ -381,8 +389,11 @@ private:
 	void Save_KoukuTuning();
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
+	void RefreshWorldObjectResources();
 	void RenderDeveloperTools();
 	void RenderRenderingWorkbench();
+	void RenderLightingWorkbench();
+	void UpdateLightingPreview();
 	void RenderProfilerOverlay();
 	void RenderProfilerSettings();
 #endif
@@ -391,6 +402,8 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	CRenderingProfileService m_RenderingProfiles;
+	CLightResourceCatalog m_LightResources;
+	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. Real CUI_Sprite
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
@@ -413,6 +426,11 @@ private:
 	};
 	vector<KOUKU_HUD_MODE_DEF> m_KoukuHudModes;
 #ifdef _DEBUG
+	std::array<ARENA_CAMERA_PROFILE, 2> m_ArenaCameraDrafts{};
+	std::array<bool, 2> m_ArenaCameraDraftLoaded{};
+	std::array<std::string, 2> m_ArenaCameraDraftStatus{};
+	int m_iArenaCameraSelectedMap = 0;
+	uint32_t m_iArenaCameraLastLevel = UINT32_MAX;
 	bool_t m_bKoukuUiPreview = false;
 	HUD_KOUKU_GIMMICK_STATE m_KoukuUiPreview;
 #endif
@@ -635,6 +653,10 @@ private:
 	unique_ptr<CValtanBossTool> m_pValtanBossTool = { nullptr };
 	unique_ptr<CKoukuSaydonBossTool> m_pKoukuSaydonBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
+	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
+	const CWorldSequenceDocument* m_pWorldObjectCatalogSource = nullptr;
+	uint64_t m_iWorldObjectCatalogGeneration = UINT64_MAX;
+	uint32_t m_iWorldObjectCatalogRevision = 0;
 	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
 	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
 	unique_ptr<CRenderingBenchmark> m_pRenderingBenchmark = { nullptr };
@@ -688,6 +710,8 @@ private:
 	   edits; Save folds them into the JSON. Order follows KOUKU_TUNE_BOSSES. */
 	struct KOUKU_TUNE_BOSS_ROW
 	{
+		f32_t fBodyCatalogScale = 0.f;
+		f32_t fBodyScaleMultiplier = 1.f;
 		f32_t fBaselineYawDegrees = 0.f;
 		f32_t fYawOffset = 0.f;
 		bool_t bHasWeapon = false;
@@ -712,6 +736,28 @@ private:
 	RENDER_QUALITY_SETTINGS m_RenderQualityDraft = {};
 	SCENE_RENDERING_PROFILE m_SceneRenderingDraft = {};
 	string m_strRenderingDraftProfileId;
+	string m_strRenderingSelectedProfileId;
+	string m_strRenderingQualityProfileId;
+	LEVEL m_eRenderingSelectedLevel = LEVEL::END;
+	uint32_t m_iRenderingLastLevel = UINT32_MAX;
+	char m_szRenderingNewProfileId[129]{};
+	CAreaLightAuthoringSession m_AreaLightSession;
+	string m_strRenderingLightAreaAttempt;
+	string m_strSelectedRenderingLightId = "@default-directional";
+	int m_iRenderingLightCategory = 0;
+	int m_iRenderingLightCreateAnchor = 0;
+	int m_iRenderingLightCreateType = 2;
+	bool_t m_bRenderingCreateReusableMapLight = false;
+	char m_szRenderingLightName[129] = "Spotlight";
+	string m_strLightingStatus;
+	string m_strLightPreviewResourceId;
+	std::chrono::steady_clock::time_point m_LightPreviewEnd{};
+	float4x4_t m_LightPreviewMapPivot{};
+	uint32_t m_iLightPreviewLevel = UINT32_MAX;
+	bool_t m_bLightingDebugWire = true;
+	bool_t m_bRenderingLightsTabActive = false;
+	bool_t m_bPreviewMapLightDraft = true;
+	shared_ptr<uint32_t> m_pLightPreviewSkipped = make_shared<uint32_t>(0u);
 	string m_strToolStatus =
 		"Select a tool. Map authoring targets the current level Area.";
 	string m_strRenderingStatus =

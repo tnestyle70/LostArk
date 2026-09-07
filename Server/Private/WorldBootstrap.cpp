@@ -313,7 +313,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				WORLD_TRIGGER_ACTION action{};
 				if ("movePlayer" == fields[actionCursor])
 				{
-					if (5u != payloadCount ||
+					if ((5u != payloadCount && 6u != payloadCount) ||
 						!ParseNumber(fields[actionCursor + 2u], action.fTargetX) ||
 						!ParseNumber(fields[actionCursor + 3u], action.fTargetY) ||
 						!ParseNumber(fields[actionCursor + 4u], action.fTargetZ) ||
@@ -333,6 +333,18 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						m_strStatus = "World movePlayer action is invalid at row " +
 							std::to_string(index);
 						return false;
+					}
+					if (6u == payloadCount)
+					{
+						const auto mode = fields[actionCursor + 7u];
+						if (worldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ||
+							(mode != "MARIO" && mode != "MAZE" && mode != "NONE"))
+						{
+							m_strStatus = "World movePlayer Kouku mode is invalid";
+							return false;
+						}
+						action.eKoukuHudModeOnArrival = mode == "MARIO" ? LostArk::Shared::KOUKU_HUD_MODE::MARIO :
+							(mode == "MAZE" ? LostArk::Shared::KOUKU_HUD_MODE::MAZE : LostArk::Shared::KOUKU_HUD_MODE::NONE);
 					}
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
 				}

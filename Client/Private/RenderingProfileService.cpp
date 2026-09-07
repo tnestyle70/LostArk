@@ -175,6 +175,30 @@ namespace
 			value.z << ']';
 	}
 
+	void Write_Quality(ostringstream& output, const RENDER_QUALITY_SETTINGS& quality)
+	{
+		output << "{";
+		output << "\"ssaoEnabled\": " << (quality.bSSAOEnabled ? "true" : "false");
+		output << ", \"ssaoRadius\": " << quality.fSSAORadius;
+		output << ", \"ssaoBias\": " << quality.fSSAOBias;
+		output << ", \"ssaoIntensity\": " << quality.fSSAOIntensity;
+		output << ", \"ssaoPower\": " << quality.fSSAOPower;
+		output << ", \"ssaoDistanceFade\": " << quality.fSSAODistanceFade;
+		output << ", \"bloomEnabled\": " << (quality.bBloomEnabled ? "true" : "false");
+		output << ", \"bloomThreshold\": " << quality.fBloomThreshold;
+		output << ", \"bloomSoftKnee\": " << quality.fBloomSoftKnee;
+		output << ", \"bloomIntensity\": " << quality.fBloomIntensity;
+		output << ", \"bloomScatter\": " << quality.fBloomScatter;
+		output << ", \"exposure\": " << quality.fExposure;
+		output << ", \"whitePoint\": " << quality.fWhitePoint;
+		output << ", \"gamma\": " << quality.fGamma;
+		output << ", \"fxaaEnabled\": " << (quality.bFXAAEnabled ? "true" : "false");
+		output << ", \"fxaaSubpixel\": " << quality.fFXAASubpixel;
+		output << ", \"fxaaEdgeThreshold\": " << quality.fFXAAEdgeThreshold;
+		output << ", \"fxaaEdgeThresholdMin\": " << quality.fFXAAEdgeThresholdMin;
+		output << "}";
+	}
+
 	bool_t Build_ShadowDesc(
 		const SCENE_RENDERING_PROFILE& Profile,
 		SHADOW_LIGHT_DESC& OutDesc)
@@ -225,6 +249,7 @@ bool_t CRenderingProfileService::Load_Runtime(string& strOutStatus)
 		return false;
 	m_Catalog = move(staged);
 	m_strActiveProfileId.clear();
+	m_strLevelQualityProfileId.clear();
 	strOutStatus = "Rendering runtime catalog loaded.";
 	return true;
 }
@@ -247,9 +272,14 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 		strOutStatus = "Reload rejected: active scene profile is missing.";
 		return false;
 	}
+	const auto owner = staged.Profiles.find(m_strLevelQualityProfileId);
+	if (!m_strLevelQualityProfileId.empty() && owner == staged.Profiles.end())
+	{ strOutStatus = "Reload rejected: Level quality profile is missing."; return false; }
+	const auto& levelQuality = owner != staged.Profiles.end() && owner->second.bHasQualityOverride ?
+		owner->second.QualityOverride : staged.GlobalQuality;
 	RENDER_QUALITY_SETTINGS effective{};
 	if (!Resolve_EffectiveQuality(
-		staged.GlobalQuality, profile->second, effective, strOutStatus) ||
+		levelQuality, profile->second, effective, strOutStatus) ||
 		!Commit_Resolved(profile->second, effective, strOutStatus))
 	{
 		return false;
@@ -267,6 +297,21 @@ bool_t CRenderingProfileService::Has_Profile(
 		m_Catalog.Profiles.find(strProfileId);
 }
 
+
+const RENDER_QUALITY_SETTINGS& CRenderingProfileService::Get_ActiveLevelQuality() const
+{
+	return Get_ProfileQuality(m_strLevelQualityProfileId);
+}
+
+bool_t CRenderingProfileService::Activate_LevelProfile(string_view strProfileId, string& strOutStatus)
+{
+	const string previousOwner = m_strLevelQualityProfileId;
+	m_strLevelQualityProfileId = string(strProfileId);
+	if (Activate_Profile(strProfileId, strOutStatus)) return true;
+	m_strLevelQualityProfileId = previousOwner;
+	return false;
+}
+
 bool_t CRenderingProfileService::Activate_Profile(
 	const string_view strProfileId,
 	string& strOutStatus)
@@ -279,7 +324,7 @@ bool_t CRenderingProfileService::Activate_Profile(
 	}
 	RENDER_QUALITY_SETTINGS effective{};
 	if (!Resolve_EffectiveQuality(
-		m_Catalog.GlobalQuality, profile->second, effective, strOutStatus) ||
+		Get_ActiveLevelQuality(), profile->second, effective, strOutStatus) ||
 		!Commit_Resolved(profile->second, effective, strOutStatus))
 	{
 		return false;
@@ -295,6 +340,71 @@ CRenderingProfileService::Get_ActiveProfile() const
 {
 	const auto profile = m_Catalog.Profiles.find(m_strActiveProfileId);
 	return m_Catalog.Profiles.end() == profile ? nullptr : &profile->second;
+}
+
+const SCENE_RENDERING_PROFILE* CRenderingProfileService::Find_Profile(string_view id) const
+{
+	const auto it = m_Catalog.Profiles.find(id);
+	return it == m_Catalog.Profiles.end() ? nullptr : &it->second;
+}
+
+const RENDER_QUALITY_SETTINGS& CRenderingProfileService::Get_ProfileQuality(string_view id) const
+{
+	const auto* profile = Find_Profile(id);
+	return profile && profile->bHasQualityOverride ? profile->QualityOverride : m_Catalog.GlobalQuality;
+}
+
+bool_t CRenderingProfileService::Update_Profile(const SCENE_RENDERING_PROFILE& profile, string& status)
+{
+	if (!Has_Profile(profile.strProfileId)) { status = "Unknown selected profile."; return false; }
+	if (profile.strProfileId == m_strActiveProfileId) return Apply_ActiveProfile(profile, status);
+	RENDER_QUALITY_SETTINGS effective{};
+	if (!Resolve_EffectiveQuality(m_Catalog.GlobalQuality, profile, effective, status)) return false;
+	if (profile.strProfileId == m_strLevelQualityProfileId)
+	{
+		const auto* active = Get_ActiveProfile();
+		const auto& quality = profile.bHasQualityOverride ? profile.QualityOverride : m_Catalog.GlobalQuality;
+		if (active && (!Resolve_EffectiveQuality(quality, *active, effective, status) ||
+			!Commit_Resolved(*active, effective, status))) return false;
+		m_EffectiveQuality = effective;
+	}
+	m_Catalog.Profiles[profile.strProfileId] = profile;
+	status = "Selected profile updated: " + profile.strProfileId;
+	return true;
+}
+
+bool_t CRenderingProfileService::Duplicate_Profile(string_view sourceId, string_view newId, string& status)
+{
+	const auto* source = Find_Profile(sourceId);
+	if (!source || !Is_StableId(string(newId)) || Has_Profile(newId) || m_Catalog.Profiles.size() >= MAXIMUM_PROFILE_COUNT)
+	{ status = "Duplicate requires an existing source and a unique stable profile ID (maximum 32)."; return false; }
+	SCENE_RENDERING_PROFILE copy = *source;
+	copy.strProfileId = string(newId);
+	// A new scene mood inherits the owning Level quality instead of freezing its current base.
+	copy.bHasQualityOverride = false;
+	m_Catalog.Profiles.emplace(copy.strProfileId, copy);
+	status = "Profile duplicated: " + copy.strProfileId;
+	return true;
+}
+
+void CRenderingProfileService::Protect_ProfileIds(const vector<string>& ids)
+{
+	m_ProtectedProfileIds = ids;
+}
+
+bool_t CRenderingProfileService::Delete_Profile(string_view id, string& status)
+{
+	static constexpr const char* required[] = { "scene.loading.neutral.v1", "scene.lobby.neutral.v1",
+		"scene.character-select.warm-high-key.v1", "scene.bern.neutral-day.v1", "scene.valtan.cool-low-key.v1",
+		"scene.development.neutral.v1", "scene.kakulsaydon.g1.base.v1" };
+	if (id == m_strActiveProfileId || id == m_strLevelQualityProfileId || find(begin(required), end(required), id) != end(required) ||
+		find(m_ProtectedProfileIds.begin(), m_ProtectedProfileIds.end(), id) != m_ProtectedProfileIds.end())
+	{ status = "The active, Level base, or Composition-referenced profile cannot be deleted."; return false; }
+	const auto it = m_Catalog.Profiles.find(id);
+	if (it == m_Catalog.Profiles.end()) { status = "Unknown profile."; return false; }
+	m_Catalog.Profiles.erase(it);
+	status = "Profile deleted from authoring; Save and Publish to persist.";
+	return true;
 }
 
 bool_t CRenderingProfileService::Apply_GlobalQuality(
@@ -319,7 +429,8 @@ bool_t CRenderingProfileService::Apply_GlobalQuality(
 
 	RENDER_QUALITY_SETTINGS effective{};
 	if (!Resolve_EffectiveQuality(
-		Quality, *pProfile, effective, strOutStatus) ||
+		(Find_Profile(m_strLevelQualityProfileId) && Find_Profile(m_strLevelQualityProfileId)->bHasQualityOverride ?
+		 Get_ActiveLevelQuality() : Quality), *pProfile, effective, strOutStatus) ||
 		!Commit_Resolved(*pProfile, effective, strOutStatus))
 	{
 		return false;
@@ -343,7 +454,7 @@ bool_t CRenderingProfileService::Apply_ActiveProfile(
 	}
 	RENDER_QUALITY_SETTINGS effective{};
 	if (!Resolve_EffectiveQuality(
-		m_Catalog.GlobalQuality, Profile, effective, strOutStatus) ||
+		Get_ActiveLevelQuality(), Profile, effective, strOutStatus) ||
 		!Commit_Resolved(Profile, effective, strOutStatus))
 	{
 		return false;
@@ -406,70 +517,17 @@ bool_t CRenderingProfileService::Parse_Catalog(
 
 	CATALOG staged;
 	staged.iRevision = static_cast<uint32_t>(pRevision->Get_Number());
-	if (!Has_ExactFields(*pGlobal,
-		{ "ssaoEnabled", "ssaoRadius", "ssaoBias", "ssaoIntensity",
-		  "ssaoPower", "ssaoDistanceFade",
-		  "bloomEnabled", "bloomThreshold", "bloomSoftKnee",
-		  "bloomIntensity", "bloomScatter", "exposure", "whitePoint",
-		  "gamma", "fxaaEnabled", "fxaaSubpixel", "fxaaEdgeThreshold",
-		  "fxaaEdgeThresholdMin" }))
-	{
-		strOutStatus = "globalQuality has missing or unsupported fields.";
-		return false;
-	}
-	const DATA_JSON_VALUE* pSSAOEnabled = Required(
-		*pGlobal, "ssaoEnabled", DATA_JSON_TYPE::BOOLEAN);
-	const DATA_JSON_VALUE* pBloomEnabled = Required(
-		*pGlobal, "bloomEnabled", DATA_JSON_TYPE::BOOLEAN);
-	const DATA_JSON_VALUE* pFXAAEnabled = Required(
-		*pGlobal, "fxaaEnabled", DATA_JSON_TYPE::BOOLEAN);
-	if (nullptr == pSSAOEnabled || nullptr == pBloomEnabled ||
-		nullptr == pFXAAEnabled ||
-		!Read_Float(*pGlobal, "ssaoRadius", 0.01f, 8.f,
-			staged.GlobalQuality.fSSAORadius) ||
-		!Read_Float(*pGlobal, "ssaoBias", 0.f, 1.f,
-			staged.GlobalQuality.fSSAOBias) ||
-		!Read_Float(*pGlobal, "ssaoIntensity", 0.f, 4.f,
-			staged.GlobalQuality.fSSAOIntensity) ||
-		!Read_Float(*pGlobal, "ssaoPower", 0.1f, 8.f,
-			staged.GlobalQuality.fSSAOPower) ||
-		!Read_Float(*pGlobal, "ssaoDistanceFade", 1.f, 1000.f,
-			staged.GlobalQuality.fSSAODistanceFade) ||
-		!Read_Float(*pGlobal, "bloomThreshold", 0.f, 64.f,
-			staged.GlobalQuality.fBloomThreshold) ||
-		!Read_Float(*pGlobal, "bloomSoftKnee", 0.f, 1.f,
-			staged.GlobalQuality.fBloomSoftKnee) ||
-		!Read_Float(*pGlobal, "bloomIntensity", 0.f, 16.f,
-			staged.GlobalQuality.fBloomIntensity) ||
-		!Read_Float(*pGlobal, "bloomScatter", 0.25f, 4.f,
-			staged.GlobalQuality.fBloomScatter) ||
-		!Read_Float(*pGlobal, "exposure", 0.01f, 32.f,
-			staged.GlobalQuality.fExposure) ||
-		!Read_Float(*pGlobal, "whitePoint", 1.f, 64.f,
-			staged.GlobalQuality.fWhitePoint) ||
-		!Read_Float(*pGlobal, "gamma", 1.f, 3.f,
-			staged.GlobalQuality.fGamma) ||
-		!Read_Float(*pGlobal, "fxaaSubpixel", 0.f, 1.f,
-			staged.GlobalQuality.fFXAASubpixel) ||
-		!Read_Float(*pGlobal, "fxaaEdgeThreshold", 0.0312f, 0.333f,
-			staged.GlobalQuality.fFXAAEdgeThreshold) ||
-		!Read_Float(*pGlobal, "fxaaEdgeThresholdMin", 0.0156f, 0.0833f,
-			staged.GlobalQuality.fFXAAEdgeThresholdMin))
-	{
-		strOutStatus = "globalQuality contains an invalid value.";
-		return false;
-	}
-	staged.GlobalQuality.bSSAOEnabled = pSSAOEnabled->Get_Boolean();
-	staged.GlobalQuality.bBloomEnabled = pBloomEnabled->Get_Boolean();
-	staged.GlobalQuality.bFXAAEnabled = pFXAAEnabled->Get_Boolean();
-	if (!Validate_GlobalQuality(staged.GlobalQuality, strOutStatus))
+	if (!Parse_Quality(*pGlobal, staged.GlobalQuality, strOutStatus))
 		return false;
 
 	for (const DATA_JSON_VALUE& value : pProfiles->Get_Array())
 	{
 		if (!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier",
-			  "bloomIntensityMultiplier", "light", "shadow", "fog" }))
+			  "bloomIntensityMultiplier", "light", "shadow", "fog" }) &&
+			!Has_ExactFields(value,
+			{ "profileId", "exposureMultiplier", "bloomIntensityMultiplier",
+			  "light", "shadow", "fog", "qualityOverride" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
 			return false;
@@ -483,6 +541,12 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		const DATA_JSON_VALUE* pFog = Required(
 			value, "fog", DATA_JSON_TYPE::OBJECT);
 		SCENE_RENDERING_PROFILE profile;
+		if (const DATA_JSON_VALUE* pQuality = value.Find("qualityOverride"))
+		{
+			if (!Parse_Quality(*pQuality, profile.QualityOverride, strOutStatus))
+				return false;
+			profile.bHasQualityOverride = true;
+		}
 		if (nullptr == pId || nullptr == pLight || nullptr == pShadow ||
 			nullptr == pFog ||
 			!Has_ExactFields(*pLight,
@@ -595,6 +659,69 @@ bool_t CRenderingProfileService::Parse_Catalog(
 	return true;
 }
 
+bool_t CRenderingProfileService::Parse_Quality(
+	const DATA_JSON_VALUE& value, RENDER_QUALITY_SETTINGS& quality, string& status)
+{
+	if (!Has_ExactFields(value,
+		{ "ssaoEnabled", "ssaoRadius", "ssaoBias", "ssaoIntensity",
+		  "ssaoPower", "ssaoDistanceFade",
+		  "bloomEnabled", "bloomThreshold", "bloomSoftKnee",
+		  "bloomIntensity", "bloomScatter", "exposure", "whitePoint",
+		  "gamma", "fxaaEnabled", "fxaaSubpixel", "fxaaEdgeThreshold",
+		  "fxaaEdgeThresholdMin" }))
+	{
+		status = "globalQuality has missing or unsupported fields.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pSSAOEnabled = Required(
+		value, "ssaoEnabled", DATA_JSON_TYPE::BOOLEAN);
+	const DATA_JSON_VALUE* pBloomEnabled = Required(
+		value, "bloomEnabled", DATA_JSON_TYPE::BOOLEAN);
+	const DATA_JSON_VALUE* pFXAAEnabled = Required(
+		value, "fxaaEnabled", DATA_JSON_TYPE::BOOLEAN);
+	if (nullptr == pSSAOEnabled || nullptr == pBloomEnabled ||
+		nullptr == pFXAAEnabled ||
+		!Read_Float(value, "ssaoRadius", 0.01f, 8.f,
+			quality.fSSAORadius) ||
+		!Read_Float(value, "ssaoBias", 0.f, 1.f,
+			quality.fSSAOBias) ||
+		!Read_Float(value, "ssaoIntensity", 0.f, 4.f,
+			quality.fSSAOIntensity) ||
+		!Read_Float(value, "ssaoPower", 0.1f, 8.f,
+			quality.fSSAOPower) ||
+		!Read_Float(value, "ssaoDistanceFade", 1.f, 1000.f,
+			quality.fSSAODistanceFade) ||
+		!Read_Float(value, "bloomThreshold", 0.f, 64.f,
+			quality.fBloomThreshold) ||
+		!Read_Float(value, "bloomSoftKnee", 0.f, 1.f,
+			quality.fBloomSoftKnee) ||
+		!Read_Float(value, "bloomIntensity", 0.f, 16.f,
+			quality.fBloomIntensity) ||
+		!Read_Float(value, "bloomScatter", 0.25f, 4.f,
+			quality.fBloomScatter) ||
+		!Read_Float(value, "exposure", 0.01f, 32.f,
+			quality.fExposure) ||
+		!Read_Float(value, "whitePoint", 1.f, 64.f,
+			quality.fWhitePoint) ||
+		!Read_Float(value, "gamma", 1.f, 3.f,
+			quality.fGamma) ||
+		!Read_Float(value, "fxaaSubpixel", 0.f, 1.f,
+			quality.fFXAASubpixel) ||
+		!Read_Float(value, "fxaaEdgeThreshold", 0.0312f, 0.333f,
+			quality.fFXAAEdgeThreshold) ||
+		!Read_Float(value, "fxaaEdgeThresholdMin", 0.0156f, 0.0833f,
+			quality.fFXAAEdgeThresholdMin))
+	{
+		status = "globalQuality contains an invalid value.";
+		return false;
+	}
+	quality.bSSAOEnabled = pSSAOEnabled->Get_Boolean();
+	quality.bBloomEnabled = pBloomEnabled->Get_Boolean();
+	quality.bFXAAEnabled = pFXAAEnabled->Get_Boolean();
+	return Validate_GlobalQuality(quality, status);
+
+}
+
 bool_t CRenderingProfileService::Validate_GlobalQuality(
 	const RENDER_QUALITY_SETTINGS& Quality,
 	string& strOutStatus)
@@ -668,11 +795,12 @@ bool_t CRenderingProfileService::Resolve_EffectiveQuality(
 	{
 		return false;
 	}
-	OutEffective = GlobalQuality;
-	OutEffective.fExposure =
-		GlobalQuality.fExposure * Profile.fExposureMultiplier;
-	OutEffective.fBloomIntensity =
-		GlobalQuality.fBloomIntensity * Profile.fBloomIntensityMultiplier;
+	const RENDER_QUALITY_SETTINGS& base = Profile.bHasQualityOverride ?
+		Profile.QualityOverride : GlobalQuality;
+	if (!Validate_GlobalQuality(base, strOutStatus)) return false;
+	OutEffective = base;
+	OutEffective.fExposure = base.fExposure * Profile.fExposureMultiplier;
+	OutEffective.fBloomIntensity = base.fBloomIntensity * Profile.fBloomIntensityMultiplier;
 	if (!Validate_GlobalQuality(OutEffective, strOutStatus))
 	{
 		strOutStatus = "Global quality multiplied by the scene profile is out of range.";
@@ -766,8 +894,14 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 	size_t index = 0u;
 	for (const auto& [profileId, profile] : Catalog.Profiles)
 	{
-		output << "    {\n"
-			"      \"profileId\": " << Quote(profileId) << ",\n"
+		output << "    {\n";
+		if (profile.bHasQualityOverride)
+		{
+			output << "      \"qualityOverride\": ";
+			Write_Quality(output, profile.QualityOverride);
+			output << ",\n";
+		}
+		output << "      \"profileId\": " << Quote(profileId) << ",\n"
 			"      \"exposureMultiplier\": " << profile.fExposureMultiplier << ",\n"
 			"      \"bloomIntensityMultiplier\": " <<
 			profile.fBloomIntensityMultiplier << ",\n"

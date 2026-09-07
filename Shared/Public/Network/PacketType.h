@@ -5,7 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 60 combines two contracts that each shipped independently as 59:
+	/* 64 combines the main v60 interact-trigger packet identities with the
+	v63 Kouku HUD/scene cues and World sequence lifetime. Neither previous
+	peer is wire-compatible; main packet identities stay in their old order.
+	60 combines two contracts that each shipped independently as 59:
 	the interact-gated trigger box and the Debug KoukuSaydon madness-form
 	toggle. Neither v59 peer is wire-compatible with the combined enum.
 	59 adds the interact-gated trigger box: the Server offers a prompt to
@@ -42,7 +45,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 60;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 64;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -276,7 +279,15 @@ namespace LostArk::Shared
 		// re-validation on request, and the action all stay Server-owned -- the
 		// Client only draws the offer and forwards the key press.
 		S2C_INTERACT_PROMPT,
-		C2S_INTERACT_TRIGGER
+		C2S_INTERACT_TRIGGER,
+
+		// KoukuSaydon interaction HUD: one quick-slot press while a Server-owned
+		// interaction mode is active, the Debug mode override, and the Server-clock
+		// scene profile cue. Append-only; Release keeps them known.
+		C2S_INTERACTION_SLOT,
+		C2S_DEBUG_SET_KOUKU_HUD_MODE,
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT,
+		S2C_SCENE_PROFILE_APPLY
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -363,6 +374,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
 		case PACKET_TYPE::S2C_INTERACT_PROMPT:
 		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
+		case PACKET_TYPE::C2S_INTERACTION_SLOT:
+		case PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE:
+		case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+		case PACKET_TYPE::S2C_SCENE_PROFILE_APPLY:
 			return true;
 		default:
 			return  false;

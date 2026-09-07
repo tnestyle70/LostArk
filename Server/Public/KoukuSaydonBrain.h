@@ -87,6 +87,10 @@ namespace LostArk::Server
 			std::string& status) const;
 		void Abort_Pattern(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick) const;
+		/* A Logic window ended the pattern early on success: the remaining
+		stages are skipped and the occurrence is committed as COMPLETED. */
+		void Complete_Pattern(
+			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick) const;
 
 	private:
 		static void Enter_Stage(

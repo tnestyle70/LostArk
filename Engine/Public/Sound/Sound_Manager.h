@@ -22,6 +22,11 @@ public:
 
 public:
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
+	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u);
+	void Pause_SoundCue(uint64_t handle, bool_t paused);
+	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
+	void Stop_SoundCue(uint64_t handle);
+
 	/* A separately owned looping SFX never replaces level/encounter music. */
 	HRESULT Play_LoopingSound(const wstring_t& strSoundFilePath, f32_t fVolume);
 	void Stop_LoopingSound();
@@ -47,6 +52,8 @@ private:
 	instance per (asset, mode) so an SFX and a music cue cannot mutate each
 	other when they happen to reference the same WAV. */
 	map<pair<wstring_t, bool_t>, FMOD::Sound*> m_Sounds;
+	map<uint64_t, FMOD::Channel*> m_CueChannels;
+	uint64_t m_iNextCueHandle = 1u;
 	CTrackedSoundChannel<FMOD::Channel> m_MusicChannel;
 	CTrackedSoundChannel<FMOD::Channel> m_LoopingSoundChannel;
 

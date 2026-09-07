@@ -43,18 +43,97 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_STAGE&) const = default;
 	};
 
+	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
+	   applies. Both are the Server's typed vocabulary; a definition that is
+	   only a name keeps the kind empty and stays DRAFT-only. */
+	inline constexpr std::array<const char_t*, 5u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "AREA_OVERLAP" };
+	inline constexpr std::array<const char_t*, 5u> KOUKU_SAYDON_OUTCOME_KINDS = {
+		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
+		"CLOWN_TRANSFORM", "FOLLOWUP_PATTERN" };
+	inline constexpr std::array<const char_t*, 4u> KOUKU_SAYDON_CARD_SYMBOLS = {
+		"HEART", "SPADE", "CLUB", "DIAMOND" };
+	inline constexpr std::size_t KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT = 4u;
+	inline constexpr std::uint32_t KOUKU_SAYDON_DANCE_POSE_COUNT = 4u;
+
+	enum class KOUKU_SAYDON_OUTCOME_SLOT : std::uint8_t
+	{
+		SUCCESS,
+		FAIL,
+		TIMEOUT,
+	};
+
+	/* An end-tick judgement (roulette card, real-boss gaze) is decided once
+	   when its window closes. Roulette outside every mapped region is Timeout;
+	   gaze has only Success and Fail. The
+	   stagger window has no wrong answer, so it never ends in Fail. */
+	inline bool_t Kouku_IsEndTickJudgement(const std::string_view judgementKind)
+	{
+		return judgementKind == "ROULETTE_CARD_MATCH" ||
+			judgementKind == "GAZE_REAL_BOSS" || judgementKind == "AREA_OVERLAP";
+	}
+	inline bool_t Kouku_IsOutcomeSlotAllowed(
+		const std::string_view judgementKind,
+		const KOUKU_SAYDON_OUTCOME_SLOT slot)
+	{
+		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
+			return judgementKind != "GAZE_REAL_BOSS";
+		if (KOUKU_SAYDON_OUTCOME_SLOT::FAIL == slot)
+			return judgementKind != "STAGGER_WINDOW" && judgementKind != "ENTER_AREA";
+		return true;
+	}
+
 	/* One reusable Logic definition owned by the composition document. The
-	   editor stores only its identity, name and type today; the judgement values
-	   and the Server consumer arrive in a later slice. */
+	   identity, name and type are always present; the typed values below are
+	   read as optional keys so a definition can be named first and typed later. */
 	struct KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION final
 	{
 		std::string strLogicId;
 		std::string strDisplayName;
 		std::string strLogicType;
+		/* DURATION values. Only the keys of strJudgementKind are meaningful. */
+		std::string strJudgementKind;
+		std::uint32_t iSectorCount = 0u;
+		std::vector<std::string> SectorSymbols;
+		std::vector<std::string> RegionIds;
+		double fCenterX = 0.0;
+		double fCenterZ = 0.0;
+		double fOuterRadiusM = 0.0;
+		std::string strWorldSequenceInstanceId;
+		double fHalfAngleDegrees = 0.0;
+		double fMaxDistanceM = 0.0;
+		std::uint32_t iPoseIndex = 0u;
+		std::uint32_t iThreshold = 0u;
+		double fShieldArcDegrees = 0.0;
+		bool_t bEndsPatternOnSuccess = false;
+		double fNormalYawOffsetDegrees = 0.0;
+		std::string strInsideOutcome = "SUCCESS";
+		/* RESULT values. */
+		std::string strOutcomeKind;
+		std::uint32_t iPercent = 0u;
+		std::uint32_t iDurationMs = 0u;
+		std::string strFollowupPatternId;
+		/* TRIGGER values are projected to Server mechanic cues. */
+		std::string strTriggerKind;
+		std::string strHudMode;
+		std::array<double, 3> TeleportPosition{};
+		std::string strClonePatternId;
+		std::vector<std::uint32_t> ClockHours;
+		double fFaceCenterYawOffsetDegrees = 0.0;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION&) const = default;
 	};
+
+	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
+	{
+		return logic.strLogicType == "DURATION" ||
+			(logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ENTER_AREA");
+	}
+	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
+	{
+		return logic.strLogicType == "TRIGGER" ? logic.strTriggerKind : logic.strJudgementKind;
+	}
 
 	/* One placed Logic box. Its window is pattern-relative, not Stage-relative,
 	   so a box can span the repeated clips it judges. */
@@ -62,12 +141,26 @@ namespace Client
 	{
 		std::string strOccurrenceId;
 		std::string strLogicId;
+		bool_t bEnabled = true;
 		std::uint32_t iStartMs = 0u;
 		std::uint32_t iDurationMs = 0u;
-		/* Outcome wiring of a DURATION box: each names one RESULT Logic or is
-		   empty. The box, not the definition, owns where success and timeout go. */
-		std::string strOnSuccessLogicId;
-		std::string strOnTimeoutLogicId;
+		/* Outcome wiring of a DURATION box: each slot lists up to four RESULT
+		   Logics applied in order. The box, not the definition, owns where
+		   success, failure and timeout go. */
+		std::vector<std::string> OnSuccessLogicIds;
+		std::vector<std::string> OnFailLogicIds;
+		std::vector<std::string> OnTimeoutLogicIds;
+
+		std::vector<std::string>& Outcomes(const KOUKU_SAYDON_OUTCOME_SLOT slot)
+		{
+			return KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS == slot ? OnSuccessLogicIds :
+				(KOUKU_SAYDON_OUTCOME_SLOT::FAIL == slot ? OnFailLogicIds : OnTimeoutLogicIds);
+		}
+		const std::vector<std::string>& Outcomes(const KOUKU_SAYDON_OUTCOME_SLOT slot) const
+		{
+			return KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS == slot ? OnSuccessLogicIds :
+				(KOUKU_SAYDON_OUTCOME_SLOT::FAIL == slot ? OnFailLogicIds : OnTimeoutLogicIds);
+		}
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE&) const = default;
@@ -97,6 +190,125 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE&) const = default;
 	};
 
+	/* One authored world sequence instance of the Area, named for the lane. A
+	   box plays it on the pattern clock at the box playback speed. */
+	struct KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION final
+	{
+		std::string strWorldId;
+		std::string strDisplayName;
+		std::string strSequenceInstanceId;
+		std::array<double, 3u> PositionOffset{};
+		std::string strAnchorKind = "NONE";
+		std::array<double, 3u> AnchorPosition{};
+		std::string strCompanionEffectResourceId;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION&) const = default;
+	};
+
+	struct KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strWorldId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		f32_t fPlaybackSpeed = 1.f;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE&) const = default;
+	};
+
+	/* One rendering profile named for the lane. A box applies it on the
+	   pattern clock for the box lifetime and blends in over blendMs. */
+	struct KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION final
+	{
+		std::string strSceneProfileId;
+		std::string strDisplayName;
+		std::string strRenderingProfileId;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION&) const = default;
+	};
+
+	struct KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strSceneProfileId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		std::uint32_t iBlendMs = 0u;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE&) const = default;
+	};
+
+	enum class KOUKU_SAYDON_PRESENTATION_KIND : std::uint8_t
+	{
+		EFFECT, SOUND, CAMERA, COLLIDER, LIGHT, WORLD, SCENE_PROFILE
+	};
+
+	/* EFFECT/SOUND/CAMERA/COLLIDER/LIGHT definitions share stable resource identity.
+	   WORLD and SCENE_PROFILE keep their existing document families and use
+	   this vocabulary only in a one-shot resource preview request. */
+	struct KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE final
+	{
+		std::string strResourceId;
+		std::string strDisplayName;
+		KOUKU_SAYDON_PRESENTATION_KIND eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+		std::string strAssetId;
+		std::string strResourceKind = "GROUP";
+		std::string strDefaultAnchorKind = "BOSS";
+		std::uint32_t iDurationMs = 1000u;
+		std::string strShape = "BOX";
+		std::string strColliderKind = "GEOMETRY";
+		std::array<double, 3u> HalfExtents{ 1.0, 1.0, 1.0 };
+		double fRadiusM = 3.0;
+		double fHalfAngleDegrees = 45.0;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE&) const = default;
+	};
+
+	/* Values are per occurrence; tuning a box never rewrites an Effect V2
+	   group's children or the source leaf, camera shot, or audio asset. */
+	struct KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::string strResourceId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 1000u;
+		std::array<double, 3u> PositionOffset{};
+		std::array<double, 3u> RotationDegrees{};
+		std::array<double, 3u> Scale{ 1.0, 1.0, 1.0 };
+		std::uint32_t iFadeInMs = 0u;
+		std::uint32_t iFadeOutMs = 0u;
+		double fDissolveStart = 0.85;
+		double fDissolveEnd = 1.0;
+		double fVolume = 1.0;
+		double fBrightnessMultiplier = 1.0;
+		bool_t bFollowBoss = true;
+		bool_t bDebugRender = true;
+		std::string strBone;
+		// Each placed region owns its card, independently of the reusable shape.
+		std::string strRegionId;
+		std::string strCardSymbol = "NONE";
+		std::string strCardColor = "NONE";
+		std::string strAnchorKind = "BOSS";
+		std::string strWorldId;
+		std::string strLogicOccurrenceId;
+		std::string strWorldOccurrenceId;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE&) const = default;
+	};
+
+	/* The madness gauge maximum and the clown hold the encounter applies to
+	   every player; the projector copies it into the Product. */
+	struct KOUKU_SAYDON_COMPOSITION_MADNESS_POLICY final
+	{
+		std::uint32_t iMaximum = 100u;
+		std::uint32_t iClownHoldMs = 15000u;
+
+		bool operator==(
+			const KOUKU_SAYDON_COMPOSITION_MADNESS_POLICY&) const = default;
+	};
+
 	// DURATION judges a window, TRIGGER starts a Pattern, RESULT applies an outcome.
 	inline constexpr std::array<const char_t*, 3u> KOUKU_SAYDON_LOGIC_TYPES = {
 		"DURATION", "TRIGGER", "RESULT" };
@@ -112,9 +324,16 @@ namespace Client
 		std::uint32_t iNextAnimationOrdinal = 1u;
 		std::uint32_t iNextLogicOccurrenceOrdinal = 1u;
 		std::uint32_t iNextSummonOccurrenceOrdinal = 1u;
+		std::uint32_t iNextWorldOccurrenceOrdinal = 1u;
+		std::uint32_t iNextSceneProfileOccurrenceOrdinal = 1u;
+		std::uint32_t iNextPresentationOccurrenceOrdinal = 1u;
+		bool_t bResetBossToSpawn = false;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
 		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
 		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE> SummonOccurrences;
+		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> WorldOccurrences;
+		std::vector<KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> PresentationOccurrences;
 		// A malformed Pattern remains visible and survives unrelated saves.
 		// These fields are editor state; Serialize writes the preserved JSON.
 		std::string strLoadError;
@@ -136,9 +355,16 @@ namespace Client
 		std::uint32_t iNextPatternOrdinal = 1u;
 		std::uint32_t iNextLogicOrdinal = 1u;
 		std::uint32_t iNextSummonOrdinal = 1u;
+		std::uint32_t iNextWorldOrdinal = 1u;
+		std::uint32_t iNextSceneProfileOrdinal = 1u;
+		std::uint32_t iNextPresentationResourceOrdinal = 1u;
+		KOUKU_SAYDON_COMPOSITION_MADNESS_POLICY MadnessPolicy;
 		std::vector<std::string> PlayAllPatternIds;
 		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> Logics;
 		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION> Summons;
+		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION> Worlds;
+		std::vector<KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION> SceneProfiles;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> PresentationResources;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN> Patterns;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_DOCUMENT&) const = default;

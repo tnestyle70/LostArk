@@ -54,7 +54,7 @@ PARTICLE_SPAWN_SHAPES = {"Point", "Sphere", "Ring", "Box"}
 PARTICLE_VELOCITY_MODES = {"Fixed", "Outward", "Cone"}
 PARTICLE_ALIGNMENTS = {"Camera", "Velocity", "Horizontal"}
 TRAIL_EDGE_MODES = {"CenterlineCamera", "CenterlineUp", "LocalOffset"}
-SCREEN_POST_PROFILES = {"ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration"}
+SCREEN_POST_PROFILES = {"ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration", "TexturedOverlay"}
 ROOT_FIELDS = ("schema", "formatVersion", "archetypeId", "bindings")
 BINDING_FIELDS = (
     "bindingId",
@@ -614,6 +614,14 @@ def _validate_leaf_params(
         )
         if any(number < 0.0 for number in values) or random_seed == 0:
             raise BindingContractError(f"{owner}.screenPost values are out of range")
+        for key in ("overlayPositionStart", "overlayPositionHold", "overlayPositionEnd"):
+            _optional_vector(screen, key, f"{owner}.screenPost", 2, (0.5, 0.5))
+        scale = _optional_vector(screen, "overlayScale", f"{owner}.screenPost", 2, (1.0, 1.0))
+        enter_end = _optional_number(screen, "overlayEnterEnd", f"{owner}.screenPost", 0.25)
+        exit_start = _optional_number(screen, "overlayExitStart", f"{owner}.screenPost", 0.75)
+        _optional_number(screen, "overlayRotationDegrees", f"{owner}.screenPost", 0.0)
+        if any(value <= 0.0 for value in scale) or not 0.0 <= enter_end <= exit_start <= 1.0:
+            raise BindingContractError(f"{owner}.screenPost overlay scale/phases are out of range")
 
     tail = particle_tail if effect_type == "Particle" else trail_tail if effect_type == "Trail" else 0.0
     return lifetime, play_rate, loop, tail
@@ -663,6 +671,12 @@ def _validate_leaf_resource(
     lifetime, play_rate, loop, tail = _validate_leaf_params(
         effect_id, root["effectType"], params
     )
+    if (
+        root["effectType"] == "ScreenPost"
+        and params.get("screenPost", {}).get("profile") == "TexturedOverlay"
+        and not slots["base"]
+    ):
+        raise BindingContractError(f"TexturedOverlay Effect V2 leaf requires slots.base: {effect_id}")
     part_indexes: set[int] = set()
     for ordinal, raw in enumerate(root["parts"]):
         owner = f"Effect V2 leaf {effect_id}.parts[{ordinal}]"

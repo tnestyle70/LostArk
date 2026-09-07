@@ -42,6 +42,7 @@ HRESULT Bind_DeferredMaterialInputs(
 	const shared_ptr<Engine::CShader>& pShader,
 	uint32_t iMeshIndex,
 	const DEFERRED_MATERIAL_PROFILE& Profile = {},
-	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = nullptr);
+	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = nullptr,
+	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr);
 
 NS_END

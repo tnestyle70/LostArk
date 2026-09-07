@@ -99,6 +99,13 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 		player.fPositionX = move.fTargetX;
 		player.fPositionY = move.fTargetY;
 		player.fPositionZ = move.fTargetZ;
+		if (KOUKU_HUD_MODE::END != move.eKoukuHudModeOnArrival)
+		{
+			player.Clear_KoukuInteractionState();
+			player.eKoukuAreaHudMode = move.eKoukuHudModeOnArrival;
+			player.eMadnessForm = KOUKU_HUD_MODE::NONE == move.eKoukuHudModeOnArrival ?
+				PLAYER_MADNESS_FORM::NORMAL : PLAYER_MADNESS_FORM::CLOWN;
+		}
 		move = {};
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iActionStartTick = 0;
@@ -383,6 +390,7 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.TriggerMove.fDurationSeconds = action.fDurationSeconds;
 	player.TriggerMove.fElapsedSeconds = 0.f;
 	player.TriggerMove.fArcHeight = action.fArcHeight;
+	player.TriggerMove.eKoukuHudModeOnArrival = action.eKoukuHudModeOnArrival;
 	player.TriggerMove.isActive = true;
 	const float deltaX = action.fTargetX - player.fPositionX;
 	const float deltaZ = action.fTargetZ - player.fPositionZ;

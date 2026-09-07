@@ -19,6 +19,7 @@ public:
 		const std::filesystem::path& path,
 		const std::string& expectedAreaId);
 	bool_t Load_Runtime(const std::string& areaId);
+	bool_t Replace_Document(const CMapLightDocument& document);
 	bool_t Submit_Frame();
 	virtual HRESULT Submit_Presentation() override;
 	void Clear();

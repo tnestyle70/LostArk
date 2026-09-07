@@ -18,6 +18,7 @@
 #include "NpcBehaviorRuntime.h"
 #include "ValtanBrain.h"
 #include "KoukuSaydonBrain.h"
+#include "KoukuSaydonLogicRuntime.h"
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
@@ -351,6 +352,25 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT Apply_DebugMadnessForm(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);
+		/* One quick-slot press while this session's player shows an interaction
+		HUD. DANCE answers the open pose window; the other modes only record the
+		press until their skills own a Server judgement. */
+		void Handle_InteractionSlot(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_INTERACTION_SLOT& request);
+		/* Debug F1 "HUD Mode: MARIO / MAZE / Clear": forces one of the two
+		modes whose gimmick has no Server trigger yet. Release answers
+		REJECTED_DISABLED. */
+		void Handle_DebugSetKoukuHudMode(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE& request);
+		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT Apply_DebugKoukuHudMode(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE& request);
+		/* Every tick: madness maximum from the encounter policy, clown hold
+		expiry, and the interaction HUD mode plus slot layout per player. */
+		void Update_KoukuPlayerModes(std::uint32_t serverTick);
+		void Apply_KoukuGateEntryCard(SERVER_PLAYER& player, const SERVER_WORLD_ENTITY& boss);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);
@@ -415,6 +435,22 @@ namespace LostArk::Server
 		bool Update_KoukuSaydonBoss(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick);
 #ifdef _DEBUG
+		/* Broadcasts the cues a Logic tick produced, inserts follow-up patterns
+		after the running audition slot, and returns true when a window asked
+		the running pattern to end now (the brain commits it as COMPLETED). */
+		struct KOUKU_PENDING_MECHANIC_TRIGGER final
+		{
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iPatternSequence = 0u;
+			BOSS_PATTERN_MECHANIC_TRIGGER Trigger;
+		};
+		std::vector<KOUKU_PENDING_MECHANIC_TRIGGER> m_PendingKoukuMechanicTriggers;
+		void Commit_KoukuMechanicTriggers(std::uint32_t serverTick);
+		void Update_KoukuGazeClones(std::uint32_t serverTick);
+		bool Apply_KoukuLogicOutput(
+			const KOUKUSAYDON_LOGIC_OUTPUT& output,
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
 		enum class KOUKUSAYDON_PATTERN_AUDITION_PHASE : std::uint8_t
 		{
 			INACTIVE,
@@ -438,6 +474,8 @@ namespace LostArk::Server
 			std::vector<std::uint32_t> TransitionTicks;
 			std::size_t iPatternIndex = 0u;
 			std::uint32_t iNextStartTick = 0u;
+			/* Logic windows and presentation cues of the running occurrence. */
+			KOUKUSAYDON_LOGIC_LEDGER LogicLedger;
 		};
 
 		struct KOUKUSAYDON_PATTERN_AUDITION_RECEIPT final
@@ -830,7 +868,10 @@ namespace LostArk::Server
 		/* Tells every session in this room that an authored world sequence
 		   instance started. Presentation only: the Server keeps no sequence
 		   state, so a session that joins later simply misses a played edge. */
-		void Broadcast_WorldSequencePlay(const std::string& instanceId);
+		void Broadcast_WorldSequencePlay(
+			const std::string& instanceId, float playbackSpeed = 1.f,
+			float positionOffsetX = 0.f, float positionOffsetY = 0.f, float positionOffsetZ = 0.f,
+			std::uint32_t durationMs = 0u);
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);

@@ -68,3 +68,59 @@ Client 전체 링크·실행과 F1/F6 실제 입력, snapshot 화면·카메라 
 
 새 Resources asset ID나 물리 폴더, Drive 전달물은 필요하지 않다. 런타임 EXE를 원본에 교체하거나
 Resources를 배포하지 않았다. 자동 검증 완료와 사용자의 실제 화면 확인은 별개다.
+
+## G03. 2026-09-06 맵별 follow 카메라 설정
+
+이번 작업은 공유 `GB/koukusaydon-pattern-1-complete`의 기존 dirty 변경 위에서 카메라 설정만
+추가했다. 이전 G00~G02의 branch/protocol/검증은 당시 checkpoint이며 이번 기록과 구분한다.
+
+### G03-1. 실제 구현
+
+F1 `Arena Camera / Player`를 Character Select에서도 표시하고 Move Player 아래에
+`Player Follow Camera`를 추가했다. Camera map은 Character Select/KoukuSaydon을 선택한다.
+Position offset XYZ, Pitch/Yaw/Roll, Focus distance, FOV Y, Follow response를 draft로 편집하고
+`Apply / Follow current map`으로 활성 맵에만 적용한다. 적용하면 F6 follow로 복귀하며 연출
+override 중에는 적용 버튼이 비활성이다. Save는 선택한 파일만 저장하고 다음 맵 진입 때 읽는다.
+Reload/Reset draft는 편집값만 바꾼다. Character Select의 Move Player는 기존 Controller가
+지원하지 않는 범위라 비활성으로 유지하고 카메라 설정만 추가했다.
+
+새 `ArenaCameraProfile.h/.cpp`와 `Data/Camera/CharacterSelect.camera.json`,
+`Data/Camera/KoukuSaydon.camera.json`을 project/filter에 정확히 한 번 등록했다. 두 JSON은
+기존 시점을 기본값으로 보존한다. Character Select는 위치(.4,7.5,4.5), rotation
+(54.9916306,-174.92038,0), focus7.87480116, FOV45, response18이며 Kouku는 같은 위치,
+rotation(54.3556175,-174.92038,0), focus7.75241899, FOV60, response0이다. 실제 사용자가
+정면으로 느끼는 최종 각도는 F1에서 조절하는 흐름이며 에이전트가 화면 기준으로 임의 결정하지 않았다.
+
+각 Level은 생성 시 한 번 읽은 profile을 실제 Camera_Free와 공유하며 class/Clown 재바인딩 때
+기존 상수로 되돌리지 않는다. Kouku 연출 종료 eye/look/FOV도 저장된 profile을 소비한다. Roll은
+gameplay follow에서 적용하고 연출 자체는 기존 override를 따른다. 기존 Camera_Free 호출자의
+roll은 0이어서 추가 회전 분기를 타지 않는다. Valtan Level H/CPP와 ValtanCinematicCamera JSON의
+작업 전후 SHA256이 같음을 확인했다. 별도 Resources, Server command, 데이터 publisher는 없다.
+
+### G03-2. 자동 검증과 남은 확인
+
+- 실제 제품 parser를 링크한 저장소 밖 CLI의 default/Save/Load/잘못된 입력·다른 맵 보존 31개 PASS:
+  `out/ArenaCameraProfile-native-check.log`. `_DEBUG /MDd` 문서 최소 컴파일도 exit0.
+- Camera_Free·CharacterSelect·Kouku Level 최소 컴파일 exit0:
+  `out/ArenaCamera-runtime-mincompile.log`.
+- F1 MainApp 최소 컴파일 exit0: `out/ArenaCamera-MainApp-mincompile.log`.
+- Collider 최신 pivot 연결까지 포함한 MainApp/Kouku Level 통합 최소 컴파일 exit0:
+  `out/ArenaCamera-Collider-integration-mincompile.log`.
+- 두 JSON parse와 두 project/filter XML parse, 네 등록 항목 중복 없음 및 기존 ProjectReference
+  GUID 구조 확인 PASS. `git diff --check` exit0. 기존 SDK/CP949 헤더 경고는 남는다.
+- 사용자 종료 후 표준 Debug Product 컴파일·링크·SDK/shader/DLL 배포 exit0. 최종 로그는
+  `out/ArenaCamera-BigSaydon-final-product-build.log`, receipt는
+  `out/BuildPipeline/runs/20260906T144205124Z-debug-product.json`이다. Engine/Shared/Server/Client
+  모두 PASS이며 missingRuntimeInputs는 비어 있다.
+- 실제 Client 빌드에서 ArenaCameraProfile.cpp:39의 `numeric_limits<f32_t>::max()`가 Windows
+  `max` 매크로와 충돌해 C2589/C2059 `)` 구문 오류를 냈다. 호출을
+  `(std::numeric_limits<f32_t>::max)()`로 수정했다. 앞선 Temp 최소 컴파일에만 `/DNOMINMAX`가
+  포함되어 이 오류를 놓쳤으며, 수정 후에는 실제 Client 프로젝트 옵션으로 Product 통과를 확인했다.
+- 최종 변경/신규 JSON 43개와 project/filter XML 4개 parse PASS. 사용자 Big Saydon 저장
+  원본 2개와 Valtan Level H/CPP·카메라 JSON의 작업 전후 바이트 보존을 재확인했다.
+
+사용자 화면 확인은 미수행이다. 새 실행 파일에서 `F1 → Arena Camera / Player → Camera map`
+선택 후 위치·회전 입력 → Apply → Save, 재진입과 클래스 변경·F6 복귀·Kouku 연출 종료 후 유지가
+확인 경로다. 발탄의 실제 화면 회귀 여부도 사용자 확인 전이며 바이트 불변을 visual PASS로
+올리지 않는다. 기존 Client/Server는 사용자가 종료했고 새 빌드와 데이터 배포를 완료했다.
+이 PC는 LAN server-host이며 `Server + Client` profile에서 `Ctrl+F5`로 직접 실행한다.

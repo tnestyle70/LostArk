@@ -14,6 +14,7 @@
 #include "Character.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
+#include "EffectV2_Runtime.h"
 #include "Effect_Tool.h"
 #include "EffectAuthoringTransfer.h"
 #include "Effect_RuntimeAuthority.h"
@@ -1257,8 +1258,11 @@ namespace
 Client::CAnimation_Tool::CAnimation_Tool(
 	shared_ptr<CCharacterPreviewPanel> pPreviewPanel,
 	CBalanceTool* const pBalanceTool,
-	CValtanBossTool* const pValtanBossTool)
+	CValtanBossTool* const pValtanBossTool,
+	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: m_pPreviewPanel(std::move(pPreviewPanel))
+	, m_pPreviewDevice(std::move(pDevice))
+	, m_pPreviewContext(std::move(pContext))
 	, m_pBalanceTool(pBalanceTool)
 	, m_pValtanBossTool(pValtanBossTool)
 {
@@ -1266,6 +1270,7 @@ Client::CAnimation_Tool::CAnimation_Tool(
 
 Client::CAnimation_Tool::~CAnimation_Tool()
 {
+	Reset_KoukuCompositionEffects();
 	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 	if (nullptr != m_hValtanPatternCreateProcess)
 	{
@@ -3295,7 +3300,7 @@ bool_t Client::CAnimation_Tool::Open_KoukuSaydonProfile(
 	const KOUKU_SAYDON_ACTION_PROFILE_CONTRACT* pProfile =
 		Find_KoukuSaydonActionProfile(profileId);
 	const bool_t bClipOnlyDonor =
-		"MN_RPCT_00" == profileId || "MN_RPCT_03" == profileId;
+		"MN_RPCT_00" == profileId || "MN_RPCT_03" == profileId || "MN_RPCZ_00-1" == profileId;
 	if (nullptr == pProfile && !bClipOnlyDonor)
 	{
 		m_Status = "KoukuSaydon action profile is not admitted: " + profileId;
@@ -3341,7 +3346,7 @@ bool_t Client::CAnimation_Tool::Open_KoukuSaydonProfile(
 	m_strKoukuSaydonProfileId = profileId;
 	m_Status = bClipOnlyDonor ?
 		("Opened " + profileId +
-		 " as a local clip donor preview; action profiles 05/07 consume this clip vocabulary.") :
+		 " as a local clip donor preview; select its physical clips to inspect and play them.") :
 		("Opened KoukuSaydon extracted action profile " + profileId +
 		 " as a local REFERENCE_ONLY preview.");
 	return true;
@@ -3620,7 +3625,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	{
 		strNextKoukuSaydonProfile = pDefault->pProfileId;
 	}
-	else if ("MN_RPCT_00" == assetName || "MN_RPCT_03" == assetName)
+	else if ("MN_RPCT_00" == assetName || "MN_RPCT_03" == assetName || "MN_RPCZ_00-1" == assetName)
 	{
 		strNextKoukuSaydonProfile = assetName;
 	}
@@ -4215,13 +4220,12 @@ void Client::CAnimation_Tool::Render()
 		{
 			Render_KoukuSaydonActionBindings(pModel);
 		}
-		else if ("MN_RPCT_00" == m_AssetName || "MN_RPCT_03" == m_AssetName)
+		else if ("MN_RPCT_00" == m_AssetName || "MN_RPCT_03" == m_AssetName || "MN_RPCZ_00-1" == m_AssetName)
 		{
 			ImGui::SeparatorText("KoukuSaydon Clip Donor");
 			ImGui::TextWrapped(
-				"%s exposes its physical clips for local preview. Select the "
-				"MN_RPCT_05 or MN_RPCT_07 action profile in Resource Files to edit "
-				"an extracted sequence; no Server Product pattern is inferred here.",
+				"%s exposes its physical clips for local preview. Select a clip "
+				"from this body's list to inspect or play it.",
 				m_AssetName.c_str());
 		}
 		else if (nullptr != Find_CustomChainProfile(m_AssetName))
@@ -11917,6 +11921,7 @@ bool_t Client::CAnimation_Tool::Seek_KoukuCompositionPreview(
 		m_Status = m_strKoukuSaydonPatternStatus = strOutStatus;
 		return false;
 	}
+	Reset_KoukuCompositionEffects();
 	m_fKoukuCompositionPreviewClockMs = static_cast<double>((std::min)(
 		iClockMs, m_iKoukuCompositionPreviewDurationMs));
 	if (m_fKoukuCompositionPreviewClockMs >= m_iKoukuCompositionPreviewDurationMs)
@@ -12105,12 +12110,46 @@ void Client::CAnimation_Tool::Apply_KoukuSaydonPreviewScale(
 {
 	const std::string asset = CAnimationTargetService::Resolve_AssetName();
 	if (nullptr != pModel && nullptr != m_pPreviewPanel &&
-		(asset == "MN_RPCZ_00" || asset == "MN_RPCT_00" || asset == "MN_RPCT_03" ||
+		(asset == "MN_RPCZ_00" || asset == "MN_RPCZ_00-1" || asset == "MN_RPCT_00" || asset == "MN_RPCT_03" ||
 		 asset == "MN_RPCT_05" || asset == "MN_RPCT_06") &&
 		m_pPreviewPanel->Set_PreviewScaleMultiplier(pModel, multiplier) && multiplier != 1.f)
 		m_KoukuScaledPreviewModel = pModel;
 	else if (multiplier == 1.f)
 		m_KoukuScaledPreviewModel.reset();
+}
+
+void Client::CAnimation_Tool::Reset_KoukuCompositionEffects()
+{
+	CEffectV2Runtime::Reset_LocalPreviewTarget(m_KoukuCompositionEffectTarget);
+	m_KoukuCompositionEffectTarget.Reset();
+	m_strKoukuCompositionEffectOccurrence.clear();
+	m_fKoukuCompositionEffectSourceSeconds = -1.f;
+}
+
+void Client::CAnimation_Tool::Sample_KoukuCompositionEffects(
+	const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& row,
+	const f32_t fSourceSeconds)
+{
+	const EFFECT_V2_TARGET target = nullptr != m_pPreviewPanel ?
+		m_pPreviewPanel->Get_PreviewEffectTarget() : EFFECT_V2_TARGET{};
+	if (!target.Is_Valid())
+	{
+		Reset_KoukuCompositionEffects();
+		return;
+	}
+	if (target.pKey != m_KoukuCompositionEffectTarget.pKey ||
+		row.strOccurrenceId != m_strKoukuCompositionEffectOccurrence ||
+		fSourceSeconds + 0.00001f < m_fKoukuCompositionEffectSourceSeconds)
+	{
+		Reset_KoukuCompositionEffects();
+		m_KoukuCompositionEffectTarget = target;
+		m_strKoukuCompositionEffectOccurrence = row.strOccurrenceId;
+		CEffectV2Runtime::Notify_Clip(target, row.strRuntimeClip.c_str());
+	}
+	CEffectV2Runtime::Sample_LocalClipPreview(target,
+		m_bKoukuSaydonPatternPreviewPaused, row.fPlayRate,
+		m_pPreviewDevice, m_pPreviewContext);
+	m_fKoukuCompositionEffectSourceSeconds = fSourceSeconds;
 }
 
 void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
@@ -12133,6 +12172,8 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 			previousEndMs = endMs;
 		}
 	}
+	const bool_t hasActiveOccurrence = nullptr != selected;
+	if (!hasActiveOccurrence) Reset_KoukuCompositionEffects();
 	// Reconstruct a gap from its preceding row, rather than retaining whatever
 	// later pose happened to be visible before a backward seek.
 	double sampleClockMs = m_fKoukuCompositionPreviewClockMs;
@@ -12186,6 +12227,8 @@ void Client::CAnimation_Tool::Sample_KoukuSaydonCompositionPreview(
 	(void)pModel->Set_AnimTrackPosition(index, static_cast<f32_t>(sourceTicks));
 	(void)pModel->Play_Animation(0.f);
 	if (nullptr != m_pPreviewPanel) m_pPreviewPanel->Synchronize_PreviewWeapon();
+	if (hasActiveOccurrence)
+		Sample_KoukuCompositionEffects(*selected, static_cast<f32_t>(sourceTicks / tps));
 }
 
 bool_t Client::CAnimation_Tool::Start_KoukuSaydonPatternPreview(
@@ -12423,6 +12466,7 @@ void Client::CAnimation_Tool::Stop_KoukuSaydonPatternPreview(
 void Client::CAnimation_Tool::Reset_KoukuSaydonPatternPreviewState(
 	const std::string& strStatus)
 {
+	Reset_KoukuCompositionEffects();
 	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 	m_fKoukuSaydonPatternPreviewScale = 1.f;
 	m_KoukuCompositionPreviewScales.clear();

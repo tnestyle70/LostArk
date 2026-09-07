@@ -51,6 +51,7 @@ public:
 		RGB_NOISE,
 		FILM_NOISE,
 		CHROMATIC_ABERRATION,
+		TEXTURED_OVERLAY,
 		END
 	};
 
@@ -193,6 +194,34 @@ public:
 		f32_t fFrequency = 1.f;
 		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
 		uint32_t iRandomSeed = 1u;
+		float2_t vOverlayPositionStart = { 0.5f, 0.5f };
+		float2_t vOverlayPositionHold = { 0.5f, 0.5f };
+		float2_t vOverlayPositionEnd = { 0.5f, 0.5f };
+		float2_t vOverlayScale = { 1.f, 1.f };
+		f32_t fOverlayEnterEnd = 0.25f;
+		f32_t fOverlayExitStart = 0.75f;
+		f32_t fOverlayRotationDegrees = 0.f;
+
+		float2_t Evaluate_OverlayPosition(const f32_t fLifeRatio) const
+		{
+			if (fLifeRatio <= 0.f) return vOverlayPositionStart;
+			if (fLifeRatio >= 1.f) return vOverlayPositionEnd;
+			const float2_t* pFrom = &vOverlayPositionHold;
+			const float2_t* pTo = &vOverlayPositionHold;
+			f32_t fRatio = 0.f;
+			if (fLifeRatio < fOverlayEnterEnd && fOverlayEnterEnd > 0.f)
+			{
+				pFrom = &vOverlayPositionStart;
+				fRatio = fLifeRatio / fOverlayEnterEnd;
+			}
+			else if (fLifeRatio > fOverlayExitStart && fOverlayExitStart < 1.f)
+			{
+				pTo = &vOverlayPositionEnd;
+				fRatio = (fLifeRatio - fOverlayExitStart) / (1.f - fOverlayExitStart);
+			}
+			return { pFrom->x + (pTo->x - pFrom->x) * fRatio,
+				pFrom->y + (pTo->y - pFrom->y) * fRatio };
+		}
 	};
 
 	struct PARAMS final
@@ -316,6 +345,7 @@ public:
 	PARAMS& Params() { return m_Params; }
 	const DESC& Creation_Desc() const { return m_CreationDesc; }
 	float4x4_t& PivotWorld() { return m_PivotWorld; }
+	void Set_PivotWorld(const float4x4_t& Pivot) { m_PivotWorld = Pivot; Apply_Transform(); }
 	const std::string& Status() const { return m_strStatus; }
 	SHAPE Shape() const { return m_eShape; }
 	f32_t Time() const { return m_fTime; }
@@ -355,6 +385,14 @@ public:
 	/* Deterministic late-occurrence seek used by owner-linked free groups. The
 	   argument is real elapsed time; Params().fPlayRate remains authoritative. */
 	void Seek_ElapsedSeconds(f32_t fElapsedSeconds);
+	// Local timeline pause freezes age while a following pivot still updates.
+	void Set_PlaybackPaused(bool_t bPaused) { m_bPlaybackPaused = bPaused; }
+	/* Occurrence-only envelope. The authored Params/document stays unchanged. */
+	void Set_DissolveOutRange(f32_t fStart, f32_t fEnd)
+	{
+		m_fOccurrenceDissolveStart = fStart;
+		m_fOccurrenceDissolveEnd = fEnd;
+	}
 	static HRESULT Prewarm(
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,
@@ -468,6 +506,9 @@ private:
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
 	bool_t m_bFirstUpdatePending = true;
+	bool_t m_bPlaybackPaused = false;
+	f32_t m_fOccurrenceDissolveStart = -1.f;
+	f32_t m_fOccurrenceDissolveEnd = -1.f;
 	bool_t m_bEmissionStopped = false;
 	bool_t m_bHidden = false;
 	bool_t m_bSkinned = false;

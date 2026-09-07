@@ -86,15 +86,44 @@ MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cel
 영역에는 runtime blocker를 둘 수 없다. 매니페스트가 없으면 Area는 기본 격자 하나로
 종전과 동일하게 동작한다.
 
-`World Sequence`는 정적 map placement의 상대 위치·회전·크기·표시 상태를 시간축으로
-편집하는 재사용 저작 레이어다. `templates`는 여러 배치에서 다시 쓰는 연출 정의,
-`instances`는 template slot과 stable placement ID의 Area별 연결을 소유한다. MapTool의
+쿠크 2관문의 `BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 저장한 높이에서 서는 보스다.
+Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,
+유한한 좌표·영역 안의 XZ·walkable 검사는 그대로 적용한다. 다른 보스와 playerSpawn은 지면 높이를 검사한다.
+
+``World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
+상태를 시간축으로 편집하는 재사용 저작 레이어다. `templates`는 이름을 가진 상태와 동작 정의,
+`instances`는 template slot과 stable target ID의 Area별 연결을 소유한다. MapTool의
 `Save`는 visual placement와 world sequence를 백업·사후 재검증·rollback이 있는 연결 저장으로
 처리하며, 중단 marker가 남으면 다음 Area load 전에 원본 pair를 복구한다. Background render
 mode처럼 카메라가 transform을 소유하는 placement는 sequence target으로 거부한다.
 같은 Area의 load/save는 exclusive sidecar lock으로 직렬화하고, Reload 때 읽은 두 원본의 byte
 baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequence JSON은 parse 전에 16 MiB
 한도를 적용하며 저장 후에는 단순 유효성뿐 아니라 의도한 map/sequence 내용과 같은지도 비교한다.
+
+WorldSequence JSON의 저장 버전은 `formatVersion: 3`이며 `CWorldSequenceDocument`는 기존 v1/v2도
+읽는다. v3의 `objectResources`는 stable `objectId`, `displayName`, Resources-relative `.wmodel`
+`modelAssetId`, optional `diffuseTextureAssetId`, `modelPreScale`(기본 0.01), `animated`, `scale`을
+소유한다. 기존 배치 연출의 별칭은 `modelAssetId`를 비우고 `sequenceInstanceId`로 기존 instance를
+참조한다. 커튼·룰렛의 stable instance ID와 기존 key는 그대로 유지한다. 생성형 모델의 binding은
+`targetKind=OBJECT_RESOURCE`, `targetId=objectId`이고, 기존 `MAP_PLACEMENT`/`DEPLOY_PLACEMENT`
+binding도 유지한다. 모델 path와 별칭 instance를 동시에 지정하거나 별칭을 모델 binding으로 쓰는
+저장은 거부한다.
+
+새 상태도 기존 `templates`/`instances`에 저장한다. optional `objectMotion`은 `velocity`(m/s),
+`acceleration`(m/s²), `angularVelocityDegrees`·`revolutionDegreesPerSecond`(각 축 deg/s),
+`revolutionOffset`(m), `count`(1..128), `intervalMs`, `spreadDegrees`(0..180), `seed`를 가진다.
+생략하면 1개·추가 이동/회전 없음이다. 마지막 생성 시각 `(count-1)*intervalMs`는 template의
+`durationMs`보다 작아야 하며, 생성된 오브젝트는 같은 상태 수명 안에서 재생한다. 생성형 instance의
+optional `anchorKind`는 고정 `WORLD` 또는 살아 있는 복제 플레이어 각각을 따르는 `PLAYER`,
+`position`은 해당 anchor의 상대 위치다. 기본값은 `WORLD`와 `[0,0,0]`이며 기존 배치 binding에는
+플레이어 anchor나 추가 instance 위치를 적용하지 않는다. ANIM resource는 기존 `animationTracks`를
+사용하고 실제 clip 존재 여부는 모델 admission에서 검증한다.
+
+F1 `World Object Tool`은 이 Area source를 편집·저장하고, Action Workbench는 저장된 상태 instance를
+WORLD resource로 선택해 Append한다. `Publish-MapAuthoring.ps1`이 runtime worldsequences 문서를
+배포한다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
+`CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
+오브젝트 재생 runtime을 만들지 않는다.
 
 `World Sequence` 모드의 `Animated Props`는 그 sequence가 binding할 Deploy ANIM 배치를
 만드는 곳이다. Area catalog가 `sourceDeployCatalog`/`sourceDeployPlacements` pair를 선언한
@@ -120,9 +149,10 @@ binding한 배치를 지우려 하면 sequence validator가 거부하고 Deploy 
 `evt2_paperstage_open01`, 실제 길이 3066.667ms) 둘이다. 종이 펼침은 정적 메시의 rigid transform이
 아니라 skinned clip이므로 sequence의 transform track이 아니라 animation track으로 재생한다.
 
-현재 이 레이어는 Development MapTool의 authoring/preview까지만 지원한다. Server 상호작용 명령,
-Shared 상태 복제, 제품 Client 재생, 완료 시 동적 collision/navigation 개방은 아직 publisher와
-제품 runtime 계약이 없으므로 저장 파일이 존재한다는 이유로 제품 지원으로 취급하지 않는다.
+WorldSequence의 제품 재생은 Server가 보낸 stable instance cue를 Client의 기존 player가 소비하는
+presentation 경로다. World Object의 transform과 mesh는 Client 표현이며 damage 판정이나 동적
+collision/navigation 개방을 추가하지 않는다. 새로운 gameplay 상호작용은 해당 Server 권위와
+Shared 상태 계약을 별도로 연결해야 한다.
 
 Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로 세로 범위를
 제한해 bake한다. 제품 runtime은 이미 활성화되어 있으므로 source/paint/policy가 누락되거나 손상되면
@@ -166,6 +196,14 @@ optional deploy pair와 같은 파일 집합 트랜잭션으로 교체하며 중
 source 문서를, 제품 Level은 runtime 문서를 읽고 둘 다 기존 `CPresentation_Manager`의 transient point-light
 경로에 제출한다. 이 레이어는 Client 시각 표현 전용이며 Server gameplay 판정이나 광원 충돌을 만들지 않는다.
 Valtan은 catalog가 이 pair를 선언하므로 누락·손상을 정상적인 생략으로 취급하지 않고 Area stage를 실패시킨다.
+
+쿠크 `LV_LUT_MIDNIGHTC_ED`도 같은 pair를 선언한다. formatVersion 2는 `PROJECT_AUTHORED` 문서이며
+0~64개의 Directional/Point/Spot에 stable `lightId`, `displayName`, `groupId`, `enabled`, 위치·회전·range·falloff·cone·RGBA·brightness를 저장한다.
+Rendering Workbench의 Map 목록은 player 위치를 기준으로 point/spot을 생성하고, 변경값을 Area source에 저장한다.
+Publish는 기존 Map publisher, 제품 로드는 `CMapLightPresentationRuntime`을 사용한다. 잘못된 새 source/preview는 이전 문서를 보존한다.
+같은 v2 map light는 Composition Light 탭에 읽기 전용 정의로 표시된다. Append는 stable lightId를 참조하며
+조명 값을 LightResources.json에 복제하지 않는다. Composition에서 사용하는 map light의 삭제는 참조 해제 전 거부한다.
+Default Directional Light는 Scene Profile의 기존 방향광을 편집하는 목록 행이다. maplights에 별도 기본광을 추가하지 않는다.
 
 Valtan DeployProp은 Development MapTool에서 source catalog 12 asset / 151 placement를
 `CDeployPropRuntime` 한 경로로 stage한다. Deploy asset catalog는 format version 2이며 각 asset의

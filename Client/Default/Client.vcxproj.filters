@@ -223,6 +223,15 @@
     <Filter Include="01.Levels\01. CharacterSelect">
       <UniqueIdentifier>{90eb2e93-684d-4600-b517-266b3e6c7c9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects">
+      <UniqueIdentifier>{889BF058-C2CA-4FBF-BDFB-282A135EE1E7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\V2">
+      <UniqueIdentifier>{51033E8C-95A5-4C33-9969-ED5BF6028718}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\V2\Authored">
+      <UniqueIdentifier>{95156EB5-E28B-4D0C-804B-32BC15CF5533}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
@@ -791,6 +800,9 @@
 	  <Filter>04. Network</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
@@ -1376,6 +1388,9 @@
 	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\KoukuSaydonPresentationPlayer.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\MonsterPresentationContract.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
@@ -1794,6 +1809,12 @@
     </None>
     <None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json">
       <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json">
+      <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json">
+      <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
@@ -2229,5 +2250,71 @@
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="96.DataFiles\Camera">
+      <UniqueIdentifier>{6ff4c424-008e-4768-834e-edbf0d14909d}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="..\Public\ArenaCameraProfile.h">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\ArenaCameraProfile.cpp">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClCompile>
+    <None Include="..\..\Data\Camera\CharacterSelect.camera.json">
+      <Filter>96.DataFiles\Camera</Filter>
+    </None>
+    <None Include="..\..\Data\Camera\KoukuSaydon.camera.json">
+      <Filter>96.DataFiles\Camera</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\LightResourceCatalog.h">
+      <Filter>03. Tools\10. Rendering</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\LightResourceCatalog.cpp">
+      <Filter>03. Tools\10. Rendering</Filter>
+    </ClCompile>
+    <ClInclude Include="..\Public\AreaLightAuthoringSession.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\AreaLightAuthoringSession.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MainApp_RenderingLighting.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
+    <None Include="..\..\Data\Rendering\Authored\LightResources.json">
+      <Filter>96.DataFiles\Rendering\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.maplights.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\WorldSequenceObject.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldSequencePlayer_Objects.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_KakulSaydonArena_WorldObjects.cpp">
+      <Filter>01.Levels\04. KoukuSaydonArena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldObjectTool.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PhysicalResourceCatalog.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClInclude Include="..\Public\WorldSequenceObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldObjectTool.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PhysicalResourceCatalog.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

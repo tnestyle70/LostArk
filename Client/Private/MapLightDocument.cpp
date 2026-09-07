@@ -7,6 +7,7 @@
 #include <cmath>
 #include <fstream>
 #include <initializer_list>
+#include <iomanip>
 #include <sstream>
 #include <unordered_set>
 
@@ -71,7 +72,7 @@ namespace
 		if (nullptr == value || !value->Is_Number())
 			return false;
 		const double number = value->Get_Number();
-		if (!std::isfinite(number) || number < minimum || number > maximum)
+		if (!std::isfinite(number) || static_cast<float>(number) < static_cast<float>(minimum) || static_cast<float>(number) > static_cast<float>(maximum))
 			return false;
 		outValue = static_cast<f32_t>(number);
 		return std::isfinite(outValue);
@@ -138,6 +139,12 @@ bool_t Client::CMapLightDocument::Load(
 		outStatus = "Map light document is unreadable: " + path.string();
 		return false;
 	}
+	return Parse(text, expectedAreaId, outStatus);
+}
+
+bool_t Client::CMapLightDocument::Parse(
+	const std::string& text, const std::string& expectedAreaId, std::string& outStatus)
+{
 
 	DATA_JSON_VALUE root;
 	std::string parseError;
@@ -145,6 +152,55 @@ bool_t Client::CMapLightDocument::Load(
 	{
 		outStatus = "Map light document parse failed: " + parseError;
 		return false;
+	}
+	const DATA_JSON_VALUE* authoredVersion = root.Find("formatVersion");
+	if (authoredVersion && authoredVersion->Is_Number() && authoredVersion->Get_Number() == 2.0)
+	{
+		if (!IsExactObject(root, {"schema", "formatVersion", "areaId", "provenance", "nextLightOrdinal", "lights"}))
+		{ outStatus = "Map lights v2 root has unexpected fields"; return false; }
+		std::string schema, area, provenance;
+		const auto* rows = root.Find("lights");
+		const auto* next = root.Find("nextLightOrdinal");
+		if (!ReadString(root,"schema",schema) || schema != SCHEMA ||
+			!ReadString(root,"areaId",area) || area != expectedAreaId || !IsStableToken(area,128,false) ||
+			!ReadString(root,"provenance",provenance) || provenance != "PROJECT_AUTHORED" ||
+			!next || !next->Is_Number() || !std::isfinite(next->Get_Number()) ||
+			next->Get_Number()<1 || next->Get_Number()>4294967294. || std::floor(next->Get_Number())!=next->Get_Number() ||
+			!rows || !rows->Is_Array() || rows->Get_Array().size()>MAX_LIGHT_COUNT)
+		{ outStatus = "Map lights v2 header is invalid"; return false; }
+		std::vector<MAP_POINT_LIGHT_RECORD> staged;
+		std::unordered_set<std::string> ids;
+		for (const auto& row : rows->Get_Array())
+		{
+			if (!IsExactObject(row,{"lightId","displayName","kind","groupId","enabled","position","rotationDegrees",
+				"rangeMeters","falloffExponent","innerConeDegrees","outerConeDegrees","color","brightness"}))
+			{ outStatus = "Map lights v2 row has unexpected fields"; return false; }
+			MAP_POINT_LIGHT_RECORD record; std::string kind;
+			std::vector<f32_t> pos, rot, color; const auto* enabled=row.Find("enabled");
+			if (!ReadString(row,"lightId",record.lightId) || !IsStableToken(record.lightId,128,false) ||
+				!ReadString(row,"displayName",record.displayName) || record.displayName.size()>256 ||
+				MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,record.displayName.data(),static_cast<int>(record.displayName.size()),nullptr,0)==0 ||
+				!ReadString(row,"kind",kind) || (kind!="POINT" && kind!="SPOT" && kind!="DIRECTIONAL") ||
+				!ReadString(row,"groupId",record.groupId) || !IsStableToken(record.groupId,128,false) ||
+				!enabled || !enabled->Is_Boolean() ||
+				!ReadVector(row,"position",3,-100000,100000,pos) || !ReadVector(row,"rotationDegrees",3,-100000,100000,rot) ||
+				!ReadVector(row,"color",4,0,1,color) || !ReadFinite(row,"rangeMeters",kind=="DIRECTIONAL"?0:0.01,1000,record.radiusMeters) ||
+				!ReadFinite(row,"falloffExponent",0.01,64,record.falloffExponent) || !ReadFinite(row,"brightness",0,64,record.brightness) ||
+				!ReadFinite(row,"innerConeDegrees",0,89.9,record.innerConeDegrees) || !ReadFinite(row,"outerConeDegrees",0,89.9,record.outerConeDegrees) ||
+				!ids.insert(record.lightId).second)
+			{ outStatus="Map light v2 field is invalid or duplicated: "+record.lightId;return false; }
+			if ((kind=="SPOT" && (record.innerConeDegrees<=0 || record.innerConeDegrees>record.outerConeDegrees)) ||
+				(kind!="SPOT" && (record.innerConeDegrees!=0 || record.outerConeDegrees!=0)) ||
+				(kind=="DIRECTIONAL" && (record.radiusMeters!=0 || pos[0]!=0 || pos[1]!=0 || pos[2]!=0)))
+			{outStatus="Map light kind/cone/range conflict: "+record.lightId;return false;}
+			record.kind=kind=="POINT"?LIGHT::POINT:kind=="SPOT"?LIGHT::SPOT:LIGHT::DIRECTIONAL;
+			record.enabled=enabled->Get_Boolean();record.position={pos[0],pos[1],pos[2]};
+			record.rotationDegrees={rot[0],rot[1],rot[2]};record.color={color[0],color[1],color[2],color[3]};
+			staged.push_back(std::move(record));
+		}
+		m_AreaId=std::move(area);m_Provenance=std::move(provenance);m_Lights=std::move(staged);
+		m_FormatVersion=2;m_NextLightOrdinal=static_cast<uint32_t>(next->Get_Number());m_isReady=true;
+		outStatus="Map light presentation ready: "+std::to_string(m_Lights.size())+" authored lights";return true;
 	}
 	if (!IsExactObject(root, {
 			"schema", "formatVersion", "areaId", "provenance", "lights" }))
@@ -222,6 +278,7 @@ bool_t Client::CMapLightDocument::Load(
 
 		record.position = { position[0], position[1], position[2] };
 		record.color = { color[0], color[1], color[2], color[3] };
+		record.displayName = record.lightId;
 		staged.push_back(std::move(record));
 	}
 
@@ -229,6 +286,8 @@ bool_t Client::CMapLightDocument::Load(
 	m_Provenance = std::move(provenance);
 	m_Lights = std::move(staged);
 	m_isReady = true;
+	m_FormatVersion = 1u;
+	m_NextLightOrdinal = 1u;
 	outStatus = "Map light presentation ready: " +
 		std::to_string(m_Lights.size()) + " point lights";
 	return true;
@@ -240,4 +299,34 @@ void Client::CMapLightDocument::Clear()
 	m_Provenance.clear();
 	m_Lights.clear();
 	m_isReady = false;
+	m_FormatVersion = 1u;
+	m_NextLightOrdinal = 1u;
+}
+
+std::string Client::CMapLightDocument::Serialize() const
+{
+	if (!m_isReady || m_FormatVersion != 2u) return {};
+	std::ostringstream o;o<<std::setprecision(9);
+	o<<"{\n  \"schema\": \"lostark.map-light-presentation\",\n  \"formatVersion\": 2,\n  \"areaId\": \""<<CDataJson::Escape(m_AreaId)
+	 <<"\",\n  \"provenance\": \"PROJECT_AUTHORED\",\n  \"nextLightOrdinal\": "<<m_NextLightOrdinal<<",\n  \"lights\": [";
+	for(size_t i=0;i<m_Lights.size();++i)
+	{
+		const auto& r=m_Lights[i];const char* kind=r.kind==LIGHT::SPOT?"SPOT":r.kind==LIGHT::POINT?"POINT":r.kind==LIGHT::DIRECTIONAL?"DIRECTIONAL":"INVALID";
+		o<<(i?",\n":"\n")<<"    {\"lightId\": \""<<CDataJson::Escape(r.lightId)<<"\", \"displayName\": \""<<CDataJson::Escape(r.displayName)
+		 <<"\", \"kind\": \""<<kind<<"\", \"groupId\": \""<<CDataJson::Escape(r.groupId)<<"\", \"enabled\": "<<(r.enabled?"true":"false")
+		 <<", \"position\": ["<<r.position.x<<","<<r.position.y<<","<<r.position.z<<"], \"rotationDegrees\": ["<<r.rotationDegrees.x<<","<<r.rotationDegrees.y<<","<<r.rotationDegrees.z
+		 <<"], \"rangeMeters\": "<<r.radiusMeters<<", \"falloffExponent\": "<<r.falloffExponent<<", \"innerConeDegrees\": "<<r.innerConeDegrees<<", \"outerConeDegrees\": "<<r.outerConeDegrees
+		 <<", \"color\": ["<<r.color.x<<","<<r.color.y<<","<<r.color.z<<","<<r.color.w<<"], \"brightness\": "<<r.brightness<<"}";
+	}
+	o<<"\n  ]\n}\n";return o.str();
+}
+
+bool_t Client::CMapLightDocument::Replace_Authored(const std::vector<MAP_POINT_LIGHT_RECORD>& lights,
+	uint32_t nextOrdinal,std::string& status)
+{
+	if(!m_isReady || m_FormatVersion!=2u){status="Imported v1 map lights are read-only.";return false;}
+	CMapLightDocument staged=*this;staged.m_Lights=lights;staged.m_NextLightOrdinal=nextOrdinal;
+	CMapLightDocument verified;
+	if(!verified.Parse(staged.Serialize(),m_AreaId,status))return false;
+	*this=std::move(verified);return true;
 }

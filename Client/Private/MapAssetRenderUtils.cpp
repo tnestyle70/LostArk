@@ -496,7 +496,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const shared_ptr<Engine::CShader>& shader,
 	uint32_t meshIndex,
 	const MAP_ASSET_RENDER_PROFILE& profile,
-	f32_t elapsedTime)
+	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride)
 {
 	if (nullptr == model ||
 		nullptr == shader ||
@@ -525,7 +525,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		profile.uvSpeed.x * elapsedTime,
 		profile.uvSpeed.y * elapsedTime);
 
-	if (FAILED(model->Bind_Material(
+	if (FAILED(diffuseOverride ? shader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : model->Bind_Material(
 		shader,
 		"g_DiffuseTexture",
 		meshIndex,

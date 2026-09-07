@@ -20,6 +20,15 @@ struct EFFECT_V2_GROUP_PLAYBACK_DESC final
 	   the authored group clock with fPlaybackRate, including late snapshots. */
 	f32_t fInitialAgeSeconds = 0.f;
 	f32_t fPlaybackRate = 1.f;
+	/* -1 preserves authored lifetime. Zero repeats until Stop_Group; positive
+	   values stretch each child through this occurrence's real duration. */
+	f32_t fDurationSeconds = -1.f;
+	/* Negative values retain the leaf envelope. Explicit zero disables fade.
+	   Dissolve-out start/end are normalized positions in the child lifetime. */
+	f32_t fFadeInSeconds = -1.f;
+	f32_t fFadeOutSeconds = -1.f;
+	f32_t fDissolveOutStart = -1.f;
+	f32_t fDissolveOutEnd = -1.f;
 	bool_t bProductOwned = false;
 };
 
@@ -48,6 +57,13 @@ public:
 		const char_t* pClipName);
 	static void Tick(
 		const EFFECT_V2_TARGET& Target,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Local Composition's legacy clip lane uses the sampled body clock. The
+	   caller resets on seek/occurrence changes; product and Effect Tool clocks
+	   retain the ordinary Tick contract. */
+	static void Sample_LocalClipPreview(
+		const EFFECT_V2_TARGET& Target, bool_t bPaused, f32_t fPlaybackRate,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Server pattern stage clock: pActionId is the stage actionId ("" = no
@@ -127,9 +143,17 @@ public:
 		const EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* A leaf uses the same instance/clock/stop handle through a one-child group. */
+	static uint32_t Play_Leaf(
+		const std::string& strEffectId,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+		const EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Update_Group(uint32_t iHandle, const EFFECT_V2_GROUP& Group);
-	/* Moves the lane pivot; the next Update_Group re-places spawned objects. */
+	/* Moves the lane pivot and every live child immediately. */
 	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
+	static void Set_GroupPaused(uint32_t iHandle, bool_t bPaused);
 	static void Stop_Group(uint32_t iHandle);
 	static f32_t Group_Seconds(uint32_t iHandle);
 	/* Returns one deferred document/prototype/object spawn failure exactly once.

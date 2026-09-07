@@ -2,7 +2,7 @@
  "schema": "lostark.camera-shots",
  "formatVersion": 1,
  "areaId": "LV_LUT_MIDNIGHTC_ED",
- "revision": 61,
+ "revision": 62,
  "shots": [
   {
    "shotId": "shot.1",
@@ -1055,6 +1055,179 @@
        735.295
       ],
       "fovYDegrees": 54.18
+     }
+    ]
+   }
+  },
+  {
+   "shotId": "1Mario",
+   "sequenceInstanceId": "world.sequence.instance.mario_m1_intro",
+   "box": {
+    "center": [
+     -1148.703,
+     -11.5246,
+     -910.572998
+    ],
+    "halfExtents": [
+     10,
+     8,
+     10
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    -1163.12,
+    -10.3,
+    -900.098
+   ],
+   "lookAt": [
+    -1152.32,
+    -10.1484,
+    -912.426
+   ],
+   "fovYDegrees": 50,
+   "blendInMs": 0,
+   "blendOutMs": 900,
+   "priority": 30,
+   "cameraTrack": {
+    "durationMs": 3000,
+    "interpolation": "LINEAR",
+    "easing": "LINEAR",
+    "keyframes": [
+     {
+      "sceneId": "k00",
+      "timeMs": 0,
+      "eye": [
+       -1148.68,
+       9.62,
+       -962.799
+      ],
+      "lookAt": [
+       -1162.02,
+       -7.04298,
+       -949.822
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k01",
+      "timeMs": 958,
+      "eye": [
+       -1139.09,
+       21.6,
+       -972.139
+      ],
+      "lookAt": [
+       -1159.54,
+       -3.94145,
+       -952.248
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k02",
+      "timeMs": 1000,
+      "eye": [
+       -1137.58,
+       19.3472,
+       -975.021
+      ],
+      "lookAt": [
+       -1160.78,
+       -6.32628,
+       -952.163
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k03",
+      "timeMs": 1083,
+      "eye": [
+       -1134.6,
+       14.8952,
+       -980.715
+      ],
+      "lookAt": [
+       -1163.36,
+       -9.8078,
+       -951.667
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k04",
+      "timeMs": 1417,
+      "eye": [
+       -1230.33,
+       -3.02,
+       -889.865
+      ],
+      "lookAt": [
+       -1177.85,
+       -6.29645,
+       -940.609
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k05",
+      "timeMs": 1500,
+      "eye": [
+       -1239.14,
+       -3.02,
+       -900.508
+      ],
+      "lookAt": [
+       -1178.05,
+       -6.29645,
+       -940.468
+      ],
+      "fovYDegrees": 51.0
+     },
+     {
+      "sceneId": "k06",
+      "timeMs": 1583,
+      "eye": [
+       -1233.85,
+       -3.02,
+       -893.64
+      ],
+      "lookAt": [
+       -1177.93,
+       -6.29645,
+       -940.552
+      ],
+      "fovYDegrees": 50.9336
+     },
+     {
+      "sceneId": "k07",
+      "timeMs": 2750,
+      "eye": [
+       -1233.85,
+       -3.02,
+       -893.64
+      ],
+      "lookAt": [
+       -1177.93,
+       -6.29645,
+       -940.552
+      ],
+      "fovYDegrees": 50.0
+     },
+     {
+      "sceneId": "k08",
+      "timeMs": 3000,
+      "eye": [
+       -1163.12,
+       -10.3,
+       -900.098
+      ],
+      "lookAt": [
+       -1152.32,
+       -10.1484,
+       -912.426
+      ],
+      "fovYDegrees": 50.0
      }
     ]
    }

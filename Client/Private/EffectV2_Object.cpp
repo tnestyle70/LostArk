@@ -193,6 +193,10 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 			Is_ColorInput(static_cast<TEXTURE_INPUT>(iInput)), m_Textures[iInput])))
 			return Fail("Texture load failed: " + strAssetId);
 	}
+	if (SHAPE::SCREEN_POST == m_eShape &&
+		SCREEN_POST_PROFILE::TEXTURED_OVERLAY == m_Params.ScreenPost.eProfile &&
+		!Has_Texture(TEXTURE_INPUT::BASE))
+		return Fail("Textured screen overlay requires a Base texture.");
 	Sync_Animation(true);
 	m_strStatus = "Ready";
 	Apply_Transform();
@@ -597,6 +601,9 @@ void Client::CEffectV2Object::Seek_ElapsedSeconds(const f32_t fElapsedSeconds)
 	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f)
 		return;
 	Restart();
+	const bool_t bWasPaused = m_bPlaybackPaused;
+	m_bPlaybackPaused = false;
+	Update(0.f); // Consume the clone's first-update guard without losing seek age.
 	constexpr f32_t MAX_STEP_SECONDS = 1.f / 60.f;
 	f32_t fRemaining = fElapsedSeconds;
 	while (fRemaining > 0.f && !m_bFinished)
@@ -605,6 +612,7 @@ void Client::CEffectV2Object::Seek_ElapsedSeconds(const f32_t fElapsedSeconds)
 		Update(fStep);
 		fRemaining -= fStep;
 	}
+	m_bPlaybackPaused = bWasPaused;
 }
 
 uint32_t Client::CEffectV2Object::Animation_Count() const
@@ -683,10 +691,13 @@ f32_t Client::CEffectV2Object::Dissolve_Amount() const
 	const f32_t fInEnd = Saturate(m_Params.fDissolveInEnd);
 	if (0.f < fInEnd && fRatio < fInEnd)
 		return Saturate(1.f - fRatio / fInEnd);
-	const f32_t fStart = (std::max)(Saturate(m_Params.fDissolveStart), fInEnd);
-	if (fStart >= 1.f)
-		return 0.f;
-	return Saturate((fRatio - fStart) / (1.f - fStart));
+	const f32_t fStart = (std::max)(Saturate(m_fOccurrenceDissolveStart >= 0.f ?
+		m_fOccurrenceDissolveStart : m_Params.fDissolveStart), fInEnd);
+	const f32_t fEnd = m_fOccurrenceDissolveEnd >= 0.f ?
+		Saturate(m_fOccurrenceDissolveEnd) : 1.f;
+	if (fStart >= fEnd)
+		return fRatio >= fEnd && fEnd < 1.f ? 1.f : 0.f;
+	return Saturate((fRatio - fStart) / (fEnd - fStart));
 }
 
 f32_t Client::CEffectV2Object::Alpha_Envelope() const
@@ -728,6 +739,7 @@ Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Npc(
 	Target.eKind = EFFECT_V2_TARGET_KIND::NPC;
 	Target.pOwner = pNpc;
 	Target.pKey = pNpc.get();
+	Target.strArchetypeId = pNpc->Get_EffectV2BindingOwner();
 	return Target;
 }
 
@@ -813,12 +825,10 @@ bool_t Client::CEffectV2Object::Resolve_TargetView(
 	case EFFECT_V2_TARGET_KIND::PREVIEW_BODY:
 	{
 		const std::shared_ptr<CPart_Body> pBody = std::static_pointer_cast<CPart_Body>(pOwner);
-		const std::shared_ptr<CTransform> pTransform =
-			std::dynamic_pointer_cast<CTransform>(pBody->Get_Component(g_strTransformComTag));
-		if (nullptr == pBody->Get_Model() || nullptr == pTransform)
+		if (nullptr == pBody->Get_Model() ||
+			!pBody->Try_Get_PresentationRootMatrix(&OutView.BoneRoot))
 			return false;
 		OutView.pModel = pBody->Get_Model();
-		OutView.BoneRoot = *pTransform->Get_WorldMatrixPtr();
 		OutView.YawBasis = OutView.BoneRoot;
 		return true;
 	}
@@ -901,7 +911,7 @@ void Client::CEffectV2Object::Update(const f32_t fTimeDeltaIn)
 	/* The spawn frame can be one long hitch (deferred decode, texture load).
 	   A newly spawned effect must not consume that delta or short-lived
 	   elements finish before their first render. */
-	f32_t fTimeDelta = fTimeDeltaIn;
+	f32_t fTimeDelta = m_bPlaybackPaused ? 0.f : fTimeDeltaIn;
 	if (m_bFirstUpdatePending)
 	{
 		m_bFirstUpdatePending = false;
@@ -1472,8 +1482,30 @@ HRESULT Client::CEffectV2Object::Submit_Presentation()
 {
 	m_ePresentationFailureScope = Engine::PRESENTATION_FAILURE_SCOPE::NONE;
 	Engine::CPresentation_Manager& Presentation = Engine::CPresentation_Manager::Get();
-	Presentation.Register_ProviderSubmissionExpectation(0u, 0u, 1u, 1u);
 	const SCREEN_POST_PARAMS& S = m_Params.ScreenPost;
+	if (SCREEN_POST_PROFILE::TEXTURED_OVERLAY == S.eProfile)
+	{
+		Presentation.Register_ProviderScreenOverlayExpectation(1u, 1u);
+		Engine::PRESENTATION_SCREEN_OVERLAY_DESC Overlay;
+		Overlay.fSampleTimeSeconds = (std::max)(0.f, m_fTime);
+		Overlay.vPosition = S.Evaluate_OverlayPosition(Life_Ratio());
+		Overlay.vScale = S.vOverlayScale;
+		Overlay.fRotationDegrees = S.fOverlayRotationDegrees;
+		Overlay.vTint = S.vTint;
+		Overlay.fAlpha = Saturate(ScreenPost_Intensity()) * Alpha_Envelope();
+		Overlay.eColorSpace = m_Params.bColorTexturesSRGB ?
+			Engine::PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB :
+			Engine::PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR;
+		Overlay.pTexture = m_Textures[static_cast<size_t>(TEXTURE_INPUT::BASE)];
+		const HRESULT hResult = Presentation.Add_ScreenOverlay(Overlay);
+		if (FAILED(hResult))
+		{
+			m_ePresentationFailureScope = Presentation.Get_LastFailureScope();
+			m_strStatus = "Textured screen overlay submission failed.";
+		}
+		return hResult;
+	}
+	Presentation.Register_ProviderSubmissionExpectation(0u, 0u, 1u, 1u);
 	Engine::PRESENTATION_SCREEN_POST_DESC Post;
 	switch (S.eProfile)
 	{

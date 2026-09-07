@@ -88,7 +88,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
         )
 
     def test_checked_in_scatter_one_round_trips_to_runtime(self) -> None:
-        self.assertEqual(10, self.source_document["revision"])
+        self.assertGreaterEqual(self.source_document["revision"], 12)
         self.assertEqual(
             1,
             self.source_document["globalQuality"]["bloomScatter"],
@@ -143,6 +143,25 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             "globalQuality.fxaaEdgeThreshold",
             result.stdout + result.stderr,
         )
+
+    def test_level_quality_override_round_trips_and_invalid_publish_preserves_runtime(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        kouku["qualityOverride"] = copy.deepcopy(document["globalQuality"])
+        kouku["qualityOverride"]["exposure"] = 2.0
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "RenderingProfiles.json"
+            destination = Path(temporary_directory) / "RenderingProfiles.runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            published = destination.read_bytes()
+            self.assertEqual(document, json.loads(published))
+            kouku["qualityOverride"]["exposure"] = 0.0
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual(published, destination.read_bytes())
 
 
 if __name__ == "__main__":

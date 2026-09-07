@@ -36,6 +36,7 @@ namespace Engine
 		SSAO_RAW = 12,
 		SSAO_BLUR = 13,
 		PRESENTATION_CHROMATIC_ABERRATION = 15,
+		SPOT = 16,
 		END
 	};
 
@@ -48,7 +49,7 @@ namespace Engine
 
 	//enum TEXTUREID { TEX_NORMAL, TEX_CUBE, TEX_END };
 
-	enum class LIGHT { DIRECTIONAL, POINT, END };
+	enum class LIGHT { DIRECTIONAL, POINT, SPOT, END };
 
 	enum class DIM { LB, RB, WHEEL, END };
 

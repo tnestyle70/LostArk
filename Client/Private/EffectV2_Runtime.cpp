@@ -87,6 +87,8 @@ namespace
 		std::string strArchetypeId;
 		std::string strClip;
 		f32_t fLastSeconds = -1.f;
+		bool_t bLocalClipPreview = false;
+		f32_t fLocalPreviewRate = 1.f;
 		std::vector<PENDING_SPAWN> Pending;
 		std::string strStage;
 		f32_t fStageLastSeconds = -1.f;
@@ -103,6 +105,8 @@ namespace
 		f32_t fSeconds = 0.f;
 		f32_t fPlaybackRate = 1.f;
 		bool_t bProductOwned = false;
+		bool_t bPaused = false;
+		Client::EFFECT_V2_GROUP_PLAYBACK_DESC Playback;
 		std::vector<PENDING_SPAWN> Pending;
 		std::vector<SPAWNED_EFFECT> Spawned;
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot;
@@ -142,6 +146,8 @@ namespace
 			return Target.strArchetypeId.empty() ? nullptr : &Target.strArchetypeId;
 		if (Client::EFFECT_V2_TARGET_KIND::NPC != Target.eKind)
 			return nullptr;
+		if (!Target.strArchetypeId.empty())
+			return &Target.strArchetypeId;
 		const std::shared_ptr<Engine::CGameObject> pOwner = Target.pOwner.lock();
 		if (nullptr == pOwner)
 			return nullptr;
@@ -305,6 +311,23 @@ namespace
 		return fStop;
 	}
 
+	f32_t Occurrence_ChildStopSeconds(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_GROUP_CHILD& Child,
+		const Client::EFFECT_V2_GROUP_PLAYBACK_DESC& Playback)
+	{
+		if (Playback.fDurationSeconds < 0.f)
+			return Child_StopSeconds(Group, Child, 0u);
+		f32_t fStop = Child.iDurationMs > 0u ?
+			Ms_ToSeconds(Child.iStartMs + Child.iDurationMs) : -1.f;
+		if (Playback.fDurationSeconds > 0.f)
+		{
+			const f32_t fOccurrenceStop = Playback.fDurationSeconds * Playback.fPlaybackRate;
+			fStop = fStop < 0.f ? fOccurrenceStop : (std::min)(fStop, fOccurrenceStop);
+		}
+		return fStop;
+	}
+
 	f32_t Child_RelativeStopSeconds(
 		const Client::EFFECT_V2_GROUP& Group,
 		const Client::EFFECT_V2_GROUP_CHILD& Child)
@@ -426,7 +449,8 @@ namespace
 		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr,
 		std::string* const pOutFailure = nullptr,
 		const f32_t fPlaybackRate = 1.f,
-		const f32_t fInitialElapsedSeconds = 0.f)
+		const f32_t fInitialElapsedSeconds = 0.f,
+		const Client::EFFECT_V2_GROUP_PLAYBACK_DESC* const pPlayback = nullptr)
 	{
 		const auto Reject = [pOutFailure](const std::string& strFailure)
 		{
@@ -520,6 +544,35 @@ namespace
 		if (NO_CHILD != Pending.iChildIndex)
 			Apply_ChildScale(*pObject, *pDocument, Pending.vScale);
 		pObject->Params().fPlayRate *= fPlaybackRate;
+		if (nullptr != pPlayback)
+		{
+			CEffectV2Object::PARAMS& Params = pObject->Params();
+			if (pPlayback->fDurationSeconds > 0.f)
+			{
+				const f32_t fChildWallDuration = (Pending.fStopSeconds -
+					Ms_ToSeconds(Pending.Binding.iStartMs)) / fPlaybackRate;
+				Params.fLifetime = fChildWallDuration * Params.fPlayRate;
+				Params.bLoop = false;
+			}
+			else if (0.f == pPlayback->fDurationSeconds)
+				Params.bLoop = true;
+			const f32_t fWallLifetime = Params.fLifetime / Params.fPlayRate;
+			if (fWallLifetime > 0.f)
+			{
+				if (pPlayback->fFadeInSeconds >= 0.f)
+				{
+					Params.fAlphaInEnd = (std::min)(1.f,
+						pPlayback->fFadeInSeconds / fWallLifetime);
+					Params.fDissolveInEnd = Params.fAlphaInEnd;
+				}
+				if (pPlayback->fFadeOutSeconds >= 0.f)
+					Params.fAlphaOutStart = (std::max)(0.f,
+						1.f - pPlayback->fFadeOutSeconds / fWallLifetime);
+			}
+			if (pPlayback->fDissolveOutStart >= 0.f)
+				pObject->Set_DissolveOutRange(pPlayback->fDissolveOutStart,
+					pPlayback->fDissolveOutEnd);
+		}
 		if (fInitialElapsedSeconds > 0.f)
 			pObject->Seek_ElapsedSeconds(fInitialElapsedSeconds);
 		SPAWNED_EFFECT Effect;
@@ -1014,7 +1067,7 @@ namespace
 				++Iterator;
 				continue;
 			}
-			Group.fSeconds += fTimeDelta * Group.fPlaybackRate;
+			Group.fSeconds += Group.bPaused ? 0.f : fTimeDelta * Group.fPlaybackRate;
 			for (PENDING_SPAWN& Pending : Group.Pending)
 			{
 				if (0u != Pending.iNextLoopEpoch)
@@ -1022,10 +1075,20 @@ namespace
 				if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
 				{
 					Pending.iNextLoopEpoch = 1u;
+					if (Pending.fStopSeconds >= 0.f && Group.fSeconds >= Pending.fStopSeconds)
+						continue; // A late snapshot must not flash an expired child.
 					std::string SpawnFailure;
 					Spawn(Pending, Group.Pivot, Client::EFFECT_V2_TARGET{}, false,
 						Group.Spawned, pDevice, pContext, Group.pSnapshot.get(),
-						&SpawnFailure, Group.fPlaybackRate, 0.f);
+						&SpawnFailure, Group.fPlaybackRate,
+						(Group.fSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) /
+							Group.fPlaybackRate, &Group.Playback);
+					if (Group.bPaused)
+					{
+						for (const SPAWNED_EFFECT& Effect : Group.Spawned)
+							if (const auto pObject = Effect.pObject.lock())
+								pObject->Set_PlaybackPaused(true);
+					}
 					if (Group.strFailure.empty() && !SpawnFailure.empty())
 						Group.strFailure = std::move(SpawnFailure);
 				}
@@ -1238,6 +1301,23 @@ void Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
 	g_TargetStates.erase(Found);
 }
 
+void Client::CEffectV2Runtime::Sample_LocalClipPreview(
+	const EFFECT_V2_TARGET& Target, const bool_t bPaused, const f32_t fPlaybackRate,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY != Target.eKind ||
+		!Target.Is_Valid() || !std::isfinite(fPlaybackRate) || fPlaybackRate <= 0.f)
+		return;
+	const auto found = g_TargetStates.find(Target.pKey);
+	if (found == g_TargetStates.end()) return;
+	found->second.bLocalClipPreview = true;
+	found->second.fLocalPreviewRate = fPlaybackRate;
+	Tick(Target, pDevice, pContext);
+	for (SPAWNED_EFFECT& effect : found->second.Spawned)
+		if (const auto object = effect.pObject.lock()) object->Set_PlaybackPaused(bPaused);
+}
+
 void Client::CEffectV2Runtime::Tick(
 	const EFFECT_V2_TARGET& Target,
 	const ComPtr<ID3D11Device>& pDevice,
@@ -1295,7 +1375,10 @@ void Client::CEffectV2Runtime::Tick(
 		if (fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
 		{
 			Pending.iNextLoopEpoch = 1u;
-			Spawn_OnTarget(State, Pending, View, false, pDevice, pContext);
+			const f32_t rate = State.bLocalClipPreview ? State.fLocalPreviewRate : 1.f;
+			const f32_t elapsed = State.bLocalClipPreview ?
+				(std::max)(0.f, fSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) / rate : 0.f;
+			Spawn_OnTarget(State, Pending, View, false, pDevice, pContext, rate, elapsed);
 		}
 	}
 	Apply_ChildStops(State.Spawned, fSeconds, false, true);
@@ -1324,9 +1407,21 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	if (!std::isfinite(Playback.fInitialAgeSeconds) ||
 		Playback.fInitialAgeSeconds < 0.f ||
 		!std::isfinite(Playback.fPlaybackRate) ||
-		Playback.fPlaybackRate <= 0.f || Playback.fPlaybackRate > 16.f)
+		Playback.fPlaybackRate <= 0.f || Playback.fPlaybackRate > 16.f ||
+		!std::isfinite(Playback.fDurationSeconds) ||
+		(Playback.fDurationSeconds < 0.f && Playback.fDurationSeconds != -1.f) ||
+		!std::isfinite(Playback.fFadeInSeconds) ||
+		(Playback.fFadeInSeconds < 0.f && Playback.fFadeInSeconds != -1.f) ||
+		!std::isfinite(Playback.fFadeOutSeconds) ||
+		(Playback.fFadeOutSeconds < 0.f && Playback.fFadeOutSeconds != -1.f) ||
+		!std::isfinite(Playback.fDissolveOutStart) ||
+		!std::isfinite(Playback.fDissolveOutEnd) ||
+		!((Playback.fDissolveOutStart == -1.f && Playback.fDissolveOutEnd == -1.f) ||
+			(Playback.fDissolveOutStart >= 0.f &&
+			 Playback.fDissolveOutStart < Playback.fDissolveOutEnd &&
+			 Playback.fDissolveOutEnd <= 1.f)))
 	{
-		Report("group playback has an invalid age/rate: " + Group.strGroupId);
+		Report("group playback has an invalid age/rate/envelope: " + Group.strGroupId);
 		return 0u;
 	}
 	if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
@@ -1354,7 +1449,14 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	Lane.fSeconds = Playback.fInitialAgeSeconds * Playback.fPlaybackRate;
 	Lane.bProductOwned = Playback.bProductOwned;
 	Lane.pSnapshot = std::move(pSnapshot);
+	Lane.Playback = Playback;
 	Expand_Group(Group, Binding, Lane.Pending);
+	for (PENDING_SPAWN& Pending : Lane.Pending)
+	{
+		Pending.fStopSeconds = Occurrence_ChildStopSeconds(
+			Group, Group.Children[Pending.iChildIndex], Playback);
+		Pending.fRelativeStopSeconds = Pending.fStopSeconds;
+	}
 	if (Lane.Pending.empty())
 	{
 		Report("group has no children: " + Group.strGroupId);
@@ -1369,6 +1471,23 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	   other lane clock and preserves one global frame advance in MainApp. */
 	Advance_FreeGroupLanes(Playback.bProductOwned, 0.f, pDevice, pContext);
 	return iHandle;
+}
+
+uint32_t Client::CEffectV2Runtime::Play_Leaf(
+	const std::string& strEffectId,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+	const EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	EFFECT_V2_GROUP Group;
+	Group.strGroupId = strEffectId;
+	EFFECT_V2_GROUP_CHILD Child;
+	Child.strChildId = "occurrence.leaf";
+	Child.strResourceId = strEffectId;
+	Child.strEffectId = strEffectId;
+	Group.Children.push_back(std::move(Child));
+	return Play_Group(Group, std::move(pSnapshot), Playback, pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT_V2_GROUP& Group)
@@ -1389,12 +1508,18 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 			continue;
 		}
 		Retarget_Pending(Pending, Group, Pending.iChildIndex, 0u);
+		Pending.fStopSeconds = Occurrence_ChildStopSeconds(
+			Group, Group.Children[Pending.iChildIndex], Lane.Playback);
+		Pending.fRelativeStopSeconds = Pending.fStopSeconds;
 	}
 	for (size_t iChild = Lane.Pending.size(); iChild < Group.Children.size(); ++iChild)
 	{
 		PENDING_SPAWN Pending;
 		Pending.Binding.bFollowBone = false;
 		Retarget_Pending(Pending, Group, iChild, 0u);
+		Pending.fStopSeconds = Occurrence_ChildStopSeconds(
+			Group, Group.Children[iChild], Lane.Playback);
+		Pending.fRelativeStopSeconds = Pending.fStopSeconds;
 		Lane.Pending.push_back(std::move(Pending));
 	}
 	for (SPAWNED_EFFECT& Effect : Lane.Spawned)
@@ -1422,7 +1547,7 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 		}
 		if (!Effect.bStopApplied)
 		{
-			Effect.fStopSeconds = Child_StopSeconds(Group, Child, 0u);
+			Effect.fStopSeconds = Occurrence_ChildStopSeconds(Group, Child, Lane.Playback);
 			Effect.eStop = Child.eStop;
 		}
 	}
@@ -1434,7 +1559,32 @@ void Client::CEffectV2Runtime::Set_GroupPivot(
 	const auto Found = g_FreeGroups.find(iHandle);
 	if (Found == g_FreeGroups.end())
 		return;
-	Found->second.Pivot = PivotWorld;
+	FREE_GROUP& Lane = Found->second;
+	Lane.Pivot = PivotWorld;
+	for (const SPAWNED_EFFECT& Effect : Lane.Spawned)
+	{
+		const auto Pending = std::find_if(Lane.Pending.begin(), Lane.Pending.end(),
+			[&Effect](const PENDING_SPAWN& Row) { return Row.iChildIndex == Effect.iChildIndex; });
+		const std::shared_ptr<CEffectV2Object> pObject = Effect.pObject.lock();
+		if (Pending != Lane.Pending.end() && nullptr != pObject)
+		{
+			float4x4_t ChildPivot;
+			XMStoreFloat4x4(&ChildPivot,
+				XMLoadFloat4x4(&Pending->Local) * XMLoadFloat4x4(&PivotWorld));
+			pObject->Set_PivotWorld(ChildPivot);
+		}
+	}
+}
+
+void Client::CEffectV2Runtime::Set_GroupPaused(const uint32_t iHandle, const bool_t bPaused)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	Found->second.bPaused = bPaused;
+	for (const SPAWNED_EFFECT& Effect : Found->second.Spawned)
+		if (const auto pObject = Effect.pObject.lock())
+			pObject->Set_PlaybackPaused(bPaused);
 }
 
 void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)

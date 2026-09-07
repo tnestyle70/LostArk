@@ -45,6 +45,11 @@ namespace LostArk::Server
 		bool bKnockdown = false;
 		std::uint32_t iDownMs = 0u;
 		std::uint32_t iServerTick = 0u;
+		/* Typed mechanic verdicts (instant death, max-HP percent) are authored
+		as the final amount, so neither defense nor a counter skill may soften
+		them. Ordinary boss hits leave both false. */
+		bool bIgnoreDefense = false;
+		bool bIgnoreCounter = false;
 	};
 
 	/* The two combat directions share event/death/reaction ownership here.

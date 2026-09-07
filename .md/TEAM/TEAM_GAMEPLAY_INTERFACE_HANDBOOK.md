@@ -39,11 +39,25 @@ Character Select의 `Create Character`는 선택 class와 공통 validator를 �
 
 2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.4:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.4/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.4:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
-쿠크 아레나의 광기 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. 기본 공급자는
-v59 `PLAYER_SNAPSHOT.iCurrentMadness/iMaximumMadness`이며 10000 단위 값을 백분율 임계값에 맞춰 표시한다.
-F1 `Kouku UI Preview`는 Debug 표시 전용 override다. 해제·session reset 시 실제 수치로 복귀한다.
-현재 광대 변신은 원래 class의 스킬 입력을 유지하므로 POLYMORPH/MARIO/DANCE/MAZE 모드는 명시적인
-UI preview에서만 표시한다. 해당 모드의 키·스킬·애니메이션·패턴 연결은 후속 기능이다.
+쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
+`PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
+광기 100% 및 F1 `Clown > Change to Clown`은 `POLYMORPH`(표시 이름 Clown)를 사용하고,
+Mario/Dance/Card Maze는 각각 `MARIO/DANCE/MAZE`를 사용한다. 모든 interaction 스킬 쿨타임은 3초다.
+`CPlayerController -> IPlayerCommandSink -> Server -> snapshot -> CCharacter`가 입력·판정·애니메이션을
+연결하며 이 모드에서는 기존 class quick-slot과 평타를 보내지 않는다. QWER 춤 순서는 양팔 모으기,
+슈퍼맨, 양팔 벌리기, 한 다리 올리기다. 첫 오답은 fail, 유효 입력 없이 창 종료는 timeout이다.
+F1의 mode 선택은 typed Debug 명령으로 실제 모델·HUD·스킬을 바꾸고 Return to Player는 원래
+class로 복귀한다. 별도 `Kouku UI Preview`는 표시 전용 override이며 해제하면 실제 snapshot으로 돌아간다.
+Mario1의 `Mario1_go`/`Mario1_Trigger_5`는 이동 도착 시에만 mode를 전환한다. movePlayer event의
+optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 적용한다. Card Maze Debug gate는
+`(0.09,-0.01,1351.48)`에 플레이어만 이동시키고 보스를 생성하지 않는다. Mario2~4 진입점은 미등록이다.
+Clown 본체는 `Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel`이며 admission scale은
+`0.017 × 0.709`다. 별도 프라이팬 `IT_GSTFP_00` 장착 part를 제외했고 본체와 망치 몸동작은 유지한다.
+`Data/Animation/Authored/KoukuSaydon/Clown.interactionbindings.json`이 mode/index별 clip을 소유한다.
+G1 Saydon 활성 동안 Server가 카드 문양 4종 × RED/BLACK 중 하나를 배정해 복제하며 G1 종료/퇴장에
+NONE으로 정리한다. Client는 8개 `boss.kouku.card.*` V2 group을 머리 위에 표시하고 카드 상태를 생성하지 않는다.
+쿠크의 사망 화면은 기존 DeadScene UI와 typed revive 명령을 사용한다. Server는 사망 XZ의
+walkable 지면으로 부활시키며, 더 이상 유효하지 않은 지점은 기존 navigation projection으로 보정한다.
 캐릭터 정보창과 아바타 도감은 아레나의 현재 복제 캐릭터를 읽고, 같은 class의 광대 교체도 목록 갱신 경계로 본다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
@@ -91,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v58 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v64 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -306,7 +320,22 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-Shared protocol 58의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+Shared protocol 64의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+
+맵별 플레이어 시점은 같은 F1 항목의 `Move Player` 아래 `Player Follow Camera`에서 설정한다.
+`Camera map`은 Character Select / KoukuSaydon 두 맵만 선택하며 Valtan profile은 수정하지 않는다.
+Position offset은 플레이어 기준 월드 XYZ(m), Rotation은 Pitch/Yaw/Roll(deg), Pitch +는 아래,
+Yaw 0은 +Z다. FOV와 응답(0이면 즉시 follow)도 함께 저장한다. `Apply / Follow current map`은
+현재 선택한 활성 맵의 카메라만 바꾸고 follow로 복귀하며, 연출 카메라가 사용 중이면 비활성이다.
+`Save camera settings`는 선택한 JSON만 저장하고 다음 진입 때 자동 적용한다. `Reload saved`와
+`Reset draft`는 편집값만 바꾸므로 현재 화면에 적용하려면 Apply를 누른다.
+
+정본은 `Data/Camera/CharacterSelect.camera.json`, `Data/Camera/KoukuSaydon.camera.json`이다.
+`CArenaCameraProfile`은 schema/version/areaId와 유한 범위를 검증하고 실패 시 기존 값·파일을
+보존한다. 각 Level이 생성·class 변경·follow 복귀에서 profile을 소비하며 Kouku 연출 종료
+위치·주시점·FOV도 같은 값으로 돌아온다. 연출 자체의 roll은 기존 override를 따르고 follow 복귀
+후 저장한 roll을 적용한다. Character Select에서는 카메라 튜닝만 추가하며 `Move Player`는
+비활성이다. 새 Server command와 Resources 전달물은 없다.
 
 ## 5. Character와 Animation
 
@@ -658,7 +687,63 @@ K Resource는 실제 `MN_RPCZ_00` 모델 clip 전체를 읽고 action reference�
 reference에 없는 물리 clip은 `sourceActionId=0`, `sourceStageId=RAW`, 빈 `referenceRevision`으로 저장한다.
 PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE 행을 생략한다.
 현재 Resource/Animation family preview는 기존 collision-off 로컬 preview actor에서 실행한다.
-Server boss raw audition, 다중 family 공용 Sequencer와 arena scene runner는 아직 미구현이다.
+Kouku Composition Play는 같은 clock으로 Animation, WORLD와 presentation occurrence를 재생한다.
+WORLD 정의의 optional `positionOffset: [x,y,z]`와 speed, WORLD occurrence의 `durationMs`는
+projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 거쳐 Server cue까지
+전달된다. protocol 64의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
+1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 박스 수명은 playback speed와
+별도로 측정하고, Stop/수명 종료에서 원래 배치를 복구하며 생성한 World Object를 정리한다.
+Server/Shared/Client는 같은 protocol 64으로 함께 빌드·재시작한다.
+optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
+
+F1 `World Object Tool`의 정의와 이름을 가진 상태는 Area의
+`Data/Maps/Authoring/<Area>/<Area>.worldsequences.json` v3에 저장한다. `objectResources`의 모델은
+stable `objectId`를 `OBJECT_RESOURCE` binding으로 연결하고, 기존 커튼·룰렛은 stable
+`sequenceInstanceId`를 참조하는 별칭으로 재사용한다. 상태는 기존 template의 transform/animation
+track과 `objectMotion`, instance의 `anchorKind=WORLD|PLAYER`·`position`을 소비한다. 저장 schema와
+생성 개수·간격·수명 제한은 [Area 데이터 레이어 가이드](AREA_DATA_LAYER_GUIDE.md)의 WorldSequence
+계약을 따른다. Action Workbench `World` resource의 `Append selected World Object at Cursor`는
+저장된 상태를 기존 WORLD 정의와 occurrence에 연결한다. Map publisher가 배포한 상태를
+`CWorldSequencePlayer`가 동일하게 재생하므로 Effect나 별도 오브젝트 runtime을 추가하지 않는다.
+LOGIC occurrence의 optional `enabled:false`는 저작 창·RESULT를 보존하고 gameplay 투영에서 제외한다.
+TRIGGER의 `REAL_GAZE_TELEPORT`는 명시한
+teleportPosition과 clonePatternId, clockHours를 사용해 Server가 진짜 이동과 clone 3개를 함께 commit한다.
+`HUD_ENTER` trigger는 hudMode를 적용한다. 이름만 있는 기존 TRIGGER는 실행 동작을 추측하지 않는다.
+각도·거리 설정은 F1 시야 패널에서 Composition 정본에 저장하고 Gameplay publish 및 Server 재시작으로 적용한다.
+
+optional `presentationResources/presentationOccurrences`는 EFFECT group/leaf, SOUND, CAMERA와
+COLLIDER, LIGHT를 소유한다. LIGHT는 `LightResources.json` 또는 Area v2 map light의 stable ID를 참조하며
+MAP 고정 위치, PLAYER 살아 있는 복제 캐릭터 각각, BOSS 현재 pattern 소유자의 anchor와 box 수명·fade·brightness 배율을 소비한다.
+Server protocol/gameplay는 조명 값을 소유하지 않는다. WORLD/SCENE_PROFILE은 기존 정의·배치를 유지한다. 명시 publish한 Client
+Product `patterns[]`와 v63 보스 snapshot의 pattern ID/start tick/sequence를
+`CKoukuSaydonPresentationPlayer`가 소비한다. Product parse·validate·stage 실패를 authoring 직접 읽기로
+우회하지 않는다. Preview Play/seek/pause/Stop과 owner 종료는 자신이 만든 effect/sound/camera handle을
+정리하고 Scene Profile을 복원한다. Scene Profile 전환은 현재 즉시 적용이며 blend 시간 보간은 지원하지 않는다.
+Effect box의 수명·fade·dissolve·transform은 clone별 override이고 원본 V2 asset은 유지한다.
+WORLD 정의의 optional `companionEffectResourceId`는 같은 Composition의 EFFECT resource를,
+EFFECT box의 optional `worldOccurrenceId`는 같은 pattern의 WORLD box를 참조한다. World
+Preview/Append는 두 항목을 함께 준비하고 제품은 명시적으로 저장된 Effect box만 재생한다.
+연결된 Effect box의 시간·속성은 독립 편집할 수 있다. Preview의 source draft generation 변경은
+현재 clock에서 다시 stage하며 실패 이유와 정상 기존 항목을 보존한다.
+Effect V2 `TexturedOverlay`는 기존 `Add_ScreenOverlay`를 사용한다. 전체화면 커튼
+`boss.kouku.curtain_1`의 원본 texture ID는 `Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`이며
+World mesh나 카메라 위치를 바꿔 화면 효과를 흉내 내지 않는다. 이 profile은 alpha envelope를 사용하고
+texture dissolve는 사용하지 않는다. 원본 texture 근거와 조정한 이동 시간, Resources 전달 및
+사용자 화면 검증 상태는 대응 RESULT에 기록한다.
+
+Collider resource는 `shape`, 크기, `colliderKind=GEOMETRY|ROULETTE_CARD_REGION`을 정의한다.
+각 box는 `regionId`, `cardSymbol/cardColor`, `anchorKind=BOSS|WORLD`, `worldId`와
+`logicOccurrenceId`를 소유한다. WORLD 앵커는 실제 sequence placement TRS를 사용하고 Product에는
+`worldSequenceInstanceId`를 투영한다. `ROULETTE_CARD_MATCH`는 연결된 지역에서 창 종료 tick의
+플레이어 XZ와 문양·색을 비교한다. 일치 success/불일치 fail/지역 밖 timeout은 연결된 기존 RESULT를 실행한다.
+일반 영역은 `CIRCLE`을 포함하며 DURATION `AREA_OVERLAP`의 `insideOutcome=SUCCESS|FAIL`이
+안쪽의 결과 슬롯을 정하고 바깥은 기존 Timeout을 소비한다. TRIGGER `ENTER_AREA`는 최초 진입
+Success, 미진입 Timeout과 기존 `MAX_HP_PERCENT_DAMAGE` 최대 HP % RESULT를 재사용한다.
+WORLD ENTER_AREA는 같은 pattern의 WORLD box, 단일 MAP_PLACEMENT baseline TRS와
+animated key를 투영해 Server tick에서 샘플한다. WORLD 수명 밖의 창과 잘못된 binding/transform은
+publisher가 거부한다. `debugRender`(기본 true)는 wire 표시만 바꾸며 판정의 enabled 값이 아니다.
+Client `CHitAreaWire`는 debug mirror이며 PhysX collider가 hit·카드 판정 권위를 갖지 않는다.
+다중 family 전체를 위한 범용 arena scene runner는 별도 범위다.
 기존 Valtan Sequencer의 Sound/Effect/Logic/Collider/Camera 편집 기능은 기존 경로에 남아 있다.
 
 `Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
@@ -946,6 +1031,6 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan destroyable publisher, Server 상태/동적 collision·navigation, Shared replication과 제품 debris/effect cue
 - generic Boss Composition writer와 multi-owner Save transaction
 - resolved Composition Product의 Client/Server runtime consumer와 공통 Sound/Camera/UI transport
-- KoukuSaydon gameplay/encounter 승격과 Arena Sequencer scene runner
+- KoukuSaydon Mario2~4 진입 데이터와 범용 Arena Sequencer scene runner
 
 이 항목들은 현재 인터페이스를 우회해 임시 구현하지 않는다.

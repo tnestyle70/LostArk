@@ -25,6 +25,7 @@ namespace LostArk::Server
 		float fDurationSeconds = 0.f;
 		float fElapsedSeconds = 0.f;
 		float fArcHeight = 0.f;
+		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudModeOnArrival = LostArk::Shared::KOUKU_HUD_MODE::END;
 		bool isActive = false;
 	};
 
@@ -195,6 +196,45 @@ namespace LostArk::Server
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
+		/* Tick the gauge-driven clown hold expires at; 0 means no expiry, which
+		is what the Debug F1 toggle leaves so only "Return to Player" ends it. */
+		std::uint32_t iMadnessFormEndTick = 0u;
+		/* KoukuSaydon interaction HUD truth, recomputed every tick by
+		CKoukuSaydonLogicRuntime::Update_PlayerModes: which mode the Client
+		draws and which authored icon each Q..F slot carries (-1 empty). Dance
+		poses always use Q/W/E/R = Superman/open arms/one leg/folded arms. */
+		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode =
+			LostArk::Shared::KOUKU_HUD_MODE::NONE;
+		LostArk::Shared::KOUKU_HUD_MODE eDebugKoukuHudModeOverride =
+			LostArk::Shared::KOUKU_HUD_MODE::NONE;
+		std::int8_t ModeSkillIndexBySlot[LostArk::Shared::KOUKU_HUD_SLOT_COUNT] =
+			{ -1, -1, -1, -1, -1, -1, -1, -1 };
+		std::uint32_t iLastKoukuInteractionSequence = 0u;
+		bool bKoukuPatternOwnsClown = false;
+		std::uint32_t iKoukuSuppressedPatternSequence = 0u;
+		LostArk::Shared::KOUKU_HUD_MODE eKoukuAreaHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+		/* One suit/color dealt by the active Gate 1 Saydon encounter. */
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eMechanicCardSymbol =
+			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		LostArk::Shared::MECHANIC_CARD_COLOR eMechanicCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
+		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT LastDebugKoukuHudModeResult;
+
+		void Clear_KoukuInteractionState()
+		{
+			iMadnessFormEndTick = 0u;
+			bKoukuPatternOwnsClown = false;
+			iKoukuSuppressedPatternSequence = 0u;
+			eKoukuAreaHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+			eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+			eDebugKoukuHudModeOverride = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+			for (std::int8_t& index : ModeSkillIndexBySlot)
+				index = -1;
+		}
+		void Clear_KoukuAssignedCard()
+		{
+			eMechanicCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+			eMechanicCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
+		}
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =

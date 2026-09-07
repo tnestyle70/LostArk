@@ -73,7 +73,8 @@ public:
 		const shared_ptr<Engine::CShader>& shader,
 		uint32_t meshIndex,
 		const MAP_ASSET_RENDER_PROFILE& profile,
-		f32_t elapsedTime);
+		f32_t elapsedTime,
+		const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr);
 };
 
 NS_END

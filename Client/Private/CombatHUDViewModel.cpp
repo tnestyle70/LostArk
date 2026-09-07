@@ -179,6 +179,7 @@ bool Client::CCombatHUDViewModel::Apply_CharacterPreview(
 		return false;
 
 	m_Player = {};
+	m_KoukuGimmick = {};
 	m_Player.isValid = true;
 	m_Player.isPreview = true;
 	m_Player.eCharacterClass = characterClass;
@@ -210,6 +211,26 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
 	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
 	m_Player.eMadnessForm = snapshot.eMadnessForm;
+	m_Player.eKoukuHudMode = snapshot.eKoukuHudMode;
+	m_KoukuGimmick = {};
+	m_KoukuGimmick.isValid = 0u != snapshot.iMaximumMadness;
+	m_KoukuGimmick.iMadnessGauge = snapshot.iCurrentMadness;
+	m_KoukuGimmick.iMadnessMaximum = snapshot.iMaximumMadness;
+	m_KoukuGimmick.eHudMode = static_cast<HUD_KOUKU_HUD_MODE>(snapshot.eKoukuHudMode);
+	for (std::size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
+	{
+		const auto index = snapshot.ModeSkillIndexBySlot[i];
+		m_KoukuGimmick.ModeSkillIndexBySlot[i] = index;
+		if (index < 0) continue;
+		const auto id = LostArk::Shared::Kouku_InteractionCooldownSkillId(snapshot.eKoukuHudMode, index);
+		for (const auto& cooldown : snapshot.Cooldowns)
+			if (cooldown.iSkillId == id)
+			{
+				m_KoukuGimmick.CooldownEndTicks[i] = cooldown.iCooldownEndTick;
+				m_KoukuGimmick.CooldownDurationTicks[i] = LostArk::Shared::KOUKU_INTERACTION_COOLDOWN_MS * 30u / 1000u;
+				break;
+			}
+	}
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;
@@ -229,14 +250,7 @@ Client::HUD_KOUKU_GIMMICK_STATE Client::CCombatHUDViewModel::Get_KoukuGimmick() 
 	if (m_KoukuGimmickPreview.isValid)
 		return m_KoukuGimmickPreview;
 #endif
-	HUD_KOUKU_GIMMICK_STATE state{};
-	state.isValid = m_Player.isValid && !m_Player.isPreview &&
-		0u != m_Player.iMaximumMadness;
-	state.iMadnessGauge = m_Player.iCurrentMadness;
-	state.iMadnessMaximum = m_Player.iMaximumMadness;
-	/* The current Server clown form retains the original class skills. Keep
-	the class HUD until gameplay also supplies interaction-mode commands. */
-	return state;
+	return m_KoukuGimmick;
 }
 
 void Client::CCombatHUDViewModel::Build_PlayerSkills(
@@ -435,6 +449,7 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 void Client::CCombatHUDViewModel::Reset_RuntimeState()
 {
 	m_Player = {};
+	m_KoukuGimmick = {};
 	m_Boss = {};
 	m_bBossDeadRaw = false;
 	m_DamageEvents.clear();

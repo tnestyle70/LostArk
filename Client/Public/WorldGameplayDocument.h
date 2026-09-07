@@ -111,6 +111,8 @@ struct WORLD_TRIGGER_EVENT
 	float3_t targetPosition = {};
 	f32_t durationSeconds = 0.8f;
 	f32_t arcHeight = 0.f;
+	// Optional mode committed by the Server when this move reaches its destination.
+	std::string koukuHudMode;
 	LostArk::Shared::WORLD_ID eTargetWorldId =
 		LostArk::Shared::WORLD_ID::END;
 	std::string targetId;

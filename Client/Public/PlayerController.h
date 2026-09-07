@@ -473,6 +473,7 @@ namespace Client
 		/* F1 "Change to Clown" / "Return to Player": asks the Server for the
 		madness form of this player. The snapshot swaps the body; the typed
 		result only reports the verdict here. */
+		bool_t Request_DebugKoukuHudMode(LostArk::Shared::KOUKU_HUD_MODE mode);
 		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
 		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }

@@ -21,10 +21,17 @@ namespace
         switch (boss)
         {
         case BOSS::VALTAN: return "Valtan";
-        case BOSS::KOUKU_SAYDON: return "KoukuSaydon";
+        case BOSS::KOUKU_SAYDON: return "Saydon";
+        case BOSS::KOUKU_SAYDON_GATE2: return "Large Saydon, Kouku";
+        case BOSS::KOUKU_SAYDON_GATE3: return "Saydon (Gate 3)";
+        case BOSS::KOUKU_SAYDON_ENCORE: return "Encore Saydon";
         default: return "Unavailable boss";
         }
     }
+
+    constexpr std::array<BOSS, 5u> BOSS_ENTRIES = {
+        BOSS::VALTAN, BOSS::KOUKU_SAYDON, BOSS::KOUKU_SAYDON_GATE2,
+        BOSS::KOUKU_SAYDON_GATE3, BOSS::KOUKU_SAYDON_ENCORE };
 
     const char* PaneLabel(const PANE pane)
     {
@@ -142,7 +149,10 @@ Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session()
     switch (m_eSelectedBoss)
     {
     case BOSS::VALTAN: return m_pValtanSession;
-    case BOSS::KOUKU_SAYDON: return m_pKoukuSaydonSession;
+    case BOSS::KOUKU_SAYDON:
+    case BOSS::KOUKU_SAYDON_GATE2:
+    case BOSS::KOUKU_SAYDON_GATE3:
+    case BOSS::KOUKU_SAYDON_ENCORE: return m_pKoukuSaydonSession;
     default: return nullptr;
     }
 }
@@ -356,11 +366,15 @@ void Client::CSequencerTool::Render_BossSelector()
     ImGui::SetNextItemWidth(200.f);
     if (ImGui::BeginCombo("Boss##CompositionWorkbenchBoss", BossLabel(m_eSelectedBoss)))
     {
-        for (const BOSS boss : { BOSS::VALTAN, BOSS::KOUKU_SAYDON })
+        for (const BOSS boss : BOSS_ENTRIES)
         {
             const bool selected = boss == m_eSelectedBoss;
             if (ImGui::Selectable(BossLabel(boss), selected))
+            {
                 m_eSelectedBoss = boss;
+                if (ICompositionWorkbenchSession* session = Selected_Session())
+                    session->Select_WorkbenchBoss(boss);
+            }
             if (selected)
                 ImGui::SetItemDefaultFocus();
         }

@@ -47,6 +47,7 @@ namespace Client
 		std::uint32_t iMaximumMadness = 0;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
+		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown
@@ -406,6 +407,7 @@ namespace Client
 			PLAYER_PROFILE_DEFINITION> m_PlayerProfiles;
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
+		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmick;
 		HUD_BOSS_STATE m_Boss;
 		std::string m_strInteractPromptTriggerId;
 		bool m_bBossDeadRaw = false;

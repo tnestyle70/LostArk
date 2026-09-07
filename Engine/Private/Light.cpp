@@ -8,13 +8,38 @@ namespace
 {
 	bool_t IsValidLightAttenuation(const LIGHT_DESC& LightDesc)
 	{
-		if (!std::isfinite(LightDesc.fFalloffExponent) ||
+		if ((LIGHT::POINT != LightDesc.eType &&
+			LIGHT::SPOT != LightDesc.eType &&
+			LIGHT::DIRECTIONAL != LightDesc.eType) ||
+			!std::isfinite(LightDesc.fFalloffExponent) ||
 			LightDesc.fFalloffExponent <= 0.f)
 		{
 			return false;
 		}
-		return LIGHT::POINT != LightDesc.eType ||
-			(std::isfinite(LightDesc.fRange) && LightDesc.fRange > 0.f);
+		if (LIGHT::DIRECTIONAL != LightDesc.eType &&
+			(!std::isfinite(LightDesc.fRange) || LightDesc.fRange <= 0.f ||
+			 !std::isfinite(LightDesc.vPosition.x) ||
+			 !std::isfinite(LightDesc.vPosition.y) ||
+			 !std::isfinite(LightDesc.vPosition.z) ||
+			 !std::isfinite(LightDesc.vPosition.w)))
+			return false;
+		if (LIGHT::POINT != LightDesc.eType)
+		{
+			const float fDirectionLengthSquared =
+				LightDesc.vDirection.x * LightDesc.vDirection.x +
+				LightDesc.vDirection.y * LightDesc.vDirection.y +
+				LightDesc.vDirection.z * LightDesc.vDirection.z;
+			if (!std::isfinite(fDirectionLengthSquared) ||
+				fDirectionLengthSquared <= 0.000001f ||
+				!std::isfinite(LightDesc.vDirection.w))
+				return false;
+		}
+		return LIGHT::SPOT != LightDesc.eType ||
+			(std::isfinite(LightDesc.fSpotInnerCos) &&
+			 std::isfinite(LightDesc.fSpotOuterCos) &&
+			 LightDesc.fSpotOuterCos > 0.f &&
+			 LightDesc.fSpotOuterCos <= LightDesc.fSpotInnerCos &&
+			 LightDesc.fSpotInnerCos < 1.f);
 	}
 }
 
@@ -67,7 +92,7 @@ HRESULT CLight::Render_Desc(
         iPassIndex = ETOUI(DEFERRED::DIRECTIONAL);
     }
 
-    else if (LIGHT::POINT == LightDesc.eType)
+    else if (LIGHT::POINT == LightDesc.eType || LIGHT::SPOT == LightDesc.eType)
     {
 		const uint32_t iApplyDirectionalShadow = 0u;
 		if (FAILED(pShader->Bind_RawValue(
@@ -84,6 +109,17 @@ HRESULT CLight::Render_Desc(
 			return E_FAIL;
 
         iPassIndex = ETOUI(DEFERRED::POINT);
+		if (LIGHT::SPOT == LightDesc.eType)
+		{
+			if (FAILED(pShader->Bind_RawValue(
+				"g_vLightDir", &LightDesc.vDirection, sizeof LightDesc.vDirection)) ||
+				FAILED(pShader->Bind_RawValue("g_fSpotInnerCos",
+					&LightDesc.fSpotInnerCos, sizeof LightDesc.fSpotInnerCos)) ||
+				FAILED(pShader->Bind_RawValue("g_fSpotOuterCos",
+					&LightDesc.fSpotOuterCos, sizeof LightDesc.fSpotOuterCos)))
+				return E_FAIL;
+			iPassIndex = ETOUI(DEFERRED::SPOT);
+		}
     }
 
 

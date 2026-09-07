@@ -225,6 +225,20 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true
 	},
+	/* Polymorph 4134 uses the same geometry as Kouku with its own material
+	   and animation set; this donor never replaces the MN_RPCZ_00 boss. */
+	ANIMATION_PREVIEW_ASSET
+	{
+		"kakulsaydon.mn-rpcz-00-1",
+		"[KoukuSaydon Player] MN_RPCZ_00-1 madness doll",
+		"MN_RPCZ_00-1",
+		"Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_MN_RPCZ_00_1",
+		false,
+		0.017f * 0.709f,
+		-90.f,
+		true
+	},
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan",

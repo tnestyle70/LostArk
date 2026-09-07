@@ -32,6 +32,33 @@ enum class WORLD_SEQUENCE_TARGET_KIND
 {
 	MAP_PLACEMENT,
 	DEPLOY_PLACEMENT,
+	OBJECT_RESOURCE,
+};
+
+struct WORLD_SEQUENCE_OBJECT_RESOURCE
+{
+	std::string objectId;
+	std::string displayName;
+	std::string modelAssetId;
+	std::string diffuseTextureAssetId;
+	f32_t modelPreScale = 0.01f;
+	bool_t animated = false;
+	float3_t scale = {1.f, 1.f, 1.f};
+	// Existing placed curtain/roulette aliases name a sequence instead of a model.
+	std::string sequenceInstanceId;
+};
+
+struct WORLD_SEQUENCE_OBJECT_MOTION
+{
+	float3_t velocity = {};
+	float3_t acceleration = {};
+	float3_t angularVelocityDegrees = {};
+	float3_t revolutionDegreesPerSecond = {};
+	float3_t revolutionOffset = {};
+	uint32_t count = 1u;
+	uint32_t intervalMs = 0u;
+	f32_t spreadDegrees = 0.f;
+	uint32_t seed = 1u;
 };
 
 enum class WORLD_SEQUENCE_INTERPOLATION
@@ -79,6 +106,7 @@ struct WORLD_SEQUENCE_TEMPLATE
 		WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP;
 	std::vector<WORLD_SEQUENCE_TRACK> tracks;
 	std::vector<WORLD_SEQUENCE_ANIMATION_TRACK> animationTracks;
+	WORLD_SEQUENCE_OBJECT_MOTION objectMotion;
 };
 
 struct WORLD_SEQUENCE_BINDING
@@ -97,6 +125,8 @@ struct WORLD_SEQUENCE_INSTANCE
 	uint32_t startDelayMs = 0;
 	f32_t playbackSpeed = 1.f;
 	std::vector<WORLD_SEQUENCE_BINDING> bindings;
+	std::string anchorKind = "WORLD";
+	float3_t position = {};
 };
 
 class CWorldSequenceDocument final
@@ -135,6 +165,10 @@ public:
 	const WORLD_SEQUENCE_INSTANCE* Find_Instance(
 		const std::string& instanceId) const;
 	bool_t Is_Equivalent(const CWorldSequenceDocument& other) const;
+	WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId);
+	const WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId) const;
+	std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE>& Get_ObjectResources() noexcept { return m_ObjectResources; }
+	const std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE>& Get_ObjectResources() const noexcept { return m_ObjectResources; }
 
 	const std::string& Get_AreaId() const noexcept { return m_AreaId; }
 	uint32_t Get_Revision() const noexcept { return m_iRevision; }
@@ -172,6 +206,7 @@ private:
 	uint32_t m_iRevision = 1;
 	std::vector<WORLD_SEQUENCE_TEMPLATE> m_Templates;
 	std::vector<WORLD_SEQUENCE_INSTANCE> m_Instances;
+	std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE> m_ObjectResources;
 };
 
 NS_END
