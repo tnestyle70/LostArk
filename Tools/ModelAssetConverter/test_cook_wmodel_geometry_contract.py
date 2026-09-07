@@ -6,6 +6,8 @@ import struct
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
+import cook_wmodel_geometry_contract as geometry
 from pathlib import Path
 from typing import Any
 
@@ -114,7 +116,7 @@ def _append_aligned(buffer: bytearray, value: bytes, alignment: int = 4) -> int:
     return offset
 
 
-def _write_source_gltf(root: Path, name: str, with_color0: bool) -> Path:
+def _write_source_gltf(root: Path, name: str, with_color0: bool, with_uv1: bool = False) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     buffer = bytearray()
     views: list[dict[str, int]] = []
@@ -171,6 +173,10 @@ def _write_source_gltf(root: Path, name: str, with_color0: bool) -> Path:
         "TEXCOORD_0": uv0,
         "TANGENT": tangents,
     }
+    if with_uv1:
+        attributes["TEXCOORD_1"] = add_accessor(
+            struct.pack("<6f", .125, .25, .375, .5, .625, .75), 5126, "VEC2", 3
+        )
     if with_color0:
         attributes["COLOR_0"] = add_accessor(
             b"".join(row["color0"] for row in SOURCE_VERTICES),
@@ -821,6 +827,40 @@ class WModelGeometryContractTests(unittest.TestCase):
                 "COLOR0_SHADER_CONSUMPTION_NOT_IMPLEMENTED",
                 receipt["runtimeProductBlockers"],
             )
+
+    def test_uv1_roundtrip_and_reconstructed_handedness_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for color in (False, True):
+                source = _write_source_gltf(root, "uv1", color, with_uv1=True)
+                legacy = _build_legacy_wmodel(root / "legacy.wmodel")
+                for reconstructed in (False, True):
+                    provenance = replace(_provenance(), tangent_handedness_project_reconstructed=reconstructed)
+                    payload, receipt = cook_wmodel_geometry_contract(source, legacy, provenance)
+                    candidate = root / "uv1.wmodel"
+                    candidate.write_bytes(payload)
+                    parsed = parse_geometry_wmodel(payload)
+                    self.assertEqual(FILE_HEADER.unpack_from(payload)[2], 2)
+                    self.assertTrue(parsed["hasTexcoord1"])
+                    self.assertEqual(parsed["vertexStride"], 60 if color else 56)
+                    self.assertEqual([v["uv1"] for v in parsed["submeshes"][0]["vertices"]], [(0.125, .25), (.375, .5), (.625, .75)])
+                    self.assertEqual(bool(parsed["evidenceFlags"] & geometry.MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF), not reconstructed)
+                    self.assertEqual(bool(parsed["evidenceFlags"] & geometry.MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED), reconstructed)
+                    verify_source_against_geometry_contract(source, candidate)
+                    corrupt = bytearray(payload)
+                    layout = _mesh_layout(corrupt)
+                    struct.pack_into("<f", corrupt, layout["vertices"] + (52 if color else 48), float("nan"))
+                    _resign_geometry(corrupt)
+                    with self.assertRaisesRegex(ValueError, "UV1 is non-finite"):
+                        parse_geometry_wmodel(corrupt)
+                    if reconstructed:
+                        corrupt = bytearray(payload)
+                        flags_offset = layout["metadata"] + 12
+                        flags = struct.unpack_from("<I", corrupt, flags_offset)[0]
+                        struct.pack_into("<I", corrupt, flags_offset, flags | geometry.MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF)
+                        _resign_geometry(corrupt)
+                        with self.assertRaisesRegex(ValueError, "cannot claim source preservation"):
+                            parse_geometry_wmodel(corrupt)
 
     def test_optional_color_channel_is_explicitly_absent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -15,6 +15,54 @@
 
 namespace
 {
+	std::mutex g_SurfaceBindingMutex;
+	std::vector<Client::MAP_SURFACE_BINDING_ROW> g_SurfaceBindings;
+	uint32_t g_SurfaceBindingLevelId = (std::numeric_limits<uint32_t>::max)();
+
+	void RefreshSurfaceBindings(uint32_t levelId, uint64_t now)
+	{
+		if (g_SurfaceBindingLevelId != levelId)
+		{
+			g_SurfaceBindings.clear();
+			g_SurfaceBindingLevelId = levelId;
+		}
+		g_SurfaceBindings.erase(std::remove_if(g_SurfaceBindings.begin(), g_SurfaceBindings.end(),
+			[now](const Client::MAP_SURFACE_BINDING_ROW& row)
+			{
+				return now - row.lastSeenTickMs > 1000u;
+			}), g_SurfaceBindings.end());
+	}
+
+	void RecordSurfaceBinding(const std::string& assetId, const std::string& materialName,
+		Engine::MODEL_SURFACE_FAMILY family, uint32_t program)
+	{
+		const uint64_t now = GetTickCount64();
+		const uint32_t levelId = Engine::CGameInstance::Get().Get_CurrentLevelID();
+		std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
+		RefreshSurfaceBindings(levelId, now);
+		const auto existing = std::find_if(g_SurfaceBindings.begin(), g_SurfaceBindings.end(),
+			[&](const Client::MAP_SURFACE_BINDING_ROW& row)
+			{
+				return row.assetId == assetId && row.materialName == materialName;
+			});
+		if (existing != g_SurfaceBindings.end())
+		{
+			existing->family = family;
+			existing->activeProgram = program;
+			existing->lastSeenTickMs = now;
+			return;
+		}
+		if (g_SurfaceBindings.size() >= 32u)
+		{
+			g_SurfaceBindings.erase(std::min_element(g_SurfaceBindings.begin(), g_SurfaceBindings.end(),
+				[](const Client::MAP_SURFACE_BINDING_ROW& left, const Client::MAP_SURFACE_BINDING_ROW& right)
+				{
+					return left.lastSeenTickMs < right.lastSeenTickMs;
+				}));
+		}
+		g_SurfaceBindings.push_back({ assetId, materialName, family, program, now });
+	}
+
 	std::mutex g_DiagnosticMutex;
 	std::ofstream g_DiagnosticStream;
 	std::string g_DiagnosticAreaId;
@@ -491,12 +539,23 @@ uint32_t CMapAssetRenderUtils::Select_Pass(const MAP_ASSET_RENDER_PROFILE& profi
 	return modeOffset + cullOfset;
 }
 
+std::vector<Client::MAP_SURFACE_BINDING_ROW> Client::CMapAssetRenderUtils::Get_RecentSurfaceBindings()
+{
+	const uint64_t now = GetTickCount64();
+	const uint32_t levelId = CGameInstance::Get().Get_CurrentLevelID();
+	std::lock_guard<std::mutex> lock(g_SurfaceBindingMutex);
+	RefreshSurfaceBindings(levelId, now);
+	return g_SurfaceBindings;
+}
+
 HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const shared_ptr<Engine::CModel>& model,
 	const shared_ptr<Engine::CShader>& shader,
 	uint32_t meshIndex,
 	const MAP_ASSET_RENDER_PROFILE& profile,
-	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride)
+	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride,
+	const std::string& diagnosticAssetId,
+    const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting)
 {
 	if (nullptr == model ||
 		nullptr == shader ||
@@ -627,5 +686,125 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_FAIL;
 	}
 
+	const auto* surface = model->Get_MaterialSurface(meshIndex);
+	const bool_t hasDefinition = surface &&
+		surface->family != Engine::MODEL_SURFACE_FAMILY::LEGACY &&
+		profile.renderMode == MAP_ASSET_RENDER_MODE::DEFERRED && !diffuseOverride;
+	const auto settings = CGameInstance::Get().Get_MaterialRenderSettings();
+	const uint32_t hasSurface = hasDefinition ? 1u : 0u;
+	const uint32_t program = hasDefinition && settings.bUseSourceMaterials ?
+		static_cast<uint32_t>(surface->family) : 0u;
+	const uint32_t debugView = static_cast<uint32_t>(settings.eDebugView);
+	// Bind last: the legacy diffuse binder resets source programs on shared shaders.
+	if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program))) ||
+		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||
+		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
+		return E_FAIL;
+    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u) && surface->hasBakedLighting ? 1u : 0u;
+    const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube ? 1u : 0u;
+    const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
+    const auto& lighting = bakedLighting ? *bakedLighting : emptyLighting;
+    if (FAILED(shader->Bind_RawValue("g_HasBakedLighting", &hasBaked, sizeof(hasBaked))) ||
+        FAILED(shader->Bind_RawValue("g_HasEnvironmentCube", &hasEnvironment, sizeof(hasEnvironment))) ||
+        FAILED(shader->Bind_RawValue("g_HasEnvironmentBRDFLookup", &hasEnvironment, sizeof(hasEnvironment))) ||
+        FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
+        FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &lighting.averageScale, sizeof(lighting.averageScale))) ||
+        FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale)))) return E_FAIL;
+    if (hasBaked || hasEnvironment)
+    {
+        if (FAILED(model->Bind_SurfaceLighting(shader, meshIndex))) return E_FAIL;
+    }
+    if (hasEnvironment &&
+        (FAILED(shader->Bind_RawValue("g_EnvironmentColor", &surface->environmentColor, sizeof(surface->environmentColor))) ||
+         FAILED(shader->Bind_RawValue("g_EnvironmentRotation", &surface->environmentRotation, sizeof(surface->environmentRotation))))) return E_FAIL;
+	const auto recordBinding = [&]()
+	{
+		if (hasDefinition && !diagnosticAssetId.empty())
+			RecordSurfaceBinding(diagnosticAssetId, model->Get_MaterialName(meshIndex), surface->family, program);
+	};
+	if (program == 0u)
+	{
+		recordBinding();
+		return S_OK;
+	}
+	const auto* camera = CGameInstance::Get().Get_CamPosition();
+	if (!camera || FAILED(shader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
+		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
+		FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION)) ||
+		((program == 1u || program == 5u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseBrightness", &surface->diffuseBrightness, sizeof(surface->diffuseBrightness))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceNormalIntensity", &surface->normalIntensity, sizeof(surface->normalIntensity))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceSpecularIntensity", &surface->specularIntensity, sizeof(surface->specularIntensity))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceSpecularPower", &surface->specularPower, sizeof(surface->specularPower))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionIntensity", &surface->reflectionIntensity, sizeof(surface->reflectionIntensity))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionContrast", &surface->reflectionContrast, sizeof(surface->reflectionContrast))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionTiling", &surface->reflectionTiling, sizeof(surface->reflectionTiling))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseSaturation", &surface->diffuseSaturation, sizeof(surface->diffuseSaturation))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseColor", &surface->diffuseColor, sizeof(surface->diffuseColor))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceSpecularColor", &surface->specularColor, sizeof(surface->specularColor))))
+		return E_FAIL;
+	if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionColor", &surface->reflectionColor, sizeof(surface->reflectionColor))))
+		return E_FAIL;
+    if (program == 5u)
+    {
+        if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceReflectionOriginOffset", &surface->reflectionOriginOffset, sizeof(surface->reflectionOriginOffset))))
+            return E_FAIL;
+    }
+	if (program == 3u || program == 4u)
+	{
+		if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
+			FAILED(model->Bind_SurfaceTexture(shader, "g_DetailNormalTexture", meshIndex, aiTextureType_HEIGHT)) ||
+			FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceORMTexture", meshIndex, aiTextureType_UNKNOWN)))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &surface->detailNormalIntensity, sizeof(surface->detailNormalIntensity))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalTiling", &surface->detailNormalTiling, sizeof(surface->detailNormalTiling))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceMetallicIntensity", &surface->metallicIntensity, sizeof(surface->metallicIntensity))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceMetallicPower", &surface->metallicPower, sizeof(surface->metallicPower))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceRoughnessIntensity", &surface->roughnessIntensity, sizeof(surface->roughnessIntensity))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceRoughnessPower", &surface->roughnessPower, sizeof(surface->roughnessPower))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceAOIntensity", &surface->aoIntensity, sizeof(surface->aoIntensity))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceAOPower", &surface->aoPower, sizeof(surface->aoPower))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceSpecularPBRIntensity", &surface->specularPBRIntensity, sizeof(surface->specularPBRIntensity))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceNonmetallicBrightness", &surface->nonmetallicBrightness, sizeof(surface->nonmetallicBrightness))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceMetallicBrightness", &surface->metallicBrightness, sizeof(surface->metallicBrightness))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceMinimumRoughness", &surface->minimumRoughness, sizeof(surface->minimumRoughness))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceReflectionOriginOffset", &surface->reflectionOriginOffset, sizeof(surface->reflectionOriginOffset))))
+			return E_FAIL;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceVertexAlpha", &surface->vertexAlpha, sizeof(surface->vertexAlpha))))
+			return E_FAIL;
+		const uint32_t uvFixedNormal = surface->uvFixedNormal ? 1u : 0u;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceUVFixedNormal", &uvFixedNormal, sizeof(uvFixedNormal))))
+			return E_FAIL;
+		const uint32_t useWorldReflection = surface->useWorldReflection ? 1u : 0u;
+		if (FAILED(shader->Bind_RawValue("g_SurfaceUseWorldReflection", &useWorldReflection, sizeof(useWorldReflection))))
+			return E_FAIL;
+	}
+	recordBinding();
 	return S_OK;
 }

@@ -10,6 +10,7 @@ NS_BEGIN(Engine)
 struct MODEL_ASSET_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
+struct MODEL_SURFACE_PARAMETERS;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -80,6 +81,7 @@ public:
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
+	vector<string> Get_BoneNames() const;
 
 	/* Secondary-motion seam. A caller that drives bones itself resolves indices
 	once, reads what the animation produced this frame, writes its own local
@@ -89,6 +91,7 @@ public:
 	int32_t Find_BoneIndex(const char_t* pBoneName) const;
 	int32_t Get_BoneParentIndex(uint32_t iBoneIndex) const;
 	bool_t Get_BoneLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	bool_t Get_BoneRestLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
 	bool_t Get_BoneCombinedMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
 	/* Samples the currently bound animation without moving its cursor or the
 	   live bone palette.  expectedAnimationIndex closes the race where a tool
@@ -169,6 +172,10 @@ public:
 	/* Null when the mesh or its material is out of range; identity tint (its
 	isEnabled false) when the material simply has no colour mask. */
 	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
+	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> shader, uint32_t meshIndex);
+	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
+	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
+		const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType);
 	const string& Get_MaterialName(uint32_t iMeshIndex) const;
 	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
 

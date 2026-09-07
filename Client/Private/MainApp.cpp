@@ -72,6 +72,7 @@
 #include "Effect_Tool_V2.h"
 #include "EquipmentAuthoringTool.h"
 #include "HUDLayoutTool.h"
+#include "MapAssetRenderUtils.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
@@ -8984,6 +8985,77 @@ void CMainApp::RenderRenderingWorkbench()
 			" exposure=" + std::to_string(Quality.fExposure);
 		m_pRenderingBenchmark->Render_Section(
 			CGameInstance::Get().Get_Profiler(), strQualitySummary);
+	}
+
+	ImGui::SeparatorText("Floor Materials");
+	MATERIAL_RENDER_SETTINGS materialSettings =
+		CGameInstance::Get().Get_MaterialRenderSettings();
+	bool_t materialChanged = ImGui::Checkbox(
+		"Recovered floor materials (A/B)", &materialSettings.bUseSourceMaterials);
+	static constexpr const char* materialViews[] = {
+		"Final", "Base color", "Normal", "Direct specular", "Reflection delta",
+		"Roughness", "Metallic", "Material AO"
+	};
+	int materialView = static_cast<int>(materialSettings.eDebugView);
+	if (ImGui::Combo("Material debug view", &materialView,
+		materialViews, static_cast<int>(std::size(materialViews))))
+	{
+		materialSettings.eDebugView = static_cast<MATERIAL_DEBUG_VIEW>(materialView);
+		materialChanged = true;
+	}
+	if (materialChanged && FAILED(
+		CGameInstance::Get().Apply_MaterialRenderSettings(materialSettings)))
+	{
+		m_strRenderingStatus = "Could not apply material comparison settings.";
+	}
+	ImGui::TextWrapped(
+		"Only materials declared in mapmaterials; restart after data edits. "
+		"Reflection view shows absolute base-color change.");
+	const auto surfaceBindings = CMapAssetRenderUtils::Get_RecentSurfaceBindings();
+	ImGui::TextDisabled("Successful material bindings in the last second (up to 32).");
+	if (surfaceBindings.empty())
+		ImGui::TextDisabled("No declared floor material was recently bound.");
+	else if (ImGui::BeginTable("RecentFloorMaterialBindings", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
+	{
+		ImGui::TableSetupColumn("Asset");
+		ImGui::TableSetupColumn("Material");
+		ImGui::TableSetupColumn("Source family");
+		ImGui::TableSetupColumn("Active program");
+		ImGui::TableHeadersRow();
+		for (const auto& row : surfaceBindings)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextWrapped("%s", row.assetId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextWrapped("%s", row.materialName.c_str());
+			ImGui::TableSetColumnIndex(2);
+			switch (row.family)
+			{
+			case MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
+				ImGui::TextWrapped("Specular texture + reflection");
+				break;
+			case MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
+				ImGui::TextWrapped("Diffuse specular + reflection");
+				break;
+            case MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
+                ImGui::TextWrapped("Source seamless PBR");
+                break;
+            case MODEL_SURFACE_FAMILY::PBR_OPAQUE:
+                ImGui::TextWrapped("Source PBR");
+                break;
+            case MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
+                ImGui::TextWrapped("Source opaque specular");
+                break;
+			default:
+				ImGui::Text("Unknown (%u)", static_cast<uint32_t>(row.family));
+				break;
+			}
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%s (%u)", row.activeProgram == 0u ? "Legacy A" : "Recovered B", row.activeProgram);
+		}
+		ImGui::EndTable();
 	}
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();

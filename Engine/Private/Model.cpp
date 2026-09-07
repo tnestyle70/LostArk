@@ -192,6 +192,15 @@ bool_t CModel::Has_Bone(const char_t* pBoneName)
         });
 }
 
+vector<string> CModel::Get_BoneNames() const
+{
+    vector<string> names;
+    names.reserve(m_Bones.size());
+    for (const auto& bone : m_Bones)
+        if (bone) names.emplace_back(bone->Get_Name());
+    return names;
+}
+
 int32_t CModel::Find_BoneIndex(const char_t* pBoneName) const
 {
     if (nullptr == pBoneName || '\0' == pBoneName[0])
@@ -220,6 +229,16 @@ bool_t CModel::Get_BoneLocalMatrix(
         return false;
 
     outMatrix = m_Bones[iBoneIndex]->Get_TransformationMatrix();
+    return true;
+}
+
+bool_t CModel::Get_BoneRestLocalMatrix(
+    const uint32_t iBoneIndex, matrix_t& outMatrix) const
+{
+    if (iBoneIndex >= m_BoneRestLocalTransforms.size())
+        return false;
+
+    outMatrix = XMLoadFloat4x4(&m_BoneRestLocalTransforms[iBoneIndex]);
     return true;
 }
 
@@ -771,6 +790,33 @@ const MODEL_COLOR_TINT* CModel::Get_MaterialColorTint(
     return &m_Materials[materialIndex]->Get_ColorTint();
 }
 
+HRESULT CModel::Bind_SurfaceLighting(shared_ptr<CShader> shader, uint32_t meshIndex)
+{
+    if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
+    const uint32_t materialIndex = m_Meshes[meshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size()) return E_INVALIDARG;
+    return m_Materials[materialIndex]->Bind_SurfaceLighting(shader);
+}
+
+const MODEL_SURFACE_PARAMETERS* CModel::Get_MaterialSurface(uint32_t iMeshIndex) const
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return nullptr;
+	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+	return materialIndex < m_Materials.size() ?
+		&m_Materials[materialIndex]->Get_Surface() : nullptr;
+}
+
+HRESULT CModel::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
+	const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType)
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return E_INVALIDARG;
+	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+	return materialIndex < m_Materials.size() ?
+		m_Materials[materialIndex]->Bind_SurfaceTexture(pShader, pConstantName, eType) : E_FAIL;
+}
+
 const string& CModel::Get_MaterialName(uint32_t iMeshIndex) const
 {
 	static const string Empty;
@@ -911,6 +957,138 @@ HRESULT CModel::Ready_BinaryModel(
 			std::to_string(asset.meshes.size()) + ", hasSkeleton=" +
 			(asset.hasSkeleton ? "true" : "false") + ").\n").c_str());
 		return E_FAIL;
+	}
+	/* Join before allocating meshes/materials. A malformed replacement never
+	   changes a shared prototype or an already admitted material instance. */
+	vector<string> overriddenNames;
+	for (const MODEL_MATERIAL_OVERRIDE& replacement : loadDesc.materialOverrides)
+	{
+		const auto failOverride = [&](const char* reason)
+		{
+			OutputDebugStringA(("[CModel] Material override rejected: " +
+				loadDesc.meshPath.string() + " / " + replacement.materialName +
+				" / " + reason + "\n").c_str());
+			return E_INVALIDARG;
+		};
+		if (replacement.materialName.empty() ||
+			find(overriddenNames.begin(), overriddenNames.end(), replacement.materialName) != overriddenNames.end())
+			return failOverride("empty or duplicate material name");
+		const auto match = find_if(asset.materials.begin(), asset.materials.end(),
+			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; });
+		if (match == asset.materials.end() || count_if(asset.materials.begin(), asset.materials.end(),
+			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; }) != 1)
+			return failOverride("material name does not resolve uniquely");
+		const auto& surface = replacement.surface;
+		if (surface.family != MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION &&
+			surface.family != MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION &&
+			surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
+			surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+			surface.family != MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
+			return failOverride("unsupported surface family");
+		const f32_t scalars[] = { surface.diffuseBrightness, surface.normalIntensity,
+			surface.specularIntensity, surface.specularPower, surface.reflectionIntensity,
+			surface.reflectionContrast, surface.reflectionTiling, surface.diffuseSaturation,
+			surface.diffuseColor.x, surface.diffuseColor.y, surface.diffuseColor.z, surface.diffuseColor.w,
+			surface.specularColor.x, surface.specularColor.y, surface.specularColor.z, surface.specularColor.w,
+			surface.reflectionColor.x, surface.reflectionColor.y, surface.reflectionColor.z, surface.reflectionColor.w };
+		if (any_of(begin(scalars), end(scalars), [](f32_t value) { return !std::isfinite(value) || value < 0.f; }) ||
+			surface.specularPower < 1.f || surface.reflectionTiling <= 0.f)
+			return failOverride("invalid surface value");
+		const auto root = loadDesc.assetRoot.lexically_normal();
+		const auto reflection = replacement.reflectionPath.lexically_normal();
+		const auto relative = reflection.lexically_relative(root);
+		if (!root.is_absolute() || !reflection.is_absolute() || relative.empty() ||
+			relative.is_absolute() || any_of(relative.begin(), relative.end(),
+				[](const filesystem::path& part) { return part == ".."; }))
+			return failOverride("reflection escapes the resource root");
+		if (match->diffusePath.empty() || match->normalPath.empty() ||
+			(surface.family == MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION && match->specularPath.empty()))
+			return failOverride("required material input is absent");
+		if (surface.family == MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE ||
+			surface.family == MODEL_SURFACE_FAMILY::PBR_OPAQUE)
+		{
+			const f32_t pbr[] = { surface.uvTiling.x, surface.uvTiling.y,
+				surface.detailNormalIntensity, surface.detailNormalTiling,
+				surface.metallicIntensity, surface.metallicPower, surface.roughnessIntensity,
+				surface.roughnessPower, surface.aoIntensity, surface.aoPower,
+				surface.specularPBRIntensity, surface.nonmetallicBrightness, surface.metallicBrightness,
+				surface.minimumRoughness, surface.vertexAlpha };
+			if (any_of(begin(pbr), end(pbr), [](f32_t v) { return !std::isfinite(v) || v < 0.f; }) ||
+				surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f || surface.detailNormalTiling <= 0.f ||
+				surface.minimumRoughness <= 0.f || surface.minimumRoughness > 1.f || surface.vertexAlpha > 1.f ||
+				!std::isfinite(surface.reflectionOriginOffset.x) || !std::isfinite(surface.reflectionOriginOffset.y))
+				return failOverride("invalid PBR value");
+			const filesystem::path inputs[] = { replacement.surfaceDiffusePath, replacement.surfaceNormalPath,
+				replacement.detailNormalPath, replacement.surfaceORMPath };
+			for (const auto& path : inputs)
+			{
+				const auto rel = path.lexically_normal().lexically_relative(root);
+				if (!path.is_absolute() || rel.empty() || rel.is_absolute() ||
+					any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+					return failOverride("PBR texture escapes the resource root");
+			}
+			match->surfaceDiffusePath = replacement.surfaceDiffusePath;
+			match->surfaceNormalPath = replacement.surfaceNormalPath;
+			match->detailNormalPath = replacement.detailNormalPath;
+			match->surfaceORMPath = replacement.surfaceORMPath;
+		}
+        if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
+        {
+            if (!std::isfinite(surface.uvTiling.x) || !std::isfinite(surface.uvTiling.y) ||
+                surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f ||
+                !std::isfinite(surface.reflectionOriginOffset.x) || !std::isfinite(surface.reflectionOriginOffset.y) ||
+                surface.hasEnvironmentCube)
+                return failOverride("invalid source specular UV or unsupported environment");
+            const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
+                { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
+                { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
+                { &replacement.surfaceSpecularPath, &match->surfaceSpecularPath }
+            };
+            for (const auto& input : inputs)
+            {
+                const auto& path = *input.first;
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source specular texture escapes the resource root");
+                *input.second = path;
+            }
+        }
+        if (surface.hasBakedLighting)
+        {
+            const uint32_t materialIndex = static_cast<uint32_t>(distance(asset.materials.begin(), match));
+            if (any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+                return mesh.materialIndex == materialIndex && (!mesh.hasTexcoord1 || mesh.vertexKind != MODEL_VERTEX_KIND::STATIC);
+            })) return failOverride("baked lighting requires preserved static TEXCOORD1");
+        }
+        const float environmentValues[] = { surface.environmentColor.x, surface.environmentColor.y,
+            surface.environmentColor.z, surface.environmentColor.w, surface.environmentRotation.x, surface.environmentRotation.y };
+        if (surface.hasEnvironmentCube &&
+            (any_of(begin(environmentValues), end(environmentValues), [](float v) { return !std::isfinite(v); }) ||
+             surface.environmentColor.x < 0.f || surface.environmentColor.y < 0.f || surface.environmentColor.z < 0.f ||
+             std::abs(surface.environmentRotation.x*surface.environmentRotation.x + surface.environmentRotation.y*surface.environmentRotation.y-1.f) > 0.0001f))
+            return failOverride("invalid environment color or rotation");
+        const std::pair<const filesystem::path*, filesystem::path*> lightingPaths[] = {
+            { &replacement.bakedAveragePath, &match->bakedAveragePath },
+            { &replacement.bakedDirectionalPath, &match->bakedDirectionalPath },
+            { &replacement.environmentCubePath, &match->environmentCubePath },
+            { &replacement.environmentBRDFPath, &match->environmentBRDFPath }
+        };
+        if ((surface.hasBakedLighting && (replacement.bakedAveragePath.empty() || replacement.bakedDirectionalPath.empty())) ||
+            (surface.hasEnvironmentCube && (replacement.environmentCubePath.empty() || replacement.environmentBRDFPath.empty())))
+            return failOverride("missing lighting texture");
+        for (const auto& path : lightingPaths)
+        {
+            if (path.first->empty()) continue;
+            const auto relative = path.first->lexically_normal().lexically_relative(root);
+            if (!path.first->is_absolute() || relative.empty() || relative.is_absolute() ||
+                any_of(relative.begin(), relative.end(), [](const filesystem::path& p) { return p == ".."; }))
+                return failOverride("lighting texture escapes the resource root");
+            *path.second = *path.first;
+        }
+		match->surface = surface;
+		match->reflectionPath = reflection;
+		overriddenNames.push_back(replacement.materialName);
 	}
 	m_iSkeletonHash = asset.hasSkeleton ? asset.skeleton.skeletonHash : 0;
 

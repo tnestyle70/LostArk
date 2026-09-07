@@ -388,6 +388,7 @@ bool_t CMapPlacementRuntime::Create_Placement(
 		MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset->anchor;
 	desc.visible = record.visible;
 	desc.renderProfile = asset->renderProfile;
+	desc.bakedLighting = record.bakedLighting;
 	desc.frustumCulling = frustumCulling;
 	if (const MAP_ASSET_WATER_PROFILE* water = catalog.Find_Water(asset->id))
 	{
@@ -770,6 +771,7 @@ HRESULT CMapPlacementRuntime::Build_StaticInstance(
 
 	outInstance = {};
 	outInstance.PlacementId = record.placementId;
+	outInstance.BakedLighting = record.bakedLighting;
 	outInstance.Visible = record.visible;
 	outInstance.WorldBoundsCenter = worldCenter;
 	outInstance.WorldBoundsRadius = worldRadius;

@@ -34,6 +34,15 @@ struct MAP_FRUSTUM_CULL_DECISION final
 	int32_t rejectingPlane = -1;
 };
 
+struct MAP_SURFACE_BINDING_ROW final
+{
+	std::string assetId;
+	std::string materialName;
+	Engine::MODEL_SURFACE_FAMILY family = Engine::MODEL_SURFACE_FAMILY::LEGACY;
+	uint32_t activeProgram = {};
+	uint64_t lastSeenTickMs = {};
+};
+
 class CMapAssetRenderUtils final
 {
 public:
@@ -74,7 +83,11 @@ public:
 		uint32_t meshIndex,
 		const MAP_ASSET_RENDER_PROFILE& profile,
 		f32_t elapsedTime,
-		const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr);
+		const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr,
+		const std::string& diagnosticAssetId = {},
+        const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr);
+
+	static std::vector<MAP_SURFACE_BINDING_ROW> Get_RecentSurfaceBindings();
 };
 
 NS_END

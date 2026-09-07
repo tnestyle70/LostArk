@@ -29,6 +29,14 @@ public:
 	const CMapLightDocument& Get_Document() const { return m_Document; }
 
 private:
+	friend class CRenderingProfileService;
+	/* The one active scene commits its validated scalar after all fallible render changes.
+	   Providers read it at submission, after the current frame has selected its scene. */
+	static void Commit_SceneIntensityMultiplier(const f32_t multiplier)
+	{
+		s_fSceneIntensityMultiplier = multiplier;
+	}
+	inline static f32_t s_fSceneIntensityMultiplier = 1.f;
 	CMapLightDocument m_Document;
 	std::string m_Status = "Map light presentation is not loaded";
 };

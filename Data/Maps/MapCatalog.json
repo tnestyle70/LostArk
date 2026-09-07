@@ -84,8 +84,12 @@
       "navigationPaint": "Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint",
       "gameplayDocument": "Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/Gameplay.world.json",
       "placementCount": 803,
-      "assetCount": 55,
-      "runtimeAssetRoot": "Map/CHARACTERSELECTMAP"
+      "assetCount": 61,
+      "runtimeAssetRoot": "Map/CHARACTERSELECTMAP",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",
+      "sourceLights": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.maplights.json",
+      "lights": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.maplights.json"
     },
     {
       "id": "LV_LUT_MIDNIGHTC_ED",
@@ -93,6 +97,8 @@
       "catalogType": "single",
       "sourceCatalog": "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapassets",
       "sourcePlacements": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapmaterials.json",
       "catalog": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
       "placements": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
       "sourceLights": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json",

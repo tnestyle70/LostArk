@@ -22,6 +22,8 @@ public:
 	HRESULT Draw();
 	const RENDER_QUALITY_SETTINGS& Get_RenderQualitySettings() const { return m_RenderQualitySettings; }
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
+	const MATERIAL_RENDER_SETTINGS& Get_MaterialRenderSettings() const { return m_MaterialRenderSettings; }
+	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);
 	const HEIGHT_FOG_SETTINGS& Get_HeightFogSettings() const { return m_HeightFogSettings; }
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
 	/* The renderer owns the clock the deferred fog drifts on so no caller
@@ -61,6 +63,7 @@ private:
 	uint32_t								m_iScenePostHeight = {};
 	uint32_t								m_iScenePostFinalTarget = {};
 	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
+	MATERIAL_RENDER_SETTINGS m_MaterialRenderSettings = {};
 	HEIGHT_FOG_SETTINGS				m_HeightFogSettings = {};
 	f32_t							m_fPresentationClock = 0.f;
 

@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -19,7 +20,9 @@ namespace
 	constexpr uint32_t LEGACY_CATALOG_VERSION = 1;
 	constexpr uint32_t METADATA_CATALOG_VERSION = 2;
 	constexpr uint32_t RENDER_PROFILE_CATALOG_VERSION = 3;
-	constexpr uint32_t CATALOG_VERSION = 4;
+	constexpr uint32_t OPACITY_SHAPING_CATALOG_VERSION = 4;
+	constexpr uint32_t MATERIAL_REFERENCE_CATALOG_VERSION = 5;
+	constexpr uint32_t CATALOG_VERSION = MATERIAL_REFERENCE_CATALOG_VERSION;
 	constexpr uint32_t MAX_ASSET_COUNT = 512;
 	constexpr const char* SHARD_SET_MAGIC = "LOSTARK_MAP_SHARD_SET";
 	constexpr uint32_t SHARD_SET_VERSION = 1;
@@ -200,7 +203,8 @@ bool_t CMapAssetCatalog::Load_Default()
 bool_t CMapAssetCatalog::Load_Source(
 	const std::filesystem::path& catalogPath,
 	const std::filesystem::path& placementPath,
-	const std::string& expectedAreaId)
+	const std::string& expectedAreaId,
+	const std::filesystem::path& materialsPath)
 {
 	const std::filesystem::path normalizedCatalog =
 		catalogPath.lexically_normal();
@@ -216,20 +220,577 @@ bool_t CMapAssetCatalog::Load_Source(
 		return false;
 	}
 
-	m_SourceCatalogOverride = normalizedCatalog;
-	m_SourcePlacementOverride = normalizedPlacements;
-	if (!Load_Area(expectedAreaId))
+	CMapAssetCatalog staged;
+	staged.m_SourceCatalogOverride = normalizedCatalog;
+	staged.m_SourcePlacementOverride = normalizedPlacements;
+	staged.m_SourceMaterialOverride = materialsPath.lexically_normal();
+	if (!staged.Load_AreaStaged(expectedAreaId) ||
+		!staged.Resolve_MaterialDocumentPath() ||
+		!staged.Load_MaterialOverrides())
+	{
+		m_Status = staged.Get_Status();
 		return false;
+	}
 
 	const std::wstring authoringNamespace =
 		L"MapEditorArea:" +
 		std::wstring(expectedAreaId.begin(), expectedAreaId.end()) + L":";
-	for (MAP_ASSET_ENTRY& entry : m_Entries)
+	for (MAP_ASSET_ENTRY& entry : staged.m_Entries)
 		entry.prototypeTag = authoringNamespace + entry.prototypeTag;
+	*this = std::move(staged);
 	return true;
 }
 
 bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
+{
+	CMapAssetCatalog staged;
+	if (!staged.Load_AreaStaged(areaId) ||
+		!staged.Resolve_MaterialDocumentPath() ||
+		!staged.Load_MaterialOverrides())
+	{
+		m_Status = staged.Get_Status();
+		return false;
+	}
+	*this = std::move(staged);
+	return true;
+}
+
+bool_t CMapAssetCatalog::Resolve_MaterialDocumentPath()
+{
+	m_MaterialDocumentPath.clear();
+	if (!m_SourceCatalogOverride.empty())
+	{
+		const std::filesystem::path expected =
+			(Get_MapAuthoringRoot() / L"Authoring" / m_AreaId /
+				(m_AreaId + ".mapmaterials.json")).lexically_normal();
+		if (m_SourceMaterialOverride.empty())
+		{
+			std::error_code error;
+			if (!m_MaterialDocumentFilename.empty() ||
+				std::filesystem::exists(expected, error) || error)
+			{
+				m_Status = "Map material authoring source has no explicit declaration: " +
+					expected.string();
+				return false;
+			}
+			return true;
+		}
+		if (m_SourceMaterialOverride.is_relative() ||
+			m_SourceMaterialOverride != expected)
+		{
+			m_Status = "Map material authoring path is not canonical: " +
+				m_SourceMaterialOverride.string();
+			return false;
+		}
+		m_MaterialDocumentPath = m_SourceMaterialOverride;
+	}
+	else if (!m_MaterialDocumentFilename.empty())
+	{
+		m_MaterialDocumentPath =
+			m_CatalogPath.parent_path() / m_MaterialDocumentFilename;
+	}
+	if (m_MaterialDocumentPath.empty())
+		return true;
+	std::error_code error;
+	if (!std::filesystem::is_regular_file(m_MaterialDocumentPath, error) || error)
+	{
+		m_Status = "Declared map material document is missing: " +
+			m_MaterialDocumentPath.string();
+		return false;
+	}
+	return true;
+}
+
+bool_t CMapAssetCatalog::Load_MaterialOverrides()
+{
+	if (m_MaterialDocumentPath.empty())
+		return true;
+	std::ifstream input(m_MaterialDocumentPath, std::ios::binary);
+	const std::string text((std::istreambuf_iterator<char>(input)),
+		std::istreambuf_iterator<char>());
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!input || !CDataJson::Parse(text, root, error) || !root.Is_Object())
+	{
+		m_Status = "Map material document parse failed: " + error;
+		return false;
+	}
+	const auto exactFields = [](const DATA_JSON_VALUE& value,
+		const std::unordered_set<std::string>& fields)
+	{
+		if (!value.Is_Object() || value.Get_Object().size() != fields.size())
+			return false;
+		return std::all_of(value.Get_Object().begin(), value.Get_Object().end(),
+			[&fields](const auto& pair) { return fields.contains(pair.first); });
+	};
+	const auto readString = [](const DATA_JSON_VALUE& value, const char* key,
+		std::string& result)
+	{
+		const auto* item = value.Find(key);
+		if (!item || !item->Is_String() || item->Get_String().empty())
+			return false;
+		result = item->Get_String();
+		return true;
+	};
+	const auto readNumber = [](const DATA_JSON_VALUE& value, const char* key,
+		float& result)
+	{
+		const auto* item = value.Find(key);
+		if (!item || !item->Is_Number() || !std::isfinite(item->Get_Number()) ||
+			item->Get_Number() < 0.0 ||
+			item->Get_Number() > (std::numeric_limits<float>::max)())
+			return false;
+		result = static_cast<float>(item->Get_Number());
+		return std::isfinite(result);
+	};
+	const auto readColor = [](const DATA_JSON_VALUE& value, const char* key,
+		float4_t& result)
+	{
+		const auto* item = value.Find(key);
+		if (!item || !item->Is_Array() || item->Get_Array().size() != 4u)
+			return false;
+		float components[4]{};
+		for (size_t index = 0; index < 4u; ++index)
+		{
+			const auto& component = item->Get_Array()[index];
+			if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+				component.Get_Number() < 0.0 ||
+				component.Get_Number() > (std::numeric_limits<float>::max)())
+				return false;
+			components[index] = static_cast<float>(component.Get_Number());
+			if (!std::isfinite(components[index]))
+				return false;
+		}
+		result = float4_t(components[0], components[1], components[2], components[3]);
+		return true;
+	};
+	std::string schema;
+	std::string areaId;
+	const auto* version = root.Find("formatVersion");
+	const auto* rows = root.Find("materials");
+    const auto* placementRows = root.Find("placementLighting");
+    std::unordered_set<std::string> rootFields = { "schema", "formatVersion", "areaId", "materials" };
+    if (placementRows) rootFields.insert("placementLighting");
+	if (!exactFields(root, rootFields) ||
+        (placementRows && (!version || !version->Is_Number() || version->Get_Number() != 2.0 || !placementRows->Is_Array())) ||
+		!readString(root, "schema", schema) || schema != "lostark.map-materials" ||
+		!version || !version->Is_Number() || (version->Get_Number() != 1.0 && version->Get_Number() != 2.0) ||
+		!readString(root, "areaId", areaId) || areaId != m_AreaId ||
+		!rows || !rows->Is_Array() || rows->Get_Array().empty() ||
+		rows->Get_Array().size() > MAX_TOTAL_ASSET_COUNT)
+	{
+		m_Status = "Map material document header is invalid";
+		return false;
+	}
+	std::unordered_map<std::string, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>> staged;
+	std::unordered_set<std::string> keys;
+	for (const auto& row : rows->Get_Array())
+	{
+		std::string assetId, family, sourceMaterial, reflectionTexture;
+		Engine::MODEL_MATERIAL_OVERRIDE material;
+		if (!readString(row, "assetId", assetId) ||
+			!readString(row, "materialName", material.materialName) ||
+			!readString(row, "family", family) ||
+			!readString(row, "sourceMaterial", sourceMaterial) ||
+			!readString(row, "reflectionTexture", reflectionTexture) ||
+			!IsValidDisplayText(material.materialName, 63u) ||
+			!IsValidDisplayText(sourceMaterial, MAX_EVIDENCE_LENGTH) ||
+			!Find(assetId) || !keys.insert(assetId + "\n" + material.materialName).second)
+		{
+			m_Status = "Map material identity is invalid, duplicate, or unknown: " + assetId;
+			return false;
+		}
+        if (family == "bg_seamless-specular_opa")
+        {
+            auto& surface = material.surface;
+            surface.family = Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE;
+            const auto reject = [&](const char* reason) {
+                m_Status = "Map source specular " + assetId + "/" + material.materialName + ": " + reason;
+                return false;
+            };
+            std::unordered_set<std::string> fields = {
+                "assetId", "materialName", "sourceMaterial", "family", "textureColorSpace",
+                "diffuseBrightness", "normalIntensity", "specularIntensity", "specularPower",
+                "reflectionIntensity", "reflectionContrast", "reflectionTiling", "diffuseSaturation",
+                "diffuseColor", "specularColor", "reflectionColor", "uvTiling", "reflectionOriginOffset",
+                "castsShadow", "diffuseTexture", "normalTexture", "specularTexture", "reflectionTexture"
+            };
+            if (row.Find("bakedLighting")) fields.insert("bakedLighting");
+            if (version->Get_Number() != 2.0 || !exactFields(row, fields)) return reject("invalid fields or version");
+            const std::pair<const char*, float*> scalars[] = {
+                { "diffuseBrightness", &surface.diffuseBrightness }, { "normalIntensity", &surface.normalIntensity },
+                { "specularIntensity", &surface.specularIntensity }, { "specularPower", &surface.specularPower },
+                { "reflectionIntensity", &surface.reflectionIntensity }, { "reflectionContrast", &surface.reflectionContrast },
+                { "reflectionTiling", &surface.reflectionTiling }, { "diffuseSaturation", &surface.diffuseSaturation }
+            };
+            for (const auto& value : scalars)
+                if (!readNumber(row, value.first, *value.second)) return reject(value.first);
+            if (surface.specularPower < 1.f || surface.reflectionTiling <= 0.f ||
+                !readColor(row, "diffuseColor", surface.diffuseColor) ||
+                !readColor(row, "specularColor", surface.specularColor) ||
+                !readColor(row, "reflectionColor", surface.reflectionColor)) return reject("invalid surface values");
+            const auto* shadow = row.Find("castsShadow");
+            if (!shadow || !shadow->Is_Boolean()) return reject("invalid castsShadow");
+            surface.castsShadow = shadow->Get_Boolean();
+            const std::pair<const char*, float2_t*> vectors[] = {
+                { "uvTiling", &surface.uvTiling }, { "reflectionOriginOffset", &surface.reflectionOriginOffset }
+            };
+            for (const auto& vector : vectors)
+            {
+                const auto* value = row.Find(vector.first);
+                if (!value || !value->Is_Array() || value->Get_Array().size() != 2u) return reject(vector.first);
+                float components[2]{};
+                for (size_t i=0; i<2u; ++i) {
+                    const auto& component = value->Get_Array()[i];
+                    if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                        std::abs(component.Get_Number()) > (std::numeric_limits<float>::max)()) return reject(vector.first);
+                    components[i] = static_cast<float>(component.Get_Number());
+                }
+                *vector.second = float2_t(components[0], components[1]);
+            }
+            if (surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f) return reject("non-positive UV tiling");
+            const auto* spaces = row.Find("textureColorSpace");
+            if (!spaces || !exactFields(*spaces, { "diffuse", "normal", "specular", "reflection" })) return reject("invalid color spaces");
+            for (const char* key : { "diffuse", "normal", "specular", "reflection" }) {
+                std::string value;
+                if (!readString(*spaces, key, value) || (value != "srgb" && value != "linear")) return reject(key);
+                const std::string slot(key);
+                if (slot == "normal" && value != "linear") return reject("normal must be linear");
+                if (slot == "diffuse") surface.diffuseSRGB = value == "srgb";
+                else if (slot == "specular") surface.specularSRGB = value == "srgb";
+                else if (slot == "reflection") surface.reflectionSRGB = value == "srgb";
+            }
+            const auto texture = [&](const DATA_JSON_VALUE& object, const char* key, std::filesystem::path& output) {
+                std::string value;
+                if (!readString(object, key, value)) return false;
+                const std::filesystem::path relative(value);
+                std::error_code ec;
+                output = CRuntimeAssetRoot::Resolve(relative);
+                return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
+                    relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
+                    std::filesystem::is_regular_file(output, ec) && !ec;
+            };
+            if (!texture(row, "diffuseTexture", material.surfaceDiffusePath) ||
+                !texture(row, "normalTexture", material.surfaceNormalPath) ||
+                !texture(row, "specularTexture", material.surfaceSpecularPath) ||
+                !texture(row, "reflectionTexture", material.reflectionPath)) return reject("missing or invalid texture");
+            if (const auto* baked = row.Find("bakedLighting")) {
+                std::string space;
+                if (!exactFields(*baked, { "averageTexture", "directionalTexture", "colorSpace" }) ||
+                    !readString(*baked, "colorSpace", space) || (space != "linear" && space != "srgb") ||
+                    !texture(*baked, "averageTexture", material.bakedAveragePath) ||
+                    !texture(*baked, "directionalTexture", material.bakedDirectionalPath)) return reject("invalid baked lighting");
+                surface.hasBakedLighting = true;
+                surface.bakedLightingSRGB = space == "srgb";
+            }
+            staged[assetId].push_back(std::move(material));
+            continue;
+        }
+		if (family == "bg_base_pbr_seamless_opa" || family == "bg_base_pbr_opa")
+		{
+			auto& pbr = material.surface;
+			pbr.family = family == "bg_base_pbr_seamless_opa" ?
+				Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE : Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE;
+			const auto reject = [&](const std::string& reason)
+			{
+				m_Status = "Map PBR material " + assetId + "/" + material.materialName + ": " + reason;
+				return false;
+			};
+			std::unordered_set<std::string> pbrFields = {
+				"assetId", "materialName", "sourceMaterial", "family",
+				"textureColorSpace", "diffuseColor", "reflectionColor", "uvTiling",
+				"reflectionOriginOffset", "diffuseBrightness", "normalIntensity", "reflectionIntensity",
+				"reflectionContrast", "reflectionTiling", "diffuseSaturation", "detailNormalIntensity",
+				"detailNormalTiling", "metallicIntensity", "metallicPower", "roughnessIntensity",
+				"roughnessPower", "aoIntensity", "aoPower", "specularPBRIntensity",
+				"nonmetallicBrightness", "metallicBrightness", "minimumRoughness", "vertexAlpha",
+				"uvFixedNormal", "useWorldReflection", "castsShadow", "diffuseTexture",
+				"normalTexture", "detailNormalTexture", "ormTexture", "reflectionTexture"
+            };
+            if (row.Find("bakedLighting")) pbrFields.insert("bakedLighting");
+            if (row.Find("environment")) pbrFields.insert("environment");
+            if (version->Get_Number() != 2.0 || !exactFields(row, pbrFields)) return reject("invalid version or fields");
+			const std::pair<const char*, float*> numbers[] = {
+				{ "diffuseBrightness", &pbr.diffuseBrightness },
+				{ "normalIntensity", &pbr.normalIntensity },
+				{ "reflectionIntensity", &pbr.reflectionIntensity },
+				{ "reflectionContrast", &pbr.reflectionContrast },
+				{ "reflectionTiling", &pbr.reflectionTiling },
+				{ "diffuseSaturation", &pbr.diffuseSaturation },
+				{ "detailNormalIntensity", &pbr.detailNormalIntensity },
+				{ "detailNormalTiling", &pbr.detailNormalTiling },
+				{ "metallicIntensity", &pbr.metallicIntensity },
+				{ "metallicPower", &pbr.metallicPower },
+				{ "roughnessIntensity", &pbr.roughnessIntensity },
+				{ "roughnessPower", &pbr.roughnessPower },
+				{ "aoIntensity", &pbr.aoIntensity },
+				{ "aoPower", &pbr.aoPower },
+				{ "specularPBRIntensity", &pbr.specularPBRIntensity },
+				{ "nonmetallicBrightness", &pbr.nonmetallicBrightness },
+				{ "metallicBrightness", &pbr.metallicBrightness },
+				{ "minimumRoughness", &pbr.minimumRoughness },
+				{ "vertexAlpha", &pbr.vertexAlpha },
+			};
+			for (const auto& number : numbers)
+				if (!readNumber(row, number.first, *number.second)) return reject(number.first);
+			if (pbr.minimumRoughness <= 0.f || pbr.minimumRoughness > 1.f ||
+				pbr.vertexAlpha > 1.f || pbr.detailNormalTiling <= 0.f || pbr.reflectionTiling <= 0.f ||
+				!readColor(row, "diffuseColor", pbr.diffuseColor) ||
+				!readColor(row, "reflectionColor", pbr.reflectionColor)) return reject("invalid scalar bounds or colors");
+			const std::pair<const char*, bool_t*> switches[] = {
+				{ "uvFixedNormal", &pbr.uvFixedNormal },
+				{ "useWorldReflection", &pbr.useWorldReflection },
+				{ "castsShadow", &pbr.castsShadow },
+			};
+			for (const auto& flag : switches)
+			{
+				const auto* value = row.Find(flag.first);
+				if (!value || !value->Is_Boolean()) return reject(flag.first);
+				*flag.second = value->Get_Boolean();
+			}
+			const std::pair<const char*, float2_t*> vectors[] = {
+				{ "uvTiling", &pbr.uvTiling }, { "reflectionOriginOffset", &pbr.reflectionOriginOffset }
+			};
+			for (const auto& vector : vectors)
+			{
+				const auto* value = row.Find(vector.first);
+				if (!value || !value->Is_Array() || value->Get_Array().size() != 2u) return reject(vector.first);
+				float components[2]{};
+				for (size_t i = 0; i < 2u; ++i)
+				{
+					const auto& component = value->Get_Array()[i];
+					if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+						std::abs(component.Get_Number()) > (std::numeric_limits<float>::max)()) return reject(vector.first);
+					components[i] = static_cast<float>(component.Get_Number());
+				}
+				*vector.second = float2_t(components[0], components[1]);
+			}
+			if (pbr.uvTiling.x <= 0.f || pbr.uvTiling.y <= 0.f) return reject("non-positive UV tiling");
+			const auto* spaces = row.Find("textureColorSpace");
+			if (!spaces || !exactFields(*spaces, { "diffuse", "normal", "detailNormal", "reflection", "orm" }))
+				return reject("invalid texture color spaces");
+			for (const char* key : { "diffuse", "normal", "detailNormal", "reflection", "orm" })
+			{
+				std::string value;
+				if (!readString(*spaces, key, value) || (value != "srgb" && value != "linear")) return reject(key);
+				const std::string slot(key);
+				if ((slot == "normal" || slot == "detailNormal") && value != "linear") return reject("normal must be linear");
+				if (slot == "diffuse") pbr.diffuseSRGB = value == "srgb";
+				else if (slot == "reflection") pbr.reflectionSRGB = value == "srgb";
+				else if (slot == "orm") pbr.ormSRGB = value == "srgb";
+			}
+			const std::pair<const char*, std::filesystem::path*> textures[] = {
+				{ "diffuseTexture", &material.surfaceDiffusePath },
+				{ "normalTexture", &material.surfaceNormalPath },
+				{ "detailNormalTexture", &material.detailNormalPath },
+				{ "ormTexture", &material.surfaceORMPath },
+				{ "reflectionTexture", &material.reflectionPath },
+			};
+			for (const auto& texture : textures)
+			{
+				std::string value;
+				if (!readString(row, texture.first, value)) return reject(texture.first);
+				const std::filesystem::path relative(value);
+				std::error_code ec;
+				*texture.second = CRuntimeAssetRoot::Resolve(relative);
+				if (relative.is_absolute() || relative.has_root_path() || value.find(':') != std::string::npos ||
+					relative.extension() != L".dds" || texture.second->empty() ||
+					!IsInsideRoot(CRuntimeAssetRoot::Get(), *texture.second) ||
+					!std::filesystem::is_regular_file(*texture.second, ec) || ec) return reject(texture.first);
+			}
+            const auto lightingTexture = [&](const DATA_JSON_VALUE& object, const char* field, std::filesystem::path& result)
+            {
+                std::string value;
+                if (!readString(object, field, value)) return false;
+                const std::filesystem::path relative(value);
+                std::error_code ec;
+                result = CRuntimeAssetRoot::Resolve(relative);
+                return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
+                    relative.extension() == L".dds" && !result.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), result) &&
+                    std::filesystem::is_regular_file(result, ec) && !ec;
+            };
+            if (const auto* baked = row.Find("bakedLighting"))
+            {
+                std::string space;
+                if (!exactFields(*baked, { "averageTexture", "directionalTexture", "colorSpace" }) ||
+                    !readString(*baked, "colorSpace", space) || (space != "linear" && space != "srgb") ||
+                    !lightingTexture(*baked, "averageTexture", material.bakedAveragePath) ||
+                    !lightingTexture(*baked, "directionalTexture", material.bakedDirectionalPath))
+                    return reject("invalid baked lighting texture inputs");
+                pbr.hasBakedLighting = true;
+                pbr.bakedLightingSRGB = space == "srgb";
+            }
+            if (const auto* environment = row.Find("environment"))
+            {
+                if (!exactFields(*environment, { "cubeTexture", "brdfTexture", "color", "rotation" }) ||
+                    !lightingTexture(*environment, "cubeTexture", material.environmentCubePath) ||
+                    !lightingTexture(*environment, "brdfTexture", material.environmentBRDFPath) ||
+                    !readColor(*environment, "color", pbr.environmentColor))
+                    return reject("invalid environment cube inputs");
+                const auto* rotation = environment->Find("rotation");
+                if (!rotation || !rotation->Is_Array() || rotation->Get_Array().size() != 2u)
+                    return reject("invalid environment rotation");
+                float components[2]{};
+                for (size_t i=0; i<2; ++i)
+                {
+                    const auto& component = rotation->Get_Array()[i];
+                    if (!component.Is_Number() || !std::isfinite(component.Get_Number()) || std::abs(component.Get_Number()) > 1.0)
+                        return reject("invalid environment rotation component");
+                    components[i] = static_cast<float>(component.Get_Number());
+                }
+                if (std::abs(components[0]*components[0]+components[1]*components[1]-1.f) > 0.0001f)
+                    return reject("environment rotation must be unit length");
+                pbr.environmentRotation = float2_t(components[0],components[1]);
+                pbr.hasEnvironmentCube = true;
+            }
+			staged[assetId].push_back(std::move(material));
+			continue;
+		}
+		std::unordered_set<std::string> fields = {
+			"assetId", "materialName", "sourceMaterial", "family",
+			"diffuseBrightness", "normalIntensity", "specularIntensity", "specularPower",
+			"reflectionIntensity", "reflectionContrast", "diffuseColor", "specularColor",
+			"reflectionColor", "reflectionTexture", "textureColorSpace"
+		};
+		auto& surface = material.surface;
+		if (family == "bg_seamless-specular_msk")
+		{
+			surface.family = Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION;
+			fields.insert("reflectionTiling");
+			if (!readNumber(row, "reflectionTiling", surface.reflectionTiling) ||
+				surface.reflectionTiling <= 0.f)
+			{
+				m_Status = "Map material reflection tiling is invalid: " + assetId;
+				return false;
+			}
+		}
+		else if (family == "bg_base_msk")
+		{
+			surface.family = Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION;
+			fields.insert("diffuseSaturation");
+			if (!readNumber(row, "diffuseSaturation", surface.diffuseSaturation))
+			{
+				m_Status = "Map material diffuse saturation is invalid: " + assetId;
+				return false;
+			}
+		}
+		else
+		{
+			m_Status = "Map material family is unsupported: " + family;
+			return false;
+		}
+		if (!exactFields(row, fields) ||
+			!readNumber(row, "diffuseBrightness", surface.diffuseBrightness) ||
+			!readNumber(row, "normalIntensity", surface.normalIntensity) ||
+			!readNumber(row, "specularIntensity", surface.specularIntensity) ||
+			!readNumber(row, "specularPower", surface.specularPower) || surface.specularPower < 1.f ||
+			!readNumber(row, "reflectionIntensity", surface.reflectionIntensity) ||
+			!readNumber(row, "reflectionContrast", surface.reflectionContrast) ||
+			!readColor(row, "diffuseColor", surface.diffuseColor) ||
+			!readColor(row, "specularColor", surface.specularColor) ||
+			!readColor(row, "reflectionColor", surface.reflectionColor))
+		{
+			m_Status = "Map material fields or numeric inputs are invalid: " + assetId;
+			return false;
+		}
+		const auto* colorSpace = row.Find("textureColorSpace");
+		if (!colorSpace || !exactFields(*colorSpace, { "diffuse", "specular", "reflection" }))
+		{
+			m_Status = "Map material texture color spaces are invalid: " + assetId;
+			return false;
+		}
+		const auto readColorSpace = [&readString, &colorSpace](const char* key, bool_t& result)
+		{
+			std::string value;
+			if (!readString(*colorSpace, key, value) || (value != "srgb" && value != "linear"))
+				return false;
+			result = value == "srgb";
+			return true;
+		};
+		const std::filesystem::path relative(reflectionTexture);
+		std::error_code reflectionError;
+		material.reflectionPath = CRuntimeAssetRoot::Resolve(relative);
+		if (!readColorSpace("diffuse", surface.diffuseSRGB) ||
+			!readColorSpace("specular", surface.specularSRGB) ||
+			!readColorSpace("reflection", surface.reflectionSRGB) ||
+			relative.is_absolute() || relative.has_root_path() ||
+			reflectionTexture.find(':') != std::string::npos ||
+			relative.extension() != L".dds" || material.reflectionPath.empty() ||
+			!IsInsideRoot(CRuntimeAssetRoot::Get(), material.reflectionPath) ||
+			!std::filesystem::is_regular_file(material.reflectionPath, reflectionError) || reflectionError)
+		{
+			m_Status = "Map material reflection path or color space is invalid: " + assetId;
+			return false;
+		}
+		staged[assetId].push_back(std::move(material));
+	}
+    std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> stagedLighting;
+    if (placementRows)
+    {
+        if (placementRows->Get_Array().size() > 65536u)
+        { m_Status = "Too many placement lighting rows"; return false; }
+        for (const auto& row : placementRows->Get_Array())
+        {
+            MAP_PLACEMENT_LIGHTING lighting;
+            std::string sourceId;
+            const auto readVector = [&](const char* name, float* values, size_t count)
+            {
+                const auto* vector = row.Find(name);
+                if (!vector || !vector->Is_Array() || vector->Get_Array().size() != count) return false;
+                for (size_t i=0; i<count; ++i)
+                {
+                    const auto& value = vector->Get_Array()[i];
+                    if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || value.Get_Number() < 0.0 ||
+                        value.Get_Number() > (std::numeric_limits<float>::max)()) return false;
+                    values[i] = static_cast<float>(value.Get_Number());
+                }
+                return true;
+            };
+            float scale[2]{}, bias[2]{}, average[3]{}, directional[3]{};
+            if (!exactFields(row, { "sourcePlacementId", "assetId", "coordinateScale", "coordinateBias", "averageScale", "directionalScale" }) ||
+                !readString(row, "sourcePlacementId", sourceId) || !IsValidDisplayText(sourceId, MAX_EVIDENCE_LENGTH) ||
+                !readString(row, "assetId", lighting.assetId) || !staged.contains(lighting.assetId) ||
+                !readVector("coordinateScale", scale, 2) || !readVector("coordinateBias", bias, 2) ||
+                !readVector("averageScale", average, 3) || !readVector("directionalScale", directional, 3) ||
+                scale[0] <= 0.f || scale[1] <= 0.f || scale[0]+bias[0] > 1.00001f || scale[1]+bias[1] > 1.00001f)
+            { m_Status = "Invalid placement lighting row: " + sourceId; return false; }
+            const auto& materials = staged.at(lighting.assetId);
+            if (std::none_of(materials.begin(), materials.end(), [](const auto& material) { return material.surface.hasBakedLighting; }))
+            { m_Status = "Placement lighting has no baked material: " + sourceId; return false; }
+            lighting.inputs.scaleBias = float4_t(scale[0],scale[1],bias[0],bias[1]);
+            lighting.inputs.averageScale = float4_t(average[0],average[1],average[2],1.f);
+            lighting.inputs.directionalScale = float4_t(directional[0],directional[1],directional[2],0.f);
+            if (!stagedLighting.emplace(sourceId, std::move(lighting)).second)
+            { m_Status = "Duplicate placement lighting source ID: " + sourceId; return false; }
+        }
+    }
+	for (auto& entry : m_Entries)
+	{
+		const auto found = staged.find(entry.id);
+		if (found != staged.end())
+		{
+			const bool_t castsShadow = found->second.front().surface.castsShadow;
+			if (std::any_of(found->second.begin(), found->second.end(),
+				[castsShadow](const auto& row) { return row.surface.castsShadow != castsShadow; }))
+			{
+				m_Status = "Map material variant shadow policies disagree: " + entry.id;
+				return false;
+			}
+			entry.renderProfile.castsShadow = castsShadow;
+			entry.materialOverrides = std::move(found->second);
+		}
+	}
+	m_PlacementLighting = std::move(stagedLighting);
+	return true;
+}
+
+const MAP_PLACEMENT_LIGHTING* CMapAssetCatalog::Find_PlacementLighting(const std::string& sourcePlacementId) const
+{
+    const auto found = m_PlacementLighting.find(sourcePlacementId);
+    return found == m_PlacementLighting.end() ? nullptr : &found->second;
+}
+
+bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
 {
 	if (!IsValidGroupId(areaId))
 	{
@@ -343,6 +904,8 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 			return false;
 		}
 
+		std::string stagedMaterialFilename;
+		bool_t hasMaterialDeclaration = false;
 		std::vector<MAP_ASSET_ENTRY> stagedEntries;
 		std::unordered_map<std::string, size_t> stagedLookup;
 		std::unordered_map<std::wstring, std::string> prototypeOwners;
@@ -356,6 +919,17 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 			{
 				m_Status = "Map shard " + shard.shardId + " failed: " +
 					child.Get_Status();
+				return false;
+			}
+			if (!hasMaterialDeclaration)
+			{
+				stagedMaterialFilename = child.m_MaterialDocumentFilename;
+				hasMaterialDeclaration = true;
+			}
+			else if (stagedMaterialFilename != child.m_MaterialDocumentFilename)
+			{
+				m_Status = "Map shards disagree on their required material document: " +
+					shard.shardId;
 				return false;
 			}
 			if (child.Get_Entries().size() != shard.assetCount)
@@ -400,6 +974,7 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 		m_Entries = std::move(stagedEntries);
 		m_EntryLookup = std::move(stagedLookup);
 		m_Shards = std::move(stagedShards);
+		m_MaterialDocumentFilename = std::move(stagedMaterialFilename);
 		m_AreaId = std::move(selectedAreaId);
 		m_CatalogPath = shardSetPath;
 		m_PlacementPath = hasSourceOverride ?
@@ -459,6 +1034,16 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 		return false;
 	}
 
+	std::string stagedMaterialFilename;
+	if (version >= MATERIAL_REFERENCE_CATALOG_VERSION &&
+		(!(input >> std::quoted(stagedMaterialFilename)) ||
+			!IsSafeRelativeFilename(stagedMaterialFilename, L".json") ||
+			stagedMaterialFilename != stagedAreaId + ".mapmaterials.json"))
+	{
+		m_Status = "Catalog material document reference is invalid";
+		return false;
+	}
+
 	std::vector<PARSED_MAP_ASSET_ROW> parsedRows;
 	parsedRows.reserve(count);
 	for (uint32_t index = 0; index < count; ++index)
@@ -505,7 +1090,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 					std::to_string(index);
 				return false;
 			}
-			if (version >= CATALOG_VERSION &&
+			if (version >= OPACITY_SHAPING_CATALOG_VERSION &&
 				!(input >> row.renderProfile.opacityPower))
 			{
 				m_Status = "Catalog opacity shaping is truncated at index " +
@@ -622,6 +1207,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 	m_Entries = std::move(stagedEntries);
 	m_EntryLookup = std::move(stagedLookup);
 	m_Shards.clear();
+	m_MaterialDocumentFilename = std::move(stagedMaterialFilename);
 	m_AreaId = std::move(stagedAreaId);
 	m_CatalogPath = path;
 	m_PlacementPath = path.parent_path() /

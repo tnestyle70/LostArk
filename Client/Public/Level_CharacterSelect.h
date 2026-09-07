@@ -26,6 +26,7 @@ class CCharacterSelectArenaSpawnGate;
 class CRaidEntryPreviewView;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
+class CMapLightPresentationRuntime;
 
 class CLevel_CharacterSelect final : public CLevel
 {
@@ -56,6 +57,9 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	bool_t Reload_MapLights();
+	void Set_MapLightAuthoringOverride(const shared_ptr<CMapLightPresentationRuntime>& preview)
+	{ m_pMapLightAuthoringOverride = preview; }
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
 	const std::string& Get_FollowCameraProfileStatus() const
@@ -206,6 +210,9 @@ private:
 	};
 
 	CMapPlacementRuntime m_MapRuntime;
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
+	bool_t m_bMapLightSubmissionFailureReported = false;
 	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };
 	unique_ptr<CCustomizingView> m_pCustomizingView;
 	int32_t m_iExpandedCategory = -1;

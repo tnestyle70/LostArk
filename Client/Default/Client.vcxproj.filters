@@ -2229,6 +2229,18 @@
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_MapMaterialSurface.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.maplights.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapmaterials.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>

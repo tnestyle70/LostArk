@@ -20,8 +20,89 @@ struct MODEL_COLOR_TINT
 	float4_t vRegionC = { 1.f, 1.f, 1.f, 1.f };
 };
 
+/* Evaluated legacy surface families. The Client resolves source material
+identities; the Engine owns only the immutable inputs used by these programs. */
+enum class MODEL_SURFACE_FAMILY : uint32_t
+{
+	LEGACY = 0,
+	SPECULAR_TEXTURE_REFLECTION = 1,
+	DIFFUSE_SPECULAR_REFLECTION = 2,
+	PBR_SEAMLESS_OPAQUE = 3,
+	PBR_OPAQUE = 4,
+	SOURCE_SPECULAR_OPAQUE = 5,
+};
+
+/* Per-placement atlas coordinates and decode scales. The texture pair belongs
+   to its material variant; this payload must never be shared across placements. */
+struct MODEL_BAKED_LIGHTING_INSTANCE
+{
+    float4_t scaleBias = { 0.f, 0.f, 0.f, 0.f };
+    float4_t averageScale = { 0.f, 0.f, 0.f, 0.f }; // w: enabled
+    float4_t directionalScale = { 0.f, 0.f, 0.f, 0.f };
+};
+
+struct MODEL_SURFACE_PARAMETERS
+{
+	MODEL_SURFACE_FAMILY family = MODEL_SURFACE_FAMILY::LEGACY;
+	f32_t diffuseBrightness = 1.f;
+	f32_t normalIntensity = 1.f;
+	f32_t specularIntensity = 1.f;
+	f32_t specularPower = 50.f;
+	f32_t reflectionIntensity = 0.f;
+	f32_t reflectionContrast = 0.5f;
+	f32_t reflectionTiling = 1.f;
+	f32_t diffuseSaturation = 1.f;
+	float4_t diffuseColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t specularColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t reflectionColor = { 1.f, 1.f, 1.f, 1.f };
+	bool_t diffuseSRGB = true;
+	bool_t specularSRGB = false;
+	bool_t reflectionSRGB = false;
+	bool_t ormSRGB = false;
+	bool_t castsShadow = true;
+	float2_t uvTiling = { 1.f, 1.f };
+	bool_t uvFixedNormal = false;
+	bool_t useWorldReflection = false;
+	f32_t detailNormalIntensity = 0.f;
+	f32_t detailNormalTiling = 1.f;
+	f32_t metallicIntensity = 1.f;
+	f32_t metallicPower = 1.f;
+	f32_t roughnessIntensity = 1.f;
+	f32_t roughnessPower = 1.f;
+	f32_t aoIntensity = 1.f;
+	f32_t aoPower = 1.f;
+	f32_t specularPBRIntensity = 0.5f;
+	f32_t nonmetallicBrightness = 1.f;
+	f32_t metallicBrightness = 1.f;
+	f32_t minimumRoughness = 0.04f;
+	float2_t reflectionOriginOffset = { 0.f, 0.f };
+	f32_t vertexAlpha = 1.f;
+    bool_t hasBakedLighting = false;
+    bool_t bakedLightingSRGB = false;
+    bool_t hasEnvironmentCube = false;
+    float4_t environmentColor = { 1.f, 1.f, 1.f, 0.f };
+    float2_t environmentRotation = { 0.f, 1.f };
+};
+
+struct MODEL_MATERIAL_OVERRIDE
+{
+	string materialName;
+	MODEL_SURFACE_PARAMETERS surface;
+	filesystem::path surfaceSpecularPath;
+	filesystem::path reflectionPath;
+	filesystem::path surfaceDiffusePath;
+	filesystem::path surfaceNormalPath;
+	filesystem::path detailNormalPath;
+	filesystem::path surfaceORMPath;
+    filesystem::path bakedAveragePath;
+    filesystem::path bakedDirectionalPath;
+    filesystem::path environmentCubePath;
+    filesystem::path environmentBRDFPath;
+};
+
 struct MODEL_MATERIAL_DATA
 {
+	filesystem::path surfaceSpecularPath;
 	string name;
 	uint64_t nameHash = {};
 	filesystem::path diffusePath;
@@ -35,6 +116,16 @@ struct MODEL_MATERIAL_DATA
 	filesystem::path ambientOcclusionPath;
 	filesystem::path colorMaskPath;
 	MODEL_COLOR_TINT colorTint;
+	MODEL_SURFACE_PARAMETERS surface;
+	filesystem::path reflectionPath;
+	filesystem::path surfaceDiffusePath;
+	filesystem::path surfaceNormalPath;
+	filesystem::path detailNormalPath;
+	filesystem::path surfaceORMPath;
+    filesystem::path bakedAveragePath;
+    filesystem::path bakedDirectionalPath;
+    filesystem::path environmentCubePath;
+    filesystem::path environmentBRDFPath;
 };
 
 enum class MODEL_VERTEX_KIND : uint8_t
@@ -59,6 +150,8 @@ enum MODEL_GEOMETRY_EVIDENCE_FLAG : uint32_t
 	MODEL_GEOMETRY_CLEAN_SOURCE_EXPORT = 1u << 11,
 	MODEL_GEOMETRY_UPK_TO_GLTF_EXACT = 1u << 12,
 	MODEL_GEOMETRY_PIVOT_EXACT = 1u << 13,
+	MODEL_GEOMETRY_TEXCOORD1_PRESERVED_FROM_GLTF = 1u << 14,
+	MODEL_GEOMETRY_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED = 1u << 15,
 };
 
 struct MODEL_MESH_BOUNDS_DATA
@@ -104,6 +197,7 @@ struct MODEL_MESH_DATA
 	vector<f32_t> tangentHandedness;
 	vector<uint32_t> color0Rgba8;
 	bool_t hasColor0 = { false };
+	bool_t hasTexcoord1 = { false };
 	MODEL_MESH_BOUNDS_DATA embeddedBounds;
 };
 
@@ -200,6 +294,7 @@ struct MODEL_ASSET_LOAD_DESC
 	vector<filesystem::path> animationPaths;
 	filesystem::path fallbackDiffusePath;
 	string defaultAnimationName;
+	vector<MODEL_MATERIAL_OVERRIDE> materialOverrides;
 };
 
 struct MODEL_DECODE_REPORT

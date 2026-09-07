@@ -139,6 +139,16 @@ bool_t CMapPlacementDocument::Read(
 				std::to_string(index);
 			return false;
 		}
+        const auto* lighting = catalog.Find_PlacementLighting(record.sourcePlacementId);
+        if (lighting)
+        {
+            if (lighting->assetId != record.assetId)
+            {
+                outStatus = "Placement lighting asset mismatch: " + record.sourcePlacementId;
+                return false;
+            }
+            record.bakedLighting = lighting->inputs;
+        }
 		staged.push_back(std::move(record));
 	}
 	std::string trailing;

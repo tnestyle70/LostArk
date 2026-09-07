@@ -1,0 +1,65 @@
+{
+  "schema": "lostark.map-light-presentation",
+  "formatVersion": 2,
+  "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+  "provenance": "PROJECT_AUTHORED",
+  "nextLightOrdinal": 3,
+  "lights": [
+    {
+      "lightId": "light.LV_LOBBY_CLASSSELECT_SL00.1",
+      "displayName": "Original Point 86",
+      "kind": "POINT",
+      "groupId": "original-source",
+      "enabled": true,
+      "position": [
+        -767.2416406250001,
+        -137.718056640625,
+        174.44818359375
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 40.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.9254901960784314,
+        0.8117647058823529,
+        1.0
+      ],
+      "brightness": 3.0
+    },
+    {
+      "lightId": "light.LV_LOBBY_CLASSSELECT_SL00.2",
+      "displayName": "Original Spot 99",
+      "kind": "SPOT",
+      "groupId": "original-source",
+      "enabled": true,
+      "position": [
+        -789.8546875000001,
+        -135.716162109375,
+        206.22837890625001
+      ],
+      "rotationDegrees": [
+        49.39453125000001,
+        62.49023437500001,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 2.0,
+      "outerConeDegrees": 7.0,
+      "color": [
+        1.0,
+        0.7607843137254902,
+        0.615686274509804,
+        1.0
+      ],
+      "brightness": 40.0
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 #include <filesystem>
 #include <string>
@@ -22,6 +23,7 @@ struct MAP_PLACEMENT_RECORD
 	float4_t rotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
 	float3_t signedScale = float3_t(1.f, 1.f, 1.f);
 	bool_t visible = true;
+	Engine::MODEL_BAKED_LIGHTING_INSTANCE bakedLighting;
 };
 
 class CMapPlacementDocument final

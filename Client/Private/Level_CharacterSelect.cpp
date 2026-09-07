@@ -20,6 +20,7 @@
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
 #include "MainApp.h"
+#include "MapLightPresentationRuntime.h"
 #include "Network/PacketMessages.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -134,6 +135,8 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 	m_Replication.Reset();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 	m_MapRuntime.Clear();
+	m_pMapLightAuthoringOverride.reset();
+	m_pMapLightPresentation.reset();
 }
 
 HRESULT CLevel_CharacterSelect::Initialize()
@@ -222,6 +225,14 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	const auto& lights = m_pMapLightAuthoringOverride ?
+		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	if (lights && !lights->Submit_Frame() && !m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
+			lights->Get_Status() + "\n").c_str());
+	}
 #ifdef _DEBUG
 	Update_RaidEntryDebugPreviewKey();
 #endif
@@ -298,7 +309,21 @@ HRESULT CLevel_CharacterSelect::Render()
 
 HRESULT CLevel_CharacterSelect::Ready_Lights()
 {
-	return S_OK;
+	return Reload_MapLights() ? S_OK : E_FAIL;
+}
+
+bool_t CLevel_CharacterSelect::Reload_MapLights()
+{
+	auto staged = std::make_shared<CMapLightPresentationRuntime>();
+	const auto* descriptor = CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (!descriptor || !descriptor->pMapAreaId || !staged->Load_Runtime(descriptor->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " + staged->Get_Status() + "\n").c_str());
+		return false;
+	}
+	m_pMapLightPresentation = std::move(staged);
+	m_bMapLightSubmissionFailureReported = false;
+	return true;
 }
 
 HRESULT CLevel_CharacterSelect::Ready_Camera()

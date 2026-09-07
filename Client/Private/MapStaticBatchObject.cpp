@@ -167,7 +167,7 @@ HRESULT CMapStaticBatchObject::Render()
 				m_pShaderCom,
 				meshIndex,
 				m_RenderProfile,
-				m_fElapsedTime)) ||
+				m_fElapsedTime, nullptr, m_AssetId)) ||
 
 			FAILED(m_pShaderCom->Begin(
 				passIndex)) ||
@@ -188,7 +188,7 @@ HRESULT CMapStaticBatchObject::Render()
 HRESULT CMapStaticBatchObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
-	if (m_ShadowInstances.empty())
+	if (m_ShadowInstances.empty() || !m_RenderProfile.castsShadow)
 		return S_OK;
 
 	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
@@ -210,6 +210,9 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 	for (uint32_t iMesh = 0;
 		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
 	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
+		if (surface && !surface->castsShadow)
+			continue;
 		if (FAILED(CMapAssetRenderUtils::Bind_Material(
 				m_pModelCom, m_pShaderCom, iMesh,
 				m_RenderProfile, m_fElapsedTime)) ||
@@ -458,6 +461,9 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 			instance.World;
 		gpuInstance.WorldInvTranspose =
 			instance.WorldInvTranspose;
+        gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
+        gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
+        gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
 
 		m_VisibleInstances.push_back(
 			gpuInstance);
@@ -529,6 +535,9 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 		VTXMESHINSTANCE gpuInstance{};
 		gpuInstance.World = instance.World;
 		gpuInstance.WorldInvTranspose = instance.WorldInvTranspose;
+        gpuInstance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
+        gpuInstance.vLightmapAverageScale = instance.BakedLighting.averageScale;
+        gpuInstance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
 		m_ShadowInstances.push_back(gpuInstance);
 	}
 

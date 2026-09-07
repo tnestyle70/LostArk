@@ -9,6 +9,9 @@ texture2D   g_Texture;
 texture2D   g_DiffuseTexture, g_ShadeTexture;
 texture2D   g_DepthTexture;
 texture2D   g_SpecularTexture;
+texture2D   g_MaterialSpecularTexture;
+texture2D   g_GeometricNormalTexture;
+uint g_MaterialDebugView = 0;
 texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
 texture2D   g_SceneHDRTexture;
@@ -268,6 +271,128 @@ PS_OUT_BACKBUFFER PS_MAIN_DEBUG(PS_IN In)
     return Out;    
 }
 
+float3 Load_MaterialSpecular(PS_IN input, float legacyMask)
+{
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    // A nearer legacy object writes depth.w=0 even if RT5 still contains a floor.
+    return g_DepthTexture.Load(pixel).w == 1.f ?
+        g_MaterialSpecularTexture.Load(pixel).rgb : legacyMask.xxx;
+}
+
+float3 Decode_MapPBRGeometricNormal(int3 pixel)
+{
+    // Load preserves the exact RGBA32_FLOAT mantissa. Bilinear sampling must
+    // never interpolate this packed PickPos.W payload.
+    const uint packed = asuint(g_GeometricNormalTexture.Load(pixel).w);
+    const float2 oct = float2(packed & 2047u, (packed >> 11u) & 2047u) /
+        2047.f * 2.f - 1.f;
+    float3 normal = float3(oct, 1.f - abs(oct.x) - abs(oct.y));
+    const float fold = max(-normal.z, 0.f);
+    normal.xy += float2(normal.x >= 0.f ? -fold : fold,
+        normal.y >= 0.f ? -fold : fold);
+    return normalize(normal);
+}
+
+void Evaluate_MapSourcePBRDirect(float3 normal, float3 geometricNormal,
+    float3 viewDirection, float3 lightDirection, float roughness, float metallic,
+    float3 f0, out float3 diffuseWeight, out float3 specularContribution)
+{
+    // Recovered from all four actual BG_PCSELECT15 DirectionalLight PS
+    // permutations. Preserve the source geometric-normal Fresnel correction,
+    // roughness Fresnel term, visibility denominator and color-based peak cap.
+    const float3 n = normalize(normal);
+    const float3 v = normalize(viewDirection);
+    const float3 l = normalize(lightDirection);
+    const float3 sum = v + l;
+    const float3 h = sum * rsqrt(max(dot(sum, sum), 0.000000000001f));
+    const float noH = saturate(dot(n, h));
+    const float noV = min(abs(dot(n, v)) + 0.00001f, 1.f);
+    const float noL = saturate(dot(n, l));
+    const float voH = saturate(dot(v, h));
+    const float geometricLight = min(dot(normalize(geometricNormal), l) + 1.f, 1.f);
+    const float correctedVoH = min(voH + 1.f - geometricLight, 1.f);
+    const float fresnelBase = 1.f - correctedVoH;
+    const float fresnelSquare = fresnelBase * fresnelBase;
+    const float fresnelPower = fresnelSquare * fresnelSquare * fresnelBase;
+    const float3 fresnel = f0 * (1.f - fresnelPower) +
+        fresnelPower * saturate(50.f * f0.g) * (max(f0, 1.f - roughness) - f0);
+
+    const float roughness2 = roughness * roughness;
+    const float roughness4 = roughness2 * roughness2;
+    const float distributionBase = noH * noH * (roughness4 - 1.f) + 1.f;
+    const float distribution = roughness4 /
+        max(3.14159265359f * distributionBase * distributionBase, 1e-30f);
+    const float visibilityDenominator =
+        noL * (noV * (1.f - roughness2) + roughness2) +
+        noV * (noL * (1.f - roughness2) + roughness2);
+    const float sourcePeak = 0.5f * distribution / max(visibilityDenominator, 1e-30f);
+    const float cappedPeak = min(sourcePeak,
+        3.f / (dot(fresnel, float3(0.3f, 0.59f, 0.11f)) + 0.0001f));
+    // Source diffuse includes 1/pi followed by the final pi light scale.
+    // Keep material albedo in RT0 so the existing combined pass multiplies it.
+    diffuseWeight = (1.f - metallic) * (1.f - fresnel) * noL;
+    specularContribution = fresnel * cappedPeak * noL * 3.14159265359f;
+}
+
+PS_OUT_LIGHT Resolve_MapPBRLight(PS_IN input, float3 worldPosition,
+    float3 lightDirection, float attenuation, float directShadow)
+{
+    PS_OUT_LIGHT output;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float4 normal = g_NormalTexture.Load(pixel);
+    const float4 material = g_MaterialSpecularTexture.Load(pixel);
+    const float materialAO = saturate(g_DepthTexture.Load(pixel).z);
+    float3 diffuseWeight, specularContribution;
+    Evaluate_MapSourcePBRDirect(normal.xyz * 2.f - 1.f,
+        Decode_MapPBRGeometricNormal(pixel), g_vCamPosition.xyz - worldPosition,
+        lightDirection, normal.a, saturate(material.a), material.rgb,
+        diffuseWeight, specularContribution);
+    // A bound component lightmap already supplies its indirect irradiance.
+    // Keep authored scene values but exclude the duplicate project ambient
+    // on those PBR pixels; unbaked PBR retains that explicit approximation.
+    const bool hasBakedLighting = (asuint(g_GeometricNormalTexture.Load(pixel).w) &
+        0x00400000u) != 0u;
+    const float ao = Resolve_AmbientOcclusion(input.vTexcoord) * materialAO;
+    const float3 ambient = g_vLightAmbient.rgb * g_vMtrlAmbient.rgb * ao *
+        (1.f - saturate(material.a)) * (hasBakedLighting ? 0.f : 1.f);
+    output.vShade = float4(g_vLightDiffuse.rgb * attenuation *
+        (diffuseWeight * directShadow + ambient), 0.f);
+    // Native PBR uses one incoming light color for both BRDF lobes.
+    // The legacy Phong specular control does not disable recovered PBR energy.
+    output.vSpecular = float4(g_vLightDiffuse.rgb * specularContribution *
+        attenuation * directShadow, 0.f);
+    return output;
+}
+
+PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
+    float3 lightDirection, float attenuation, float directShadow)
+{
+    PS_OUT_LIGHT output;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float3 n = normalize(g_NormalTexture.Load(pixel).xyz * 2.f - 1.f);
+    const float3 l = normalize(lightDirection);
+    const float3 v = normalize(g_vCamPosition.xyz - worldPosition);
+    const float3 sum = l + v;
+    const float3 h = sum * rsqrt(max(dot(sum, sum), 1e-12f));
+    const float ndoth = abs(dot(n, h));
+    const float specularPower = g_DepthTexture.Load(pixel).z;
+    const float lobe = ndoth < 0.000001f ? 0.f : min(pow(ndoth, specularPower), 1.f);
+    const float4 material = g_MaterialSpecularTexture.Load(pixel);
+    const bool hasBakedLighting = (asuint(g_GeometricNormalTexture.Load(pixel).w) &
+        0x00400000u) != 0u;
+    const float3 ambient = hasBakedLighting ? 0.f :
+        g_vLightAmbient.rgb * g_vMtrlAmbient.rgb * Resolve_AmbientOcclusion(input.vTexcoord);
+    // The free non-PBR RT5 alpha carries the albedo HDR normalization scale.
+    // Source diffuse can exceed 1 while the product albedo target is UNORM8.
+    output.vShade = float4(g_vLightDiffuse.rgb * attenuation * material.a *
+        (saturate(dot(n, l)) * directShadow + ambient), 0.f);
+    // Native Blinn lobe has an RGB cap of 2 after shadow multiplication and
+    // uses the same incoming color as diffuse. It has no extra NoL factor.
+    output.vSpecular = float4(g_vLightDiffuse.rgb * attenuation *
+        clamp(material.rgb * lobe * directShadow, 0.f, 2.f), 0.f);
+    return output;
+}
+
 PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 {
     PS_OUT_LIGHT Out;
@@ -306,6 +431,12 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
         normalize(g_vLightDir) * -1.f, normalize(vNormal)));
     const float fDirectionalShadow = Resolve_DirectionalShadow(
         vWorldPos, vNormal.xyz);
+    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
+        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
+            1.f, fDirectionalShadow);
+    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
+        return Resolve_MapPBRLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
+            1.f, fDirectionalShadow);
     const float fAmbientOcclusion =
         Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = g_vLightDiffuse *
@@ -317,7 +448,7 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
     Out.vSpecular = g_vLightSpecular *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
-            specularPower) * vNormalDesc.a * fDirectionalShadow;
+            specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fDirectionalShadow;
     
     return Out;
 }
@@ -385,6 +516,10 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
         fAtt *= fCone * fCone;
     }
     
+    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
+        return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
+    if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
+        return Resolve_MapPBRLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
     float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
     + (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion)) * fAtt;
@@ -398,7 +533,7 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
     Out.vSpecular = g_vLightSpecular *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
-            specularPower) * vNormalDesc.a * fAtt;
+            specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fAtt;
     
     return Out;
 }
@@ -1056,6 +1191,45 @@ float3 Resolve_FinalFXAA(float2 vTexcoord)
 PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out;
+    if (g_MaterialDebugView != 0u)
+    {
+        const int3 pixel = int3(int2(In.vPosition.xy), 0);
+        const float marker = g_DepthTexture.Load(pixel).w;
+        float3 color = 0.f;
+        if (marker == 1.f || marker == 2.f || marker == 3.f || marker == 4.f)
+        {
+            if (g_MaterialDebugView == 2u)
+                color = g_NormalTexture.Load(pixel).rgb;
+            else if (g_MaterialDebugView >= 5u)
+            {
+                // Legacy marker 2 has specular power/mask in these lanes.
+                // Do not display those values as a recovered PBR diagnostic.
+                if (marker == 3.f)
+                {
+                    if (g_MaterialDebugView == 5u)
+                        color = g_NormalTexture.Load(pixel).aaa;
+                    else if (g_MaterialDebugView == 6u)
+                        color = g_MaterialSpecularTexture.Load(pixel).aaa;
+                    else if (g_MaterialDebugView == 7u)
+                        color = g_DepthTexture.Load(pixel).zzz;
+                }
+            }
+            else
+            {
+                color = g_MaterialDebugView == 3u ?
+                    g_SpecularTexture.Load(pixel).rgb : g_DiffuseTexture.Load(pixel).rgb;
+                if (marker == 4.f && g_MaterialDebugView != 3u)
+                    color *= g_MaterialSpecularTexture.Load(pixel).a;
+                // Source contributions bypass scene exposure, Bloom and FXAA.
+                // Specular can be HDR; compress only this diagnostic display.
+                if (g_MaterialDebugView == 3u)
+                    color = max(color, 0.f) / (1.f + max(color, 0.f));
+                color = pow(saturate(color), 1.f / 2.2f);
+            }
+        }
+        Out.vBackBuffer = float4(color, 1.f);
+        return Out;
+    }
     Out.vBackBuffer = float4(Resolve_FinalFXAA(In.vTexcoord), 1.f);
 
     return Out;
