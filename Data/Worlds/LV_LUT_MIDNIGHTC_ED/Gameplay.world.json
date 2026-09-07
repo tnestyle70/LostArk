@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 8093,
+  "revision": 8094,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -193,6 +193,18 @@
       ]
     },
     {
+      "placementId": "Mario2_Intro",
+      "kind": "triggerBox",
+      "position": [-1434.48999, -9.02000999, -1175.96997],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [3, 2, 3],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m2_intro" }
+      ]
+    },
+    {
       "placementId": "Mario2_go",
       "kind": "triggerBox",
       "position": [0.703000009, 1.29900515, 738.098999],
@@ -346,6 +358,18 @@
       "triggerOnce": true,
       "events": [
         { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_51" }
+      ]
+    },
+    {
+      "placementId": "Mario3_Intro",
+      "kind": "triggerBox",
+      "position": [-1889.68994, -11.5299997, -1646.20996],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [3, 2, 3],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_intro" }
       ]
     },
     {
@@ -516,6 +540,18 @@
       "triggerOnce": false,
       "events": [
         { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m3_card02" }
+      ]
+    },
+    {
+      "placementId": "Mario4_Intro",
+      "kind": "triggerBox",
+      "position": [-1632.57, -20.49, -1400.92],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [3, 2, 3],
+      "triggerOnce": false,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.mario_m4_intro" }
       ]
     },
     {

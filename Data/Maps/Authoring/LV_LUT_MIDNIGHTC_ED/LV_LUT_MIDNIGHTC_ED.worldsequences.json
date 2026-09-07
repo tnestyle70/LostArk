@@ -2,7 +2,7 @@
  "schema": "lostark.world-sequences",
  "formatVersion": 2,
  "areaId": "LV_LUT_MIDNIGHTC_ED",
- "revision": 146,
+ "revision": 147,
  "templates": [
   {
    "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.2",
@@ -322557,6 +322557,171 @@
     }
    ],
    "animationTracks": []
+  },
+  {
+   "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m2_intro",
+   "displayName": "mario_m2_intro",
+   "category": "World",
+   "durationMs": 3000,
+   "interpolation": "LINEAR",
+   "tracks": [
+    {
+     "slotId": "obj01",
+     "keys": [
+      {
+       "timeMs": 0,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      },
+      {
+       "timeMs": 3000,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      }
+     ]
+    }
+   ],
+   "animationTracks": []
+  },
+  {
+   "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m3_intro",
+   "displayName": "mario_m3_intro",
+   "category": "World",
+   "durationMs": 3000,
+   "interpolation": "LINEAR",
+   "tracks": [
+    {
+     "slotId": "obj01",
+     "keys": [
+      {
+       "timeMs": 0,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      },
+      {
+       "timeMs": 3000,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      }
+     ]
+    }
+   ],
+   "animationTracks": []
+  },
+  {
+   "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m4_intro",
+   "displayName": "mario_m4_intro",
+   "category": "World",
+   "durationMs": 3000,
+   "interpolation": "LINEAR",
+   "tracks": [
+    {
+     "slotId": "obj01",
+     "keys": [
+      {
+       "timeMs": 0,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      },
+      {
+       "timeMs": 3000,
+       "positionOffset": [
+        0,
+        0,
+        0
+       ],
+       "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "scaleMultiplier": [
+        1,
+        1,
+        1
+       ],
+       "visible": true
+      }
+     ]
+    }
+   ],
+   "animationTracks": []
   }
  ],
  "instances": [
@@ -326645,6 +326810,48 @@
      "slotId": "obj01",
      "targetKind": "MAP_PLACEMENT",
      "targetId": "370"
+    }
+   ]
+  },
+  {
+   "instanceId": "world.sequence.instance.mario_m2_intro",
+   "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m2_intro",
+   "enabled": true,
+   "startDelayMs": 0,
+   "playbackSpeed": 1,
+   "bindings": [
+    {
+     "slotId": "obj01",
+     "targetKind": "MAP_PLACEMENT",
+     "targetId": "11284422400836074445"
+    }
+   ]
+  },
+  {
+   "instanceId": "world.sequence.instance.mario_m3_intro",
+   "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m3_intro",
+   "enabled": true,
+   "startDelayMs": 0,
+   "playbackSpeed": 1,
+   "bindings": [
+    {
+     "slotId": "obj01",
+     "targetKind": "MAP_PLACEMENT",
+     "targetId": "13607882261321843072"
+    }
+   ]
+  },
+  {
+   "instanceId": "world.sequence.instance.mario_m4_intro",
+   "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m4_intro",
+   "enabled": true,
+   "startDelayMs": 0,
+   "playbackSpeed": 1,
+   "bindings": [
+    {
+     "slotId": "obj01",
+     "targetKind": "MAP_PLACEMENT",
+     "targetId": "17873503318011911402"
     }
    ]
   }

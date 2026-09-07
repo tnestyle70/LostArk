@@ -35,6 +35,7 @@ class CNpc;
 class CCamera_Free;
 class CDestructionSimulationController;
 class CWorldSequenceToolPanel;
+struct VALTAN_CINEMATIC_CAMERA_POSE;
 class CMapTool final
 {
 private:
@@ -102,15 +103,6 @@ private:
 		int32_t trackDurationMs = 0;
 		int32_t interpolationIndex = 1;
 		int32_t easingIndex = 1;
-	};
-
-	/* One authored playSequence trigger box on a side scrolling run. The
-	   walkthrough preview visits these in order with no player and no
-	   Server, so the pop-outs can be judged from the editor alone. */
-	struct MARIO_WALK_STOP final
-	{
-		float3_t position = {};
-		std::string sequenceInstanceId;
 	};
 
 	struct EDITOR_AREA_DESCRIPTOR
@@ -274,13 +266,20 @@ private:
 	void Render_CutsceneArenaPreview();
 	void Apply_CutsceneCameraTrack(f32_t timeDelta);
 	void End_CutsceneCameraTrack();
-	/* Walks one stage's authored trigger boxes with no player and no
-	   Server so the run's camera and pop-outs can be watched. The stage
-	   token is the part after `mario_` in the sequence instance ID. */
-	vector<std::string> Collect_MarioWalkStages();
-	bool_t Play_MarioWalkthrough(const std::string& stageToken);
-	void Update_MarioWalkthrough(f32_t timeDelta);
-	void Stop_MarioWalkthrough();
+	/* Marshals a shot's authored track into the one cinematic cue the
+	   product samples, then samples it on the given clock. A shot with
+	   fewer than two keys yields its single pose. */
+	bool_t Sample_ShotCameraTrack(
+		const EDITOR_CAMERA_SHOT& shot,
+		f32_t elapsedMs,
+		VALTAN_CINEMATIC_CAMERA_POSE& outPose) const;
+	/* Plays one stage's intro camera shot -- the shot bound to
+	   `world.sequence.instance.mario_<stage>_intro` -- from the top, with
+	   no player and no Server, and hands the camera back when it ends. */
+	vector<std::string> Collect_MarioIntroStages() const;
+	bool_t Play_MarioIntro(const std::string& stageToken);
+	void Update_MarioIntro();
+	void Stop_MarioIntro();
 	void Apply_CutsceneArenaVisibility(bool_t hidden);
 	bool_t Is_CutsceneOriginalPlaying() const;
 	void Hide_CutsceneSet();
@@ -343,14 +342,12 @@ private:
 	bool_t Save_CameraShots();
 	void Render_CameraShotSection();
 	void End_CameraShotPreview();
-	/* outWorldY is the height of the surface the ray actually hit, which is the
-	   height a Force Walkable stroke authors when the cell has no baked
-	   surface. The pick no longer requires a resolved cell, so a platform the
-	   bake missed can still be selected. */
+	/* Picks rendered surface height, including cells with no baked floor.
+	   Failed picks explain their cause through m_NavigationStatus. */
 	bool_t Try_PickNavigationCell(
 		int32_t& outCellX,
 		int32_t& outCellZ,
-		f32_t& outWorldY) const;
+		f32_t& outWorldY);
 	bool_t Try_PaintNavigation();
 	bool_t Try_PlaceNavigationBounds();
 	/* Bake is split so pressing it is not already the irreversible act.
@@ -614,18 +611,12 @@ private:
 	float3_t m_vCutsceneCameraFromLook = {};
 	f32_t m_fCutsceneCameraFromFov = 60.f;
 	f32_t m_fCutsceneCameraBlendSeconds = 0.f;
-	/* Mario1 walkthrough state. The shot index points into m_CameraShots
-	   at the follow shot that covers the first trigger box. */
-	bool_t m_bMarioWalkRunning = false;
-	bool_t m_bMarioWalkCameraHeld = false;
-	f32_t m_fMarioWalkSeconds = 0.f;
-	f32_t m_fMarioWalkSpeed = 6.f;
-	size_t m_iMarioWalkNextStop = 0u;
-	size_t m_iMarioWalkShot = 0u;
-	vector<MARIO_WALK_STOP> m_MarioWalkStops;
-	std::string m_MarioWalkStage;
+	/* Stage intro preview. The flag keeps the camera track gate open for
+	   as long as the bound sequence plays. */
+	bool_t m_bMarioIntroRunning = false;
+	std::string m_MarioIntroInstanceId;
 	std::string m_MarioWalkStatus =
-		"No stage walkthrough has run in this session";
+		"No stage intro has run in this session";
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 
@@ -766,6 +757,7 @@ private:
 	NAVIGATION_EDIT_ACTION m_eNavigationEditAction =
 		NAVIGATION_EDIT_ACTION::APPLY;
 	uint32_t m_iBrushRadius = {};
+	bool_t m_bNavigationUsePickedHeight = false;
 	/* Cells without a baked surface carry no height, so the overlay has to
 	   draw them on the Nav Bounds floor. On a large bake they outnumber the
 	   real surface cells and hide it, so they stay off unless asked for. */

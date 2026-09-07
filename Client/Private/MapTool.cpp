@@ -748,12 +748,6 @@ namespace
 	/* Distinct from the product level and the cinematic owners so an editor
 	   preview never collides with a shipped override. */
 	constexpr uint64_t CAMERA_SHOT_PREVIEW_OWNER_ID = 0x4D54434D53485450ull;
-	/* The walkthrough takes the editor camera on its own ticket so it can
-	   never be mistaken for the cutscene shot preview above. */
-	constexpr uint64_t MARIO_WALK_PREVIEW_OWNER_ID = 0x4D54434D57414C4Bull;
-	/* The walker joins the run this far before the first trigger box and
-	   leaves it this far after the last, so both ends are seen moving. */
-	constexpr f32_t MARIO_WALK_LEAD_METRES = 14.f;
 	constexpr std::string_view MARIO_SEQUENCE_ROOT =
 		"world.sequence.instance.mario_";
 
@@ -1071,7 +1065,7 @@ void Client::CMapTool::Update(
 	}
 	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
 	if (isMapAuthoringLevel)
-		Update_MarioWalkthrough(fTimeDelta);
+		Update_MarioIntro();
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(
 		bAllowWorldInput && isMapAuthoringLevel &&
@@ -1835,6 +1829,46 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 	}
 }
 
+bool_t Client::CMapTool::Sample_ShotCameraTrack(
+	const EDITOR_CAMERA_SHOT& shot,
+	const f32_t elapsedMs,
+	VALTAN_CINEMATIC_CAMERA_POSE& outPose) const
+{
+	/* Built here rather than stored so every preview samples what the
+	   editor currently shows, and so the product runtime keeps the single
+	   cinematic sampler as the only implementation of this motion. */
+	VALTAN_CINEMATIC_CAMERA_CUE cue{};
+	cue.strCueId = shot.shotId;
+	cue.iDurationMs = static_cast<uint32_t>((std::max)(1, shot.trackDurationMs));
+	cue.eInterpolation = 0 == shot.interpolationIndex ?
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR :
+		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+	cue.eEasing = 0 == shot.easingIndex ?
+		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR :
+		(1 == shot.easingIndex ?
+			VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP :
+			VALTAN_CINEMATIC_CAMERA_EASING::HOLD);
+	cue.eTrackingMode = VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
+	cue.Keyframes.reserve(shot.keyframes.size());
+	for (const EDITOR_CAMERA_KEYFRAME& source : shot.keyframes)
+	{
+		VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe{};
+		keyframe.strSceneId = source.sceneId;
+		keyframe.iTimeMs = static_cast<uint32_t>((std::max)(0, source.timeMs));
+		keyframe.vEye = source.eye;
+		keyframe.vLookAt = source.lookAt;
+		keyframe.fFovYDegrees = source.fovYDegrees;
+		cue.Keyframes.push_back(std::move(keyframe));
+	}
+	outPose.vEye = shot.eye;
+	outPose.vLookAt = shot.lookAt;
+	outPose.fFovYDegrees = shot.fovYDegrees;
+	if (cue.Keyframes.size() < 2u)
+		return true;
+	return CValtanCinematicCameraController::Sample_Cue(
+		cue, elapsedMs / 1000.f, outPose);
+}
+
 void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 {
 	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
@@ -1851,6 +1885,13 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 	{
 		if (editingOneShot &&
 			&shot != &m_CameraShots[m_iSelectedCameraShot])
+		{
+			continue;
+		}
+		/* An explicit stage play owns this preview even if an earlier intro
+		   or a held cutscene still has a live clock at a higher priority. */
+		if (!editingOneShot && m_bMarioIntroRunning &&
+			shot.sequenceInstanceId != m_MarioIntroInstanceId)
 		{
 			continue;
 		}
@@ -1876,39 +1917,8 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 		End_CutsceneCameraTrack();
 		return;
 	}
-	/* Built here rather than stored so the preview always samples what the
-	   editor currently shows, and so the product runtime keeps the single
-	   cinematic sampler as the only implementation of this motion. */
-	VALTAN_CINEMATIC_CAMERA_CUE cue{};
-	cue.strCueId = bound->shotId;
-	cue.iDurationMs = static_cast<uint32_t>((std::max)(1, bound->trackDurationMs));
-	cue.eInterpolation = 0 == bound->interpolationIndex ?
-		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR :
-		VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
-	cue.eEasing = 0 == bound->easingIndex ?
-		VALTAN_CINEMATIC_CAMERA_EASING::LINEAR :
-		(1 == bound->easingIndex ?
-			VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP :
-			VALTAN_CINEMATIC_CAMERA_EASING::HOLD);
-	cue.eTrackingMode = VALTAN_CINEMATIC_TRACKING_MODE::WORLD;
-	cue.Keyframes.reserve(bound->keyframes.size());
-	for (const EDITOR_CAMERA_KEYFRAME& source : bound->keyframes)
-	{
-		VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe{};
-		keyframe.strSceneId = source.sceneId;
-		keyframe.iTimeMs = static_cast<uint32_t>((std::max)(0, source.timeMs));
-		keyframe.vEye = source.eye;
-		keyframe.vLookAt = source.lookAt;
-		keyframe.fFovYDegrees = source.fovYDegrees;
-		cue.Keyframes.push_back(std::move(keyframe));
-	}
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
-	pose.vEye = bound->eye;
-	pose.vLookAt = bound->lookAt;
-	pose.fFovYDegrees = bound->fovYDegrees;
-	if (2u <= cue.Keyframes.size() &&
-		!CValtanCinematicCameraController::Sample_Cue(
-			cue, elapsedMs / 1000.f, pose))
+	if (!Sample_ShotCameraTrack(*bound, elapsedMs, pose))
 	{
 		End_CutsceneCameraTrack();
 		return;
@@ -1919,6 +1929,11 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 			CAMERA_SHOT_PREVIEW_OWNER_ID,
 			CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
 		{
+			/* Another preview of equal or higher priority owns the camera.
+			   Say so; a track that silently does nothing looks broken. */
+			m_CameraShotStatus = "Camera track cannot take the camera: "
+				"another preview holds it (stop the walkthrough or the "
+				"other tool first)";
 			return;
 		}
 		/* Where the free camera stands right now is where the glide starts,
@@ -1974,352 +1989,6 @@ void Client::CMapTool::End_CutsceneCameraTrack()
 	if (nullptr != camera)
 		camera->End_PresentationOverride(CAMERA_SHOT_PREVIEW_OWNER_ID);
 	m_bCutsceneCameraHeld = false;
-}
-
-vector<std::string> Client::CMapTool::Collect_MarioWalkStages()
-{
-	vector<std::string> stages;
-	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
-		m_WorldGameplayDocument.Get_Placements())
-	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
-			!placement.isEnabled || 1u != placement.triggerEvents.size())
-		{
-			continue;
-		}
-		const WORLD_TRIGGER_EVENT& event = placement.triggerEvents.front();
-		if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE != event.eKind ||
-			0 != event.targetId.rfind(MARIO_SEQUENCE_ROOT, 0))
-		{
-			continue;
-		}
-		/* `...mario_m2_ambient` yields `m2`. A target with no separator
-		   after the stage token is not a stage instance. */
-		const size_t begin = MARIO_SEQUENCE_ROOT.size();
-		const size_t split = event.targetId.find('_', begin);
-		if (std::string::npos == split || split == begin)
-			continue;
-		std::string stage = event.targetId.substr(begin, split - begin);
-		if (stages.end() ==
-			std::find(stages.begin(), stages.end(), stage))
-		{
-			stages.push_back(std::move(stage));
-		}
-	}
-	std::sort(stages.begin(), stages.end());
-	return stages;
-}
-
-bool_t Client::CMapTool::Play_MarioWalkthrough(
-	const std::string& stageToken)
-{
-	Stop_MarioWalkthrough();
-	/* Activating an Area leaves the gameplay document alone, so the
-	   walkthrough pulls it in itself instead of making the user open
-	   another panel first. */
-	if (m_WorldGameplayDocument.Get_Placements().empty() &&
-		!Load_WorldGameplay())
-	{
-		m_MarioWalkStatus = m_WorldGameplayStatus;
-		return false;
-	}
-	const std::string prefix =
-		std::string(MARIO_SEQUENCE_ROOT) + stageToken + "_";
-	m_MarioWalkStops.clear();
-	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
-		m_WorldGameplayDocument.Get_Placements())
-	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
-			!placement.isEnabled || 1u != placement.triggerEvents.size())
-		{
-			continue;
-		}
-		const WORLD_TRIGGER_EVENT& event = placement.triggerEvents.front();
-		if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE != event.eKind ||
-			0 != event.targetId.rfind(prefix, 0))
-		{
-			continue;
-		}
-		MARIO_WALK_STOP stop{};
-		stop.position = placement.position;
-		stop.sequenceInstanceId = event.targetId;
-		m_MarioWalkStops.push_back(std::move(stop));
-	}
-	if (m_MarioWalkStops.size() < 2u)
-	{
-		m_MarioWalkStatus = stageToken + " needs at least two playSequence "
-			"trigger boxes in the world gameplay document";
-		return false;
-	}
-
-	/* The framing must be the one the product level will use, so it comes
-	   from the authored follow shot rather than from a preview constant.
-	   Any box may be the one the shot covers because the run is not
-	   ordered yet. */
-	m_iMarioWalkShot = m_CameraShots.size();
-	for (size_t index = 0;
-		index < m_CameraShots.size() &&
-		m_iMarioWalkShot >= m_CameraShots.size(); ++index)
-	{
-		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[index];
-		if (!shot.followsPlayer)
-			continue;
-		for (const MARIO_WALK_STOP& stop : m_MarioWalkStops)
-		{
-			if (std::abs(stop.position.x - shot.center.x) >
-					shot.halfExtents.x ||
-				std::abs(stop.position.z - shot.center.z) >
-					shot.halfExtents.z)
-			{
-				continue;
-			}
-			m_iMarioWalkShot = index;
-			break;
-		}
-	}
-	if (m_iMarioWalkShot >= m_CameraShots.size())
-	{
-		m_MarioWalkStatus =
-			"No follow camera shot covers a " + stageToken + " trigger box";
-		return false;
-	}
-
-	/* Travel order comes from the shot, not from a world axis. Under
-	   LookAtLH the camera's right vector is cross(up, forward), which is
-	   (forward.z, 0, -forward.x), and the runner advances along it: the
-	   Mario1 footage shows the background flowing the other way. Ordering
-	   the boxes by that projection works for any stage heading, and it
-	   reproduces exactly the order the old descending X sort gave
-	   Mario1. */
-	{
-		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[m_iMarioWalkShot];
-		const f32_t forwardX =
-			shot.followLookAtOffset.x - shot.followEyeOffset.x;
-		const f32_t forwardZ =
-			shot.followLookAtOffset.z - shot.followEyeOffset.z;
-		const f32_t rightX = forwardZ;
-		const f32_t rightZ = -forwardX;
-		if (rightX * rightX + rightZ * rightZ <= 0.000001f)
-		{
-			/* A shot looking straight down has no screen right in the XZ
-			   plane, so there is no run direction to order by. */
-			m_MarioWalkStatus = "Follow shot has no horizontal direction: " +
-				shot.shotId;
-			return false;
-		}
-		std::sort(m_MarioWalkStops.begin(), m_MarioWalkStops.end(),
-			[rightX, rightZ](const MARIO_WALK_STOP& lhs,
-				const MARIO_WALK_STOP& rhs)
-			{
-				return lhs.position.x * rightX + lhs.position.z * rightZ <
-					rhs.position.x * rightX + rhs.position.z * rightZ;
-			});
-	}
-
-	/* The sequence player is only handed the Area by whichever preview
-	   runs first, so the walkthrough must do it too. Without this every
-	   Play call is refused and the run looks like a camera move over a
-	   dead stage. */
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = m_iAuthoringLevelIndex;
-	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
-	if (!targets.Is_Complete())
-	{
-		m_MarioWalkStatus = "Mario1 walkthrough needs a loaded Area";
-		return false;
-	}
-	if (!m_bArenaRiseAreaLoaded)
-	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
-		{
-			m_MarioWalkStatus = "Sequence document load failed: " +
-				m_ArenaRisePlayer.Get_Status();
-			return false;
-		}
-		m_bArenaRiseAreaLoaded = true;
-	}
-	/* A previous run leaves its own instances holding the props. */
-	m_ArenaRisePlayer.Stop_All(targets);
-	m_fMarioWalkSeconds = 0.f;
-	m_iMarioWalkNextStop = 0u;
-	m_bMarioWalkRunning = true;
-	m_MarioWalkStage = stageToken;
-	m_MarioWalkStatus = stageToken + " walkthrough started over " +
-		std::to_string(m_MarioWalkStops.size()) + " trigger boxes";
-	return true;
-}
-
-void Client::CMapTool::Update_MarioWalkthrough(const f32_t timeDelta)
-{
-	if (!m_bMarioWalkRunning)
-		return;
-	if (m_MarioWalkStops.size() < 2u ||
-		m_iMarioWalkShot >= m_CameraShots.size())
-	{
-		Stop_MarioWalkthrough();
-		return;
-	}
-	m_fMarioWalkSeconds += (std::max)(0.f, timeDelta);
-
-	/* The walk line is the trigger boxes themselves, extended at both ends
-	   so the run is entered and left in motion instead of starting on top
-	   of the first box. */
-	const auto lead = [](const float3_t& from, const float3_t& towards)
-	{
-		const f32_t dx = from.x - towards.x;
-		const f32_t dz = from.z - towards.z;
-		const f32_t length = std::sqrt(dx * dx + dz * dz);
-		if (length <= 0.0001f)
-			return from;
-		return float3_t(
-			from.x + dx / length * MARIO_WALK_LEAD_METRES, from.y,
-			from.z + dz / length * MARIO_WALK_LEAD_METRES);
-	};
-	vector<float3_t> path;
-	path.reserve(m_MarioWalkStops.size() + 2u);
-	path.push_back(lead(m_MarioWalkStops.front().position,
-		m_MarioWalkStops[1].position));
-	for (const MARIO_WALK_STOP& stop : m_MarioWalkStops)
-		path.push_back(stop.position);
-	path.push_back(lead(m_MarioWalkStops.back().position,
-		m_MarioWalkStops[m_MarioWalkStops.size() - 2u].position));
-
-	const f32_t travelledTotal = m_fMarioWalkSpeed * m_fMarioWalkSeconds;
-	f32_t travelled = travelledTotal;
-	float3_t walker = path.back();
-	bool_t finished = true;
-	for (size_t index = 0; index + 1u < path.size(); ++index)
-	{
-		const float3_t& from = path[index];
-		const float3_t& to = path[index + 1u];
-		const f32_t dx = to.x - from.x;
-		const f32_t dy = to.y - from.y;
-		const f32_t dz = to.z - from.z;
-		const f32_t length = std::sqrt(dx * dx + dy * dy + dz * dz);
-		if (length > 0.f && travelled > length)
-		{
-			travelled -= length;
-			continue;
-		}
-		const f32_t ratio = length > 0.f ? travelled / length : 0.f;
-		walker = float3_t(from.x + dx * ratio, from.y + dy * ratio,
-			from.z + dz * ratio);
-		finished = false;
-		break;
-	}
-
-	/* Entering a box is what starts its sequence in the product, so the
-	   walker reaching the box is the same event here. Distance along
-	   the path decides it, which no axis or travel direction can
-	   silently invert. */
-	f32_t reachedAt = 0.f;
-	for (size_t index = 0; index + 1u < path.size(); ++index)
-	{
-		if (index >= m_iMarioWalkNextStop + 1u)
-			break;
-		const float3_t& from = path[index];
-		const float3_t& to = path[index + 1u];
-		const f32_t dx = to.x - from.x;
-		const f32_t dy = to.y - from.y;
-		const f32_t dz = to.z - from.z;
-		reachedAt += std::sqrt(dx * dx + dy * dy + dz * dz);
-	}
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = m_iAuthoringLevelIndex;
-	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &m_Placements;
-	targets.pDeployRuntime = &m_DeployRuntime;
-	while (m_iMarioWalkNextStop < m_MarioWalkStops.size() &&
-		travelledTotal >= reachedAt)
-	{
-		const MARIO_WALK_STOP& stop = m_MarioWalkStops[m_iMarioWalkNextStop];
-		if (m_ArenaRisePlayer.Play(stop.sequenceInstanceId, targets))
-		{
-			m_MarioWalkStatus = "Played " + stop.sequenceInstanceId;
-		}
-		else
-		{
-			/* One rejected sequence must not end the run: the rest of the
-			   stage is still worth watching, and the reason is kept. */
-			m_MarioWalkStatus = "Sequence rejected: " +
-				m_ArenaRisePlayer.Get_Status();
-		}
-		++m_iMarioWalkNextStop;
-		if (m_iMarioWalkNextStop + 1u < path.size())
-		{
-			const float3_t& from = path[m_iMarioWalkNextStop];
-			const float3_t& to = path[m_iMarioWalkNextStop + 1u];
-			const f32_t dx = to.x - from.x;
-			const f32_t dy = to.y - from.y;
-			const f32_t dz = to.z - from.z;
-			reachedAt += std::sqrt(dx * dx + dy * dy + dz * dz);
-		}
-	}
-
-	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
-	if (nullptr == camera)
-	{
-		Stop_MarioWalkthrough();
-		return;
-	}
-	if (!m_bMarioWalkCameraHeld)
-	{
-		if (!camera->Begin_PresentationOverride(MARIO_WALK_PREVIEW_OWNER_ID,
-			CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
-		{
-			m_MarioWalkStatus =
-				"Another preview already holds the editor camera";
-			m_bMarioWalkRunning = false;
-			return;
-		}
-		m_bMarioWalkCameraHeld = true;
-	}
-	const EDITOR_CAMERA_SHOT& shot = m_CameraShots[m_iMarioWalkShot];
-	const float3_t eye(walker.x + shot.followEyeOffset.x,
-		walker.y + shot.followEyeOffset.y,
-		walker.z + shot.followEyeOffset.z);
-	const float3_t lookAt(walker.x + shot.followLookAtOffset.x,
-		walker.y + shot.followLookAtOffset.y,
-		walker.z + shot.followLookAtOffset.z);
-	if (!camera->Apply_PresentationPose(MARIO_WALK_PREVIEW_OWNER_ID,
-		eye, lookAt, shot.fovYDegrees))
-	{
-		Stop_MarioWalkthrough();
-		return;
-	}
-	/* Hold the last frame until the sequences the walk started have run
-	   out, so the final pop-out is watched rather than cut off. */
-	if (finished)
-	{
-		const bool_t stillPlaying = std::any_of(
-			m_MarioWalkStops.begin(), m_MarioWalkStops.end(),
-			[this](const MARIO_WALK_STOP& stop)
-			{
-				return m_ArenaRisePlayer.Is_Playing(stop.sequenceInstanceId);
-			});
-		if (!stillPlaying)
-		{
-			const std::string stage = m_MarioWalkStage;
-			Stop_MarioWalkthrough();
-			m_MarioWalkStatus = stage + " walkthrough finished";
-		}
-	}
-}
-
-void Client::CMapTool::Stop_MarioWalkthrough()
-{
-	if (m_bMarioWalkCameraHeld)
-	{
-		const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
-		if (nullptr != camera)
-			camera->End_PresentationOverride(MARIO_WALK_PREVIEW_OWNER_ID);
-		m_bMarioWalkCameraHeld = false;
-	}
-	m_bMarioWalkRunning = false;
-	m_fMarioWalkSeconds = 0.f;
-	m_iMarioWalkNextStop = 0u;
 }
 
 void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
@@ -2495,7 +2164,8 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	   cutscene runs, and also while the editor is holding a clock for key
 	   work, which is what Hold Cutscene and Play This Key set up. A plain
 	   loop preview still leaves the free camera alone. */
-	else if (m_bCutsceneOriginalRunning || 0.f <= m_fCutsceneScrubMs)
+	else if (m_bCutsceneOriginalRunning || 0.f <= m_fCutsceneScrubMs ||
+		m_bMarioIntroRunning)
 	{
 		Apply_CutsceneCameraTrack(fTimeDelta);
 	}
@@ -2733,6 +2403,112 @@ bool_t Client::CMapTool::Ensure_ShotCutsceneClock(
 	return true;
 }
 
+vector<std::string> Client::CMapTool::Collect_MarioIntroStages() const
+{
+	/* A stage has an intro once a camera shot with a track is bound to
+	   `world.sequence.instance.mario_<stage>_intro`. */
+	static constexpr std::string_view INTRO_SUFFIX = "_intro";
+	vector<std::string> stages;
+	for (const EDITOR_CAMERA_SHOT& shot : m_CameraShots)
+	{
+		const std::string& id = shot.sequenceInstanceId;
+		if (shot.keyframes.size() < 2u ||
+			0 != id.rfind(MARIO_SEQUENCE_ROOT, 0) ||
+			!id.ends_with(INTRO_SUFFIX) ||
+			id.size() <= MARIO_SEQUENCE_ROOT.size() + INTRO_SUFFIX.size())
+		{
+			continue;
+		}
+		std::string stage = id.substr(MARIO_SEQUENCE_ROOT.size(),
+			id.size() - MARIO_SEQUENCE_ROOT.size() - INTRO_SUFFIX.size());
+		if (stages.end() == std::find(stages.begin(), stages.end(), stage))
+			stages.push_back(std::move(stage));
+	}
+	std::sort(stages.begin(), stages.end());
+	return stages;
+}
+
+bool_t Client::CMapTool::Play_MarioIntro(const std::string& stageToken)
+{
+	Stop_MarioIntro();
+	const std::string instanceId =
+		std::string(MARIO_SEQUENCE_ROOT) + stageToken + "_intro";
+	const auto found = std::find_if(
+		m_CameraShots.begin(), m_CameraShots.end(),
+		[&instanceId](const EDITOR_CAMERA_SHOT& shot)
+		{
+			return shot.sequenceInstanceId == instanceId &&
+				2u <= shot.keyframes.size();
+		});
+	if (m_CameraShots.end() == found)
+	{
+		m_MarioWalkStatus = stageToken +
+			" has no intro camera shot bound to " + instanceId;
+		return false;
+	}
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_MarioWalkStatus = "Stage intro needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_MarioWalkStatus = "Sequence document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	/* A held clock or a key loop would pin the sequence on one frame, and
+	   the intro is meant to run through, so the editor's hold is released.
+	   Play on an instance that is already running rewinds it to 0. */
+	m_fCutsceneScrubMs = -1.f;
+	m_fCutsceneLoopStartMs = -1.f;
+	m_fCutsceneLoopEndMs = -1.f;
+	if (!m_ArenaRisePlayer.Play(instanceId, targets))
+	{
+		m_MarioWalkStatus = "Stage intro could not start: " +
+			m_ArenaRisePlayer.Get_Status();
+		return false;
+	}
+	m_bMarioIntroRunning = true;
+	m_MarioIntroInstanceId = instanceId;
+	m_iSelectedCameraShot = static_cast<size_t>(found - m_CameraShots.begin());
+	m_iCutsceneSelectedKey = -1;
+	m_MarioWalkStatus = stageToken + " intro started: " + found->shotId +
+		" (" + std::to_string(found->trackDurationMs) + " ms)";
+	return true;
+}
+
+void Client::CMapTool::Update_MarioIntro()
+{
+	if (!m_bMarioIntroRunning)
+		return;
+	/* The camera is driven by Apply_CutsceneCameraTrack while this flag
+	   holds its gate open; only the end of the run is watched here. */
+	if (m_ArenaRisePlayer.Is_Playing(m_MarioIntroInstanceId))
+		return;
+	m_bMarioIntroRunning = false;
+	End_CutsceneCameraTrack();
+	m_MarioWalkStatus = "Intro finished: " +
+		m_MarioIntroInstanceId.substr(MARIO_SEQUENCE_ROOT.size());
+}
+
+void Client::CMapTool::Stop_MarioIntro()
+{
+	if (!m_bMarioIntroRunning)
+		return;
+	m_bMarioIntroRunning = false;
+	End_CutsceneCameraTrack();
+}
+
 bool_t Client::CMapTool::Toggle_MarioSequenceLoop()
 {
 	CWorldSequencePlayer::TARGET_SET targets{};
@@ -2913,51 +2689,47 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 	}
 	ImGui::TextDisabled("%s", m_Status.c_str());
 
-	ImGui::SeparatorText("Side Scrolling Walkthrough");
+	ImGui::SeparatorText("Stage Intro Camera");
 	ImGui::TextWrapped(
-		"Runs one side scrolling stage with no player and no Server. A virtual "
-		"walker follows that stage's authored playSequence trigger boxes in "
-		"order, the follow camera shot frames it exactly as the product level "
-		"will, and reaching a box starts that box's own sequence. A stage gets "
-		"a button as soon as its trigger boxes exist.");
-	ImGui::DragFloat("Walk speed (m/s)", &m_fMarioWalkSpeed, 0.1f, 1.f,
-		30.f, "%.1f");
-	const vector<std::string> walkStages = Collect_MarioWalkStages();
-	ImGui::BeginDisabled(m_bMarioWalkRunning);
-	if (walkStages.empty())
+		"Plays one stage's intro camera shot from the top with no player and "
+		"no Server. The shot bound to that stage's mario_<stage>_intro "
+		"sequence drives the camera exactly as the product level will, then "
+		"hands it back. A stage gets a button as soon as such a shot exists.");
+	const vector<std::string> introStages = Collect_MarioIntroStages();
+	ImGui::BeginDisabled(m_bMarioIntroRunning);
+	if (introStages.empty())
 	{
-		/* Activating an Area does not read the gameplay document, so the
-		   stage list is empty until something pulls it in. */
-		if (ImGui::Button("Load Gameplay Document"))
-			(void)Load_WorldGameplay();
+		ImGui::TextDisabled(
+			"No camera shot is bound to a mario_<stage>_intro sequence yet.");
 	}
-	for (size_t index = 0; index < walkStages.size(); ++index)
+	for (size_t index = 0; index < introStages.size(); ++index)
 	{
 		if (0u != index)
 			ImGui::SameLine();
-		const std::string label = "Play " + walkStages[index];
+		const std::string label = "Play " + introStages[index];
 		if (ImGui::Button(label.c_str()))
-			(void)Play_MarioWalkthrough(walkStages[index]);
+			(void)Play_MarioIntro(introStages[index]);
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	if (ImGui::Button("Stop Walkthrough"))
+	if (ImGui::Button("Stop Intro"))
 	{
-		Stop_MarioWalkthrough();
+		Stop_MarioIntro();
 		CWorldSequencePlayer::TARGET_SET targets{};
 		targets.levelIndex = m_iAuthoringLevelIndex;
 		targets.pCatalog = &m_Catalog;
 		targets.pPlacements = &m_Placements;
 		targets.pDeployRuntime = &m_DeployRuntime;
 		m_ArenaRisePlayer.Stop_All(targets);
-		m_MarioWalkStatus = "Walkthrough stopped";
+		m_MarioWalkStatus = "Intro stopped";
 	}
-	if (m_bMarioWalkRunning)
+	if (m_bMarioIntroRunning)
 	{
-		ImGui::Text("%s: trigger boxes passed %zu / %zu at %.1fs",
-			m_MarioWalkStage.c_str(), m_iMarioWalkNextStop,
-			m_MarioWalkStops.size(),
-			static_cast<double>(m_fMarioWalkSeconds));
+		f32_t elapsedMs = 0.f;
+		(void)m_ArenaRisePlayer.Try_GetElapsedMs(
+			m_MarioIntroInstanceId, elapsedMs);
+		ImGui::Text("%s at %.0f ms", m_MarioIntroInstanceId.c_str(),
+			static_cast<double>(elapsedMs));
 	}
 	ImGui::SeparatorText("Sequence Loop");
 	ImGui::TextWrapped(
@@ -8841,18 +8613,31 @@ void Client::CMapTool::Render_NavigationRegionControls()
 bool_t Client::CMapTool::Try_PickNavigationCell(
 	int32_t& outCellX,
 	int32_t& outCellZ,
-	f32_t& outWorldY) const
+	f32_t& outWorldY)
 {
 	if (!m_NavigationDocument.Is_Ready())
+	{
+		m_NavigationStatus = "Navigation source is not loaded; select a baked Region first.";
 		return false;
+	}
 
 	float4_t picked{};
-	if (!CGameInstance::Get().Picking(picked) ||
-		!m_NavigationDocument.World_ToCell(
+	if (!CGameInstance::Get().Picking(picked))
+	{
+		m_NavigationStatus = "No rendered surface under the cursor; click a visible map surface.";
+		return false;
+	}
+	if (!std::isfinite(picked.y))
+	{
+		m_NavigationStatus = "Picked surface height is invalid; navigation was not changed.";
+		return false;
+	}
+	if (!m_NavigationDocument.World_ToCell(
 			XMLoadFloat4(&picked),
 			outCellX,
 			outCellZ))
 	{
+		m_NavigationStatus = "Picked surface is outside the selected navigation grid; check Region and Nav Bounds.";
 		return false;
 	}
 
@@ -8861,7 +8646,7 @@ bool_t Client::CMapTool::Try_PickNavigationCell(
 	   only has to lie inside the grid; the paint decides what an unresolved
 	   cell means for the chosen action. */
 	outWorldY = picked.y;
-	return std::isfinite(outWorldY);
+	return true;
 }
 
 bool_t Client::CMapTool::Try_PaintNavigation()
@@ -8910,7 +8695,9 @@ bool_t Client::CMapTool::Try_PaintNavigation()
 			cellZ,
 			m_iBrushRadius,
 			overrideState,
-			pickedWorldY);
+			pickedWorldY,
+			NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE == overrideState &&
+				m_bNavigationUsePickedHeight);
 	}
 
 	if (changed)
@@ -14333,6 +14120,9 @@ void Client::CMapTool::Render_CameraShotSection()
 		ImGui::PushID(static_cast<int>(index));
 		if (ImGui::CollapsingHeader(shot.shotId.c_str()))
 		{
+			/* The open header is the shot being edited, so the track preview
+			   and the key buttons below judge the same shot. */
+			m_iSelectedCameraShot = index;
 			char idBuffer[129]{};
 			std::snprintf(idBuffer, sizeof(idBuffer), "%s", shot.shotId.c_str());
 			if (ImGui::InputText("Shot ID", idBuffer, sizeof(idBuffer)))
@@ -14387,6 +14177,10 @@ void Client::CMapTool::Render_CameraShotSection()
 				{
 					/* Start the cutscene here if no other panel has, so the
 					   camera work never depends on visiting another tab. */
+					/* Both previews hold the camera at the same priority, and
+					   holding a clock is a request to see the track, so the
+					   walkthrough yields here instead of blocking silently. */
+					Stop_MarioIntro();
 					if (!cutscenePlaying)
 						cutscenePlaying = Ensure_ShotCutsceneClock(shot);
 					f32_t nowMs = 0.f;
@@ -14396,9 +14190,10 @@ void Client::CMapTool::Render_CameraShotSection()
 							shot.sequenceInstanceId, nowMs);
 					}
 					m_fCutsceneScrubMs = (std::max)(0.f, nowMs);
-					m_CameraShotStatus = cutscenePlaying ?
-						"Cutscene held for editing" :
-						"Cutscene could not start: " + m_Status;
+					/* On failure Ensure_ShotCutsceneClock already wrote the
+					   reason, so leave it where the panel shows it. */
+					if (cutscenePlaying)
+						m_CameraShotStatus = "Cutscene held for editing";
 				}
 			}
 			if (cutsceneHeld)
@@ -14530,8 +14325,15 @@ void Client::CMapTool::Render_CameraShotSection()
 					}
 					else
 					{
-						if (!Is_ShotCutsceneClockPlaying(shot))
-							(void)Ensure_ShotCutsceneClock(shot);
+						/* A loop over a clock that never started would sit on one
+						   frame and hide the reason, so stop here and keep it. */
+						Stop_MarioIntro();
+						if (!Is_ShotCutsceneClockPlaying(shot) &&
+							!Ensure_ShotCutsceneClock(shot))
+						{
+							ImGui::PopID();
+							return;
+						}
 						/* The key owns the stretch from the previous key to the
 						   next one, so the loop shows the whole move it steers
 						   rather than a single frozen instant. */
@@ -14777,6 +14579,31 @@ void Client::CMapTool::Render_NavigationPanel()
 		}
 		ImGui::TextDisabled(
 			"Force Walkable overrides baked blocked cells. Reset restores the baked state.");
+		if (NAVIGATION_EDIT_ACTION::FORCE_WALKABLE == m_eNavigationEditAction)
+		{
+			ImGui::Checkbox("Use Picked Height", &m_bNavigationUsePickedHeight);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip(
+					"\xEC\xBC\x9C\xEB\xA9\xB4\x20\xEB\xB8\x8C\xEB\x9F\xAC\xEC\x8B\x9C\x20\xEB\xB2\x94"
+					"\xEC\x9C\x84\xEC\x9D\x98\x20\xEA\xB8\xB0\xEC\xA1\xB4\x20\xEB\x84\xA4\xEB\xB9\x84"
+					"\x20\xEB\x86\x92\xEC\x9D\xB4\xEB\x8F\x84\x20\xED\x81\xB4\xEB\xA6\xAD\xED\x95\x9C"
+					"\x20\xED\x91\x9C\xEB\xA9\xB4\x20\xEB\x86\x92\xEC\x9D\xB4\xEB\xA1\x9C\x20\xEB\xB0"
+					"\x94\xEA\xBF\x89\xEB\x8B\x88\xEB\x8B\xA4\x2E\x0A"
+					"\xEC\x9C\x84\xEC\x95\x84\xEB\x9E\x98\x20\xEB\xB0\x9C\xED\x8C\x90\xEC\x9D\xB4\x20"
+					"\xEA\xB2\xB9\xEC\xB9\x98\xEB\x8A\x94\x20\xEA\xB3\xB3\xEC\x9D\x80\x20\x42\x72\x75"
+					"\x73\x68\x20\x30\xEB\xB6\x80\xED\x84\xB0\x20\xED\x99\x95\xEC\x9D\xB8\xED\x95\x98"
+					"\xEC\x84\xB8\xEC\x9A\x94\x2E\x20\x52\x65\x73\x65\x74\xEC\x9D\x80\x20\xEC\x9B\x90"
+					"\xEB\x9E\x98\x20\xEB\xB2\xA0\xEC\x9D\xB4\xED\x81\xAC\x20\xEC\x83\x81\xED\x83\x9C"
+					"\xEB\xA1\x9C\x20\xEB\x90\x98\xEB\x8F\x8C\xEB\xA6\xBD\xEB\x8B\x88\xEB\x8B\xA4\x2E");
+			ImGui::TextWrapped(
+				"\xEB\xB9\x88\x20\xEC\x85\x80\xEC\x97\x90\xEB\x8A\x94\x20\xED\x81\xB4\xEB\xA6\xAD"
+				"\xED\x95\x9C\x20\xEB\x86\x92\xEC\x9D\xB4\xEB\xA1\x9C\x20\xEB\x84\xA4\xEB\xB9\x84"
+				"\xEB\xA5\xBC\x20\xEC\xB6\x94\xEA\xB0\x80\xED\x95\xA9\xEB\x8B\x88\xEB\x8B\xA4\x2E"
+				"\x20\xEA\xB8\xB0\xEC\xA1\xB4\x20\xEC\x85\x80\x20\xEB\x86\x92\xEC\x9D\xB4\xEA\xB9"
+				"\x8C\xEC\xA7\x80\x20\xEB\xB0\x94\xEA\xBE\xB8\xEB\xA0\xA4\xEB\xA9\xB4\x20\x55\x73"
+				"\x65\x20\x50\x69\x63\x6B\x65\x64\x20\x48\x65\x69\x67\x68\x74\xEB\xA5\xBC\x20\xEC"
+				"\xBC\x9C\xEC\x84\xB8\xEC\x9A\x94\x2E");
+		}
 	}
 
 	int32_t brushRadius =
@@ -14806,6 +14633,8 @@ void Client::CMapTool::Render_NavigationPanel()
 		m_RuntimeBlockerDocument.Is_Dirty();
 	ImGui::TextUnformatted(
 		dirty ? "Unsaved" : m_NavigationStatus.c_str());
+	if (dirty && "Unsaved" != m_NavigationStatus)
+		ImGui::TextWrapped("%s", m_NavigationStatus.c_str());
 
 	if (NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode)
 	{
@@ -14999,11 +14828,11 @@ void Client::CMapTool::Render_NavigationDiagnostics()
 
 void Client::CMapTool::Render_NavigationOverlay()
 {
-	/* A staged bake is drawn instead of the live grid: it is the whole point
-	   of the preview that the cells you are about to get are on screen before
-	   anything is written. A region baked for the first time has no document
-	   yet, so the preview alone is enough to draw. */
-	const bool_t drawPreview = m_bNavigationBakePreviewReady;
+	/* Bake mode shows its staged grid before anything is written. Other modes
+	   must show the live paint even when an unapplied preview is kept. A region
+	   baked for the first time needs only the preview to draw in Bake mode. */
+	const bool_t drawPreview = NAVIGATION_MODE::BAKE == m_eNavigationMode &&
+		m_bNavigationBakePreviewReady;
 	if ((!m_NavigationDocument.Is_Ready() && !drawPreview) ||
 		nullptr == m_pContext ||
 		nullptr == m_pNavigationRenderResources ||
