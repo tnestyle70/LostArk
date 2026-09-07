@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 77,
+  "sourceRevision": 81,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -203,14 +203,55 @@
           "centerZ": 0.0,
           "outerRadiusM": 0.0,
           "stopYawDegrees": 0.0,
-          "normalYawOffsetDegrees": 90.0,
+          "normalYawOffsetDegrees": 0.0,
           "insideOutcome": "SUCCESS",
-          "cardRegions": [],
+          "cardRegions": [
+            {
+              "regionId": "kouku.stagger.shield.1",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "yawDegrees": 0.0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 2.148847,
+              "halfAngleDegrees": 35.868636,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            },
+            {
+              "regionId": "kouku.stagger.shield.2",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0.0,
+                0.5,
+                0.5
+              ],
+              "yawDegrees": 180.0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 2.148847,
+              "halfAngleDegrees": 35.868636,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
           "halfAngleDegrees": 0.0,
           "maxDistanceM": 0.0,
           "poseIndex": 0,
           "threshold": 1000,
-          "shieldArcDegrees": 90.0,
+          "shieldArcDegrees": 71.737272,
           "endsPatternOnSuccess": true,
           "onSuccess": [
             {

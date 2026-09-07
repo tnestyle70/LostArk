@@ -151,7 +151,11 @@ namespace
 			(!Has_ExactProperties(root,
 				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings" }) &&
 			 !Has_ExactProperties(root,
-				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns" })))
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns" }) &&
+			 !Has_ExactProperties(root,
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "lightResourceRevision" }) &&
+			 !Has_ExactProperties(root,
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns", "lightResourceRevision" })))
 		{
 			outStatus = "KoukuSaydon Product animation binding is malformed: " +
 				parseError;
@@ -168,8 +172,12 @@ namespace
 			root, "sourceRevision", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* bindings = Required(
 			root, "bindings", DATA_JSON_TYPE::ARRAY);
+		// Animation and presentation readers consume the same Product document.
+		// Its optional light pin must not reject all otherwise valid animations.
+		const DATA_JSON_VALUE* lightRevision = root.Find("lightResourceRevision");
 		std::uint32_t parsedVersion = 0u;
 		std::uint32_t parsedRevision = 0u;
+		std::uint32_t parsedLightRevision = 0u;
 		if (nullptr == schema || schema->Get_String() != BINDING_SCHEMA ||
 			nullptr == version ||
 			!Try_U32(*version, BINDING_VERSION, parsedVersion) ||
@@ -178,7 +186,11 @@ namespace
 			nullptr == sourceRevision ||
 			!Try_U32(*sourceRevision,
 				(std::numeric_limits<std::uint32_t>::max)(), parsedRevision) ||
-			0u == parsedRevision || nullptr == bindings ||
+			0u == parsedRevision ||
+			(nullptr != lightRevision &&
+			 (!Try_U32(*lightRevision,
+				(std::numeric_limits<std::uint32_t>::max)(), parsedLightRevision) ||
+			  0u == parsedLightRevision)) || nullptr == bindings ||
 			bindings->Get_Array().empty() ||
 			bindings->Get_Array().size() > 16384u)
 		{

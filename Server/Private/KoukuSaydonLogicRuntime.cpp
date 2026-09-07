@@ -244,6 +244,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 	{
 		pBoss->bKoukuShieldActive = false;
 		pBoss->fKoukuShieldArcDegrees = 0.f;
+		pBoss->KoukuShieldRegions.clear();
 	}
 	ledger = {};
 }
@@ -271,6 +272,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 		boss.bKoukuShieldActive = window.fShieldArcDegrees > 0.f;
 		boss.fKoukuShieldArcDegrees = window.fShieldArcDegrees;
 		boss.fKoukuShieldNormalYawOffsetDegrees = window.fNormalYawOffsetDegrees;
+		boss.KoukuShieldRegions = window.CardRegions;
 		break;
 	case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
 	case BOSS_PATTERN_LOGIC_KIND::POSE_INPUT:
@@ -297,6 +299,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
 	{
 		boss.bKoukuShieldActive = false;
 		boss.fKoukuShieldArcDegrees = 0.f;
+		boss.KoukuShieldRegions.clear();
 	}
 }
 
@@ -372,13 +375,33 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
 {
 	if (!boss.bKoukuShieldActive || boss.fKoukuShieldArcDegrees <= 0.f)
 		return false;
-	const float dx = sourceX - boss.fPositionX;
-	const float dz = sourceZ - boss.fPositionZ;
-	if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz < 0.0001f)
+	const auto reflects = [sourceX, sourceZ](const float centerX, const float centerZ,
+		const float yaw, const float halfAngle)
+	{
+		const float dx = sourceX - centerX, dz = sourceZ - centerZ;
+		if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz < 0.0001f)
+			return false;
+		const float direction = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+		return std::fabs(Wrap180(direction - yaw)) <= halfAngle;
+	};
+	if (!boss.KoukuShieldRegions.empty())
+	{
+		const float radians = boss.fYawDegrees * 0.017453292519943295f;
+		for (const auto& region : boss.KoukuShieldRegions)
+		{
+			// A ranged attacker is reflected by direction too; the sector radius
+			// is its debug drawing extent, not an attack-distance restriction.
+			if (!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT)
+				continue;
+			const float centerX = boss.fPositionX + std::cos(radians) * region.fCenterX + std::sin(radians) * region.fCenterZ;
+			const float centerZ = boss.fPositionZ - std::sin(radians) * region.fCenterX + std::cos(radians) * region.fCenterZ;
+			if (reflects(centerX, centerZ, boss.fYawDegrees + region.fYawDegrees, region.fHalfAngleDegrees))
+				return true;
+		}
 		return false;
-	const float fromBoss = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
-	const float difference = Wrap180(fromBoss - boss.fYawDegrees - boss.fKoukuShieldNormalYawOffsetDegrees);
-	return std::fabs(difference) <= boss.fKoukuShieldArcDegrees * 0.5f;
+	}
+	return reflects(boss.fPositionX, boss.fPositionZ,
+		boss.fYawDegrees + boss.fKoukuShieldNormalYawOffsetDegrees, boss.fKoukuShieldArcDegrees * 0.5f);
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Transform_ToClown(

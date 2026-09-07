@@ -75,6 +75,61 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             pattern[key] = 1
         return pattern
 
+    def test_stagger_effects_expand_every_authored_disarm_child_without_a_duplicate_group(self):
+        pattern = self.first_product(self.document)
+        resources = {row["resourceId"]: row for row in self.document["presentationResources"]}
+        effects = {row["occurrenceId"]: row for row in pattern["presentationOccurrences"]
+                   if resources[row["resourceId"]]["kind"] == "EFFECT"}
+        group = subject.load_json(ROOT / "Data/Effects/V2/Groups/boss.kouku.disarm.effectv2group.json")
+        window = pattern["logicOccurrences"][0]
+        self.assertEqual(len(group["children"]), len(effects))
+        for child in group["children"]:
+            ordinal = int(child["childId"].rsplit(".", 1)[1]) + 1
+            row = effects[f"{FIRST_PRODUCT_ID}.presentation.{ordinal}"]
+            resource = resources[row["resourceId"]]
+            self.assertEqual(("LEAF", child["resource"]["id"]), (resource["resourceKind"], resource["assetId"]))
+            self.assertEqual(child["localTransform"]["translation"], row["positionOffset"])
+            self.assertEqual(child["localTransform"]["rotation"], row["rotationDegrees"])
+            self.assertEqual(child["localTransform"]["scale"], row["scale"])
+            self.assertEqual(window["startMs"] + child["startMs"], row["startMs"])
+            self.assertLessEqual(row["startMs"] + row["durationMs"], window["startMs"] + window["durationMs"])
+            self.assertEqual(("BOSS", "", 0, 0), (row["anchorKind"], row["bone"], row["fadeInMs"], row["fadeOutMs"]))
+            if resource["assetId"] == "boss.kouku.disarm.star.smoke_1":
+                leaf = subject.load_json(ROOT / "Data/Effects/V2/Authored/boss.kouku.disarm.star.smoke_1.effectv2.json")
+                emission = leaf["params"]["lifetime"]
+                tail = max(leaf["params"]["particle"]["lifetime"])
+                required_ms = round((emission + tail) * 1000 / leaf["params"]["playRate"])
+                self.assertEqual(required_ms, row["durationMs"])
+                self.assertFalse(leaf["params"]["loop"])
+        encounter = subject.project_encounter(copy.deepcopy(self.document))
+        projected = self.find(encounter, FIRST_PRODUCT_ID)
+        shield = next(row for row in projected["logicWindows"] if row["windowId"] == window["occurrenceId"])
+        self.assertEqual([([0, .5, 0], 0), ([0, .5, .5], 180)],
+                         [(row["center"], row["yawDegrees"]) for row in shield["cardRegions"]])
+        self.assertTrue(all(row["anchorKind"] == "BOSS_CURRENT" and row["shape"] == "SECTOR"
+                            for row in shield["cardRegions"]))
+        self.assertEqual(71.737272, shield["shieldArcDegrees"])
+        for row in shield["cardRegions"]:
+            self.assertEqual(35.868636, row["halfAngleDegrees"])
+            self.assertEqual(2.148847, row["radiusM"])
+
+    def test_stagger_reflection_rejects_a_non_sector_collider(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        collider = next(row for row in pattern["presentationOccurrences"] if row.get("logicOccurrenceId"))
+        resource = next(row for row in document["presentationResources"] if row["resourceId"] == collider["resourceId"])
+        resource["shape"] = "BOX"
+        with self.assertRaisesRegex(subject.CompositionError, "boss-pivot SECTOR"):
+            subject.project_encounter(document)
+
+    def test_stagger_reflection_rejects_a_detached_visual_collider(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        collider = next(row for row in pattern["presentationOccurrences"] if row.get("logicOccurrenceId"))
+        collider["followBoss"] = False
+        with self.assertRaisesRegex(subject.CompositionError, "following boss-pivot SECTOR"):
+            subject.project_encounter(document)
+
     def test_live_document_pins_the_gate1_saydon_products(self):
         self.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(self.document["revision"], 51)

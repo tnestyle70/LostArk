@@ -416,3 +416,20 @@ Anchor Light MAP Preview의 플레이어 snapshot 기준을 identity로 바꿔 C
 Detail은 해당 값을 World position으로 표시하고, 플레이어 위치 복사는 명시 버튼을 누를 때만 수행한다.
 PLAYER/BOSS의 추적, Scene Profile, Map Profile 배치 경로는 보존한다. 기존 Product 빌드와 이름 저장/좌표
 소비 경로를 확인하고 Client 화면은 사용자가 검증한다. 사용자 실행 중 draft와 저장 파일은 변경하지 않는다.
+
+### 8.3 Complete Play 애니메이션 회귀와 무력화 V2 연결
+
+조명 revision이 추가된 patternbindings를 읽는 두 Client 소비자의 root 계약을 맞춘다.
+애니메이션 loader도 optional lightResourceRevision을 정수·양수 검증 후 수용하고, 실패한 action을
+idle 성공으로 숨기지 않게 기존 presentation 진단에 남긴다. 무력화·댄스타임·룰렛의 동일 오류를
+실제 생성 문서와 clip binding으로 확인한다. 보스와 World Object의 기존 실행 경로는 유지한다.
+
+이펙트 작업자의 boss.kouku.disarm 그룹 21개 child를 기존 LEAF presentation occurrence로 연결한다.
+방패 2개와 별·연기·데칼 등의 원본 asset, local transform과 내부 시작 시각을 보존하고,
+무력화 방패 Logic 수명에 맞춰 Sequencer에서 각 항목을 편집할 수 있게 한다. 그룹 자체를 동시에 재생하지 않는다.
+별이 그려지는 원본 alpha/dissolve 곡선은 occurrence fade 0에서 보존하고 양수 fade의 명시 override는 유지한다.
+
+반사 판정은 같은 방패 중심·방향의 BOSS anchor SECTOR collider 2개를 Logic에 연결해 Server가 소비한다.
+기존 linked region 전송 계약을 재사용하고 Client 판정이나 새 protocol을 만들지 않는다.
+사용자가 직전에 저장한 Composition과 새 pattern은 보존하며, 필요한 publisher·판정 검사·최소 Product
+컴파일 후 실행 준비를 마친다. 방패/별의 화면과 최종 타이밍은 사용자 실제 재생으로 조정한다.

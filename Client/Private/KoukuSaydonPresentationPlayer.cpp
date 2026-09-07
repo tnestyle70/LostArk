@@ -611,10 +611,11 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 playback.PivotWorld = row.pivot;
                 playback.fInitialAgeSeconds = age;
                 playback.fDurationSeconds = box.iDurationMs / 1000.f;
-                playback.fFadeInSeconds = box.iFadeInMs / 1000.f;
-                playback.fFadeOutSeconds = box.iFadeOutMs / 1000.f;
-                playback.fDissolveOutStart = float(box.fDissolveStart);
-                playback.fDissolveOutEnd = float(box.fDissolveEnd);
+                // Workbench Fade 0 retains the leaf envelope via the runtime's -1 sentinel.
+                playback.fFadeInSeconds = box.iFadeInMs > 0u ? box.iFadeInMs / 1000.f : -1.f;
+                playback.fFadeOutSeconds = box.iFadeOutMs > 0u ? box.iFadeOutMs / 1000.f : -1.f;
+                playback.fDissolveOutStart = box.iFadeOutMs > 0u ? float(box.fDissolveStart) : -1.f;
+                playback.fDissolveOutEnd = box.iFadeOutMs > 0u ? float(box.fDissolveEnd) : -1.f;
                 // This player is clocked by MainApp, including local previews.
                 playback.bProductOwned = true;
                 if (resource.strResourceKind == "GROUP")
@@ -624,8 +625,15 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                         m_Effects, playback, m_Device, m_Context);
                 }
                 else if (resource.strResourceKind == "LEAF")
+                {
+                    const auto* leaf = m_Effects->Find_Document(resource.strAssetId);
+                    // Particle boxes include the living particles after emission ends.
+                    // Keep the source emitter lifetime/loop; the box still owns final cleanup.
+                    if (leaf && leaf->Desc.eShape == CEffectV2Object::SHAPE::PARTICLE)
+                        playback.fDurationSeconds = -1.f;
                     row.effectHandle = CEffectV2Runtime::Play_Leaf(resource.strAssetId,
                         m_Effects, playback, m_Device, m_Context);
+                }
                 if (!row.effectHandle)
                 {
                     row.failed = true;

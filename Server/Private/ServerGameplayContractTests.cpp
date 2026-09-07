@@ -1019,6 +1019,53 @@ namespace
 				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,boss.fPositionX,boss.fPositionZ+10.f),
 				"Apply the authored shield normal yaw correction to the same visual front");
 		}
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_TWO_SHIELDS";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "shield.pair";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+			window.iDurationMs = 1000u;
+			window.iThreshold = 1000u;
+			window.fShieldArcDegrees = 71.737272f;
+			BOSS_LOGIC_REGION front{};
+			front.strRegionId = "shield.front";
+			front.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			front.bSector = true;
+			front.fHalfAngleDegrees = 35.868636f;
+			front.fRadiusM = 2.148847f;
+			auto back = front;
+			back.strRegionId = "shield.back";
+			back.fCenterZ = 0.5f;
+			back.fYawDegrees = 180.f;
+			window.CardRegions = {front, back};
+			pattern.LogicWindows.push_back(window);
+			auto boss = logicBoss;
+			boss.fPositionX = 10.f; boss.fPositionZ = 20.f; boss.fYawDegrees = 90.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern, boss, 900u, ledger);
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, &policy, 900u, logicEvents, output);
+			tests.Require(boss.KoukuShieldRegions.size() == 2u &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 30.f, 20.f) &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, -10.f, 20.f) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 10.f, 30.f),
+				"Reflect both authored shield directions at a translated and rotated boss, including ranged attacks");
+			// The rear shield's half-metre centre shift changes this near-edge answer.
+			tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 10.1f, 20.25f),
+				"Use the rear shield local centre rather than the boss pivot for reflection");
+			const float inside = 35.f * 0.017453292519943295f;
+			const float outside = 40.f * 0.017453292519943295f;
+			tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,
+				10.f + 10.f * std::cos(inside), 20.f - 10.f * std::sin(inside)) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,
+				10.f + 10.f * std::cos(outside), 20.f - 10.f * std::sin(outside)),
+				"Match the native shield mesh arc: 35 degrees reflects and 40 degrees remains open");
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, &policy, 930u, logicEvents, output);
+			tests.Require(!boss.bKoukuShieldActive && boss.KoukuShieldRegions.empty() &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 30.f, 20.f),
+				"Remove both shield regions when the stagger window closes");
+		}
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};

@@ -1052,9 +1052,16 @@ Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이�
 이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
 `dissolveStart/dissolveEnd`는 정규화 수명 내 dissolve-out 시작/종료 시점이며
-`0 <= start < end <= 1`이다. box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.
-방패 `boss.kouku.disarm.shield_1`은 반복 animation clip binding에서 단일 Composition occurrence로
-이관했다. 전체 무력화 창에서 한 번 fade-in/hold/dissolve-out하고 yaw +90°를 적용한다.
+`0 <= start < end <= 1`이다. Fade 0은 추가 occurrence fade 없이 원본 leaf의 alpha/dissolve 곡선을
+유지한다. 양수 Fade In/Out은 해당 원본 곡선을 덮어쓰며 dissolveStart/End는 양수 Fade Out에 적용한다.
+box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.
+Particle LEAF의 box는 잔향을 포함한 표시 창이고 emitter 수명/loop는 Source Effect 값을 사용한다.
+방패·메시 효과의 box 수명 override는 유지한다.
+무력화는 작업자의 `boss.kouku.disarm` 그룹 21개 child(방패 2개·별·연기·데칼 등)를 개별 LEAF box로
+연결한다. 방패 Logic 창 5263~15947ms 안에서 원본 child의 시작 offset을 유지하며 Sequencer에서
+각 항목을 편집한다. 그룹 자체를 함께 재생하지 않는다. leaf 디자인 수정은 그대로 소비하지만 그룹의
+배치/시간 변경은 해당 Composition box와 다시 맞춰야 한다. 앞/뒤 방패는 boss pivot과 같은 중심·방향의
+SECTOR collider 2개를 STAGGER_WINDOW Logic에 연결하며 Server가 반사 방향을 판정한다.
 진짜 하트 3 box와 가짜 별 3 box도 각 소유 pattern에 배치했다. 이관 후
 `MN_RPCT_05.effectv2bindings.json`의 방패·별 row는 제거하여 두 경로가 동시에 재생되지 않는다.
 
