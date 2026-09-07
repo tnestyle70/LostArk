@@ -1,11 +1,14 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "CustomizingIconDocument.h"
 #include "Engine_Defines.h"
 
 #include <memory>
 #include <random>
 #include <string>
+#include <utility>
+#include <vector>
 
 NS_BEGIN(Client)
 
@@ -54,9 +57,11 @@ public:
 	owning Level stops calling Update (level teardown, replication failure). */
 	void Hide();
 
-	/* Follow-camera offsets this screen's orbit currently wants, relative to the character. */
+	/* Camera pose this screen wants, as offsets from the character's own position, plus the
+	field of view the retail framing uses. */
 	float3_t Get_CameraPositionOffset() const;
 	float3_t Get_CameraLookOffset() const;
+	f32_t Get_FieldOfViewDegrees() const;
 
 	/* One-shot edges the owning Level consumes: the decide button (proceed to the nickname
 	step) and the back icon (leave customizing). */
@@ -66,8 +71,27 @@ public:
 private:
 	void Update_Tabs();
 	void Update_FaceTab(const shared_ptr<CCharacter>& pCharacter);
+	/* Puts the retail icons into the left column and the preset grid. The document
+	is per class, so this reruns whenever the class on screen changes. */
+	void Apply_ListIcons(const shared_ptr<CCharacter>& pCharacter);
+	/* The face tab is two collapsible categories; the second moves as a block, so its
+	authored rects are captured once and every frame positions it from those. */
+	void Capture_FaceDetailLayout();
+	void Apply_FaceAccordionLayout();
+	void Update_FaceCategoryHeader(
+		const char_t* pSlotId, bool_t& isExpanded, bool_t isVisible);
 	void Update_Buttons(const shared_ptr<CCharacter>& pCharacter);
-	void Update_Orbit();
+	void Update_Orbit(f32_t fTimeDelta);
+	/* Reads the eye line off the body model on screen, so the face zoom frames every class
+	at its own height instead of the tallest one's. */
+	void Update_SubjectMetrics(const shared_ptr<CCharacter>& pCharacter);
+	/* Sideways shift applied to both the eye and the look point so the character lands in the
+	middle of the area the right panel leaves free, not the middle of the window. */
+	float3_t Get_LateralOffset() const;
+	f32_t Get_LookHeight() const;
+	f32_t Get_FaceLookHeight() const;
+	f32_t Get_Distance() const;
+	f32_t Get_Pitch() const;
 	/* Shows only the sliders of the selected part and hides every other part's. */
 	void Apply_SliderVisibility();
 	bool_t Get_SlotRect(const char_t* pSlotId,
@@ -88,11 +112,24 @@ private:
 	race, so the text pass can say why the bar is dead instead of leaving it silent. */
 	bool_t m_bHasFaceSliders = false;
 
-	/* Camera orbit around the character: yaw/pitch in degrees, distance in metres. The look
-	height rises toward the head as the distance shrinks, so zooming in frames the face. */
-	f32_t m_fOrbitYaw = 20.f;
-	f32_t m_fOrbitPitch = 6.f;
-	f32_t m_fOrbitDistance = 2.6f;
+	/* Turntable framing. The retail screen stands the character on the spot and spins the
+	model (its own guide calls the gesture "rotate character"), so this yaw is measured from
+	the character's own facing rather than from world axes -- otherwise a character that
+	happens to face away shows its back. Pitch is in degrees, distance in metres, and the look
+	height rises toward the head as the distance shrinks so zooming in frames the face. */
+	f32_t m_fOrbitYaw = 0.f;
+	/* 0 = the retail full-body framing, 1 = its face close-up. The wheel is a two-state
+	toggle in the original, not a continuous zoom, so this only ever eases between the two. */
+	f32_t m_fZoomTarget = 0.f;
+	f32_t m_fZoomBlend = 0.f;
+	/* The character's own facing this frame, captured in Update. */
+	f32_t m_fCharacterYawDegrees = 0.f;
+	f32_t m_fMeasuredEyeHeight = 0.f;
+	CCustomizingIconDocument m_IconDocument;
+	std::string m_strIconClassAssetId;
+	bool_t m_isFaceDefaultExpanded = false;
+	bool_t m_isFaceDetailExpanded = true;
+	std::vector<std::pair<std::string, float2_t>> m_FaceDetailAuthoredRects;
 	bool_t m_bOrbitDragging = false;
 	f32_t m_fLastMouseX = 0.f;
 	f32_t m_fLastMouseY = 0.f;

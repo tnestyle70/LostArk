@@ -236,9 +236,10 @@ public:
 	void Reset_FaceSliders() {
 		m_FaceCustomize.Reset_Weights();
 	}
-	/* Hides every HEAD-slot equipment part (helmet, avatar head) so the face can
-	be inspected; true restores the normal default/avatar visibility rule. */
-	void Set_HeadPartsVisible(bool_t isVisible);
+	/* Character-creation preview appearance: the class's own default outfit with no helmet,
+	no avatar costume and no weapon, so the face and the plain silhouette are what the player
+	judges. false restores the weapons and whatever avatar pieces were worn before. */
+	void Set_CreationPreviewActive(bool_t isActive);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
 	}
@@ -372,6 +373,11 @@ private:
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
 	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */
 	bool_t m_isAvatarHeadHidden = false;
+	/* Avatar pieces this class was wearing when the creation preview started, so leaving the
+	preview puts back exactly what the player had on. */
+	bool_t m_isCreationPreviewActive = false;
+	bool_t m_isCreationPreviewAvatarHeadRestored = false;
+	bool_t m_isCreationPreviewAvatarArmorRestored = false;
 	bool_t m_isAvatarArmorHidden = false;
 	std::vector<std::pair<wstring_t,
 		LostArk::Shared::PLAYER_STANCE_ID>> m_EquipmentPreviewPartStances;

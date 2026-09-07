@@ -18,6 +18,11 @@ enum class CHARACTER_ANIM {
 	wmodel, not the body cook; a class without that attachment keeps nullptr
 	here and its cast presentation is isolated to the pose it already holds. */
 	ESTHER_CAST,
+	/* The standing pose the retail character-creation screen uses instead of the
+	class's battle idle. It ships in an attached animation set like ESTHER_CAST,
+	so a class without that attachment keeps nullptr here and creation falls back
+	to the class's own idle. */
+	CUSTOMIZING_IDLE,
 	END
 };
 

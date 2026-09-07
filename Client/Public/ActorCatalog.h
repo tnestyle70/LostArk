@@ -25,9 +25,11 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::string bodyModel;
 	std::vector<std::string> equipmentModels;
 	std::vector<std::string> weaponModels;
-	/* Optional shared-clip animation set (.wmodel, meshless carrier) attached
-	onto the body model at admission; empty when the class ships none. */
-	std::string animationSetModel;
+	/* Shared-clip animation sets (.wmodel carriers) attached onto the body model
+	at admission, in declaration order. A class ships one per clip family it
+	borrows -- the Esther call, the customizing idle -- and the list is empty
+	when it borrows none. */
+	std::vector<std::string> animationSetModels;
 	std::string animationSetId;
 	std::string runtimeStatus;
 };

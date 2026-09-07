@@ -161,6 +161,8 @@ const CHARACTER_SPEC Spec_Artist =
 		"sdm_down",
 		"sdm_standup_1",
 		"sdm_act_estherskill_1",
+		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
+		"idle_charactercustomizing_1",
 	},
 
 	&Create_Logic,

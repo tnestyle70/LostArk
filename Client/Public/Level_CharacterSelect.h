@@ -5,6 +5,7 @@
 #include "ClientReplication.h"
 #include "Level.h"
 #include "LobbyCommandService.h"
+#include "MapLightPresentationRuntime.h"
 #include "MapPlacementRuntime.h"
 #include "Network/SessionDiagnostic.h"
 #include "Network/PacketType.h"
@@ -100,6 +101,12 @@ private:
 	open it, applies its camera orbit and head-part reveal while it is up, and turns its
 	decide/back edges into the nickname step and the way back to the class roster. */
 	void Update_Customizing(f32_t fTimeDelta);
+	/* Places the Character Select camera on the pose the customizing screen asks for, through
+	CCamera's presentation-override seam so the exact eye, look point and field of view apply
+	instead of the follow camera's own smoothing. */
+	void Apply_CustomizingCameraPose();
+	/* The original character creation screen stands the character on a black stage, so
+	the arena's own placements stop drawing while it is up and come back on close. */
 	void Open_Customizing();
 	void Close_Customizing();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
@@ -206,6 +213,8 @@ private:
 	};
 
 	CMapPlacementRuntime m_MapRuntime;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	bool_t m_isMapLightSubmissionFailureReported = false;
 	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };
 	unique_ptr<CCustomizingView> m_pCustomizingView;
 	int32_t m_iExpandedCategory = -1;

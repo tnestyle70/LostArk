@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 17,
+  "revision": 18,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -359,6 +359,77 @@
         "windSpeed": 0,
         "patchScale": 0.00999999978,
         "patchSoftness": 0.150000006
+      }
+    },
+    {
+      "profileId": "scene.character-select.customizing-dark.v1",
+      "exposureMultiplier": 0.870000005,
+      "bloomIntensityMultiplier": 0.850000024,
+      "light": {
+        "type": "directional",
+        "direction": [
+          0.5,
+          -1,
+          0.5,
+          0
+        ],
+        "diffuse": [
+          0.03,
+          0.033,
+          0.041,
+          1.0
+        ],
+        "ambient": [
+          0.09,
+          0.088,
+          0.085,
+          1.0
+        ],
+        "specular": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "shadow": {
+        "enabled": true,
+        "focus": [
+          -772.017029,
+          -141.5,
+          197.537994
+        ],
+        "distance": 27.1000004,
+        "orthographicWidth": 24,
+        "orthographicHeight": 24,
+        "near": 0.100000001,
+        "far": 80,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.75
+      },
+      "fog": {
+        "enabled": false,
+        "color": [
+          0.55,
+          0.62,
+          0.72,
+          1
+        ],
+        "density": 0.35,
+        "heightFalloff": 0.08,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.9,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.01,
+        "patchSoftness": 0.15
       }
     }
   ]

@@ -42,6 +42,8 @@ namespace
 	constexpr f32_t ARENA_INITIAL_TARGET_X = -772.017f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Y = -142.55f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Z = 197.538f;
+	/* Owner token for the camera presentation override the customizing screen holds. */
+	constexpr uint64_t CUSTOMIZING_CAMERA_OWNER_ID = 0x4355'53544F4D'495Aull;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
@@ -133,6 +135,11 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 		CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
+	if (nullptr != m_pMapLightPresentation)
+	{
+		m_pMapLightPresentation->Clear();
+		m_pMapLightPresentation.reset();
+	}
 	m_MapRuntime.Clear();
 }
 
@@ -165,6 +172,16 @@ HRESULT CLevel_CharacterSelect::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
+	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
+	if (!mapLightPresentation->Load_Runtime(entry->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
+			mapLightPresentation->Get_Status() + "\n").c_str());
+		m_MapRuntime.Clear();
+		return E_FAIL;
+	}
+	m_pMapLightPresentation = std::move(mapLightPresentation);
+
 	if (FAILED(Ready_Lights()) || FAILED(Ready_ServerGameplay()))
 		return E_FAIL;
 
@@ -222,6 +239,14 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	if (nullptr != m_pMapLightPresentation &&
+		!m_pMapLightPresentation->Submit_Frame() &&
+		!m_isMapLightSubmissionFailureReported)
+	{
+		m_isMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
+			m_pMapLightPresentation->Get_Status() + "\n").c_str());
+	}
 #ifdef _DEBUG
 	Update_RaidEntryDebugPreviewKey();
 #endif
@@ -285,12 +310,17 @@ HRESULT CLevel_CharacterSelect::Render()
 	draws them without an explicit call here. Render_ClassListText (ImGui-font text only) still
 	needs the same O-key preview gate its old combined function used, since it draws over that
 	same screen region. */
+	/* The roster's sprites are hidden by Update_ClassList's own gate, but this LOA-font pass
+	is a separate call: without the same condition the class name, category rows and identity
+	blurb keep drawing straight through the customizing screen. */
 #ifdef _DEBUG
-	if (!Is_DebugRaidEntryPreviewOpen())
-		Render_ClassListText();
+	const bool_t isClassListTextHidden =
+		Is_DebugRaidEntryPreviewOpen() || Is_CustomizingOpen();
 #else
-	Render_ClassListText();
+	const bool_t isClassListTextHidden = Is_CustomizingOpen();
 #endif
+	if (!isClassListTextHidden)
+		Render_ClassListText();
 	Render_CreateCharacterProductInputHost();
 	Render_ProductStatus();
 	return S_OK;
@@ -1546,6 +1576,10 @@ void CLevel_CharacterSelect::Open_Customizing()
 	if (nullptr == m_pCustomizingView)
 		return;
 	m_pCustomizingView->Open();
+	/* The retail framing is an exact eye/look/FOV, so it goes through the presentation
+	override rather than the follow camera's own smoothed offsets. */
+	if (nullptr != m_pCamera)
+		m_pCamera->Begin_PresentationOverride(CUSTOMIZING_CAMERA_OWNER_ID);
 	m_strStatus =
 		"Customizing: drag to rotate, wheel to zoom, then press the decide button.";
 }
@@ -1555,16 +1589,41 @@ void CLevel_CharacterSelect::Close_Customizing()
 	if (nullptr == m_pCustomizingView)
 		return;
 	m_pCustomizingView->Close();
-	/* Everything this screen borrowed goes back: the class-roster framing and the head
-	equipment it hid to expose the face. */
+	/* Everything this screen borrowed goes back: the camera pose and the equipment it hid. */
 	if (nullptr != m_pCamera)
-	{
-		m_pCamera->Set_PositionOffset(m_FollowCameraProfile.positionOffset);
-		m_pCamera->Set_LookOffset(CArenaCameraProfile::LookOffset(m_FollowCameraProfile));
-	}
+		m_pCamera->End_PresentationOverride(CUSTOMIZING_CAMERA_OWNER_ID);
 	if (nullptr != m_pActiveCharacter)
-		m_pActiveCharacter->Set_HeadPartsVisible(true);
+		m_pActiveCharacter->Set_CreationPreviewActive(false);
 	m_strStatus = "Server Arena active. Select a class thumbnail, then test its skill keys.";
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingCameraPose()
+{
+	if (nullptr == m_pCamera || nullptr == m_pCustomizingView ||
+		nullptr == m_pActiveCharacter ||
+		nullptr == m_pActiveCharacter->Get_Transform())
+	{
+		return;
+	}
+	float3_t vCharacter{};
+	XMStoreFloat3(&vCharacter,
+		m_pActiveCharacter->Get_Transform()->Get_State(Engine::STATE::POSITION));
+	if (!std::isfinite(vCharacter.x) || !std::isfinite(vCharacter.y) ||
+		!std::isfinite(vCharacter.z))
+	{
+		return;
+	}
+	const float3_t vEyeOffset = m_pCustomizingView->Get_CameraPositionOffset();
+	const float3_t vLookOffset = m_pCustomizingView->Get_CameraLookOffset();
+	m_pCamera->Apply_PresentationPose(
+		CUSTOMIZING_CAMERA_OWNER_ID,
+		float3_t(vCharacter.x + vEyeOffset.x,
+			vCharacter.y + vEyeOffset.y,
+			vCharacter.z + vEyeOffset.z),
+		float3_t(vCharacter.x + vLookOffset.x,
+			vCharacter.y + vLookOffset.y,
+			vCharacter.z + vLookOffset.z),
+		m_pCustomizingView->Get_FieldOfViewDegrees());
 }
 
 void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
@@ -1609,15 +1668,11 @@ void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
 		Open_CreateCharacterModal();
 		return;
 	}
-	if (nullptr != m_pCamera)
-	{
-		m_pCamera->Set_PositionOffset(m_pCustomizingView->Get_CameraPositionOffset());
-		m_pCamera->Set_LookOffset(m_pCustomizingView->Get_CameraLookOffset());
-	}
+	Apply_CustomizingCameraPose();
 	/* Re-applied every frame: a class change or a replicated respawn builds a fresh character
 	wearing its default helmet again. */
 	if (nullptr != m_pActiveCharacter)
-		m_pActiveCharacter->Set_HeadPartsVisible(false);
+		m_pActiveCharacter->Set_CreationPreviewActive(true);
 }
 
 void CLevel_CharacterSelect::Render_CustomizingText()

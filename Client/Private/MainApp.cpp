@@ -402,6 +402,44 @@ void CMainApp::Hide_ItemUpgrade()
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
 }
 
+void CMainApp::Update_CustomizingSceneProfile()
+{
+	/* The class list wants the stage readable and character creation wants it
+	nearly black behind the panels, which is where the retail screen sits. The
+	profile service belongs to this class, so the swap lives here rather than in
+	the Level, and it only fires when the screen opens or closes. */
+	static constexpr const char_t* CUSTOMIZING_PROFILE_ID =
+		"scene.character-select.customizing-dark.v1";
+	auto* characterSelect = CLevel_CharacterSelect::Get_Active();
+	const bool_t wantsDarkStage =
+		nullptr != characterSelect && characterSelect->Is_CustomizingOpen();
+	const bool_t holdsDarkStage = !m_strSceneProfileBeforeCustomizing.empty();
+	if (wantsDarkStage == holdsDarkStage)
+		return;
+
+	string status;
+	if (wantsDarkStage)
+	{
+		const string previous = m_RenderingProfiles.Get_ActiveProfileId();
+		if (!m_RenderingProfiles.Activate_Profile(CUSTOMIZING_PROFILE_ID, status))
+		{
+			/* A missing profile leaves the bright stage up rather than failing the
+			screen; nothing else on it depends on the swap. */
+			OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
+			return;
+		}
+		m_strSceneProfileBeforeCustomizing = previous;
+		return;
+	}
+
+	if (!m_RenderingProfiles.Activate_Profile(
+		m_strSceneProfileBeforeCustomizing, status))
+	{
+		OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
+	}
+	m_strSceneProfileBeforeCustomizing.clear();
+}
+
 void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pItemUpgradeView)
@@ -911,6 +949,8 @@ namespace
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	Update_CustomizingSceneProfile();
+
 	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
 	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */

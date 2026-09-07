@@ -711,6 +711,9 @@
     <ClCompile Include="..\Private\SkillWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CustomizingIconDocument.cpp">
+      <Filter>02.GameObjects. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\CustomizingView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1254,6 +1257,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\SkillWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CustomizingIconDocument.h">
+      <Filter>02.GameObjects. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CustomizingView.h">
       <Filter>02.GameObjects\04. UI</Filter>

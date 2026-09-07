@@ -127,6 +127,7 @@
     <ClInclude Include="..\Public\RaidBossShowcaseService.h" />
 
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
+    <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
@@ -329,6 +330,7 @@
     <ClCompile Include="..\Private\RaidBossShowcaseService.cpp" />
 
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
+    <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
