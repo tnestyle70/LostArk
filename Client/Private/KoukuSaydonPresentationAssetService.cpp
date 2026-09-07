@@ -57,6 +57,7 @@ namespace
 	std::unordered_map<std::string,
 		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>>
 		g_ActionPresentationsByArchetype;
+	std::unordered_map<std::string, std::uint32_t> g_BindingSourceRevisions;
 	std::string g_Status = "KoukuSaydon presentation has not been loaded.";
 
 	const DATA_JSON_VALUE* Required(
@@ -123,7 +124,8 @@ namespace
 	bool Load_PresentationBindings(
 		const Engine::CModel& model,
 		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>& out,
-		std::string& outStatus)
+		std::string& outStatus, std::uint32_t& outRevision,
+		const std::uint32_t expectedRevision = 0u)
 	{
 		const std::filesystem::path path = CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Animation/Authored/KoukuSaydon") /
@@ -155,7 +157,9 @@ namespace
 			 !Has_ExactProperties(root,
 				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "lightResourceRevision" }) &&
 			 !Has_ExactProperties(root,
-				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns", "lightResourceRevision" })))
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns", "lightResourceRevision" }) &&
+			 !Has_ExactProperties(root,
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns", "lightResourceRevision", "folders", "bundles" })))
 		{
 			outStatus = "KoukuSaydon Product animation binding is malformed: " +
 				parseError;
@@ -187,6 +191,7 @@ namespace
 			!Try_U32(*sourceRevision,
 				(std::numeric_limits<std::uint32_t>::max)(), parsedRevision) ||
 			0u == parsedRevision ||
+			(expectedRevision != 0u && parsedRevision != expectedRevision) ||
 			(nullptr != lightRevision &&
 			 (!Try_U32(*lightRevision,
 				(std::numeric_limits<std::uint32_t>::max)(), parsedLightRevision) ||
@@ -205,7 +210,10 @@ namespace
 		{
 			if (!Has_ExactProperties(value,
 					{ "actionId", "occurrenceId", "clip", "startOffsetMs",
-					  "sourceStartMs", "playMs", "playRate", "endPolicy" }))
+					  "sourceStartMs", "playMs", "playRate", "endPolicy" }) &&
+				!Has_ExactProperties(value,
+					{ "actionId", "occurrenceId", "clip", "startOffsetMs",
+					  "sourceStartMs", "playMs", "playRate", "endPolicy", "unblendedBoneContact" }))
 			{
 				outStatus = "KoukuSaydon Product animation row has unexpected fields.";
 				++skipped; continue;
@@ -227,6 +235,7 @@ namespace
 			const DATA_JSON_VALUE* endPolicy = Required(
 				value, "endPolicy", DATA_JSON_TYPE::STRING);
 			KOUKU_SAYDON_ACTION_PRESENTATION row;
+			const DATA_JSON_VALUE* unblended = value.Find("unblendedBoneContact");
 			std::uint32_t parsedStartOffset = 0u;
 			std::uint32_t parsedSourceStart = 0u;
 			if (nullptr == action || !Is_StableToken(action->Get_String()) ||
@@ -242,7 +251,7 @@ namespace
 				!std::isfinite(playRate->Get_Number()) ||
 				playRate->Get_Number() < 0.1 || playRate->Get_Number() > 4.0 ||
 				nullptr == endPolicy || endPolicy->Get_String() != "EXACT" ||
-				!Has_Clip(model, clip->Get_String()))
+				!Has_Clip(model, clip->Get_String()) || (unblended && !unblended->Is_Boolean()))
 			{
 				outStatus = "KoukuSaydon Product animation row is invalid or unsupported.";
 				++skipped; continue;
@@ -251,6 +260,7 @@ namespace
 			row.strOccurrenceId = occurrence->Get_String();
 			row.strClip = clip->Get_String();
 			row.fPlayRate = static_cast<f32_t>(playRate->Get_Number());
+			row.bUnblendedBoneContact = unblended && unblended->Get_Boolean();
 			const std::string actionId = row.strActionId;
 			if (duplicates.contains(actionId) || !staged.emplace(actionId, std::move(row)).second)
 			{
@@ -261,6 +271,7 @@ namespace
 			}
 		}
 		out = std::move(staged);
+		outRevision = parsedRevision;
 		outStatus = "Loaded " + std::to_string(out.size()) +
 			" KoukuSaydon Product animation action(s), skipped " + std::to_string(skipped) + " invalid row(s).";
 		return true;
@@ -299,6 +310,7 @@ void Client::CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
 	std::scoped_lock lock{ g_KoukuAssetMutex };
 	g_ReadyByLevel.erase(iLevelIndex);
 	g_ActionPresentationsByArchetype.clear();
+	g_BindingSourceRevisions.clear();
 	g_Status = "KoukuSaydon presentation is waiting for Product admission.";
 }
 
@@ -441,8 +453,8 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	if (!Has_Clip(*body, actor->presentationClips.idle))
 		return Reject("KoukuSaydon body is missing the catalog idle clip.");
 
-	/* The weapon is a second animated model held in its rest pose from the
-	body's socket bone. Its own pre-transform converts the weapon's authored
+	/* The weapon is a second animated model following the body's source clock
+	and socket bone. Its own pre-transform converts the weapon's authored
 	units; the socket bone matrix later adds the body's pre-transform. */
 	unique_ptr<Engine::CModel> weapon;
 	if (!actor->weaponModel.empty())
@@ -474,7 +486,8 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	resolves on the Kouku rig and vice versa. */
 	std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> bindings;
 	std::string bindingStatus;
-	if (!Load_PresentationBindings(*body, bindings, bindingStatus))
+	std::uint32_t bindingRevision = 0u;
+	if (!Load_PresentationBindings(*body, bindings, bindingStatus, bindingRevision))
 	{
 		// A missing action document must not remove the boss body and other tools.
 		bindingStatus = "Animation bindings unavailable; boss body remains usable: " + bindingStatus;
@@ -499,6 +512,7 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 		return Reject("KoukuSaydon presentation prototype commit failed.");
 
 	g_ActionPresentationsByArchetype[std::string(archetypeId)] = std::move(bindings);
+	g_BindingSourceRevisions[std::string(archetypeId)] = bindingRevision;
 	ready.insert(std::string(archetypeId));
 	g_Status = std::move(bindingStatus);
 	return S_OK;
@@ -507,9 +521,10 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 bool_t Client::CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
 	const std::string_view archetypeId,
 	const std::string_view actionId,
-	KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation)
+	KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation, const std::uint32_t expectedSourceRevision)
 {
 	std::scoped_lock lock{ g_KoukuAssetMutex };
+	if (expectedSourceRevision && g_BindingSourceRevisions[std::string(archetypeId)] != expectedSourceRevision) return false;
 	const auto owner = g_ActionPresentationsByArchetype.find(std::string(archetypeId));
 	if (owner == g_ActionPresentationsByArchetype.end())
 		return false;
@@ -524,4 +539,32 @@ const std::string&
 Client::CKoukuSaydonPresentationAssetService::Get_Status()
 {
 	return g_Status;
+}
+
+
+bool_t Client::CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
+    std::uint32_t levelIndex, std::uint32_t expectedSourceRevision, std::string& status)
+{
+    if (!expectedSourceRevision) { status = "Expected Product source revision is missing."; return false; }
+    std::scoped_lock lock{ g_KoukuAssetMutex };
+    auto staged = g_ActionPresentationsByArchetype;
+    auto revisions = g_BindingSourceRevisions;
+    const auto ready = g_ReadyByLevel.find(levelIndex);
+    if (ready != g_ReadyByLevel.end())
+        for (const auto& archetype : ready->second)
+        {
+            if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
+            const auto model = std::dynamic_pointer_cast<Engine::CModel>(
+                CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
+            std::uint32_t revision = 0u;
+            std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows;
+            if (!model || !Load_PresentationBindings(*model, rows, status, revision, expectedSourceRevision))
+            { g_Status = "Product animation reload preserved the previous cache: " + status; return false; }
+            staged[archetype] = std::move(rows);
+            revisions[archetype] = revision;
+        }
+    g_ActionPresentationsByArchetype = std::move(staged);
+    g_BindingSourceRevisions = std::move(revisions);
+    status = g_Status = "Product animation bindings admitted for source revision " + std::to_string(expectedSourceRevision);
+    return true;
 }

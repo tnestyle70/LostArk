@@ -229,6 +229,11 @@ function Assert-RenderingProfileDocument([object]$Document) {
                 throw 'profile.displayName must contain 1 to 256 valid UTF-8 bytes without NUL.'
             }
         }
+        if ($null -ne $profile.PSObject.Properties['mapLightIntensityMultiplier']) {
+            $profileFields += 'mapLightIntensityMultiplier'
+            Assert-FiniteFloatRange $profile.mapLightIntensityMultiplier 0.0 4.0 `
+                'profile.mapLightIntensityMultiplier'
+        }
         $quality = $global
         if ($null -ne $profile.PSObject.Properties['qualityOverride']) {
             $profileFields += 'qualityOverride'

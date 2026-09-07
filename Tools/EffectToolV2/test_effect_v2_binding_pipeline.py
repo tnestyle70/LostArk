@@ -641,6 +641,56 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
             ),
         )
 
+    def test_optional_korean_labels_and_preview_context_preserve_resource_identity(self) -> None:
+        leaf_id = "boss.valtan.leaf-a"
+        path = self.authored / f"{leaf_id}.effectv2.json"
+        leaf = self.leaf(leaf_id)
+        leaf["displayName"] = "2관문_세이튼등장_공파편"
+        self.assertEqual(1000, pipeline._validate_leaf_resource(leaf_id, path, leaf))
+        self.write_json(path, leaf)
+        group_path = self.groups / "boss.valtan.group.effectv2group.json"
+        group = json.loads(group_path.read_text(encoding="utf-8"))
+        group["displayName"] = "세이튼 등장"
+        group["authoringPreview"] = {
+            "patternId": "", "bundle": False, "anchorKind": "WORLD",
+            "memberId": "", "worldPosition": [1.0, 2.0, 3.0],
+        }
+        original = copy.deepcopy(group)
+        self.write_json(group_path, group)
+        authored, groups = pipeline._load_resource_documents(self.root)
+        leaves, span = pipeline._resolve_group("boss.valtan.group", authored, groups, require_v2=True)
+        self.assertEqual(2100, span)
+        self.assertEqual(leaf_id, leaves[0][0])
+        self.assertEqual(original, json.loads(group_path.read_text(encoding="utf-8")))
+        # Tool context neither binds a boss nor changes the runtime leaf closure.
+        group["authoringPreview"].update(patternId="pattern.kouku.custom", bundle=True,
+                                        anchorKind="CHARACTER_ROOT", memberId="member.seiton")
+        self.write_json(group_path, group)
+        authored, groups = pipeline._load_resource_documents(self.root)
+        self.assertEqual((leaves, span), pipeline._resolve_group(
+            "boss.valtan.group", authored, groups, require_v2=True))
+
+    def test_optional_label_and_preview_invalid_fields_fail_the_selected_resource(self) -> None:
+        leaf_id = "boss.valtan.leaf-a"
+        path = self.authored / f"{leaf_id}.effectv2.json"
+        for name in (123, "a\n", "a" * 257, "가" * 86, "\ud800"):
+            leaf = self.leaf(leaf_id)
+            leaf["displayName"] = name
+            with self.subTest(name=repr(name)), self.assertRaises(pipeline.BindingContractError):
+                pipeline._validate_leaf_resource(leaf_id, path, leaf)
+        group = json.loads((self.groups / "boss.valtan.group.effectv2group.json").read_text(encoding="utf-8"))
+        preview = {"patternId": "", "bundle": False, "anchorKind": "WORLD",
+                   "memberId": "", "worldPosition": [0.0, 0.0, 0.0]}
+        for field, value in (("anchorKind", "BONE"), ("bundle", 1),
+                             ("patternId", "../../bad"), ("worldPosition", [0, float("inf"), 0])):
+            bad = copy.deepcopy(group)
+            bad["authoringPreview"] = dict(preview, **{field: value})
+            with self.subTest(field=field), self.assertRaises(pipeline.BindingContractError):
+                pipeline._group_authoring_metadata(bad, "selected group")
+        group["futureUnsupportedData"] = {}
+        with self.assertRaises(pipeline.BindingContractError):
+            pipeline._group_authoring_metadata(group, "selected group")
+
     def test_group_duplicate_child_and_unbounded_natural_child_fail_closed(self) -> None:
         group_path = self.groups / "boss.valtan.group.effectv2group.json"
         group = json.loads(group_path.read_text(encoding="utf-8"))

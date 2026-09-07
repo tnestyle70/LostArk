@@ -77,6 +77,26 @@ namespace Engine
 		f32_t	fFXAAEdgeThresholdMin = 0.0833f;
 	}RENDER_QUALITY_SETTINGS;
 
+	enum class MATERIAL_DEBUG_VIEW : uint32_t
+	{
+		FINAL,
+		BASE_COLOR,
+		NORMAL,
+		DIRECT_SPECULAR,
+		REFLECTION_DELTA,
+		ROUGHNESS,
+		METALLIC,
+		AMBIENT_OCCLUSION,
+		END,
+	};
+
+	/* Session-only comparison state; never serialized with scene quality. */
+	struct MATERIAL_RENDER_SETTINGS
+	{
+		bool_t bUseSourceMaterials = true;
+		MATERIAL_DEBUG_VIEW eDebugView = MATERIAL_DEBUG_VIEW::FINAL;
+	};
+
 	/* Height fog is a screen space term applied where the deferred combine
 	   already reconstructs world position, so terrain, buildings and
 	   characters all receive it from one place. The blend group and effects
@@ -173,29 +193,35 @@ namespace Engine
 		XMFLOAT3			vTangent;
 		XMFLOAT3			vBinormal;
 		XMFLOAT2			vTexcoord;
+		XMFLOAT2			vTexcoord1 = {};
 
-		static constexpr uint32_t		iNumElements = { 5 };
+		static constexpr uint32_t		iNumElements = { 6 };
 		static constexpr D3D11_INPUT_ELEMENT_DESC		Elements[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "BINORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 	}VTXMESH;
-	static_assert(sizeof(VTXMESH) == 56);
+	static_assert(sizeof(VTXMESH) == 64);
 	static_assert(offsetof(VTXMESH, vPosition) == 0);
 	static_assert(offsetof(VTXMESH, vNormal) == 12);
 	static_assert(offsetof(VTXMESH, vTangent) == 24);
 	static_assert(offsetof(VTXMESH, vBinormal) == 36);
 	static_assert(offsetof(VTXMESH, vTexcoord) == 48);
+	static_assert(offsetof(VTXMESH, vTexcoord1) == 56);
 
 	typedef struct tagVertexMeshInstance
 	{
 		float4x4_t World = {};
 		float4x4_t WorldInvTranspose = {};
+		float4_t vLightmapScaleBias = {};
+		float4_t vLightmapAverageScale = {};
+		float4_t vLightmapDirectionalScale = {};
 
-		static constexpr uint32_t iNumElements = { 13 };
+		static constexpr uint32_t iNumElements = { 17 };
 
 		static constexpr D3D11_INPUT_ELEMENT_DESC Elements[] =
 		{
@@ -209,6 +235,8 @@ namespace Engine
 				0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,
 				0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT,
+				0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 			{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
 				1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
@@ -227,8 +255,18 @@ namespace Engine
 				1, 96, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 			{ "WORLDINVTRANSPOSE", 3, DXGI_FORMAT_R32G32B32A32_FLOAT,
 				1, 112, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "INSTANCE_LIGHTMAP", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
+				1, 128, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "INSTANCE_LIGHTMAP", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+				1, 144, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "INSTANCE_LIGHTMAP", 2, DXGI_FORMAT_R32G32B32A32_FLOAT,
+				1, 160, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 		};
 	} VTXMESHINSTANCE;
+	static_assert(sizeof(VTXMESHINSTANCE) == 176);
+	static_assert(offsetof(VTXMESHINSTANCE, vLightmapScaleBias) == 128);
+	static_assert(offsetof(VTXMESHINSTANCE, vLightmapAverageScale) == 144);
+	static_assert(offsetof(VTXMESHINSTANCE, vLightmapDirectionalScale) == 160);
 
 
 	typedef struct tagVertexAnimationMesh

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 #include <filesystem>
 #include <string>
@@ -54,6 +55,9 @@ struct MAP_ASSET_RENDER_PROFILE
 	   and converts world height into the texel density the authored UV
 	   already uses on flat ground. Zero keeps the authored mapping. */
 	float triplanarHeightScale = 0.f;
+	/* Component shadow policy carried by immutable material variants. All
+	   recovered rows of one variant must agree; inherited slots share it. */
+	bool_t castsShadow = true;
 };
 
 /* One row of <AreaId>.mapwater.json. Every value is the source
@@ -90,6 +94,12 @@ struct MAP_ASSET_WATER_PROFILE
 	float4_t reflectionTilingPanning = float4_t(1.f, 1.f, 0.f, 0.f);
 };
 
+struct MAP_PLACEMENT_LIGHTING
+{
+    std::string assetId;
+    Engine::MODEL_BAKED_LIGHTING_INSTANCE inputs;
+};
+
 struct MAP_ASSET_ENTRY
 {
 	std::string id;
@@ -103,6 +113,7 @@ struct MAP_ASSET_ENTRY
 	float3_t defaultScale = float3_t(1.f, 1.f, 1.f);
 	MAP_ASSET_ANCHOR anchor = MAP_ASSET_ANCHOR::BOTTOM_CENTER;
 	MAP_ASSET_RENDER_PROFILE renderProfile;
+	std::vector<Engine::MODEL_MATERIAL_OVERRIDE> materialOverrides;
 };
 
 struct MAP_ASSET_SHARD
@@ -122,10 +133,12 @@ public:
 	bool_t Load_Source(
 		const std::filesystem::path& catalogPath,
 		const std::filesystem::path& placementPath,
-		const std::string& expectedAreaId);
+		const std::string& expectedAreaId,
+		const std::filesystem::path& materialsPath = {});
 	bool_t Load(const std::filesystem::path& path,
 		const std::string& expectedAreaId = {});
 
+	const MAP_PLACEMENT_LIGHTING* Find_PlacementLighting(const std::string& sourcePlacementId) const;
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;
 	const MAP_ASSET_WATER_PROFILE* Find_Water(const std::string& assetId) const;
 	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const { return m_Entries; }
@@ -144,12 +157,17 @@ public:
 	static std::filesystem::path Get_AreaSelectionPath();
 
 private:
+	bool_t Load_AreaStaged(const std::string& areaId);
+	bool_t Resolve_MaterialDocumentPath();
+	bool_t Load_MaterialOverrides();
+
 	/* Reads <AreaId>.mapwater.json beside the runtime catalog when it exists,
 	   then requires that the WATER render modes and the water rows agree in
 	   both directions. Called at the end of a successful Area load. */
 	bool_t Load_WaterPresentation(const std::string& areaId);
 
 private:
+	std::unordered_map<std::string, MAP_PLACEMENT_LIGHTING> m_PlacementLighting;
 	std::vector<MAP_ASSET_ENTRY> m_Entries;
 	std::unordered_map<std::string, size_t> m_EntryLookup;
 	std::unordered_map<std::string, MAP_ASSET_WATER_PROFILE> m_WaterProfiles;
@@ -162,6 +180,9 @@ private:
 	bool_t m_bReady = false;
 	std::filesystem::path m_SourceCatalogOverride;
 	std::filesystem::path m_SourcePlacementOverride;
+	std::filesystem::path m_SourceMaterialOverride;
+	std::string m_MaterialDocumentFilename;
+	std::filesystem::path m_MaterialDocumentPath;
 };
 
 NS_END

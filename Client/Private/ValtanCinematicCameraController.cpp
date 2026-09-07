@@ -394,11 +394,14 @@ bool_t Client::CValtanCinematicCameraController::Sample_BoundedTransition(
 	const VALTAN_CINEMATIC_CAMERA_POSE& toPose,
 	const uint32_t durationMs,
 	const f32_t elapsedSeconds,
-	VALTAN_CINEMATIC_CAMERA_POSE& outPose)
+	VALTAN_CINEMATIC_CAMERA_POSE& outPose,
+	const VALTAN_CINEMATIC_CAMERA_EASING easing)
 {
 	if (!Is_ValidPose(fromPose) || !Is_ValidPose(toPose) ||
 		0u == durationMs ||
-		durationMs > VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS ||
+		durationMs > MAX_BOUNDED_TRANSITION_MS ||
+		(easing != VALTAN_CINEMATIC_CAMERA_EASING::LINEAR &&
+		 easing != VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP) ||
 		!std::isfinite(elapsedSeconds) || elapsedSeconds < 0.f)
 	{
 		return false;
@@ -406,7 +409,8 @@ bool_t Client::CValtanCinematicCameraController::Sample_BoundedTransition(
 	const f32_t durationSeconds = static_cast<f32_t>(durationMs) * 0.001f;
 	const f32_t rawAlpha = (std::clamp)(
 		elapsedSeconds / durationSeconds, 0.f, 1.f);
-	const f32_t alpha = rawAlpha * rawAlpha * (3.f - 2.f * rawAlpha);
+	const f32_t alpha = easing == VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ?
+		rawAlpha : rawAlpha * rawAlpha * (3.f - 2.f * rawAlpha);
 	XMStoreFloat3(&outPose.vEye, XMVectorLerp(
 		XMLoadFloat3(&fromPose.vEye), XMLoadFloat3(&toPose.vEye), alpha));
 	XMStoreFloat3(&outPose.vLookAt, XMVectorLerp(

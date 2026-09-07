@@ -1,9 +1,11 @@
 #include "Level_KakulSaydonArena.h"
 #include "Character.h"
+#include "DeployPropObject.h"
 #include "KoukuSaydonPresentationPlayer.h"
 #include "Transform.h"
 #include <cmath>
 #include <algorithm>
+#include <set>
 
 using namespace Client;
 
@@ -43,38 +45,57 @@ void CLevel_KakulSaydonArena::Get_WorldObjectValidationTargets(
 bool_t CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline(
     const WORLD_SEQUENCE_INSTANCE& instance, float3_t& outPosition) const
 {
-    const WORLD_SEQUENCE_BINDING* primary = nullptr;
-    const WORLD_SEQUENCE_BINDING* single = nullptr;
-    size_t placementCount = 0;
+    if (instance.anchorKind != "WORLD" || instance.bindings.empty()) return false;
+    std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> seen;
+    double sumX = 0.0, sumY = 0.0, sumZ = 0.0;
+    size_t count = 0u;
     for (const auto& binding : instance.bindings)
     {
-        if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT) continue;
-        ++placementCount;
-        single = &binding;
-        if (binding.slotId == "object") primary = &binding;
-    }
-    const auto* binding = primary ? primary : placementCount == 1 ? single : nullptr;
-    uint64_t id = 0;
-    if (!binding || !CWorldSequencePlayer::Try_ParseTargetId(*binding, id)) return false;
-    for (const auto& entry : m_MapRuntime.Get_Placements())
-    {
-        if (entry.record.placementId != id) continue;
-        const auto& position = entry.record.position;
+        if (!seen.emplace(binding.targetKind, binding.targetId).second) continue;
+        float3_t position{};
+        if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+            position = instance.position;
+        else
+        {
+            uint64_t id = 0u;
+            if (!CWorldSequencePlayer::Try_ParseTargetId(binding, id)) return false;
+            if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT)
+            {
+                const auto& placements = m_MapRuntime.Get_Placements();
+                const auto entry = std::find_if(placements.begin(), placements.end(),
+                    [id](const auto& value) { return value.record.placementId == id; });
+                if (entry == placements.end()) return false;
+                position = entry->record.position;
+            }
+            else if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT)
+            {
+                const auto object = m_DeployRuntime.Find(id);
+                float4_t rotation;
+                if (!object || !object->Get_PlacedRootPose(position, rotation)) return false;
+            }
+            else return false;
+        }
         if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return false;
-        outPosition = position;
-        return true;
+        sumX += position.x; sumY += position.y; sumZ += position.z;
+        ++count;
     }
-    return false;
+    if (!count) return false;
+    // One common translation preserves the relative placement of a curtain group.
+    outPosition = {float(sumX / count), float(sumY / count), float(sumZ / count)};
+    return true;
 }
 
 bool_t CLevel_KakulSaydonArena::Reload_WorldObjectRuntime(std::string& status)
 {
     if (m_SequencePlayer.Has_ActiveInstances())
-    { status = "Wait for the active Server world sequence before reloading."; return false; }
-#ifdef _DEBUG
-    Debug_StopWorldObjectPreview();
-    Debug_StopCompositionWorldPreview();
-#endif
+    {
+        m_bWorldObjectReloadPending = true;
+        status = "Saved World Objects are ready for the next play; the active Server sequence keeps its current revision.";
+        return true;
+    }
+    m_bWorldObjectReloadPending = false;
+    // Every owned cue and authoring preview has its own admitted document copy.
+    // Replacing the idle base does not stop or rewrite any of those active poses.
     const bool_t result = m_SequencePlayer.Load_Area("LV_LUT_MIDNIGHTC_ED", Make_WorldSequenceTargets());
     status = m_SequencePlayer.Get_Status();
     return result;
@@ -85,22 +106,23 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     const CWorldSequenceDocument& document, const std::string& instanceId, std::string& status,
     const bool_t previewAtCharacter)
 {
-    if (m_SequencePlayer.Has_ActiveInstances() || m_pCompositionWorldPreview)
+    if (m_SequencePlayer.Has_ActiveInstances() || !m_CompositionWorldPreviewCues.empty())
     { status = "Stop the active pattern/world preview before previewing this object."; return false; }
+    if (!Can_StartCompositionWorld(instanceId, status, &document)) return false;
     const auto targets = Make_WorldSequenceTargets();
     auto staged = std::make_unique<CWorldSequencePlayer>();
     if (!staged->Set_Document(document, targets, status) || !staged->Prepare_InstanceResources(instanceId, targets))
     { status = staged->Get_Status(); return false; }
     float3_t previewOffset{};
     const auto* instance = document.Find_Instance(instanceId);
-    const bool hasModels = instance && std::any_of(instance->bindings.begin(), instance->bindings.end(),
-        [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
-    if (previewAtCharacter && hasModels && instance->anchorKind == "WORLD")
+    if (previewAtCharacter && instance && instance->anchorKind == "WORLD")
     {
-        float3_t previewPosition{};
-        if (!Try_Get_AuthoringPreviewPlacement(previewPosition, status)) return false;
-        previewOffset = {previewPosition.x - instance->position.x,
-            previewPosition.y - instance->position.y, previewPosition.z - instance->position.z};
+        float3_t previewPosition{}, baseline{};
+        if (!Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+        { status = "World preview cannot resolve every saved placement in this object group."; return false; }
+        if (!Try_Get_AuthoringForwardPlacement(previewPosition, status)) return false;
+        previewOffset = {previewPosition.x - baseline.x,
+            previewPosition.y - baseline.y, previewPosition.z - baseline.z};
     }
     // The preview offset never edits the saved map anchor or placed curtain/roulette.
     // All resources and the preview placement are admitted before releasing the old presentation.

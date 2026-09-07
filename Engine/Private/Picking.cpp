@@ -98,6 +98,9 @@ bool_t CPicking::Picking(float4_t& vOut)
     if (0.f != m_pWorldPositions[iIndex].w)
     {
         vOut = m_pWorldPositions[iIndex];
+        // PBR pixels retain finite auxiliary normal bits in target W. Picking
+        // returns a homogeneous position independently of that GPU payload.
+        vOut.w = 1.f;
         return true;
     }
 

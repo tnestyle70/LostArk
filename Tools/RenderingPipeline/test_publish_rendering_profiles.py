@@ -198,6 +198,43 @@ class RenderingProfilePublisherTest(unittest.TestCase):
                     self.assertIn("displayName", result.stdout + result.stderr)
                     self.assertEqual(previous, destination.read_bytes())
 
+    def test_map_light_multiplier_is_optional_and_round_trips(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        for profile in document["profiles"]:
+            profile.pop("mapLightIntensityMultiplier", None)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "RenderingProfiles.json"
+            destination = Path(temporary_directory) / "RenderingProfiles.runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Validate")
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.find-true-dark.v1")
+            for multiplier in (0, 0.05, 1, 4):
+                with self.subTest(multiplier=multiplier):
+                    dark["mapLightIntensityMultiplier"] = multiplier
+                    self.write_document(source, document)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual(document, json.loads(destination.read_bytes()))
+
+    def test_invalid_map_light_multiplier_preserves_previous_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "RenderingProfiles.json"
+            destination = Path(temporary_directory) / "RenderingProfiles.runtime.json"
+            self.write_document(source, self.source_document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            previous = destination.read_bytes()
+            for multiplier in (-0.01, 4.01, True, "0.05", None):
+                with self.subTest(multiplier=multiplier):
+                    document = copy.deepcopy(self.source_document)
+                    document["profiles"][0]["mapLightIntensityMultiplier"] = multiplier
+                    self.write_document(source, document)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("mapLightIntensityMultiplier", result.stdout + result.stderr)
+                    self.assertEqual(previous, destination.read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()

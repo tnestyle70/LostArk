@@ -39,11 +39,41 @@ LevelCatalog scenario
 | visual map | scenario가 Map domain을 요구하면 load 실패 | catalog/placement 참조 오류는 rollback |
 | deploy | `.deployassets`와 `.deployplacements`가 모두 없으면 skip | 둘 중 하나만 있으면 오류 |
 | point-light presentation | `sourceLights`와 `lights`가 모두 없으면 skip | 둘 중 하나만 있거나 문서 검증이 실패하면 publish/load 실패 |
+| 선택적 map material | `sourceMaterials`와 `materials`가 모두 없고 미선언 저작 파일도 없으면 기존 계산 | 선언 누락·미등록 asset/material·지원하지 않는 family·필수 texture 오류는 publish/load 실패 |
 | NPC/boss placement | 해당 kind 행이 없으면 spawn하지 않음 | unknown archetype/encounter는 publish 실패 |
 | navigation | navigationRuntime을 선언하지 않은 world만 생략 가능 | Bern/Valtan/Training/Character Select Arena는 grid/policy 누락·손상 시 room 기동 실패 |
 | balance definition | 사용하지 않는 actor/skill 정의는 runtime state를 만들지 않음 | placement/action이 없는 stable ID를 참조하면 publish 또는 Server load 실패 |
 
 `Gameplay.world.json` 자체는 Server가 여는 world마다 필요하다. 접속 가능한 world는 최소 하나의 활성 `playerSpawn`이 필요하므로, 빈 placements 문서를 제품 world의 정상값으로 취급하지 않는다.
+
+### 3.1 선택적 map material 입력
+
+`MapCatalog.json`의 `sourceMaterials`/`materials` 쌍은
+`Data/Maps/Authoring/<AreaId>/<AreaId>.mapmaterials.json`과
+`Client/Bin/DataFiles/Map/<AreaId>.mapmaterials.json`을 선언한다.
+`lostark.map-materials` formatVersion 1/2의 재질 key는 `assetId + materialName`이다.
+`sourceMaterial`은 원본 근거이며 WModel의 material 이름과 별개다.
+v1의 `bg_seamless-specular_msk`, `bg_base_msk`를 유지하며, v2는
+`bg_base_pbr_seamless_opa`, `bg_base_pbr_opa`의 원본 채널·계산을 지원한다.
+PBR 입력에는 texture별 색 공간, optional `bakedLighting`/`environment`가 있다.
+`placementLighting`은 stable `sourcePlacementId`와 일치하는 `assetId`에 atlas 좌표와 광량 계수를
+연결한다. baked 입력을 선택한 모델은 실제 UV1이 있어야 하며 환경 cube와 BRDF 입력은 함께 요구한다.
+필드·원본 근거·근사 경계는 해당 바닥 복구 PLAN/RESULT를 따른다. 임의의 모든 ORM 재질을
+이 family로 대신 해석하지 않는다.
+
+`Publish-MapAuthoring.ps1`은 요청 material 이름이 실제 WModel에 정확히 한 번 있는지,
+texture 경로·finite 수치·색 공간과 source/runtime 경로 쌍을 검사하고 문서와 catalog를 함께 교체한다.
+선택적 재질을 선언한 Area의 runtime mapassets header는 version 5이며 필수 재질 파일명을 가진다.
+v4 row 형식은 유지하며 기존 v1~v4와 mapset v1도 읽는다. shard-set은 각 child header에 같은 참조를 둔다.
+Loader와 MapTool은 같은 named override를 `CModel -> CMaterial`에 전달한다. 로드 실패는 기존 catalog를 보존한다.
+
+MapTool은 이 문서를 읽지만 재질 수치 편집/저장 UI는 제공하지 않는다. 저작 JSON 변경 후 명시적 publish와
+Client 재시작이 적용 기준이다. F1 Rendering Workbench의 Floor Materials은 session-only A/B와
+기여 진단이며 Runtime Reload 또는 Quality Save를 재질 prototype 갱신으로 사용하지 않는다.
+
+Character Select의 map light도 기존 `CMapLightPresentationRuntime`을 사용한다.
+Lighting Workbench는 현재 Level/Area가 일치할 때 저작 preview와 published reload를 연결한다.
+광원 로드 실패는 기존 runtime/preview를 유지한다. material prototype 재생성과 광원 reload는 별개다.
 
 ## 4. MapTool이 지금 편집하는 것
 
@@ -144,11 +174,46 @@ optional `anchorKind`는 고정 `WORLD` 또는 살아 있는 복제 플레이어
 플레이어 anchor나 추가 instance 위치를 적용하지 않는다. ANIM resource는 기존 `animationTracks`를
 사용하고 실제 clip 존재 여부는 모델 admission에서 검증한다.
 
-F1 `World Object Tool`은 이 Area source를 편집·저장하고, Action Workbench는 저장된 상태 instance를
-WORLD resource로 선택해 Append한다. `Publish-MapAuthoring.ps1`이 runtime worldsequences 문서를
-배포한다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
+Animation track의 optional `displayName`은 빈 값 또는 최대 128 UTF-8 byte의 표시 이름이다.
+실제 WModel lookup은 기존 `clipName`만 사용한다. Object Tool의 이름 편집과 Timeline은
+`displayName`을 사용하며 비어 있으면 `clipName`을 표시한다. 표시 이름 변경이 재생 연결을 바꾸지 않는다.
+Physics의 `Apply Vertical Arc`는 높이 H와 Lifetime T로 기존 velocity Y=4H/T,
+acceleration Y=-8H/T²를 저장한다. 생성 개수·간격을 보존하고 첫 생성의 높이 곡선을 Timeline에
+표시한다. 이후 생성도 전체 상태 종료시각을 공유한다. 별도 PhysX simulation이나 저장 곡선 schema는 없다.
+
+F1 `World Object Tool`은 이 Area source와 부모의 optional `defaultMotionInstanceId`를 편집·저장한다.
+명시한 기본 상태는 enabled인 같은 Object의 단일 binding이어야 한다. 기존 Map alias는 원래 sequence ID를 사용한다.
+Action Workbench는 부모 Object를 선택해 기본 상태로 Append하며, WORLD definition의 optional
+`objectResourceId`와 `sequenceInstanceId`가 부모 및 Append 당시 초기 상태를 저장한다. 이후 기본 상태를
+변경해도 기존 박스의 초기 상태는 바뀌지 않는다. Map 모델 occurrence의 optional `placement`는 절대
+`position`, degree `rotationDegrees`, Object 기본 크기의 배수 `scale`을 소유한다. 기존 placement 없는 문서는
+원래 동작을 유지한다. 이 TRS는 projector → Server → Shared protocol 68 → 기존 Client player로 전달된다.
+Object Tool Save가 기존 `Publish-MapAuthoring.ps1 -Scope WorldSequences`를 비동기 실행하며 이 scope는
+해당 Area worldsequences만 원자 배포한다. 조명·카메라 등 다른 Area 파일은 갱신하지 않는다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
 오브젝트 재생 runtime을 만들지 않는다.
+
+Object Tool의 부모 선택은 공통 모델·텍스처·크기·Anchor와 연결된 Motion 목록만 표시하고,
+자식 선택은 해당 Motion의 Detail과 Sequencer를 표시한다. `Create Object`는 부모만 만들고
+모델을 지정한 뒤 `Create Motion`으로 자식을 추가한다. `Append Clip`은 자식 선택에서만 가능하다.
+저장 모션의 호출 ID는 기존 `instances[].instanceId`이며 native `clipName`이나 표시 이름이 아니다.
+instance의 optional `motionEnd`는 `STOP`(기본), `HOLD`, `LOOP`, `NEXT`다. `NEXT`의
+`nextMotionId`는 같은 Object·slot의 enabled 단일 생성 모션만 가리키며 순환과 32개를 넘는
+연결을 거부한다. `HOLD`는 마지막 자세, `LOOP`는 같은 모션 반복, `NEXT`는 같은 객체에서
+다음 모션 재생이다. 독립 WORLD의 `STOP`은 기존 수명 종료를 유지한다. Result로 이미 생성된
+객체에 적용한 `STOP`은 마지막 자세에서 모션만 정지하며 target WORLD cue가 객체 수명을 소유한다.
+적용 모션의 초기 지연에는 기본 모션을, 다음 모션의 지연에는 직전 마지막 자세를 유지한다.
+
+쿠크 `OBJECT_OVERLAP`은 저작 Collider와 고정 카드 원의 겹침을 Server에서 판정한다.
+`targetWorldInstanceId`와 미터 단위 `targetRadiusM`를 저장하며 native mesh/bone 자동 collider가 아니다.
+target은 같은 패턴에서 판정 창 전체를 포함하는 단일 WORLD occurrence, WORLD anchor, Count 1,
+고정 Transform과 추가 물리 이동 없는 Object여야 한다. 움직이는 source Collider는 지원되는
+WorldTrack의 변환을 사용한다. Result의 `PLAY_WORLD_OBJECT_MOTION`은 같은 target과 같은 부모의
+`motionInstanceId`를 참조한다. Client는 기존 target 객체의 모델과 배치를 유지하고 모션만 바꾼다.
+이 판정의 target 기본 모션은 `LOOP/HOLD`로 계속 표시해야 한다. Result와 NEXT 후속 모션도
+enabled·같은 slot·고정 Transform을 유지하고 `LOOP/HOLD`에 도달해야 한다. 비활성 모션이나
+판정 창 도중 숨겨지거나 다른 위치로 움직이는 연결은 publisher가 구체적인 이유와 함께 거부한다.
+이는 동적 navigation이나 Client mesh에 의한 damage 판정을 추가하지 않는다.
 
 `World Sequence` 모드의 `Animated Props`는 그 sequence가 binding할 Deploy ANIM 배치를
 만드는 곳이다. Area catalog가 `sourceDeployCatalog`/`sourceDeployPlacements` pair를 선언한
@@ -235,6 +300,8 @@ Publish는 기존 Map publisher, 제품 로드는 `CMapLightPresentationRuntime`
 같은 v2 map light는 Composition Light 탭에 읽기 전용 정의로 표시된다. Append는 stable lightId를 참조하며
 조명 값을 LightResources.json에 복제하지 않는다. Composition에서 사용하는 map light의 삭제는 참조 해제 전 거부한다.
 Default Directional Light는 Scene Profile의 기존 방향광을 편집하는 목록 행이다. maplights에 별도 기본광을 추가하지 않는다.
+활성 RenderingProfiles의 optional `mapLightIntensityMultiplier`(0~4, 기본 1)는 실제 Map light 제출 때 brightness에 곱한다.
+이 배율은 기존 v1/v2 맵 배치와 그 저작 preview에 적용하며 원본 brightness를 바꾸지 않는다. 패턴의 LIGHT occurrence에는 적용하지 않는다.
 
 Valtan DeployProp은 Development MapTool에서 source catalog 12 asset / 151 placement를
 `CDeployPropRuntime` 한 경로로 stage한다. Deploy asset catalog는 format version 2이며 각 asset의

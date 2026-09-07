@@ -871,12 +871,20 @@ namespace
 			!Require(
 			!Client::CValtanCinematicCameraController::Sample_BoundedTransition(
 				From, To,
-				Client::VALTAN_CINEMATIC_CAMERA_CUE::MAX_TRANSITION_IN_MS + 1u,
+				Client::CValtanCinematicCameraController::MAX_BOUNDED_TRANSITION_MS + 1u,
 				0.f, Sample),
 			"over-bound camera transition duration was admitted"))
 		{
 			return false;
 		}
+		if (!Require(Client::CValtanCinematicCameraController::Sample_BoundedTransition(
+			From, To, 10000u, 2.5f, Sample, Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR) &&
+			NearlyEqualPosition(Sample.vEye, float3_t(2.5f, 3.f, -5.f)) &&
+			NearlyEqualPosition(Sample.vLookAt, float3_t(1.f, 1.25f, .25f)) && NearlyEqual(Sample.fFovYDegrees, 45.f),
+			"linear Camera transition must move one quarter at one quarter time") ||
+			!Require(!Client::CValtanCinematicCameraController::Sample_BoundedTransition(
+				From, To, 1000u, .5f, Sample, Client::VALTAN_CINEMATIC_CAMERA_EASING::HOLD),
+			"Camera entry/return must reject HOLD easing")) return false;
 		return true;
 	}
 

@@ -5,8 +5,12 @@
 
 namespace LostArk::Shared
 {
-	/* 65 combines the v63 Mario stage/move/jump contracts with the v64 Kouku
-	HUD/scene cues; both packet groups are appended after C2S_INTERACT_TRIGGER.
+	/* 68 combines owned bundle/TRS world cues with main Mario and world playback.
+	Main packet identities 72..76 are preserved; bundle state appends as 77.
+	Neither independently published v66 nor v67 peer is wire-compatible.
+	67 adds absolute position, rotation and scale to owned WORLD placement cues.
+	66 adds bundle/member ownership and exact World cue identities.
+	65 adds a target World Object instance to Server world-sequence motion events.
 	64 combines the main v60 interact-trigger packet identities with the
 	v63 Kouku HUD/scene cues and World sequence lifetime. Neither previous
 	peer is wire-compatible; main packet identities stay in their old order.
@@ -52,8 +56,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	// 66 adds the F1 world playback request/verdict and sequence transport operation.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 66;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 68;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -302,7 +305,8 @@ namespace LostArk::Shared
 		S2C_DEBUG_MARIO_JUMP_RESULT,
 		C2S_MARIO_MOVE,
 		C2S_DEBUG_WORLD_PLAYBACK,
-		S2C_DEBUG_WORLD_PLAYBACK_RESULT
+		S2C_DEBUG_WORLD_PLAYBACK_RESULT,
+		S2C_KOUKUSAYDON_BUNDLE_STATE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -385,6 +389,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST:
 		case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
 		case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+		case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
 		case PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM:
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
 		case PACKET_TYPE::S2C_INTERACT_PROMPT:

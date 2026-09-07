@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,8 @@ struct EFFECT_V2_DOCUMENT final
 	CEffectV2Object::DESC Desc;
 	std::vector<EFFECT_V2_PART_OVERRIDE> Parts;
 	std::string strAnimationClip;
+	/* UTF-8 authoring label; stable effectId remains the resource identity. */
+	std::string strDisplayName;
 };
 
 enum class EFFECT_V2_RESOURCE_KIND : int32_t
@@ -163,11 +166,23 @@ struct EFFECT_V2_GROUP_CHILD final
    or nested group resource. iDurationMs 0 ends with the last child, otherwise
    it caps every child stop. Authored array order is deterministic spawn order;
    strChildId is the stable mutation identity. */
+/* Optional Workbench context; not an animation binding or runtime anchor. */
+struct EFFECT_V2_AUTHORING_PREVIEW final
+{
+	std::string strPatternId;
+	bool_t bBundle = false;
+	std::string strAnchorKind = "WORLD";
+	std::string strMemberId;
+	float3_t vWorldPosition = { 0.f, 0.f, 0.f };
+};
+
 struct EFFECT_V2_GROUP final
 {
 	std::string strGroupId;
 	uint32_t iDurationMs = 0u;
 	std::vector<EFFECT_V2_GROUP_CHILD> Children;
+	std::string strDisplayName;
+	std::optional<EFFECT_V2_AUTHORING_PREVIEW> AuthoringPreview;
 };
 
 class CEffectV2Document final
@@ -179,6 +194,7 @@ public:
 	static std::filesystem::path Document_Path(const std::string& strEffectId);
 	static std::filesystem::path Binding_Path(const std::string& strArchetypeId);
 	static std::filesystem::path Group_Path(const std::string& strGroupId);
+	static bool_t Is_ValidDisplayName(const std::string& strName);
 	static bool_t Is_ValidEffectId(const std::string& strEffectId);
 
 	static bool_t Parse_Document(

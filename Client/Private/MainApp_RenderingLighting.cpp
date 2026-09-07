@@ -210,6 +210,15 @@ void Client::CMainApp::UpdateLightingPreview()
             (m_pLightSequencerMapPreview ? m_pLightSequencerMapPreview :
                 m_bPreviewMapLightDraft ? m_AreaLightSession.Get_Preview() : nullptr) : nullptr);
     }
+    if (auto* arena = CLevel_CharacterSelect::Get_Active())
+    {
+        const bool selectedMap = toolVisible && m_eRenderingSelectedLevel == LEVEL::CHARACTER_SELECT &&
+            ETOUI(m_eRenderingSelectedLevel) == CGameInstance::Get().Get_CurrentLevelID() &&
+            m_AreaLightSession.Is_Open() && m_AreaLightSession.Get_AreaId() == "LV_LOBBY_CLASSSELECT_SL00";
+        arena->Set_MapLightAuthoringOverride(selectedMap ?
+            (m_pLightSequencerMapPreview ? m_pLightSequencerMapPreview :
+                m_bPreviewMapLightDraft ? m_AreaLightSession.Get_Preview() : nullptr) : nullptr);
+    }
     if (!toolVisible || m_strLightPreviewResourceId.empty()) return;
     const auto* resource = m_LightResources.Find_Resource(m_strLightPreviewResourceId);
     if (!resource) { StopLightingPreview(); return; }
@@ -421,6 +430,13 @@ bool Client::CMainApp::ReloadPublishedMapLights()
         { m_strLightingStatus = "Published map lights could not be reloaded; previous runtime preserved. See Output log."; return false; }
         arena->Set_MapLightAuthoringOverride(nullptr);
     }
+    if (currentMap && m_eRenderingSelectedLevel == LEVEL::CHARACTER_SELECT)
+    {
+        auto* arena = CLevel_CharacterSelect::Get_Active();
+        if (!arena || !arena->Reload_MapLights())
+        { m_strLightingStatus = "Published Character Select lights could not be reloaded; previous runtime preserved. See Output log."; return false; }
+        arena->Set_MapLightAuthoringOverride(nullptr);
+    }
     m_bPreviewMapLightDraft = false;
     m_strLightingStatus = "Published map lights reloaded; authoring preview disabled.";
     return true;
@@ -613,8 +629,10 @@ bool Client::CMainApp::StartLightingPreview()
     }
     else if (m_strSelectedRenderingLightId.rfind("map:", 0u) == 0u)
     {
-        if (m_eRenderingSelectedLevel != LEVEL::KAKULSAYDON_ARENA || !CLevel_KakulSaydonArena::Get_Active())
-        { m_strLightingStatus = "Enter KoukuSaydon to preview this authored map light."; return false; }
+        const bool kouku = m_eRenderingSelectedLevel == LEVEL::KAKULSAYDON_ARENA && CLevel_KakulSaydonArena::Get_Active();
+        const bool characterSelect = m_eRenderingSelectedLevel == LEVEL::CHARACTER_SELECT && CLevel_CharacterSelect::Get_Active();
+        if ((!kouku && !characterSelect) || ETOUI(m_eRenderingSelectedLevel) != CGameInstance::Get().Get_CurrentLevelID())
+        { m_strLightingStatus = "Enter the selected Character Select or KoukuSaydon map to preview this light."; return false; }
         m_strLightPreviewSelectionId = m_strSelectedRenderingLightId;
         if (!StageMapLightPreview()) { StopLightingPreview(); return false; }
     }
@@ -668,7 +686,15 @@ void Client::CMainApp::RenderSceneProfileDetail()
 	};
 
 	bool_t sceneChanged = false;
-	ImGui::SeparatorText("Active Scene Artistic Profile");
+	ImGui::SeparatorText("Scene Brightness");
+	sceneChanged |= ImGui::DragFloat(
+		"Map Light Intensity Multiplier",
+		&m_SceneRenderingDraft.fMapLightIntensityMultiplier,
+		0.005f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::TextWrapped(
+		"Persistent map lights: 1 = authored brightness, 0.05 = 5%%, 0 = off. "
+		"Character/Boss pattern lights keep their own brightness. "
+		"Exposure below changes the whole scene. Save Light and Publish Light to persist this profile.");
 	sceneChanged |= ImGui::DragFloat(
 		"Exposure Multiplier", &m_SceneRenderingDraft.fExposureMultiplier,
 		0.005f, 0.1f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);

@@ -35,8 +35,10 @@ private:
     void Mark_Dirty();
     void Stop_Preview();
     bool Begin_Preview();
+    const WORLD_SEQUENCE_INSTANCE* Preview_Instance() const;
     void Seek(f32_t clockMs);
     f32_t SpanMs() const;
+    f32_t PreviewSpanMs() const;
     void Select_Object(const std::string& id);
     void Select_State(const std::string& id);
     std::vector<std::string> StateIds(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource) const;
@@ -54,6 +56,7 @@ private:
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
     bool Assign_SelectedModel();
     void Render_Detail();
+    void Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_PhysicalResources();
@@ -71,9 +74,9 @@ private:
     bool m_PreviewActive = false;
     bool m_PreviewDirty = false;
     bool m_Playing = false;
-    bool m_Loop = false;
     CLevel_KakulSaydonArena* m_PreviewLevel = nullptr;
     f32_t m_ClockMs = 0.f;
+    f32_t m_VerticalArcHeight = 2.f;
     f32_t m_Zoom = 100.f;
     CWorldSequenceDocument m_Document;
     CWorldSequenceDocument m_SavedDocument;
@@ -118,6 +121,8 @@ private:
     std::string m_PhysicalStatus;
     std::string m_SelectedPhysical;
     bool m_PhysicalScanned = false;
+    bool m_PhysicalScanRunning = false;
+    CPhysicalResourceScan m_PhysicalScan;
     int m_PhysicalSlot = 0;
     HANDLE m_PublishProcess = nullptr;
     std::filesystem::path m_PublishLog;

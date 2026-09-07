@@ -3055,7 +3055,7 @@ $koukuEncounterDocument = Read-JsonDocument `
 Assert-ExactProperties $koukuEncounterDocument @(
 	'schema','formatVersion','encounterId','bossArchetypeId','authority',
 	'fixedTickHz','sourceRevision','madnessPolicy','playAllPatternIds',
-	'patterns') `
+	'patterns','folders','bundles') `
 	'KoukuSaydon encounter Product'
 foreach ($field in @('schema','encounterId','bossArchetypeId','authority')) {
 	Assert-JsonString $koukuEncounterDocument.$field `
@@ -3110,16 +3110,28 @@ $patternRows.Add((@(
 	'KOUKUMADNESS', $koukuEncounterDocument.encounterId,
 	[uint32]$koukuEncounterDocument.madnessPolicy.maximum,
 	[uint32]$koukuEncounterDocument.madnessPolicy.clownHoldMs) -join "`t"))
+$koukuPatternById = @{}
+$koukuGateTargets = @{
+    'GATE1|MN_RPCZ_00' = 'boss.kakulsaydon.g1.kouku'
+    'GATE1|MN_RPCT_05' = 'boss.kakulsaydon.g1.saydon'
+    'GATE2|MN_RPCZ_00' = 'boss.kakulsaydon.g2.kouku'
+    'GATE2|MN_RPCT_06' = 'boss.kakulsaydon.g2.big-saydon'
+    'GATE3|MN_RPCT_05' = 'boss.kakulsaydon.g3.saydon'
+    'BINGO|MN_RPCT_05' = 'boss.kakulsaydon.bingo.saydon'
+}
 $koukuFollowupTargets = [Collections.Generic.List[string]]::new()
 foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
-	Assert-ExactProperties $koukuPattern @(
+	$koukuOptionalProperties = @()
+	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) { $koukuOptionalProperties += 'resetBossYawDegrees' }
+	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
+	Assert-ExactProperties $koukuPattern (@(
 		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
 		'aimPolicy','displayName','actionId','sourceActionIds','selectionMode',
 		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 		'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
 		'bossArchetypeIds','stages','logicWindows','worldSequences',
-		'sceneProfiles','mechanicTriggers','resetBossToSpawn') 'KoukuSaydon encounter pattern'
+		'sceneProfiles','mechanicTriggers','resetBossToSpawn','gateId','targetBossPlacementId','actorProfileId') + $koukuOptionalProperties) 'KoukuSaydon encounter pattern'
 	foreach ($field in @(
 		'patternId','category','targetPolicy','aimPolicy','displayName','actionId',
 		'selectionMode','armorRequirement','phaseRequirement')) {
@@ -3167,10 +3179,28 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		throw "KoukuSaydon animation-audition pattern is invalid: $($koukuPattern.patternId)"
 	}
 	if ($koukuPattern.resetBossToSpawn -isnot [bool]) { throw 'KoukuSaydon resetBossToSpawn must be boolean' }
-	if ($koukuPattern.resetBossToSpawn) {
-		$patternRows.Add((@('PATTERNSPAWNRESET', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, 1) -join "`t"))
+	$spawnResetRow = @('PATTERNSPAWNRESET', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, 1)
+	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) {
+		Assert-JsonNumber $koukuPattern.resetBossYawDegrees 'KoukuSaydon resetBossYawDegrees'
+		if (-not $koukuPattern.resetBossToSpawn -or [Math]::Abs([double]$koukuPattern.resetBossYawDegrees) -gt 360.0) {
+			throw 'KoukuSaydon resetBossYawDegrees requires spawn reset and -360..360 degrees'
+		}
+		$spawnResetRow += Format-InvariantSignedFloat $koukuPattern.resetBossYawDegrees 'KoukuSaydon resetBossYawDegrees'
 	}
-	$koukuProductOrder.Add([string]$koukuPattern.patternId)
+	if ($koukuPattern.resetBossToSpawn) {
+		$patternRows.Add(($spawnResetRow -join "`t"))
+	}
+    foreach ($targetField in @('gateId','targetBossPlacementId','actorProfileId')) {
+        Assert-JsonString $koukuPattern.$targetField "KoukuSaydon pattern $targetField"
+        Assert-StableId $koukuPattern.$targetField "KoukuSaydon pattern $targetField"
+    }
+    $targetKey = [string]$koukuPattern.gateId + '|' + [string]$koukuPattern.actorProfileId
+    if (-not $koukuGateTargets.ContainsKey($targetKey) -or [string]$koukuGateTargets[$targetKey] -cne [string]$koukuPattern.targetBossPlacementId) {
+        throw "KoukuSaydon Pattern Gate/target/model mismatch: $($koukuPattern.patternId)"
+    }
+    $koukuPatternById[[string]$koukuPattern.patternId] = $koukuPattern
+    $patternRows.Add((@('PATTERNTARGET', $koukuPattern.patternId, $koukuPattern.gateId, $koukuPattern.targetBossPlacementId) -join "`t"))
+    $koukuProductOrder.Add([string]$koukuPattern.patternId)
 	$koukuSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
 	foreach ($sourceActionId in @($koukuPattern.sourceActionIds)) {
 		Assert-JsonInteger $sourceActionId `
@@ -3311,22 +3341,25 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	if ($koukuPattern.logicWindows -isnot [Array] -or
 		@($koukuPattern.logicWindows).Count -gt 64 -or
 		$koukuPattern.worldSequences -isnot [Array] -or
-		@($koukuPattern.worldSequences).Count -gt 16 -or
+		@($koukuPattern.worldSequences).Count -gt 128 -or
 		$koukuPattern.sceneProfiles -isnot [Array] -or
 		@($koukuPattern.sceneProfiles).Count -gt 16) {
 		throw "KoukuSaydon pattern lanes are invalid: $($koukuPattern.patternId)"
 	}
 	$koukuWindowIds =
 		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$koukuContactGroups = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
 	for ($windowIndex = 0;
 		$windowIndex -lt @($koukuPattern.logicWindows).Count; ++$windowIndex) {
 		$window = $koukuPattern.logicWindows[$windowIndex]
-		Assert-ExactProperties $window @(
+		$windowProperties = @(
 			'windowId','kind','startMs','durationMs','sectorCount','sectorSymbols',
 			'centerX','centerZ','outerRadiusM','stopYawDegrees','halfAngleDegrees',
 			'maxDistanceM','poseIndex','threshold','shieldArcDegrees',
-			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout') `
-			'KoukuSaydon logic window'
+			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
+		if ($window.kind -ceq 'OBJECT_OVERLAP') { $windowProperties += @('targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') }
+		if ($window.kind -ceq 'OBJECT_CONTACT') { $windowProperties += @('contactTargets','contactGroupId','contactPriority') }
+		Assert-ExactProperties $window $windowProperties 'KoukuSaydon logic window'
 		Assert-JsonString $window.windowId 'KoukuSaydon logic window windowId'
 		Assert-StableId $window.windowId 'KoukuSaydon logic window windowId'
 		Assert-JsonString $window.kind 'KoukuSaydon logic window kind'
@@ -3340,11 +3373,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			Assert-JsonNumber $window.$field "KoukuSaydon logic window $field"
 		}
 		$windowKind = [string]$window.kind
-		if ($window.insideOutcome -cnotin @('SUCCESS','FAIL') -or ($window.insideOutcome -ceq 'FAIL' -and $windowKind -cne 'AREA_OVERLAP')) { throw 'KoukuSaydon insideOutcome is invalid' }
+		if ($window.insideOutcome -cnotin @('SUCCESS','FAIL') -or ($window.insideOutcome -ceq 'FAIL' -and $windowKind -cnotin @('AREA_OVERLAP','OBJECT_OVERLAP'))) { throw 'KoukuSaydon insideOutcome is invalid' }
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','AREA_OVERLAP','ENTER_AREA') -or
+				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or
@@ -3372,9 +3405,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			@($window.onTimeout).Count -ne 0) {
 			throw "KoukuSaydon end-tick window cannot carry a Timeout outcome: $($window.windowId)"
 		}
-		if ($windowKind -ceq 'STAGGER_WINDOW' -and @($window.onFail).Count -ne 0) {
-			throw "KoukuSaydon stagger window cannot carry a Fail outcome: $($window.windowId)"
+		if ($windowKind -cin @('STAGGER_WINDOW','ENTER_AREA','OBJECT_CONTACT','EXTERNAL_SIGNAL') -and @($window.onFail).Count -ne 0) {
+			throw "KoukuSaydon window cannot carry a Fail outcome: $($window.windowId)"
 		}
+		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onTimeout).Count -ne 0) { throw 'OBJECT_CONTACT has no Timeout results' }
+		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onSuccess | Where-Object { $_.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION' }).Count -gt 1) { throw 'OBJECT_CONTACT takes at most one contact motion result' }
+		if ($windowKind -cnotin @('STAGGER_WINDOW','EXTERNAL_SIGNAL') -and $window.endsPatternOnSuccess) { throw 'Only stagger or external signal may end the pattern on success' }
 		if ($windowKind -ceq 'ROULETTE_CARD_MATCH' -and @($window.cardRegions).Count -ne 8) {
 			throw "KoukuSaydon roulette window needs eight explicit regions: $($window.windowId)"
 		}
@@ -3391,6 +3427,17 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 			$symbolText = @($window.sectorSymbols | ForEach-Object { [string]$_ }) -join ','
 		}
+		$objectTargetFields = @()
+		if ($windowKind -ceq 'OBJECT_OVERLAP') {
+			Assert-StableId $window.targetWorldInstanceId 'OBJECT_OVERLAP target instance'
+			foreach ($field in @('targetWorldX','targetWorldZ','targetRadiusM')) { Assert-JsonNumber $window.$field "OBJECT_OVERLAP $field" }
+			if ([Math]::Abs([double]$window.targetWorldX) -gt 100000 -or [Math]::Abs([double]$window.targetWorldZ) -gt 100000 -or
+				[double]$window.targetRadiusM -lt .01 -or [double]$window.targetRadiusM -gt 1000) { throw 'OBJECT_OVERLAP target circle is invalid' }
+			$objectTargetFields = @($window.targetWorldInstanceId,
+				(Format-InvariantSignedFloat $window.targetWorldX 'OBJECT_OVERLAP target X'),
+				(Format-InvariantSignedFloat $window.targetWorldZ 'OBJECT_OVERLAP target Z'),
+				(Format-InvariantFloat $window.targetRadiusM 'OBJECT_OVERLAP target radius'))
+		}
 		$endsPatternFlag = if ([bool]$window.endsPatternOnSuccess) { 1 } else { 0 }
 		$patternRows.Add((@(
 			'PATTERNLOGIC', $koukuEncounterDocument.encounterId,
@@ -3405,9 +3452,50 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantFloat $window.maxDistanceM 'KoukuSaydon logic window maxDistanceM'),
 			[uint32]$window.poseIndex, [uint32]$window.threshold,
 			(Format-InvariantFloat $window.shieldArcDegrees 'KoukuSaydon logic window shieldArcDegrees'),
-			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) -join "`t"))
+			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) + $objectTargetFields -join "`t"))
+		$contactTargetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		if ($windowKind -ceq 'OBJECT_CONTACT') {
+			Assert-JsonString $window.contactGroupId 'OBJECT_CONTACT group ID'
+			Assert-JsonInteger $window.contactPriority 'OBJECT_CONTACT priority' 0 1000
+			$groupText = '-'
+			if (-not [string]::IsNullOrEmpty($window.contactGroupId)) {
+				Assert-StableId $window.contactGroupId 'OBJECT_CONTACT group ID'
+				$groupText = $window.contactGroupId
+				$groupKey = $groupText + '/' + [string][Math]::Ceiling([double]$window.startMs * 30 / 1000)
+				if (-not $koukuContactGroups.ContainsKey($groupKey)) {
+					$koukuContactGroups.Add($groupKey, @{ Start = $window.startMs; Duration = $window.durationMs; Priorities = [Collections.Generic.HashSet[int]]::new() })
+				}
+				$group = $koukuContactGroups[$groupKey]
+				if ($group.Start -ne $window.startMs -or $group.Duration -ne $window.durationMs -or -not $group.Priorities.Add([int]$window.contactPriority)) {
+					throw 'OBJECT_CONTACT group needs identical timing and distinct priorities'
+				}
+			}
+			$patternRows.Add((@('PATTERNLOGICCONTACTGROUP',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+				$window.windowId,$groupText,$window.contactPriority) -join "`t"))
+			if ($window.contactTargets -isnot [Array] -or @($window.contactTargets).Count -eq 0 -or @($window.contactTargets).Count -gt 64) { throw 'OBJECT_CONTACT needs 1..64 targets' }
+			foreach ($target in @($window.contactTargets)) {
+				Assert-ExactProperties $target @('targetWorldOccurrenceId','targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') 'OBJECT_CONTACT target'
+				Assert-JsonString $target.targetWorldOccurrenceId 'OBJECT_CONTACT target occurrence'
+				Assert-StableId $target.targetWorldOccurrenceId 'OBJECT_CONTACT target occurrence'
+				Assert-JsonString $target.targetWorldInstanceId 'OBJECT_CONTACT target instance'
+				Assert-StableId $target.targetWorldInstanceId 'OBJECT_CONTACT target instance'
+				foreach ($field in @('targetWorldX','targetWorldZ','targetRadiusM')) { Assert-JsonNumber $target.$field "OBJECT_CONTACT $field" }
+				if (-not $contactTargetIds.Add([string]$target.targetWorldOccurrenceId) -or
+					[Math]::Abs([double]$target.targetWorldX) -gt 100000 -or [Math]::Abs([double]$target.targetWorldZ) -gt 100000 -or
+					[double]$target.targetRadiusM -lt .01 -or [double]$target.targetRadiusM -gt 1000) { throw 'OBJECT_CONTACT target identity/circle is invalid' }
+				$cues = @($koukuPattern.worldSequences | Where-Object { $_.occurrenceId -ceq $target.targetWorldOccurrenceId })
+				if ($cues.Count -ne 1 -or $cues[0].sequenceInstanceId -cne $target.targetWorldInstanceId -or
+					$cues[0].anchorKind -cne 'NONE' -or $cues[0].startMs -gt $window.startMs -or
+					([uint64]$cues[0].startMs + [uint64]$cues[0].durationMs) -lt $windowEndMs) { throw 'OBJECT_CONTACT target must be an owned absolute WORLD cue covering the trigger' }
+				$patternRows.Add((@('PATTERNLOGICCONTACTTARGET',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+					$window.windowId,$target.targetWorldOccurrenceId,$target.targetWorldInstanceId,
+					(Format-InvariantSignedFloat $target.targetWorldX 'OBJECT_CONTACT target X'),
+					(Format-InvariantSignedFloat $target.targetWorldZ 'OBJECT_CONTACT target Z'),
+					(Format-InvariantFloat $target.targetRadiusM 'OBJECT_CONTACT radius')) -join "`t"))
+			}
+		}
 		if ($window.cardRegions -isnot [Array] -or @($window.cardRegions).Count -gt 64 -or
-			($windowKind -cin @('AREA_OVERLAP','ENTER_AREA') -and @($window.cardRegions).Count -eq 0)) {
+			($windowKind -cin @('AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT') -and @($window.cardRegions).Count -eq 0)) {
 			throw 'KoukuSaydon collider region list is invalid'
 		}
 		$regionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -3442,7 +3530,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			if ($hasWorldTrack) {
 				$track = $region.worldTrack
 				Assert-ExactProperties $track @('startMs','startDelayMs','durationMs','playbackSpeed','interpolation','baselinePosition','baselineYawDegrees','baselineScale','keys') 'Collider WORLD track'
-				if ($windowKind -cne 'ENTER_AREA' -or $region.anchorKind -ceq 'BOSS_CURRENT' -or
+				$isBossBoneTrack = $region.anchorKind -ceq 'BOSS_CURRENT'
+				if ($windowKind -cnotin @('ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT') -or ($isBossBoneTrack -and $windowKind -cne 'OBJECT_CONTACT') -or
 					$track.interpolation -cnotin @('LINEAR','SMOOTH_STEP') -or
 					@($track.baselinePosition).Count -ne 3 -or @($track.baselineScale).Count -ne 3 -or
 					$track.keys -isnot [Array] -or @($track.keys).Count -eq 0 -or @($track.keys).Count -gt 4096) { throw 'Collider WORLD track is invalid' }
@@ -3455,6 +3544,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					[Math]::Abs([double]$track.baselineScale[0]-[double]$track.baselineScale[2]) -gt 0.0001) { throw 'Collider WORLD clock/scale is invalid' }
 				$baselineNumbers = @($track.baselinePosition) + @($track.baselineYawDegrees) + @($track.baselineScale)
 				foreach ($number in $baselineNumbers) { Assert-JsonNumber $number 'Collider WORLD baseline' }
+				if ($isBossBoneTrack -and ($track.startMs -ne $window.startMs -or $track.durationMs -ne $window.durationMs -or
+					$track.startDelayMs -ne 0 -or $track.playbackSpeed -ne 1 -or $track.interpolation -cne 'LINEAR' -or
+					$track.baselineYawDegrees -ne 0 -or @($track.baselinePosition | Where-Object { [double]$_ -ne 0 }).Count -ne 0 -or
+					@($track.baselineScale | Where-Object { [double]$_ -ne 1 }).Count -ne 0 -or
+					$track.keys[0].timeMs -ne 0 -or $track.keys[-1].timeMs -ne $track.durationMs)) { throw 'Boss Bone Collider track must use the exact contact clock and identity baseline' }
 				$baselineText = @($baselineNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'Collider WORLD baseline' })
 				$smoothFlag = if ($track.interpolation -ceq 'SMOOTH_STEP') { 1 } else { 0 }
 				$patternRows.Add((@('PATTERNLOGICREGIONWORLD',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
@@ -3469,6 +3563,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					$lastKeyTime = $key.timeMs
 					$keyNumbers = @($key.positionOffset) + @($key.rotationY,$key.rotationW) + @($key.scaleMultiplier)
 					foreach ($number in $keyNumbers) { Assert-JsonNumber $number 'Collider WORLD key geometry' }
+					if ($isBossBoneTrack -and ($key.rotationY -ne 0 -or $key.rotationW -ne 1 -or -not $key.visible -or
+						@($key.scaleMultiplier | Where-Object { [double]$_ -ne 1 }).Count -ne 0)) { throw 'Boss Bone Collider keys must preserve target yaw and authored scale' }
 					if (@($key.scaleMultiplier | Where-Object { [double]$_ -lt 0 }).Count -gt 0 -or
 						[Math]::Abs([double]$key.scaleMultiplier[0]-[double]$key.scaleMultiplier[2]) -gt 0.0001 -or
 						[Math]::Abs([double]$key.rotationY*[double]$key.rotationY+[double]$key.rotationW*[double]$key.rotationW-1) -gt 0.001) { throw 'Collider WORLD quaternion/scale is invalid' }
@@ -3486,8 +3582,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$outcomes = @($window.$slotProperty)
 			for ($ordinal = 0; $ordinal -lt $outcomes.Count; ++$ordinal) {
 				$outcome = $outcomes[$ordinal]
-				Assert-ExactProperties $outcome @(
-					'kind','percent','durationMs','patternId') 'KoukuSaydon logic outcome'
+				$outcomeProperties = @('kind','percent','durationMs','patternId')
+				if ($outcome.kind -ceq 'PLAY_WORLD_OBJECT_MOTION') { $outcomeProperties += @('targetWorldInstanceId','motionInstanceId') }
+				if ($outcome.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') { $outcomeProperties += 'contactMotions' }
+				if ($outcome.kind -ceq 'COMPLETE_LOGIC_WINDOW') { $outcomeProperties += @('targetLogicOccurrenceId','contactTargetWorldOccurrenceId') }
+				Assert-ExactProperties $outcome $outcomeProperties 'KoukuSaydon logic outcome'
 				Assert-JsonString $outcome.kind 'KoukuSaydon logic outcome kind'
 				Assert-JsonInteger $outcome.percent 'KoukuSaydon logic outcome percent' 0 100
 				Assert-JsonInteger $outcome.durationMs `
@@ -3496,14 +3595,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					throw "KoukuSaydon logic outcome patternId must be text: $($window.windowId)"
 				}
 				$outcomeKind = [string]$outcome.kind
+				$isContactResult = $outcomeKind -cin @('PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW')
+				if ($isContactResult -ne ($windowKind -ceq 'OBJECT_CONTACT')) { throw 'OBJECT_CONTACT requires contact motion or window signal results' }
+				if ($windowKind -ceq 'OBJECT_OVERLAP' -and ($outcomeKind -cne 'PLAY_WORLD_OBJECT_MOTION' -or
+					$outcome.targetWorldInstanceId -cne $window.targetWorldInstanceId)) { throw 'OBJECT_OVERLAP Result must target the same World Object' }
 				$followup = [string]$outcome.patternId
 				$isFollowup = $outcomeKind -ceq 'FOLLOWUP_PATTERN'
 				$hasFollowup = -not [string]::IsNullOrEmpty($followup)
 				if ($outcomeKind -cnotin @(
 						'INSTANT_DEATH','MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT',
-						'CLOWN_TRANSFORM','FOLLOWUP_PATTERN') -or
+						'CLOWN_TRANSFORM','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW') -or
 					$isFollowup -ne $hasFollowup -or
-					($isFollowup -and $windowKind -cne 'STAGGER_WINDOW') -or
+					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','EXTERNAL_SIGNAL')) -or
 					($outcomeKind -cin @('MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT') -and
 						[uint32]$outcome.percent -eq 0)) {
 					throw "KoukuSaydon logic outcome is invalid: $($window.windowId)/$slotName/$ordinal"
@@ -3512,12 +3615,51 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					Assert-StableId $followup 'KoukuSaydon logic outcome patternId'
 					$koukuFollowupTargets.Add($followup)
 				}
+				$motionIds = @()
+				if ($outcomeKind -ceq 'PLAY_WORLD_OBJECT_MOTION') {
+					Assert-StableId $outcome.targetWorldInstanceId 'KoukuSaydon motion target instance ID'
+					Assert-StableId $outcome.motionInstanceId 'KoukuSaydon saved motion instance ID'
+					if ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0) { throw 'World Object motion outcome does not take percent or durationMs' }
+					if (@($koukuPattern.worldSequences | Where-Object { $_.sequenceInstanceId -ceq $outcome.targetWorldInstanceId }).Count -gt 1) { throw 'Legacy World motion target is ambiguous; use contact occurrence binding' }
+					$motionIds = @($outcome.targetWorldInstanceId, $outcome.motionInstanceId)
+				}
 				$followupText = if ($hasFollowup) { $followup } else { '-' }
 				$patternRows.Add((@(
 					'PATTERNLOGICOUTCOME', $koukuEncounterDocument.encounterId,
 					$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
 					$outcomeKind, [uint32]$outcome.percent, [uint32]$outcome.durationMs,
-					$followupText) -join "`t"))
+					$followupText) + $motionIds -join "`t"))
+				if ($isContactResult -and ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0)) { throw 'Contact result does not take percent or durationMs' }
+				if ($outcomeKind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') {
+					if ($outcome.contactMotions -isnot [Array] -or @($outcome.contactMotions).Count -ne $contactTargetIds.Count) { throw 'Contact motion must map every candidate' }
+					$mapped = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+					foreach ($mapping in @($outcome.contactMotions)) {
+						Assert-ExactProperties $mapping @('targetWorldOccurrenceId','motionInstanceId') 'Contact motion'
+						Assert-JsonString $mapping.targetWorldOccurrenceId 'Contact motion target'
+						Assert-StableId $mapping.targetWorldOccurrenceId 'Contact motion target'
+						Assert-JsonString $mapping.motionInstanceId 'Contact motion instance'
+						Assert-StableId $mapping.motionInstanceId 'Contact motion instance'
+						if (-not $contactTargetIds.Contains($mapping.targetWorldOccurrenceId) -or -not $mapped.Add($mapping.targetWorldOccurrenceId)) { throw 'Contact motion target is missing or duplicated' }
+						$patternRows.Add((@('PATTERNLOGICCONTACTMOTION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+							$window.windowId,$slotName,$ordinal,$mapping.targetWorldOccurrenceId,$mapping.motionInstanceId) -join "`t"))
+					}
+				} elseif ($outcomeKind -ceq 'COMPLETE_LOGIC_WINDOW') {
+					Assert-JsonString $outcome.targetLogicOccurrenceId 'Complete window target'
+					Assert-StableId $outcome.targetLogicOccurrenceId 'Complete window target'
+					Assert-JsonString $outcome.contactTargetWorldOccurrenceId 'Complete window contact filter'
+					$signalTargets = @($koukuPattern.logicWindows | Where-Object { $_.windowId -ceq $outcome.targetLogicOccurrenceId })
+					if ($signalTargets.Count -ne 1 -or $signalTargets[0].kind -cne 'EXTERNAL_SIGNAL' -or
+						$signalTargets[0].startMs -gt $window.startMs -or
+						([uint64]$signalTargets[0].startMs + [uint64]$signalTargets[0].durationMs) -lt $windowEndMs) { throw 'Complete window target must be an enclosing EXTERNAL_SIGNAL window' }
+					$contactFilter = '-'
+					if (-not [string]::IsNullOrEmpty($outcome.contactTargetWorldOccurrenceId)) {
+						Assert-StableId $outcome.contactTargetWorldOccurrenceId 'Complete window contact filter'
+						if (-not $contactTargetIds.Contains($outcome.contactTargetWorldOccurrenceId)) { throw 'Complete window contact filter must name a candidate' }
+						$contactFilter = $outcome.contactTargetWorldOccurrenceId
+					}
+					$patternRows.Add((@('PATTERNLOGICSIGNAL',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+						$window.windowId,$slotName,$ordinal,$outcome.targetLogicOccurrenceId,$contactFilter) -join "`t"))
+				}
 			}
 		}
 	}
@@ -3566,8 +3708,13 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$clone, $hours[0], $hours[1], $hours[2], 1, (Format-InvariantSignedFloat $trigger.faceCenterYawOffsetDegrees 'KoukuSaydon face-center offset')) -join "`t"))
 	}
 	foreach ($worldSequence in @($koukuPattern.worldSequences)) {
-		Assert-ExactProperties $worldSequence @(
-			'sequenceInstanceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition') 'KoukuSaydon world sequence cue'
+		$worldSequenceProperties = @('sequenceInstanceId','occurrenceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition')
+		if ($null -ne $worldSequence.PSObject.Properties['walkableSurface']) { $worldSequenceProperties += 'walkableSurface' }
+		$hasPlacement = $null -ne $worldSequence.PSObject.Properties['placement']
+		if ($hasPlacement) { $worldSequenceProperties += 'placement' }
+		Assert-ExactProperties $worldSequence $worldSequenceProperties 'KoukuSaydon world sequence cue'
+        Assert-JsonString $worldSequence.occurrenceId 'World source occurrenceId'
+        Assert-StableId $worldSequence.occurrenceId 'World source occurrenceId'
 		Assert-JsonString $worldSequence.sequenceInstanceId `
 			'KoukuSaydon world sequence cue sequenceInstanceId'
 		Assert-StableId $worldSequence.sequenceInstanceId `
@@ -3584,6 +3731,21 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		if (@($worldSequence.positionOffset).Count -ne 3 -or @($worldSequence.anchorPosition).Count -ne 3) { throw 'World sequence offset and anchor need three coordinates' }
 		if ($worldSequence.anchorKind -notin @('NONE','BOSS_SPAWN')) { throw 'World sequence anchorKind is unsupported' }
+		if ($hasPlacement) {
+			$placement = $worldSequence.placement
+			Assert-ExactProperties $placement @('position','rotationDegrees','scale') 'WORLD occurrence placement'
+			foreach ($field in @('position','rotationDegrees','scale')) {
+				if ($placement.$field -isnot [Array] -or @($placement.$field).Count -ne 3) { throw "WORLD placement $field needs three coordinates" }
+				foreach ($number in $placement.$field) { Assert-JsonNumber $number "WORLD placement $field" }
+			}
+			if (@($placement.position | Where-Object { [math]::Abs([double]$_) -gt 100000 }).Count -ne 0 -or
+				@($placement.rotationDegrees | Where-Object { [math]::Abs([double]$_) -gt 36000 }).Count -ne 0 -or
+				@($placement.scale | Where-Object { [double]$_ -lt .001 -or [double]$_ -gt 1000 }).Count -ne 0) { throw 'WORLD placement exceeds transform bounds' }
+			if ($worldSequence.anchorKind -cne 'NONE' -or
+				@($worldSequence.positionOffset | Where-Object { [double]$_ -ne 0 }).Count -ne 0 -or
+				@($worldSequence.anchorPosition | Where-Object { [double]$_ -ne 0 }).Count -ne 0 -or
+				$null -ne $worldSequence.PSObject.Properties['walkableSurface']) { throw 'WORLD placement replaces legacy offsets and cannot own a Map walkable surface' }
+		}
 		$patternRows.Add((@(
 			'PATTERNWORLDSEQUENCE', $koukuEncounterDocument.encounterId,
 			$koukuPattern.patternId, [uint32]$worldSequence.startMs,
@@ -3597,7 +3759,39 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $worldSequence.anchorPosition[0] 'World anchor X'),
 			(Format-InvariantSignedFloat $worldSequence.anchorPosition[1] 'World anchor Y'),
 			(Format-InvariantSignedFloat $worldSequence.anchorPosition[2] 'World anchor Z'),
-			[uint32]$worldSequence.durationMs) -join "`t"))
+			[uint32]$worldSequence.durationMs, $worldSequence.occurrenceId) -join "`t"))
+		if ($hasPlacement) {
+			$placementNumbers = @($placement.position) + @($placement.rotationDegrees) + @($placement.scale)
+			$placementText = @($placementNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'WORLD placement transform' })
+			$patternRows.Add((@('PATTERNWORLDPLACEMENT',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,$worldSequence.occurrenceId) + $placementText -join "`t"))
+		}
+		if ($null -ne $worldSequence.PSObject.Properties['walkableSurface']) {
+			$surface = $worldSequence.walkableSurface
+			Assert-ExactProperties $surface @('centerX','centerZ','heightY','radiusM','windows') 'World walkable surface'
+			foreach ($field in @('centerX','centerZ','heightY','radiusM')) {
+				Assert-JsonNumber $surface.$field "World surface $field"
+				if ([math]::Abs([double]$surface.$field) -gt 100000) { throw "World surface $field exceeds runtime range" }
+			}
+			if ($surface.radiusM -le 0 -or $surface.radiusM -gt 1000 -or $surface.windows -isnot [Array] -or
+				@($surface.windows).Count -lt 1 -or @($surface.windows).Count -gt 32) { throw 'World surface radius/windows invalid' }
+			$previousEnd = 0
+			$cueEndTick = [uint32][math]::Ceiling([double]$worldSequence.durationMs * 30.0 / 1000.0)
+			foreach ($window in $surface.windows) {
+				Assert-ExactProperties $window @('startTick','endTick') 'World surface window'
+				Assert-JsonInteger $window.startTick 'World surface startTick' 0 18000
+				Assert-JsonInteger $window.endTick 'World surface endTick' 1 18000
+				if ($window.startTick -lt $previousEnd -or $window.startTick -ge $window.endTick -or
+					$window.endTick -gt $cueEndTick) { throw 'World surface windows overlap or exceed the WORLD cue' }
+				$previousEnd = $window.endTick
+				$patternRows.Add((@('PATTERNWORLDSUPPORT', $koukuEncounterDocument.encounterId,
+					$koukuPattern.patternId, $worldSequence.occurrenceId, [uint32]$window.startTick, [uint32]$window.endTick,
+					(Format-InvariantSignedFloat $surface.centerX 'World surface X'),
+					(Format-InvariantSignedFloat $surface.centerZ 'World surface Z'),
+					(Format-InvariantSignedFloat $surface.heightY 'World surface height'),
+					(Format-InvariantFloat $surface.radiusM 'World surface radius')) -join "`t"))
+			}
+		}
+
 	}
 	foreach ($sceneProfile in @($koukuPattern.sceneProfiles)) {
 		Assert-ExactProperties $sceneProfile @(
@@ -3627,6 +3821,127 @@ foreach ($followupTarget in $koukuFollowupTargets) {
 		throw "KoukuSaydon follow-up outcome names a pattern outside the Product: $followupTarget"
 	}
 }
+
+# Bundle members resolve the same admitted Product patterns; they never clone their stage rows.
+if ($koukuEncounterDocument.folders -isnot [Array] -or @($koukuEncounterDocument.folders).Count -gt 4096 -or
+    $koukuEncounterDocument.bundles -isnot [Array] -or @($koukuEncounterDocument.bundles).Count -gt 4096) {
+    throw 'KoukuSaydon hierarchy collections are invalid.'
+}
+$koukuFolderById = @{}
+foreach ($folder in @($koukuEncounterDocument.folders)) {
+    Assert-ExactProperties $folder @('folderId','gateId','displayName') 'KoukuSaydon folder'
+    foreach ($field in @('folderId','gateId','displayName')) { Assert-JsonString $folder.$field "Folder $field" }
+    Assert-StableId $folder.folderId 'folderId'
+    if ($folder.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $koukuFolderById.ContainsKey([string]$folder.folderId)) {
+        throw 'Duplicate folder or unknown Gate.'
+    }
+    $koukuFolderById[[string]$folder.folderId] = $folder
+}
+# Parent classification does not alter the Pattern's authoritative playback rows.
+foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
+    if ($null -eq $koukuPattern.PSObject.Properties['folderId']) { continue }
+    Assert-JsonString $koukuPattern.folderId 'KoukuSaydon pattern folderId'
+    Assert-StableId $koukuPattern.folderId 'KoukuSaydon pattern folderId'
+    if (-not $koukuFolderById.ContainsKey([string]$koukuPattern.folderId) -or
+        [string]$koukuFolderById[[string]$koukuPattern.folderId].gateId -cne [string]$koukuPattern.gateId) {
+        throw "KoukuSaydon Pattern requires a same-Gate Parent: $($koukuPattern.patternId)"
+    }
+}
+$koukuBundleIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($bundle in @($koukuEncounterDocument.bundles)) {
+    Assert-ExactProperties $bundle @('bundleId','gateId','folderId','displayName','durationMs','members') 'KoukuSaydon bundle'
+    foreach ($field in @('bundleId','gateId','folderId','displayName')) { Assert-JsonString $bundle.$field "Bundle $field" }
+    Assert-StableId $bundle.bundleId 'bundleId'
+    Assert-JsonInteger $bundle.durationMs 'bundle durationMs' 1 600000
+    if (-not $koukuBundleIds.Add([string]$bundle.bundleId) -or -not $koukuFolderById.ContainsKey([string]$bundle.folderId) -or
+        [string]$koukuFolderById[[string]$bundle.folderId].gateId -cne [string]$bundle.gateId -or
+        $bundle.members -isnot [Array] -or @($bundle.members).Count -lt 1 -or @($bundle.members).Count -gt 8) {
+        throw 'Bundle identity, folder/Gate or member count is invalid.'
+    }
+    $memberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $memberPatterns = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $memberTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $statefulOwners = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $sceneOwners = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $followupSceneOwners = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $sceneWindows = [Collections.Generic.List[object]]::new()
+    $worldOwners = @{}
+    $patternRows.Add((@('PATTERNBUNDLE', $bundle.bundleId, $koukuEncounterDocument.encounterId, $bundle.gateId) -join "`t"))
+    foreach ($member in @($bundle.members)) {
+        Assert-ExactProperties $member @('memberId','patternId','targetBossPlacementId','actorProfileId','startOffsetMs') 'Bundle member'
+        foreach ($field in @('memberId','patternId','targetBossPlacementId','actorProfileId')) {
+            Assert-JsonString $member.$field "Bundle member $field"
+            Assert-StableId $member.$field "Bundle member $field"
+        }
+        Assert-JsonInteger $member.startOffsetMs 'member startOffsetMs' 0 600000
+        if (-not $memberIds.Add([string]$member.memberId) -or -not $memberPatterns.Add([string]$member.patternId) -or
+            -not $memberTargets.Add([string]$member.targetBossPlacementId) -or -not $koukuPatternById.ContainsKey([string]$member.patternId)) {
+            throw 'Bundle contains duplicate member/pattern/target or missing Pattern.'
+        }
+        $child = $koukuPatternById[[string]$member.patternId]
+        if ([string]$child.gateId -cne [string]$bundle.gateId -or [string]$child.targetBossPlacementId -cne [string]$member.targetBossPlacementId -or
+            [string]$child.actorProfileId -cne [string]$member.actorProfileId) { throw 'Bundle child Gate/target/model mismatch.' }
+        [uint64]$childDuration = 0
+        foreach ($stage in @($child.stages)) { $childDuration += [uint64]$stage.durationMs }
+        if ($childDuration + [uint64]$member.startOffsetMs -gt [uint64]$bundle.durationMs) { throw 'Bundle member exceeds preview span.' }
+        # Member start alone uses ceil-to-30-Hz; presentation rows retain authored milliseconds.
+        [uint64]$offsetUnits = [uint64][Math]::Ceiling([double]$member.startOffsetMs * 30.0 / 1000.0) * 1000
+        foreach ($scene in @($child.sceneProfiles)) {
+            $sceneWindows.Add([pscustomobject]@{ Owner = [string]$member.memberId;
+                Start = $offsetUnits + [uint64]$scene.startMs * 30;
+                End = $offsetUnits + ([uint64]$scene.startMs + [uint64]$scene.durationMs) * 30 })
+        }
+        $pending = [Collections.Generic.Stack[string]]::new()
+        $pending.Push([string]$member.patternId)
+        $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        while ($pending.Count -gt 0) {
+            $patternId = $pending.Pop()
+            if (-not $visited.Add($patternId)) { continue }
+            if (-not $koukuPatternById.ContainsKey($patternId)) { throw 'Bundle follow-up Pattern is missing.' }
+            $reachable = $koukuPatternById[$patternId]
+            if ([string]$reachable.gateId -cne [string]$bundle.gateId -or [string]$reachable.targetBossPlacementId -cne [string]$member.targetBossPlacementId) {
+                throw 'Bundle follow-up must retain Gate and target boss.'
+            }
+            if (@($reachable.sceneProfiles).Count -gt 0) { [void]$sceneOwners.Add([string]$member.memberId) }
+            foreach ($trigger in @($reachable.mechanicTriggers)) {
+                if ($trigger.kind -ceq 'HUD_ENTER') { [void]$statefulOwners.Add([string]$member.memberId) }
+            }
+            foreach ($window in @($reachable.logicWindows)) {
+                if ($window.kind -cin @('POSE_INPUT','ROULETTE_CARD_MATCH')) { [void]$statefulOwners.Add([string]$member.memberId) }
+                foreach ($outcome in @($window.onSuccess) + @($window.onFail) + @($window.onTimeout)) {
+                    if ($outcome.kind -ceq 'CLOWN_TRANSFORM') { [void]$statefulOwners.Add([string]$member.memberId) }
+                    if ($outcome.kind -ceq 'FOLLOWUP_PATTERN') {
+                        $followupId = [string]$outcome.patternId
+                        if ($koukuPatternById.ContainsKey($followupId) -and @($koukuPatternById[$followupId].sceneProfiles).Count -gt 0) {
+                            [void]$followupSceneOwners.Add([string]$member.memberId)
+                        }
+                        $pending.Push($followupId)
+                    }
+                }
+            }
+            foreach ($worldCue in @($reachable.worldSequences)) {
+                $worldId = [string]$worldCue.sequenceInstanceId
+                if ($worldOwners.ContainsKey($worldId) -and [string]$worldOwners[$worldId] -cne [string]$member.memberId) {
+                    throw 'Bundle members share a live WORLD sequence instance.'
+                }
+                $worldOwners[$worldId] = [string]$member.memberId
+            }
+        }
+        $patternRows.Add((@('PATTERNBUNDLEMEMBER', $bundle.bundleId, $member.memberId, $member.patternId,
+            $member.targetBossPlacementId, [uint32]$member.startOffsetMs) -join "`t"))
+    }
+    if ($statefulOwners.Count -gt 1) { throw 'Bundle contains multiple owners of shared player mode.' }
+    if ($followupSceneOwners.Count -gt 0 -and $sceneOwners.Count -gt 1) { throw 'Conditional follow-up Scene Profile conflicts with another owner.' }
+    for ($left = 0; $left -lt $sceneWindows.Count; ++$left) {
+        for ($right = $left + 1; $right -lt $sceneWindows.Count; ++$right) {
+            $a = $sceneWindows[$left]; $b = $sceneWindows[$right]
+            if ($a.Owner -cne $b.Owner -and $a.Start -lt $b.End -and $b.Start -lt $a.End) {
+                throw 'Bundle overlaps global Scene Profile owners.'
+            }
+        }
+    }
+}
+
 if (@($koukuEncounterDocument.playAllPatternIds).Count -ne
 	$koukuProductOrder.Count) {
 	throw 'KoukuSaydon playAllPatternIds count differs from Product patterns.'

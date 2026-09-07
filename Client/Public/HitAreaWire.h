@@ -13,6 +13,8 @@ struct HIT_AREA_SHAPE
 	int32_t iAreaHeight = {};
 	int32_t iAreaOffsetX = {};
 	int32_t iAreaInner = {};
+	// Presentation-only BOX volume. Existing skill wires keep their flat footprint.
+	f32_t fBoxHalfHeightM = {};
 };
 
 class CHitAreaWire final

@@ -429,6 +429,8 @@ namespace Client
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
 		/* Server-decided world sequence starts, in arrival order. The caller
 		   takes them so one start is never played twice. */
+		const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_KoukuBundleState; }
+		std::uint32_t Get_LastServerTick() const { return m_iLastServerTick; }
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> Consume_WorldSequencePlays()
 		{
 			auto pending = std::move(m_PendingWorldSequencePlays);
@@ -648,6 +650,7 @@ namespace Client
 		bool m_hasPendingRaidEntryVote = false;
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingWorldSequencePlays;
+		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE m_KoukuBundleState;
 		std::string m_strInteractPromptTriggerId;
 
 		struct CHAT_BUBBLE_ENTRY

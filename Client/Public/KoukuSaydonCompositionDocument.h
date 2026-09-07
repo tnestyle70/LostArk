@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -46,11 +47,12 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 5u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "AREA_OVERLAP" };
-	inline constexpr std::array<const char_t*, 5u> KOUKU_SAYDON_OUTCOME_KINDS = {
+	inline constexpr std::array<const char_t*, 7u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL" };
+	inline constexpr std::array<const char_t*, 8u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
-		"CLOWN_TRANSFORM", "FOLLOWUP_PATTERN" };
+		"CLOWN_TRANSFORM", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
+		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW" };
 	inline constexpr std::array<const char_t*, 4u> KOUKU_SAYDON_CARD_SYMBOLS = {
 		"HEART", "SPADE", "CLUB", "DIAMOND" };
 	inline constexpr std::size_t KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT = 4u;
@@ -77,15 +79,23 @@ namespace Client
 		const KOUKU_SAYDON_OUTCOME_SLOT slot)
 	{
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
-			return judgementKind != "GAZE_REAL_BOSS";
+			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
 		if (KOUKU_SAYDON_OUTCOME_SLOT::FAIL == slot)
-			return judgementKind != "STAGGER_WINDOW" && judgementKind != "ENTER_AREA";
+			return judgementKind != "STAGGER_WINDOW" && judgementKind != "ENTER_AREA" &&
+				judgementKind != "OBJECT_CONTACT" && judgementKind != "EXTERNAL_SIGNAL";
 		return true;
 	}
 
 	/* One reusable Logic definition owned by the composition document. The
 	   identity, name and type are always present; the typed values below are
 	   read as optional keys so a definition can be named first and typed later. */
+	struct KOUKU_SAYDON_CONTACT_MOTION final
+	{
+		std::string strTargetWorldOccurrenceId;
+		std::string strMotionInstanceId;
+		bool operator==(const KOUKU_SAYDON_CONTACT_MOTION&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION final
 	{
 		std::string strLogicId;
@@ -113,6 +123,9 @@ namespace Client
 		std::uint32_t iPercent = 0u;
 		std::uint32_t iDurationMs = 0u;
 		std::string strFollowupPatternId;
+		std::string strTargetWorldInstanceId;
+		std::string strMotionInstanceId;
+		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
 		std::string strHudMode;
@@ -120,6 +133,12 @@ namespace Client
 		std::string strClonePatternId;
 		std::vector<std::uint32_t> ClockHours;
 		double fFaceCenterYawOffsetDegrees = 0.0;
+		std::vector<std::string> TargetWorldOccurrenceIds;
+		std::string strContactGroupId;
+		std::uint32_t iContactPriority = 0u;
+		std::vector<KOUKU_SAYDON_CONTACT_MOTION> ContactMotions;
+		std::string strTargetLogicOccurrenceId;
+		std::string strContactTargetWorldOccurrenceId;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION&) const = default;
@@ -128,7 +147,12 @@ namespace Client
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
 		return logic.strLogicType == "DURATION" ||
-			(logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ENTER_AREA");
+			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
+	}
+	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
+	{
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "EXTERNAL_SIGNAL") ||
+			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
@@ -197,6 +221,8 @@ namespace Client
 		std::string strWorldId;
 		std::string strDisplayName;
 		std::string strSequenceInstanceId;
+		// Optional parent Object; sequenceInstanceId pins the initial state chosen at Append.
+		std::string strObjectResourceId;
 		std::array<double, 3u> PositionOffset{};
 		std::string strAnchorKind = "NONE";
 		std::array<double, 3u> AnchorPosition{};
@@ -206,6 +232,15 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION&) const = default;
 	};
 
+	// Absolute WORLD frame of one cloned Object occurrence; saved motion stays local.
+	struct KOUKU_SAYDON_WORLD_PLACEMENT final
+	{
+		std::array<double, 3u> Position{};
+		std::array<double, 3u> RotationDegrees{};
+		std::array<double, 3u> Scale{ 1.0, 1.0, 1.0 };
+		bool operator==(const KOUKU_SAYDON_WORLD_PLACEMENT&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE final
 	{
 		std::string strOccurrenceId;
@@ -213,6 +248,8 @@ namespace Client
 		std::uint32_t iStartMs = 0u;
 		std::uint32_t iDurationMs = 0u;
 		f32_t fPlaybackSpeed = 1.f;
+
+		std::optional<KOUKU_SAYDON_WORLD_PLACEMENT> Placement;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE&) const = default;
@@ -287,6 +324,7 @@ namespace Client
 		bool_t bFollowBoss = true;
 		bool_t bDebugRender = true;
 		std::string strBone;
+		std::string strBoneTarget = "BODY";
 		// Each placed region owns its card, independently of the reusable shape.
 		std::string strRegionId;
 		std::string strCardSymbol = "NONE";
@@ -317,6 +355,10 @@ namespace Client
 	{
 		std::string strPatternId;
 		std::string strActorProfileId;
+		std::string strGateId = "GATE1";
+		std::string strTargetBossPlacementId;
+		// Independent Pattern placement; bundle membership remains in Members.
+		std::string strFolderId;
 		std::string strDisplayName;
 		std::string strAuthoringStatus;
 		std::string strCategory;
@@ -328,6 +370,7 @@ namespace Client
 		std::uint32_t iNextSceneProfileOccurrenceOrdinal = 1u;
 		std::uint32_t iNextPresentationOccurrenceOrdinal = 1u;
 		bool_t bResetBossToSpawn = false;
+		std::optional<double> ResetBossYawDegrees;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
 		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
 		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE> SummonOccurrences;
@@ -342,9 +385,45 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN&) const = default;
 	};
 
+	struct KOUKU_SAYDON_COMPOSITION_FOLDER final
+	{
+		std::string strFolderId;
+		std::string strGateId;
+		std::string strDisplayName;
+		std::string strLoadError;
+		std::string strPreservedJson;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_FOLDER&) const = default;
+	};
+
+	struct KOUKU_SAYDON_COMPOSITION_BUNDLE_MEMBER final
+	{
+		std::string strMemberId;
+		std::string strPatternId;
+		std::uint32_t iStartOffsetMs = 0u;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_BUNDLE_MEMBER&) const = default;
+	};
+
+	struct KOUKU_SAYDON_COMPOSITION_BUNDLE final
+	{
+		std::string strBundleId;
+		std::string strGateId;
+		std::string strFolderId;
+		std::string strDisplayName;
+		std::string strAuthoringStatus = "DRAFT";
+		std::uint32_t iNextMemberOrdinal = 1u;
+		std::uint32_t iNextSceneProfileOccurrenceOrdinal = 1u;
+		std::uint32_t iNextPresentationOccurrenceOrdinal = 1u;
+		std::vector<KOUKU_SAYDON_COMPOSITION_BUNDLE_MEMBER> Members;
+		std::vector<KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> PresentationOccurrences;
+		std::string strLoadError;
+		std::string strPreservedJson;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_BUNDLE&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_DOCUMENT final
 	{
-		std::uint32_t iFormatVersion = 2u;
+		std::uint32_t iFormatVersion = 3u;
 		std::uint32_t iRevision = 1u;
 		std::string strCompositionId;
 		std::string strEncounterId;
@@ -353,6 +432,8 @@ namespace Client
 		std::string strAreaId;
 		std::uint32_t iFixedTickHz = 30u;
 		std::uint32_t iNextPatternOrdinal = 1u;
+		std::uint32_t iNextFolderOrdinal = 1u;
+		std::uint32_t iNextBundleOrdinal = 1u;
 		std::uint32_t iNextLogicOrdinal = 1u;
 		std::uint32_t iNextSummonOrdinal = 1u;
 		std::uint32_t iNextWorldOrdinal = 1u;
@@ -366,6 +447,8 @@ namespace Client
 		std::vector<KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION> SceneProfiles;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> PresentationResources;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN> Patterns;
+		std::vector<KOUKU_SAYDON_COMPOSITION_FOLDER> Folders;
+		std::vector<KOUKU_SAYDON_COMPOSITION_BUNDLE> Bundles;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_DOCUMENT&) const = default;
 	};
@@ -389,6 +472,10 @@ namespace Client
 
 		static std::filesystem::path Resolve_Path();
 		static bool_t Is_KnownProfile(std::string_view profileId);
+		static bool_t Is_KnownGate(std::string_view gateId);
+		static std::string_view Resolve_DefaultPlacementId(std::string_view gateId, std::string_view actorProfileId);
+		static std::string_view Resolve_BossArchetypeId(std::string_view placementId);
+		static std::string_view Resolve_ActorProfileForPlacement(std::string_view placementId);
 		// Source profile 07 shares actor 05; unknown profiles return an empty view.
 		static std::string_view Resolve_ActorProfileId(std::string_view sourceProfileId);
 		static bool_t Parse_Text(

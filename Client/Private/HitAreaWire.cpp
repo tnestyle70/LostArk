@@ -74,6 +74,28 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 	case 2:
 	{
 		const f32_t fHalfWidth = Shape.iAreaAngle * UNITS_TO_METERS * 0.5f;
+		if (std::isfinite(Shape.fBoxHalfHeightM) && Shape.fBoxHalfHeightM > 0.f)
+		{
+			// Size is already baked into Shape; retain only the authored pivot orientation.
+			vector_t axes[3];
+			for (int32_t axis = 0; axis < 3; ++axis)
+			{
+				const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(WorldRoot.r[axis]));
+				if (!std::isfinite(lengthSquared) || lengthSquared < 1e-12f) return;
+				axes[axis] = XMVectorSetW(XMVector3Normalize(WorldRoot.r[axis]), 0.f);
+			}
+			const vector_t center = vPosition + axes[2] * (fOffset + fRange * 0.5f);
+			vector_t corners[8];
+			for (int32_t corner = 0; corner < 8; ++corner)
+				corners[corner] = center + axes[0] * ((corner & 1) ? fHalfWidth : -fHalfWidth) +
+					axes[1] * ((corner & 2) ? Shape.fBoxHalfHeightM : -Shape.fBoxHalfHeightM) +
+					axes[2] * ((corner & 4) ? fRange * 0.5f : -fRange * 0.5f);
+			constexpr int32_t edges[12][2] = {
+				{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3},
+				{4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+			for (const auto& edge : edges) Draw_Segment(corners[edge[0]], corners[edge[1]]);
+			break;
+		}
 		const vector_t vNearL = XMVectorSetY(
 			vPosition + vLook * fOffset - vRight * fHalfWidth, fGroundY);
 		const vector_t vNearR = XMVectorSetY(

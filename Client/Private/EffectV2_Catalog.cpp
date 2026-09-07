@@ -1,9 +1,11 @@
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
+#include "DataJson.h"
 
 #include <bcrypt.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -181,7 +183,10 @@ namespace
 
 			const std::string strId = strFileName.substr(
 				0u, strFileName.size() - Suffix.size());
-			if (!Client::CEffectV2Document::Is_ValidEffectId(strId))
+			if (strId.empty() || strId.size() > (Suffix == GROUP_SUFFIX ? 160u : 80u) ||
+				!std::all_of(strId.begin(), strId.end(), [](const unsigned char Character)
+				{ return (Character >= 'a' && Character <= 'z') || (Character >= 'A' && Character <= 'Z') ||
+					(Character >= '0' && Character <= '9') || Character == '.' || Character == '_' || Character == '-'; }))
 			{
 				Diagnose(Diagnostics,
 					"Skipped Effect V2 source with invalid stable ID: " +
@@ -973,6 +978,159 @@ Client::CEffectV2Catalog& Client::CEffectV2Catalog::Get()
 Client::CEffectV2Catalog::CEffectV2Catalog()
 	: m_pSnapshot(std::make_shared<const EFFECT_V2_CATALOG_SNAPSHOT>())
 {
+}
+
+bool_t Client::CEffectV2Catalog::Read_Inventory(
+	std::vector<EFFECT_V2_RESOURCE_SUMMARY>& OutRows, std::string& strOutError) const
+{
+	try
+	{
+		std::vector<EFFECT_V2_RESOURCE_SUMMARY> Rows;
+		for (const EFFECT_V2_RESOURCE_KIND Kind :
+			{ EFFECT_V2_RESOURCE_KIND::LEAF, EFFECT_V2_RESOURCE_KIND::GROUP })
+		{
+			const bool bGroup = EFFECT_V2_RESOURCE_KIND::GROUP == Kind;
+			const auto Directory = bGroup ? CEffectV2Document::Group_Directory() :
+				CEffectV2Document::Document_Directory();
+			std::error_code Error;
+			if (!std::filesystem::exists(Directory, Error) && !Error) continue;
+			std::vector<std::string> Ids, Diagnostics;
+			if (!Enumerate_StableIds(Directory, bGroup ? GROUP_SUFFIX : DOCUMENT_SUFFIX,
+				Ids, Diagnostics, strOutError)) return false;
+			for (const std::string& Id : Ids)
+			{
+				EFFECT_V2_RESOURCE_SUMMARY Row;
+				Row.eKind = Kind;
+				Row.strResourceId = Id;
+				Row.strCategory = bGroup ? "Composite" : "Effect";
+				std::string Text;
+				DATA_JSON_VALUE Root;
+				const auto Path = Directory / (Id + std::string(bGroup ? GROUP_SUFFIX : DOCUMENT_SUFFIX));
+				if (Read_TextFile(Path, Text, Row.strStatus) &&
+					CDataJson::Parse(Text, Root, Row.strStatus))
+				{
+					const auto* pId = Root.Find(bGroup ? "groupId" : "effectId");
+					const auto* pSchema = Root.Find("schema");
+					const auto* pVersion = Root.Find("formatVersion");
+					if (!Root.Is_Object() || !pId || !pId->Is_String() || pId->Get_String() != Id ||
+						!pSchema || !pSchema->Is_String() || pSchema->Get_String() !=
+						(bGroup ? "lostark.effect-v2-group" : "lostark.effect-v2") ||
+						!pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != (bGroup ? 2.0 : 1.0))
+						Row.strStatus = "Resource metadata schema/version/filename identity mismatch.";
+					if (const auto* pName = Root.Find("displayName"))
+					{
+						if (pName->Is_String() && CEffectV2Document::Is_ValidDisplayName(pName->Get_String()))
+							Row.strDisplayName = pName->Get_String();
+						else Row.strStatus = "Resource displayName is invalid.";
+					}
+					double DurationMs = 0.0;
+					if (bGroup)
+					{
+						const auto* Duration = Root.Find("durationMs");
+						if (Duration && Duration->Is_Number()) DurationMs = Duration->Get_Number();
+					}
+					else if (const auto* Params = Root.Find("params"))
+					{
+						const auto* Lifetime = Params->Find("lifetime");
+						const auto* Rate = Params->Find("playRate");
+						const double PlaybackRate = Rate && Rate->Is_Number() ? Rate->Get_Number() : 1.0;
+						if (Lifetime && Lifetime->Is_Number() && std::isfinite(PlaybackRate) && PlaybackRate > 0.0)
+							DurationMs = Lifetime->Get_Number() * 1000.0 / PlaybackRate;
+					}
+					if (std::isfinite(DurationMs) && DurationMs > 0.0 && DurationMs <= 600000.0)
+						Row.iDurationMs = static_cast<uint32_t>((std::max)(1.0, std::ceil(DurationMs)));
+					if (!bGroup)
+						if (const auto* pType = Root.Find("effectType"); pType && pType->Is_String())
+							Row.strCategory = pType->Get_String();
+				}
+				Rows.push_back(std::move(Row));
+			}
+		}
+		std::sort(Rows.begin(), Rows.end(), [](const auto& Left, const auto& Right)
+			{ return Left.strResourceId < Right.strResourceId; });
+		OutRows = std::move(Rows);
+		strOutError.clear();
+		return true;
+	}
+	catch (const std::exception& Error) { return Fail(strOutError, Error.what()); }
+}
+
+bool_t Client::CEffectV2Catalog::Create_ResourceSnapshot(
+	const std::vector<EFFECT_V2_DOCUMENT>& Documents,
+	const std::vector<EFFECT_V2_GROUP>& Groups,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& pOutSnapshot,
+	std::string& strOutError) const
+{
+	try
+	{
+		if (Documents.empty()) return Fail(strOutError, "Selected Effect closure has no leaf documents.");
+		auto Staged = std::make_shared<EFFECT_V2_CATALOG_SNAPSHOT>();
+		for (const EFFECT_V2_DOCUMENT& Document : Documents)
+		{
+			if (Document.eType < EFFECT_V2_TYPE::MESH || Document.eType >= EFFECT_V2_TYPE::END)
+				return Fail(strOutError, "Selected Effect has an invalid type.");
+			EFFECT_V2_DOCUMENT Parsed;
+			if (!CEffectV2Document::Parse_Document(CEffectV2Document::Serialize_Document(Document), Parsed, strOutError))
+			{
+				strOutError = Document.strEffectId + ": " + strOutError;
+				return false;
+			}
+			Staged->m_Documents.push_back(std::move(Parsed));
+		}
+		for (const EFFECT_V2_GROUP& Group : Groups)
+		{
+			EFFECT_V2_GROUP Parsed;
+			if (!CEffectV2Document::Parse_Group(CEffectV2Document::Serialize_Group(Group), Parsed, strOutError))
+			{
+				strOutError = Group.strGroupId + ": " + strOutError;
+				return false;
+			}
+			Staged->m_Groups.push_back(std::move(Parsed));
+		}
+		if (!Cross_Validate(Staged->m_Documents, Staged->m_Groups, {}, strOutError)) return false;
+		std::sort(Staged->m_Documents.begin(), Staged->m_Documents.end(),
+			[](const auto& Left, const auto& Right) { return Left.strEffectId < Right.strEffectId; });
+		std::sort(Staged->m_Groups.begin(), Staged->m_Groups.end(),
+			[](const auto& Left, const auto& Right) { return Left.strGroupId < Right.strGroupId; });
+		static std::atomic<uint64_t> NextRevision{ 1u };
+		Staged->m_iRevision = NextRevision.fetch_add(1u);
+		Staged->m_bBossValtanBindingsComplete = false;
+		pOutSnapshot = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+	catch (const std::exception& Error) { return Fail(strOutError, Error.what()); }
+}
+
+bool_t Client::CEffectV2Catalog::Load_ResourceSnapshot(
+	const EFFECT_V2_RESOURCE_KIND eKind, const std::string& strResourceId,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& pOutSnapshot,
+	std::string& strOutError) const
+{
+	std::vector<EFFECT_V2_DOCUMENT> Documents;
+	std::vector<EFFECT_V2_GROUP> Groups;
+	std::set<std::string> LeafIds;
+	if (EFFECT_V2_RESOURCE_KIND::LEAF == eKind) LeafIds.insert(strResourceId);
+	else if (EFFECT_V2_RESOURCE_KIND::GROUP == eKind)
+	{
+		EFFECT_V2_GROUP Group;
+		if (!CEffectV2Document::Load_GroupFile(strResourceId, Group, strOutError)) return false;
+		for (const auto& Child : Group.Children)
+		{
+			if (EFFECT_V2_RESOURCE_KIND::LEAF != Child.eResourceKind)
+				return Fail(strOutError, "Nested Effect V2 groups are not supported: " + Child.strResourceId);
+			LeafIds.insert(Child.strResourceId);
+		}
+		Groups.push_back(std::move(Group));
+	}
+	else return Fail(strOutError, "Unsupported selected Effect resource kind.");
+	for (const auto& Id : LeafIds)
+	{
+		EFFECT_V2_DOCUMENT Document;
+		if (!CEffectV2Document::Load_DocumentFile(Id, Document, strOutError)) return false;
+		Documents.push_back(std::move(Document));
+	}
+	return Create_ResourceSnapshot(Documents, Groups, pOutSnapshot, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Reload_BossValtan(std::string& strOutError)

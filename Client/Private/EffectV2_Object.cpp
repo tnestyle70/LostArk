@@ -587,7 +587,13 @@ void Client::CEffectV2Object::Restart()
 	m_bFinished = false;
 	m_bEmissionStopped = false;
 	m_Particles.clear();
-	m_fSpawnAccumulator = 0.f;
+	m_dSpawnAccumulator = 0.0;
+	m_dElapsedSeconds = 0.0;
+	m_dParticleSeconds = 0.0;
+	m_dParticleCycleSeconds = 0.0;
+	m_dParticleRemainder = 0.0;
+	if (m_bPivotSampleFailed) m_strStatus.clear();
+	m_bPivotSampleFailed = false;
 	m_bBurstPending = true;
 	m_iRandomState = (std::max)(1u, m_Params.Particle.iRandomSeed);
 	m_TrailPoints.clear();
@@ -596,23 +602,37 @@ void Client::CEffectV2Object::Restart()
 	Sync_Animation(true);
 }
 
-void Client::CEffectV2Object::Seek_ElapsedSeconds(const f32_t fElapsedSeconds)
+bool_t Client::CEffectV2Object::Sample_ElapsedSeconds(const f32_t fElapsedSeconds)
 {
-	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f)
-		return;
-	Restart();
+	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f) return false;
+	if (static_cast<double>(fElapsedSeconds) + 0.000001 < m_dElapsedSeconds) Restart();
 	const bool_t bWasPaused = m_bPlaybackPaused;
 	m_bPlaybackPaused = false;
-	Update(0.f); // Consume the clone's first-update guard without losing seek age.
-	constexpr f32_t MAX_STEP_SECONDS = 1.f / 60.f;
-	f32_t fRemaining = fElapsedSeconds;
-	while (fRemaining > 0.f && !m_bFinished)
+	Update(0.f); // Consume the clone guard; a zero-time burst belongs at birth 0.
+	const double Remaining = static_cast<double>(fElapsedSeconds) - m_dElapsedSeconds;
+	if (SHAPE::PARTICLE == m_eShape)
 	{
-		const f32_t fStep = (std::min)(MAX_STEP_SECONDS, fRemaining);
-		Update(fStep);
-		fRemaining -= fStep;
+		if (Remaining > 0.0) Update(static_cast<f32_t>(Remaining));
+	}
+	else
+	{
+		double Rest = Remaining;
+		while (Rest > 0.0 && !m_bFinished)
+		{
+			const f32_t Step = static_cast<f32_t>((std::min)(1.0 / 60.0, Rest));
+			Update(Step);
+			Rest -= static_cast<double>(Step);
+		}
 	}
 	m_bPlaybackPaused = bWasPaused;
+	return !m_bPivotSampleFailed;
+}
+
+void Client::CEffectV2Object::Seek_ElapsedSeconds(const f32_t fElapsedSeconds)
+{
+	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f) return;
+	Restart();
+	(void)Sample_ElapsedSeconds(fElapsedSeconds);
 }
 
 uint32_t Client::CEffectV2Object::Animation_Count() const
@@ -900,6 +920,10 @@ bool_t Client::CEffectV2Object::Resolve_TargetPivot(
 
 void Client::CEffectV2Object::Stop_Emission()
 {
+	/* An explicit child end can fall inside one fixed step (even at 1ms).
+	   Commit all births up to that exact stop before draining the tail. */
+	if (SHAPE::PARTICLE == m_eShape && !m_bEmissionStopped && !m_bFinished)
+		Advance_ParticleClock(0.f, true);
 	if (SHAPE::PARTICLE == m_eShape || SHAPE::TRAIL == m_eShape)
 		m_bEmissionStopped = true;
 	else
@@ -931,6 +955,14 @@ void Client::CEffectV2Object::Update(const f32_t fTimeDeltaIn)
 			XMStoreFloat4x4(&m_PivotWorld,
 				XMLoadFloat4x4(&m_FollowLocal) * XMLoadFloat4x4(&Pivot));
 		}
+	}
+	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f) return;
+	m_dElapsedSeconds += static_cast<double>(fTimeDelta);
+	if (SHAPE::PARTICLE == m_eShape)
+	{
+		if (!m_bFinished) Advance_ParticleClock(fTimeDelta * m_Params.fPlayRate);
+		Apply_Transform();
+		return;
 	}
 	if (!m_bFinished)
 	{
@@ -1052,7 +1084,8 @@ f32_t Client::CEffectV2Object::Random_Range(const f32_t fMinimum, const f32_t fM
 	return fMinimum + (fMaximum - fMinimum) * Random_01();
 }
 
-void Client::CEffectV2Object::Spawn_Particle()
+void Client::CEffectV2Object::Spawn_Particle(
+	const f32_t fBirthElapsedSeconds, const f32_t fBirthLocalSeconds)
 {
 	const PARTICLE_PARAMS& P = m_Params.Particle;
 	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
@@ -1129,7 +1162,40 @@ void Client::CEffectV2Object::Spawn_Particle()
 
 	if (!P.bLocalSpace)
 	{
-		const matrix_t World = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+		float4x4_t Pivot = m_PivotWorld;
+		if (m_PivotSampler && !m_PivotSampler(fBirthElapsedSeconds, Pivot, m_strStatus))
+		{
+			m_strStatus = "Particle birth pivot unavailable at " +
+				std::to_string(fBirthElapsedSeconds) + "s: " + m_strStatus;
+			m_bPivotSampleFailed = true;
+			m_bFinished = true;
+			return;
+		}
+		/* The leaf transform is evaluated at birth too. Integrating the authored
+		   linear velocity track analytically avoids frame-partition drift. */
+		const f32_t Ratio = m_Params.fLifetime > 0.f ?
+			Saturate(fBirthLocalSeconds / m_Params.fLifetime) : 0.f;
+		float3_t Translation = m_Params.Position.Evaluate(Ratio);
+		const auto& Track = m_Params.Velocity;
+		const f32_t Integral = Track.bLerp && m_Params.fLifetime > 0.f ?
+			0.5f * fBirthLocalSeconds * Ratio : 0.f;
+		Translation.x += Track.vStart.x * fBirthLocalSeconds + (Track.vEnd.x - Track.vStart.x) * Integral;
+		Translation.y += Track.vStart.y * fBirthLocalSeconds + (Track.vEnd.y - Track.vStart.y) * Integral;
+		Translation.z += Track.vStart.z * fBirthLocalSeconds + (Track.vEnd.z - Track.vStart.z) * Integral;
+		const float3_t Rotation = m_Params.Rotation.Evaluate(Ratio);
+		float3_t Scale = m_Params.Scale.Evaluate(Ratio);
+		const f32_t SavedTime = m_fTime;
+		m_fTime = fBirthLocalSeconds;
+		const f32_t Envelope = Scale_Envelope();
+		m_fTime = SavedTime;
+		Scale.x *= Envelope; Scale.y *= Envelope; Scale.z *= Envelope;
+		Scale.x = std::fabs(Scale.x) < 0.001f ? 0.001f : Scale.x;
+		Scale.y = std::fabs(Scale.y) < 0.001f ? 0.001f : Scale.y;
+		Scale.z = std::fabs(Scale.z) < 0.001f ? 0.001f : Scale.z;
+		const matrix_t World = XMMatrixScaling(Scale.x, Scale.y, Scale.z) *
+			XMMatrixRotationRollPitchYaw(XMConvertToRadians(Rotation.x),
+				XMConvertToRadians(Rotation.y), XMConvertToRadians(Rotation.z)) *
+			XMMatrixTranslation(Translation.x, Translation.y, Translation.z) * XMLoadFloat4x4(&Pivot);
 		Position = XMVector3TransformCoord(Position, World);
 		Velocity = XMVector3TransformNormal(Velocity, World);
 	}
@@ -1137,7 +1203,7 @@ void Client::CEffectV2Object::Spawn_Particle()
 	PARTICLE Particle;
 	Particle.vPosition = To_Float3(Position);
 	Particle.vVelocity = To_Float3(Velocity);
-	Particle.fAge = 0.f;
+	Particle.dAge = 0.0;
 	Particle.fLifetime = (std::max)(0.001f, Random_Range(P.vLifetime.x, P.vLifetime.y));
 	Particle.fRotationDegrees = Random_Range(P.vRotationRange.x, P.vRotationRange.y);
 	Particle.fSpinDegrees = Random_Range(P.vSpinRange.x, P.vSpinRange.y);
@@ -1153,15 +1219,15 @@ void Client::CEffectV2Object::Spawn_Particle()
 	m_Particles.push_back(Particle);
 }
 
-void Client::CEffectV2Object::Update_Particles(const f32_t fStep)
+void Client::CEffectV2Object::Advance_ParticleBodies(const f32_t fStep)
 {
 	const PARTICLE_PARAMS& P = m_Params.Particle;
 	if (fStep > 0.f)
 	{
 		for (PARTICLE& Particle : m_Particles)
-			Particle.fAge += fStep;
+			Particle.dAge += static_cast<double>(fStep);
 		m_Particles.erase(std::remove_if(m_Particles.begin(), m_Particles.end(),
-			[](const PARTICLE& Particle) { return Particle.fAge >= Particle.fLifetime; }),
+			[](const PARTICLE& Particle) { return Particle.dAge >= static_cast<double>(Particle.fLifetime); }),
 			m_Particles.end());
 		const f32_t fDragFactor = (std::max)(0.f, 1.f - P.fDrag * fStep);
 		for (PARTICLE& Particle : m_Particles)
@@ -1178,22 +1244,87 @@ void Client::CEffectV2Object::Update_Particles(const f32_t fStep)
 			Particle.vMeshRotationDegrees.z += Particle.vMeshSpinDegrees.z * fStep;
 		}
 	}
-	if (m_bEmissionStopped)
-		return;
+}
+
+void Client::CEffectV2Object::Advance_ParticleClock(
+	const f32_t fStep, const bool_t bFlushRemainder)
+{
+	constexpr double FixedStep = 1.0 / 60.0;
+	m_dParticleRemainder += static_cast<double>((std::max)(0.f, fStep));
+	if (m_bBurstPending && !m_bEmissionStopped) Update_Particles(0.f);
+	while (!m_bFinished && (m_dParticleRemainder + 0.0000001 >= FixedStep ||
+		(bFlushRemainder && m_dParticleRemainder > 0.0)))
+	{
+		const double Step = bFlushRemainder ? (std::min)(FixedStep, m_dParticleRemainder) : FixedStep;
+		const double FixedStart = m_dParticleSeconds;
+		double Remaining = Step;
+		while (!m_bFinished && Remaining > 0.0)
+		{
+			const bool_t FiniteEmitter = !m_bEmissionStopped && m_Params.fLifetime > 0.f;
+			const double UntilEnd = static_cast<double>(m_Params.fLifetime) - m_dParticleCycleSeconds;
+			const bool_t ReachesEnd = FiniteEmitter && UntilEnd <= Remaining;
+			const double Chunk = ReachesEnd ? (std::max)(0.0, UntilEnd) : Remaining;
+			Update_Particles(static_cast<f32_t>(Chunk));
+			m_dParticleSeconds += Chunk;
+			if (!m_bEmissionStopped)
+			{
+				const float3_t Velocity = m_Params.Velocity.Evaluate(Life_Ratio());
+				m_vDisplacement.x += Velocity.x * static_cast<f32_t>(Chunk);
+				m_vDisplacement.y += Velocity.y * static_cast<f32_t>(Chunk);
+				m_vDisplacement.z += Velocity.z * static_cast<f32_t>(Chunk);
+				m_dParticleCycleSeconds += Chunk;
+				m_fTime = ReachesEnd ? m_Params.fLifetime : static_cast<f32_t>(m_dParticleCycleSeconds);
+				if (ReachesEnd)
+				{
+					Advance_Lifetime(static_cast<f32_t>(Chunk));
+					m_dParticleCycleSeconds = static_cast<double>(m_fTime);
+				}
+			}
+			else if (m_Particles.empty()) m_bFinished = true;
+			Remaining = (std::max)(0.0, Remaining - Chunk);
+		}
+		m_dParticleSeconds = FixedStart + Step;
+		m_dParticleRemainder = (std::max)(0.0, m_dParticleRemainder - Step);
+	}
+	/* Presentation observes the exact requested age, while simulation keeps
+	   fixed-step capacity/RNG decisions. A paused final cursor must not retain
+	   an already expired tail until another render frame advances the clock. */
+	if (m_bEmissionStopped && std::all_of(m_Particles.begin(), m_Particles.end(),
+		[this](const PARTICLE& Particle)
+		{ return Particle.dAge + m_dParticleRemainder >= static_cast<double>(Particle.fLifetime); }))
+		m_bFinished = true;
+}
+
+void Client::CEffectV2Object::Update_Particles(const f32_t fStep)
+{
+	const PARTICLE_PARAMS& P = m_Params.Particle;
+	if (m_bEmissionStopped) { Advance_ParticleBodies(fStep); return; }
+	const f32_t RateScale = (std::max)(0.000001f, m_Params.fPlayRate);
 	if (m_bBurstPending)
 	{
-		for (uint32_t iIndex = 0u; iIndex < P.iBurstCount; ++iIndex)
-			Spawn_Particle();
+		for (uint32_t i = 0; i < P.iBurstCount && !m_bPivotSampleFailed; ++i)
+			Spawn_Particle(static_cast<f32_t>(m_dParticleSeconds) / RateScale, m_fTime);
 		m_bBurstPending = false;
 	}
-	m_fSpawnAccumulator += (std::max)(0.f, P.fSpawnRate) * fStep;
-	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
-	while (m_fSpawnAccumulator >= 1.f && m_Particles.size() < iMax)
+	const double Rate = (std::max)(0.0, static_cast<double>(P.fSpawnRate));
+	double Advanced = 0.0;
+	if (Rate > 0.0 && !m_bPivotSampleFailed)
 	{
-		Spawn_Particle();
-		m_fSpawnAccumulator -= 1.f;
+		for (double Birth = (1.0 - m_dSpawnAccumulator) / Rate;
+			Birth <= static_cast<double>(fStep) + 0.00000001; Birth += 1.0 / Rate)
+		{
+			Birth = (std::min)(Birth, static_cast<double>(fStep));
+			Advance_ParticleBodies(static_cast<f32_t>(Birth - Advanced));
+			Spawn_Particle(static_cast<f32_t>((m_dParticleSeconds + Birth) / RateScale),
+				m_fTime + static_cast<f32_t>(Birth));
+			Advanced = Birth;
+			if (m_bPivotSampleFailed || Birth >= fStep) break;
+		}
+		const double Total = m_dSpawnAccumulator + Rate * static_cast<double>(fStep);
+		m_dSpawnAccumulator = Total - std::floor(Total + 0.00000001);
+		m_dSpawnAccumulator = (std::max)(0.0, m_dSpawnAccumulator);
 	}
-	m_fSpawnAccumulator = (std::min)(m_fSpawnAccumulator, 1.f);
+	Advance_ParticleBodies(static_cast<f32_t>((std::max)(0.0, static_cast<double>(fStep) - Advanced)));
 }
 
 HRESULT Client::CEffectV2Object::Build_ParticleInstances()
@@ -1221,7 +1352,9 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 	m_ParticleInstances.clear();
 	for (const PARTICLE& Particle : m_Particles)
 	{
-		const f32_t fLife = Saturate(Particle.fAge / Particle.fLifetime);
+		const double PresentationAge = Particle.dAge + m_dParticleRemainder;
+		if (PresentationAge >= static_cast<double>(Particle.fLifetime)) continue;
+		const f32_t fLife = Saturate(static_cast<f32_t>(PresentationAge / Particle.fLifetime));
 		vector_t Position = XMLoadFloat3(&Particle.vPosition);
 		vector_t Velocity = XMLoadFloat3(&Particle.vVelocity);
 		if (P.bLocalSpace)

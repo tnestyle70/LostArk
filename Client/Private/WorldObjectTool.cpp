@@ -64,6 +64,18 @@ bool EditUInt(const char* label, uint32_t& value, const int maximum, const int m
     return true;
 }
 
+const char* MotionEndLabel(const Client::WORLD_SEQUENCE_MOTION_END motionEnd)
+{
+    switch (motionEnd)
+    {
+    case Client::WORLD_SEQUENCE_MOTION_END::STOP: return "Stop";
+    case Client::WORLD_SEQUENCE_MOTION_END::HOLD: return "Hold Last Pose";
+    case Client::WORLD_SEQUENCE_MOTION_END::LOOP: return "Loop";
+    case Client::WORLD_SEQUENCE_MOTION_END::NEXT: return "Play Motion";
+    default: return "Unknown";
+    }
+}
+
 float3_t QuaternionEuler(const float4_t& q)
 {
     float4x4_t matrix;
@@ -142,7 +154,7 @@ bool CWorldObjectTool::Load_Source()
     if (!m_Document.Find_ObjectResource(m_SelectedObject))
         m_SelectedObject = m_Document.Get_ObjectResources().empty() ? "" : m_Document.Get_ObjectResources().front().objectId;
     Select_Object(m_SelectedObject);
-    m_Status = "Source loaded. Save updates this Area's worldsequences document; Publish applies it to Product.";
+    m_Status = "Source loaded. Save stores Object edits and applies them for the next play.";
     return true;
 }
 
@@ -179,28 +191,31 @@ bool CWorldObjectTool::Save_Source()
     m_SourceBytes = std::move(stagedBytes); m_Document = std::move(verified);
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
     m_PristinePatternId.clear();
-    m_Status = "Object resources and states saved. Map/deploy placement files were preserved. Publish to apply to Product.";
+    m_Status = "Saved; applying World Object runtime data.";
+    Start_Publish();
     return true;
 }
 
 void CWorldObjectTool::Start_Publish()
 {
-    if (!m_Ready || m_Dirty || m_PublishProcess || !Matches_SourceBaseline()) return;
+    if (!m_Ready || m_Dirty || m_PublishProcess) return;
+    if (!Matches_SourceBaseline())
+    { m_Status = "Saved; apply stopped because linked source changed. Reload Source before retrying."; return; }
     const auto root = CProjectDataRoot::Get().parent_path();
     const auto script = root / L"Tools/MapPipeline/Publish-MapAuthoring.ps1";
-    if (!std::filesystem::is_regular_file(script)) { m_Status = "Map authoring publisher is missing."; return; }
+    if (!std::filesystem::is_regular_file(script)) { m_Status = "Saved; apply failed: publisher is missing. Save to retry."; return; }
     wchar_t temporary[MAX_PATH]{};
-    if (!GetTempPathW(MAX_PATH, temporary)) { m_Status = "Publisher log folder is unavailable."; return; }
+    if (!GetTempPathW(MAX_PATH, temporary)) { m_Status = "Saved; apply failed: log folder is unavailable. Save to retry."; return; }
     m_PublishLog = std::filesystem::path(temporary) / (L"LostArk-WorldObject-" + std::to_wstring(GetCurrentProcessId()) + L".log");
     SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
     const HANDLE log = CreateFileW(m_PublishLog.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
         &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (INVALID_HANDLE_VALUE == log) { m_Status = "Cannot create publisher log."; return; }
+    if (INVALID_HANDLE_VALUE == log) { m_Status = "Saved; apply failed: cannot create log. Save to retry."; return; }
     const HANDLE input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (INVALID_HANDLE_VALUE == input) { CloseHandle(log); m_Status = "Cannot prepare publisher input."; return; }
+    if (INVALID_HANDLE_VALUE == input) { CloseHandle(log); m_Status = "Saved; apply failed: cannot prepare input. Save to retry."; return; }
     std::wstring command = L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" +
-        script.wstring() + L"\" -AreaId LV_LUT_MIDNIGHTC_ED -Mode Publish";
+        script.wstring() + L"\" -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Publish";
     std::vector<wchar_t> arguments(command.begin(), command.end()); arguments.push_back(0);
     STARTUPINFOW startup{}; startup.cb = sizeof(startup); startup.dwFlags = STARTF_USESTDHANDLES;
     startup.hStdOutput = log; startup.hStdError = log; startup.hStdInput = input;
@@ -208,9 +223,9 @@ void CWorldObjectTool::Start_Publish()
     const bool started = !!CreateProcessW(nullptr, arguments.data(), nullptr, nullptr, TRUE,
         CREATE_NO_WINDOW, nullptr, root.c_str(), &startup, &process);
     CloseHandle(log); CloseHandle(input);
-    if (!started) { m_Status = "Cannot start Map authoring publisher."; return; }
+    if (!started) { m_Status = "Saved; apply failed: cannot start publisher. Save to retry."; return; }
     CloseHandle(process.hThread); m_PublishProcess = process.hProcess;
-    m_Status = "Publishing saved Area data. Log: " + m_PublishLog.string();
+    m_Status = "Saved; applying World Object runtime data. Log: " + m_PublishLog.string();
 }
 
 void CWorldObjectTool::Poll_Publish()
@@ -219,15 +234,15 @@ void CWorldObjectTool::Poll_Publish()
     DWORD code = 1; GetExitCodeProcess(m_PublishProcess, &code);
     CloseHandle(m_PublishProcess); m_PublishProcess = nullptr;
     if (code != 0)
-    { m_Status = "Map publish failed (" + std::to_string(code) + "). Runtime preserved. Log: " + m_PublishLog.string(); return; }
-    Stop_Preview();
+    { m_Status = "Saved; apply failed (" + std::to_string(code) + "). Previous runtime preserved. Save to retry. Log: " + m_PublishLog.string(); return; }
+    ++m_SavedGeneration;
     if (auto* level = CLevel_KakulSaydonArena::Get_Active())
     {
         std::string status;
         if (!level->Reload_WorldObjectRuntime(status))
-        { m_Status = "Published; live runtime reload failed: " + status; return; }
+        { m_Status = "Saved and runtime files applied; next-play reload pending: " + status; return; }
     }
-    m_Status = "Map publish succeeded; world object runtime reloaded for the next play. Log: " + m_PublishLog.string();
+    m_Status = "Saved and applied for the next play. Log: " + m_PublishLog.string();
 }
 
 void CWorldObjectTool::Mark_Dirty()
@@ -243,27 +258,45 @@ void CWorldObjectTool::Stop_Preview()
     m_PreviewLevel = nullptr; m_PreviewActive = false; m_Playing = false; m_PreviewDirty = false;
 }
 
+const WORLD_SEQUENCE_INSTANCE* CWorldObjectTool::Preview_Instance() const
+{
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance.empty() && resource ?
+        resource->defaultMotionInstanceId : m_SelectedInstance);
+    return instance && instance->enabled ? instance : nullptr;
+}
+
 bool CWorldObjectTool::Begin_Preview()
 {
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     if (!level) { m_Status = "World object preview requires the active KoukuSaydon arena."; return false; }
-    if (!m_Document.Find_Instance(m_SelectedInstance)) { m_Status = "Select or create an object state."; return false; }
-    if (!level->Debug_BeginWorldObjectPreview(m_Document, m_SelectedInstance, m_Status, m_PreviewAtCharacter)) return false;
+    const auto* instance = Preview_Instance();
+    if (!instance) { m_Status = "Choose an enabled Default Motion or select a connected Motion."; return false; }
+    if (!level->Debug_BeginWorldObjectPreview(m_Document, instance->instanceId, m_Status, m_PreviewAtCharacter)) return false;
     m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
     return true;
 }
 
 f32_t CWorldObjectTool::SpanMs() const
 {
-    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const auto* instance = Preview_Instance();
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     return !sequence ? 0.f : static_cast<float>(instance->startDelayMs) +
         static_cast<float>(sequence->durationMs) / (std::max)(.05f, instance->playbackSpeed);
 }
 
+f32_t CWorldObjectTool::PreviewSpanMs() const
+{
+    const auto* instance = Preview_Instance();
+    if (instance && (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP ||
+        instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT))
+        return (std::max)(SpanMs(), static_cast<float>(CWorldSequenceDocument::MAX_DURATION_MS));
+    return SpanMs();
+}
+
 void CWorldObjectTool::Seek(const f32_t clockMs)
 {
-    m_ClockMs = (std::clamp)(clockMs, 0.f, SpanMs());
+    m_ClockMs = (std::clamp)(clockMs, 0.f, PreviewSpanMs());
     if ((!m_PreviewActive || m_PreviewDirty) && !Begin_Preview()) { m_Playing = false; return; }
     if (!m_PreviewLevel->Debug_SampleWorldObjectPreview(m_ClockMs, m_PreviewStatus))
     { m_Status = m_PreviewStatus; Stop_Preview(); }
@@ -272,18 +305,19 @@ void CWorldObjectTool::Seek(const f32_t clockMs)
 void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
 {
     Poll_Publish();
+    if (m_PhysicalScanRunning && m_PhysicalScan.Advance())
+    {
+        if (m_PhysicalScan.Commit(m_PhysicalAssets, m_PhysicalStatus)) Rebuild_PhysicalTree();
+        m_PhysicalScanRunning = false;
+    }
     if (!active || !m_Open || (m_PreviewLevel && m_PreviewLevel != CLevel_KakulSaydonArena::Get_Active()))
     { Stop_Preview(); return; }
     if (m_PreviewActive && m_PreviewDirty) Seek(m_ClockMs);
     if (!m_Playing || !m_PreviewActive) return;
-    const float span = SpanMs();
+    const float span = PreviewSpanMs();
     m_ClockMs += (std::max)(0.f, seconds) * 1000.f;
     if (span <= 0.f) { Stop_Preview(); return; }
-    if (m_ClockMs >= span)
-    {
-        if (m_Loop) m_ClockMs = std::fmod(m_ClockMs, span);
-        else { m_ClockMs = span; m_Playing = false; }
-    }
+    if (m_ClockMs >= span) { m_ClockMs = span; m_Playing = false; }
     Seek(m_ClockMs);
 }
 
@@ -301,16 +335,15 @@ std::vector<std::string> CWorldObjectTool::StateIds(const WORLD_SEQUENCE_OBJECT_
 void CWorldObjectTool::Select_Object(const std::string& id)
 {
     Stop_Preview(); m_SelectedObject = id; m_SelectedInstance.clear(); m_ClockMs = 0.f;
-    const auto* resource = m_Document.Find_ObjectResource(id);
-    if (resource)
-    {
-        const auto states = StateIds(*resource);
-        if (!states.empty()) Select_State(states.front());
-    }
+    m_SelectedTrack = 0; m_SelectedKey = 0;
 }
 
 void CWorldObjectTool::Select_State(const std::string& id)
 {
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const auto motions = resource ? StateIds(*resource) : std::vector<std::string>{};
+    if (std::find(motions.begin(), motions.end(), id) == motions.end())
+    { m_Status = "The selected motion does not belong to this object."; return; }
     Stop_Preview(); m_SelectedInstance = id; m_SelectedTrack = 0; m_SelectedKey = 0; m_ClockMs = 0.f;
 }
 
@@ -325,14 +358,11 @@ bool CWorldObjectTool::Create_Object()
     }
     resource.displayName = m_NewObjectName.data();
     resource.anchorKind = m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
-    WORLD_SEQUENCE_TEMPLATE sequence;
-    WORLD_SEQUENCE_INSTANCE instance;
-    if (!Build_State(resource, resource.displayName, sequence, instance)) return false;
+    if (m_Document.Get_ObjectResources().size() >= CWorldSequenceDocument::MAX_INSTANCE_COUNT)
+    { m_Status = "World object resource capacity reached."; return false; }
     m_Document.Get_ObjectResources().push_back(resource);
-    m_Document.Get_Templates().push_back(std::move(sequence));
-    m_Document.Get_Instances().push_back(std::move(instance));
     Mark_Dirty(); Select_Object(resource.objectId);
-    m_PristinePatternId = m_SelectedInstance;
+    m_Status = "Object created. Assign its shared model, then Create Motion in Object Detail. Assign Model before Save.";
     m_NewObjectName[0] = 0;
     m_NewStateName[0] = 0;
     return true;
@@ -341,15 +371,18 @@ bool CWorldObjectTool::Create_Object()
 void CWorldObjectTool::Create_State()
 {
     auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-    if (!resource || !resource->sequenceInstanceId.empty() || !m_NewStateName[0]) return;
+    if (!resource || !m_SelectedInstance.empty() || !resource->sequenceInstanceId.empty() || !m_NewStateName[0]) return;
     WORLD_SEQUENCE_TEMPLATE sequence;
     WORLD_SEQUENCE_INSTANCE instance;
     if (!Build_State(*resource, m_NewStateName.data(), sequence, instance)) return;
+    const bool firstMotion = StateIds(*resource).empty();
     m_Document.Get_Templates().push_back(std::move(sequence));
-    m_Document.Get_Instances().push_back(instance); Mark_Dirty(); Select_State(instance.instanceId);
+    m_Document.Get_Instances().push_back(instance);
+    if (firstMotion) resource->defaultMotionInstanceId = instance.instanceId;
+    Mark_Dirty(); Select_State(instance.instanceId);
     m_PristinePatternId = instance.instanceId;
     m_NewStateName[0] = 0;
-    m_Status = "Pattern created. Select an Animation Resource, Append Animation, then Save.";
+    m_Status = "Motion created. Append Clip or edit Transform/Physics, then Save.";
 }
 
 bool CWorldObjectTool::Build_State(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
@@ -461,7 +494,11 @@ void CWorldObjectTool::Render()
             auto* instance = m_Document.Find_Instance(m_SelectedInstance);
             auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
             if (sequence) Render_Sequence(*sequence);
-            else ImGui::TextDisabled("Select an object and state in Object Resources.");
+            else
+            {
+                ImGui::TextWrapped("Select a Motion beneath an Object to open its Lifetime timeline. The parent Object edits shared resources only.");
+                ImGui::BeginDisabled(); ImGui::Button("Play"); ImGui::SameLine(); ImGui::Button("Append Clip"); ImGui::EndDisabled();
+            }
         }
         ImGui::End();
     }
@@ -516,16 +553,6 @@ void CWorldObjectTool::Render_Toolbar()
     }
     ImGui::SameLine(); ImGui::BeginDisabled(!m_Ready || m_PublishProcess);
     if (ImGui::Button(m_Dirty ? "Save *" : "Save")) Save_Source();
-    ImGui::EndDisabled(); ImGui::SameLine();
-    ImGui::BeginDisabled(!m_Ready || m_Dirty || m_PublishProcess);
-    if (ImGui::Button("Publish Area")) Start_Publish();
-    ImGui::SameLine();
-    if (ImGui::Button("Reload Runtime"))
-    {
-        Stop_Preview();
-        if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Reload_WorldObjectRuntime(m_Status);
-        else m_Status = "Enter KoukuSaydon to reload the active world object runtime.";
-    }
     ImGui::EndDisabled();
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
 }
@@ -543,8 +570,9 @@ void CWorldObjectTool::Render_Resources()
         ImGui::InputTextWithHint("Name", "New object name", m_NewObjectName.data(), m_NewObjectName.size());
         ImGui::Combo("Anchor Type", &m_NewObjectAnchor, "Map\0Character\0");
         ImGui::TextUnformatted(m_NewObjectAnchor == 0 ?
-            "Map: seed the state at the current character position, then keep it fixed." :
-            "Character: create at each living character with a local offset.");
+            "Map: motions created later use a fixed world anchor." :
+            "Character: motions created later use each living character as their anchor.");
+        ImGui::TextUnformatted("Creates the parent Object only. Add its motions from Object Detail.");
         ImGui::BeginDisabled(!m_NewObjectName[0]);
         if (ImGui::Button("Create"))
         {
@@ -557,7 +585,7 @@ void CWorldObjectTool::Render_Resources()
         ImGui::EndPopup();
     }
     ImGui::SetNextItemWidth(-1.f);
-    ImGui::InputTextWithHint("##ObjectSearch", "Search object or pattern", m_ObjectSearch.data(), m_ObjectSearch.size());
+    ImGui::InputTextWithHint("##ObjectSearch", "Search object or motion", m_ObjectSearch.data(), m_ObjectSearch.size());
     const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * .28f);
     if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
     {
@@ -591,10 +619,10 @@ void CWorldObjectTool::Render_Resources()
                 ImGui::PushID(resource.objectId.c_str());
                 const auto label = resource.displayName + (resource.sequenceInstanceId.empty() && resource.modelAssetId.empty() ? " [assign model]" : "");
                 const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                    ImGuiTreeNodeFlags_SpanAvailWidth | (m_SelectedObject == resource.objectId ? ImGuiTreeNodeFlags_Selected : 0);
+                    ImGuiTreeNodeFlags_SpanAvailWidth | (m_SelectedObject == resource.objectId && m_SelectedInstance.empty() ? ImGuiTreeNodeFlags_Selected : 0);
                 if (!search.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
                 const bool open = ImGui::TreeNodeEx("Resource", flags, "%s", label.c_str());
-                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Object(resource.objectId);
+                if (ImGui::IsItemClicked()) Select_Object(resource.objectId);
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", resource.objectId.c_str());
                 if (open)
                 {
@@ -609,7 +637,7 @@ void CWorldObjectTool::Render_Resources()
                         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
                         ImGui::PopID();
                     }
-                    if (states.empty()) ImGui::TextDisabled("No patterns");
+                    if (states.empty()) ImGui::TextDisabled("No motions - select Object to Create Motion");
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
@@ -618,24 +646,13 @@ void CWorldObjectTool::Render_Resources()
         }
     }
     ImGui::EndChild();
-    if (ImGui::CollapsingHeader("Additional motion patterns"))
-    {
-        const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-        ImGui::BeginDisabled(!resource || !resource->sequenceInstanceId.empty());
-        ImGui::SetNextItemWidth(-1.f);
-        ImGui::InputTextWithHint("##NewPattern", "Motion pattern name", m_NewStateName.data(), m_NewStateName.size());
-        ImGui::BeginDisabled(!m_NewStateName[0]);
-        if (ImGui::Button("Add Motion Pattern")) Create_State();
-        ImGui::EndDisabled();
-        ImGui::EndDisabled();
-    }
 }
 
 void CWorldObjectTool::Refresh_AnimationResources()
 {
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const std::string modelAssetId = !resource || !resource->sequenceInstanceId.empty() ? "" :
-        (m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
+        (m_SelectedInstance.empty() && m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
             m_AnimationCandidateModelAssetId : resource->modelAssetId);
     if (m_AnimationObjectId != m_SelectedObject || m_AnimationModelAssetId != modelAssetId)
     {
@@ -675,8 +692,8 @@ void CWorldObjectTool::Refresh_AnimationResources()
         return clip.clipName == m_SelectedAnimationClip;
     })) m_SelectedAnimationClip.clear();
     m_AnimationResourceStatus = m_AnimationResources.empty() ?
-        "This model has no native animation. Assign Model, then author Transform keys or Motion in Object Detail." :
-        std::to_string(m_AnimationResources.size()) + " native clips. Select one and Append Animation to the selected object pattern.";
+        "This model has no native animation. Assign Model on the parent Object, then author Transform keys or Physics on a child Motion." :
+        std::to_string(m_AnimationResources.size()) + " native clips. Select one and Append Clip to the selected Motion.";
 }
 
 bool CWorldObjectTool::Stage_SelectedModel(CWorldSequenceDocument& candidate)
@@ -714,6 +731,8 @@ bool CWorldObjectTool::Stage_SelectedModel(CWorldSequenceDocument& candidate)
 
 bool CWorldObjectTool::Assign_SelectedModel()
 {
+    if (!m_SelectedInstance.empty())
+    { m_Status = "Select the parent Object to assign its shared model."; return false; }
     Refresh_AnimationResources();
     if (!m_AnimationCatalogReady) { m_Status = m_AnimationResourceStatus; return false; }
     CWorldSequenceDocument candidate = m_Document;
@@ -726,7 +745,7 @@ bool CWorldObjectTool::Assign_SelectedModel()
     Mark_Dirty();
     // Assigning a model does not edit the newly created pattern's default timing.
     m_PristinePatternId = pristinePattern;
-    m_Status = "Model assigned. Append Animation or tune Transform/Motion, then Save.";
+    m_Status = "Shared model assigned. Create or select a Motion, then Append Clip or edit Transform/Physics.";
     return true;
 }
 
@@ -748,8 +767,10 @@ bool CWorldObjectTool::Append_SelectedAnimation()
     auto* instance = candidate.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? candidate.Find_Template(instance->templateId) : nullptr;
     if (!sequence)
-    { m_Status = "Select or create an object pattern before appending animation."; return false; }
-    if (!Stage_SelectedModel(candidate)) return false;
+    { m_Status = "Select or create a Motion before appending a clip."; return false; }
+    const auto* resource = candidate.Find_ObjectResource(m_SelectedObject);
+    if (!resource || resource->modelAssetId != m_AnimationModelAssetId || !resource->animated)
+    { m_Status = "Assign the animated model on the parent Object before appending its clips."; return false; }
     std::string slotId;
     for (const auto& binding : instance->bindings)
     {
@@ -805,7 +826,7 @@ void CWorldObjectTool::Render_AnimationResources()
     ImGui::SeparatorText("Animation Resources");
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const std::string modelAssetId = !resource || !resource->sequenceInstanceId.empty() ? "" :
-        (m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
+        (m_SelectedInstance.empty() && m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
             m_AnimationCandidateModelAssetId : resource->modelAssetId);
     if (m_AnimationObjectId != m_SelectedObject || m_AnimationModelAssetId != modelAssetId)
         Refresh_AnimationResources();
@@ -813,16 +834,17 @@ void CWorldObjectTool::Render_AnimationResources()
     { ImGui::TextWrapped("%s", m_AnimationResourceStatus.c_str()); return; }
     if (ImGui::Button("Refresh Animations")) Refresh_AnimationResources();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!m_AnimationCatalogReady || m_AnimationModelAssetId.empty());
+    ImGui::BeginDisabled(!m_SelectedInstance.empty() || !m_AnimationCatalogReady || m_AnimationModelAssetId.empty());
     if (ImGui::Button("Assign Model")) { Assign_SelectedModel(); resource = m_Document.Find_ObjectResource(m_SelectedObject); }
     ImGui::EndDisabled();
     ImGui::TextWrapped("%s", m_AnimationResourceStatus.c_str());
     if (!modelAssetId.empty()) ImGui::TextWrapped("Model: %s", modelAssetId.c_str());
     const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-    if (sequence) ImGui::TextWrapped("Selected pattern: %s", sequence->displayName.c_str());
+    if (sequence) ImGui::TextWrapped("Selected Motion: %s", sequence->displayName.c_str());
+    else ImGui::TextWrapped("Select a child Motion to append clips. Shared model assignment belongs to the parent Object.");
     ImGui::BeginDisabled(!m_AnimationCatalogReady || m_SelectedAnimationClip.empty() || !sequence);
-    if (ImGui::Button("Append Animation")) Append_SelectedAnimation();
+    if (ImGui::Button("Append Clip")) Append_SelectedAnimation();
     ImGui::EndDisabled();
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##AnimationSearch", "Search native animation", m_AnimationSearch.data(), m_AnimationSearch.size());
@@ -845,35 +867,103 @@ void CWorldObjectTool::Render_AnimationResources()
     ImGui::EndChild();
 }
 
+void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+{
+    ImGui::SeparatorText("Object / Shared Resources");
+    bool changed = EditText("Object Name", resource.displayName);
+    ImGui::TextDisabled("%s", resource.objectId.c_str());
+    const bool alias = !resource.sequenceInstanceId.empty();
+    int resourceAnchor = resource.anchorKind == "PLAYER" ? 1 : 0;
+    ImGui::BeginDisabled(alias);
+    if (ImGui::Combo("Anchor Type", &resourceAnchor, "Map\0Character\0"))
+        Change_ResourceAnchor(resource, resourceAnchor == 1 ? "PLAYER" : "WORLD");
+    ImGui::EndDisabled();
+    if (alias) ImGui::TextDisabled("Placed objects keep their Map anchor.");
+    if (alias)
+        ImGui::TextWrapped("Placed object sequence: %s. This editor updates its existing tracks and bindings.", resource.sequenceInstanceId.c_str());
+    else
+    {
+        ImGui::TextWrapped("Model: %s", resource.modelAssetId.empty() ? "Choose a WModel in Physical Resources" : resource.modelAssetId.c_str());
+        ImGui::TextWrapped("Diffuse: %s", resource.diffuseTextureAssetId.empty() ? "Embedded model material" : resource.diffuseTextureAssetId.c_str());
+        if (!resource.diffuseTextureAssetId.empty() && ImGui::SmallButton("Clear Diffuse Override")) { resource.diffuseTextureAssetId.clear(); changed = true; }
+        changed |= ImGui::DragFloat("Model Import Scale", &resource.modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat3("Object Scale", &resource.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::Checkbox("Animated Model", &resource.animated);
+    }
+    if (changed) Mark_Dirty();
+    ImGui::SeparatorText("Connected Motions");
+    const auto motions = StateIds(resource);
+    const auto* defaultMotion = m_Document.Find_Instance(resource.defaultMotionInstanceId);
+    const auto* defaultSequence = defaultMotion ? m_Document.Find_Template(defaultMotion->templateId) : nullptr;
+    const char* defaultLabel = defaultSequence ? defaultSequence->displayName.c_str() : "None - choose a Default Motion";
+    if (ImGui::BeginCombo("Default Motion", defaultLabel))
+    {
+        if (ImGui::Selectable("None", resource.defaultMotionInstanceId.empty()))
+        { resource.defaultMotionInstanceId.clear(); Mark_Dirty(); }
+        for (const auto& id : motions)
+        {
+            const auto* instance = m_Document.Find_Instance(id);
+            const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+            ImGui::PushID(id.c_str());
+            ImGui::BeginDisabled(!instance || !instance->enabled || !sequence);
+            if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), resource.defaultMotionInstanceId == id))
+            { resource.defaultMotionInstanceId = id; Mark_Dirty(); }
+            ImGui::EndDisabled(); ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+    if (!defaultMotion || !defaultMotion->enabled)
+        ImGui::TextWrapped("Choose an enabled Default Motion to Append or Preview this Object.");
+    ImGui::BeginDisabled(!Preview_Instance());
+    if (ImGui::Button("Preview Default")) { Stop_Preview(); m_PreviewAtCharacter = true; m_ClockMs = 0.f; Seek(0.f); m_Playing = m_PreviewActive; }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    if (ImGui::Button("Stop Preview")) { Stop_Preview(); m_ClockMs = 0.f; }
+    if (motions.empty()) ImGui::TextDisabled("No motions yet.");
+    for (const auto& id : motions)
+    {
+        const auto* instance = m_Document.Find_Instance(id);
+        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+        ImGui::PushID(id.c_str());
+        if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str()))
+        { Select_State(id); ImGui::PopID(); return; }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
+        if (sequence && instance)
+        {
+            ImGui::TextDisabled("%zu clips | %u ms | %s", sequence->animationTracks.size(),
+                sequence->durationMs, MotionEndLabel(instance->motionEnd));
+            if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
+            {
+                const auto* next = m_Document.Find_Instance(instance->nextMotionId);
+                const auto* nextSequence = next ? m_Document.Find_Template(next->templateId) : nullptr;
+                ImGui::TextDisabled("  Next: %s", nextSequence ? nextSequence->displayName.c_str() : "Choose a Motion");
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::BeginDisabled(alias);
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##NewMotion", "Motion name", m_NewStateName.data(), m_NewStateName.size());
+    ImGui::BeginDisabled(!m_NewStateName[0]);
+    if (ImGui::Button("Create Motion")) Create_State();
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+    if (alias) ImGui::TextWrapped("This placed Object retains its existing Motion and bindings.");
+}
+
 void CWorldObjectTool::Render_Detail()
 {
     auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     if (!resource) { ImGui::TextUnformatted("Select an object resource."); return; }
-    bool changed = EditText("Object Name", resource->displayName);
-    ImGui::TextDisabled("%s", resource->objectId.c_str());
+    if (m_SelectedInstance.empty()) { Render_ObjectDetail(*resource); return; }
+    ImGui::TextWrapped("Object: %s", resource->displayName.c_str());
+    if (ImGui::Button("Edit Parent Object")) { Select_Object(resource->objectId); return; }
     const bool alias = !resource->sequenceInstanceId.empty();
-    int resourceAnchor = resource->anchorKind == "PLAYER" ? 1 : 0;
-    ImGui::BeginDisabled(alias);
-    if (ImGui::Combo("Anchor Type", &resourceAnchor, "Map\0Character\0"))
-        Change_ResourceAnchor(*resource, resourceAnchor == 1 ? "PLAYER" : "WORLD");
-    ImGui::EndDisabled();
-    if (alias) ImGui::TextDisabled("Placed objects keep their Map anchor.");
-    if (alias)
-        ImGui::TextWrapped("Placed object sequence: %s. This editor updates its existing tracks and bindings.", resource->sequenceInstanceId.c_str());
-    else
-    {
-        ImGui::TextWrapped("Model: %s", resource->modelAssetId.empty() ? "Choose a WModel in Physical Resources" : resource->modelAssetId.c_str());
-        ImGui::TextWrapped("Diffuse: %s", resource->diffuseTextureAssetId.empty() ? "Embedded model material" : resource->diffuseTextureAssetId.c_str());
-        if (!resource->diffuseTextureAssetId.empty() && ImGui::SmallButton("Clear Diffuse Override")) { resource->diffuseTextureAssetId.clear(); changed = true; }
-        changed |= ImGui::DragFloat("Model Import Scale", &resource->modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
-        changed |= ImGui::DragFloat3("Object Scale", &resource->scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-        changed |= ImGui::Checkbox("Animated Model", &resource->animated);
-    }
+    bool changed = false;
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-    if (!sequence) { if (changed) Mark_Dirty(); return; }
-    ImGui::SeparatorText("Pattern");
-    changed |= EditText("Pattern Name", sequence->displayName);
+    if (!sequence) { ImGui::TextWrapped("The selected Motion is unavailable. Select its parent Object to continue."); return; }
+    ImGui::SeparatorText("Motion");
+    changed |= EditText("Motion Name", sequence->displayName);
     ImGui::TextDisabled("%s", instance->instanceId.c_str());
     changed |= ImGui::Checkbox("Enabled", &instance->enabled);
     if (!alias)
@@ -885,6 +975,27 @@ void CWorldObjectTool::Render_Detail()
             if (instance->anchorKind == "PLAYER") { instance->position = {}; changed = true; }
             else if (auto* level = CLevel_KakulSaydonArena::Get_Active()) changed |= level->Try_Get_AuthoringPreviewPlacement(instance->position, m_Status);
             else m_Status = "Player placement requires the active KoukuSaydon arena.";
+        }
+    }
+    const bool supportsSurface = alias && instance->bindings.size() == 1u &&
+        instance->bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT;
+    if (supportsSurface || instance->walkableSurface)
+    {
+        ImGui::SeparatorText("Walkable Surface");
+        bool enabled = instance->walkableSurface.has_value();
+        if (ImGui::Checkbox("Enable Circular Walking Surface", &enabled))
+        {
+            if (enabled) instance->walkableSurface = WORLD_SEQUENCE_WALKABLE_SURFACE{};
+            else instance->walkableSurface.reset();
+            changed = true;
+        }
+        if (instance->walkableSurface)
+        {
+            changed |= ImGui::DragFloat("Surface Radius (local m)", &instance->walkableSurface->radiusM,
+                .01f, .001f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+            changed |= ImGui::DragFloat("Surface Height (local m)", &instance->walkableSurface->localHeightM,
+                .001f, -10000.f, 10000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::TextWrapped("A horizontal circle centered on the placed model. Values use meters after model import scale; placement scale is applied automatically. Fixed position/scale and Y rotation only. Server Complete Play uses its visible lifetime; blocked ground stays blocked. Save, then publish the Map and Kouku gameplay data.");
         }
     }
     changed |= EditUInt("Start Delay (ms)", instance->startDelayMs, CWorldSequenceDocument::MAX_DURATION_MS);
@@ -929,12 +1040,76 @@ void CWorldObjectTool::Render_Detail()
         }
         else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
     }
+    ImGui::BeginDisabled(alias);
+    int motionEnd = static_cast<int>(instance->motionEnd);
+    if (ImGui::Combo("On Complete", &motionEnd, "Stop\0Hold Last Pose\0Loop\0Play Motion\0"))
+    {
+        instance->motionEnd = static_cast<WORLD_SEQUENCE_MOTION_END>(motionEnd);
+        if (instance->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) instance->nextMotionId.clear();
+        changed = true;
+    }
+    ImGui::EndDisabled();
+    if (alias) ImGui::TextDisabled("Placed Object motions use Stop.");
+    else if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
+    {
+        const auto* next = m_Document.Find_Instance(instance->nextMotionId);
+        const auto* nextSequence = next ? m_Document.Find_Template(next->templateId) : nullptr;
+        if (ImGui::BeginCombo("Next Motion", nextSequence ? nextSequence->displayName.c_str() : "Choose a Motion"))
+        {
+            for (const auto& id : StateIds(*resource))
+            {
+                const auto* candidate = m_Document.Find_Instance(id);
+                const auto* candidateSequence = candidate ? m_Document.Find_Template(candidate->templateId) : nullptr;
+                if (!candidateSequence || candidate->instanceId == instance->instanceId) continue;
+                const bool compatible = candidate->enabled && sequence->objectMotion.count == 1u &&
+                    candidateSequence->objectMotion.count == 1u && instance->bindings.size() == 1u &&
+                    candidate->bindings.size() == 1u && instance->bindings.front().slotId == candidate->bindings.front().slotId;
+                ImGui::PushID(id.c_str());
+                ImGui::BeginDisabled(!compatible);
+                if (ImGui::Selectable(candidateSequence->displayName.c_str(), instance->nextMotionId == id))
+                { instance->nextMotionId = id; changed = true; }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("%s%s", id.c_str(), compatible ? "" : "\nRequires an enabled Motion with Count 1 and the same object slot.");
+                ImGui::EndDisabled();
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextWrapped("At Lifetime, continue the same object with this Motion. Each Motion in the link must use Count 1; links cannot form a cycle.");
+    }
+    else if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::HOLD)
+        ImGui::TextWrapped("Keep the final transform and animation pose after Lifetime.");
+    else if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP)
+        ImGui::TextWrapped("Repeat this Motion after Lifetime. This Loop is saved and also used by Play.");
+    else ImGui::TextWrapped("Standalone Play ends the object at Lifetime. A Motion applied by a Result stops at its final pose; the target WORLD cue keeps its original lifetime.");
     int interpolation = sequence->interpolation == WORLD_SEQUENCE_INTERPOLATION::LINEAR ? 0 : 1;
     if (ImGui::Combo("Interpolation", &interpolation, "Linear\0Smooth Step\0"))
     { sequence->interpolation = interpolation == 0 ? WORLD_SEQUENCE_INTERPOLATION::LINEAR : WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP; changed = true; }
-    if (!alias && ImGui::CollapsingHeader("Motion / Emission", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!alias && ImGui::CollapsingHeader("Physics / Motion / Emission", ImGuiTreeNodeFlags_DefaultOpen))
     {
         auto& motion = sequence->objectMotion;
+        ImGui::TextWrapped("Motion uses the Lifetime timeline and works without animation clips. Play or drag the ruler to preview, then Save.");
+        ImGui::DragFloat("Arc Height (m)", &m_VerticalArcHeight, .05f, .01f, 100.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        if (ImGui::Button("Apply Vertical Arc"))
+        {
+            const float seconds = sequence->durationMs * .001f;
+            const float velocityY = 4.f * m_VerticalArcHeight / seconds;
+            const float accelerationY = -8.f * m_VerticalArcHeight / (seconds * seconds);
+            if (!std::isfinite(m_VerticalArcHeight) || m_VerticalArcHeight <= 0.f ||
+                !std::isfinite(velocityY) || !std::isfinite(accelerationY) ||
+                std::abs(velocityY) > 100000.f || std::abs(accelerationY) > 100000.f)
+                m_Status = "Vertical arc is too fast for this Lifetime. Increase Lifetime or reduce Arc Height; motion preserved.";
+            else
+            {
+                motion.velocity = {0.f, velocityY, 0.f};
+                motion.acceleration = {0.f, accelerationY, 0.f};
+                motion.spreadDegrees = 0.f;
+                changed = true;
+                m_Status = "Vertical arc applied. Count and interval preserved. First emission returns at Lifetime; later emissions share the sequence end. Save to keep the motion.";
+            }
+        }
+        ImGui::TextDisabled("First emission: apex at %.0f ms; return at %u ms.", sequence->durationMs * .5f, sequence->durationMs);
+        ImGui::TextWrapped("Arc Height sets the physics offset above the Transform track. All emissions share the sequence end; later emissions have less time. Apply again after changing Lifetime. Velocity and Acceleration below remain directly editable.");
         changed |= ImGui::DragFloat3("Velocity (m/s)", &motion.velocity.x, .05f);
         changed |= ImGui::DragFloat3("Acceleration (m/s2)", &motion.acceleration.x, .05f);
         changed |= ImGui::DragFloat3("Self Rotation (deg/s)", &motion.angularVelocityDegrees.x, .5f);
@@ -958,13 +1133,12 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (ImGui::Button(m_Playing ? "Pause" : "Play"))
     {
         if (m_Playing) m_Playing = false;
-        else { if (m_ClockMs >= SpanMs()) m_ClockMs = 0.f; Seek(m_ClockMs); m_Playing = m_PreviewActive; }
+        else { if (m_ClockMs >= PreviewSpanMs()) m_ClockMs = 0.f; Seek(m_ClockMs); m_Playing = m_PreviewActive; }
     }
     ImGui::SameLine(); if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
-    ImGui::SameLine(); ImGui::Checkbox("Loop", &m_Loop);
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const auto* selectedInstance = m_Document.Find_Instance(m_SelectedInstance);
-    if (resource && resource->sequenceInstanceId.empty() && selectedInstance && selectedInstance->anchorKind == "WORLD")
+    if (selectedInstance && selectedInstance->anchorKind == "WORLD")
     {
         ImGui::SameLine();
         if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter))
@@ -975,14 +1149,21 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
     }
+    if (selectedInstance) ImGui::TextDisabled("On Complete: %s", MotionEndLabel(selectedInstance->motionEnd));
     if (m_PreviewActive) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
-    float clock = m_ClockMs;
-    if (ImGui::SliderFloat("Clock (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
+    if (m_ClockMs >= SpanMs() && selectedInstance &&
+        (selectedInstance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP || selectedInstance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT))
+        ImGui::TextWrapped("Completion motion active. This timeline still edits the selected Motion's first Lifetime; seek to 0 to restart it.");
+    float clock = (std::min)(m_ClockMs, SpanMs());
+    if (ImGui::SliderFloat("First Lifetime (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
+    ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
     const float rowHeight = 32.f;
     const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, sequence.durationMs * m_Zoom * .001f);
     const float pixelsPerMs = width / sequence.durationMs;
-    const float height = 28.f + rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size());
+    const bool showPhysics = resource && resource->sequenceInstanceId.empty();
+    const float tracksHeight = rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size());
+    const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
@@ -1029,7 +1210,43 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             for (const auto& next : sequence.animationTracks) if (next.slotId == track.slotId && next.startMs > track.startMs) end = (std::min)(end, next.startMs);
             const float y = origin.y + 28.f + rowHeight * (sequence.tracks.size() + index);
             CompositionTimeline::DrawBox(draw, ImVec2(origin.x + track.startMs * pixelsPerMs, y),
-                ImVec2(origin.x + end * pixelsPerMs, y + 25.f), IM_COL32(113, 82, 147, 255), false, track.clipName.c_str());
+                ImVec2(origin.x + end * pixelsPerMs, y + 25.f), IM_COL32(113, 82, 147, 255), false,
+                track.displayName.empty() ? track.clipName.c_str() : track.displayName.c_str());
+        }
+        if (showPhysics)
+        {
+            const float top = origin.y + 28.f + tracksHeight;
+            draw->AddRectFilled(ImVec2(origin.x, top), ImVec2(origin.x + width, top + 60.f), IM_COL32(28, 49, 48, 255));
+            draw->AddText(ImVec2(origin.x + 5.f, top + 3.f), IM_COL32(136, 227, 198, 255), "Physics Y offset / first emission");
+            const auto& motion = sequence.objectMotion;
+            const float seconds = sequence.durationMs * .001f;
+            const auto sampleY = [&motion](float time) { return motion.velocity.y * time + .5f * motion.acceleration.y * time * time; };
+            float minimum = (std::min)(0.f, sampleY(seconds));
+            float maximum = (std::max)(0.f, sampleY(seconds));
+            if (motion.acceleration.y != 0.f)
+            {
+                const float apex = -motion.velocity.y / motion.acceleration.y;
+                if (apex > 0.f && apex < seconds)
+                { minimum = (std::min)(minimum, sampleY(apex)); maximum = (std::max)(maximum, sampleY(apex)); }
+            }
+            const float range = (std::max)(.01f, maximum - minimum);
+            if (std::isfinite(motion.velocity.y) && std::isfinite(motion.acceleration.y) &&
+                std::isfinite(minimum) && std::isfinite(maximum) && std::isfinite(range))
+                for (int segment = 0; segment < 64; ++segment)
+                {
+                    const float from = static_cast<float>(segment) / 64.f, to = static_cast<float>(segment + 1) / 64.f;
+                    draw->AddLine(ImVec2(origin.x + width * from, top + 56.f - 30.f * (sampleY(seconds * from) - minimum) / range),
+                        ImVec2(origin.x + width * to, top + 56.f - 30.f * (sampleY(seconds * to) - minimum) / range), IM_COL32(91, 217, 171, 255), 2.f);
+                }
+            ImGui::SetCursorScreenPos(ImVec2(origin.x, top));
+            ImGui::InvisibleButton("PhysicsSeek", ImVec2(width, 60.f));
+            if (ImGui::IsItemActive() && selectedInstance)
+            {
+                const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(sequence.durationMs));
+                Seek(selectedInstance->startDelayMs + local / selectedInstance->playbackSpeed);
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Drag to seek. Y offset range: %.3f to %.3f m. Added to Transform keys before spread, revolution and anchor rotation.", minimum, maximum);
         }
         const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
         const float local = instance ? (m_ClockMs - instance->startDelayMs) * instance->playbackSpeed : 0.f;
@@ -1106,7 +1323,8 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
         {
             auto& clip = sequence.animationTracks[index]; ImGui::PushID(static_cast<int>(index));
             ImGui::Text("Slot: %s", clip.slotId.c_str());
-            bool changed = EditText("Clip Name", clip.clipName);
+            bool changed = EditText("Clip display name", clip.displayName);
+            ImGui::TextWrapped("Native clip: %s", clip.clipName.c_str());
             uint32_t minimum = 0, maximum = sequence.durationMs - 1;
             bool first = true;
             for (size_t other = 0; other < sequence.animationTracks.size(); ++other)
@@ -1128,7 +1346,7 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             }
             ImGui::PopID();
         }
-        ImGui::TextWrapped("Select a native clip in Object Resources, then Append Animation to this Pattern.");
+        ImGui::TextWrapped("Select a native clip in Object Resources, then Append Clip to this Motion.");
     }
 }
 
@@ -1151,13 +1369,18 @@ void CWorldObjectTool::Rebuild_PhysicalTree()
 void CWorldObjectTool::Render_PhysicalResources()
 {
     ImGui::SeparatorText("Physical Resources");
+    if (!m_SelectedInstance.empty()) ImGui::TextWrapped("Select the parent Object to change its shared model or texture.");
     if (!m_PhysicalScanned)
     {
-        Scan_PhysicalResources({"Effect", "Map", "Deploy", "Character"}, m_PhysicalAssets, m_PhysicalStatus);
-        m_PhysicalScanned = true; Rebuild_PhysicalTree();
+        m_PhysicalScanRunning = m_PhysicalScan.Begin({"Effect", "Map", "Deploy", "Character"}, m_PhysicalStatus);
+        m_PhysicalScanned = true;
     }
+    ImGui::BeginDisabled(m_PhysicalScanRunning);
     if (ImGui::Button("Refresh Files"))
-    { Scan_PhysicalResources({"Effect", "Map", "Deploy", "Character"}, m_PhysicalAssets, m_PhysicalStatus); Rebuild_PhysicalTree(); }
+        m_PhysicalScanRunning = m_PhysicalScan.Begin({"Effect", "Map", "Deploy", "Character"}, m_PhysicalStatus);
+    ImGui::EndDisabled();
+    if (m_PhysicalScanRunning)
+    { ImGui::SameLine(); ImGui::TextDisabled("Scanning files..."); }
     ImGui::SetNextItemWidth(-1.f);
     if (ImGui::Combo("##AssignSlot", &m_PhysicalSlot, "Model (.wmodel)\0Diffuse (.dds)\0")) Rebuild_PhysicalTree();
     ImGui::SetNextItemWidth(-1.f);
@@ -1171,7 +1394,7 @@ void CWorldObjectTool::Render_PhysicalResources()
             const auto& asset = m_PhysicalAssets[index];
             ImGui::PushID(asset.assetId.c_str());
             auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-            ImGui::BeginDisabled(!resource || !resource->sequenceInstanceId.empty());
+            ImGui::BeginDisabled(!resource || !m_SelectedInstance.empty() || !resource->sequenceInstanceId.empty());
             if (ImGui::Selectable(asset.fileName.c_str(), asset.assetId == m_SelectedPhysical &&
                 (asset.kind != PHYSICAL_RESOURCE_KIND::MODEL || m_AnimationCandidateObjectId == m_SelectedObject)))
             {
@@ -1181,7 +1404,7 @@ void CWorldObjectTool::Render_PhysicalResources()
                     m_AnimationCandidateModelAssetId = asset.assetId;
                     m_AnimationCandidateObjectId = m_SelectedObject;
                     Refresh_AnimationResources();
-                    m_Status = "Model candidate selected. Append Animation links its model and clip; Assign Model links only the model.";
+                    m_Status = "Model candidate selected. Assign Model updates the parent Object; its child motions keep their clip bindings.";
                 }
                 else
                 {

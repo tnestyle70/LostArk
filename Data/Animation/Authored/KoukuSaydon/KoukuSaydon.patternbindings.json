@@ -1,9 +1,9 @@
 {
   "schema": "lostark.kouku-saydon-pattern-bindings",
   "formatVersion": 1,
-  "lightResourceRevision": 2,
+  "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 81,
+  "sourceRevision": 116,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -574,101 +574,16 @@
       "playMs": 4667,
       "playRate": 1,
       "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.1",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.1",
-      "clip": "rpct00_att_battle_12_06",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 4333,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.3",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.10",
-      "clip": "rpct00_att_battle_13_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 4667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.4",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.4",
-      "clip": "rpct00_att_battle_13_02",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 2667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.10",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.12",
-      "clip": "rpct00_att_battle_13_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 4667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.11",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.13",
-      "clip": "rpct00_att_battle_13_02",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 2667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.12",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.14",
-      "clip": "rpct00_att_battle_13_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 4667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.13",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.15",
-      "clip": "rpct00_att_battle_13_02",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 2667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.14",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.17",
-      "clip": "rpct00_att_battle_13_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 4667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.15",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.animation.18",
-      "clip": "rpct00_att_battle_13_02",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 2667,
-      "playRate": 1,
-      "endPolicy": "EXACT"
     }
   ],
+  "folders": [],
+  "bundles": [],
   "patterns": [
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_1",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
       "durationMs": 18135,
       "presentationOccurrences": [
         {
@@ -687,19 +602,19 @@
           "assetId": "boss.kouku.disarm.shield_1",
           "resourceDurationMs": 10684,
           "positionOffset": [
-            0.0,
-            0.0,
-            -0.5
+            -0.5,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            90,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -720,6 +635,7 @@
           "startMs": 5263,
           "durationMs": 10684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -738,19 +654,19 @@
           "assetId": "boss.kouku.disarm.converge_1",
           "resourceDurationMs": 7000,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -771,6 +687,7 @@
           "startMs": 7263,
           "durationMs": 7000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -789,19 +706,19 @@
           "assetId": "boss.kouku.blur_1",
           "resourceDurationMs": 7000,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -822,6 +739,7 @@
           "startMs": 7263,
           "durationMs": 7000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -840,19 +758,19 @@
           "assetId": "boss.kouku.disarm.converge_2",
           "resourceDurationMs": 7000,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -873,6 +791,7 @@
           "startMs": 7263,
           "durationMs": 7000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -891,19 +810,19 @@
           "assetId": "boss.kouku.disarm.converge_3",
           "resourceDurationMs": 7000,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -924,6 +843,7 @@
           "startMs": 7263,
           "durationMs": 7000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -943,18 +863,18 @@
           "resourceDurationMs": 1000,
           "positionOffset": [
             -2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            198.0,
-            0.0
+            0,
+            198,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -975,6 +895,7 @@
           "startMs": 7263,
           "durationMs": 1000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -994,18 +915,18 @@
           "resourceDurationMs": 1000,
           "positionOffset": [
             2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            342.0,
-            0.0
+            0,
+            342,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1026,6 +947,7 @@
           "startMs": 6263,
           "durationMs": 1000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1045,18 +967,18 @@
           "resourceDurationMs": 1000,
           "positionOffset": [
             1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            54.0,
-            0.0
+            0,
+            54,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1077,6 +999,7 @@
           "startMs": 8263,
           "durationMs": 1000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1095,19 +1018,19 @@
           "assetId": "boss.kouku.disarm.star_1",
           "resourceDurationMs": 1000,
           "positionOffset": [
-            0.0,
-            0.0,
+            0,
+            0,
             3.09
           ],
           "rotationDegrees": [
-            0.0,
-            270.0,
-            0.0
+            0,
+            270,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1128,6 +1051,7 @@
           "startMs": 9263,
           "durationMs": 1000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1147,18 +1071,18 @@
           "resourceDurationMs": 1000,
           "positionOffset": [
             -1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            126.0,
-            0.0
+            0,
+            126,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1179,6 +1103,7 @@
           "startMs": 10263,
           "durationMs": 1000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1198,18 +1123,18 @@
           "resourceDurationMs": 1600,
           "positionOffset": [
             2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            342.0,
-            0.0
+            0,
+            342,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1230,6 +1155,7 @@
           "startMs": 6263,
           "durationMs": 1600,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1249,18 +1175,18 @@
           "resourceDurationMs": 1600,
           "positionOffset": [
             -2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            198.0,
-            0.0
+            0,
+            198,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1281,6 +1207,7 @@
           "startMs": 7263,
           "durationMs": 1600,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1300,18 +1227,18 @@
           "resourceDurationMs": 1600,
           "positionOffset": [
             1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            54.0,
-            0.0
+            0,
+            54,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1332,6 +1259,7 @@
           "startMs": 8263,
           "durationMs": 1600,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1350,19 +1278,19 @@
           "assetId": "boss.kouku.disarm.star.smoke_1",
           "resourceDurationMs": 1600,
           "positionOffset": [
-            0.0,
-            0.0,
+            0,
+            0,
             3.09
           ],
           "rotationDegrees": [
-            0.0,
-            270.0,
-            0.0
+            0,
+            270,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1383,6 +1311,7 @@
           "startMs": 9263,
           "durationMs": 1600,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1402,18 +1331,18 @@
           "resourceDurationMs": 1600,
           "positionOffset": [
             -1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            126.0,
-            0.0
+            0,
+            126,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1434,6 +1363,7 @@
           "startMs": 10263,
           "durationMs": 1600,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1452,19 +1382,19 @@
           "assetId": "boss.kouku.disarm.shield_1",
           "resourceDurationMs": 10684,
           "positionOffset": [
-            0.0,
-            0.0,
-            1.0
+            1,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            180.0,
-            0.0
+            0,
+            270,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1485,6 +1415,7 @@
           "startMs": 5263,
           "durationMs": 10684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1504,18 +1435,18 @@
           "resourceDurationMs": 9000,
           "positionOffset": [
             2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            342.0,
-            0.0
+            0,
+            342,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1536,6 +1467,7 @@
           "startMs": 6263,
           "durationMs": 9000,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1555,18 +1487,18 @@
           "resourceDurationMs": 9000,
           "positionOffset": [
             -2.94,
-            0.0,
+            0,
             0.95
           ],
           "rotationDegrees": [
-            0.0,
-            198.0,
-            0.0
+            0,
+            198,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1587,6 +1519,7 @@
           "startMs": 7263,
           "durationMs": 8684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1606,18 +1539,18 @@
           "resourceDurationMs": 9000,
           "positionOffset": [
             1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            54.0,
-            0.0
+            0,
+            54,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1638,6 +1571,7 @@
           "startMs": 8263,
           "durationMs": 7684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1656,19 +1590,19 @@
           "assetId": "boss.kouku.disarm.star.decal_1",
           "resourceDurationMs": 9000,
           "positionOffset": [
-            0.0,
-            0.0,
+            0,
+            0,
             3.09
           ],
           "rotationDegrees": [
-            0.0,
-            270.0,
-            0.0
+            0,
+            270,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1689,6 +1623,7 @@
           "startMs": 9263,
           "durationMs": 6684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1708,18 +1643,18 @@
           "resourceDurationMs": 9000,
           "positionOffset": [
             -1.82,
-            0.0,
+            0,
             -2.51
           ],
           "rotationDegrees": [
-            0.0,
-            126.0,
-            0.0
+            0,
+            126,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -1740,6 +1675,7 @@
           "startMs": 10263,
           "durationMs": 5684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1758,13 +1694,13 @@
           "assetId": "",
           "resourceDurationMs": 10684,
           "positionOffset": [
-            0.0,
+            0,
             0.5,
-            0.0
+            0
           ],
           "rotationDegrees": [
             0,
-            0.0,
+            90,
             0
           ],
           "scale": [
@@ -1791,6 +1727,7 @@
           "startMs": 5263,
           "durationMs": 10684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1809,13 +1746,13 @@
           "assetId": "",
           "resourceDurationMs": 10684,
           "positionOffset": [
-            0.0,
             0.5,
-            0.5
+            0.5,
+            0
           ],
           "rotationDegrees": [
             0,
-            180.0,
+            270,
             0
           ],
           "scale": [
@@ -1842,12 +1779,16 @@
           "startMs": 5263,
           "durationMs": 10684,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_2",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
       "durationMs": 26134,
       "presentationOccurrences": [
         {
@@ -1899,6 +1840,7 @@
           "startMs": 6767,
           "durationMs": 2400,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -1950,6 +1892,7 @@
           "startMs": 13167,
           "durationMs": 2400,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2001,6 +1944,7 @@
           "startMs": 19567,
           "durationMs": 2400,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2052,6 +1996,7 @@
           "startMs": 2007,
           "durationMs": 24127,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2103,6 +2048,7 @@
           "startMs": 2007,
           "durationMs": 24127,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2131,7 +2077,7 @@
             1.0,
             1.0
           ],
-          "fadeInMs": 500,
+          "fadeInMs": 600000,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
           "dissolveEnd": 1.0,
@@ -2159,11 +2105,17 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_4",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
       "durationMs": 4167,
       "presentationOccurrences": []
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_5",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
       "durationMs": 26900,
       "presentationOccurrences": [
         {
@@ -2215,6 +2167,7 @@
           "startMs": 6166,
           "durationMs": 934,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2266,6 +2219,7 @@
           "startMs": 12566,
           "durationMs": 934,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2317,12 +2271,16 @@
           "startMs": 18966,
           "durationMs": 934,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_6",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
       "durationMs": 31467,
       "presentationOccurrences": [
         {
@@ -2374,6 +2332,7 @@
           "startMs": 0,
           "durationMs": 2671,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2425,6 +2384,7 @@
           "startMs": 0,
           "durationMs": 31467,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2476,6 +2436,7 @@
           "startMs": 0,
           "durationMs": 31467,
           "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -2527,1439 +2488,6 @@
           "resourceDurationMs": 31467,
           "startMs": 0,
           "durationMs": 31467
-        }
-      ]
-    },
-    {
-      "patternId": "KAKULSAYDON_G1_PATTERN_7",
-      "durationMs": 33669,
-      "presentationOccurrences": [
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.7",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            22.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.1",
-          "cardSymbol": "SPADE",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.1",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.8",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            67.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.2",
-          "cardSymbol": "CLUB",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.2",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.9",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            112.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.3",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.3",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.10",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            157.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.4",
-          "cardSymbol": "HEART",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.4",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.11",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            202.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.5",
-          "cardSymbol": "CLUB",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.5",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.12",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            247.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.6",
-          "cardSymbol": "SPADE",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.6",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.13",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            292.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.7",
-          "cardSymbol": "HEART",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.7",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.14",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            337.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.1.sector.8",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.8",
-          "startMs": 5690,
-          "durationMs": 4793,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.7",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            22.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.1",
-          "cardSymbol": "SPADE",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.9",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.8",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            67.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.2",
-          "cardSymbol": "CLUB",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.10",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.9",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            112.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.3",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.11",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.10",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            157.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.4",
-          "cardSymbol": "HEART",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.12",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.11",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            202.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.5",
-          "cardSymbol": "CLUB",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.13",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.12",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            247.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.6",
-          "cardSymbol": "SPADE",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.14",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.13",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            292.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.7",
-          "cardSymbol": "HEART",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.15",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.14",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            337.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.2.sector.8",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.16",
-          "startMs": 12734,
-          "durationMs": 4755,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.7",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            22.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.1",
-          "cardSymbol": "SPADE",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.17",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.8",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            67.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.2",
-          "cardSymbol": "CLUB",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.18",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.9",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            112.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.3",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.19",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.10",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            157.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.4",
-          "cardSymbol": "HEART",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.20",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.11",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            202.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.5",
-          "cardSymbol": "CLUB",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.21",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.12",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            247.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.6",
-          "cardSymbol": "SPADE",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.22",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.13",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            292.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.7",
-          "cardSymbol": "HEART",
-          "cardColor": "RED",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.23",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "SECTOR",
-          "colliderKind": "ROULETTE_CARD_REGION",
-          "halfExtents": [
-            1,
-            0.5,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 22.5,
-          "resourceId": "kakulsaydon.g1.presentation.14",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 5000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            337.5,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "roulette.round.3.sector.8",
-          "cardSymbol": "DIAMOND",
-          "cardColor": "BLACK",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.24",
-          "startMs": 20098,
-          "durationMs": 4914,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "",
-          "shape": "CIRCLE",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 2,
-          "halfAngleDegrees": 180,
-          "resourceId": "kakulsaydon.g1.presentation.15",
-          "kind": "COLLIDER",
-          "assetId": "",
-          "resourceDurationMs": 1000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "WORLD",
-          "worldId": "kakulsaydon.g1.world.1",
-          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.5",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.25",
-          "startMs": 27487,
-          "durationMs": 4744,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": "world.sequence.instance.8"
-        },
-        {
-          "resourceKind": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.g1.presentation.17",
-          "kind": "LIGHT",
-          "assetId": "light.runtime.1",
-          "resourceDurationMs": 3000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "PLAYER",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.26",
-          "startMs": 0,
-          "durationMs": 33669,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.g1.presentation.18",
-          "kind": "LIGHT",
-          "assetId": "light.runtime.2",
-          "resourceDurationMs": 3000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "BOSS",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.presentation.27",
-          "startMs": 0,
-          "durationMs": 33669,
-          "brightnessMultiplier": 1,
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "GROUP",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "fadeInMs": 500,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "BOSS",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.sceneprofile.1",
-          "resourceId": "kakulsaydon.g1.sceneprofile.1",
-          "kind": "SCENE_PROFILE",
-          "worldSequenceInstanceId": "",
-          "assetId": "scene.kakulsaydon.find-true-dark.v1",
-          "resourceDurationMs": 33669,
-          "startMs": 0,
-          "durationMs": 33669
         }
       ]
     }

@@ -1,6 +1,7 @@
 #include "KoukuSaydonBrain.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <unordered_set>
 #include <utility>
@@ -221,6 +222,19 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
 			valuesValid = !window.CardRegions.empty();
 			break;
+		case BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP:
+			valuesValid = !window.CardRegions.empty() && !window.strTargetWorldInstanceId.empty() &&
+				std::isfinite(window.fTargetWorldX) && std::isfinite(window.fTargetWorldZ) &&
+				std::abs(window.fTargetWorldX) <= 100000.f && std::abs(window.fTargetWorldZ) <= 100000.f &&
+				window.fTargetRadiusM >= .01f && window.fTargetRadiusM <= 1000.f;
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT:
+			valuesValid = !window.CardRegions.empty() && !window.ContactTargets.empty() && window.ContactTargets.size() <= 64u &&
+				!window.OnSuccess.empty() && window.OnFail.empty() && window.OnTimeout.empty() && !window.bEndsPatternOnSuccess;
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
+			valuesValid = window.CardRegions.empty() && window.OnFail.empty();
+			break;
 		case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
 			valuesValid = window.fHalfAngleDegrees > 0.f;
 			break;
@@ -241,22 +255,37 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				return false;
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
+				const bool worldMotion = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind;
+				if ((worldMotion && (result.strTargetWorldInstanceId.empty() || result.strMotionInstanceId.empty() ||
+					result.iPercent != 0u || result.iDurationMs != 0u || !result.strPatternId.empty())) ||
+					(!worldMotion && (!result.strTargetWorldInstanceId.empty() || !result.strMotionInstanceId.empty())))
+					return false;
+				const bool contactMotion = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
+				const bool contactSignal = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
+				if (((contactMotion || contactSignal) && window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT) ||
+					(window.eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && !contactMotion && !contactSignal) ||
+					(contactMotion && result.ContactMotions.size() != window.ContactTargets.size()) ||
+					(contactSignal && result.strTargetLogicOccurrenceId.empty()))
+					return false;
 				if (BOSS_PATTERN_LOGIC_RESULT_KIND::NONE == result.eKind)
 					return false;
-				/* Only the boss-level stagger window may hand the audition a
-				follow-up pattern; a per-player verdict cannot move the boss. */
+				/* Boss-level completion may hand the audition a follow-up;
+				a per-player verdict cannot move the boss. */
 				if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind &&
-					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind)
+					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL != window.eKind)
 					return false;
 			}
 			return true;
 		};
 		if (window.strWindowId.empty() || !windowIds.insert(window.strWindowId).second ||
 			0u == window.iDurationMs || endMs > patternDurationMs || !valuesValid ||
-			(window.bInsideIsFail && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind) ||
+			(window.bInsideIsFail && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind &&
+				BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind) ||
 			std::any_of(window.CardRegions.begin(),window.CardRegions.end(),[&](const BOSS_LOGIC_REGION& region)
 			{ return region.WorldTrack.bEnabled && (region.WorldTrack.Keys.empty() ||
-				BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind || region.WorldTrack.iStartMs > window.iStartMs); }) ||
+				(BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind && BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind &&
+				 BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT != window.eKind) ||
+				region.WorldTrack.iStartMs > window.iStartMs); }) ||
 			!resultsValid(window.OnSuccess) || !resultsValid(window.OnFail) ||
 			!resultsValid(window.OnTimeout) ||
 			(endTickKind && !window.OnTimeout.empty()) ||
@@ -269,6 +298,24 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	}
 	for (const BOSS_PATTERN_WORLD_SEQUENCE& sequence : pattern.WorldSequences)
 	{
+		if (sequence.Placement)
+		{
+			const auto& placement = *sequence.Placement;
+			const float values[] = { placement.fPositionX, placement.fPositionY, placement.fPositionZ,
+				placement.fRotationXDegrees, placement.fRotationYDegrees, placement.fRotationZDegrees,
+				placement.fScaleX, placement.fScaleY, placement.fScaleZ };
+			bool valid = !sequence.strOccurrenceId.empty() && sequence.SupportWindows.empty() && !sequence.bAnchorBossSpawn &&
+				sequence.fPositionOffsetX == 0.f && sequence.fPositionOffsetY == 0.f && sequence.fPositionOffsetZ == 0.f &&
+				sequence.fAnchorPositionX == 0.f && sequence.fAnchorPositionY == 0.f && sequence.fAnchorPositionZ == 0.f;
+			for (std::size_t index = 0u; index < 9u; ++index)
+				valid = valid && std::isfinite(values[index]) && (index < 3u ? std::abs(values[index]) <= 100000.f :
+					index < 6u ? std::abs(values[index]) <= 36000.f : values[index] >= .001f && values[index] <= 1000.f);
+			if (!valid)
+			{
+				status = "KoukuSaydon absolute World placement or occurrence ownership is invalid";
+				return false;
+			}
+		}
 		if (sequence.strInstanceId.empty() || sequence.iStartMs > patternDurationMs ||
 			sequence.iDurationMs > 600000u ||
 			!(sequence.fPlaybackSpeed >= 0.05f && sequence.fPlaybackSpeed <= 16.f))
@@ -500,6 +547,23 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		Enter_Stage(boss, pattern->Stages[nextStage], nextStage, serverTick, false);
 		status.clear();
 		return KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED;
+	}
+	// Contact/deadline windows use the pattern clock, whose final sample may be
+	// one tick after the last animation stage. Keep that pose until Logic has
+	// evaluated the terminal tick; intermediate stage clocks remain unchanged.
+	const std::uint64_t patternElapsedTicks = serverTick >= boss.iPatternStartTick ?
+		static_cast<std::uint64_t>(serverTick - boss.iPatternStartTick) :
+		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
+	for (const auto& window : pattern->LogicWindows)
+	{
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL) continue;
+		const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;
+		const std::uint64_t deadlineTicks = (endMs * SERVER_TICK_HZ + MILLISECONDS_PER_SECOND - 1u) / MILLISECONDS_PER_SECOND;
+		if (patternElapsedTicks < deadlineTicks)
+		{
+			status.clear();
+			return KOUKUSAYDON_BRAIN_UPDATE_RESULT::RUNNING;
+		}
 	}
 	Finish_Pattern(boss, serverTick,
 		SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED);

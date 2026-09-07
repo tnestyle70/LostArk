@@ -267,6 +267,8 @@ HRESULT CMesh::Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTr
 			XMVector3TransformNormal(XMLoadFloat3(&pVertices[i].vBinormal), PreTransformMatrix));
 
 		memcpy(&pVertices[i].vTexcoord, &pAIMesh->mTextureCoords[0][i], sizeof(float2_t));
+		if (pAIMesh->HasTextureCoords(1))
+			memcpy(&pVertices[i].vTexcoord1, &pAIMesh->mTextureCoords[1][i], sizeof(float2_t));
 	}
 
 	D3D11_SUBRESOURCE_DATA			VertexInitialData{};

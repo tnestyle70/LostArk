@@ -6,6 +6,7 @@
 #include "KoukuSaydonCompositionDocument.h"
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,6 +15,8 @@ namespace Client
 {
 	/* One-shot transport command for the local composition preview. MainApp
 	   consumes it and forwards it to the real-CModel preview owner. */
+	enum class KOUKU_PATTERN_SELECTION : std::uint8_t { GATE, FOLDER, BUNDLE, PATTERN };
+
 	enum class KOUKU_PREVIEW_TRANSPORT : std::uint8_t
 	{
 		NONE,
@@ -46,12 +49,23 @@ namespace Client
 		bool_t bHasBoundPlacement = false;
 		f32_t fBoundX = 0.f;
 		f32_t fBoundZ = 0.f;
+		std::string strObjectResourceId;
+		bool_t bEnabled = true;
+		bool_t bSupportsPlacement = false;
+		std::string strObjectDisplayName;
+		std::string strAnchorKind = "WORLD";
+		bool_t bDefaultMotion = false;
+		std::vector<std::string> AnimationClips;
 	};
 
 	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final
 	{
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE Resource;
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
+		// Isolated authoring placement preview: all placed Objects, without boss or Logic playback.
+		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> WorldBoxes;
+		// A live edit may retain an existing preview only when this exact box is active.
+		std::string strEditedOccurrenceId;
 	};
 
 	/* K-only authoring session and Stage/Animation lane editor. It owns no socket
@@ -153,10 +167,16 @@ namespace Client
 			std::uint32_t& outStartClockMs,
 			bool_t& outStartPaused,
 			std::string& outTargetAssetName);
+		bool_t Consume_BundlePreviewRequest(std::string& bundleId, std::uint32_t& clockMs, bool_t& paused);
+		bool_t Consume_BundleServerPlayRequest(std::string& bundleId, std::uint32_t& revision);
+		bool_t Select_BundleById(std::string_view bundleId, std::string& status);
 		bool_t Consume_ServerPlayRequest(
 			std::string& outPatternId,
 			std::uint32_t& outSourceRevision);
 
+		// Create Pattern's Parent/Bundle controls validate their destination before editing session state.
+		bool_t Set_PatternCreationDestination(std::string_view folderId,
+			std::string_view bundleId, std::string& outStatus);
 		bool_t Create_Pattern(
 			std::string_view displayName,
 			std::string_view category,
@@ -169,6 +189,8 @@ namespace Client
 			std::string_view patternId,
 			std::string_view displayName,
 			std::string& outStatus);
+		bool_t Set_PatternFolder(std::string_view patternId,
+			std::string_view folderId, std::string& outStatus);
 		bool_t Set_PatternCategory(
 			std::string_view patternId,
 			std::string_view category,
@@ -215,7 +237,7 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
-		// Copy selected parents once; standalone boxes keep their Stage and time window.
+		// Copy selected owner Stages once, in order after the rightmost selected Stage.
 		bool_t Duplicate_TimelineSelection(
 			std::string_view patternId,
 			const std::vector<std::string>& stageIds,
@@ -229,10 +251,9 @@ namespace Client
 			std::string_view stageId,
 			int32_t direction,
 			std::string& outStatus);
-		/* Left/Right arrow and the Selected Box "< Earlier" / "Later >" buttons.
-		   Moves the single selected Stage, or the Stage owning the single
-		   selected animation box, one slot and keeps it selected. Animation
-		   boxes are Stage-relative, so they travel with their Stage. */
+		/* Left/Right and Earlier/Later reorder selected Stages and animation
+		   owners together. Stable selection and internal order are preserved;
+		   the entire move is rejected at the corresponding Pattern edge. */
 		bool_t Move_SelectedStage(
 			std::string_view patternId,
 			int32_t direction,
@@ -337,6 +358,11 @@ namespace Client
 			std::string& outStatus);
 
 		// Apply only this debug flag, retaining all uncommitted Box Detail values.
+		bool_t Connect_ColliderLogic(const std::string& patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
+			const std::string& logicId, std::string& outStatus);
+		bool_t Set_PresentationBox(std::string_view patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Set_PresentationBoxDebugRender(std::string_view patternId,
 			std::string_view occurrenceId, bool_t visible, std::string& outStatus);
 
@@ -374,7 +400,14 @@ namespace Client
 
 		/* World catalog: a definition names one authored world sequence instance
 		   of the arena; a box starts it on the pattern clock at a playback speed. */
-		bool_t Append_WorldResource(const std::string_view instanceId, std::string& outStatus);
+		void Set_WorldPlacementResolver(std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> resolver)
+		{ m_WorldPlacementResolver = std::move(resolver); }
+		bool_t Append_WorldResource(std::string_view instanceId, std::string& outStatus, bool_t asObject = false);
+		bool_t Append_WorldObject(std::string_view objectResourceId, std::string& outStatus);
+		bool_t Set_WorldBoxPlacement(std::string_view patternId, std::string_view occurrenceId,
+			const KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& outStatus);
+		bool_t Place_WorldBoxNearCharacter(std::string_view patternId, std::string_view occurrenceId,
+			std::string& outStatus);
 		bool_t Create_World(
 			std::string_view displayName,
 			std::string_view sequenceInstanceId,
@@ -479,6 +512,14 @@ namespace Client
 		void Synchronize_EditorFields();
 		void Render_Toolbar();
 		void Render_PatternsAndResources();
+		void Select_Hierarchy(KOUKU_PATTERN_SELECTION kind, std::string_view id);
+		void Render_HierarchyDetails();
+		void Render_BundleTimeline();
+		void Render_BundleTransport();
+		bool_t Request_BundlePreview(std::uint32_t clockMs, bool_t paused = false);
+		bool_t Create_Hierarchy(bool_t bundle);
+		bool_t Link_BundlePattern(std::string_view patternId);
+		void Render_BundleCommonDetails();
 		void Render_ResourceTree();
 		void Render_AnimationResources();
 		void Render_LogicResources();
@@ -486,19 +527,16 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic);
 		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_LogicOutcomeSlots(const std::string& patternId, const std::string& occurrenceId);
-		bool_t Connect_ColliderLogic(const std::string& patternId,
-			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
-			const std::string& logicId, std::string& outStatus);
 		void Render_SummonResources();
 		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
+		void Render_CameraAuthoring(std::string_view shotId);
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
 			std::string_view displayName, std::string& outStatus);
 		bool_t Append_PresentationBox(std::string_view resourceId, std::string& outStatus);
-		bool_t Set_PresentationBox(std::string_view patternId,
-			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Delete_PresentationBox(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
+		void Queue_WorldBoxPreview(std::string_view patternId, std::string_view occurrenceId);
 		void Queue_PresentationPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* occurrence = nullptr);
 		void Render_WorldResources();
@@ -575,9 +613,13 @@ namespace Client
 		bool_t m_bPresentationResourceRefreshRequested = true;
 		// World lane session state: the arena's sequence list and the box being edited.
 		std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> m_WorldSequenceResources;
+		std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> m_WorldPlacementResolver;
+		bool_t Stage_NewWorldPlacement(std::string_view instanceId,
+			std::optional<KOUKU_SAYDON_WORLD_PLACEMENT>& outPlacement, std::string& outStatus) const;
 		std::string m_strWorldSequenceResourceStatus;
 		char_t m_NewWorldName[256]{};
-		std::string m_strNewWorldSequenceInstanceId;
+		std::string m_strNewWorldObjectId;
+		char m_WorldObjectFilter[128]{};
 		std::string m_strSelectedWorldId;
 		std::string m_strSelectedWorldOccurrenceId;
 		int32_t m_iWorldBoxStartMs = 0;
@@ -602,6 +644,23 @@ namespace Client
 		std::string m_strBossVariantLabel;
 
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
+		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
+		std::string m_strSelectedGateId = "GATE1";
+		std::string m_strModelViewProfile;
+		std::string m_strSelectedFolderId;
+		std::string m_strSelectedBundleId;
+		std::string m_strCreateFolderId;
+		std::string m_strCreateBundleId;
+		std::string m_strCreateActorProfileId = "MN_RPCT_05";
+		std::string m_strBundleReturnId;
+		std::string m_strBundleDragMemberId;
+		char m_NewFolderName[256]{};
+		char m_NewBundleName[256]{};
+		char m_HierarchyName[256]{};
+		bool_t m_bBundlePreviewRequestPending = false;
+		std::string m_strPendingBundlePreviewId;
+		std::string m_strPendingBundleServerId;
+		std::uint32_t m_iPendingBundleServerRevision = 0;
 		std::string m_strSelectedPatternId;
 		std::string m_strSelectedActorProfileId = "MN_RPCT_05";
 		std::string m_strSelectedStageId;

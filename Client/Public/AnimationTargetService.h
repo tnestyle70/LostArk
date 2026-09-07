@@ -22,6 +22,15 @@ namespace Client
 class CCharacter;
 class CValtan;
 
+enum class ANIMATION_BONE_TARGET : uint8_t { BODY, WEAPON };
+
+struct ANIMATION_MODEL_TARGET_VIEW final
+{
+	std::shared_ptr<Engine::CModel> Model;
+	float4x4_t BoneRoot{};
+	float4x4_t TargetRoot{};
+};
+
 class CAnimationHistoricalPoseBinding final
 {
 public:
@@ -99,6 +108,11 @@ public:
 	static std::shared_ptr<Engine::CModel> Resolve_Model();
 	static std::string Resolve_AssetName();
 	static uint64_t Resolve_TargetGeneration();
+	// The preview owner supplies the actual attachment after its pose settles.
+	static void Bind_PreviewWeapon(const std::shared_ptr<Engine::CModel>& body,
+		const std::shared_ptr<Engine::CModel>& weapon, const float4x4_t& weaponRoot);
+	static bool_t Resolve_ModelTarget(ANIMATION_BONE_TARGET target,
+		ANIMATION_MODEL_TARGET_VIEW& outView);
 
 	// World matrix of the target's root. False when nothing is bound.
 	static bool_t Resolve_RootTransform(float4x4_t* pOut);
@@ -142,6 +156,9 @@ private:
 	static std::weak_ptr<CCharacter> s_PreviewCharacter;
 	static std::weak_ptr<CValtan> s_PreviewBoss;
 	static std::weak_ptr<Engine::CModel> s_PreviewModel;
+	static std::weak_ptr<Engine::CModel> s_PreviewWeaponModel;
+	static std::weak_ptr<Engine::CModel> s_PreviewWeaponBody;
+	static float4x4_t s_PreviewWeaponRoot;
 	static std::string s_PreviewAssetName;
 	static float4x4_t s_PreviewRootMatrix;
 	static uint64_t s_TargetGeneration;

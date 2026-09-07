@@ -143,11 +143,16 @@ HRESULT CRenderer::Initialize()
 
 	/* For.Target_Depth */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Depth"), vViewportSize.x, vViewportSize.y,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(1.f, 1.f, 1.f, 1.f))))
+		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(1.f, 1.f, 1.f, 0.f))))
 		return E_FAIL;
 
 	/* For.Target_Specular */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Specular"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	/* Material input RGB is separate from accumulated light specular. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_MaterialSpecular"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
@@ -217,6 +222,8 @@ HRESULT CRenderer::Initialize()
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_Emissive"))))
 		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_MaterialSpecular"))))
+		return E_FAIL;
 
 	/* MRT_LightAcc */
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_LightAcc"), TEXT("Target_Shade"))))
@@ -279,6 +286,14 @@ HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGame
 
 	m_RenderObjects[ETOUI(eRenderGroupID)].push_back(pRenderObject);	
 
+	return S_OK;
+}
+
+HRESULT CRenderer::Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings)
+{
+	if (static_cast<uint32_t>(settings.eDebugView) >= static_cast<uint32_t>(MATERIAL_DEBUG_VIEW::END))
+		return E_INVALIDARG;
+	m_MaterialRenderSettings = settings;
 	return S_OK;
 }
 
@@ -706,6 +721,8 @@ HRESULT CRenderer::Render_Lights()
 			"g_iSSAOEnabled", &iSSAOEnabled, sizeof(iSSAOEnabled))) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_MaterialSpecular"), m_pShader, "g_MaterialSpecularTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_PickPos"), m_pShader, "g_GeometricNormalTexture")) ||
 		FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
 		FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
 		FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)) ||
@@ -1257,6 +1274,13 @@ HRESULT CRenderer::Render_BloomPass(const wstring_t& strMRTTag,
 
 HRESULT CRenderer::Render_Final()
 {
+	const uint32_t materialView = static_cast<uint32_t>(m_MaterialRenderSettings.eDebugView);
+	if (FAILED(m_pShader->Bind_RawValue("g_MaterialDebugView", &materialView, sizeof(materialView))) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Specular"), m_pShader, "g_SpecularTexture")))
+		return E_FAIL;
 	const uint32_t iBloomEnabled =
 		m_RenderQualitySettings.bBloomEnabled ? 1u : 0u;
 	const uint32_t iFXAAEnabled =

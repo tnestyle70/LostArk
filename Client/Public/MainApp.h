@@ -77,6 +77,7 @@ private:
 		SEQUENCER,
 		PROFILER,
 		WORLD_OBJECT,
+		EFFECT_COMPOSITION,
 		COUNT
 	};
 
@@ -728,6 +729,7 @@ private:
 	   gate combo only filters the list. Stable pattern ID is the selection. */
 	bool_t m_bKoukuCompletePlayLoadAttempted = false;
 	int32_t m_iKoukuCompletePlayGate = 0;
+	int32_t m_iKoukuCompletePlaySelection = 0;
 	string m_strKoukuCompletePlayPatternId;
 	string m_strKoukuCompletePlayStatus =
 		"Load the KoukuSaydon inventory, pick a gate and a saved pattern, then Complete Play.";

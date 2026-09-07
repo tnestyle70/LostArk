@@ -10,7 +10,10 @@ param(
     [int]$FailureAfterPromote = 0,
 
     [ValidateSet('Validate', 'Check', 'Publish')]
-    [string]$Mode = 'Publish'
+    [string]$Mode = 'Publish',
+
+    [ValidateSet('Area', 'WorldSequences')]
+    [string]$Scope = 'Area'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,6 +29,7 @@ $authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$Area
 $authoringLightPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.maplights.json"
 $authoringEffectPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapeffects.json"
 $authoringWaterPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapwater.json"
+$authoringMaterialPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapmaterials.json"
 $authoringSequencePath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.worldsequences.json"
 $authoringCameraShotPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.camerashots.json"
 $importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
@@ -47,6 +51,7 @@ $valtanEncounterPath = Join-Path $ProjectRoot 'Data\Encounters\Valtan\ValtanEnco
 $runtimeResourceRoot = Join-Path $ProjectRoot 'Client\Bin\Resources'
 $shardSetPath = Join-Path $runtimeRoot "$AreaId.mapset"
 $utf8 = [Text.UTF8Encoding]::new($false)
+$script:mapMaterialModels = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
 $importedPlacementMask = [uint64]::Parse(
     '9223372036854775808',
     [Globalization.CultureInfo]::InvariantCulture)
@@ -129,7 +134,7 @@ function Read-MapAssetCatalog {
     $lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
     $header = if ($lines.Count -gt 0) {
         [regex]::Match($lines[0],
-            '^LOSTARK_MAP_ASSET_CATALOG\s+[1-4]\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
+            '^LOSTARK_MAP_ASSET_CATALOG\s+(?<version>[1-4])\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
     }
     if ($null -eq $header -or -not $header.Success -or
         $header.Groups['area'].Value -cne $AreaId -or
@@ -151,9 +156,21 @@ function Read-MapAssetCatalog {
                 $resourcePrefix, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Asset model path must stay Resources-relative: $modelPath"
         }
-        if (-not $assetIds.Add($match.Groups['id'].Value)) {
+        $assetId = $match.Groups['id'].Value
+        if (-not $assetIds.Add($assetId)) {
             throw "Duplicate asset ID in catalog: $Path"
         }
+        if ($script:mapMaterialModels.ContainsKey($assetId) -and
+            $script:mapMaterialModels[$assetId] -cne $modelPath) {
+            throw "Conflicting model paths for map asset: $assetId"
+        }
+        $script:mapMaterialModels[$assetId] = $modelPath
+    }
+    if ($script:mapMaterialsDeclared) {
+        if ($header.Groups['version'].Value -ne '4') {
+            throw "Map material references require an imported v4 catalog: $Path"
+        }
+        $lines[0] = "LOSTARK_MAP_ASSET_CATALOG 5 `"$AreaId`" $($assetIds.Count) `"$AreaId.mapmaterials.json`""
     }
     return [pscustomobject]@{ Lines = $lines; AssetIds = $assetIds }
 }
@@ -1331,7 +1348,7 @@ function Read-MapWaterDocument {
 
 function Read-WorldSequenceDocument {
     param([string]$Path)
-    $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    $raw = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
     try { $document = $raw | ConvertFrom-Json }
     catch { throw "World sequence JSON parse failed: $Path" }
     $rootProperties = @('schema','formatVersion','areaId','revision','templates','instances')
@@ -1380,7 +1397,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','defaultMotionInstanceId')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1518,6 +1535,14 @@ function Read-WorldSequenceDocument {
         $animationSlotStarts = @{}
         foreach ($track in $animationTracks) {
             $trackProperties = @('slotId','clipName','playbackRate','loop','holdLastFrame')
+            if ($null -ne $track.PSObject.Properties['displayName']) {
+                $trackProperties += 'displayName'
+                if ($track.displayName -isnot [string] -or
+                    ([Text.UTF8Encoding]::new($false, $true)).GetByteCount($track.displayName) -gt 128 -or
+                    $track.displayName -match '[\x00-\x1f\x7f]') {
+                    throw "World sequence animation track displayName is invalid: $($template.sequenceId)"
+                }
+            }
             if ($null -ne $track.PSObject.Properties['startMs']) {
                 $trackProperties += 'startMs'
             }
@@ -1563,9 +1588,10 @@ function Read-WorldSequenceDocument {
         $trackCounts[[string]$template.sequenceId] = $slotIds.Count
     }
     $instanceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $instanceRows = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     foreach ($instance in $instances) {
         $instanceProperties = @('instanceId','templateId','enabled','startDelayMs','playbackSpeed','bindings')
-        foreach ($optional in @('anchorKind','position')) {
+        foreach ($optional in @('anchorKind','position','motionEnd','nextMotionId','walkableSurface')) {
             if ($document.formatVersion -eq 3 -and $null -ne $instance.PSObject.Properties[$optional]) { $instanceProperties += $optional }
         }
         Assert-ExactJsonProperties $instance $instanceProperties 'World sequence instance'
@@ -1591,6 +1617,54 @@ function Read-WorldSequenceDocument {
         if ($bindings.Count -ne $trackCounts[[string]$instance.templateId]) {
             throw "World sequence instance binding count does not match its template: $($instance.instanceId)"
         }
+        $motionEnd = 'STOP'
+        if ($null -ne $instance.PSObject.Properties['motionEnd']) {
+            if ($instance.motionEnd -isnot [string] -or $instance.motionEnd -cnotin @('STOP','HOLD','LOOP','NEXT')) { throw 'Invalid world object motion completion' }
+            $motionEnd = [string]$instance.motionEnd
+        }
+        $nextMotionId = ''
+        if ($null -ne $instance.PSObject.Properties['nextMotionId']) {
+            if ($instance.nextMotionId -isnot [string]) { throw 'Invalid world object next motion ID' }
+            $nextMotionId = [string]$instance.nextMotionId
+        }
+        if (($motionEnd -eq 'NEXT' -and $nextMotionId -cnotmatch $stableId) -or
+            ($motionEnd -ne 'NEXT' -and $nextMotionId -ne '') -or
+            ($motionEnd -ne 'STOP' -and ($bindings.Count -ne 1 -or $bindings[0].targetKind -cne 'OBJECT_RESOURCE'))) {
+            throw "Invalid world object motion completion: $($instance.instanceId)"
+        }
+        if ($null -ne $instance.PSObject.Properties['walkableSurface']) {
+            $surface = $instance.walkableSurface
+            Assert-ExactJsonProperties $surface @('radiusM','localHeightM') 'Walkable surface'
+            foreach ($field in @('radiusM','localHeightM')) {
+                if ($surface.$field -isnot [ValueType] -or $surface.$field -is [bool] -or
+                    [double]::IsNaN([double]$surface.$field) -or [double]::IsInfinity([double]$surface.$field)) {
+                    throw "Walkable surface $field must be finite"
+                }
+            }
+            $surfaceTemplate = $templateRows[$instance.templateId]
+            if ([double]$surface.radiusM -lt 0.001 -or [double]$surface.radiusM -gt 1000 -or
+                [math]::Abs([double]$surface.localHeightM) -gt 10000 -or $bindings.Count -ne 1 -or
+                $bindings[0].targetKind -cne 'MAP_PLACEMENT' -or $motionEnd -cne 'STOP' -or
+                @($surfaceTemplate.tracks).Count -ne 1 -or @($surfaceTemplate.animationTracks).Count -ne 0) {
+                throw "Walkable surface requires one fixed Map placement: $($instance.instanceId)"
+            }
+            $first = $surfaceTemplate.tracks[0].keys[0]
+            foreach ($key in $surfaceTemplate.tracks[0].keys) {
+                if ([math]::Abs([double]$key.rotationQuaternion[0]) -gt 0.00001 -or
+                    [math]::Abs([double]$key.rotationQuaternion[2]) -gt 0.00001 -or
+                    [double]$key.scaleMultiplier[0] -le 0 -or [double]$key.scaleMultiplier[1] -le 0 -or
+                    [math]::Abs([double]$key.scaleMultiplier[0] - [double]$key.scaleMultiplier[2]) -gt 0.00001) {
+                    throw "Walkable surface must be horizontal with uniform X/Z scale: $($instance.instanceId)"
+                }
+                foreach ($axis in 0..2) {
+                    if ($key.positionOffset[$axis] -ne $first.positionOffset[$axis] -or
+                        $key.scaleMultiplier[$axis] -ne $first.scaleMultiplier[$axis]) {
+                        throw "Walkable surface position and scale must stay fixed: $($instance.instanceId)"
+                    }
+                }
+            }
+        }
+        $instanceRows.Add([string]$instance.instanceId, $instance)
         $boundSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $boundTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($binding in $bindings) {
@@ -1626,11 +1700,59 @@ function Read-WorldSequenceDocument {
             }
         }
     }
+    foreach ($instance in $instances) {
+        if ($null -eq $instance.PSObject.Properties['motionEnd'] -or $instance.motionEnd -cne 'NEXT') { continue }
+        if (-not $instanceRows.ContainsKey($instance.nextMotionId)) { throw "Unknown NEXT motion: $($instance.instanceId)" }
+        $target = $instanceRows[$instance.nextMotionId]
+        if (-not $target.enabled -or @($target.bindings).Count -ne 1 -or
+            $target.bindings[0].targetKind -cne 'OBJECT_RESOURCE' -or
+            $target.bindings[0].targetId -cne $instance.bindings[0].targetId -or
+            $target.bindings[0].slotId -cne $instance.bindings[0].slotId) {
+            throw "NEXT motion must target an enabled object state with the same resource and slot: $($instance.instanceId)"
+        }
+        foreach ($state in @($instance, $target)) {
+            $stateTemplate = $templateRows[$state.templateId]
+            if ($null -ne $stateTemplate.PSObject.Properties['objectMotion'] -and $stateTemplate.objectMotion.count -ne 1) {
+                throw "NEXT motion requires a single object emission: $($instance.instanceId)"
+            }
+        }
+    }
+    foreach ($instance in $instances) {
+        $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $current = $instance
+        $depth = 0
+        while ($null -ne $current.PSObject.Properties['motionEnd'] -and $current.motionEnd -ceq 'NEXT') {
+            $depth += 1
+            if (-not $visited.Add([string]$current.instanceId) -or $depth -gt 32) {
+                throw "World object NEXT motion chain contains a cycle or exceeds 32 links: $($instance.instanceId)"
+            }
+            $current = $instanceRows[$current.nextMotionId]
+        }
+    }
     foreach ($resource in $objectResources.Values) {
         if ($null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne '' -and
             -not $instanceIds.Contains($resource.sequenceInstanceId)) { throw 'Unknown world object sequence alias' }
+        if ($null -eq $resource.PSObject.Properties['defaultMotionInstanceId']) { continue }
+        $defaultId = $resource.defaultMotionInstanceId
+        if ($defaultId -isnot [string]) { throw 'Default Motion instance ID must be text' }
+        if ($defaultId -ceq '') { continue }
+        if ($defaultId -cnotmatch $stableId -or -not $instanceRows.ContainsKey($defaultId)) { throw 'Default Motion instance does not exist' }
+        $motion = $instanceRows[$defaultId]
+        $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -cne ''
+        if (-not $motion.enabled -or ($alias -and $defaultId -cne $resource.sequenceInstanceId) -or
+            (-not $alias -and (@($motion.bindings).Count -ne 1 -or $motion.bindings[0].targetKind -cne 'OBJECT_RESOURCE' -or
+                              $motion.bindings[0].targetId -cne $resource.objectId))) {
+            throw 'Default Motion must be an enabled instance of the same Object'
+        }
     }
-    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    # Publish the exact snapshot just validated, even if another editor saves
+    # the source while this asynchronous process is checking it.
+    $reader = [IO.StringReader]::new($raw)
+    $validatedLines = [Collections.Generic.List[string]]::new()
+    try {
+        while ($null -ne ($line = $reader.ReadLine())) { $validatedLines.Add($line) }
+    } finally { $reader.Dispose() }
+    return $validatedLines.ToArray()
 }
 
 function Add-WorldSequencePublishFile {
@@ -1648,7 +1770,8 @@ function Add-WorldSequencePublishFile {
 
 function Read-CameraShotDocument {
     param([string]$Path)
-    $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    if ((Get-Item -LiteralPath $Path).Length -gt 262144) { throw "Camera document exceeds 256 KiB" }
+    $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
     try { $document = $text | ConvertFrom-Json }
     catch { throw "Camera shot JSON parse failed: $Path" }
     Assert-ExactJsonProperties $document `
@@ -1681,7 +1804,33 @@ function Read-CameraShotDocument {
         if ($null -ne $shot.PSObject.Properties['follow']) {
             $shotProperties += 'follow'
         }
+
+        foreach ($optional in @('displayName','defaultHoldMs','transitionEasing','activation')) {
+            if ($null -ne $shot.PSObject.Properties[$optional]) { $shotProperties += $optional }
+        }
         Assert-ExactJsonProperties $shot $shotProperties 'Camera shot'
+        if ($null -ne $shot.PSObject.Properties['displayName']) {
+            if ($shot.displayName -isnot [string] -or $shot.displayName.Length -eq 0 -or
+                [Text.Encoding]::UTF8.GetByteCount($shot.displayName) -gt 128 -or $shot.displayName.Contains([char]0)) {
+                throw "Camera displayName requires 1..128 UTF-8 bytes: $($shot.shotId)"
+            }
+        }
+        if ($null -ne $shot.PSObject.Properties['defaultHoldMs']) {
+            $hold = $shot.defaultHoldMs
+            if (-not (Test-JsonNumber $hold) -or [double]$hold -lt 0 -or [double]$hold -gt 600000 -or
+                [math]::Floor([double]$hold) -ne [double]$hold -or
+                [double]$hold + [double]$shot.blendInMs -lt 1 -or [double]$hold + [double]$shot.blendInMs -gt 600000) {
+                throw "Camera entry plus default hold must be 1..600000 ms: $($shot.shotId)"
+            }
+        }
+        if ($null -ne $shot.PSObject.Properties['transitionEasing'] -and
+            ($shot.transitionEasing -isnot [string] -or $shot.transitionEasing -cnotin @('LINEAR','SMOOTHSTEP'))) {
+            throw "Camera transitionEasing must be LINEAR or SMOOTHSTEP: $($shot.shotId)"
+        }
+        if ($null -ne $shot.PSObject.Properties['activation'] -and
+            ($shot.activation -isnot [string] -or $shot.activation -cnotin @('AUTO','PATTERN_ONLY'))) {
+            throw "Camera activation must be AUTO or PATTERN_ONLY: $($shot.shotId)"
+        }
         if ($shot.shotId -isnot [string] -or
             $shot.shotId -notmatch $stableId -or
             -not $shotIds.Add([string]$shot.shotId)) {
@@ -1777,6 +1926,319 @@ function Add-CameraShotPublishFile {
     }
 }
 
+function Read-WModelMaterialNames {
+    param([string]$Path)
+    $stream = [IO.File]::OpenRead($Path)
+    $reader = [IO.BinaryReader]::new($stream)
+    try {
+        if ($stream.Length -lt 48) { throw "Truncated WModel: $Path" }
+        if ([Text.Encoding]::ASCII.GetString($reader.ReadBytes(4)) -cne 'WINT' -or
+            $reader.ReadUInt16() -ne 1) { throw "Invalid WModel container: $Path" }
+        $stream.Position = 16
+        if ([Text.Encoding]::ASCII.GetString($reader.ReadBytes(4)) -cne 'WMOD') {
+            throw "Invalid WModel metadata: $Path"
+        }
+        $sectionCount = $reader.ReadUInt32()
+        if ($sectionCount -lt 1 -or $sectionCount -gt 4096 -or
+            48L + 64L * $sectionCount -gt $stream.Length) {
+            throw "Invalid WModel section count: $Path"
+        }
+        $sections = [Collections.Generic.List[object]]::new()
+        for ($index = 0; $index -lt $sectionCount; $index++) {
+            $stream.Position = 48L + 64L * $index
+            $type = $reader.ReadUInt32()
+            $null = $reader.ReadUInt32()
+            $offset = $reader.ReadUInt64()
+            $size = $reader.ReadUInt64()
+            if ($offset -gt [long]::MaxValue -or $size -gt [long]::MaxValue) {
+                throw "Invalid WModel section range: $Path"
+            }
+            $sections.Add([pscustomobject]@{ Type = $type; Offset = [long]$offset; Size = [long]$size })
+        }
+        $base = 0L
+        foreach ($candidate in @(16L, 48L)) {
+            $position = $candidate + $sections[0].Offset
+            if ($position -ge 0 -and $position -le $stream.Length - 4) {
+                $stream.Position = $position
+                if ([Text.Encoding]::ASCII.GetString($reader.ReadBytes(4)) -ceq 'WINT') {
+                    $base = $candidate
+                    break
+                }
+            }
+        }
+        if (0 -eq $base) { throw "Cannot resolve WModel section base: $Path" }
+        $materials = @($sections | Where-Object { $_.Type -eq 2 })
+        if ($materials.Count -ne 1) { throw "WModel must have one material section: $Path" }
+        $section = $materials[0]
+        if ($section.Offset -gt $stream.Length - $base -or $section.Size -lt 24 -or
+            $section.Size -gt $stream.Length - $base - $section.Offset) {
+            throw "WModel material section is outside the file: $Path"
+        }
+        $start = $base + $section.Offset
+        $stream.Position = $start
+        if ([Text.Encoding]::ASCII.GetString($reader.ReadBytes(4)) -cne 'WINT') {
+            throw "Invalid WModel material header: $Path"
+        }
+        $stream.Position = $start + 16
+        $magic = [Text.Encoding]::ASCII.GetString($reader.ReadBytes(4))
+        $count = $reader.ReadUInt32()
+        $stride = switch ($magic) { 'WMAT' { 596 } 'WMA2' { 4756 } 'WMA3' { 5340 } default { 0 } }
+        if (0 -eq $stride -or $count -lt 1 -or $count -gt 4096 -or
+            24L + [long]$count * $stride -gt $section.Size) {
+            throw "Invalid WModel material table: $Path"
+        }
+        $names = [Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
+        $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+        for ($index = 0; $index -lt $count; $index++) {
+            $stream.Position = $start + 24L + [long]$index * $stride + 12
+            $name = $strictUtf8.GetString($reader.ReadBytes(64)).Split([char]0)[0]
+            # The decoder preserves unused empty material slots. Only the
+            # named row requested by the override must be unambiguous.
+            if ([string]::IsNullOrEmpty($name)) { continue }
+            if ($names.ContainsKey($name)) { $names[$name]++ }
+            else { $names[$name] = 1 }
+        }
+        return [pscustomobject]@{ Names = $names }
+    }
+    finally { $reader.Dispose(); $stream.Dispose() }
+}
+
+function Read-MapMaterialDocument {
+    param([string]$Path)
+    $document = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    $rootFields = @('schema','formatVersion','areaId','materials')
+    $placementLighting = $document.PSObject.Properties['placementLighting']
+    if ($null -ne $placementLighting) {
+        $rootFields += 'placementLighting'
+        if ($document.formatVersion -ne 2 -or $placementLighting.Value -isnot [array]) {
+            throw 'Placement lighting requires formatVersion 2 and an array'
+        }
+    }
+    Assert-ExactJsonProperties $document $rootFields 'Map material root'
+    if ($document.schema -cne 'lostark.map-materials' -or
+        -not (Test-JsonNumber $document.formatVersion) -or $document.formatVersion -notin @(1,2) -or
+        $document.areaId -cne $AreaId -or $document.materials -isnot [array] -or
+        $document.materials.Count -lt 1 -or $document.materials.Count -gt 4096) {
+        throw "Invalid map material document header: $Path"
+    }
+    $keys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $modelNames = @{}
+    $bakedAssets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $validateLightingTexture = {
+        param($Value)
+        if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value) -or
+            [IO.Path]::IsPathRooted($Value) -or $Value.Contains(':') -or
+            '..' -in @($Value -split '[\\/]') -or [IO.Path]::GetExtension($Value) -cne '.dds') {
+            throw 'Lighting texture must be a Resources-relative DDS'
+        }
+        $resolved = [IO.Path]::GetFullPath((Join-Path $runtimeResourceRoot $Value))
+        $prefix = [IO.Path]::GetFullPath($runtimeResourceRoot).TrimEnd('\') + '\'
+        if (-not $resolved.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or -not [IO.File]::Exists($resolved)) {
+            throw "Lighting texture is missing: $Value"
+        }
+    }
+    foreach ($row in $document.materials) {
+        $fields = @('assetId','materialName','sourceMaterial','family','diffuseBrightness',
+            'normalIntensity','specularIntensity','specularPower','reflectionIntensity',
+            'reflectionContrast','diffuseColor','specularColor','reflectionColor',
+            'reflectionTexture','textureColorSpace')
+        $scalarFields = @('diffuseBrightness','normalIntensity','specularIntensity',
+            'specularPower','reflectionIntensity','reflectionContrast')
+        $isSourceSpecular = $row.family -ceq 'bg_seamless-specular_opa'
+        $isPBR = $row.family -cin @('bg_base_pbr_seamless_opa','bg_base_pbr_opa')
+        if ($isPBR) {
+            if ($document.formatVersion -ne 2) { throw 'PBR map material requires formatVersion 2' }
+            $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace','diffuseColor','reflectionColor','uvTiling','reflectionOriginOffset','diffuseBrightness','normalIntensity','reflectionIntensity','reflectionContrast','reflectionTiling','diffuseSaturation','detailNormalIntensity','detailNormalTiling','metallicIntensity','metallicPower','roughnessIntensity','roughnessPower','aoIntensity','aoPower','specularPBRIntensity','nonmetallicBrightness','metallicBrightness','minimumRoughness','vertexAlpha','uvFixedNormal','useWorldReflection','castsShadow','diffuseTexture','normalTexture','detailNormalTexture','ormTexture','reflectionTexture')
+            $scalarFields = @('diffuseBrightness','normalIntensity','reflectionIntensity','reflectionContrast','reflectionTiling','diffuseSaturation','detailNormalIntensity','detailNormalTiling','metallicIntensity','metallicPower','roughnessIntensity','roughnessPower','aoIntensity','aoPower','specularPBRIntensity','nonmetallicBrightness','metallicBrightness','minimumRoughness','vertexAlpha')
+        }
+        switch -CaseSensitive ($row.family) {
+            'bg_seamless-specular_msk' { $fields += 'reflectionTiling'; $scalarFields += 'reflectionTiling' }
+            'bg_base_msk' { $fields += 'diffuseSaturation'; $scalarFields += 'diffuseSaturation' }
+            'bg_base_pbr_seamless_opa' { }
+            'bg_base_pbr_opa' { }
+            'bg_seamless-specular_opa' {
+                if ($document.formatVersion -ne 2) { throw 'Source specular requires formatVersion 2' }
+                $fields += @('reflectionTiling','diffuseSaturation','uvTiling','reflectionOriginOffset','castsShadow','diffuseTexture','normalTexture','specularTexture')
+                $scalarFields += @('reflectionTiling','diffuseSaturation')
+                if ($null -ne $row.PSObject.Properties['bakedLighting']) { $fields += 'bakedLighting' }
+            }
+            default { throw "Unsupported map material family: $($row.family)" }
+        }
+        if ($isPBR) {
+            foreach ($optional in @('bakedLighting','environment')) {
+                if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
+            }
+        }
+        Assert-ExactJsonProperties $row $fields "Map material row $($row.assetId)"
+        foreach ($key in @('assetId','materialName','sourceMaterial','reflectionTexture')) {
+            if ($row.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$key) -or
+                $row.$key -match '[\x00-\x1F\x7F]') { throw "Invalid map material $key" }
+        }
+        if ([Text.Encoding]::UTF8.GetByteCount($row.materialName) -gt 63 -or
+            [Text.Encoding]::UTF8.GetByteCount($row.sourceMaterial) -gt 512 -or
+            -not $keys.Add($row.assetId + "`n" + $row.materialName) -or
+            -not $script:mapMaterialModels.ContainsKey($row.assetId)) {
+            throw "Invalid, duplicate, or unknown map material identity: $($row.assetId)/$($row.materialName)"
+        }
+        foreach ($key in $scalarFields) {
+            if (-not (Test-JsonNumber $row.$key) -or [double]$row.$key -lt 0 -or
+                [double]$row.$key -gt [single]::MaxValue) { throw "Invalid map material number: $key" }
+        }
+        if ((-not $isPBR -and [double]$row.specularPower -lt 1) -or
+            (($isPBR -or $isSourceSpecular -or $row.family -ceq 'bg_seamless-specular_msk') -and [double]$row.reflectionTiling -le 0)) {
+            throw "Invalid map material power or tiling: $($row.assetId)"
+        }
+        $colors = if ($isPBR) { @('diffuseColor','reflectionColor') } else { @('diffuseColor','specularColor','reflectionColor') }
+        foreach ($key in $colors) {
+            if ($row.$key -isnot [array] -or $row.$key.Count -ne 4) { throw "Invalid map material color: $key" }
+            foreach ($component in $row.$key) {
+                if (-not (Test-JsonNumber $component) -or [double]$component -lt 0 -or
+                    [double]$component -gt [single]::MaxValue) { throw "Invalid map material color component: $key" }
+            }
+        }
+        if ($isPBR) {
+            foreach ($key in @('uvFixedNormal','useWorldReflection','castsShadow')) {
+                if ($row.$key -isnot [bool]) { throw "Invalid PBR boolean: $key" }
+            }
+            foreach ($key in @('uvTiling','reflectionOriginOffset')) {
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne 2) { throw "Invalid PBR vector: $key" }
+                foreach ($value in $row.$key) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt [single]::MaxValue) {
+                        throw "Invalid PBR vector component: $key"
+                    }
+                }
+            }
+            if ($row.uvTiling[0] -le 0 -or $row.uvTiling[1] -le 0 -or
+                $row.detailNormalTiling -le 0 -or $row.minimumRoughness -le 0 -or
+                $row.minimumRoughness -gt 1 -or $row.vertexAlpha -gt 1 -or
+                $row.textureColorSpace.normal -cne 'linear' -or $row.textureColorSpace.detailNormal -cne 'linear') {
+                throw 'Invalid PBR bounds or normal color space'
+            }
+        }
+        if ($isSourceSpecular) {
+            if ($row.castsShadow -isnot [bool] -or $row.textureColorSpace.normal -cne 'linear') {
+                throw 'Invalid source specular shadow or normal color space'
+            }
+            foreach ($key in @('uvTiling','reflectionOriginOffset')) {
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne 2) { throw "Invalid source specular vector: $key" }
+                foreach ($value in $row.$key) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt [single]::MaxValue) {
+                        throw "Invalid source specular vector component: $key"
+                    }
+                }
+            }
+            if ($row.uvTiling[0] -le 0 -or $row.uvTiling[1] -le 0) { throw 'Non-positive source specular UV tiling' }
+        }
+        $spaceKeys = if ($isSourceSpecular) { @('diffuse','normal','specular','reflection') } elseif ($isPBR) { @('diffuse','normal','detailNormal','reflection','orm') } else { @('diffuse','specular','reflection') }
+        Assert-ExactJsonProperties $row.textureColorSpace $spaceKeys 'Map material color spaces'
+        foreach ($key in $spaceKeys) {
+            if ($row.textureColorSpace.$key -isnot [string] -or
+                $row.textureColorSpace.$key -cnotin @('srgb','linear')) { throw "Invalid map material color space: $key" }
+        }
+        $textureKeys = if ($isSourceSpecular) { @('diffuseTexture','normalTexture','specularTexture','reflectionTexture') } elseif ($isPBR) { @('diffuseTexture','normalTexture','detailNormalTexture','ormTexture','reflectionTexture') } else { @('reflectionTexture') }
+        foreach ($textureKey in $textureKeys) {
+        if ($row.$textureKey -isnot [string] -or [string]::IsNullOrWhiteSpace($row.$textureKey)) { throw "Invalid map texture: $textureKey" }
+        $texture = [string]$row.$textureKey
+        if ([IO.Path]::IsPathRooted($texture) -or $texture.Contains(':') -or
+            '..' -in @($texture -split '[\\/]') -or [IO.Path]::GetExtension($texture) -cne '.dds') {
+            throw "Map reflection texture must be a Resources-relative DDS: $texture"
+        }
+        $reflectionPath = [IO.Path]::GetFullPath((Join-Path $runtimeResourceRoot $texture))
+        $resourcePrefix = [IO.Path]::GetFullPath($runtimeResourceRoot).TrimEnd('\') + '\'
+        if (-not $reflectionPath.StartsWith($resourcePrefix, [StringComparison]::OrdinalIgnoreCase) -or
+            -not [IO.File]::Exists($reflectionPath)) { throw "Map reflection texture is missing: $texture" }
+        }
+        if ($null -ne $row.PSObject.Properties['bakedLighting']) {
+            $baked = $row.bakedLighting
+            Assert-ExactJsonProperties $baked @('averageTexture','directionalTexture','colorSpace') 'Baked lighting'
+            if ($baked.colorSpace -isnot [string] -or $baked.colorSpace -cnotin @('linear','srgb')) {
+                throw 'Invalid baked lighting color space'
+            }
+            & $validateLightingTexture $baked.averageTexture
+            & $validateLightingTexture $baked.directionalTexture
+            [void]$bakedAssets.Add($row.assetId)
+        }
+        if ($null -ne $row.PSObject.Properties['environment']) {
+            $environment = $row.environment
+            Assert-ExactJsonProperties $environment @('cubeTexture','brdfTexture','color','rotation') 'Environment lighting'
+            & $validateLightingTexture $environment.cubeTexture
+            & $validateLightingTexture $environment.brdfTexture
+            if ($environment.color -isnot [array] -or $environment.color.Count -ne 4 -or
+                $environment.rotation -isnot [array] -or $environment.rotation.Count -ne 2) {
+                throw 'Invalid environment color or rotation'
+            }
+            foreach ($value in $environment.color) {
+                if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) { throw 'Invalid environment color value' }
+            }
+            foreach ($value in $environment.rotation) {
+                if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1) { throw 'Invalid environment rotation value' }
+            }
+            if ([Math]::Abs($environment.rotation[0]*$environment.rotation[0]+$environment.rotation[1]*$environment.rotation[1]-1) -gt 0.0001) {
+                throw 'Environment rotation must have unit length'
+            }
+        }
+        $modelPath = [string]$script:mapMaterialModels[$row.assetId]
+        if (-not $modelNames.ContainsKey($modelPath)) {
+            $modelNames[$modelPath] = (Read-WModelMaterialNames (Join-Path $runtimeResourceRoot $modelPath)).Names
+        }
+        if (-not $modelNames[$modelPath].ContainsKey($row.materialName) -or
+            $modelNames[$modelPath][$row.materialName] -ne 1) {
+            throw "Map material name does not exist in WModel or is ambiguous: $($row.assetId)/$($row.materialName)"
+        }
+    }
+    if ($null -ne $placementLighting) {
+        if ($placementLighting.Value.Count -gt 65536) { throw 'Too many placement lighting rows' }
+        $sourcePlacements = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+        foreach ($placementLine in (Read-PlacementDocument $authoringPath)) {
+            $parsed = Parse-PlacementRow $placementLine $authoringPath
+            $sourcePlacements.Add($parsed.SourcePlacementId, $parsed.AssetId)
+        }
+        $lightingSources = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($lighting in $placementLighting.Value) {
+            Assert-ExactJsonProperties $lighting @('sourcePlacementId','assetId','coordinateScale','coordinateBias','averageScale','directionalScale') 'Placement lighting'
+            if ($lighting.sourcePlacementId -isnot [string] -or [string]::IsNullOrWhiteSpace($lighting.sourcePlacementId) -or
+                [Text.Encoding]::UTF8.GetByteCount($lighting.sourcePlacementId) -gt 512 -or
+                $lighting.sourcePlacementId -match '[\x00-\x1F\x7F]' -or
+                $lighting.assetId -isnot [string] -or -not $bakedAssets.Contains($lighting.assetId) -or
+                -not $lightingSources.Add($lighting.sourcePlacementId) -or
+                -not $sourcePlacements.ContainsKey($lighting.sourcePlacementId) -or
+                $sourcePlacements[$lighting.sourcePlacementId] -cne $lighting.assetId) {
+                throw 'Invalid, duplicate, dangling, or mismatched placement lighting identity'
+            }
+            foreach ($field in @('coordinateScale','coordinateBias','averageScale','directionalScale')) {
+                $count = if ($field -cin @('coordinateScale','coordinateBias')) { 2 } else { 3 }
+                if ($lighting.$field -isnot [array] -or $lighting.$field.Count -ne $count) { throw "Invalid lighting vector: $field" }
+                foreach ($value in $lighting.$field) {
+                    if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) {
+                        throw "Invalid lighting vector value: $field"
+                    }
+                }
+            }
+            for ($axis=0; $axis -lt 2; ++$axis) {
+                if ($lighting.coordinateScale[$axis] -le 0 -or
+                    $lighting.coordinateScale[$axis]+$lighting.coordinateBias[$axis] -gt 1.00001) {
+                    throw 'Lightmap atlas coordinates exceed the texture'
+                }
+            }
+        }
+    }
+    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+}
+
+function Add-MapMaterialPublishFile {
+    param([Collections.Generic.List[object]]$Files)
+    if ($script:mapMaterialsDeclared) {
+        if (-not [IO.File]::Exists($authoringMaterialPath)) {
+            throw "Declared map material authoring source is missing: $authoringMaterialPath"
+        }
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.mapmaterials.json"
+            Lines = Read-MapMaterialDocument $authoringMaterialPath
+        })
+    }
+}
+
+
 function Add-MapWaterPublishFile {
     param([Collections.Generic.List[object]]$Files)
     if ($script:mapWaterDeclared) {
@@ -1801,6 +2263,7 @@ if (1 -ne $areaEntries.Count) {
     throw "Map catalog must declare Area exactly once: $AreaId"
 }
 $areaEntry = $areaEntries[0]
+if ($Scope -eq 'Area') {
 $sourceLightsProperty = $areaEntry.PSObject.Properties['sourceLights']
 $runtimeLightsProperty = $areaEntry.PSObject.Properties['lights']
 if (($null -eq $sourceLightsProperty) -ne ($null -eq $runtimeLightsProperty)) {
@@ -1847,6 +2310,26 @@ elseif ([IO.File]::Exists($authoringEffectPath)) {
     throw "Map Effect source exists without a MapCatalog declaration: $AreaId"
 }
 
+$sourceMaterialsProperty = $areaEntry.PSObject.Properties['sourceMaterials']
+$runtimeMaterialsProperty = $areaEntry.PSObject.Properties['materials']
+if (($null -eq $sourceMaterialsProperty) -ne ($null -eq $runtimeMaterialsProperty)) {
+    throw "Map catalog material source/runtime declaration is incomplete: $AreaId"
+}
+$script:mapMaterialsDeclared = $null -ne $sourceMaterialsProperty
+if ($script:mapMaterialsDeclared) {
+    $expectedSourceMaterials = "Data/Maps/Authoring/$AreaId/$AreaId.mapmaterials.json"
+    $expectedRuntimeMaterials = "Client/Bin/DataFiles/Map/$AreaId.mapmaterials.json"
+    if ($areaEntry.sourceMaterials -isnot [string] -or
+        $areaEntry.sourceMaterials -cne $expectedSourceMaterials -or
+        $areaEntry.materials -isnot [string] -or
+        $areaEntry.materials -cne $expectedRuntimeMaterials) {
+        throw "Map catalog material paths are not canonical: $AreaId"
+    }
+}
+elseif ([IO.File]::Exists($authoringMaterialPath)) {
+    throw "Map material source exists without a MapCatalog declaration: $AreaId"
+}
+
 $sourceWaterProperty = $areaEntry.PSObject.Properties['sourceWater']
 $runtimeWaterProperty = $areaEntry.PSObject.Properties['water']
 if (($null -eq $sourceWaterProperty) -ne ($null -eq $runtimeWaterProperty)) {
@@ -1865,6 +2348,7 @@ if ($script:mapWaterDeclared) {
 }
 elseif ([IO.File]::Exists($authoringWaterPath)) {
     throw "Map water source exists without a MapCatalog declaration: $AreaId"
+}
 }
 
 $sourceSequencesProperty = $areaEntry.PSObject.Properties['sourceSequences']
@@ -1887,6 +2371,7 @@ elseif ([IO.File]::Exists($authoringSequencePath)) {
     throw "World sequence source exists without a MapCatalog declaration: $AreaId"
 }
 
+if ($Scope -eq 'Area') {
 $sourceCameraShotsProperty = $areaEntry.PSObject.Properties['sourceCameraShots']
 $runtimeCameraShotsProperty = $areaEntry.PSObject.Properties['cameraShots']
 if (($null -eq $sourceCameraShotsProperty) -ne ($null -eq $runtimeCameraShotsProperty)) {
@@ -1905,6 +2390,7 @@ if ($script:cameraShotsDeclared) {
 }
 elseif ([IO.File]::Exists($authoringCameraShotPath)) {
     throw "Camera shot source exists without a MapCatalog declaration: $AreaId"
+}
 }
 
 function Invoke-FileSetTransaction {
@@ -2044,6 +2530,7 @@ function Complete-MapPublish {
     $result = [ordered]@{
         AreaId = $AreaId
         Mode = $Mode
+        Scope = $Scope
         CatalogType = $CatalogType
         PlacementCount = $authoringRows.Count
         FileCount = $expectedFiles.Count
@@ -2052,6 +2539,15 @@ function Complete-MapPublish {
     if ($ShardCount -gt 0) { $result.ShardCount = $ShardCount }
     if ($Mode -eq 'Publish') { $result.Sha256 = Get-MapPublishSha256 $RuntimeEntry }
     [pscustomobject]$result
+}
+
+if ($Scope -eq 'WorldSequences') {
+    if (-not $script:worldSequencesDeclared) { throw "Map catalog does not declare World Sequences: $AreaId" }
+    $authoringRows = @()
+    $files = [Collections.Generic.List[object]]::new()
+    Add-WorldSequencePublishFile $files
+    Complete-MapPublish $files 'world-sequences' $runtimeSequencePath
+    return
 }
 
 if (-not [IO.File]::Exists($authoringPath)) {
@@ -2100,6 +2596,7 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
     Add-MapLightPublishFile $files
     Add-MapEffectPublishFile $files
     Add-MapWaterPublishFile $files
+    Add-MapMaterialPublishFile $files
     Add-WorldSequencePublishFile $files
     Add-CameraShotPublishFile $files
 
@@ -2226,6 +2723,7 @@ Add-DeployPublishFiles $files
 Add-MapLightPublishFile $files
 Add-MapEffectPublishFile $files
 Add-MapWaterPublishFile $files
+Add-MapMaterialPublishFile $files
 Add-WorldSequencePublishFile $files
 Add-CameraShotPublishFile $files
 Complete-MapPublish $files 'shard-set' $shardSetPath $shards.Count

@@ -6,12 +6,28 @@
 #include "Engine_Defines.h"
 
 #include <memory>
+#include <deque>
 #include <span>
 #include <string>
 
 NS_BEGIN(Client)
 
 class EFFECT_V2_CATALOG_SNAPSHOT;
+
+/* Recorded owner-root history. A discontinuity marks the jump into a sample;
+   intervals crossing it and requests outside recorded time fail explicitly. */
+class EFFECT_V2_PIVOT_HISTORY final
+{
+public:
+	void Reset();
+	bool_t Record(f32_t fGroupAgeSeconds, const float4x4_t& Pivot,
+		bool_t bDiscontinuity, std::string& strOutError);
+	bool_t Sample(f32_t fGroupAgeSeconds, float4x4_t& OutPivot,
+		std::string& strOutError) const;
+private:
+	struct SAMPLE final { f32_t fSeconds; float4x4_t Pivot; bool_t bDiscontinuity; };
+	std::deque<SAMPLE> m_Samples;
+};
 
 struct EFFECT_V2_GROUP_PLAYBACK_DESC final
 {
@@ -30,6 +46,11 @@ struct EFFECT_V2_GROUP_PLAYBACK_DESC final
 	f32_t fDissolveOutStart = -1.f;
 	f32_t fDissolveOutEnd = -1.f;
 	bool_t bProductOwned = false;
+	/* Group authored seconds -> recorded/authored root. Child placement is
+	   composed internally before an emitter samples its individual births. */
+	CEffectV2Object::PIVOT_SAMPLER PivotSampler;
+	/* Caller owns absolute group time; render/layer updates cannot advance it. */
+	bool_t bExternalClock = false;
 };
 
 /* One authored animation occurrence expressed in the owning Stage wall clock.
@@ -120,6 +141,7 @@ public:
 	   spawned effects keep their authored stop policy; the next occurrence reads
 	   the newly saved Data/Effects/V2 documents. */
 	static void Invalidate_Caches();
+	static uint64_t Cache_Generation();
 	static const std::string& Last_Error();
 
 	/* Free-running group lane for the tool: plays an in-memory group against
@@ -151,6 +173,12 @@ public:
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Update_Group(uint32_t iHandle, const EFFECT_V2_GROUP& Group);
+	static bool_t Sample_Group(uint32_t iHandle, f32_t fGroupAgeSeconds,
+		bool_t bPaused, const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
+	static bool_t Seek_Group(uint32_t iHandle, f32_t fGroupAgeSeconds,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Moves the lane pivot and every live child immediately. */
 	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
 	static void Set_GroupPaused(uint32_t iHandle, bool_t bPaused);

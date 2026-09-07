@@ -1041,6 +1041,7 @@ namespace
 			std::vector<uint8_t> normals;
 			std::vector<uint8_t> tangents;
 			std::vector<uint8_t> uv0;
+			std::vector<uint8_t> uv1;
 			std::vector<uint8_t> tangentW;
 			std::vector<uint8_t> color0;
 			std::vector<uint8_t> indices;
@@ -1064,6 +1065,11 @@ namespace
 				Append_F32_LE(tangents, vertex.vTangent.z);
 				Append_F32_LE(uv0, vertex.vTexcoord.x);
 				Append_F32_LE(uv0, vertex.vTexcoord.y);
+				if (mesh.hasTexcoord1)
+				{
+					Append_F32_LE(uv1, vertex.vTexcoord1.x);
+					Append_F32_LE(uv1, vertex.vTexcoord1.y);
+				}
 			}
 			for (const float value : mesh.tangentHandedness)
 				Append_F32_LE(tangentW, value);
@@ -1094,6 +1100,8 @@ namespace
 			output << "\"normalSha256\":\"" << normalSha << "\",";
 			output << "\"tangentXyzSha256\":\"" << tangentSha << "\",";
 			output << "\"uv0Sha256\":\"" << uvSha << "\",";
+			if (mesh.hasTexcoord1)
+				output << "\"uv1Sha256\":\"" << Sha256_Hex(uv1) << "\",";
 			output << "\"tangentWSha256\":\"" << tangentWSha << "\",";
 			output << "\"hasColor0\":" << (mesh.hasColor0 ? "true" : "false") << ',';
 			output << "\"color0Sha256\":";

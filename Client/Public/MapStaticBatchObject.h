@@ -22,6 +22,7 @@ NS_BEGIN(Client)
 struct FMapStaticInstance final
 {
 	uint64_t PlacementId = {};
+	Engine::MODEL_BAKED_LIGHTING_INSTANCE BakedLighting;
 	float4x4_t World = {};
 	float4x4_t WorldInvTranspose = {};
 	float3_t WorldBoundsCenter = {};

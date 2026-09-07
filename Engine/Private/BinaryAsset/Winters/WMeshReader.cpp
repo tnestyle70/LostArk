@@ -137,6 +137,7 @@ namespace
 		const uint8_t* pPayload,
 		size_t payloadSize,
 		uint32_t vertexFormatFlags,
+		uint16_t fileVersionMinor,
 		const MESH_GEOMETRY_METADATA_V1& source,
 		MODEL_GEOMETRY_METADATA_DATA& destination,
 		string& outError)
@@ -151,8 +152,15 @@ namespace
 		}
 
 		const bool_t hasColor0 = 0 != (vertexFormatFlags & VF_COLOR0);
+		const bool_t hasUV1 = 0 != (vertexFormatFlags & VF_TEXCOORD1);
+		const bool_t reconstructed = 0 != (source.evidenceFlags & MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED);
+		const uint32_t required = reconstructed ?
+			(MGEF_REQUIRED_PAYLOAD & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF) : MGEF_REQUIRED_PAYLOAD;
 		if (0 != (source.evidenceFlags & ~MGEF_KNOWN) ||
-			(source.evidenceFlags & MGEF_REQUIRED_PAYLOAD) != MGEF_REQUIRED_PAYLOAD ||
+			(source.evidenceFlags & required) != required ||
+			(reconstructed && (fileVersionMinor < WINT_UV1_VERSION_MINOR ||
+				0 != (source.evidenceFlags & MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF))) ||
+			hasUV1 != (0 != (source.evidenceFlags & MGEF_TEXCOORD1_PRESERVED_FROM_GLTF)) ||
 			0 != (source.evidenceFlags & MGEF_PRODUCT_PROVENANCE) ||
 			hasColor0 != (0 != (source.evidenceFlags & MGEF_COLOR0_PRESERVED_FROM_GLTF)))
 		{
@@ -213,7 +221,7 @@ namespace
 
 		destination.present = true;
 		destination.versionMajor = WINT_VERSION_MAJOR;
-		destination.versionMinor = WINT_GEOMETRY_VERSION_MINOR;
+		destination.versionMinor = fileVersionMinor;
 		destination.channelMask = vertexFormatFlags;
 		destination.evidenceFlags = source.evidenceFlags;
 		destination.payloadSize = source.payloadSize;
@@ -322,6 +330,7 @@ namespace
 	bool_t MakeStaticVertex(const uint8_t* pSource,
 		bool_t strictHandedness,
 		bool_t hasColor0,
+		bool_t hasUV1,
 		VTXMESH& outVertex,
 		f32_t& outTangentHandedness,
 		uint32_t& outColor0Rgba8)
@@ -342,6 +351,15 @@ namespace
 		outColor0Rgba8 = {};
 		if (hasColor0)
 			memcpy(&outColor0Rgba8, pSource + STRIDE_STATIC, sizeof(uint32_t));
+
+		outVertex.vTexcoord1 = {};
+		if (hasUV1)
+		{
+			memcpy(&outVertex.vTexcoord1, pSource +
+				(hasColor0 ? STRIDE_STATIC_COLOR0 : STRIDE_STATIC), sizeof(float2_t));
+			if (!isfinite(outVertex.vTexcoord1.x) || !isfinite(outVertex.vTexcoord1.y))
+				return false;
+		}
 
 		vector_t normal{};
 		vector_t tangent{};
@@ -454,7 +472,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_GEOMETRY_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_UV1_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != fileReader.Remaining())
 		{
@@ -463,20 +481,22 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		}
 
 		const bool_t geometryContract =
-			WINT_GEOMETRY_VERSION_MINOR == fileHeader.versionMinor;
+			WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor;
 		const uint8_t* pContent = fileReader.Peek();
 		CBinaryReader reader(pContent, fileHeader.contentSize);
 		const MESH_META_HEADER meshHeader = reader.Read<MESH_META_HEADER>();
 		const bool_t skinned = 0 != (meshHeader.vertexFormatFlags & VF_BONE_WEIGHT);
 		const bool_t hasColor0 = 0 != (meshHeader.vertexFormatFlags & VF_COLOR0);
-		const uint32_t expectedStride = hasColor0 ?
-			STRIDE_STATIC_COLOR0 : STRIDE_STATIC;
+		const bool_t hasUV1 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD1);
+		const uint32_t expectedStride = (hasColor0 ?
+			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0);
 		const bool_t versionedFlagsValid = geometryContract ?
 			(!skinned &&
+				(hasUV1 == (fileHeader.versionMinor == WINT_UV1_VERSION_MINOR)) &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 != (meshHeader.vertexFormatFlags & VF_TANGENT_HANDEDNESS) &&
 				0 == (meshHeader.vertexFormatFlags &
-					~(VF_STATIC_BASE | VF_TANGENT_HANDEDNESS | VF_COLOR0))) :
+					~(VF_STATIC_BASE | VF_TANGENT_HANDEDNESS | VF_COLOR0 | VF_TEXCOORD1))) :
 			((meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
 					~(VF_STATIC_BASE | VF_BONE_WEIGHT)));
@@ -609,7 +629,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 				reader.Read<MESH_GEOMETRY_METADATA_V1>();
 			if (!ValidateGeometryMetadata(
 				pContent, geometryPayloadSize,
-				meshHeader.vertexFormatFlags, metadata,
+				meshHeader.vertexFormatFlags, fileHeader.versionMinor, metadata,
 				outMesh.geometryMetadata, outReport.error))
 				return false;
 		}
@@ -653,6 +673,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			mesh.materialIndex = sourceMesh.materialIndex;
 			mesh.vertexKind = skinned ? MODEL_VERTEX_KIND::SKINNED : MODEL_VERTEX_KIND::STATIC;
 			mesh.hasColor0 = geometryContract && hasColor0;
+			mesh.hasTexcoord1 = geometryContract && hasUV1;
 			mesh.indices.resize(sourceMesh.indexCount);
 
 			const uint8_t* pVertices = pVertexBlob + sourceMesh.vertexOffset;
@@ -686,6 +707,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 						pVertices + static_cast<size_t>(i) * meshHeader.vertexStride,
 						geometryContract,
 						hasColor0,
+						hasUV1,
 						mesh.vertices[i],
 						tangentHandedness,
 						color0Rgba8))

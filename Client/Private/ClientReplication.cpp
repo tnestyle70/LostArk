@@ -393,6 +393,29 @@ bool Client::CClientReplication::Update()
 				m_strInteractPromptTriggerId);
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_BUNDLE_STATE:
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+                event.KoukuBundleState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+                event.KoukuBundleState.iRunEpoch >= m_KoukuBundleState.iRunEpoch)
+            {
+                if (event.KoukuBundleState.iRunEpoch != m_KoukuBundleState.iRunEpoch)
+                {
+                    std::string status;
+                    if (!CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
+                        m_Desc.iLayerLevelIndex, event.KoukuBundleState.iPinnedSourceRevision, status))
+                    {
+                        m_strPendingPresentationFailure = status;
+                        OutputDebugStringA(("[KoukuSaydonAnimation] " + status + "\n").c_str());
+                    }
+                    // A state packet may follow the initial snapshot in this batch.
+                    // Re-evaluate that action using the newly pinned cache next tick.
+                    for (auto& [id, entity] : m_WorldEntities)
+                        if (Is_KoukuSaydonArenaBoss(entity.strArchetypeId, entity.strEncounterId, entity.iOwnerBossNetEntityId))
+                            entity.strActiveActionId.clear();
+                }
+                m_KoukuBundleState = event.KoukuBundleState;
+            }
+			break;
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY:
 			/* Queued rather than played here: the level owns the sequence
 			   player and drains this on its own update. */
@@ -1619,7 +1642,8 @@ void Client::CClientReplication::Collect_KoukuPresentationViews(
 	for (const auto& [id, entity] : m_WorldEntities)
 		if (entity.eKind == LostArk::Shared::WORLD_ENTITY_KIND::BOSS &&
 			!entity.pNpc.expired() && !entity.bPresentationIsolated && entity.KoukuSnapshot.iNetEntityId == id)
-			bosses.push_back({entity.pNpc, entity.KoukuSnapshot, m_iLastServerTick});
+			bosses.push_back({entity.pNpc, entity.KoukuSnapshot, m_iLastServerTick,
+				entity.iOwnerBossNetEntityId, entity.strArchetypeId});
 	for (const auto& snapshot : m_KoukuCardSnapshots)
 	{
 		OBJECT_HANDLE handle;
@@ -2524,6 +2548,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = pBoss->presentationClips.idle;
 		presentation.strResolvedIdleClip = pBoss->presentationClips.idle;
+		presentation.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
@@ -3594,11 +3619,12 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					KOUKU_SAYDON_ACTION_PRESENTATION action;
 					const bool_t hasAction =
 						CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
-							iter->second.strArchetypeId, entity.strActionId, action);
+							iter->second.strArchetypeId, entity.strActionId, action,
+                            m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u);
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
 							action.strClip.c_str(), false,
-							action.fPlayRate, 0.05f) :
+							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f) :
 						boss->Play_DefaultIdle(0.08f);
 					const bool_t missingProductAction = !hasAction &&
 						!entity.strPatternId.empty() && !entity.strActionId.empty();
@@ -3614,6 +3640,27 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 						OutputDebugStringA(("[KoukuSaydonAnimation] " +
 							m_strPendingPresentationFailure + "\n").c_str());
 						allSucceeded = false;
+					}
+					if (played && hasAction)
+					{
+						// Late join and delayed snapshots enter at the Server action age.
+						// All bundle members therefore share the scheduled tick origin.
+						float ageSeconds = 0.f;
+						const auto model = boss->Get_Model();
+						if (model && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+							snapshot.iServerTick, entity.iActionStartTick, 30.f, ageSeconds))
+						{
+							const auto clip = model->Get_CurrentAnimIndex();
+							float oldTicks = 0.f, durationTicks = 0.f;
+							if (model->Get_AnimationProgress(clip, oldTicks, durationTicks))
+							{
+								const float ticks = (std::min)(durationTicks, ageSeconds *
+									action.fPlayRate * model->Get_AnimationTickPerSecond(clip));
+								model->Set_AnimTrackPosition(clip, ticks);
+								model->Skip_Blend();
+								model->Update_Animation(0.f);
+							}
+						}
 					}
 					if (played)
 					{
@@ -3928,6 +3975,7 @@ void Client::CClientReplication::Update_DeathPresentations()
 void Client::CClientReplication::Reset_World()
 {
 	m_PendingWorldSequencePlays.clear();
+	m_KoukuBundleState = {};
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
 	//registry? local handle??珥덇린?뷀븳??
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?

@@ -20,6 +20,64 @@ namespace
 		return value < 0.f ? 0.f : (value > 1.f ? 1.f : value);
 	}
 
+	struct OBJECT_MOTION_SAMPLE
+	{
+		const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr;
+		f32_t localMs = 0.f;
+		bool_t visible = false;
+		bool_t finished = false;
+		bool_t pending = false;
+	};
+
+	bool_t Is_SingleObjectMotion(const WORLD_SEQUENCE_INSTANCE& instance)
+	{
+		return instance.bindings.size() == 1u &&
+			instance.bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+	}
+
+	// Resolve from the original clock on every seek; NEXT never accumulates time or pose drift.
+	bool_t Resolve_ObjectMotion(const CWorldSequenceDocument& document,
+		const std::string& initialId, f32_t elapsedMs, const f32_t speed,
+		OBJECT_MOTION_SAMPLE& sample)
+	{
+		const auto* motion = document.Find_Instance(initialId);
+		const WORLD_SEQUENCE_TEMPLATE* previousSequence = nullptr;
+		for (uint32_t depth = 0; depth <= 32u; ++depth)
+		{
+			if (!motion || !motion->enabled || !Is_SingleObjectMotion(*motion)) return false;
+			const auto* sequence = document.Find_Template(motion->templateId);
+			if (!sequence || sequence->durationMs == 0u) return false;
+			const f32_t rate = motion->playbackSpeed * speed;
+			if (!std::isfinite(rate) || rate <= 0.f) return false;
+			const f32_t delayed = elapsedMs - motion->startDelayMs;
+			const f32_t raw = (std::max)(0.f, delayed) * rate;
+			const f32_t duration = static_cast<f32_t>(sequence->durationMs);
+			if (!std::isfinite(raw)) return false;
+			if (delayed < 0.f && previousSequence)
+			{
+				sample.sequence = previousSequence;
+				sample.localMs = static_cast<f32_t>(previousSequence->durationMs);
+				sample.visible = true;
+				return true;
+			}
+			if (motion->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT && raw >= duration)
+			{
+				elapsedMs -= motion->startDelayMs + duration / rate;
+				previousSequence = sequence;
+				motion = document.Find_Instance(motion->nextMotionId);
+				continue;
+			}
+			sample.sequence = sequence;
+			sample.localMs = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP ?
+				std::fmod(raw, duration) : (std::min)(raw, duration);
+			sample.finished = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::STOP && raw >= duration;
+			sample.visible = delayed >= 0.f && !sample.finished;
+			sample.pending = delayed < 0.f;
+			return true;
+		}
+		return false;
+	}
+
 	/* A placement that is drawn through a shared static batch still has an
 	   authored scale, so both presentations answer the same question. */
 	WORLD_SEQUENCE_PLACEMENT_MAP Collect_Placements(
@@ -335,9 +393,58 @@ bool_t CWorldSequencePlayer::Apply_RuntimeRecord(
 		CMapPlacementRuntime::Set_RuntimeVisible(entry, record.visible);
 }
 
+bool_t CWorldSequencePlayer::Validate_ObjectPlacement(const std::string& instanceId,
+	const std::optional<OBJECT_PLACEMENT>& placement, std::string& status) const
+{
+	const auto* instance = m_Document.Find_Instance(instanceId);
+	if (!instance) { status = "World sequence instance is unavailable: " + instanceId; return false; }
+	if (!placement) return true;
+	const auto validVector = [](const float3_t& value, const float minimum, const float maximum)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+			value.x >= minimum && value.x <= maximum && value.y >= minimum && value.y <= maximum &&
+			value.z >= minimum && value.z <= maximum;
+	};
+	const auto* resource = Is_SingleObjectMotion(*instance) ?
+		m_Document.Find_ObjectResource(instance->bindings.front().targetId) : nullptr;
+	if (instance->anchorKind != "WORLD" || !resource || resource->anchorKind != "WORLD" ||
+		!validVector(placement->position, -100000.f, 100000.f) ||
+		!validVector(placement->rotationDegrees, -36000.f, 36000.f) ||
+		!validVector(placement->scale, .001f, 1000.f))
+	{
+		status = "Independent placement requires one WORLD Object Resource and finite placement values: " + instanceId;
+		return false;
+	}
+	return true;
+}
+
+bool_t CWorldSequencePlayer::Set_ObjectPlacement(const std::string& instanceId,
+	const std::optional<OBJECT_PLACEMENT>& placement, const TARGET_SET& targets)
+{
+	if (!targets.Is_Complete()) { m_Status = "World placement requires complete runtime targets."; return false; }
+	if (!Validate_ObjectPlacement(instanceId, placement, m_Status)) return false;
+	const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+		[&](const auto& value) { return value.instanceId == instanceId; });
+	if (active == m_Active.end()) { m_Status = "World placement has no active object: " + instanceId; return false; }
+	if (active->placement == placement) return true;
+	const auto previous = active->placement;
+	active->placement = placement;
+	if (Apply_Instance(*active, targets) == APPLY_RESULT::FAILED)
+	{
+		const auto failure = m_Status;
+		active->placement = previous;
+		(void)Apply_Instance(*active, targets);
+		m_Status = failure;
+		return false;
+	}
+	m_Status = "World placement updated at the current motion clock: " + instanceId;
+	return true;
+}
+
 bool_t CWorldSequencePlayer::Play(
 	const std::string& instanceId,
-	const TARGET_SET& targets, const f32_t playbackSpeed, const float3_t& positionOffset, const uint32_t durationMs)
+	const TARGET_SET& targets, const f32_t playbackSpeed, const float3_t& positionOffset, const uint32_t durationMs,
+	const std::optional<OBJECT_PLACEMENT>& placement)
 {
 	if (!Is_Ready() || !targets.Is_Complete() || !std::isfinite(playbackSpeed) || playbackSpeed <= 0.f ||
 		!std::isfinite(positionOffset.x) || !std::isfinite(positionOffset.y) || !std::isfinite(positionOffset.z))
@@ -354,6 +461,7 @@ bool_t CWorldSequencePlayer::Play(
 		m_Status = "World sequence instance is unavailable: " + instanceId;
 		return false;
 	}
+	if (!Validate_ObjectPlacement(instanceId, placement, m_Status)) return false;
 
 	const auto existing = std::find_if(m_Active.begin(), m_Active.end(),
 		[&instanceId](const ACTIVE_INSTANCE& value)
@@ -366,13 +474,16 @@ bool_t CWorldSequencePlayer::Play(
 		existing->elapsedMs = 0.f;
 		existing->playbackSpeed = playbackSpeed;
 		existing->positionOffset = positionOffset;
+		existing->placement = placement;
+		existing->motionInstanceId.clear();
+		existing->motionStartMs = 0.f;
 		return true;
 	}
 
 	/* Capture the live pose of every bound target before the first sample so
 	   a replay composes against the placed transform, not against whatever the
 	   previous play left behind. */
-	if (!Prepare_ObjectResources(*instance, targets)) return false;
+	if (!Prepare_ObjectMotionChain(*instance, targets)) return false;
 	// Release only completed owners sharing this new instance's explicit targets.
 	for (size_t i = 0; i < m_Held.size();)
 	{
@@ -393,6 +504,7 @@ bool_t CWorldSequencePlayer::Play(
 	active.instanceId = instanceId;
 	active.playbackSpeed = playbackSpeed;
 	active.positionOffset = positionOffset;
+	active.placement = placement;
 	for (const WORLD_SEQUENCE_BINDING& binding : instance->bindings)
 	{
 		if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
@@ -438,6 +550,60 @@ bool_t CWorldSequencePlayer::Play(
 	}
 	m_Active.push_back(std::move(active));
 	m_Status = "World sequence started: " + instanceId;
+	return true;
+}
+
+bool_t CWorldSequencePlayer::Prepare_ObjectMotionChain(
+	const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets)
+{
+	const auto* motion = &instance;
+	for (uint32_t depth = 0; depth <= 32u; ++depth)
+	{
+		if (!Prepare_ObjectResources(*motion, targets)) return false;
+		if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) return true;
+		motion = m_Document.Find_Instance(motion->nextMotionId);
+		if (!motion || !motion->enabled) break;
+	}
+	m_Status = "World Object completion motion is unavailable or exceeds the chain limit.";
+	return false;
+}
+
+bool_t CWorldSequencePlayer::Apply_ObjectMotion(const std::string& targetInstanceId,
+	const std::string& motionInstanceId, const TARGET_SET& targets)
+{
+	const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+		[&](const ACTIVE_INSTANCE& value) { return value.instanceId == targetInstanceId; });
+	const auto* target = m_Document.Find_Instance(targetInstanceId);
+	const auto* motion = m_Document.Find_Instance(motionInstanceId);
+	const auto* targetSequence = target ? m_Document.Find_Template(target->templateId) : nullptr;
+	const auto* motionSequence = motion ? m_Document.Find_Template(motion->templateId) : nullptr;
+	if (!targets.Is_Complete() || active == m_Active.end() || !target || !motion ||
+		!motion->enabled || !targetSequence || !motionSequence ||
+		!Is_SingleObjectMotion(*target) || !Is_SingleObjectMotion(*motion) ||
+		target->bindings.front().targetId != motion->bindings.front().targetId ||
+		target->bindings.front().slotId != motion->bindings.front().slotId ||
+		target->anchorKind != "WORLD" || targetSequence->objectMotion.count != 1u ||
+		motionSequence->objectMotion.count != 1u ||
+		(active->durationMs != 0u && active->elapsedMs >= active->durationMs))
+	{
+		m_Status = "World Object motion target must be an active single world object with the same parent: " + targetInstanceId;
+		return false;
+	}
+	if (!Prepare_ObjectMotionChain(*motion, targets)) return false;
+	const auto previousMotion = active->motionInstanceId;
+	const auto previousStart = active->motionStartMs;
+	active->motionInstanceId = motionInstanceId;
+	active->motionStartMs = active->elapsedMs;
+	if (Apply_Instance(*active, targets) == APPLY_RESULT::FAILED)
+	{
+		const auto failure = m_Status;
+		active->motionInstanceId = previousMotion;
+		active->motionStartMs = previousStart;
+		(void)Apply_Instance(*active, targets);
+		m_Status = failure;
+		return false;
+	}
+	m_Status = "World Object motion applied: " + targetInstanceId + " -> " + motionInstanceId;
 	return true;
 }
 
@@ -643,6 +809,37 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 	{
 		(void)Apply_Objects(active, *instance, *sequence, targets, 0.f, false);
 		return APPLY_RESULT::FINISHED;
+	}
+	if (Is_SingleObjectMotion(*instance))
+	{
+		OBJECT_MOTION_SAMPLE sample;
+		const bool_t appliedMotion = !active.motionInstanceId.empty() &&
+			active.elapsedMs >= active.motionStartMs;
+		const auto& motionId = appliedMotion ? active.motionInstanceId : active.instanceId;
+		if (!Resolve_ObjectMotion(m_Document, motionId,
+			active.elapsedMs - (appliedMotion ? active.motionStartMs : 0.f), active.playbackSpeed, sample))
+		{
+			m_Status = "World Object motion clock or completion target is invalid: " + motionId;
+			return APPLY_RESULT::FAILED;
+		}
+		if (appliedMotion && sample.pending)
+		{
+			// An action's start delay leaves the existing object's base motion visible.
+			sample = {};
+			if (!Resolve_ObjectMotion(m_Document, active.instanceId,
+				active.elapsedMs, active.playbackSpeed, sample))
+				return APPLY_RESULT::FAILED;
+		}
+		if (appliedMotion && sample.finished)
+		{
+			// STOP stops the applied motion, not the target object's lifetime.
+			sample.visible = true;
+			sample.finished = false;
+		}
+		// Keep the target's binding/anchor/placement and reuse its existing object. Only the motion changes.
+		if (!Apply_Objects(active, *instance, *sample.sequence, targets, sample.localMs, sample.visible))
+			return APPLY_RESULT::FAILED;
+		return sample.finished && active.durationMs == 0u ? APPLY_RESULT::FINISHED : APPLY_RESULT::PLAYING;
 	}
 	const f32_t delayedMs =
 		active.elapsedMs - static_cast<f32_t>(instance->startDelayMs);

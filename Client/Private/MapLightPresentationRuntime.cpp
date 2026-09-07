@@ -79,11 +79,12 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 	std::vector<LIGHT_DESC> lights;
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
-		if (!record.enabled) continue;
+		if (!record.enabled || s_fSceneIntensityMultiplier == 0.f) continue;
+		const f32_t brightness = record.brightness * s_fSceneIntensityMultiplier;
 		EFFECT_EVALUATED_LIGHT evaluated{};
 		evaluated.vWorldPosition = record.position;
 		evaluated.fRange = record.radiusMeters;
-		evaluated.fIntensity = record.brightness;
+		evaluated.fIntensity = brightness;
 		evaluated.vColor = record.color;
 		evaluated.vAmbient = { 0.f, 0.f, 0.f, 0.f };
 		evaluated.fFalloffExponent = record.falloffExponent;
@@ -106,7 +107,7 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 			XMStoreFloat4(&light.vDirection,XMVectorSetW(XMVector3Normalize(rotation.r[2]),0.f));
 			light.fSpotInnerCos=std::cos(XMConvertToRadians(record.innerConeDegrees));
 			light.fSpotOuterCos=std::cos(XMConvertToRadians(record.outerConeDegrees));
-			light.vDiffuse={record.color.x*record.brightness,record.color.y*record.brightness,record.color.z*record.brightness,1.f};
+			light.vDiffuse={record.color.x*brightness,record.color.y*brightness,record.color.z*brightness,1.f};
 			light.vAmbient={0,0,0,0};light.vSpecular={0,0,0,0};
 		}
 		lights.push_back(light);

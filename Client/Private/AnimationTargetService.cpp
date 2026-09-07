@@ -11,6 +11,9 @@ weak_ptr<Client::CCharacter>
 	Client::CAnimationTargetService::s_PreviewCharacter;
 weak_ptr<Client::CValtan> Client::CAnimationTargetService::s_PreviewBoss;
 weak_ptr<Engine::CModel> Client::CAnimationTargetService::s_PreviewModel;
+weak_ptr<Engine::CModel> Client::CAnimationTargetService::s_PreviewWeaponModel;
+weak_ptr<Engine::CModel> Client::CAnimationTargetService::s_PreviewWeaponBody;
+float4x4_t Client::CAnimationTargetService::s_PreviewWeaponRoot;
 string Client::CAnimationTargetService::s_PreviewAssetName;
 float4x4_t Client::CAnimationTargetService::s_PreviewRootMatrix;
 uint64_t Client::CAnimationTargetService::s_TargetGeneration = 1u;
@@ -62,6 +65,8 @@ void Client::CAnimationTargetService::Bind_Preview(
 	s_PreviewCharacter.reset();
 	s_PreviewBoss.reset();
 	s_PreviewModel = model;
+	s_PreviewWeaponModel.reset();
+	s_PreviewWeaponBody.reset();
 	s_PreviewAssetName = assetName;
 	s_PreviewRootMatrix = rootMatrix;
 	Advance_TargetGeneration(s_TargetGeneration);
@@ -82,6 +87,8 @@ void Client::CAnimationTargetService::Bind_Preview(
 	s_PreviewBoss.reset();
 	s_PreviewModel.reset();
 	s_PreviewCharacter = character;
+	s_PreviewWeaponModel.reset();
+	s_PreviewWeaponBody.reset();
 	s_PreviewAssetName = character->Get_Spec()->pAssetName;
 	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
 	Advance_TargetGeneration(s_TargetGeneration);
@@ -107,6 +114,8 @@ void Client::CAnimationTargetService::Bind_Preview(
 	s_PreviewCharacter.reset();
 	s_PreviewModel.reset();
 	s_PreviewBoss = valtan;
+	s_PreviewWeaponModel.reset();
+	s_PreviewWeaponBody.reset();
 	s_PreviewAssetName = assetName;
 	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
 	Advance_TargetGeneration(s_TargetGeneration);
@@ -143,6 +152,8 @@ void Client::CAnimationTargetService::Clear_Preview()
 	s_PreviewBoss.reset();
 	s_PreviewModel.reset();
 	s_PreviewAssetName.clear();
+	s_PreviewWeaponModel.reset();
+	s_PreviewWeaponBody.reset();
 	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
 	Advance_TargetGeneration(s_TargetGeneration);
 }
@@ -213,6 +224,38 @@ string Client::CAnimationTargetService::Resolve_AssetName()
 uint64_t Client::CAnimationTargetService::Resolve_TargetGeneration()
 {
 	return s_TargetGeneration;
+}
+
+void Client::CAnimationTargetService::Bind_PreviewWeapon(
+	const shared_ptr<Engine::CModel>& body, const shared_ptr<Engine::CModel>& weapon,
+	const float4x4_t& weaponRoot)
+{
+	if (!body || Resolve_Model() != body) return;
+	s_PreviewWeaponBody = body;
+	s_PreviewWeaponModel = weapon;
+	s_PreviewWeaponRoot = weaponRoot;
+}
+
+bool_t Client::CAnimationTargetService::Resolve_ModelTarget(
+	const ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& outView)
+{
+	ANIMATION_MODEL_TARGET_VIEW staged;
+	if (!Resolve_RootTransform(&staged.TargetRoot)) return false;
+	if (target == ANIMATION_BONE_TARGET::BODY)
+	{
+		staged.Model = Resolve_Model();
+		staged.BoneRoot = staged.TargetRoot;
+	}
+	else if (target == ANIMATION_BONE_TARGET::WEAPON)
+	{
+		if (s_PreviewWeaponBody.lock() != Resolve_Model()) return false;
+		staged.Model = s_PreviewWeaponModel.lock();
+		staged.BoneRoot = s_PreviewWeaponRoot;
+	}
+	else return false;
+	if (!staged.Model) return false;
+	outView = std::move(staged);
+	return true;
 }
 
 bool_t Client::CAnimationTargetService::Resolve_RootTransform(

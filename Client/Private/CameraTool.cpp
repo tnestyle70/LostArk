@@ -819,9 +819,7 @@ bool_t Client::CCameraTool::Resolve_SceneWorldPose(
 			cue, input, outPose);
 }
 
-bool_t Client::CCameraTool::Capture_CurrentPose(
-	const VALTAN_CINEMATIC_CAMERA_CUE& cue,
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME& outKeyframe) const
+bool_t Client::CCameraTool::Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose)
 {
 	CGameInstance& gameInstance = CGameInstance::Get();
 	const float4x4_t* inverseView =
@@ -839,16 +837,20 @@ bool_t Client::CCameraTool::Capture_CurrentPose(
 	if (!std::isfinite(lookLengthSq) || lookLengthSq <= 0.000001f)
 		return false;
 	const vector_t look = XMVector3Normalize(lookBasis);
-	VALTAN_CINEMATIC_CAMERA_POSE pose{};
-	XMStoreFloat3(&pose.vEye, eye);
-	if (m_bLookAtDummyEnabled)
-		pose.vLookAt = m_vLookAtDummyWorld;
-	else
-		XMStoreFloat3(&pose.vLookAt, eye + look * 10.f);
-	pose.fFovYDegrees = XMConvertToDegrees(
+	XMStoreFloat3(&outPose.vEye, eye);
+	XMStoreFloat3(&outPose.vLookAt, eye + look * 10.f);
+	outPose.fFovYDegrees = XMConvertToDegrees(
 		2.f * std::atan(1.f / projection->_22));
-	if (!Is_ValidAuthoringPose(pose))
-		return false;
+	return Is_ValidAuthoringPose(outPose);
+}
+
+bool_t Client::CCameraTool::Capture_CurrentPose(
+	const VALTAN_CINEMATIC_CAMERA_CUE& cue,
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME& outKeyframe) const
+{
+	VALTAN_CINEMATIC_CAMERA_POSE pose{};
+	if (!Capture_ViewPose(pose)) return false;
+	if (m_bLookAtDummyEnabled) pose.vLookAt = m_vLookAtDummyWorld;
 	if (VALTAN_CINEMATIC_TRACKING_MODE::WORLD != cue.eTrackingMode)
 	{
 		VALTAN_CINEMATIC_CAMERA_INPUT input{};

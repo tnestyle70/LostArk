@@ -1,5 +1,7 @@
 #include "Npc.h"
 #include "EffectV2_Runtime.h"
+#include "AnimationTargetService.h"
+#include "NpcPresentationAssetService.h"
 
 #include "Collider.h"
 #include "DeferredMaterialRenderUtils.h"
@@ -86,6 +88,38 @@ HRESULT CNpc::Initialize(void* pArg)
 	}
 
 	return S_OK;
+}
+
+void CNpc::Synchronize_WeaponPose()
+{
+	CNpcPresentationAssetService::Synchronize_SaydonHammerPose(m_pModelCom, m_pWeaponModelCom, m_WeaponRestPose);
+}
+
+bool_t CNpc::Try_GetAnimationModelTarget(const ANIMATION_BONE_TARGET target,
+	ANIMATION_MODEL_TARGET_VIEW& outView) const
+{
+	if (!m_pModelCom || !m_pTransformCom) return false;
+	ANIMATION_MODEL_TARGET_VIEW staged;
+	staged.TargetRoot = *m_pTransformCom->Get_WorldMatrixPtr();
+	if (target == ANIMATION_BONE_TARGET::BODY)
+	{
+		staged.Model = m_pModelCom;
+		staged.BoneRoot = staged.TargetRoot;
+	}
+	else if (target == ANIMATION_BONE_TARGET::WEAPON)
+	{
+		if (!m_pWeaponModelCom || !m_pModelCom->Has_Bone(m_strWeaponSocketBone.c_str())) return false;
+		matrix_t weaponLocal = XMMatrixIdentity();
+#ifdef _DEBUG
+		weaponLocal = XMLoadFloat4x4(&m_DebugWeaponRotation) * XMMatrixScaling(m_fDebugWeaponScale, m_fDebugWeaponScale, m_fDebugWeaponScale);
+#endif
+		staged.Model = m_pWeaponModelCom;
+		XMStoreFloat4x4(&staged.BoneRoot, weaponLocal *
+			m_pModelCom->Get_BoneMatrix(m_strWeaponSocketBone.c_str()) * XMLoadFloat4x4(&staged.TargetRoot));
+	}
+	else return false;
+	outView = std::move(staged);
+	return true;
 }
 
 bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
@@ -235,6 +269,7 @@ void CNpc::Update(f32_t fTimeDelta)
 	{
 		m_pModelCom->Play_Animation(fTimeDelta);
 	}
+	Synchronize_WeaponPose();
 	Update_CombatCollider();
 	CEffectV2Runtime::Tick(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
@@ -416,21 +451,9 @@ HRESULT CNpc::Render()
 	}
 	if (nullptr != m_pWeaponModelCom)
 	{
-		/* The socket bone matrix already carries the body's pre-transform, so
-		the weapon world is bone x body world with no second scale or yaw. */
-		float4x4_t weaponWorld{};
-#ifdef _DEBUG
-		const f32_t weaponScale = m_fDebugWeaponScale;
-		const matrix_t weaponLocal = XMLoadFloat4x4(&m_DebugWeaponRotation) *
-			XMMatrixScaling(weaponScale, weaponScale, weaponScale);
-#else
-		const matrix_t weaponLocal = XMMatrixIdentity();
-#endif
-		XMStoreFloat4x4(&weaponWorld,
-			weaponLocal *
-			m_pModelCom->Get_BoneMatrix(m_strWeaponSocketBone.c_str()) *
-			XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
-		if (FAILED(m_pShaderCom->Bind_Matrix("g_WorldMatrix", &weaponWorld)))
+		ANIMATION_MODEL_TARGET_VIEW weaponView;
+		if (!Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView) ||
+			FAILED(m_pShaderCom->Bind_Matrix("g_WorldMatrix", &weaponView.BoneRoot)))
 			return E_FAIL;
 		const uint32_t iNumWeaponMeshes = m_pWeaponModelCom->Get_NumMeshes();
 		for (uint32_t i = 0; i < iNumWeaponMeshes; ++i)
@@ -503,8 +526,14 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 			m_pWeaponModelCom)))
 			return E_FAIL;
 		m_strWeaponSocketBone = pDesc->pWeaponSocketBone;
-		/* Freeze the prototype's initial pose until weapon clip synchronization
-		is authored. Cloning does not restore the skeleton's bind pose. */
+		// Keep the actual loaded rest pose for body clips without a hammer counterpart.
+		matrix_t local;
+		for (uint32_t i = 0u; m_pWeaponModelCom->Get_BoneRestLocalMatrix(i, local); ++i)
+		{
+			float4x4_t stored;
+			XMStoreFloat4x4(&stored, local);
+			m_WeaponRestPose.push_back(stored);
+		}
 		m_pWeaponModelCom->Set_AnimPaused(true);
 		m_pWeaponModelCom->Refresh_BoneCombinedMatrices();
 	}

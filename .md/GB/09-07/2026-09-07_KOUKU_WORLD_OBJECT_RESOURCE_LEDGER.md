@@ -33,11 +33,12 @@
 ### 월드오브젝트_공
 
 - 저장 ID: `world.object.kouku.ball`
-- 모델/alias: `Effect/KoukuSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel`
-- 근거: `FX_MN_RPCT_05_G.par_g_rpct_05_circusball_01_01` 등 TypeDataMesh → `fx_sm_01.fm_k_ppct_ball_01`; 원본 `wp_mn_ppct_00_mi.props.txt`의 texture_diffuse → wp_mn_ppct_00_c.
+- 모델/alias: `Effect/KoukuSaydon/Meshes/wp_mn_rhcn_00/mesh/fm_d_rhcn_00.wmodel`
+- 근거: 사용자 지정 MN_RHCN_00 텍스처에 맞춰 revision 367에서 기존 세토 계열 서커스 공 연결을 교정했다. `FX_MN_RPCZ_00_U.par_u_rpcz_ballshoot_ball_01/02`의 TypeDataMesh와 mn_rhcn_00_mi 참조가 이 모델이다. 원본 MN_RHCN_00_SK와 위치 보정 후 전체 716 vertex shape가 일치한다. 이름의 fm_d만으로 파편이라고 분류하지 않는다.
 - 단위/배수: modelPreScale=0.01, scale=1.
 - 애니메이션: 0; transform/motion.
-- 텍스처: WModel 자체 texture가 비어 있어 `Effect/KoukuSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds`를 명시 diffuse override한다.
+- 텍스처: WModel 자체 texture가 비어 있어 `Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds`를 명시 diffuse override한다.
+- 원본 상하 이동은 위 particle의 local 위치 곡선 21개 표본에서 -20→150→-20cm로 확인했다. 모델 자체 clip은 0개다. 정확한 세이튼 등장 occurrence 연결은 확정하지 않았으며, 사용자 저작은 Object Tool의 기존 Motion으로 조절한다. 기존 Transform과 높이는 보존했다. 근거 `out/KoukuPatternStaging/ball-mn-rhcn-00-source-audit.json`.
 
 ### 월드오브젝트_세토
 

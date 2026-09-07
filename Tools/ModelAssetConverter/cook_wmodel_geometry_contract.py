@@ -35,6 +35,7 @@ GEOMETRY_METADATA_SIZE = GEOMETRY_METADATA_PREFIX.size + 10 * 32
 WINT_VERSION_MAJOR = 1
 WINT_LEGACY_VERSION_MINOR = 0
 WINT_GEOMETRY_VERSION_MINOR = 1
+WINT_UV1_VERSION_MINOR = 2
 VF_POSITION = 1 << 0
 VF_NORMAL = 1 << 1
 VF_TEXCOORD0 = 1 << 2
@@ -42,6 +43,7 @@ VF_TANGENT = 1 << 3
 VF_STATIC_BASE = VF_POSITION | VF_NORMAL | VF_TEXCOORD0 | VF_TANGENT
 VF_TANGENT_HANDEDNESS = 1 << 5
 VF_COLOR0 = 1 << 6
+VF_TEXCOORD1 = 1 << 7
 STRIDE_STATIC = 48
 STRIDE_STATIC_COLOR0 = 52
 MAX_MATERIALS = 4096
@@ -60,6 +62,8 @@ MGEF_LEGACY_COOK_RECEIPT_SHA256 = 1 << 10
 MGEF_CLEAN_SOURCE_EXPORT = 1 << 11
 MGEF_UPK_TO_GLTF_EXACT = 1 << 12
 MGEF_PIVOT_EXACT = 1 << 13
+MGEF_TEXCOORD1_PRESERVED_FROM_GLTF = 1 << 14
+MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED = 1 << 15
 MGEF_REQUIRED_PAYLOAD = (
     MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF
     | MGEF_BOUNDS_WMODEL_SPACE
@@ -78,6 +82,8 @@ MGEF_PRODUCT_PROVENANCE = (
 MGEF_KNOWN = (
     MGEF_REQUIRED_PAYLOAD
     | MGEF_COLOR0_PRESERVED_FROM_GLTF
+    | MGEF_TEXCOORD1_PRESERVED_FROM_GLTF
+    | MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED
     | MGEF_PRODUCT_PROVENANCE
 )
 
@@ -422,6 +428,7 @@ class GeometryProvenanceEvidence:
     legacy_converter_observed_unbound_sha256: bytes
     source_export_receipt_sha256: bytes
     legacy_cook_receipt_sha256: bytes
+    tangent_handedness_project_reconstructed: bool = False
 
 
 @dataclass(frozen=True)
@@ -446,6 +453,7 @@ class SourcePrimitive:
     vertices: tuple[dict[str, Any], ...]
     indices: tuple[int, ...]
     has_color0: bool
+    has_uv1: bool = False
 
 
 def accessor_values(
@@ -625,6 +633,7 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
     buffer_cache: dict[int, bytes] = {}
     primitives: list[SourcePrimitive] = []
     color_presence: set[bool] = set()
+    uv1_presence: set[bool] = set()
     for mesh in document.get("meshes") or []:
         for primitive in mesh.get("primitives") or []:
             require(int(primitive.get("mode", 4)) == 4, "glTF primitive is not triangles")
@@ -640,6 +649,15 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 decoded[name], evidence[name] = accessor_values(
                     document, path.parent, int(attributes[name]), buffer_cache
                 )
+            has_uv1 = "TEXCOORD_1" in attributes
+            uv1_presence.add(has_uv1)
+            if has_uv1:
+                decoded["TEXCOORD_1"], evidence["TEXCOORD_1"] = accessor_values(
+                    document, path.parent, int(attributes["TEXCOORD_1"]), buffer_cache
+                )
+                require(evidence["TEXCOORD_1"]["type"] == "VEC2"
+                    and evidence["TEXCOORD_1"]["componentType"] == 5126,
+                    "TEXCOORD_1 must be float2")
             has_color0 = "COLOR_0" in attributes
             color_presence.add(has_color0)
             if has_color0:
@@ -664,7 +682,8 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
             require(
                 count > 0
                 and all(len(decoded[name]) == count for name in required)
-                and (not has_color0 or len(decoded["COLOR_0"]) == count),
+                and (not has_color0 or len(decoded["COLOR_0"]) == count)
+                and (not has_uv1 or len(decoded["TEXCOORD_1"]) == count),
                 "glTF vertex channel counts differ",
             )
             vertices: list[dict[str, Any]] = []
@@ -673,6 +692,8 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 normal = tuple(float(value) for value in decoded["NORMAL"][index])
                 uv0 = tuple(float(value) for value in decoded["TEXCOORD_0"][index])
                 tangent = tuple(float(value) for value in decoded["TANGENT"][index])
+                uv1 = tuple(float(value) for value in decoded["TEXCOORD_1"][index]) if has_uv1 else None
+                require(uv1 is None or (len(uv1) == 2 and all(math.isfinite(value) for value in uv1)), "TEXCOORD_1 contains invalid values")
                 require(
                     len(position) == 3
                     and len(normal) == 3
@@ -693,6 +714,7 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                         "position": position,
                         "normal": normal,
                         "uv0": uv0,
+                        "uv1": uv1,
                         "tangent": tangent,
                         "color0": color,
                     }
@@ -704,9 +726,10 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                 and all(0 <= value < count for value in indices),
                 "glTF triangle indices are invalid",
             )
-            primitives.append(SourcePrimitive(tuple(vertices), indices, has_color0))
+            primitives.append(SourcePrimitive(tuple(vertices), indices, has_color0, has_uv1))
     require(primitives, "glTF contains no indexed mesh primitives")
-    require(len(color_presence) == 1, "mixed COLOR_0 presence is not supported in WMSH 1.1")
+    require(len(color_presence) == 1, "mixed COLOR_0 presence is not supported")
+    require(len(uv1_presence) == 1, "mixed TEXCOORD_1 presence is not supported")
 
     buffers = document.get("buffers") or []
     buffer_rows = []
@@ -880,7 +903,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     require(
         magic == b"WINT"
         and major == WINT_VERSION_MAJOR
-        and minor == WINT_GEOMETRY_VERSION_MINOR
+        and minor in (WINT_GEOMETRY_VERSION_MINOR, WINT_UV1_VERSION_MINOR)
         and flags == 0
         and content_size == len(data) - FILE_HEADER.size,
         "WModel 1.1 outer header is invalid",
@@ -955,7 +978,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     require(len(mesh) >= FILE_HEADER.size + MESH_HEADER.size + GEOMETRY_METADATA_SIZE, "WMSH 1.1 is truncated")
     mesh_outer = FILE_HEADER.unpack_from(mesh, 0)
     require(
-        mesh_outer[:4] == (b"WINT", 1, 1, 0)
+        mesh_outer[:4] == (b"WINT", 1, minor, 0)
         and mesh_outer[4] == len(mesh) - FILE_HEADER.size,
         "WMSH 1.1 header is invalid",
     )
@@ -973,12 +996,15 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         reserved,
     ) = header
     has_color0 = bool(vertex_flags & VF_COLOR0)
+    has_uv1 = bool(vertex_flags & VF_TEXCOORD1)
+    require(has_uv1 == (minor == WINT_UV1_VERSION_MINOR), "UV1 requires WMSH 1.2")
     expected_vertex_flags = (
         VF_STATIC_BASE
         | VF_TANGENT_HANDEDNESS
         | (VF_COLOR0 if has_color0 else 0)
+        | (VF_TEXCOORD1 if has_uv1 else 0)
     )
-    expected_vertex_stride = STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC
+    expected_vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0)
     require(
         mesh_magic == b"WMSH"
         and submesh_count > 0
@@ -1040,15 +1066,19 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         if math.isfinite(source_scale) and source_scale > 0.0
         else math.nan
     )
+    reconstructed = bool(metadata_prefix[4] & MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED)
+    required_evidence = MGEF_REQUIRED_PAYLOAD & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF if reconstructed else MGEF_REQUIRED_PAYLOAD
+    require(not reconstructed or (minor >= WINT_UV1_VERSION_MINOR and not metadata_prefix[4] & MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF), "reconstructed handedness cannot claim source preservation")
     require(
         metadata_prefix[:3] == (b"WGEO", 1, 0)
         and metadata_prefix[3] == GEOMETRY_METADATA_SIZE
         and metadata_prefix[5] == offset - FILE_HEADER.size
         and metadata_prefix[4] & ~MGEF_KNOWN == 0
-        and metadata_prefix[4] & MGEF_REQUIRED_PAYLOAD == MGEF_REQUIRED_PAYLOAD
+        and metadata_prefix[4] & required_evidence == required_evidence
         and metadata_prefix[4] & MGEF_PRODUCT_PROVENANCE == 0
         and bool(metadata_prefix[4] & MGEF_COLOR0_PRESERVED_FROM_GLTF)
         == has_color0
+        and bool(metadata_prefix[4] & MGEF_TEXCOORD1_PRESERVED_FROM_GLTF) == has_uv1
         and math.isfinite(source_scale)
         and math.isfinite(geometry_pre_scale)
         and source_scale > 0.0
@@ -1108,7 +1138,9 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
             )
             require_nondegenerate_basis(values[3:6], values[8:11])
             color = raw[STRIDE_STATIC:STRIDE_STATIC_COLOR0] if has_color0 else None
-            vertices.append({"values": values, "color0": color})
+            uv1 = struct.unpack_from("<2f", raw, STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) if has_uv1 else None
+            require(uv1 is None or all(math.isfinite(value) for value in uv1), "WMSH UV1 is non-finite")
+            vertices.append({"values": values, "color0": color, "uv1": uv1})
             vertex_bytes.extend(raw)
         index_format = "<H" if index_stride == 2 else "<I"
         indices = tuple(
@@ -1179,6 +1211,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         "vertexStride": vertex_stride,
         "indexStride": index_stride,
         "hasColor0": has_color0,
+        "hasTexcoord1": has_uv1,
         "evidenceFlags": metadata_prefix[4],
         "sourceToWModelScale": metadata_prefix[6],
         "geometryPreScale": metadata_prefix[7],
@@ -1470,19 +1503,21 @@ def build_submesh_payload(
     index_stride: int,
 ) -> tuple[bytes, bytes, tuple[float, ...], dict[str, int]]:
     transformed = [transform_source_vertex(vertex, scale) for vertex in source.vertices]
-    unique_rows: list[tuple[tuple[float, ...], bytes | None]] = []
+    unique_rows: list[tuple[tuple[float, ...], bytes | None, bytes]] = []
     unique_lookup: dict[bytes, int] = {}
     source_to_unique: list[int] = []
-    for values, color in transformed:
+    for source_vertex, (values, color) in zip(source.vertices, transformed):
         packed = struct.pack("<3f3f2f3ff", *values)
         if source.has_color0:
             require(color is not None and len(color) == 4, "COLOR_0 row is invalid")
             packed += color
+        uv1_bytes = struct.pack("<2f", *source_vertex["uv1"]) if source.has_uv1 else b""
+        packed += uv1_bytes
         unique_index = unique_lookup.get(packed)
         if unique_index is None:
             unique_index = len(unique_rows)
             unique_lookup[packed] = unique_index
-            unique_rows.append((values, color))
+            unique_rows.append((values, color, uv1_bytes))
         source_to_unique.append(unique_index)
 
     target_indices: list[int] = []
@@ -1497,10 +1532,11 @@ def build_submesh_payload(
     )
 
     vertex_blob = bytearray()
-    for values, color in unique_rows:
+    for values, color, uv1_bytes in unique_rows:
         vertex_blob.extend(struct.pack("<3f3f2f3ff", *values))
         if source.has_color0:
             vertex_blob.extend(color or b"")
+        vertex_blob.extend(uv1_bytes)
     require(
         index_stride == 4 or len(unique_rows) <= 0xFFFF,
         "16-bit WMSH index format cannot address the rebuilt vertices",
@@ -1559,8 +1595,14 @@ def build_geometry_metadata(
     source_to_wmodel_scale: float,
     geometry_pre_scale: float,
     has_color0: bool,
+    has_uv1: bool = False,
 ) -> tuple[bytes, int]:
     evidence_flags = MGEF_REQUIRED_PAYLOAD
+    if provenance.tangent_handedness_project_reconstructed:
+        require(has_uv1, "project reconstructed handedness requires WMSH 1.2")
+        evidence_flags = (evidence_flags & ~MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF) | MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED
+    if has_uv1:
+        evidence_flags |= MGEF_TEXCOORD1_PRESERVED_FROM_GLTF
     if has_color0:
         evidence_flags |= MGEF_COLOR0_PRESERVED_FROM_GLTF
     prefix = GEOMETRY_METADATA_PREFIX.pack(
@@ -1602,9 +1644,11 @@ def build_mesh_section(
 ) -> tuple[bytes, dict[str, Any]]:
     require(len(source_primitives) == len(legacy_submeshes), "glTF/WModel primitive count differs")
     has_color0 = source_primitives[0].has_color0
+    has_uv1 = source_primitives[0].has_uv1
+    require(all(value.has_uv1 == has_uv1 for value in source_primitives), "mixed TEXCOORD_1 presence")
     require(all(value.has_color0 == has_color0 for value in source_primitives), "mixed COLOR_0 presence")
     index_stride = 4 if any(len(value.vertices) > 0xFFFF for value in source_primitives) else 2
-    vertex_stride = STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC
+    vertex_stride = (STRIDE_STATIC_COLOR0 if has_color0 else STRIDE_STATIC) + (8 if has_uv1 else 0)
     vertex_blocks: list[bytes] = []
     index_blocks: list[bytes] = []
     bounds_rows: list[tuple[float, ...]] = []
@@ -1640,6 +1684,7 @@ def build_mesh_section(
         VF_STATIC_BASE
         | VF_TANGENT_HANDEDNESS
         | (VF_COLOR0 if has_color0 else 0)
+        | (VF_TEXCOORD1 if has_uv1 else 0)
     )
     mesh_header = MESH_HEADER.pack(
         b"WMSH",
@@ -1668,22 +1713,25 @@ def build_mesh_section(
         source_to_wmodel_scale,
         geometry_pre_scale,
         has_color0,
+        has_uv1,
     )
     content = payload + metadata
     section = FILE_HEADER.pack(
         b"WINT",
         WINT_VERSION_MAJOR,
-        WINT_GEOMETRY_VERSION_MINOR,
+        WINT_UV1_VERSION_MINOR if has_uv1 else WINT_GEOMETRY_VERSION_MINOR,
         0,
         len(content),
     ) + content
     return section, {
-        "formatVersion": "1.1",
+        "formatVersion": "1.2" if has_uv1 else "1.1",
         "vertexFormatFlags": vertex_flags,
         "vertexStride": vertex_stride,
         "hasColor0": has_color0,
+        "hasTexcoord1": has_uv1,
         "hasWModelSpaceBounds": True,
         "tangentHandednessTransform": "runtimeW=-sourceW_after_Z_reflection",
+        "tangentHandednessOrigin": "PROJECT_RECONSTRUCTED_FROM_UV_DIFFERENTIAL" if provenance.tangent_handedness_project_reconstructed else "PRESERVED_FROM_GLTF",
         "channelPayloadStatus": "PRESERVED_FROM_GLTF",
         "sourceFidelityStatus": "UNKNOWN_UPK_TO_GLTF_BLOCKED",
         "evidenceFlags": evidence_flags,
@@ -1738,7 +1786,7 @@ def rebuild_wmodel(
     return FILE_HEADER.pack(
         b"WINT",
         WINT_VERSION_MAJOR,
-        WINT_GEOMETRY_VERSION_MINOR,
+        FILE_HEADER.unpack_from(mesh_section, 0)[2],
         0,
         len(content),
     ) + content

@@ -5515,48 +5515,83 @@ bool LostArk::Shared::Read_Message(
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
+	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER;
+	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
+		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
+	// Viewer transport owns saved instances; bundle cues and exact motion remain PLAY/STOP_OWNER.
+	if ((transportControl && (message.iRunEpoch != 0u || !message.strTargetSequenceInstanceId.empty() ||
+		!message.strTargetCueId.empty())) ||
+		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY &&
+			(!message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty())))
+		return false;
+	const bool identityPlacement = message.fWorldPositionX == 0.f && message.fWorldPositionY == 0.f && message.fWorldPositionZ == 0.f &&
+		message.fWorldRotationXDegrees == 0.f && message.fWorldRotationYDegrees == 0.f && message.fWorldRotationZDegrees == 0.f &&
+		message.fWorldScaleX == 1.f && message.fWorldScaleY == 1.f && message.fWorldScaleZ == 1.f;
+	for (const float value : { message.fWorldPositionX, message.fWorldPositionY, message.fWorldPositionZ })
+		if (!std::isfinite(value) || std::abs(value) > 100000.f) return false;
+	for (const float value : { message.fWorldRotationXDegrees, message.fWorldRotationYDegrees, message.fWorldRotationZDegrees })
+		if (!std::isfinite(value) || std::abs(value) > 36000.f) return false;
+	for (const float value : { message.fWorldScaleX, message.fWorldScaleY, message.fWorldScaleZ })
+		if (!std::isfinite(value) || value < .001f || value > 1000.f) return false;
+	if ((!message.bHasPlacement && !identityPlacement) ||
+		(message.bHasPlacement && (stop || !message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty() ||
+			message.iRunEpoch == 0u || message.strOccurrenceId.empty() ||
+			message.fPositionOffsetX != 0.f || message.fPositionOffsetY != 0.f || message.fPositionOffsetZ != 0.f)) ||
+		(stop && (message.fPositionOffsetX != 0.f || message.fPositionOffsetY != 0.f || message.fPositionOffsetZ != 0.f)))
+		return false;
 	if (message.eOperation >= WORLD_SEQUENCE_OPERATION::END ||
-		!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId) ||
-		!std::isfinite(message.fPlaybackSpeed) ||
-		message.fPlaybackSpeed < 0.05f || message.fPlaybackSpeed > 16.f ||
+		(!stop && !Is_Valid_SequenceInstanceId(message.strSequenceInstanceId)) ||
+		(stop && (message.iRunEpoch == 0u || !message.strSequenceInstanceId.empty())) ||
+		(!message.strTargetSequenceInstanceId.empty() && !Is_Valid_SequenceInstanceId(message.strTargetSequenceInstanceId)) ||
+		!Is_Valid_StableId(message.strMemberId, stop || message.iRunEpoch == 0u) ||
+		!Is_Valid_StableId(message.strCueId, stop || message.iRunEpoch == 0u) ||
+		!Is_Valid_StableId(message.strTargetCueId, true) ||
+		!Is_Valid_StableId(message.strOccurrenceId, true) ||
+		(!stop && message.iRunEpoch != 0u && (message.iBossNetEntityId == INVALID_NET_ENTITY_ID || message.iStartTick == 0u)) ||
+		!std::isfinite(message.fPlaybackSpeed) || message.fPlaybackSpeed < .05f || message.fPlaybackSpeed > 16.f ||
 		!std::isfinite(message.fPositionOffsetX) || !std::isfinite(message.fPositionOffsetY) ||
 		!std::isfinite(message.fPositionOffsetZ) || message.iDurationMs > 600000u)
 		return false;
-	if (!writer.Write_String(
-			message.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES))
-		return false;
-	writer.Write_F32(message.fPlaybackSpeed);
-	writer.Write_F32(message.fPositionOffsetX);
-	writer.Write_F32(message.fPositionOffsetY);
-	writer.Write_F32(message.fPositionOffsetZ);
-	writer.Write_U32(message.iDurationMs);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	if (!writer.Write_String(message.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES)) return false;
+	writer.Write_F32(message.fPlaybackSpeed);
+	writer.Write_F32(message.fPositionOffsetX); writer.Write_F32(message.fPositionOffsetY); writer.Write_F32(message.fPositionOffsetZ);
+	writer.Write_U32(message.iDurationMs);
+	if (!writer.Write_String(message.strTargetSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!writer.Write_String(message.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strCueId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strOccurrenceId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strTargetCueId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
+	writer.Write_U32(message.iRunEpoch); writer.Write_U32(message.iStartTick); writer.Write_U32(message.iServerTick);
+	writer.Write_U32(message.iBossNetEntityId); writer.Write_U32(message.iPatternSequence);
+	writer.Write_U8(message.bHasPlacement ? 1u : 0u);
+	writer.Write_F32(message.fWorldPositionX); writer.Write_F32(message.fWorldPositionY); writer.Write_F32(message.fWorldPositionZ);
+	writer.Write_F32(message.fWorldRotationXDegrees); writer.Write_F32(message.fWorldRotationYDegrees); writer.Write_F32(message.fWorldRotationZDegrees);
+	writer.Write_F32(message.fWorldScaleX); writer.Write_F32(message.fWorldScaleY); writer.Write_F32(message.fWorldScaleZ);
 	return true;
 }
 
-bool LostArk::Shared::Read_Message(
-	CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message)
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message)
 {
-	S2C_WORLD_SEQUENCE_PLAY decoded{};
-	std::uint8_t operation = 0;
-	if (!reader.Read_String(
-			decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
-		!Is_Valid_SequenceInstanceId(decoded.strSequenceInstanceId) ||
-		!reader.Read_F32(decoded.fPlaybackSpeed) ||
-		!std::isfinite(decoded.fPlaybackSpeed) ||
-		decoded.fPlaybackSpeed < 0.05f || decoded.fPlaybackSpeed > 16.f ||
-		!reader.Read_F32(decoded.fPositionOffsetX) || !reader.Read_F32(decoded.fPositionOffsetY) ||
-		!reader.Read_F32(decoded.fPositionOffsetZ) ||
-		!std::isfinite(decoded.fPositionOffsetX) || !std::isfinite(decoded.fPositionOffsetY) ||
-		!std::isfinite(decoded.fPositionOffsetZ) ||
-		!reader.Read_U32(decoded.iDurationMs) || decoded.iDurationMs > 600000u ||
-		!reader.Read_U8(operation) || operation >= static_cast<std::uint8_t>(WORLD_SEQUENCE_OPERATION::END))
-	{
-		return false;
-	}
+	S2C_WORLD_SEQUENCE_PLAY decoded{}; std::uint8_t operation = 0u, hasPlacement = 0u;
+	if (!reader.Read_U8(operation) || !reader.Read_String(decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!reader.Read_F32(decoded.fPlaybackSpeed) || !reader.Read_F32(decoded.fPositionOffsetX) ||
+		!reader.Read_F32(decoded.fPositionOffsetY) || !reader.Read_F32(decoded.fPositionOffsetZ) ||
+		!reader.Read_U32(decoded.iDurationMs) || !reader.Read_String(decoded.strTargetSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!reader.Read_String(decoded.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strCueId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strOccurrenceId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strTargetCueId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iRunEpoch) || !reader.Read_U32(decoded.iStartTick) || !reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_U32(decoded.iBossNetEntityId) || !reader.Read_U32(decoded.iPatternSequence) ||
+		!reader.Read_U8(hasPlacement) || hasPlacement > 1u ||
+		!reader.Read_F32(decoded.fWorldPositionX) || !reader.Read_F32(decoded.fWorldPositionY) || !reader.Read_F32(decoded.fWorldPositionZ) ||
+		!reader.Read_F32(decoded.fWorldRotationXDegrees) || !reader.Read_F32(decoded.fWorldRotationYDegrees) || !reader.Read_F32(decoded.fWorldRotationZDegrees) ||
+		!reader.Read_F32(decoded.fWorldScaleX) || !reader.Read_F32(decoded.fWorldScaleY) || !reader.Read_F32(decoded.fWorldScaleZ)) return false;
+	decoded.bHasPlacement = hasPlacement == 1u;
 	decoded.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);
-	message = std::move(decoded);
-	return true;
+	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;
+	message = std::move(decoded); return true;
 }
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_WORLD_PLAYBACK& message)
@@ -5621,8 +5656,9 @@ namespace
 	{
 		return LostArk::Shared::Is_Known_World_Id(scope.eWorldId) &&
 			Is_Valid_StableId(scope.strEncounterId, false) &&
-			Is_Valid_StableId(scope.strBossPlacementId, false) &&
-			Is_Valid_StableId(scope.strBossArchetypeId, false) &&
+			Is_Valid_StableId(scope.strBossPlacementId, true) &&
+			Is_Valid_StableId(scope.strBossArchetypeId, true) &&
+			(scope.strGateId.empty() || scope.strGateId == "GATE1" || scope.strGateId == "GATE2" || scope.strGateId == "GATE3" || scope.strGateId == "BINGO") &&
 			scope.ExpectedGameplayRevision.Is_Valid() &&
 			0u != scope.iExpectedSourceRevision;
 	}
@@ -5631,16 +5667,18 @@ namespace
 		const std::uint32_t requestSequence,
 		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation,
 		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE& scope,
-		const std::string& patternId)
+		const std::string& patternId, const std::string& bundleId, const std::uint32_t expectedEpoch)
 	{
-		if (0u == requestSequence ||
-			!Is_Valid_KoukuSaydonAuditionOperation(operation) ||
-			!Is_Valid_KoukuSaydonAuditionScope(scope))
-		{
-			return false;
-		}
-		return LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED ==
-			operation ? Is_Valid_StableId(patternId, false) : patternId.empty();
+		using OP = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION;
+		if (0u == requestSequence || !Is_Valid_KoukuSaydonAuditionOperation(operation) ||
+			!Is_Valid_KoukuSaydonAuditionScope(scope)) return false;
+		if (operation == OP::STOP) return expectedEpoch != 0u && patternId.empty() && Is_Valid_StableId(bundleId, true);
+		if (operation == OP::PLAY_BUNDLE || operation == OP::RESTART_BUNDLE)
+			return patternId.empty() && Is_Valid_StableId(bundleId, false) && !scope.strGateId.empty() &&
+				(operation == OP::RESTART_BUNDLE ? expectedEpoch != 0u : expectedEpoch == 0u);
+		return bundleId.empty() && expectedEpoch == 0u &&
+			Is_Valid_StableId(scope.strBossPlacementId, false) && Is_Valid_StableId(scope.strBossArchetypeId, false) &&
+			(operation == OP::PLAY_SELECTED ? Is_Valid_StableId(patternId, false) : patternId.empty());
 	}
 
 	bool Write_KoukuSaydonAuditionScope(
@@ -5671,7 +5709,7 @@ namespace
 			return false;
 		}
 		writer.Write_U32(scope.iExpectedSourceRevision);
-		return true;
+		return writer.Write_String(scope.strGateId, LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES);
 	}
 
 	bool Read_KoukuSaydonAuditionScope(
@@ -5689,7 +5727,8 @@ namespace
 				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
 			!LostArk::Shared::Read_GameplayDataRevision(
 				reader, decoded.ExpectedGameplayRevision) ||
-			!reader.Read_U32(decoded.iExpectedSourceRevision))
+			!reader.Read_U32(decoded.iExpectedSourceRevision) ||
+			!reader.Read_String(decoded.strGateId, LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
 		{
 			return false;
 		}
@@ -5707,14 +5746,16 @@ bool LostArk::Shared::Write_Message(
 {
 	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
 		message.iRequestSequence, message.eOperation, message.Scope,
-		message.strPatternId))
+		message.strPatternId, message.strBundleId, message.iExpectedRunEpoch))
 	{
 		return false;
 	}
+	writer.Write_U32(message.iExpectedRunEpoch);
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
 	return Write_KoukuSaydonAuditionScope(writer, message.Scope) &&
-		writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES);
+		writer.Write_String(message.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) &&
+		writer.Write_String(message.strBundleId, MAX_STABLE_NETWORK_ID_BYTES);
 }
 
 bool LostArk::Shared::Read_Message(
@@ -5723,10 +5764,12 @@ bool LostArk::Shared::Read_Message(
 {
 	C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decoded{};
 	std::uint8_t rawOperation = 0u;
-	if (!reader.Read_U32(decoded.iRequestSequence) ||
+	if (!reader.Read_U32(decoded.iExpectedRunEpoch) ||
+		!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_U8(rawOperation) ||
 		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
-		!reader.Read_String(decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		!reader.Read_String(decoded.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strBundleId, MAX_STABLE_NETWORK_ID_BYTES))
 	{
 		return false;
 	}
@@ -5734,7 +5777,7 @@ bool LostArk::Shared::Read_Message(
 		static_cast<KOUKUSAYDON_PATTERN_AUDITION_OPERATION>(rawOperation);
 	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
 		decoded.iRequestSequence, decoded.eOperation, decoded.Scope,
-		decoded.strPatternId))
+		decoded.strPatternId, decoded.strBundleId, decoded.iExpectedRunEpoch))
 	{
 		return false;
 	}
@@ -5748,10 +5791,11 @@ bool LostArk::Shared::Write_Message(
 {
 	const bool accepted =
 		KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == message.eResult ||
-		KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED == message.eResult;
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED == message.eResult ||
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::STOPPED == message.eResult;
 	if (!Is_Valid_KoukuSaydonAuditionRequestShape(
 			message.iRequestSequence, message.eOperation, message.Scope,
-			message.strRequestedPatternId) ||
+			message.strRequestedPatternId, message.strBundleId, message.iExpectedRunEpoch) ||
 		static_cast<std::uint8_t>(message.eResult) >=
 			static_cast<std::uint8_t>(KOUKUSAYDON_PATTERN_AUDITION_RESULT::END) ||
 		!message.PinnedGameplayRevision.Is_Valid() ||
@@ -5772,6 +5816,9 @@ bool LostArk::Shared::Write_Message(
 	{
 		return false;
 	}
+	writer.Write_U32(message.iExpectedRunEpoch);
+	writer.Write_U32(message.iCommonStartTick);
+	if (!writer.Write_String(message.strBundleId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
 	if (!Write_KoukuSaydonAuditionScope(writer, message.Scope) ||
@@ -5805,7 +5852,10 @@ bool LostArk::Shared::Read_Message(
 	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT decoded{};
 	std::uint8_t rawOperation = 0u;
 	std::uint8_t rawResult = 0u;
-	if (!reader.Read_U32(decoded.iRequestSequence) ||
+	if (!reader.Read_U32(decoded.iExpectedRunEpoch) ||
+		!reader.Read_U32(decoded.iCommonStartTick) ||
+		!reader.Read_String(decoded.strBundleId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_U8(rawOperation) ||
 		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
 		!reader.Read_String(decoded.strRequestedPatternId,
@@ -5864,6 +5914,9 @@ bool LostArk::Shared::Write_Message(
 	{
 		return false;
 	}
+	writer.Write_U32(message.iCommonStartTick);
+	if (!writer.Write_String(message.strBundleId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strMemberId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
 	if (!Write_KoukuSaydonAuditionScope(writer, message.Scope))
@@ -5890,7 +5943,10 @@ bool LostArk::Shared::Read_Message(
 	S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE decoded{};
 	std::uint8_t rawOperation = 0u;
 	std::uint8_t rawState = 0u;
-	if (!reader.Read_U32(decoded.iRequestSequence) ||
+	if (!reader.Read_U32(decoded.iCommonStartTick) ||
+		!reader.Read_String(decoded.strBundleId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iRequestSequence) ||
 		!reader.Read_U8(rawOperation) ||
 		!Read_KoukuSaydonAuditionScope(reader, decoded.Scope) ||
 		!reader.Read_U32(decoded.iRoomAuditionEpoch) ||
@@ -5915,4 +5971,57 @@ bool LostArk::Shared::Read_Message(
 		return false;
 	message = std::move(decoded);
 	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON_BUNDLE_STATE& message)
+{
+	using STATE = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
+	if (!Is_Known_World_Id(message.eWorldId) || !Is_Valid_StableId(message.strEncounterId, false) ||
+		!Is_Valid_StableId(message.strBundleId, true) || message.iRunEpoch == 0u || message.iCommonStartTick == 0u ||
+		message.eState >= STATE::END || !message.PinnedGameplayRevision.Is_Valid() || message.iPinnedSourceRevision == 0u ||
+		message.Members.empty() || message.Members.size() > MAX_KOUKUSAYDON_BUNDLE_MEMBERS) return false;
+	for (std::size_t i = 0; i < message.Members.size(); ++i)
+	{
+		const auto& member = message.Members[i];
+		if (!Is_Valid_StableId(member.strMemberId, false) || !Is_Valid_StableId(member.strPatternId, false) ||
+			member.iBossNetEntityId == INVALID_NET_ENTITY_ID || member.iStartTick == 0u || member.eState >= STATE::END) return false;
+		for (std::size_t j = 0; j < i; ++j)
+			if (message.Members[j].strMemberId == member.strMemberId || message.Members[j].iBossNetEntityId == member.iBossNetEntityId) return false;
+	}
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	if (!writer.Write_String(message.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(message.strBundleId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
+	writer.Write_U32(message.iRunEpoch); writer.Write_U32(message.iCommonStartTick); writer.Write_U32(message.iServerTick);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
+	if (!Write_GameplayDataRevision(writer, message.PinnedGameplayRevision)) return false;
+	writer.Write_U32(message.iPinnedSourceRevision); writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
+	for (const auto& member : message.Members)
+	{
+		if (!writer.Write_String(member.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(member.strPatternId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
+		writer.Write_U32(member.iBossNetEntityId); writer.Write_U32(member.iPatternSequence); writer.Write_U32(member.iStartTick);
+		writer.Write_U8(static_cast<std::uint8_t>(member.eState));
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE_STATE& message)
+{
+	S2C_KOUKUSAYDON_BUNDLE_STATE decoded; std::uint16_t world = 0; std::uint8_t state = 0, count = 0;
+	if (!reader.Read_U16(world) || !reader.Read_String(decoded.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strBundleId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_U32(decoded.iRunEpoch) ||
+		!reader.Read_U32(decoded.iCommonStartTick) || !reader.Read_U32(decoded.iServerTick) || !reader.Read_U8(state) ||
+		!Read_GameplayDataRevision(reader, decoded.PinnedGameplayRevision) || !reader.Read_U32(decoded.iPinnedSourceRevision) ||
+		!reader.Read_U8(count) || count == 0 || count > MAX_KOUKUSAYDON_BUNDLE_MEMBERS) return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world); decoded.eState = static_cast<KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE>(state);
+	for (std::uint8_t i = 0; i < count; ++i)
+	{
+		KOUKUSAYDON_BUNDLE_MEMBER_STATE member;
+		if (!reader.Read_String(member.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(member.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_U32(member.iBossNetEntityId) ||
+			!reader.Read_U32(member.iPatternSequence) || !reader.Read_U32(member.iStartTick) || !reader.Read_U8(state)) return false;
+		member.eState = static_cast<KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE>(state); decoded.Members.push_back(std::move(member));
+	}
+	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;
+	message = std::move(decoded); return true;
 }

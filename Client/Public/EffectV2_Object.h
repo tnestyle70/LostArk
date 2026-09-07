@@ -9,6 +9,8 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -316,7 +318,7 @@ private:
 	{
 		float3_t vPosition = { 0.f, 0.f, 0.f };
 		float3_t vVelocity = { 0.f, 0.f, 0.f };
-		f32_t fAge = 0.f;
+		double dAge = 0.0;
 		f32_t fLifetime = 1.f;
 		f32_t fRotationDegrees = 0.f;
 		f32_t fSpinDegrees = 0.f;
@@ -354,6 +356,12 @@ public:
 	}
 	f32_t ScreenPost_Intensity() const;
 
+	/* Birth-time pivot in real seconds since this emitter began. It must
+	   describe recorded/authored history, never the latest frame as a fallback. */
+	using PIVOT_SAMPLER = std::function<bool_t(f32_t, float4x4_t&, std::string&)>;
+	void Set_PivotSampler(PIVOT_SAMPLER Sampler) { m_PivotSampler = std::move(Sampler); }
+	bool_t Has_PivotSampleFailure() const { return m_bPivotSampleFailed; }
+	bool_t Sample_ElapsedSeconds(f32_t fElapsedSeconds);
 	PARAMS& Params() { return m_Params; }
 	const DESC& Creation_Desc() const { return m_CreationDesc; }
 	float4x4_t& PivotWorld() { return m_PivotWorld; }
@@ -490,7 +498,9 @@ private:
 	void Advance_Lifetime(f32_t fStep);
 	f32_t Random_01();
 	f32_t Random_Range(f32_t fMinimum, f32_t fMaximum);
-	void Spawn_Particle();
+	void Spawn_Particle(f32_t fBirthElapsedSeconds, f32_t fBirthLocalSeconds);
+	void Advance_ParticleBodies(f32_t fStep);
+	void Advance_ParticleClock(f32_t fStep, bool_t bFlushRemainder = false);
 	void Update_Particles(f32_t fStep);
 	HRESULT Build_ParticleInstances();
 	HRESULT Upload_MeshParticleInstances();
@@ -530,7 +540,13 @@ private:
 
 	std::vector<PARTICLE> m_Particles;
 	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstances;
-	f32_t m_fSpawnAccumulator = 0.f;
+	PIVOT_SAMPLER m_PivotSampler;
+	bool_t m_bPivotSampleFailed = false;
+	double m_dElapsedSeconds = 0.0;
+	double m_dParticleSeconds = 0.0;
+	double m_dParticleCycleSeconds = 0.0;
+	double m_dParticleRemainder = 0.0;
+	double m_dSpawnAccumulator = 0.0;
 	bool_t m_bBurstPending = true;
 	uint32_t m_iRandomState = 1u;
 	ComPtr<ID3D11Buffer> m_pMeshInstanceBuffer;

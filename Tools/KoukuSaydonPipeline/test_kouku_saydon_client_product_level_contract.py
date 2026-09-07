@@ -21,6 +21,7 @@ def read(relative: str) -> str:
 
 
 class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
+    maxDiff = 1500
     @classmethod
     def setUpClass(cls) -> None:
         cls.level_h = read("Client/Public/Level_KakulSaydonArena.h")
@@ -63,7 +64,9 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         for removed in ((), ("patterns",), ("lightResourceRevision",),
                         ("patterns", "lightResourceRevision")):
             with self.subTest(legacy_without=removed):
-                keys = frozenset(key for key in product if key not in removed)
+                # Legacy producer headers predate folders/bundles together.
+                keys = frozenset(key for key in product
+                                 if key not in (*removed, "folders", "bundles"))
                 self.assertIn(keys, accepted_headers)
                 self.assertNotIn(keys | {"unexpectedField"}, accepted_headers)
 
@@ -80,7 +83,7 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         descriptor = re.search(
             rf"LEVEL::{LEVEL},\s*CLIENT_LEVEL_KIND::PRODUCT,\s*"
             rf'"raid\.kakul-saydon\.arena",\s*"{AREA_ID}",\s*'
-            r'"scene\.development\.neutral\.v1",\s*MakeFullMapScope\(\),\s*'
+            r'"scene\.kakulsaydon\.g1\.base\.v1",\s*MakeFullMapScope\(\),\s*'
             r"CreateKakulSaydonArena,\s*&CLoader::Ready_For_KakulSaydonArena",
             self.registry,
         )
@@ -127,7 +130,15 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         self.assertIn("CNetworkPlayerCommandSink", self.level_cpp)
         self.assertIn("Pump_ServerApprovedWorldTransfer", self.level_cpp)
         self.assertIn("Bind_CameraToLocalCharacter", self.level_cpp)
-        self.assertEqual(1, self.level_cpp.count("Add_GameObject_to_Layer"))
+        preview_start = self.level_cpp.index("::Create_CompositionPreviewActor(")
+        preview_end = self.level_cpp.index("::Release_CompositionPreviewActor(", preview_start)
+        preview = self.level_cpp[preview_start:preview_end]
+        self.assertIn('L"Layer_KoukuCompositionPreview"', preview)
+        self.assertIn("Resolve_ActorProfileForPlacement", preview)
+        self.assertEqual(1, preview.count("Add_GameObject_to_Layer"))
+        product = self.level_cpp[:preview_start] + self.level_cpp[preview_end:]
+        self.assertEqual(2, product.count("Add_GameObject_to_Layer"))
+        self.assertIn('TEXT("Prototype_GameObject_TriggerBox")', product)
         self.assertIn('TEXT("Prototype_GameObject_Camera_Free")', self.level_cpp)
         for forbidden in (
             "Prototype_GameObject_Character",
@@ -299,7 +310,7 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
     def test_workbench_server_play_is_routed_through_the_kouku_boss_tool(self) -> None:
         for token in (
             'ImGui::Button("Publish All PRODUCT")',
-            'ImGui::Button("Play Published Product (Server)")',
+            'ImGui::Button("Complete Play (Server)")',
             "Consume_ServerPlayRequest",
         ):
             self.assertIn(token, self.workbench_cpp)
@@ -486,7 +497,11 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
         self.assertIn("CKoukuSaydonCompositionDocument::Is_KnownProfile(source.strProfileId)", admitted)
         self.assertIn('0u == source.iSourceActionId && "RAW" == source.strSourceStageId', admitted)
         self.assertIn("pattern->strActorProfileId != actor", self.workbench_cpp)
-        self.assertIn("created.strActorProfileId = std::string(actor)", self.workbench_cpp)
+        # Create explicitly chooses Gate/actor; resource Append never creates a hidden Pattern.
+        self.assertIn("pattern.strActorProfileId = m_strCreateActorProfileId", self.workbench_cpp)
+        append_owner = _region(self.workbench_cpp, "KOUKU_SAYDON_COMPOSITION_PATTERN* Find_AppendPattern(", "void Mark_Draft(")
+        self.assertNotIn("candidate.Patterns.push_back", append_owner)
+        self.assertIn("if (patternId.empty())", append_owner)
         self.assertIn("Delete_TimelineSelection(", self.workbench_cpp)
         self.assertIn('ImGui::Button("Save##KoukuSequencer")', self.workbench_cpp)
         for token in (

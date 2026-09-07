@@ -127,6 +127,14 @@ public:
 	   concrete leaf/group loaders remain private codec implementation details. */
 	bool_t Open_Resource(const EFFECT_RESOURCE_KEY& Key);
 
+public:
+    // Reused by the composition pane; the CPU draft remains editable without
+    // a spawned object. Rendering never runs a boss-tree admission step.
+    void Begin_CompositionFrame() { m_iLoadsThisFrame = 0u; }
+    void Render_CompositionResources(EFFECT_V2_DOCUMENT& document);
+    void Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
+        const std::shared_ptr<CEffectV2Object>& preview = {});
+
 private:
 	void Scan_Resources();
 	void Load_TextureUsage();
@@ -158,6 +166,9 @@ private:
 		const std::vector<PART_OVERRIDE>& Parts,
 		const std::string& strAnimationClip);
 	void Scan_Documents();
+	static bool_t Read_DocumentSource(
+		const std::filesystem::path& Path, std::string& strOutBytes,
+		bool_t& bOutExists, std::string& strOutError);
 	bool_t Save_Document();
 	bool_t Load_Document(const std::string& strEffectId);
 
@@ -236,6 +247,7 @@ private:
 
 	EFFECT_TYPE m_eType = EFFECT_TYPE::MESH;
 	RESOURCE_SLOT m_eSelectedSlot = RESOURCE_SLOT::BASE;
+    RESOURCE_SLOT m_eCompositionSelectedSlot = RESOURCE_SLOT::BASE;
 	std::array<SLOT_BINDINGS, static_cast<size_t>(EFFECT_TYPE::END)> m_SlotBindings;
 
 	bool_t m_bScanned = false;
@@ -262,6 +274,9 @@ private:
 	std::vector<std::string> m_Documents;
 	bool_t m_bDocumentsScanned = false;
 	std::string m_strDocumentStatus;
+	std::string m_strLoadedDocumentId;
+	std::string m_strLoadedDocumentDisplayName;
+	std::string m_strLoadedDocumentBytes;
 
 	bool_t m_bAttachWindowOpen = false;
 	EFFECT_V2_TARGET m_Target;

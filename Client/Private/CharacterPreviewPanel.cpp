@@ -12,6 +12,7 @@
 #include "Level_KakulSaydonArena.h"
 #include "Model.h"
 #include "Npc.h"
+#include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayableCharacterAssetService.h"
@@ -68,16 +69,6 @@ namespace
 				liveMultiplier = npc->Get_DebugPresentationScale();
 #endif
 		return boss->bodyModelPreScale / asset->fPreviewScale * liveMultiplier;
-	}
-
-	std::string Resolve_SaydonHammerClip(const std::string_view bodyClip)
-	{
-		constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
-		if (!bodyClip.starts_with(prefix)) return {};
-		std::string suffix(bodyClip.substr(prefix.size()));
-		if (suffix.starts_with("att_battle_1_")) suffix.insert(11u, "0");
-		else if (suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
-		return "wprpct06_" + suffix;
 	}
 
 	bool_t Try_ResolveRaidPreviewPlacement(const uint32_t currentLevel,
@@ -299,42 +290,11 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 		weaponLocal * bodyModel->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) *
 		XMLoadFloat4x4(bodyRoot->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(&m_PreviewParentMatrices[m_iPreviewParentMatrixIndex]));
-	weaponModel->Set_AnimPaused(true);
-	const auto bodyIndex = bodyModel->Get_CurrentAnimIndex();
-	const char* bodyClip = bodyModel->Get_AnimationName(bodyIndex);
-	const std::string weaponClip = nullptr != bodyClip ? Resolve_SaydonHammerClip(bodyClip) : std::string{};
-	std::uint32_t weaponIndex = 0u;
-	for (; weaponIndex < weaponModel->Get_NumAnimations(); ++weaponIndex)
-	{
-		const char* name = weaponModel->Get_AnimationName(weaponIndex);
-		if (nullptr != name && weaponClip == name) break;
-	}
-	f32_t bodyPosition = 0.f, bodyDuration = 0.f, weaponPosition = 0.f, weaponDuration = 0.f;
-	const f32_t bodyTps = bodyModel->Get_AnimationTickPerSecond(bodyIndex);
-	const f32_t weaponTps = weaponModel->Get_AnimationTickPerSecond(weaponIndex);
-	const bool_t mapped = weaponIndex < weaponModel->Get_NumAnimations() &&
-		bodyModel->Get_AnimationProgress(bodyIndex, bodyPosition, bodyDuration) &&
-		weaponModel->Get_AnimationProgress(weaponIndex, weaponPosition, weaponDuration) &&
-		std::isfinite(bodyTps) && bodyTps > 0.f && std::isfinite(weaponTps) && weaponTps > 0.f;
-	if (mapped)
-	{
-		if (weaponModel->Get_CurrentAnimIndex() != weaponIndex || weaponModel->Is_AnimLoop())
-			(void)weaponModel->Start_Animation(weaponIndex, false);
-		// The family-3 source lengths differ. Preserve source seconds and hold
-		// the hammer's last pose; do not invent an original start delay or retime.
-		(void)weaponModel->Set_AnimTrackPosition(weaponIndex,
-			std::clamp(bodyPosition / bodyTps * weaponTps, 0.f, weaponDuration));
-	}
-	weaponModel->Set_AnimPaused(true);
 	weapon->Update(0.f);
-	if (!mapped)
-	{
-		// No idle/1_01 counterpart exists. Restore the cloned skeleton rest pose
-		// captured before its first animation, rather than playing clip zero.
-		for (std::uint32_t i = 0u; i < m_PreviewWeaponRestPose.size(); ++i)
-			(void)weaponModel->Set_BoneLocalMatrix(i, XMLoadFloat4x4(&m_PreviewWeaponRestPose[i]));
-		weaponModel->Refresh_BoneCombinedMatrices();
-	}
+	CNpcPresentationAssetService::Synchronize_SaydonHammerPose(bodyModel, weaponModel, m_PreviewWeaponRestPose);
+	float4x4_t weaponRoot;
+	if (weapon->Try_Get_PresentationRootMatrix(&weaponRoot))
+		CAnimationTargetService::Bind_PreviewWeapon(bodyModel, weaponModel, weaponRoot);
 }
 
 bool_t Client::CCharacterPreviewPanel::Declares_Weapon(
@@ -784,7 +744,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			const auto weaponModel = weapon->Get_Model();
 			weaponModel->Set_AnimPaused(true);
 			matrix_t local;
-			for (std::uint32_t i = 0u; weaponModel->Get_BoneLocalMatrix(i, local); ++i)
+			for (std::uint32_t i = 0u; weaponModel->Get_BoneRestLocalMatrix(i, local); ++i)
 			{
 				float4x4_t stored;
 				XMStoreFloat4x4(&stored, local);

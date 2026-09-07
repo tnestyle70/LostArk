@@ -57,6 +57,8 @@ float4 g_WaterNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 float4 g_WaterDetailNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 float4 g_WaterReflectionTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 
+#include "Shader_MapMaterialSurface.hlsli"
+
 struct VS_IN
 {
     float3 vPosition : POSITION;
@@ -64,6 +66,7 @@ struct VS_IN
     float3 vTangent : TANGENT;
     float3 vBinormal : BINORMAL;
     float2 vTexcoord : TEXCOORD0;
+    float2 vLightmapUV : TEXCOORD1;
 
     float4 vWorld0 : WORLD0;
     float4 vWorld1 : WORLD1;
@@ -74,6 +77,9 @@ struct VS_IN
     float4 vWorldInvTranspose1 : WORLDINVTRANSPOSE1;
     float4 vWorldInvTranspose2 : WORLDINVTRANSPOSE2;
     float4 vWorldInvTranspose3 : WORLDINVTRANSPOSE3;
+    float4 vLightmapScaleBias : INSTANCE_LIGHTMAP0;
+    float4 vLightmapAverageScale : INSTANCE_LIGHTMAP1;
+    float4 vLightmapDirectionalScale : INSTANCE_LIGHTMAP2;
 };
 
 struct VS_OUT
@@ -85,6 +91,10 @@ struct VS_OUT
     float2 vTexcoord : TEXCOORD0;
     float4 vWorldPos : TEXCOORD1;
     float4 vProjPos : TEXCOORD2;
+    float2 vRawTexcoord : TEXCOORD3;
+    float2 vLightmapUV : TEXCOORD4;
+    nointerpolation float4 vLightmapAverageScale : TEXCOORD5;
+    nointerpolation float4 vLightmapDirectionalScale : TEXCOORD6;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -153,6 +163,10 @@ VS_OUT VS_MAIN(VS_IN input)
     output.vBinormal =
 		float4(binormal, 0.f);
 
+    output.vRawTexcoord = input.vTexcoord;
+    output.vLightmapUV = input.vLightmapUV * input.vLightmapScaleBias.xy + input.vLightmapScaleBias.zw;
+    output.vLightmapAverageScale = input.vLightmapAverageScale;
+    output.vLightmapDirectionalScale = input.vLightmapDirectionalScale;
     output.vTexcoord =
 		input.vTexcoord *
 		g_UVScale +
@@ -187,6 +201,7 @@ struct PS_OUT
     float4 vDepth : SV_TARGET2;
     float4 vPickPos : SV_TARGET3;
     float4 vEmissive : SV_TARGET4;
+    float4 vMaterialSpecular : SV_TARGET5;
 };
 
 /* The landscape atlas is authored as a top-down XZ projection, so a
@@ -222,6 +237,38 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
 PS_OUT PS_MAIN(VS_OUT input)
 {
     PS_OUT output;
+    output.vMaterialSpecular = 0.f;
+    if (g_SurfaceProgram != 0u)
+    {
+        const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord,
+            input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz);
+        output.vDiffuse = surface.diffuse;
+        if (g_SurfaceDebugView == 4u)
+            output.vDiffuse.rgb = surface.reflectionDelta;
+        const bool pbr = IsMapSurfacePBR();
+        const bool sourceSpecular = IsMapSurfaceSourceSpecular();
+        const float diffuseScale = sourceSpecular ?
+            max(1.f, max(output.vDiffuse.r, max(output.vDiffuse.g, output.vDiffuse.b))) : 1.f;
+        output.vDiffuse.rgb /= diffuseScale;
+        output.vNormal = float4(surface.worldNormal * 0.5f + 0.5f,
+            pbr ? surface.roughness : 0.f);
+        output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+            input.vProjPos.w / 1000.f, pbr ? surface.ambientOcclusion : g_SurfaceSpecularPower,
+            pbr ? 3.f : (sourceSpecular ? 4.f : 1.f));
+        output.vPickPos = input.vWorldPos;
+        if (pbr || sourceSpecular)
+            output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
+                g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
+        // MRT4 carries already shaded source indirect light for selected families.
+        // Final resolve adds it as radiance; it is not an emissive material flag.
+        output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
+            input.vLightmapUV, input.vLightmapAverageScale,
+            input.vLightmapDirectionalScale, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz), 0.f);
+        output.vMaterialSpecular = float4(surface.specular, pbr ? surface.metallic :
+            (sourceSpecular ? diffuseScale : 0.f));
+        return output;
+    }
 
     float4 diffuse =
 		SampleMapDiffuse(
@@ -320,7 +367,7 @@ PS_OUT PS_MAIN(VS_OUT input)
 			input.vProjPos.w /
 				1000.f,
 			g_SpecularPower,
-			0.f);
+			g_HasSurfaceDefinition != 0u ? 2.f : 0.f);
 
     output.vPickPos =
 		input.vWorldPos;
@@ -341,6 +388,8 @@ PS_OUT PS_MAIN(VS_OUT input)
 				0.f);
     }
 
+    if (g_HasSurfaceDefinition != 0u && g_SurfaceDebugView == 4u)
+        output.vDiffuse.rgb = 0.f;
     return output;
 }
 
@@ -555,6 +604,14 @@ PS_OUT_FORWARD PS_MAIN_SKY(
 void PS_MAIN_SHADOW(
 	VS_OUT input)
 {
+    if (g_SurfaceProgram != 0u)
+    {
+        // The four Character Select source overrides are opaque, including
+        // diffuse alpha=0. Kouku's original masked programs retain their cutoff.
+        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
+            clip(g_DiffuseTexture.Sample(LinearSampler, input.vRawTexcoord).a - 0.3333f);
+        return;
+    }
     float4 diffuse =
 		g_DiffuseTexture.Sample(
 			LinearSampler,

@@ -1921,7 +1921,10 @@ bool CNetworkManager::Send_KoukuSaydonPatternAudition(
 		(message.eOperation !=
 			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
 		 message.eOperation !=
-			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL))
+			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE))
 	{
 		return false;
 	}
@@ -3834,6 +3837,20 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_INVITE_RECEIVED;
 		event.PartyInviteReceived = std::move(received);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
+	{
+		S2C_KOUKUSAYDON_BUNDLE_STATE state{};
+		if (!Read_Message(reader, state) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_BUNDLE_STATE;
+		event.KoukuBundleState = std::move(state);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}

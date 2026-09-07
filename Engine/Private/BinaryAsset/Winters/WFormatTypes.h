@@ -17,6 +17,7 @@ namespace Engine::WintersFormat
 	constexpr uint16_t WINT_VERSION_MAJOR = 1;
 	constexpr uint16_t WINT_LEGACY_VERSION_MINOR = 0;
 	constexpr uint16_t WINT_GEOMETRY_VERSION_MINOR = 1;
+	constexpr uint16_t WINT_UV1_VERSION_MINOR = 2;
 	constexpr uint32_t VF_POSITION = 1u << 0;
 	constexpr uint32_t VF_NORMAL = 1u << 1;
 	constexpr uint32_t VF_TEXCOORD0 = 1u << 2;
@@ -24,6 +25,7 @@ namespace Engine::WintersFormat
 	constexpr uint32_t VF_BONE_WEIGHT = 1u << 4;
 	constexpr uint32_t VF_TANGENT_HANDEDNESS = 1u << 5;
 	constexpr uint32_t VF_COLOR0 = 1u << 6;
+	constexpr uint32_t VF_TEXCOORD1 = 1u << 7;
 	constexpr uint32_t VF_STATIC_BASE =
 		VF_POSITION | VF_NORMAL | VF_TEXCOORD0 | VF_TANGENT;
 	constexpr uint32_t STRIDE_STATIC = 48;
@@ -135,6 +137,8 @@ namespace Engine::WintersFormat
 		MGEF_CLEAN_SOURCE_EXPORT = 1u << 11,
 		MGEF_UPK_TO_GLTF_EXACT = 1u << 12,
 		MGEF_PIVOT_EXACT = 1u << 13,
+		MGEF_TEXCOORD1_PRESERVED_FROM_GLTF = 1u << 14,
+		MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED = 1u << 15,
 	};
 
 	constexpr uint32_t MGEF_REQUIRED_PAYLOAD =
@@ -155,6 +159,8 @@ namespace Engine::WintersFormat
 	constexpr uint32_t MGEF_KNOWN =
 		MGEF_REQUIRED_PAYLOAD |
 		MGEF_COLOR0_PRESERVED_FROM_GLTF |
+		MGEF_TEXCOORD1_PRESERVED_FROM_GLTF |
+		MGEF_TANGENT_HANDEDNESS_PROJECT_RECONSTRUCTED |
 		MGEF_PRODUCT_PROVENANCE;
 
 	struct MESH_GEOMETRY_METADATA_V1

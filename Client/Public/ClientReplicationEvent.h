@@ -33,6 +33,7 @@ namespace Client
 		RAID_ENTRY_VOTE,
 		CHAT_RECEIVED,
 		WORLD_SEQUENCE_PLAY,
+		KOUKUSAYDON_BUNDLE_STATE,
 		INTERACT_PROMPT
 	};
 
@@ -84,6 +85,7 @@ namespace Client
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE RaidEntryVote;
 		LostArk::Shared::S2C_CHAT ChatReceived;
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
+		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE KoukuBundleState;
 		LostArk::Shared::S2C_INTERACT_PROMPT InteractPrompt;
 	};
 }

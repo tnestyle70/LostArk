@@ -576,6 +576,16 @@ std::filesystem::path Client::CEffectV2Document::Group_Path(const std::string& s
 	return Group_Directory() / (strGroupId + ".effectv2group.json");
 }
 
+bool_t Client::CEffectV2Document::Is_ValidDisplayName(const std::string& strName)
+{
+	if (strName.empty()) return true;
+	if (strName.size() > 256u || std::any_of(strName.begin(), strName.end(),
+		[](const unsigned char value) { return value < 0x20u || value == 0x7fu; }))
+		return false;
+	return 0 != MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		strName.data(), static_cast<int>(strName.size()), nullptr, 0);
+}
+
 bool_t Client::CEffectV2Document::Is_ValidEffectId(const std::string& strEffectId)
 {
 	return Is_StableAsciiId(strEffectId, 80u);
@@ -650,6 +660,15 @@ bool_t Client::CEffectV2Document::Parse_Document(
 
 	EFFECT_V2_DOCUMENT Document{};
 	Document.strEffectId = pEffectId->Get_String();
+	if (const DATA_JSON_VALUE* pName = Root.Find("displayName"))
+	{
+		if (!pName->Is_String() || !Is_ValidDisplayName(pName->Get_String()))
+		{
+			strOutError = "displayName must be valid UTF-8, at most 256 bytes, without control characters.";
+			return false;
+		}
+		Document.strDisplayName = pName->Get_String();
+	}
 	Document.eType = static_cast<EFFECT_V2_TYPE>(iType);
 	Document.Desc.eShape = Shape_ForType(Document.eType);
 
@@ -1179,10 +1198,13 @@ bool_t Client::CEffectV2Document::Parse_Group(
 			strOutError = "Group root is not an object.";
 		return false;
 	}
-	if (!Has_ExactFields(
-		Root, { "schema", "formatVersion", "groupId", "durationMs", "children" }))
+	auto RequiredFields = Root.Get_Object();
+	RequiredFields.erase("displayName");
+	RequiredFields.erase("authoringPreview");
+	if (!Has_ExactFields(DATA_JSON_VALUE::Object(std::move(RequiredFields)),
+		{ "schema", "formatVersion", "groupId", "durationMs", "children" }))
 	{
-		strOutError = "Group fields must be exactly schema, formatVersion, groupId, durationMs, children.";
+		strOutError = "Group requires schema, formatVersion, groupId, durationMs, children; only displayName and authoringPreview are optional.";
 		return false;
 	}
 	const DATA_JSON_VALUE* const pSchema = Root.Find("schema");
@@ -1199,6 +1221,41 @@ bool_t Client::CEffectV2Document::Parse_Group(
 	}
 	EFFECT_V2_GROUP Group;
 	Group.strGroupId = pGroupId->Get_String();
+	if (const DATA_JSON_VALUE* pName = Root.Find("displayName"))
+	{
+		if (!pName->Is_String() || !Is_ValidDisplayName(pName->Get_String()))
+		{
+			strOutError = "displayName must be valid UTF-8, at most 256 bytes, without control characters.";
+			return false;
+		}
+		Group.strDisplayName = pName->Get_String();
+	}
+	if (const auto* pPreview = Root.Find("authoringPreview"))
+	{
+		if (!Has_ExactFields(*pPreview, { "patternId", "bundle", "anchorKind", "memberId", "worldPosition" }))
+		{
+			strOutError = "authoringPreview requires patternId, bundle, anchorKind, memberId, worldPosition.";
+			return false;
+		}
+		EFFECT_V2_AUTHORING_PREVIEW Preview;
+		const auto* Pattern = pPreview->Find("patternId");
+		const auto* Member = pPreview->Find("memberId");
+		const auto* Kind = pPreview->Find("anchorKind");
+		if (!Pattern->Is_String() || (!Pattern->Get_String().empty() && !Is_StableAsciiId(Pattern->Get_String(), MAX_STABLE_ID_LENGTH)) ||
+			!Member->Is_String() || (!Member->Get_String().empty() && !Is_StableAsciiId(Member->Get_String(), MAX_STABLE_ID_LENGTH)) ||
+			!Kind->Is_String() || (Kind->Get_String() != "WORLD" && Kind->Get_String() != "CHARACTER_ROOT"))
+		{
+			strOutError = "authoringPreview IDs/anchorKind are invalid.";
+			return false;
+		}
+		Preview.strPatternId = Pattern->Get_String();
+		Preview.strMemberId = Member->Get_String();
+		Preview.strAnchorKind = Kind->Get_String();
+		if (!Read_Bool(*pPreview, "bundle", Preview.bBundle, strOutError) ||
+			!Read_RequiredFloat3(*pPreview, "worldPosition", Preview.vWorldPosition, strOutError, false))
+			return false;
+		Group.AuthoringPreview = std::move(Preview);
+	}
 	if (!Read_MsField(Root, "durationMs", Group.iDurationMs, strOutError))
 		return false;
 	const DATA_JSON_VALUE* pChildren = Root.Find("children");
@@ -1286,6 +1343,8 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "  \"schema\": \"lostark.effect-v2\",\n";
 	Text += "  \"formatVersion\": 1,\n";
 	Text += "  \"effectId\": " + Json_String(Document.strEffectId) + ",\n";
+	if (!Document.strDisplayName.empty())
+		Text += "  \"displayName\": " + Json_String(Document.strDisplayName) + ",\n";
 	Text += "  \"effectType\": " + Json_String(Type_Key(Document.eType)) + ",\n";
 	Text += "  \"slots\": {\n";
 	Text += "    \"mesh\": " + Json_String(Desc.strMeshAssetId) + ",\n";
@@ -1562,6 +1621,16 @@ std::string Client::CEffectV2Document::Serialize_Group(const EFFECT_V2_GROUP& Gr
 	Text += "  \"schema\": \"lostark.effect-v2-group\",\n";
 	Text += "  \"formatVersion\": 2,\n";
 	Text += "  \"groupId\": " + Json_String(Group.strGroupId) + ",\n";
+	if (!Group.strDisplayName.empty())
+		Text += "  \"displayName\": " + Json_String(Group.strDisplayName) + ",\n";
+	if (Group.AuthoringPreview)
+	{
+		const auto& Preview = *Group.AuthoringPreview;
+		Text += "  \"authoringPreview\": { \"patternId\": " + Json_String(Preview.strPatternId) +
+			", \"bundle\": " + Json_Bool(Preview.bBundle) + ", \"anchorKind\": " +
+			Json_String(Preview.strAnchorKind) + ", \"memberId\": " + Json_String(Preview.strMemberId) +
+			", \"worldPosition\": " + Json_Float3(Preview.vWorldPosition) + " },\n";
+	}
 	Text += "  \"durationMs\": " + std::to_string(Group.iDurationMs) + ",\n";
 	Text += "  \"children\": [\n";
 	for (size_t iIndex = 0u; iIndex < Group.Children.size(); ++iIndex)
@@ -1651,7 +1720,7 @@ bool_t Client::CEffectV2Document::Load_GroupFile(
 	EFFECT_V2_GROUP& OutGroup,
 	std::string& strOutError)
 {
-	if (!Is_ValidEffectId(strGroupId))
+	if (!Is_StableAsciiId(strGroupId, MAX_STABLE_ID_LENGTH))
 	{
 		strOutError = "Invalid group ID.";
 		return false;

@@ -23,6 +23,54 @@ class EffectV2OccurrenceRuntimeContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
+    def test_external_group_clock_rewinds_without_double_advancing_or_losing_tails(self) -> None:
+        self.assertIn("bool_t bExternalClock = false", self.runtime_h)
+        self.assertIn("Group.Playback.bExternalClock && iOnlyHandle == 0u", self.runtime_cpp)
+        self.assertIn("bAllSpawned && Group.Spawned.empty() && !Group.Playback.bExternalClock", self.runtime_cpp)
+        sample = self.runtime_cpp.split("bool_t Client::CEffectV2Runtime::Sample_Group(", 1)[1].split(
+            "bool_t Client::CEffectV2Runtime::Seek_Group(", 1)[0]
+        self.assertIn("fGroupAgeSeconds + 0.000001f < Lane.fSeconds", sample)
+        self.assertIn("Pending.iNextLoopEpoch = 0u", sample)
+        self.assertIn("Lane.Playback.PivotSampler(fGroupAgeSeconds", sample)
+        self.assertIn("DrainAtStart ? StopAge : fInitialElapsedSeconds", self.runtime_cpp)
+        self.assertIn("pObject->Stop_Emission()", self.runtime_cpp)
+        self.assertIn("fInitialElapsedSeconds > 0.f || (pPlayback && pPlayback->bExternalClock)", self.runtime_cpp)
+        self.assertIn("Object->Set_PlaybackPaused(true)", self.runtime_cpp)
+
+    def test_mesh_particle_birth_samples_history_and_keeps_an_independent_body_clock(self) -> None:
+        source = (ROOT / "Client/Private/EffectV2_Object.cpp").read_text(encoding="utf-8")
+        spawn = source.split("void Client::CEffectV2Object::Spawn_Particle(", 1)[1].split(
+            "void Client::CEffectV2Object::Advance_ParticleBodies(", 1)[0]
+        self.assertIn("m_PivotSampler(fBirthElapsedSeconds, Pivot, m_strStatus)", spawn)
+        self.assertIn("if (!P.bLocalSpace)", spawn)
+        self.assertIn("Particle birth pivot unavailable", spawn)
+        clock = source.split("void Client::CEffectV2Object::Advance_ParticleClock(", 1)[1].split(
+            "HRESULT Client::CEffectV2Object::Build_ParticleInstances(", 1)[0]
+        self.assertIn("constexpr double FixedStep = 1.0 / 60.0", clock)
+        self.assertIn("UntilEnd <= Remaining", clock)
+        self.assertIn("Update_Particles(static_cast<f32_t>(Chunk))", clock)
+        self.assertIn("m_bEmissionStopped) { Advance_ParticleBodies(fStep); return; }", clock)
+        self.assertIn("m_dParticleSeconds + Birth", clock)
+        self.assertIn("Advance_ParticleClock(0.f, true)", source)
+        self.assertIn("Particle.dAge + m_dParticleRemainder", source)
+        self.assertIn("m_iRandomState = (std::max)(1u, m_Params.Particle.iRandomSeed)", source)
+        self.assertIn("Requested root time has not been recorded", self.runtime_cpp)
+        self.assertIn("if (Right->bDiscontinuity)", self.runtime_cpp)
+
+    def test_kouku_product_resolves_selected_effect_after_save_and_uses_one_clock(self) -> None:
+        source = (ROOT / "Client/Private/KoukuSaydonPresentationPlayer.cpp").read_text(encoding="utf-8")
+        selected = source.split("bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(", 1)[1].split(
+            "void Client::CKoukuSaydonPresentationPlayer::Stop_Session(", 1)[0]
+        self.assertIn("CEffectV2Runtime::Cache_Generation()", selected)
+        self.assertIn("Load_ResourceSnapshot(resourceKind, asset, staged, m_strStatus)", selected)
+        self.assertIn("m_EffectResourceFailures.emplace(key, m_strStatus)", selected)
+        self.assertNotIn("Reload_BossValtan", source)
+        self.assertIn("playback.bExternalClock = true", source)
+        self.assertIn("Sample_Group(row.effectHandle, age, paused", source)
+        self.assertIn("history->Sample(box.iStartMs / 1000.f + seconds", source)
+        self.assertIn("leaf.eType == EFFECT_V2_TYPE::PARTICLE", source)
+        self.assertIn("++g_iCacheGeneration", self.runtime_cpp)
+
     def test_runtime_consumes_a_typed_occurrence_wall_map(self) -> None:
         for token in (
             "EFFECT_V2_CLIP_OCCURRENCE_CLOCK",

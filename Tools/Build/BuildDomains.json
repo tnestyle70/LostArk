@@ -49,6 +49,8 @@
         "Data/KoukuSaydon/**",
         "Data/Rendering/Authored/LightResources.json",
         "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json",
+        "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+        "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements",
         "Data/Animation/Reference/KoukuSaydon/**"
       ],
       "tools": [

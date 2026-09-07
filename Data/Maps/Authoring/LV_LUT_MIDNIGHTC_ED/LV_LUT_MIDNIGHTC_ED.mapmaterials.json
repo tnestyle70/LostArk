@@ -1,0 +1,81 @@
+{
+  "schema": "lostark.map-materials",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "materials": [
+    {
+      "assetId": "MAP_61FA80B72343_BG_RAD_KOUKUSATON_FLOOR08_SM_OVR_04DCDAA75173",
+      "materialName": "SLOT_000_bg_rad_koukusaton_floor08_mi",
+      "sourceMaterial": "lv_lut_midnightc.mat.bg_rad_koukusaton_floor09b_mi",
+      "family": "bg_seamless-specular_msk",
+      "diffuseBrightness": 0.6,
+      "normalIntensity": 0.5,
+      "specularIntensity": 0.2,
+      "specularPower": 30,
+      "reflectionIntensity": 0.2,
+      "reflectionContrast": 0.5,
+      "diffuseColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "specularColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "reflectionColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "reflectionTexture": "Map/LV_LUT_MIDNIGHTC_ED/MAP_61FA80B72343_BG_RAD_KOUKUSATON_FLOOR08_SM_OVR_04DCDAA75173/textures/d89521db7863_ambientreflection_15.dds",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "specular": "srgb",
+        "reflection": "srgb"
+      },
+      "reflectionTiling": 1
+    },
+    {
+      "assetId": "MAP_0BE6EBEE4924_BG_RAD_KOUKUSATON_FLOOR08A_SM_OVR_84D65232B541",
+      "materialName": "SLOT_000_bg_rad_koukusaton_floor08a_mi",
+      "sourceMaterial": "lv_lut_midnightc.mat.bg_rad_koukusaton_floor08b_mi",
+      "family": "bg_base_msk",
+      "diffuseBrightness": 0.7,
+      "normalIntensity": 0.5,
+      "specularIntensity": 0.2,
+      "specularPower": 100,
+      "reflectionIntensity": 0.2,
+      "reflectionContrast": 0.5,
+      "diffuseColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "specularColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "reflectionColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "reflectionTexture": "Map/LV_LUT_MIDNIGHTC_ED/MAP_0BE6EBEE4924_BG_RAD_KOUKUSATON_FLOOR08A_SM_OVR_84D65232B541/textures/d89521db7863_ambientreflection_15.dds",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "specular": "srgb",
+        "reflection": "srgb"
+      },
+      "diffuseSaturation": 1
+    }
+  ]
+}

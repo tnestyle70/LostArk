@@ -55,6 +55,7 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 	m_bApplyBottomCenter = desc.applyBottomCenter;
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
+	m_BakedLighting = desc.bakedLighting;
 	m_FrustumCulling = desc.frustumCulling;
 	m_bHasWaterProfile = desc.hasWaterProfile;
 	m_WaterProfile = desc.waterProfile;
@@ -196,7 +197,7 @@ HRESULT CMapAssetObject::Render()
 			if (FAILED(
 				CMapAssetRenderUtils::Bind_Material(
 					m_pModelCom, m_pShaderCom, meshIndex,
-					presentationProfile, m_fElapsedTime)) ||
+					presentationProfile, m_fElapsedTime, nullptr, m_AssetId, &m_BakedLighting)) ||
 
 				FAILED(m_pShaderCom->Begin(passIndex)) ||
 
@@ -225,6 +226,8 @@ HRESULT CMapAssetObject::Render_Shadow()
 		return S_OK;
 	MAP_ASSET_RENDER_PROFILE presentationProfile =
 		Get_EffectiveRenderProfile();
+	if (!presentationProfile.castsShadow)
+		return S_OK;
 	if (MAP_ASSET_RENDER_MODE::DEFERRED != presentationProfile.renderMode)
 		return S_OK;
 	if (FAILED(Bind_ShadowShaderResources()))
@@ -239,6 +242,9 @@ HRESULT CMapAssetObject::Render_Shadow()
 	for (uint32_t iMesh = 0;
 		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
 	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
+		if (surface && !surface->castsShadow)
+			continue;
 		if (FAILED(CMapAssetRenderUtils::Bind_Material(
 				m_pModelCom, m_pShaderCom, iMesh,
 				presentationProfile, m_fElapsedTime)) ||

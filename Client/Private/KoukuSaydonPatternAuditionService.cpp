@@ -4,6 +4,8 @@
 
 #include <Windows.h>
 
+#include <algorithm>
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -41,6 +43,7 @@ namespace
 	{
 		return left.eWorldId == right.eWorldId &&
 			left.strEncounterId == right.strEncounterId &&
+			left.strGateId == right.strGateId &&
 			left.strBossPlacementId == right.strBossPlacementId &&
 			left.strBossArchetypeId == right.strBossArchetypeId &&
 			left.ExpectedGameplayRevision == right.ExpectedGameplayRevision &&
@@ -143,32 +146,49 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_All(
 		{}, expectedGameplayRevision, expectedSourceRevision, outStatus);
 }
 
+bool Client::CKoukuSaydonPatternAuditionService::Play_Bundle(
+	const std::string_view bundleId, const std::string_view gateId,
+	const LostArk::Shared::GameplayDataRevision& revision, const std::uint32_t sourceRevision, std::string& status)
+{
+	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE, {}, revision, sourceRevision, status, bundleId, gateId);
+}
+
+bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string& status)
+{
+	const auto snapshot = m_Snapshot;
+	if (!snapshot.Is_InFlight() || !snapshot.iRoomAuditionEpoch) { status = "No admitted Server run to stop."; return false; }
+	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP, {}, snapshot.ExpectedGameplayRevision,
+		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
+}
+
+bool Client::CKoukuSaydonPatternAuditionService::Restart_Bundle(std::string& status)
+{
+	const auto snapshot = m_Snapshot;
+	if (!snapshot.Is_InFlight() || snapshot.strBundleId.empty() || !snapshot.iRoomAuditionEpoch) { status = "Select an active bundle run to restart."; return false; }
+	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE, {}, snapshot.ExpectedGameplayRevision,
+		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
+}
+
 bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation,
 	const std::string_view patternId,
 	const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 	const std::uint32_t expectedSourceRevision,
-	std::string& outStatus)
+	std::string& outStatus, const std::string_view bundleId, const std::string_view gateId, const std::uint32_t expectedEpoch)
 {
 	using namespace LostArk::Shared;
 	Update();
-	if (m_bTargetTransitionPending)
+	const bool control = operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP || operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE;
+	const bool bundleStart = operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE || operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE;
+	if (m_bTargetTransitionPending && !control)
 	{
 		outStatus = "Wait for the Server to confirm the gate transition before starting playback.";
 		return false;
 	}
-	if (KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED != operation &&
-		KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL != operation)
-	{
-		outStatus = "Unsupported KoukuSaydon audition operation.";
-		return false;
-	}
-	if ((KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED == operation) ==
-		patternId.empty())
-	{
-		outStatus = "Play Selected requires one stable pattern ID; Play All must not invent one.";
-		return false;
-	}
+	if (operation >= KOUKUSAYDON_PATTERN_AUDITION_OPERATION::END ||
+		((operation == KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED) != !patternId.empty()) ||
+		(bundleStart && (bundleId.empty() || gateId.empty())) || (control && expectedEpoch == 0))
+	{ outStatus = "Invalid audition execution identity."; return false; }
 	if (!expectedGameplayRevision.Is_Valid())
 	{
 		outStatus = "Server Play requires the exact Server-active gameplay revision.";
@@ -180,7 +200,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 			"Server Play requires the exact saved Product source revision.";
 		return false;
 	}
-	if (m_Snapshot.Is_InFlight())
+	if (m_Snapshot.Is_InFlight() && !control)
 	{
 		outStatus = "A KoukuSaydon Server audition already owns playback.";
 		return false;
@@ -204,15 +224,24 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 		m_strTargetBossPlacementId, m_strTargetBossArchetypeId,
 		expectedGameplayRevision, expectedSourceRevision);
 	request.strPatternId = patternId;
-	m_RequestScope = request.Scope;
+	request.strBundleId = bundleId;
+	request.iExpectedRunEpoch = expectedEpoch;
+	request.Scope.strGateId = gateId;
+	if (control) request.Scope = m_RequestScope;
 	if (!network.Send_KoukuSaydonPatternAudition(request))
 	{
 		outStatus = "Could not send KoukuSaydon Server Play.";
 		return false;
 	}
 
+	m_ControlPreviousSnapshot = m_Snapshot;
+	m_bControlRequest = control;
+	m_RequestScope = request.Scope;
 	Advance_RequestSequence();
 	m_Snapshot = {};
+	m_Snapshot.strBundleId = bundleId;
+	m_Snapshot.strGateId = request.Scope.strGateId;
+	m_Snapshot.iExpectedRunEpoch = expectedEpoch;
 	m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::REQUEST_PENDING;
 	m_Snapshot.eOperation = operation;
 	m_Snapshot.iRequestSequence = request.iRequestSequence;
@@ -223,7 +252,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	m_Snapshot.strStatus =
 		KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL == operation ?
 			"Waiting for the Server to admit the saved Play All order." :
-			"Waiting for the Server to admit " + std::string(patternId) + ".";
+			"Waiting for the Server to admit " + std::string(bundleId.empty() ? patternId : bundleId) + ".";
 	m_iStateStartedAtMilliseconds = Now_Milliseconds();
 	outStatus = m_Snapshot.strStatus;
 	return true;
@@ -273,13 +302,17 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Result(
 		result.iRequestSequence != m_Snapshot.iRequestSequence ||
 		result.eOperation != m_Snapshot.eOperation ||
 		result.strRequestedPatternId != m_Snapshot.strRequestedPatternId ||
+		result.strBundleId != m_Snapshot.strBundleId || result.iExpectedRunEpoch != m_Snapshot.iExpectedRunEpoch ||
 		!Exact_Scope(result.Scope, m_RequestScope))
 	{
 		return;
 	}
 	if (KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED != result.eResult &&
-		KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED != result.eResult)
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::DUPLICATE_IGNORED != result.eResult &&
+		KOUKUSAYDON_PATTERN_AUDITION_RESULT::STOPPED != result.eResult)
 	{
+		if (m_bControlRequest)
+		{ m_Snapshot = m_ControlPreviousSnapshot; m_Snapshot.strStatus = "Run control rejected: " + result.strReason; m_bControlRequest = false; return; }
 		Set_Terminal(
 			KOUKU_SAYDON_PATTERN_AUDITION_STATE::REJECTED,
 			result.strReason.empty() ? Describe_Rejection(result.eResult) :
@@ -298,6 +331,10 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Result(
 			"The Server audition receipt did not preserve the exact boss, gameplay, and Product source revision tuple.");
 		return;
 	}
+	m_bControlRequest = false;
+	m_Snapshot.iCommonStartTick = result.iCommonStartTick;
+	if (result.eResult == KOUKUSAYDON_PATTERN_AUDITION_RESULT::STOPPED)
+	{ Set_Terminal(KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED, "Server playback stopped."); return; }
 	m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED;
 	m_Snapshot.iRoomAuditionEpoch = result.iRoomAuditionEpoch;
 	m_Snapshot.iBossNetEntityId = result.iBossNetEntityId;
@@ -319,10 +356,10 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 	if (!m_Snapshot.Is_InFlight() ||
 		lifecycle.iRequestSequence != m_Snapshot.iRequestSequence ||
 		lifecycle.eOperation != m_Snapshot.eOperation ||
-		!Exact_Scope(lifecycle.Scope, m_RequestScope) ||
+		!Exact_Scope(lifecycle.Scope, m_RequestScope) || lifecycle.strBundleId != m_Snapshot.strBundleId ||
 		(0u != m_Snapshot.iRoomAuditionEpoch &&
 		 lifecycle.iRoomAuditionEpoch != m_Snapshot.iRoomAuditionEpoch) ||
-		(INVALID_NET_ENTITY_ID != m_Snapshot.iBossNetEntityId &&
+		(m_Snapshot.strBundleId.empty() && INVALID_NET_ENTITY_ID != m_Snapshot.iBossNetEntityId &&
 		 lifecycle.iBossNetEntityId != m_Snapshot.iBossNetEntityId) ||
 		!lifecycle.PinnedGameplayRevision.Is_Valid() ||
 		lifecycle.PinnedGameplayRevision != m_Snapshot.ExpectedGameplayRevision ||
@@ -330,6 +367,14 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 		lifecycle.iPinnedSourceRevision != m_Snapshot.iExpectedSourceRevision)
 	{
 		return;
+	}
+	m_Snapshot.iCommonStartTick = lifecycle.iCommonStartTick;
+	if (!lifecycle.strMemberId.empty())
+	{
+		auto it = std::find_if(m_Snapshot.Members.begin(), m_Snapshot.Members.end(), [&](const auto& member) { return member.strMemberId == lifecycle.strMemberId; });
+		if (it == m_Snapshot.Members.end()) { m_Snapshot.Members.emplace_back(); it = std::prev(m_Snapshot.Members.end()); }
+		it->strMemberId = lifecycle.strMemberId; it->iBossNetEntityId = lifecycle.iBossNetEntityId;
+		it->strPatternId = lifecycle.strPatternId; it->iPatternSequence = lifecycle.iPatternSequence; it->eState = lifecycle.eState;
 	}
 	m_Snapshot.iRoomAuditionEpoch = lifecycle.iRoomAuditionEpoch;
 	m_Snapshot.iBossNetEntityId = lifecycle.iBossNetEntityId;
@@ -341,6 +386,12 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 	switch (lifecycle.eState)
 	{
 	case KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING:
+		if (!m_Snapshot.strBundleId.empty())
+		{
+			m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE;
+			m_Snapshot.strStatus = "The admitted bundle clock is running; this child is scheduled to start.";
+			break;
+		}
 		m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED;
 		m_Snapshot.strLivePatternId.clear();
 		m_Snapshot.strStatus = "The Server accepted the audition and is waiting to start.";
@@ -364,6 +415,8 @@ void Client::CKoukuSaydonPatternAuditionService::Apply_Lifecycle(
 		m_iStateStartedAtMilliseconds = Now_Milliseconds();
 		break;
 	case KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED:
+		if (!m_Snapshot.strBundleId.empty())
+		{ m_Snapshot.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE; m_Snapshot.strStatus = "Child completed; waiting for the remaining bundle members."; break; }
 		m_Snapshot.strLivePatternId.clear();
 		m_Snapshot.eState = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL ==
 			m_Snapshot.eOperation ? KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED :
@@ -407,6 +460,7 @@ void Client::CKoukuSaydonPatternAuditionService::Reset(
 {
 	m_Snapshot = {};
 	m_RequestScope = {};
+	m_bControlRequest = false;
 	m_bTargetTransitionPending = false;
 	Set_TargetBoss({}, {});
 	if (!reason.empty())

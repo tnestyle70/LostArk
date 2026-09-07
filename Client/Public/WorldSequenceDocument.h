@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+#include <optional>
+
 #include <filesystem>
 #include <string>
 #include <unordered_map>
@@ -48,6 +50,8 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	float3_t scale = {1.f, 1.f, 1.f};
 	// Existing placed curtain/roulette aliases name a sequence instead of a model.
 	std::string sequenceInstanceId;
+	// Empty means no initial Motion has been chosen; never infer vector order.
+	std::string defaultMotionInstanceId;
 };
 
 struct WORLD_SEQUENCE_OBJECT_MOTION
@@ -96,6 +100,8 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	f32_t playbackRate = 1.f;
 	bool_t loop = false;
 	bool_t holdLastFrame = true;
+	// Authoring label only; clipName remains the model animation lookup key.
+	std::string displayName;
 };
 
 struct WORLD_SEQUENCE_TEMPLATE
@@ -119,6 +125,21 @@ struct WORLD_SEQUENCE_BINDING
 	std::string targetId;
 };
 
+enum class WORLD_SEQUENCE_MOTION_END
+{
+	STOP,
+	HOLD,
+	LOOP,
+	NEXT,
+};
+
+// A horizontal circle in the bound placement local space, measured after model import scale.
+struct WORLD_SEQUENCE_WALKABLE_SURFACE
+{
+	f32_t radiusM = 1.f;
+	f32_t localHeightM = 0.f;
+};
+
 struct WORLD_SEQUENCE_INSTANCE
 {
 	std::string instanceId;
@@ -129,6 +150,9 @@ struct WORLD_SEQUENCE_INSTANCE
 	std::vector<WORLD_SEQUENCE_BINDING> bindings;
 	std::string anchorKind = "WORLD";
 	float3_t position = {};
+	WORLD_SEQUENCE_MOTION_END motionEnd = WORLD_SEQUENCE_MOTION_END::STOP;
+	std::string nextMotionId;
+	std::optional<WORLD_SEQUENCE_WALKABLE_SURFACE> walkableSurface;
 };
 
 class CWorldSequenceDocument final
@@ -201,6 +225,9 @@ public:
 	static bool_t Try_ParseTargetKind(
 		const std::string& value,
 		WORLD_SEQUENCE_TARGET_KIND& outTargetKind);
+	static const char_t* MotionEnd_ToString(WORLD_SEQUENCE_MOTION_END motionEnd);
+	static bool_t Try_ParseMotionEnd(const std::string& value,
+		WORLD_SEQUENCE_MOTION_END& outMotionEnd);
 	static bool_t Is_ValidStableId(const std::string& value);
 
 private:

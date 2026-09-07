@@ -39,6 +39,7 @@ public:
 		bool_t applyBottomCenter = false;
 		bool_t visible = true;
 		MAP_ASSET_RENDER_PROFILE renderProfile;
+		Engine::MODEL_BAKED_LIGHTING_INSTANCE bakedLighting;
 		MAP_FRUSTUM_CULLING_POLICY frustumCulling{};
 		/* Only set when the catalog resolved a water row for this asset. */
 		bool_t hasWaterProfile = false;
@@ -96,6 +97,7 @@ private:
 	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
+	Engine::MODEL_BAKED_LIGHTING_INSTANCE m_BakedLighting;
 	bool_t m_bHasWaterProfile = false;
 	MAP_ASSET_WATER_PROFILE m_WaterProfile;
 	/* Runtime presentation may fade a placement without mutating the authored

@@ -440,6 +440,16 @@ HRESULT CGameInstance::Apply_RenderQualitySettings(
 	return m_pRenderer->Apply_RenderQualitySettings(Settings);
 }
 
+MATERIAL_RENDER_SETTINGS CGameInstance::Get_MaterialRenderSettings() const
+{
+	return m_pRenderer->Get_MaterialRenderSettings();
+}
+
+HRESULT CGameInstance::Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings)
+{
+	return m_pRenderer->Apply_MaterialRenderSettings(settings);
+}
+
 HEIGHT_FOG_SETTINGS CGameInstance::Get_HeightFogSettings() const
 {
 	return m_pRenderer->Get_HeightFogSettings();

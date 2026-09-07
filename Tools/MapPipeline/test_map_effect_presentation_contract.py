@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import json
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -945,6 +946,133 @@ class MapAuthoringPublishContractTests(unittest.TestCase):
                         self.assertFalse(fixture.runtime_map.exists())
                     finally:
                         fixture.close()
+
+
+class MapMaterialPublishContractTests(unittest.TestCase):
+    def install_materials(self, fixture: Fixture, *, sharded: bool = False) -> Path:
+        if sharded:
+            fixture.make_shards()
+        registry_path = fixture.root / "Data/Maps/MapCatalog.json"
+        registry = fixture.read_json(registry_path)
+        registry["areas"][0].update({
+            "sourceMaterials": f"Data/Maps/Authoring/{AREA_ID}/{AREA_ID}.mapmaterials.json",
+            "materials": f"Client/Bin/DataFiles/Map/{AREA_ID}.mapmaterials.json",
+        })
+        fixture.write_json(registry_path, registry)
+        for path in fixture.imported.glob("*.mapassets"):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            lines[0] = lines[0].replace("CATALOG 1 ", "CATALOG 4 ")
+            suffix = ' "floor" "Floor" "fixture" Opaque None 1 1 0 0 1 0 1 50 1 1 1 1 1'
+            path.write_text(lines[0] + "\n" + "\n".join(row + suffix for row in lines[1:]) + "\n", encoding="utf-8")
+        entry = struct.pack("<IQ64s", 0, 0, b"Floor") + bytes(520 * 9)
+        unused_entry = struct.pack("<IQ64s", 1, 0, b"") + bytes(520 * 9)
+        material_payload = struct.pack("<4sI", b"WMA2", 2) + entry + unused_entry
+        material = struct.pack("<4sHHII", b"WINT", 1, 0, 0, len(material_payload)) + material_payload
+        content = (struct.pack("<4sIII16x", b"WMOD", 1, 0, 0)
+                   + struct.pack("<IIQQ40s", 2, 0, 96, len(material), b"") + material)
+        (fixture.runtime_resources / "Map").mkdir(parents=True, exist_ok=True)
+        (fixture.runtime_resources / "Map/fixture.wmodel").write_bytes(
+            struct.pack("<4sHHII", b"WINT", 1, 0, 0, len(content)) + content)
+        (fixture.runtime_resources / "Map/reflection.dds").write_bytes(b"DDS " + bytes(124))
+        document_path = fixture.authoring / f"{AREA_ID}.mapmaterials.json"
+        fixture.write_json(document_path, {
+            "schema": "lostark.map-materials", "formatVersion": 1, "areaId": AREA_ID,
+            "materials": [{
+                "assetId": "FIXTURE", "materialName": "Floor", "sourceMaterial": "source.floor",
+                "family": "bg_seamless-specular_msk", "diffuseBrightness": 0.6,
+                "normalIntensity": 0.5, "specularIntensity": 0.2, "specularPower": 30,
+                "reflectionIntensity": 0.2, "reflectionContrast": 0.5, "reflectionTiling": 1,
+                "diffuseColor": [1, 1, 1, 1], "specularColor": [1, 1, 1, 1],
+                "reflectionColor": [1, 1, 1, 1], "reflectionTexture": "Map/reflection.dds",
+                "textureColorSpace": {"diffuse": "srgb", "specular": "linear", "reflection": "linear"},
+            }],
+        })
+        return document_path
+
+    def test_required_material_projection_is_atomic_for_single_and_shards(self) -> None:
+        for sharded in (False, True):
+            with self.subTest(sharded=sharded):
+                fixture = Fixture()
+                try:
+                    material_path = self.install_materials(fixture, sharded=sharded)
+                    before = fixture.snapshot_runtime()
+                    validated = fixture.publish(mode="Validate")
+                    self.assertEqual(0, validated.returncode, validated.stdout)
+                    self.assertEqual(before, fixture.snapshot_runtime())
+                    result = fixture.publish()
+                    self.assertEqual(0, result.returncode, result.stdout)
+                    for source in fixture.imported.glob("*.mapassets"):
+                        if sharded and source.name == f"{AREA_ID}.mapassets":
+                            continue
+                        runtime = fixture.runtime_map / source.name
+                        source_lines = source.read_text(encoding="utf-8").splitlines()
+                        runtime_lines = runtime.read_text(encoding="utf-8").splitlines()
+                        self.assertEqual(source_lines[1:], runtime_lines[1:])
+                        self.assertIn("CATALOG 5 ", runtime_lines[0])
+                        self.assertTrue(runtime_lines[0].endswith(f'"{AREA_ID}.mapmaterials.json"'))
+                    self.assertEqual(material_path.read_text(encoding="utf-8").encode("utf-8"),
+                                     (fixture.runtime_map / material_path.name).read_bytes())
+                finally:
+                    fixture.close()
+
+    def test_invalid_material_identity_input_and_required_file_preserve_runtime(self) -> None:
+        cases = (
+            ("materialName", "Missing", "does not exist in WModel"),
+            ("family", "unknown", "Unsupported map material family"),
+            ("reflectionTexture", "Map/missing.dds", "reflection texture is missing"),
+            ("specularIntensity", 1e300, "Invalid map material number"),
+            ("duplicateMaterialName", None, "is ambiguous"),
+        )
+        for field, value, expected in cases:
+            with self.subTest(field=field):
+                fixture = Fixture()
+                try:
+                    path = self.install_materials(fixture)
+                    before = fixture.snapshot_runtime()
+                    document = fixture.read_json(path)
+                    if field == "duplicateMaterialName":
+                        model_path = fixture.runtime_resources / "Map/fixture.wmodel"
+                        model = bytearray(model_path.read_bytes())
+                        second_name = 112 + 24 + 4756 + 12
+                        model[second_name:second_name + 64] = b"Floor".ljust(64, b"\0")
+                        model_path.write_bytes(model)
+                    else:
+                        document["materials"][0][field] = value
+                        fixture.write_json(path, document)
+                    result = fixture.publish()
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn(expected, result.stdout)
+                    self.assertEqual(before, fixture.snapshot_runtime())
+                finally:
+                    fixture.close()
+        fixture = Fixture()
+        try:
+            path = self.install_materials(fixture)
+            before = fixture.snapshot_runtime()
+            path.unlink()
+            result = fixture.publish()
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            self.assertIn("Declared map material authoring source is missing", result.stdout)
+            self.assertEqual(before, fixture.snapshot_runtime())
+        finally:
+            fixture.close()
+
+    def test_material_and_catalog_roll_back_together_on_promotion_failure(self) -> None:
+        fixture = Fixture()
+        try:
+            path = self.install_materials(fixture)
+            published = fixture.publish()
+            self.assertEqual(0, published.returncode, published.stdout)
+            before = fixture.snapshot_runtime()
+            document = fixture.read_json(path)
+            document["materials"][0]["specularPower"] = 60
+            fixture.write_json(path, document)
+            failed = fixture.publish(failure_after_promote=1)
+            self.assertNotEqual(0, failed.returncode, failed.stdout)
+            self.assertIn("Injected map publish failure", failed.stdout)
+            self.assertEqual(before, fixture.snapshot_runtime())
+        finally:
+            fixture.close()
 
 
 if __name__ == "__main__":

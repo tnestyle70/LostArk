@@ -28,6 +28,40 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         self.map_tool_h = read("Client/Public/MapTool.h")
         self.map_tool_cpp = read("Client/Private/MapTool.cpp")
 
+    def test_walkable_surface_accepts_fixed_roulette_and_rejects_unsupported_geometry(self) -> None:
+        source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
+        instance = next(row for row in source["instances"] if row["instanceId"] == "world.sequence.instance.8")
+        instance["walkableSurface"] = {"radiusM": 2.5, "localHeightM": .026313}
+        source["instances"] = [instance]
+        source["templates"] = [row for row in source["templates"] if row["sequenceId"] == instance["templateId"]]
+        source["objectResources"] = [row for row in source.get("objectResources", []) if row.get("sequenceInstanceId") == instance["instanceId"]]
+        keys = source["templates"][0]["tracks"][0]["keys"]
+        source["templates"][0]["tracks"][0]["keys"] = [keys[0], keys[-1]]
+        cases = [("valid", source, True)]
+        for name, mutate in (
+            ("negative_radius", lambda d: d["instances"][0]["walkableSurface"].update(radiusM=-1)),
+            ("boolean_height", lambda d: d["instances"][0]["walkableSurface"].update(localHeightM=True)),
+            ("unknown_field", lambda d: d["instances"][0]["walkableSurface"].update(height=0)),
+            ("moving_plane", lambda d: d["templates"][0]["tracks"][0]["keys"][-1].update(positionOffset=[0, 1, 0])),
+            ("tilted_plane", lambda d: d["templates"][0]["tracks"][0]["keys"][-1].update(rotationQuaternion=[1, 0, 0, 0])),
+            ("nonuniform_scale", lambda d: d["templates"][0]["tracks"][0]["keys"][0].update(scaleMultiplier=[1, 1, 2])),
+        ):
+            document = copy.deepcopy(source); mutate(document); cases.append((name, document, False))
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definitions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                       for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for name, document, _ in cases:
+                (folder / (name + ".json")).write_text(json.dumps(document), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(definitions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{name=$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "validate.ps1"; script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)], capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            actual = {row["name"]: row["valid"] for row in json.loads(result.stdout)}
+            self.assertEqual({name: valid for name, _, valid in cases}, actual)
+
     def test_v3_object_publisher_accepts_source_and_rejects_invalid_resources(self) -> None:
         """Exercise the actual publisher function on a preserved source plus one model state."""
         source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
@@ -59,6 +93,102 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             "bindings": [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "test.world.object"}],
         })
         cases = [("valid", source, True)]
+        with_default = copy.deepcopy(source)
+        with_default["objectResources"][-1]["defaultMotionInstanceId"] = "test.world.instance"
+        cases.append(("default_motion_valid", with_default, True))
+        for name, default_id in (("missing", "missing.instance"), ("foreign", curtain["instanceId"]),
+                                 ("number", 4), ("null", None), ("empty", "")):
+            candidate = copy.deepcopy(source)
+            candidate["objectResources"][-1]["defaultMotionInstanceId"] = default_id
+            cases.append(("default_motion_" + name, candidate, name == "empty"))
+        disabled_default = copy.deepcopy(with_default)
+        disabled_default["instances"][-1]["enabled"] = False
+        cases.append(("default_motion_disabled", disabled_default, False))
+        alias_default = copy.deepcopy(source)
+        alias_default["objectResources"][0]["defaultMotionInstanceId"] = curtain["instanceId"]
+        cases.append(("default_motion_alias_valid", alias_default, True))
+        alias_default_other = copy.deepcopy(alias_default)
+        alias_default_other["objectResources"][0]["defaultMotionInstanceId"] = "test.world.instance"
+        cases.append(("default_motion_alias_foreign", alias_default_other, False))
+        for end in ("STOP", "HOLD", "LOOP"):
+            completed = copy.deepcopy(source)
+            completed["instances"][-1].update(motionEnd=end, nextMotionId="")
+            cases.append(("motion_end_" + end, completed, True))
+        for name, fields in (
+            ("unknown", {"motionEnd": "FINISH"}), ("lowercase", {"motionEnd": "hold"}),
+            ("number", {"motionEnd": 1}), ("null", {"motionEnd": None}),
+            ("boolean", {"motionEnd": True}), ("next_missing", {"motionEnd": "NEXT"}),
+            ("next_empty", {"motionEnd": "NEXT", "nextMotionId": ""}),
+            ("stop_target", {"motionEnd": "STOP", "nextMotionId": "test.world.instance"}),
+            ("implicit_stop_target", {"nextMotionId": "test.world.instance"}),
+            ("target_number", {"nextMotionId": 7}), ("target_null", {"nextMotionId": None}),
+        ):
+            invalid = copy.deepcopy(source)
+            invalid["instances"][-1].update(fields)
+            cases.append(("motion_end_invalid_" + name, invalid, False))
+        placed_completion = copy.deepcopy(source)
+        placed_completion["instances"][0]["motionEnd"] = "HOLD"
+        cases.append(("motion_end_placed_target", placed_completion, False))
+        next_source = copy.deepcopy(source)
+        next_source["templates"][-1]["objectMotion"]["count"] = 1
+        next_state = copy.deepcopy(next_source["instances"][-1])
+        next_state.update(instanceId="test.world.next", motionEnd="HOLD")
+        next_source["instances"][-1].update(motionEnd="NEXT", nextMotionId=next_state["instanceId"])
+        next_source["instances"].append(next_state)
+        cases.append(("motion_next_valid", next_source, True))
+        for name, mutate in (
+            ("unknown", lambda d: d["instances"][-2].update(nextMotionId="missing.motion")),
+            ("case_mismatch", lambda d: d["instances"][-2].update(nextMotionId="TEST.WORLD.NEXT")),
+            ("disabled", lambda d: d["instances"][-1].update(enabled=False)),
+            ("self", lambda d: d["instances"][-2].update(nextMotionId="test.world.instance")),
+            ("cycle", lambda d: d["instances"][-1].update(motionEnd="NEXT", nextMotionId="test.world.instance")),
+            ("multiple_emissions", lambda d: d["templates"][-1]["objectMotion"].update(count=2)),
+        ):
+            invalid = copy.deepcopy(next_source)
+            mutate(invalid)
+            cases.append(("motion_next_invalid_" + name, invalid, False))
+        other_resource = copy.deepcopy(next_source)
+        resource_copy = copy.deepcopy(other_resource["objectResources"][-1])
+        resource_copy["objectId"] = "test.other.object"
+        other_resource["objectResources"].append(resource_copy)
+        other_resource["instances"][-1]["bindings"][0]["targetId"] = resource_copy["objectId"]
+        cases.append(("motion_next_different_resource", other_resource, False))
+        other_slot = copy.deepcopy(next_source)
+        template_copy = copy.deepcopy(other_slot["templates"][-1])
+        template_copy["sequenceId"] = "test.other.slot.template"
+        template_copy["tracks"][0]["slotId"] = "another.slot"
+        other_slot["templates"].append(template_copy)
+        other_slot["instances"][-1].update(templateId=template_copy["sequenceId"])
+        other_slot["instances"][-1]["bindings"][0]["slotId"] = "another.slot"
+        cases.append(("motion_next_different_slot", other_slot, False))
+        for depth in (32, 33):
+            chain = copy.deepcopy(next_source)
+            prototype = chain["instances"][-1]
+            chain["instances"] = [chain["instances"][0]]
+            for index in range(depth + 1):
+                state = copy.deepcopy(prototype)
+                state.update(instanceId=f"test.motion.{index}", motionEnd="NEXT" if index < depth else "STOP")
+                if index < depth:
+                    state["nextMotionId"] = f"test.motion.{index + 1}"
+                chain["instances"].append(state)
+            cases.append((f"motion_next_depth_{depth}", chain, depth == 32))
+        animation_source = copy.deepcopy(source)
+        animation_source["objectResources"][-1]["animated"] = True
+        animation_source["templates"][-1]["animationTracks"] = [{
+            "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1",
+            "playbackRate": 1, "loop": False, "holdLastFrame": True,
+        }]
+        cases.append(("animation_label_absent", animation_source, True))
+        for name, label, valid in (
+            ("empty", "", True), ("korean", "카드_등장", True),
+            ("maximum", "a" * 128, True), ("bytes_over", "한" * 43, False),
+            ("long", "a" * 129, False), ("number", 7, False),
+            ("boolean", True, False), ("null", None, False),
+            ("control", "card\nlabel", False),
+        ):
+            labeled = copy.deepcopy(animation_source)
+            labeled["templates"][-1]["animationTracks"][0]["displayName"] = label
+            cases.append(("animation_label_" + name, labeled, valid))
         for anchor in ("WORLD", "PLAYER"):
             anchored = copy.deepcopy(source)
             anchored["objectResources"][-1]["anchorKind"] = anchor
@@ -88,6 +218,12 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             folder = Path(temporary)
             for name, document, _ in cases:
                 (folder / (name + ".json")).write_text(json.dumps(document), encoding="utf-8")
+            malformed_utf8 = json.dumps(animation_source).replace(
+                '"clipName": "mn_rhoc_00_sk.ao_idle_normal_1"',
+                '"clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "displayName": "LABEL_BYTE"',
+            ).encode("utf-8").replace(b"LABEL_BYTE", b"\xc0\x80")
+            (folder / "animation_label_invalid_utf8.json").write_bytes(malformed_utf8)
+            cases.append(("animation_label_invalid_utf8", animation_source, False))
             script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(definitions)
             script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{name=$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
             script_path = folder / "validate.ps1"
@@ -97,6 +233,84 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             actual = {row["name"]: row["valid"] for row in json.loads(result.stdout)}
             self.assertEqual({name: valid for name, _, valid in cases}, actual)
+
+    def test_world_sequences_only_scope_preserves_other_layers_and_rolls_back(self):
+        area = "LV_LUT_MIDNIGHTC_ED"
+        source = json.loads(read(f"Data/Maps/Authoring/{area}/{area}.worldsequences.json"))
+        card = next(row for row in source["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+        source["instances"] = [card]
+        source["templates"] = [row for row in source["templates"] if row["sequenceId"] == card["templateId"]]
+        source["objectResources"] = [row for row in source["objectResources"] if row["objectId"] == "world.object.kouku.card"]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            catalog = root / "Data/Maps/MapCatalog.json"
+            catalog.parent.mkdir(parents=True)
+            # Deliberately incomplete unrelated declarations must not block this scope.
+            catalog.write_text(json.dumps({"areas": [{"id": area, "sourceSequences": f"Data/Maps/Authoring/{area}/{area}.worldsequences.json",
+                "sequences": f"Client/Bin/DataFiles/Map/{area}.worldsequences.json", "sourceLights": "unrelated.invalid"}]}), encoding="utf-8")
+            authoring = root / f"Data/Maps/Authoring/{area}/{area}.worldsequences.json"
+            authoring.parent.mkdir(parents=True)
+            authoring.write_text(json.dumps(source), encoding="utf-8")
+            runtime = root / "Client/Bin/DataFiles/Map"
+            runtime.mkdir(parents=True)
+            preserved = {}
+            for suffix in ("maplights.json", "mapplacements", "mapmaterials.json", "camerashots.json"):
+                path = runtime / f"{area}.{suffix}"; path.write_bytes(b"preserved unrelated runtime\r\n"); preserved[path] = path.read_bytes()
+            output = runtime / f"{area}.worldsequences.json"
+            output.write_bytes(b"previous sequence runtime")
+            def run(mode, fail=0):
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                    str(ROOT / "Tools/MapPipeline/Publish-MapAuthoring.ps1"), "-ProjectRoot", str(root), "-AreaId", area,
+                    "-Scope", "WorldSequences", "-Mode", mode, "-FailureAfterPromote", str(fail)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, run("Validate").returncode)
+            self.assertEqual(b"previous sequence runtime", output.read_bytes())
+            failed = run("Publish", 1)
+            self.assertNotEqual(0, failed.returncode)
+            self.assertEqual(b"previous sequence runtime", output.read_bytes())
+            applied = run("Publish")
+            self.assertEqual(0, applied.returncode, applied.stderr)
+            self.assertEqual(source, json.loads(output.read_bytes()))
+            self.assertEqual(0, run("Check").returncode)
+            self.assertTrue(all(path.read_bytes() == before for path, before in preserved.items()))
+            prior = output.read_bytes()
+            source["objectResources"][0]["defaultMotionInstanceId"] = "missing.motion"
+            authoring.write_text(json.dumps(source), encoding="utf-8")
+            self.assertNotEqual(0, run("Publish").returncode)
+            self.assertEqual(prior, output.read_bytes())
+
+    def test_camera_pattern_authoring_fields_validate_without_changing_legacy_shots(self):
+        source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json"))
+        source["shots"] = [source["shots"][0]]
+        cases = [("legacy", copy.deepcopy(source), True)]
+        shot = source["shots"][0]
+        shot.update(displayName="패턴 카메라", defaultHoldMs=3000, transitionEasing="LINEAR", activation="PATTERN_ONLY")
+        cases.append(("pattern", copy.deepcopy(source), True))
+        for name, fields in (
+            ("name_number", {"displayName": 7}), ("name_empty", {"displayName": ""}),
+            ("name_too_long", {"displayName": "가" * 43}), ("name_null", {"displayName": None}),
+            ("bad_hold", {"defaultHoldMs": -1}), ("fraction_hold", {"defaultHoldMs": 1.5}),
+            ("long_entry_hold", {"defaultHoldMs": 600000, "blendInMs": 1}),
+            ("zero_entry_hold", {"defaultHoldMs": 0, "blendInMs": 0}),
+            ("bad_easing", {"transitionEasing": "HOLD"}), ("easing_type", {"transitionEasing": True}),
+            ("bad_activation", {"activation": "pattern_only"}), ("activation_null", {"activation": None}),
+        ):
+            invalid = copy.deepcopy(source); invalid["shots"][0].update(fields)
+            cases.append((name, invalid, False))
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definitions = []
+        for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-CameraShotDocument"):
+            match = re.search(r"(?m)^function " + re.escape(name) + r" \{.*?^\}", publisher, re.DOTALL)
+            self.assertIsNotNone(match); definitions.append(match.group(0))
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for name, document, _ in cases:
+                (folder / (name + ".json")).write_text(json.dumps(document), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(definitions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-CameraShotDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{name=$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "validate.ps1"; script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual({name: valid for name, _, valid in cases}, {r["name"]: r["valid"] for r in json.loads(result.stdout)})
 
     def test_client_project_registers_each_source_once(self) -> None:
         project = ET.parse(ROOT / "Client/Default/Client.vcxproj")

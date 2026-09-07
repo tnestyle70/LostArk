@@ -45,6 +45,7 @@ struct VALTAN_CINEMATIC_CAMERA_POSE final
 class CValtanCinematicCameraController final
 {
 public:
+	static constexpr uint32_t MAX_BOUNDED_TRANSITION_MS = 10000u;
 	/* Camera Tool preview and product playback must not grow separate easing
 	   implementations. This samples the authored base pose on the cue clock;
 	   product tracking is applied afterwards from replicated boss state. */
@@ -74,7 +75,8 @@ public:
 		const VALTAN_CINEMATIC_CAMERA_POSE& toPose,
 		uint32_t durationMs,
 		f32_t elapsedSeconds,
-		VALTAN_CINEMATIC_CAMERA_POSE& outPose);
+		VALTAN_CINEMATIC_CAMERA_POSE& outPose,
+		VALTAN_CINEMATIC_CAMERA_EASING easing = VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP);
 
 	bool_t Initialize(
 		const CValtanCinematicCameraDocument* document,

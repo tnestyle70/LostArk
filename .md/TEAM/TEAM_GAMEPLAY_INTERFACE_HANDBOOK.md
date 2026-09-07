@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v64 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v66 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -721,6 +721,7 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 | Valtan Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
 | Action Workbench | Boss 선택과 공용 Sequencer/Resources/Patterns/Box Detail; Valtan split owner 또는 Kouku Composition의 편집·Preview·Save |
 | Effect Tool | V1 Effect asset과 V2 leaf/group body 편집 |
+| Effect Tool | 기존 Current Effect·Effect Detail, V1/V2 Parent→Effect Resource 트리, World Object 리소스와 Model Animation/Effect Sequencer |
 | Server | branch, motion, hit, combat object, phase의 gameplay 권위 |
 
 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은 `REFERENCE_ONLY`,
@@ -730,6 +731,17 @@ manifest의 admission을 편집 진입 조건으로 사용하지 않는다. gene
 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`은 쿠크 Stage/Animation 저작 정본이며
 Action Workbench의 KoukuSaydon session이 DRAFT/PRODUCT 전체를 편집하고 단일 파일 CAS Save한다. K Boss Tool은 명시 publish된
 `Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json`의 PRODUCT를, Server는 그 bootstrap을 소비한다.
+Composition v3는 `GATE1/GATE2/GATE3/BINGO`, 부모 폴더, 재생 묶음, 대상 보스가 지정된 패턴을 저장한다.
+Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대상을 바꾸지 않는다. 부모는 분류만 하고,
+묶음은 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
+Camera/Scene Profile 행을, 자식을 선택하면 기존 상세 Sequencer를 편집한다. Create Parent → Create Bundle →
+Create Pattern 또는 Link Existing Pattern으로 연결하며 원본 패턴·클립을 복제하지 않는다.
+F1의 Gate 선택은 유지하며 게시된 PRODUCT만 나열한다. Complete Play는 선택한 패턴 하나 또는 선택한 묶음
+전체를 Server에 요청한다. 기존 Play All은 원본 PRODUCT 순서의 순차 재생이다. Server는 묶음의 모든 대상을
+검증한 뒤 하나의 run epoch와 공통 시작 tick을 확정한다. offset은 30Hz tick으로 올림하며 Stop/Restart는
+원래 run epoch를 명시한다. 같은 방의 Client와 늦게 입장한 Client는 복제된 묶음 상태와 시작 tick을 소비한다.
+공통 Camera/Scene Profile은 묶음 시계에서 한 번 실행하며 다른 소유자의 겹치는 전역 연출은 게시 단계에서
+거부한다. Preview는 연출 확인이고 조건부 gameplay 결과는 Server Complete Play에서 확인한다.
 K Resource는 실제 `MN_RPCZ_00` 모델 clip 전체를 읽고 action reference는 참고 트리로만 사용한다.
 reference에 없는 물리 clip은 `sourceActionId=0`, `sourceStageId=RAW`, 빈 `referenceRevision`으로 저장한다.
 PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE 행을 생략한다.
@@ -737,11 +749,23 @@ PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE �
 Kouku Composition Play는 같은 clock으로 Animation, WORLD와 presentation occurrence를 재생한다.
 WORLD 정의의 optional `positionOffset: [x,y,z]`와 speed, WORLD occurrence의 `durationMs`는
 projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 거쳐 Server cue까지
-전달된다. protocol 64의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
+전달된다. protocol 66의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
 1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 박스 수명은 playback speed와
 별도로 측정하고, Stop/수명 종료에서 원래 배치를 복구하며 생성한 World Object를 정리한다.
-Server/Shared/Client는 같은 protocol 64으로 함께 빌드·재시작한다.
+WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
+STOP_OWNER와 종료된 member 정리는 해당 실행이 만든 객체에만 적용한다.
+Server/Shared/Client는 같은 protocol 66으로 함께 빌드·재시작한다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
+함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
+누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.
+
+F1 `Effect Tool`은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를 같은 owner로 연다. 이전 Effect Composition Workbench enum은 호환 진입점이며 별도 편집기나 재생 owner를 생성하지 않는다. Effect Resources의 V1/V2 root 아래에서 Parent를 생성하고 그 Parent 아래의 Effect를 선택하면 원래 owner의 Current Effect에 열린다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
+
+Current Effect의 Play All/Family/Element는 미리보기이며 Append만 별도 Effect Sequencer에 occurrence를 추가한다. 캐릭터 skillbinding·Valtan Product·Kouku Pattern/Bundle의 실제 clip sequence는 읽기 전용 모델 참고이며 저장 단위는 `Data/Effects/Sequences/<id>.effectsequence.json`의 stable source reference와 occurrence 시간이다. 해당 Save는 boss Composition이나 skillbinding을 변경하지 않는다. Native V2 leaf Open/Save는 원래 leaf ID/파일을 유지하며 group으로 확장하는 것은 명시적 생성 명령이다. Effect CPU draft 저장에 GPU preview나 타 보스 전체 admission을 선행조건으로 붙이지 않는다.
+
+World Object category는 Area 저작 `objectResources`의 model/base texture/pre-scale과 자식 Motion을 읽어 현재 Effect draft에 적용한다. 원본 Object/Motion은 수정하지 않는다. 공의 `objectMotion` velocity/acceleration/count/interval/lifetime은 기존 Mesh Particle로 옮기며 실제 충돌 물리를 추가하지 않는다. 모델 참고는 기존 Kouku preview actor/CModel을 재사용하고 root motion·WORLD gameplay는 실행하지 않는다. 실제 Product 이동 입자는 Server presentation root의 birth 시각 표본을 사용하며 과거 표본이 없으면 해당 Effect 오류를 표시한다.
+
+Kouku Action Workbench Camera는 이름으로 shot 생성 → 현재 view의 eye/lookAt/FOV capture → Box Detail의 blend-in/default hold/blend-out → Save → Append 흐름을 제공한다. `patternOnly` shot은 명시적으로 배치한 Pattern Camera에서 소비하며 저작 Preview는 저장본, Complete Play는 Map publisher 배포본을 읽는다. 진입 pose는 시작 때 취득하고 복귀 목표는 매 프레임 현재 player follow pose를 사용한다. Camera box duration은 진입+유지이며 복귀 tail은 별도로 검사한다. 기존 Valtan 문서 제한을 넓히지 않고 Kouku의 LINEAR 전환을 지원한다.
 
 F1 `World Object Tool`의 정의와 이름을 가진 상태는 Area의
 `Data/Maps/Authoring/<Area>/<Area>.worldsequences.json` v3에 저장한다. `objectResources`의 모델은
@@ -752,6 +776,14 @@ track과 `objectMotion`, instance의 `anchorKind=WORLD|PLAYER`·`position`을 �
 계약을 따른다. Action Workbench `World` resource의 `Append selected World Object at Cursor`는
 저장된 상태를 기존 WORLD 정의와 occurrence에 연결한다. Map publisher가 배포한 상태를
 `CWorldSequencePlayer`가 동일하게 재생하므로 Effect나 별도 오브젝트 runtime을 추가하지 않는다.
+부모는 공통 Object 설정, 자식 instance ID는 독립 저장 Motion이다. Collider/Logic Result의
+`PLAY_WORLD_OBJECT_MOTION`은 `targetWorldInstanceId`와 `motionInstanceId`를 저장한다.
+Server가 판정을 확정하면 `S2C_WORLD_SEQUENCE_PLAY`의 `strTargetSequenceInstanceId`에 기존
+target을, `strSequenceInstanceId`에 재생할 Motion을 보내고 Client는 같은 객체에서 모션만 교체한다.
+target 필드가 비어 있는 기존 메시지는 WORLD 생성 요청이다. Result는 같은 판정 창의 같은
+target/Motion 쌍에 한 번만 송신한다. `OBJECT_OVERLAP`은 player 입력과 무관하게 source Collider와
+고정 target 원의 겹침을 Server fixed tick에서 확인한다. target 반경은 저작 값이며 모델의 bone
+변형을 추적하지 않는다. 기존 player 영역 판정은 계속 별도 Logic 종류로 유지한다.
 LOGIC occurrence의 optional `enabled:false`는 저작 창·RESULT를 보존하고 gameplay 투영에서 제외한다.
 TRIGGER의 `REAL_GAZE_TELEPORT`는 명시한
 teleportPosition과 clonePatternId, clockHours를 사용해 Server가 진짜 이동과 clone 3개를 함께 commit한다.
@@ -1081,3 +1113,6 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - KoukuSaydon Mario2~4 진입 데이터와 범용 Arena Sequencer scene runner
 
 이 항목들은 현재 인터페이스를 우회해 임시 구현하지 않는다.
+
+
+WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }`는 단일 MAP_PLACEMENT의 고정 수평 원판과 WORLD/STOP에 한정한다. Kouku WORLD cue의 활성 구간이 Server effective support height를 소유하며 기본 blocked/NO_SURFACE와 step policy는 유지한다. Motion Detail에서 설정을 저장한 뒤 Map 및 Kouku Product publisher를 소비한다. DRAFT pattern은 Product에 포함되지 않으며 클라이언트의 로컬 Transform으로 서버 보행면을 대신하지 않는다.

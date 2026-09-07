@@ -20,6 +20,7 @@
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
 #include "MainApp.h"
+#include "MapLightPresentationRuntime.h"
 #include "Network/PacketMessages.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -141,6 +142,7 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 		m_pMapLightPresentation.reset();
 	}
 	m_MapRuntime.Clear();
+	m_pMapLightAuthoringOverride.reset();
 }
 
 HRESULT CLevel_CharacterSelect::Initialize()
@@ -172,15 +174,6 @@ HRESULT CLevel_CharacterSelect::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
-	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
-	if (!mapLightPresentation->Load_Runtime(entry->pMapAreaId))
-	{
-		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
-			mapLightPresentation->Get_Status() + "\n").c_str());
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
-	m_pMapLightPresentation = std::move(mapLightPresentation);
 
 	if (FAILED(Ready_Lights()) || FAILED(Ready_ServerGameplay()))
 		return E_FAIL;
@@ -239,13 +232,13 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
-	if (nullptr != m_pMapLightPresentation &&
-		!m_pMapLightPresentation->Submit_Frame() &&
-		!m_isMapLightSubmissionFailureReported)
+	const auto& lights = m_pMapLightAuthoringOverride ?
+		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	if (lights && !lights->Submit_Frame() && !m_bMapLightSubmissionFailureReported)
 	{
-		m_isMapLightSubmissionFailureReported = true;
+		m_bMapLightSubmissionFailureReported = true;
 		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " +
-			m_pMapLightPresentation->Get_Status() + "\n").c_str());
+			lights->Get_Status() + "\n").c_str());
 	}
 #ifdef _DEBUG
 	Update_RaidEntryDebugPreviewKey();
@@ -328,7 +321,21 @@ HRESULT CLevel_CharacterSelect::Render()
 
 HRESULT CLevel_CharacterSelect::Ready_Lights()
 {
-	return S_OK;
+	return Reload_MapLights() ? S_OK : E_FAIL;
+}
+
+bool_t CLevel_CharacterSelect::Reload_MapLights()
+{
+	auto staged = std::make_shared<CMapLightPresentationRuntime>();
+	const auto* descriptor = CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (!descriptor || !descriptor->pMapAreaId || !staged->Load_Runtime(descriptor->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][MapLight] " + staged->Get_Status() + "\n").c_str());
+		return false;
+	}
+	m_pMapLightPresentation = std::move(staged);
+	m_bMapLightSubmissionFailureReported = false;
+	return true;
 }
 
 HRESULT CLevel_CharacterSelect::Ready_Camera()

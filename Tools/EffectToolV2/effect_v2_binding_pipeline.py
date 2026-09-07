@@ -181,6 +181,38 @@ def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _group_authoring_metadata(document: Any, owner: str) -> dict[str, Any]:
+    if isinstance(document, dict) and "authoringPreview" in document:
+        preview = _exact(document["authoringPreview"],
+                         ("patternId", "bundle", "anchorKind", "memberId", "worldPosition"),
+                         f"{owner}.authoringPreview")
+        for key in ("patternId", "memberId"):
+            if preview[key] != "":
+                _stable(preview[key], f"{owner}.authoringPreview.{key}")
+        if type(preview["bundle"]) is not bool or preview["anchorKind"] not in ("WORLD", "CHARACTER_ROOT"):
+            raise BindingContractError(f"{owner}.authoringPreview has invalid bundle/anchorKind")
+        _vector3(preview["worldPosition"], f"{owner}.authoringPreview.worldPosition")
+        without_preview = {key: value for key, value in document.items() if key != "authoringPreview"}
+        _optional_display_name(without_preview, GROUP_ROOT_FIELDS, owner)
+        return document
+    return _optional_display_name(document, GROUP_ROOT_FIELDS, owner)
+
+
+def _optional_display_name(document: Any, fields: Sequence[str], owner: str) -> dict[str, Any]:
+    if isinstance(document, dict) and "displayName" in document:
+        name = document["displayName"]
+        if not isinstance(name, str) or any(ord(ch) < 32 or ord(ch) == 127 for ch in name):
+            raise BindingContractError(f"{owner}.displayName must be UTF-8 text without controls")
+        try:
+            encoded = name.encode("utf-8", errors="strict")
+        except UnicodeError as error:
+            raise BindingContractError(f"{owner}.displayName is not valid UTF-8") from error
+        if len(encoded) > 256:
+            raise BindingContractError(f"{owner}.displayName exceeds 256 UTF-8 bytes")
+        return _exact(document, (*fields, "displayName"), owner)
+    return _exact(document, fields, owner)
+
+
 def _exact(value: Any, fields: Sequence[str], owner: str) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != set(fields):
         raise BindingContractError(
@@ -650,7 +682,7 @@ def _validate_leaf_resource(
     """
 
     effect_id = _effect_id(effect_id, "Effect V2 leaf effectId")
-    root = _exact(document, LEAF_ROOT_FIELDS, f"Effect V2 leaf {effect_id}")
+    root = _optional_display_name(document, LEAF_ROOT_FIELDS, f"Effect V2 leaf {effect_id}")
     if (
         root["schema"] != "lostark.effect-v2"
         or not _is_format_version(root["formatVersion"], 1)
@@ -950,7 +982,7 @@ def _group_children(
         raise BindingContractError(f"unsupported Effect V2 group version: {group_id}")
     is_v2 = _is_format_version(version, GROUP_FORMAT_VERSION)
     if is_v2:
-        _exact(document, GROUP_ROOT_FIELDS, f"Effect V2 group {group_id}")
+        _group_authoring_metadata(document, f"Effect V2 group {group_id}")
     duration_ms = _ms(document.get("durationMs"), f"Effect V2 group {group_id}.durationMs")
     children = document.get("children")
     if not isinstance(children, list) or not children or len(children) > 4096:

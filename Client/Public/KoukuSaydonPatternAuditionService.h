@@ -39,6 +39,11 @@ namespace Client
 		LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
 		std::uint32_t iExpectedSourceRevision = 0u;
 		std::uint32_t iPinnedSourceRevision = 0u;
+		std::string strBundleId;
+		std::string strGateId;
+		std::uint32_t iCommonStartTick = 0;
+		std::uint32_t iExpectedRunEpoch = 0;
+		std::vector<LostArk::Shared::KOUKUSAYDON_BUNDLE_MEMBER_STATE> Members;
 		std::string strRequestedPatternId;
 		std::string strLivePatternId;
 		std::string strStatus;
@@ -79,6 +84,10 @@ namespace Client
 			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 			std::uint32_t expectedSourceRevision,
 			std::string& outStatus);
+		bool Play_Bundle(std::string_view bundleId, std::string_view gateId,
+			const LostArk::Shared::GameplayDataRevision& revision, std::uint32_t sourceRevision, std::string& status);
+		bool Stop(std::string& status);
+		bool Restart_Bundle(std::string& status);
 		void Update();
 		void Reset(std::string_view reason = {});
 
@@ -117,7 +126,7 @@ namespace Client
 			std::string_view patternId,
 			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 			std::uint32_t expectedSourceRevision,
-			std::string& outStatus);
+			std::string& outStatus, std::string_view bundleId = {}, std::string_view gateId = {}, std::uint32_t expectedEpoch = 0);
 		void Apply_Result(
 			const LostArk::Shared::
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& result);
@@ -132,6 +141,8 @@ namespace Client
 
 	private:
 		KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT m_Snapshot;
+		KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT m_ControlPreviousSnapshot;
+		bool m_bControlRequest = false;
 		/* Exact scope of the in-flight request; results and lifecycles must
 		echo it even if the target boss changed afterwards. */
 		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE m_RequestScope{};

@@ -2270,7 +2270,7 @@ namespace LostArk::Shared
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.
-	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY, REPLAY, STOP, END };
+	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, END };
 	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
 	{
 		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, END
@@ -2310,6 +2310,23 @@ namespace LostArk::Shared
 		float fPositionOffsetY = 0.f;
 		float fPositionOffsetZ = 0.f;
 		std::uint32_t iDurationMs = 0u; // Zero uses the authored sequence lifetime.
+		// Empty starts a sequence; otherwise apply its motion to this existing instance.
+		std::string strTargetSequenceInstanceId;
+		std::uint32_t iRunEpoch = 0u; // Zero is a non-audition map sequence.
+		std::string strMemberId;
+		std::string strCueId;
+		std::string strOccurrenceId;
+		std::string strTargetCueId;
+		std::uint32_t iStartTick = 0u;
+		std::uint32_t iServerTick = 0u;
+		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint32_t iPatternSequence = 0u;
+		// An owned WORLD box may replace its saved instance placement. Motions
+		// keep their target cue's placement and therefore leave these at identity.
+		bool bHasPlacement = false;
+		float fWorldPositionX = 0.f, fWorldPositionY = 0.f, fWorldPositionZ = 0.f;
+		float fWorldRotationXDegrees = 0.f, fWorldRotationYDegrees = 0.f, fWorldRotationZDegrees = 0.f;
+		float fWorldScaleX = 1.f, fWorldScaleY = 1.f, fWorldScaleZ = 1.f;
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message);
 	bool Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message);
@@ -2321,6 +2338,9 @@ namespace LostArk::Shared
 	{
 		PLAY_SELECTED,
 		PLAY_ALL,
+		PLAY_BUNDLE,
+		STOP,
+		RESTART_BUNDLE,
 		END
 	};
 
@@ -2339,6 +2359,7 @@ namespace LostArk::Shared
 		REJECTED_REVISION_MISMATCH,
 		REJECTED_SOURCE_REVISION_MISMATCH,
 		REJECTED_STALE_REQUEST,
+		STOPPED,
 		END
 	};
 
@@ -2359,6 +2380,7 @@ namespace LostArk::Shared
 	{
 		WORLD_ID eWorldId = WORLD_ID::END;
 		std::string strEncounterId;
+		std::string strGateId;
 		std::string strBossPlacementId;
 		std::string strBossArchetypeId;
 		GameplayDataRevision ExpectedGameplayRevision{};
@@ -2374,6 +2396,8 @@ namespace LostArk::Shared
 		// Required only by PLAY_SELECTED. PLAY_ALL order is resolved exclusively
 		// from the admitted Server Product sequence.
 		std::string strPatternId;
+		std::string strBundleId;
+		std::uint32_t iExpectedRunEpoch = 0u;
 	};
 
 	bool Write_Message(
@@ -2383,6 +2407,33 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
 
+	inline constexpr std::size_t MAX_KOUKUSAYDON_BUNDLE_MEMBERS = 4u;
+	struct KOUKUSAYDON_BUNDLE_MEMBER_STATE final
+	{
+		std::string strMemberId;
+		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		std::string strPatternId;
+		std::uint32_t iPatternSequence = 0u;
+		std::uint32_t iStartTick = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
+	};
+	// Persistent room-owned run state, broadcast to every client, including late joiners.
+	struct S2C_KOUKUSAYDON_BUNDLE_STATE final
+	{
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::string strEncounterId;
+		std::string strBundleId; // Empty for the existing single-actor audition.
+		std::uint32_t iRunEpoch = 0u;
+		std::uint32_t iCommonStartTick = 0u;
+		std::uint32_t iServerTick = 0u;
+		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
+		GameplayDataRevision PinnedGameplayRevision{};
+		std::uint32_t iPinnedSourceRevision = 0u;
+		std::vector<KOUKUSAYDON_BUNDLE_MEMBER_STATE> Members;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON_BUNDLE_STATE& message);
+	bool Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE_STATE& message);
+
 	struct S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT final
 	{
 		std::uint32_t iRequestSequence = 0u;
@@ -2390,9 +2441,12 @@ namespace LostArk::Shared
 			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 		KOUKUSAYDON_PATTERN_AUDITION_SCOPE Scope;
 		std::string strRequestedPatternId;
+		std::uint32_t iExpectedRunEpoch = 0u;
 		KOUKUSAYDON_PATTERN_AUDITION_RESULT eResult =
 			KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH;
 		std::uint32_t iRoomAuditionEpoch = 0u;
+		std::string strBundleId;
+		std::uint32_t iCommonStartTick = 0u;
 		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
 		std::string strResolvedPatternId;
 		std::uint32_t iPatternSequence = 0u;
@@ -2416,8 +2470,11 @@ namespace LostArk::Shared
 			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 		KOUKUSAYDON_PATTERN_AUDITION_SCOPE Scope;
 		std::uint32_t iRoomAuditionEpoch = 0u;
+		std::string strBundleId;
+		std::uint32_t iCommonStartTick = 0u;
 		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
 		std::string strPatternId;
+		std::string strMemberId;
 		std::uint32_t iPatternSequence = 0u;
 		std::uint32_t iStageIndex = 0u;
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState =

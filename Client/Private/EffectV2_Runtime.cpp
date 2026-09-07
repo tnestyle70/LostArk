@@ -125,6 +125,7 @@ namespace
 	uint32_t g_iNextFreeGroupHandle = 1u;
 	bool_t g_bPrototypeRegistered = false;
 	std::string g_strLastError;
+	uint64_t g_iCacheGeneration = 1u;
 
 	void Report(const std::string& strMessage)
 	{
@@ -438,6 +439,21 @@ namespace
 			Source.Particle.vSizeEnd.y * vScale.x };
 	}
 
+	Client::CEffectV2Object::PIVOT_SAMPLER Child_PivotSampler(
+		const PENDING_SPAWN& Pending, const Client::EFFECT_V2_GROUP_PLAYBACK_DESC& Playback)
+	{
+		if (!Playback.PivotSampler) return {};
+		return [Sampler = Playback.PivotSampler, Local = Pending.Local,
+			Start = Ms_ToSeconds(Pending.Binding.iStartMs), Rate = Playback.fPlaybackRate]
+			(const f32_t Elapsed, float4x4_t& OutPivot, std::string& Error)
+		{
+			float4x4_t Root;
+			if (!Sampler(Start + Elapsed * Rate, Root, Error)) return false;
+			XMStoreFloat4x4(&OutPivot, XMLoadFloat4x4(&Local) * XMLoadFloat4x4(&Root));
+			return true;
+		};
+	}
+
 	void Spawn(
 		PENDING_SPAWN& Pending,
 		const float4x4_t& Pivot,
@@ -573,9 +589,28 @@ namespace
 				pObject->Set_DissolveOutRange(pPlayback->fDissolveOutStart,
 					pPlayback->fDissolveOutEnd);
 		}
-		if (fInitialElapsedSeconds > 0.f)
-			pObject->Seek_ElapsedSeconds(fInitialElapsedSeconds);
+		if (pPlayback) pObject->Set_PivotSampler(Child_PivotSampler(Pending, *pPlayback));
+		const f32_t StopAge = Pending.fStopSeconds >= 0.f ?
+			(Pending.fStopSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) / fPlaybackRate : -1.f;
+		const bool_t DrainAtStart = StopAge >= 0.f && fInitialElapsedSeconds >= StopAge &&
+			Pending.eStop == Client::EFFECT_V2_CHILD_STOP::DEACTIVATE;
+		/* Fresh automatic lanes retain the clone's spawn-frame guard. External
+		   clocks are paused against layer Update and may prime birth zero now. */
+		if (fInitialElapsedSeconds > 0.f || (pPlayback && pPlayback->bExternalClock))
+			pObject->Seek_ElapsedSeconds(DrainAtStart ? StopAge : fInitialElapsedSeconds);
+		if (DrainAtStart)
+		{
+			pObject->Stop_Emission();
+			(void)pObject->Sample_ElapsedSeconds(fInitialElapsedSeconds);
+		}
+		if (pObject->Has_PivotSampleFailure())
+		{
+			Reject(Pending.Binding.strEffectId + ": " + pObject->Status());
+			pObject->Finish();
+		}
+		if (pPlayback && pPlayback->bExternalClock) pObject->Set_PlaybackPaused(true);
 		SPAWNED_EFFECT Effect;
+		Effect.bStopApplied = DrainAtStart;
 		Effect.pObject = pObject;
 		Effect.bStopWithClip = Pending.Binding.bStopWithClip;
 		Effect.bStageBound = bStageBound;
@@ -1055,14 +1090,17 @@ namespace
 		const bool_t bProductOwned,
 		const f32_t fTimeDelta,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext)
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const uint32_t iOnlyHandle = 0u)
 	{
 		if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 			return;
 		for (auto Iterator = g_FreeGroups.begin(); Iterator != g_FreeGroups.end();)
 		{
 			FREE_GROUP& Group = Iterator->second;
-			if (Group.bProductOwned != bProductOwned)
+			if (Group.bProductOwned != bProductOwned ||
+				(iOnlyHandle != 0u && Iterator->first != iOnlyHandle) ||
+				(Group.Playback.bExternalClock && iOnlyHandle == 0u))
 			{
 				++Iterator;
 				continue;
@@ -1075,8 +1113,9 @@ namespace
 				if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
 				{
 					Pending.iNextLoopEpoch = 1u;
-					if (Pending.fStopSeconds >= 0.f && Group.fSeconds >= Pending.fStopSeconds)
-						continue; // A late snapshot must not flash an expired child.
+					if (Pending.fStopSeconds >= 0.f && Group.fSeconds >= Pending.fStopSeconds &&
+						Pending.eStop == Client::EFFECT_V2_CHILD_STOP::KILL)
+						continue; // Deactivate retains the authored particle/trail tail.
 					std::string SpawnFailure;
 					Spawn(Pending, Group.Pivot, Client::EFFECT_V2_TARGET{}, false,
 						Group.Spawned, pDevice, pContext, Group.pSnapshot.get(),
@@ -1093,13 +1132,43 @@ namespace
 						Group.strFailure = std::move(SpawnFailure);
 				}
 			}
+			for (SPAWNED_EFFECT& Effect : Group.Spawned)
+			{
+				const auto Object = Effect.pObject.lock();
+				if (!Object) continue;
+				if (Group.Playback.bExternalClock)
+				{
+					const auto Pending = std::find_if(Group.Pending.begin(), Group.Pending.end(),
+						[&Effect](const auto& Row) { return Row.iChildIndex == Effect.iChildIndex; });
+					if (Pending == Group.Pending.end()) continue;
+					const f32_t Start = Ms_ToSeconds(Pending->Binding.iStartMs);
+					if (!Effect.bStopApplied && Effect.fStopSeconds >= 0.f &&
+						Group.fSeconds >= Effect.fStopSeconds)
+					{
+						if (Effect.eStop == Client::EFFECT_V2_CHILD_STOP::DEACTIVATE)
+						{
+							(void)Object->Sample_ElapsedSeconds((Effect.fStopSeconds - Start) / Group.fPlaybackRate);
+							Object->Stop_Emission();
+						}
+						else Object->Finish();
+						Effect.bStopApplied = true;
+					}
+					(void)Object->Sample_ElapsedSeconds((std::max)(0.f, Group.fSeconds - Start) / Group.fPlaybackRate);
+					Object->Set_PlaybackPaused(true);
+				}
+				if (Object->Has_PivotSampleFailure() && Group.strFailure.empty())
+				{
+					Group.strFailure = Object->Status();
+					Report(Group.strFailure);
+				}
+			}
 			Apply_ChildStops(Group.Spawned, Group.fSeconds, false, false);
 			Prune_List(Group.Spawned, false, false);
 			const bool_t bAllSpawned = std::all_of(
 				Group.Pending.begin(), Group.Pending.end(),
 				[](const PENDING_SPAWN& Pending)
 				{ return 0u != Pending.iNextLoopEpoch; });
-			if (bAllSpawned && Group.Spawned.empty())
+			if (bAllSpawned && Group.Spawned.empty() && !Group.Playback.bExternalClock)
 			{
 				if (!Group.strFailure.empty())
 				{
@@ -1112,6 +1181,71 @@ namespace
 			++Iterator;
 		}
 	}
+}
+
+void Client::EFFECT_V2_PIVOT_HISTORY::Reset() { m_Samples.clear(); }
+
+bool_t Client::EFFECT_V2_PIVOT_HISTORY::Record(const f32_t fGroupAgeSeconds,
+	const float4x4_t& Pivot, const bool_t bDiscontinuity, std::string& strOutError)
+{
+	if (!std::isfinite(fGroupAgeSeconds) || fGroupAgeSeconds < 0.f ||
+		(!m_Samples.empty() && fGroupAgeSeconds < m_Samples.back().fSeconds))
+	{
+		strOutError = "Root history must be recorded in nondecreasing group time; reset for a new occurrence.";
+		return false;
+	}
+	for (size_t Row = 0; Row < 4; ++Row)
+		for (size_t Column = 0; Column < 4; ++Column)
+			if (!std::isfinite(Pivot.m[Row][Column]))
+			{ strOutError = "Root history transform is not finite."; return false; }
+	if (!m_Samples.empty() && fGroupAgeSeconds == m_Samples.back().fSeconds)
+	{
+		m_Samples.back().Pivot = Pivot;
+		m_Samples.back().bDiscontinuity |= bDiscontinuity;
+	}
+	else m_Samples.push_back({ fGroupAgeSeconds, Pivot, bDiscontinuity });
+	/* More than ten minutes at 100 Hz. Eviction is explicit at Sample: an
+	   unavailable old birth fails rather than being replayed at today's root. */
+	if (m_Samples.size() > 65536u) m_Samples.pop_front();
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::EFFECT_V2_PIVOT_HISTORY::Sample(const f32_t fGroupAgeSeconds,
+	float4x4_t& OutPivot, std::string& strOutError) const
+{
+	if (!std::isfinite(fGroupAgeSeconds) || m_Samples.empty() ||
+		fGroupAgeSeconds < m_Samples.front().fSeconds - 0.000001f ||
+		fGroupAgeSeconds > m_Samples.back().fSeconds + 0.000001f)
+	{
+		strOutError = "Requested root time has not been recorded.";
+		return false;
+	}
+	const auto Right = std::lower_bound(m_Samples.begin(), m_Samples.end(), fGroupAgeSeconds,
+		[](const SAMPLE& Row, const f32_t Time) { return Row.fSeconds < Time; });
+	if (Right == m_Samples.end()) { OutPivot = m_Samples.back().Pivot; strOutError.clear(); return true; }
+	if (Right == m_Samples.begin() || std::fabs(Right->fSeconds - fGroupAgeSeconds) <= 0.000001f)
+	{ OutPivot = Right->Pivot; strOutError.clear(); return true; }
+	if (Right->bDiscontinuity)
+	{
+		strOutError = "Requested particle birth crosses a root teleport/discontinuity.";
+		return false;
+	}
+	const auto Left = std::prev(Right);
+	vector_t LeftScale, LeftRotation, LeftPosition, RightScale, RightRotation, RightPosition;
+	if (!XMMatrixDecompose(&LeftScale, &LeftRotation, &LeftPosition, XMLoadFloat4x4(&Left->Pivot)) ||
+		!XMMatrixDecompose(&RightScale, &RightRotation, &RightPosition, XMLoadFloat4x4(&Right->Pivot)))
+	{
+		strOutError = "Recorded root cannot be decomposed into scale, rotation and translation.";
+		return false;
+	}
+	const f32_t Ratio = (fGroupAgeSeconds - Left->fSeconds) / (Right->fSeconds - Left->fSeconds);
+	XMStoreFloat4x4(&OutPivot,
+		XMMatrixScalingFromVector(XMVectorLerp(LeftScale, RightScale, Ratio)) *
+		XMMatrixRotationQuaternion(XMQuaternionSlerp(LeftRotation, RightRotation, Ratio)) *
+		XMMatrixTranslationFromVector(XMVectorLerp(LeftPosition, RightPosition, Ratio)));
+	strOutError.clear();
+	return true;
 }
 
 void Client::CEffectV2Runtime::Prewarm_Archetype(
@@ -1182,6 +1316,7 @@ void Client::CEffectV2Runtime::Set_Ignored(const EFFECT_V2_TARGET& Target, const
 
 void Client::CEffectV2Runtime::Invalidate_Caches()
 {
+	++g_iCacheGeneration;
 	g_BindingSets.clear();
 	g_Documents.clear();
 	g_Groups.clear();
@@ -1200,6 +1335,8 @@ void Client::CEffectV2Runtime::Invalidate_Caches()
 		State.pAuthoringSnapshot.reset();
 	}
 }
+
+uint64_t Client::CEffectV2Runtime::Cache_Generation() { return g_iCacheGeneration; }
 
 const std::string& Client::CEffectV2Runtime::Last_Error()
 {
@@ -1469,7 +1606,7 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	g_FreeGroups.emplace(iHandle, std::move(Lane));
 	/* Prime zero-time and late-snapshot children immediately. This advances no
 	   other lane clock and preserves one global frame advance in MainApp. */
-	Advance_FreeGroupLanes(Playback.bProductOwned, 0.f, pDevice, pContext);
+	Advance_FreeGroupLanes(Playback.bProductOwned, 0.f, pDevice, pContext, iHandle);
 	return iHandle;
 }
 
@@ -1488,6 +1625,51 @@ uint32_t Client::CEffectV2Runtime::Play_Leaf(
 	Child.strEffectId = strEffectId;
 	Group.Children.push_back(std::move(Child));
 	return Play_Group(Group, std::move(pSnapshot), Playback, pDevice, pContext);
+}
+
+bool_t Client::CEffectV2Runtime::Sample_Group(const uint32_t iHandle,
+	const f32_t fGroupAgeSeconds, const bool_t bPaused,
+	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end() || !std::isfinite(fGroupAgeSeconds) || fGroupAgeSeconds < 0.f)
+		return false;
+	FREE_GROUP& Lane = Found->second;
+	if (!Lane.Playback.bExternalClock)
+	{
+		Report("Absolute group sampling requires bExternalClock.");
+		return false;
+	}
+	if (fGroupAgeSeconds + 0.000001f < Lane.fSeconds)
+	{
+		Kill_List(Lane.Spawned);
+		Lane.Spawned.clear();
+		for (auto& Pending : Lane.Pending) Pending.iNextLoopEpoch = 0u;
+		Lane.strFailure.clear();
+	}
+	Lane.fSeconds = fGroupAgeSeconds;
+	Lane.bPaused = bPaused;
+	if (Lane.Playback.PivotSampler)
+	{
+		float4x4_t Pivot;
+		if (!Lane.Playback.PivotSampler(fGroupAgeSeconds, Pivot, Lane.strFailure))
+		{
+			Report(Lane.strFailure);
+			return false;
+		}
+		Set_GroupPivot(iHandle, Pivot);
+	}
+	Advance_FreeGroupLanes(Lane.bProductOwned, 0.f, pDevice, pContext, iHandle);
+	return Lane.strFailure.empty();
+}
+
+bool_t Client::CEffectV2Runtime::Seek_Group(const uint32_t iHandle,
+	const f32_t fGroupAgeSeconds, const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end()) return false;
+	return Sample_Group(iHandle, fGroupAgeSeconds, Found->second.bPaused, pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT_V2_GROUP& Group)
@@ -1530,6 +1712,8 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 		if (nullptr == pObject)
 			continue;
 		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[Effect.iChildIndex];
+		if (Effect.iChildIndex < Lane.Pending.size())
+			pObject->Set_PivotSampler(Child_PivotSampler(Lane.Pending[Effect.iChildIndex], Lane.Playback));
 		const float4x4_t Local = Child_Local(Child);
 		XMStoreFloat4x4(&pObject->PivotWorld(), XMLoadFloat4x4(&Local) * Pivot);
 		const EFFECT_V2_DOCUMENT* const pDocument = nullptr == Lane.pSnapshot ?
@@ -1584,7 +1768,7 @@ void Client::CEffectV2Runtime::Set_GroupPaused(const uint32_t iHandle, const boo
 	Found->second.bPaused = bPaused;
 	for (const SPAWNED_EFFECT& Effect : Found->second.Spawned)
 		if (const auto pObject = Effect.pObject.lock())
-			pObject->Set_PlaybackPaused(bPaused);
+			pObject->Set_PlaybackPaused(bPaused || Found->second.Playback.bExternalClock);
 }
 
 void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)
