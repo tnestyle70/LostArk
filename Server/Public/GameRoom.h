@@ -343,6 +343,16 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
 		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
+		void Handle_DebugMarioJump(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT Apply_DebugMarioJump(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
+		void Handle_MarioMove(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_MOVE& request);
+		void Update_MarioControlState(SERVER_PLAYER& player);
+		void Update_MarioMoveGoal(SERVER_PLAYER& player, std::uint32_t updateTick);
+		bool Configure_MarioRail(SERVER_PLAYER& player, const std::string& arrivalPlacementId);
 		/* Debug F1 clown/player avatar toggle: swaps only the replicated
 		madness form of this session's player; Release answers REJECTED_DISABLED. */
 		void Handle_DebugSetMadnessForm(

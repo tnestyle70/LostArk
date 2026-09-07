@@ -2020,6 +2020,9 @@
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Mario4.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>

@@ -1386,6 +1386,54 @@ bool CNetworkManager::Try_Consume_DebugTeleportResult(
 	return true;
 }
 
+bool CNetworkManager::Send_MarioMove(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_MARIO_MOVE message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	message.eDirection = direction;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_MARIO_MOVE,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugMarioJump(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_MARIO_JUMP message{};
+	message.iClientSequence = clientSequence;
+	message.eWorldId = m_eWorldId;
+	message.eDirection = direction;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugMarioJumpResult(
+	LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result)
+{
+	if (m_DebugMarioJumpResults.empty())
+		return false;
+	result = m_DebugMarioJumpResults.front();
+	m_DebugMarioJumpResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_DebugSetMadnessForm(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::PLAYER_MADNESS_FORM form)
@@ -2163,6 +2211,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_ReplicationEvents.clear();
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
 	m_DebugTeleportResults.clear();
+	m_DebugMarioJumpResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
@@ -3350,6 +3399,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugTeleportResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+	{
+		S2C_DEBUG_MARIO_JUMP_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_DebugMarioJumpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_DebugMarioJumpResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:

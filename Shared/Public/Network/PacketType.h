@@ -5,7 +5,12 @@
 
 namespace LostArk::Shared
 {
-	/* 60 combines two contracts that each shipped independently as 59:
+	/* 63 restricts Mario movement/jump intent to typed left/right/stop; only
+	the Server resolves segment axes. 62 adds Server-owned Mario stage state
+	and a direction/stop input packet.
+	61 adds the bounded Debug Mario jump intent and Server verdict. The
+	Server owns the landing and movement; Release keeps a typed rejection.
+	60 combines two contracts that each shipped independently as 59:
 	the interact-gated trigger box and the Debug KoukuSaydon madness-form
 	toggle. Neither v59 peer is wire-compatible with the combined enum.
 	59 adds the interact-gated trigger box: the Server offers a prompt to
@@ -42,7 +47,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 60;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 63;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -276,7 +281,11 @@ namespace LostArk::Shared
 		// re-validation on request, and the action all stay Server-owned -- the
 		// Client only draws the offer and forwards the key press.
 		S2C_INTERACT_PROMPT,
-		C2S_INTERACT_TRIGGER
+		C2S_INTERACT_TRIGGER,
+
+		C2S_DEBUG_MARIO_JUMP,
+		S2C_DEBUG_MARIO_JUMP_RESULT,
+		C2S_MARIO_MOVE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -363,6 +372,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
 		case PACKET_TYPE::S2C_INTERACT_PROMPT:
 		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
+		case PACKET_TYPE::C2S_DEBUG_MARIO_JUMP:
+		case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+		case PACKET_TYPE::C2S_MARIO_MOVE:
 			return true;
 		default:
 			return  false;

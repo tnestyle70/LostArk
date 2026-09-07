@@ -686,11 +686,13 @@ bool_t Client::CNavGridPaintDocument::Paint(
 	int32_t cellZ,
 	uint32_t brushRadius,
 	NAVGRID_PAINT_OVERRIDE overrideState,
-	f32_t authoredHeight)
+	f32_t authoredHeight,
+	bool_t replaceResolvedHeight)
 {
 	if (!m_isReady ||
 		brushRadius > MAX_BRUSH_RADIUS ||
 		!Is_ValidCell(cellX, cellZ) ||
+		(replaceResolvedHeight && !std::isfinite(authoredHeight)) ||
 		(overrideState != NAVGRID_PAINT_OVERRIDE::INHERIT &&
 			overrideState != NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED &&
 			overrideState != NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE))
@@ -714,25 +716,23 @@ bool_t Client::CNavGridPaintDocument::Paint(
 				continue;
 
 			const uint32_t index = To_Index(targetX, targetZ);
-			/* Authoring floor is the one stroke allowed to reach a cell the
-			   bake never resolved: a FORCE_WALKABLE brush that carries the
-			   world height the user picked. An isolated platform - a floating
-			   card, a prop the bake ray missed - has no ring of baked
-			   neighbours, so the publisher's seam median can never rescue it
-			   and this is the only way to place it. Every other stroke still
-			   edits baked ground only, so a brush cannot invent surfaces by
-			   accident. */
+			/* Missing floor can be authored from a picked surface. Replacing
+			   an existing floor height requires the caller's explicit opt-in;
+			   ordinary walkability strokes must keep their previous heights. */
 			const bool_t alreadyResolved = Has_ResolvedHeight(index);
 			const bool_t authorsSurface =
-				!alreadyResolved &&
 				NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE == overrideState &&
-				std::isfinite(authoredHeight);
+				std::isfinite(authoredHeight) &&
+				(!alreadyResolved || replaceResolvedHeight);
 			if (!alreadyResolved && !authorsSurface)
 				continue;
 
 			const bool_t hasHeightOverride =
 				std::isfinite(m_CellHeightOverrides[index]);
-			if (!authorsSurface &&
+			const bool_t changesHeight = authorsSurface &&
+				(!alreadyResolved || !hasHeightOverride ||
+					m_CellHeightOverrides[index] != authoredHeight);
+			if (!changesHeight &&
 				m_CellOverrides[index] == overrideState &&
 				!(NAVGRID_PAINT_OVERRIDE::INHERIT == overrideState &&
 					hasHeightOverride))

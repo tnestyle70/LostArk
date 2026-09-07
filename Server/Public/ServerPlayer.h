@@ -16,6 +16,9 @@ namespace LostArk::Server
 {
 	struct SERVER_TRIGGER_MOVE
 	{
+		/* Empty for a validated direct move such as the Debug Mario jump.
+		Authored triggers retain their stable source for destination-lane changes. */
+		std::string strSourcePlacementId;
 		float fStartX = 0.f;
 		float fStartY = 0.f;
 		float fStartZ = 0.f;
@@ -141,7 +144,38 @@ namespace LostArk::Server
 		std::uint32_t iLastClassChangeSequence = 0;
 		/* One idempotent Debug verdict belongs to this player in this room. */
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT LastDebugTeleportResult;
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT LastDebugMarioJumpResult;
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
+		std::uint8_t iMarioStage = 0u;
+		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
+			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
+		std::uint32_t iLastMarioMoveSequence = 0u;
+		std::uint32_t iMarioMoveExpiryTick = 0u;
+		float fMarioDirectionX = 0.f;
+		float fMarioDirectionZ = 0.f;
+		bool bMarioRailReady = false;
+		std::string strMarioRailArrivalId;
+		float fMarioRailOriginX = 0.f;
+		float fMarioRailOriginZ = 0.f;
+		float fMarioRailRightX = 0.f;
+		float fMarioRailRightZ = 0.f;
+		void Clear_MarioControl()
+		{
+			if (0u != iMarioStage)
+			{
+				eMadnessForm = ePreMarioForm;
+				hasMoveGoal = false;
+				MovePath.clear();
+				iMovePathIndex = 0u;
+			}
+			iMarioStage = 0u;
+			iMarioMoveExpiryTick = 0u;
+			fMarioDirectionX = fMarioDirectionZ = 0.f;
+			bMarioRailReady = false;
+			strMarioRailArrivalId.clear();
+			fMarioRailOriginX = fMarioRailOriginZ = 0.f;
+			fMarioRailRightX = fMarioRailRightZ = 0.f;
+		}
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
 		float fMoveSpeed = 6.f;
@@ -188,8 +222,8 @@ namespace LostArk::Server
 		std::uint32_t iIdentityAccumulator = 0;
 		/* KoukuSaydon madness gauge and the avatar it drives. The maximum is a
 		fixed first value until the encounter owns it; nothing raises the
-		current value yet. The form is Server truth the Client presents; today
-		only the Debug F1 toggle changes it. */
+		current value yet. The form is Server truth the Client presents; the
+		Debug F1 toggle and authored Mario entry change it. */
 		static constexpr std::uint32_t MADNESS_GAUGE_MAXIMUM = 10000u;
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;

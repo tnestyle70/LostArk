@@ -20,6 +20,12 @@ public:
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) = 0;
 	virtual bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) = 0;
+	// Unsupported sinks explicitly reject the optional Debug test aid.
+	virtual bool Request_DebugMarioJump(std::uint32_t, LostArk::Shared::MARIO_DIRECTION) { return false; }
+	virtual bool Consume_DebugMarioJumpResult(
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT&) { return false; }
+	// Mario left/right intent; STOP ends movement on the Server-owned lane.
+	virtual bool Request_MarioMove(std::uint32_t, LostArk::Shared::MARIO_DIRECTION) { return false; }
 	/* Debug F1 clown/player avatar toggle: intent only, the Server owns the
 	form and the snapshot presents it. */
 	virtual bool Request_DebugMadnessForm(

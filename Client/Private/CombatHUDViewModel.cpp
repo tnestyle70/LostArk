@@ -210,6 +210,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
 	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
 	m_Player.eMadnessForm = snapshot.eMadnessForm;
+	m_Player.iMarioStage = snapshot.iMarioStage;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;

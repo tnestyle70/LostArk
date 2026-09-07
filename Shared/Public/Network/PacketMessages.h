@@ -581,6 +581,60 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message);
 
+	enum class MARIO_DIRECTION : std::uint8_t
+	{
+		STOP = 0,
+		LEFT = 1,
+		RIGHT = 2,
+		END
+	};
+
+	/* Logical side-scroll intent only. The Server resolves the current segment
+	axis; STOP releases movement at its authoritative player position. */
+	struct C2S_MARIO_MOVE
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		MARIO_DIRECTION eDirection = MARIO_DIRECTION::STOP;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_MARIO_MOVE& message);
+	bool Read_Message(CPacketReader& reader, C2S_MARIO_MOVE& message);
+
+	/* Debug test aid: LEFT/RIGHT selects a side, never a world-space aim or
+	landing. The Server owns the bounded jump and the snapshot owns position. */
+	struct C2S_DEBUG_MARIO_JUMP
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		MARIO_DIRECTION eDirection = MARIO_DIRECTION::STOP;
+	};
+
+	enum class DEBUG_MARIO_JUMP_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_DISABLED,
+		REJECTED_WRONG_WORLD,
+		REJECTED_PLAYER_STATE,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_OUTSIDE_MARIO,
+		REJECTED_INVALID_TARGET,
+		REJECTED_NO_LANDING,
+		END
+	};
+
+	struct S2C_DEBUG_MARIO_JUMP_RESULT
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_MARIO_JUMP_RESULT eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_DEBUG_MARIO_JUMP& message);
+	bool Read_Message(CPacketReader& reader, C2S_DEBUG_MARIO_JUMP& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_DEBUG_MARIO_JUMP_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_DEBUG_MARIO_JUMP_RESULT& message);
+
 	/* Which body a player presents. NORMAL is the class body; CLOWN is the
 	colourless KoukuSaydon body a full madness gauge turns the player into. */
 	enum class PLAYER_MADNESS_FORM : std::uint8_t
@@ -777,6 +831,8 @@ namespace LostArk::Shared
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = 0;
 		PLAYER_MADNESS_FORM eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
+		std::uint8_t iMarioStage = 0u;
 		bool isCombatReady = true;
 		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
 		late Client present the remaining window without deciding its lifetime. */

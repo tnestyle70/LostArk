@@ -19,6 +19,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 using namespace LostArk::Shared;
@@ -2231,6 +2232,238 @@ namespace
 			"Teleport packet identities append without renumbering peers");
 	}
 
+	void Test_MarioMoveProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_MARIO_MOVE request{};
+		request.iClientSequence = 17u;
+		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		for (const auto direction : { MARIO_DIRECTION::STOP, MARIO_DIRECTION::LEFT, MARIO_DIRECTION::RIGHT })
+		{
+			request.eDirection = direction;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 7u,
+				"Mario movement carries only a left/right/stop intent, not a Client-authored axis");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_MARIO_MOVE decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+				decoded.iClientSequence == request.iClientSequence && decoded.eWorldId == request.eWorldId &&
+				decoded.eDirection == request.eDirection,
+				"Mario move and key-release stop round trip");
+			for (std::size_t size = 0u; size < writer.Get_Buffer().size(); ++size)
+			{
+				const std::vector<std::uint8_t> truncated(writer.Get_Buffer().begin(),
+					writer.Get_Buffer().begin() + size);
+				CPacketReader shortReader{ truncated };
+				auto unchanged = request;
+				testRunner.Require(!Read_Message(shortReader, unchanged) &&
+					unchanged.iClientSequence == request.iClientSequence && unchanged.eWorldId == request.eWorldId &&
+					unchanged.eDirection == request.eDirection,
+					"Truncated Mario move preserves output");
+			}
+		}
+		for (int invalidCase = 0; invalidCase < 4; ++invalidCase)
+		{
+			auto bad = request;
+			if (invalidCase == 0) bad.iClientSequence = 0u;
+			if (invalidCase == 1) bad.eWorldId = WORLD_ID::END;
+			if (invalidCase == 2) bad.eDirection = MARIO_DIRECTION::END;
+			if (invalidCase == 3) bad.eDirection = static_cast<MARIO_DIRECTION>(255u);
+			CPacketWriter rejectedWriter;
+			testRunner.Require(!Write_Message(rejectedWriter, bad) && rejectedWriter.Get_Buffer().empty(),
+				"Mario move rejects invalid sequence world or direction enum without writing");
+			CPacketWriter raw;
+			raw.Write_U32(bad.iClientSequence);
+			raw.Write_U16(static_cast<std::uint16_t>(bad.eWorldId));
+			raw.Write_U8(static_cast<std::uint8_t>(bad.eDirection));
+			CPacketReader reader{ raw.Get_Buffer() };
+			auto unchanged = request;
+			testRunner.Require(!Read_Message(reader, unchanged) &&
+				unchanged.iClientSequence == request.iClientSequence && unchanged.eWorldId == request.eWorldId &&
+				unchanged.eDirection == request.eDirection,
+				"Malformed Mario direction or stop preserves output");
+		}
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 63u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
+			"Mario direction packet retains its appended identity in protocol 63");
+	}
+
+	void Test_MarioStageSnapshotProtocol(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_SNAPSHOT snapshot{};
+		snapshot.iServerTick = 10u;
+		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		PLAYER_SNAPSHOT player{};
+		player.iNetEntityId = 100u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		snapshot.Players.push_back(player);
+		std::vector<std::uint8_t> baseline;
+		testRunner.Require(Build_WorldSnapshotPayload(snapshot, baseline), "Mario stage snapshot baseline is valid");
+		std::size_t marioStageByte = baseline.size();
+		for (std::uint8_t stage = 0u; stage <= 4u; ++stage)
+		{
+			snapshot.Players[0].iMarioStage = stage;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, snapshot), "Mario snapshot writes every supported stage");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+				decoded.Players.size() == 1u && decoded.Players[0].iMarioStage == stage &&
+				decoded.Players[0].eMadnessForm == PLAYER_MADNESS_FORM::CLOWN,
+				"Mario stage and existing clown form round trip independently");
+			if (stage == 1u && writer.Get_Buffer().size() == baseline.size())
+			{
+				std::size_t differences = 0u;
+				for (std::size_t byte = 0u; byte < baseline.size(); ++byte)
+					if (baseline[byte] != writer.Get_Buffer()[byte]) { ++differences; marioStageByte = byte; }
+				testRunner.Require(differences == 1u, "Mario stage owns exactly one wire byte");
+			}
+		}
+		snapshot.Players[0].iMarioStage = 5u;
+		CPacketWriter rejectedWriter;
+		testRunner.Require(!Write_Message(rejectedWriter, snapshot) && rejectedWriter.Get_Buffer().empty(),
+			"Out-of-range Mario stage refuses the entire snapshot before writing");
+		testRunner.Require(marioStageByte < baseline.size(), "Mario stage wire byte was identified");
+		if (marioStageByte < baseline.size())
+		{
+			baseline[marioStageByte] = 5u;
+			CPacketReader malformed{ baseline };
+			S2C_WORLD_SNAPSHOT unchanged{};
+			unchanged.iServerTick = 99u;
+			unchanged.Players.push_back(player);
+			unchanged.Players[0].iMarioStage = 3u;
+			testRunner.Require(!Read_Message(malformed, unchanged) && unchanged.iServerTick == 99u &&
+				unchanged.Players.size() == 1u && unchanged.Players[0].iMarioStage == 3u,
+				"Unknown Mario stage preserves the previous snapshot");
+		}
+	}
+
+	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_DEBUG_MARIO_JUMP request{};
+		request.iClientSequence = 17u;
+		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		request.eDirection = MARIO_DIRECTION::RIGHT;
+		CPacketWriter writer;
+		testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 7u,
+			"Mario jump carries sequence world and left/right intent only");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_DEBUG_MARIO_JUMP decoded{};
+		testRunner.Require(Read_Message(reader, decoded) &&
+			decoded.iClientSequence == request.iClientSequence &&
+			decoded.eWorldId == request.eWorldId && decoded.eDirection == request.eDirection &&
+			reader.Get_RemainingSize() == 0u,
+			"Mario jump request round trip");
+		auto leftRequest = request;
+		leftRequest.eDirection = MARIO_DIRECTION::LEFT;
+		CPacketWriter leftWriter;
+		testRunner.Require(Write_Message(leftWriter, leftRequest), "Mario jump also accepts left intent");
+		CPacketReader leftReader{ leftWriter.Get_Buffer() };
+		C2S_DEBUG_MARIO_JUMP leftDecoded{};
+		testRunner.Require(Read_Message(leftReader, leftDecoded) &&
+			leftDecoded.eDirection == MARIO_DIRECTION::LEFT && leftReader.Get_RemainingSize() == 0u,
+			"Mario left jump round trip");
+
+		const auto rejectRequest = [&](const C2S_DEBUG_MARIO_JUMP& bad)
+		{
+			CPacketWriter rejectedWriter;
+			testRunner.Require(!Write_Message(rejectedWriter, bad) &&
+				rejectedWriter.Get_Buffer().empty(), "Mario invalid request writer is atomic");
+			CPacketWriter raw;
+			raw.Write_U32(bad.iClientSequence);
+			raw.Write_U16(static_cast<std::uint16_t>(bad.eWorldId));
+			raw.Write_U8(static_cast<std::uint8_t>(bad.eDirection));
+			CPacketReader badReader{ raw.Get_Buffer() };
+			C2S_DEBUG_MARIO_JUMP unchanged = request;
+			testRunner.Require(!Read_Message(badReader, unchanged) &&
+				unchanged.iClientSequence == request.iClientSequence &&
+				unchanged.eWorldId == request.eWorldId && unchanged.eDirection == request.eDirection,
+				"Mario invalid request preserves caller output");
+		};
+		auto bad = request;
+		bad.iClientSequence = 0u;
+		rejectRequest(bad);
+		bad = request;
+		bad.eWorldId = WORLD_ID::END;
+		rejectRequest(bad);
+		bad = request;
+		bad.eDirection = MARIO_DIRECTION::STOP;
+		rejectRequest(bad);
+		bad = request;
+		bad.eDirection = MARIO_DIRECTION::END;
+		rejectRequest(bad);
+		bad = request;
+		bad.eDirection = static_cast<MARIO_DIRECTION>(255u);
+		rejectRequest(bad);
+		for (std::size_t size = 0u; size < writer.Get_Buffer().size(); ++size)
+		{
+			const std::vector<std::uint8_t> truncated(writer.Get_Buffer().begin(),
+				writer.Get_Buffer().begin() + size);
+			CPacketReader shortReader{ truncated };
+			auto unchanged = request;
+			testRunner.Require(!Read_Message(shortReader, unchanged) &&
+				unchanged.iClientSequence == request.iClientSequence &&
+				unchanged.eWorldId == request.eWorldId && unchanged.eDirection == request.eDirection,
+				"Every truncated Mario request preserves output");
+		}
+
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(DEBUG_MARIO_JUMP_RESULT::END); ++reason)
+		{
+			S2C_DEBUG_MARIO_JUMP_RESULT result{};
+			result.iClientSequence = request.iClientSequence;
+			result.eWorldId = request.eWorldId;
+			result.eResult = static_cast<DEBUG_MARIO_JUMP_RESULT>(reason);
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				resultWriter.Get_Buffer().size() == 7u, "Mario verdict is bounded with no position payload");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_DEBUG_MARIO_JUMP_RESULT verdict{};
+			testRunner.Require(Read_Message(resultReader, verdict) &&
+				verdict.iClientSequence == result.iClientSequence && verdict.eWorldId == result.eWorldId &&
+				verdict.eResult == result.eResult && resultReader.Get_RemainingSize() == 0u,
+				"Mario verdict round trip for every typed outcome including Release disabled");
+		}
+		for (int invalidCase = 0; invalidCase < 4; ++invalidCase)
+		{
+			S2C_DEBUG_MARIO_JUMP_RESULT badResult{};
+			badResult.iClientSequence = request.iClientSequence;
+			badResult.eWorldId = request.eWorldId;
+			badResult.eResult = DEBUG_MARIO_JUMP_RESULT::ACCEPTED;
+			if (invalidCase == 0) badResult.iClientSequence = 0u;
+			if (invalidCase == 1) badResult.eWorldId = WORLD_ID::END;
+			if (invalidCase == 2) badResult.eResult = DEBUG_MARIO_JUMP_RESULT::END;
+			CPacketWriter raw;
+			raw.Write_U32(badResult.iClientSequence);
+			raw.Write_U16(static_cast<std::uint16_t>(badResult.eWorldId));
+			if (invalidCase != 3) raw.Write_U8(static_cast<std::uint8_t>(badResult.eResult));
+			if (invalidCase != 3)
+			{
+				CPacketWriter rejectedWriter;
+				testRunner.Require(!Write_Message(rejectedWriter, badResult) &&
+					rejectedWriter.Get_Buffer().empty(), "Mario invalid verdict writer is atomic");
+			}
+			CPacketReader invalidReader{ raw.Get_Buffer() };
+			S2C_DEBUG_MARIO_JUMP_RESULT unchanged{};
+			unchanged.iClientSequence = 99u;
+			unchanged.eWorldId = WORLD_ID::BERN;
+			testRunner.Require(!Read_Message(invalidReader, unchanged) &&
+				unchanged.iClientSequence == 99u && unchanged.eWorldId == WORLD_ID::BERN &&
+				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
+				"Mario invalid or truncated verdict preserves caller output");
+		}
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 63u &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
+			"Mario wire v63 preserves jump packet identities without renumbering existing peers");
+	}
+
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
 	{
 		C2S_DEBUG_SET_MADNESS_FORM request{};
@@ -2399,8 +2632,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(59u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 59");
+			testRunner.Require(63u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 63");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2759,10 +2992,12 @@ namespace
 		/* Protocol 59 adds the KoukuSaydon madness gauge pair and the typed
 		avatar form to every player row. */
 		constexpr std::size_t playerMadnessBytes = 4 + 4 + 1;
+		// Protocol 62 appends the Server-owned Mario stage to each player row.
+		constexpr std::size_t playerMarioStageBytes = 1;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes;
+			playerMadnessBytes + playerMarioStageBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -5538,8 +5773,8 @@ namespace
 		}
 
 		testRunner.Require(
-			59u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 59");
+			63u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 63");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5566,8 +5801,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			59u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 59");
+			63u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 63");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6793,6 +7028,18 @@ namespace
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--mario-controls-only")
+	{
+		Test_MarioMoveProtocol(testRunner);
+		Test_MarioStageSnapshotProtocol(testRunner);
+		Test_DebugMarioJumpProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-mario-jump-only")
+	{
+		Test_DebugMarioJumpProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-teleport-only")
 	{
 		Test_DebugTeleportPositionProtocol(testRunner);
@@ -6825,7 +7072,10 @@ int main(const int argumentCount, char* arguments[])
 	Test_KakulAuthoringCommandProtocol(testRunner);
 	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_DebugMadnessFormProtocol(testRunner);
+	Test_DebugMarioJumpProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
+	Test_MarioMoveProtocol(testRunner);
+	Test_MarioStageSnapshotProtocol(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 	Test_WorldDestructionProtocol(testRunner);

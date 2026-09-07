@@ -511,7 +511,9 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		outX,
 		outY,
 		outZ,
-		outWasBlocked);
+		outWasBlocked,
+		LostArk::Shared::INVALID_NET_ENTITY_ID,
+		0u == player.iMarioStage);
 }
 
 bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
@@ -528,7 +530,8 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 	float& outY,
 	float& outZ,
 	bool& outWasBlocked,
-	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
+	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId,
+	const bool allowBodySlide) const
 {
 	if (!std::isfinite(startX) ||
 		!std::isfinite(startY) ||
@@ -610,7 +613,7 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 	lets the rest of the step slide along its tangent: drop the part of the
 	remaining displacement that points into the body and sweep once more, so
 	a walk past a monster wraps around it instead of parking against it. */
-	if (nullptr == hitBody || earliestBoxHit <= earliestBodyHit)
+	if (!allowBodySlide || nullptr == hitBody || earliestBoxHit <= earliestBodyHit)
 		return true;
 	const float remainingRatio = 1.f - safeRatio;
 	const float remainingX = deltaX * remainingRatio;

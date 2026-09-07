@@ -47,6 +47,7 @@ namespace Client
 		std::uint32_t iMaximumMadness = 0;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
+		std::uint8_t iMarioStage = 0u;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown

@@ -476,6 +476,8 @@ namespace Client
 		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
 		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
+		void Set_DebugMarioJumpEnabled(bool_t enabled) { m_debugMarioJumpEnabled = enabled; }
+		const std::string& Get_DebugMarioJumpStatus() const { return m_debugMarioJumpStatus; }
 #endif
 
 		/* One-shot: consumed (cleared) by the next Update() regardless of
@@ -510,8 +512,10 @@ namespace Client
 		own ground-plane pick -- e.g. walking the local character up to an
 		NPC that was right-clicked from outside interaction range. */
 		bool_t Request_MoveToPoint(const float3_t& goal);
+		// Presentation basis only. The replicated Mario stage owns input mode.
 
 	private:
+		bool_t Update_MarioControls(bool_t gameplayCommandsEnabled);
 		//실질적인 navigation picking을 통한 이동으로 교체
 		bool_t Should_SendMoveGoal(
 			bool_t wasRightMouseDown,
@@ -551,11 +555,16 @@ namespace Client
 		void Cancel_GroundTargeting();
 #ifdef _DEBUG
 		void Update_DebugPlayerPlacement(bool_t enabled);
+		bool_t Update_DebugMarioJump(bool_t gameplayCommandsEnabled);
 #endif
 
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
+		std::int8_t m_iMarioFacing = 1;
+		std::int8_t m_iLastMarioMoveDirection = 0;
+		std::uint32_t m_iNextMarioMoveSequence = 1u;
+		std::chrono::steady_clock::time_point m_MarioMoveSentAt{};
 
 		bool_t m_wasInteractKeyDown = false;
 		std::uint32_t m_iNextMoveSequence = 1;
@@ -606,6 +615,12 @@ namespace Client
 		std::uint32_t m_nextDebugMadnessFormSequence = 1u;
 		std::uint32_t m_pendingDebugMadnessFormSequence = 0u;
 		std::string m_debugMadnessFormStatus;
+		bool_t m_debugMarioJumpEnabled = false;
+		bool_t m_wasDebugMarioUpDown = false;
+		std::uint32_t m_nextDebugMarioJumpSequence = 1u;
+		std::uint32_t m_pendingDebugMarioJumpSequence = 0u;
+		std::chrono::steady_clock::time_point m_debugMarioJumpSentAt{};
+		std::string m_debugMarioJumpStatus;
 #endif
 	};
 }

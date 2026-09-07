@@ -129,13 +129,19 @@ Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Hei
 Server room admission이 실패한다. publisher는 실제 bake 결과, player spawn/trigger 연결성, cell
 통계와 Area별 step policy를 함께 검증한다.
 
-Navigation `Walkability` 브러시는 높이가 해석된 셀에 대해 `Block`, `Force Walkable`,
-`Reset` 세 명령을 제공한다. `Block`과 `Force Walkable`은 bake 결과보다 우선하는 수동
-override이며 `Reset`은 해당 셀의 walkability와 명시적 높이를 bake 결과 상속으로 되돌린다.
+Navigation `Walkability` 브러시는 `Block`, `Force Walkable`, `Reset`을 제공한다.
+`Force Walkable`은 선택한 grid 범위 안의 실제 렌더 표면을 피킹해, bake가 놓친 빈 셀에도
+명시적 높이를 가진 통행 셀을 추가할 수 있다. 기존 높이가 있는 셀은 기본적으로 그 높이를 유지한다.
+`Use Picked Height`를 명시적으로 켜면 기존 셀도 클릭한 표면 높이로 교체한다. 브러시 범위에 같은
+높이가 적용되므로 겹친 층이나 경사진 곳은 Brush 0부터 확인한다. 피킹 실패/선택 grid 밖/잘못된
+높이는 상태 문구로 알리고 셀을 바꾸지 않는다. Walkability에서는 live 셀을 표시하고 미저장 Bake
+Preview는 Bake 모드에서만 표시한다. Client 제품 아레나는 열람용이며 편집은 Lobby → Test에서 한다.
+
+수동 override는 bake보다 우선하며 `Reset`은 walkability와 명시적 높이를 원래 bake 상태로 되돌린다.
 `.navpaint` version 3은 `x z BLOCKED|WALKABLE [height]` 또는 `x z HEIGHT height`를 저장한다.
-명시적 높이는 bake가 surface를 해석한 셀에만 허용된다. 기존 version 2의
-`x z BLOCKED|WALKABLE`과 version 1의 `x z`(`BLOCKED`)도 호환 로드한다. 높이가 없는
-`NO_SURFACE` 셀은 강제로 이동 가능하게 만들 수 없다.
+`WALKABLE height`는 원래 `NO_SURFACE`였던 셀도 명시적인 바닥으로 만들 수 있다. 기존 version 2의
+`x z BLOCKED|WALKABLE`과 version 1의 `x z`(`BLOCKED`)도 호환 로드한다. 저장 후 제품 반영에는
+Navigation publisher 실행과 Server 재시작이 필요하다. 재베이크 없이 paint만 저장·배포할 수 있다.
 
 MapTool은 Client `.navgrid`/`.navpolicy`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
 Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은

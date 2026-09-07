@@ -6837,6 +6837,9 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
 	ImGui::TextWrapped("%s",
 		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
+			ImGui::SeparatorText("Mario Controls (Debug Jump)");
+			ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
+	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
 
 	/* Madness avatar: the Server owns the form and the snapshot swaps the
 	   body, so the buttons only submit intent and follow the replicated form. */

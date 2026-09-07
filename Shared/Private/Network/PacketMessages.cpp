@@ -118,6 +118,7 @@ namespace
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
 			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
+			snapshot.iMarioStage <= 4u &&
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
@@ -2159,6 +2160,96 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_MARIO_MOVE& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eDirection >= MARIO_DIRECTION::END)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eDirection));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_MARIO_MOVE& message)
+{
+	C2S_MARIO_MOVE decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t direction = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(direction))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eDirection = static_cast<MARIO_DIRECTION>(direction);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eDirection >= MARIO_DIRECTION::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_MARIO_JUMP& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		(message.eDirection != MARIO_DIRECTION::LEFT && message.eDirection != MARIO_DIRECTION::RIGHT))
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eDirection));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_MARIO_JUMP& message)
+{
+	C2S_DEBUG_MARIO_JUMP decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t direction = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(direction))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eDirection = static_cast<MARIO_DIRECTION>(direction);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		(decoded.eDirection != MARIO_DIRECTION::LEFT && decoded.eDirection != MARIO_DIRECTION::RIGHT))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_DEBUG_MARIO_JUMP_RESULT& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= DEBUG_MARIO_JUMP_RESULT::END)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_DEBUG_MARIO_JUMP_RESULT& message)
+{
+	S2C_DEBUG_MARIO_JUMP_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<DEBUG_MARIO_JUMP_RESULT>(result);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= DEBUG_MARIO_JUMP_RESULT::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -2411,6 +2502,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iCurrentMadness);
 		writer.Write_U32(player.iMaximumMadness);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eMadnessForm));
+		writer.Write_U8(player.iMarioStage);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
@@ -2614,6 +2706,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumMadness) ||
 			!reader.Read_U8(rawMadnessForm) ||
 			rawMadnessForm >= static_cast<std::uint8_t>(PLAYER_MADNESS_FORM::END) ||
+			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(rawPatternBound) ||

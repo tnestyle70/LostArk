@@ -23,6 +23,10 @@ public:
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) override;
 	bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) override;
+	bool Request_DebugMarioJump(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction) override;
+	bool Request_MarioMove(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction) override;
+	bool Consume_DebugMarioJumpResult(
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result) override;
 	bool Request_DebugMadnessForm(
 		std::uint32_t requestSequence,
 		LostArk::Shared::PLAYER_MADNESS_FORM form) override;

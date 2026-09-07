@@ -632,6 +632,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Mario4.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json" />

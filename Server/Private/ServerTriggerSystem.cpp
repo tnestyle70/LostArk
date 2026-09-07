@@ -121,6 +121,8 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
 	{
 		fired = Begin_MovePlayer(player, action, actionStartTick);
+		if (fired)
+			player.TriggerMove.strSourcePlacementId = trigger.Definition.strPlacementId;
 	}
 	else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
 	{
@@ -334,7 +336,13 @@ bool LostArk::Server::CServerTriggerSystem::Contains(
 	const RUNTIME_TRIGGER& trigger,
 	const SERVER_PLAYER& player)
 {
-	const WORLD_BOOTSTRAP_PLACEMENT& box = trigger.Definition;
+	return Contains_Placement(trigger.Definition, player);
+}
+
+bool LostArk::Server::CServerTriggerSystem::Contains_Placement(
+	const WORLD_BOOTSTRAP_PLACEMENT& box,
+	const SERVER_PLAYER& player)
+{
 	const float deltaX = player.fPositionX - box.fPositionX;
 	const float deltaZ = player.fPositionZ - box.fPositionZ;
 	const float yaw = box.fYawDegrees * DEGREES_TO_RADIANS;
@@ -374,6 +382,7 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.iComboStage = 0;
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
+	player.TriggerMove = {};
 	player.TriggerMove.fStartX = player.fPositionX;
 	player.TriggerMove.fStartY = player.fPositionY;
 	player.TriggerMove.fStartZ = player.fPositionZ;
