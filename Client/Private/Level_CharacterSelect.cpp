@@ -41,11 +41,6 @@ namespace
 	constexpr f32_t ARENA_INITIAL_TARGET_X = -772.017f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Y = -142.55f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Z = 197.538f;
-	constexpr f32_t CHARACTER_SELECT_CAMERA_SIDE = 0.4f;
-	constexpr f32_t CHARACTER_SELECT_CAMERA_HEIGHT = 7.5f;
-	constexpr f32_t CHARACTER_SELECT_CAMERA_DISTANCE = 4.5f;
-	constexpr f32_t CHARACTER_SELECT_CAMERA_LOOK_HEIGHT = 1.05f;
-	constexpr f32_t CHARACTER_SELECT_CAMERA_FOV_Y = 45.f;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
@@ -85,19 +80,6 @@ namespace
 		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
 		default: return "Unknown";
 		}
-	}
-
-	float3_t CharacterSelectCameraPositionOffset()
-	{
-		return float3_t(
-			CHARACTER_SELECT_CAMERA_SIDE,
-			CHARACTER_SELECT_CAMERA_HEIGHT,
-			CHARACTER_SELECT_CAMERA_DISTANCE);
-	}
-
-	float3_t CharacterSelectCameraLookOffset()
-	{
-		return float3_t(0.f, CHARACTER_SELECT_CAMERA_LOOK_HEIGHT, 0.f);
 	}
 
 	const char_t* Get_StageName(const LOBBY_STAGE stage)
@@ -316,9 +298,15 @@ HRESULT CLevel_CharacterSelect::Ready_Lights()
 
 HRESULT CLevel_CharacterSelect::Ready_Camera()
 {
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::CHARACTER_SELECT,
+		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
+	{
+		OutputDebugStringA(("[Level_CharacterSelect][FollowCamera] " +
+			m_strFollowCameraProfileStatus + "\n").c_str());
+	}
 	CCamera_Free::CAMERA_FREE_DESC desc{};
-	const float3_t positionOffset = CharacterSelectCameraPositionOffset();
-	const float3_t lookOffset = CharacterSelectCameraLookOffset();
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	desc.vEye = float3_t(
 		ARENA_INITIAL_TARGET_X + positionOffset.x,
 		ARENA_INITIAL_TARGET_Y + positionOffset.y,
@@ -327,7 +315,7 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 		ARENA_INITIAL_TARGET_X + lookOffset.x,
 		ARENA_INITIAL_TARGET_Y + lookOffset.y,
 		ARENA_INITIAL_TARGET_Z + lookOffset.z);
-	desc.fFovy = CHARACTER_SELECT_CAMERA_FOV_Y;
+	desc.fFovy = m_FollowCameraProfile.fovYDegrees;
 	desc.fNear = 0.1f;
 	desc.fFar = 2000.f;
 	desc.fSpeedPerSec = 20.f;
@@ -336,7 +324,8 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 	desc.pFollowTarget = nullptr;
 	desc.vPositionOffset = positionOffset;
 	desc.vLookOffset = lookOffset;
-	desc.fFollowResponse = 18.f;
+	desc.fFollowResponse = m_FollowCameraProfile.followResponse;
+	desc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
 	desc.isFollowEnabled = false;
 	desc.allowCapturedKeyboardInput = true;
 
@@ -366,6 +355,25 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 	}
 	m_pCameraTarget.reset();
 	return S_OK;
+}
+
+bool_t CLevel_CharacterSelect::Set_FollowCameraProfile(
+	const ARENA_CAMERA_PROFILE& profile,
+	std::string& outStatus)
+{
+	if (!CArenaCameraProfile::Validate(profile, outStatus))
+		return false;
+	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
+		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
+		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+	{
+		outStatus = "The active follow camera could not apply these settings.";
+		return false;
+	}
+	m_FollowCameraProfile = profile;
+	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
+	m_strFollowCameraProfileStatus = outStatus;
+	return true;
 }
 
 HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
@@ -414,8 +422,7 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 }
 
 bool_t CLevel_CharacterSelect::Bind_CameraTarget(
-	const shared_ptr<CCharacter>& character,
-	const float3_t& positionOffset)
+	const shared_ptr<CCharacter>& character)
 {
 	if (nullptr == m_pCamera || nullptr == character ||
 		nullptr == character->Get_Transform())
@@ -426,7 +433,6 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 		return true;
 
 	m_pCamera->Set_FollowTarget(character->Get_Transform());
-	m_pCamera->Set_PositionOffset(positionOffset);
 	m_pCamera->Set_FollowEnabled(true);
 	m_pCameraTarget = character;
 	return true;
@@ -709,8 +715,7 @@ bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
 	{
 		CAnimationTargetService::Unbind(m_pActiveCharacter);
 		CAnimationTargetService::Bind(localCharacter);
-		if (!Bind_CameraTarget(
-			localCharacter, CharacterSelectCameraPositionOffset()))
+		if (!Bind_CameraTarget(localCharacter))
 		{
 			return false;
 		}

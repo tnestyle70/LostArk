@@ -469,9 +469,30 @@ gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입�
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
-MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 point-light presentation 계약이다.
+KoukuSaydon의 F1 World → `World Object Tool`은 저장 Object/상태 목록, Object Detail,
+Composition과 같은 timeline, 하단 Physical Resources 폴더 선택을 제공한다. 모델과 DDS는
+Effect/Map/Deploy/Character 실제 Resources-relative 경로로 선택하며 파일을 상태별로 복제하지 않는다.
+정본은 `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json`
+formatVersion 3이다. `Save` 후 `Publish Area`가 기존 Map publisher로 runtime을 배포한다.
+기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
+`objectResources`는 CModel 모델·diffuse·기본 scale 또는 기존 sequence alias를,
+template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
+WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
+Action Workbench World Resources에서 저장 상태를 Append하면 box `durationMs`를 Server가
+protocol 63 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리하고 placement를 복구한다.
+충돌·피해 판정은 기존 Server gameplay 경계에 남는다. Client/UI 실행과 화면 판정은 사용자가 한다.
+
+MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
 source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
 `Client/Bin/DataFiles/Map/<AreaId>.maplights.json`이며 둘 중 하나만 선언할 수 없다.
+쿠크 Area의 formatVersion 2는 Directional/Point/Spot, 이름·enabled·위치·회전·cone·색·밝기를 저장하며 빈 목록도 허용한다.
+Valtan의 imported v1 22개는 읽기 전용으로 유지한다. F1 Rendering Workbench 상단에서 Level을 선택한 뒤
+Light Resources의 Map/Character/Boss 카테고리에서 저작한다. Default Directional Light는 선택 Scene Profile의
+기존 광원을 같은 Detail에서 편집·저장하는 행이며, maplights에 두 번째 기본 방향광을 복제하지 않는다.
+Character/Boss 재사용 조명은 `Data/Rendering/Authored/LightResources.json`을 저장하고
+`Tools/RenderingPipeline/Publish-LightResources.ps1 -Mode Publish`로 `Client/Bin/DataFiles/Rendering/LightResources.runtime.json`에 배포한다.
+쿠크 Action Workbench의 Light 탭은 이 리소스와 같은 Area의 v2 map light ID를 참조해 lifetime과 Map/Character/Boss anchor를 배치한다.
+Level base profile의 `qualityOverride`는 패턴 Scene Profile 전환 중에도 해당 Level의 품질 정본으로 유지한다.
 `Publish-MapAuthoring.ps1`이 visual placement와 같은 transaction으로 strict validate/publish하고,
 MapTool은 source를, 제품 Level은 runtime을 기존 `CPresentation_Manager` transient light 경로로 제출한다.
 Valtan은 이 pair를 필수로 선언하며 누락·손상 시 이전 editor Area 보존 또는 제품 Level 진입 실패로

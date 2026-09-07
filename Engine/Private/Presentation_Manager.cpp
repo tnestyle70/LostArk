@@ -20,6 +20,38 @@ namespace
 		return std::isfinite(Value.x) && std::isfinite(Value.y);
 	}
 
+	bool IsValidTransientLight(const LIGHT_DESC& Light)
+	{
+		if ((LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
+			LIGHT::DIRECTIONAL != Light.eType) ||
+			!std::isfinite(Light.fFalloffExponent) || Light.fFalloffExponent <= 0.f ||
+			!IsFinite4(Light.vDiffuse) || !IsFinite4(Light.vAmbient) ||
+			!IsFinite4(Light.vSpecular) ||
+			Light.vDiffuse.x < 0.f || Light.vDiffuse.y < 0.f || Light.vDiffuse.z < 0.f ||
+			Light.vAmbient.x < 0.f || Light.vAmbient.y < 0.f || Light.vAmbient.z < 0.f ||
+			Light.vSpecular.x < 0.f || Light.vSpecular.y < 0.f || Light.vSpecular.z < 0.f)
+			return false;
+		if (LIGHT::DIRECTIONAL != Light.eType &&
+			(!IsFinite4(Light.vPosition) || !std::isfinite(Light.fRange) ||
+			 Light.fRange <= 0.f))
+			return false;
+		if (LIGHT::POINT != Light.eType)
+		{
+			const float fDirectionLengthSquared =
+				Light.vDirection.x * Light.vDirection.x +
+				Light.vDirection.y * Light.vDirection.y +
+				Light.vDirection.z * Light.vDirection.z;
+			if (!IsFinite4(Light.vDirection) ||
+				!std::isfinite(fDirectionLengthSquared) ||
+				fDirectionLengthSquared <= 0.000001f)
+				return false;
+		}
+		return LIGHT::SPOT != Light.eType ||
+			(std::isfinite(Light.fSpotInnerCos) && std::isfinite(Light.fSpotOuterCos) &&
+			 Light.fSpotOuterCos > 0.f && Light.fSpotOuterCos <= Light.fSpotInnerCos &&
+			 Light.fSpotInnerCos < 1.f);
+	}
+
 	bool IsSrgbFormat(const DXGI_FORMAT eFormat)
 	{
 		switch (eFormat)
@@ -299,13 +331,7 @@ HRESULT CPresentation_Manager::Add_TransientLight(
 	{
 		hResult = S_FALSE;
 	}
-	else if (LIGHT::POINT != LightDesc.eType ||
-		!std::isfinite(LightDesc.fRange) || LightDesc.fRange <= 0.f ||
-		!std::isfinite(LightDesc.fFalloffExponent) ||
-		LightDesc.fFalloffExponent <= 0.f ||
-		!IsFinite4(LightDesc.vPosition) ||
-		!IsFinite4(LightDesc.vDiffuse) ||
-		!IsFinite4(LightDesc.vAmbient))
+	else if (!IsValidTransientLight(LightDesc))
 	{
 		hResult = E_FAIL;
 		m_eLastFailureScope =

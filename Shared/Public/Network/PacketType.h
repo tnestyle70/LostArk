@@ -36,7 +36,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 59;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 63; // World sequence play carries its pattern-box lifetime.
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -262,7 +262,15 @@ namespace LostArk::Shared
 		// Debug KoukuSaydon madness form: the F1 clown/player avatar toggle.
 		// Release keeps the type known and answers with a typed rejection.
 		C2S_DEBUG_SET_MADNESS_FORM,
-		S2C_DEBUG_SET_MADNESS_FORM_RESULT
+		S2C_DEBUG_SET_MADNESS_FORM_RESULT,
+
+		// KoukuSaydon interaction HUD: one quick-slot press while a Server-owned
+		// interaction mode is active, the Debug mode override, and the Server-clock
+		// scene profile cue. Append-only; Release keeps them known.
+		C2S_INTERACTION_SLOT,
+		C2S_DEBUG_SET_KOUKU_HUD_MODE,
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT,
+		S2C_SCENE_PROFILE_APPLY
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -347,6 +355,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
 		case PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM:
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+		case PACKET_TYPE::C2S_INTERACTION_SLOT:
+		case PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE:
+		case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+		case PACKET_TYPE::S2C_SCENE_PROFILE_APPLY:
 			return true;
 		default:
 			return  false;

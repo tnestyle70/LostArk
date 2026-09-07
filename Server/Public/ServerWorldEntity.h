@@ -148,6 +148,9 @@ namespace LostArk::Server
 		foreground loop while the portal occurrence runs on an independent clock. */
 		BOSS_PATTERN_SEQUENCE_DEFINITION GhostPhasePatternSequence;
 		bool bGhostPhasePatternLoopActive = false;
+		bool bKoukuGazeClone = false;
+		std::uint32_t iKoukuCloneOwnerSequence = 0u;
+		std::uint32_t iKoukuCloneEndTick = 0u;
 		/* Auxiliary ghosts use their own deterministic occurrence identity and
 		next-spawn edge. Neither value is derived from the primary attack cursor,
 		portal cadence, entity allocation order, or the wall clock. */
@@ -278,6 +281,7 @@ namespace LostArk::Server
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
 		std::uint32_t iPatternSequence = 0;
+		std::uint32_t iPatternStartTick = 0;
 		SERVER_BOSS_PATTERN_TERMINAL_RECEIPT PatternTerminalReceipt;
 		SERVER_BOSS_PATTERN_FOLLOWUP PendingPatternFollowup;
 		/* Zero for a selector-owned occurrence; one-based for a pattern entered
@@ -374,6 +378,12 @@ namespace LostArk::Server
 		resolve to nothing while it is set, so the raid answers the mechanic
 		instead of outracing it. Cleared when the pattern ends. */
 		bool bPatternInvulnerable = false;
+		/* KoukuSaydon stagger window: while raised, player hits whose caster
+		stands inside the frontal arc are reflected back at that caster instead
+		of landing. Owned by CKoukuSaydonLogicRuntime for one window. */
+		bool bKoukuShieldActive = false;
+		float fKoukuShieldArcDegrees = 0.f;
+		float fKoukuShieldNormalYawOffsetDegrees = 0.f;
 		/* Raised by the hit that took a plate to zero durability. The brain owns
 		stage transitions, so it consumes this on its next tick and enters the
 		PART_BREAK stage; the damage path never moves the boss itself. */

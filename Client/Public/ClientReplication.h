@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
+#include "KoukuSaydonPresentationPlayer.h"
 #include "CombatObjectProjectionRuntime.h"
 #include "EstherActionSoundCueDocument.h"
 #include "NetObjectRegistry.h"
@@ -343,6 +344,8 @@ namespace Client
 			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
 		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
 			Commit_DeferredLocalCharacterClassReplacement();
+		void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
+			std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const;
 		void Collect_PlayerViews(
 			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
 		/* Minimap read model (CMinimapView): the local character's ground position and facing,
@@ -426,9 +429,11 @@ namespace Client
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
 		/* Server-decided world sequence starts, in arrival order. The caller
 		   takes them so one start is never played twice. */
-		std::vector<std::string> Consume_WorldSequencePlays()
+		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> Consume_WorldSequencePlays()
 		{
-			return std::move(m_PendingWorldSequencePlays);
+			auto pending = std::move(m_PendingWorldSequencePlays);
+			m_PendingWorldSequencePlays.clear();
+			return pending;
 		}
 		bool Try_Consume_PartyTransferResult(
 			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
@@ -605,6 +610,7 @@ namespace Client
 		bool m_hasFatalWorldDestructionFailure = false;
 		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
+		std::vector<LostArk::Shared::PLAYER_SNAPSHOT> m_KoukuCardSnapshots;
 		struct DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT final
 		{
 			bool_t isPending = false;
@@ -634,7 +640,7 @@ namespace Client
 		LostArk::Shared::S2C_RAID_ENTRY_PROMPT m_PendingRaidEntryPrompt{};
 		bool m_hasPendingRaidEntryVote = false;
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
-		std::vector<std::string> m_PendingWorldSequencePlays;
+		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingWorldSequencePlays;
 
 		struct CHAT_BUBBLE_ENTRY
 		{
@@ -654,6 +660,7 @@ namespace Client
 
 		struct WORLD_ENTITY_PRESENTATION
 		{
+			LostArk::Shared::WORLD_ENTITY_SNAPSHOT KoukuSnapshot{};
 			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
 			LostArk::Shared::WORLD_ENTITY_KIND eKind =

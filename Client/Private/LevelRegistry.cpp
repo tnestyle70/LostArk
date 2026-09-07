@@ -157,7 +157,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"raid.kakul-saydon.arena",
 			"LV_LUT_MIDNIGHTC_ED",
-			"scene.development.neutral.v1",
+			"scene.kakulsaydon.g1.base.v1",
 			MakeFullMapScope(),
 			CreateKakulSaydonArena,
 			&CLoader::Ready_For_KakulSaydonArena

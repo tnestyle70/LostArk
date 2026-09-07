@@ -8,10 +8,15 @@
 namespace Client
 {
 
+/* The Kouku entries are the arena gates: one authored composition serves
+   them all, so they share a session and only change which bosses it lists. */
 enum class COMPOSITION_WORKBENCH_BOSS : std::uint8_t
 {
     VALTAN,
     KOUKU_SAYDON,
+    KOUKU_SAYDON_GATE2,
+    KOUKU_SAYDON_GATE3,
+    KOUKU_SAYDON_ENCORE,
 };
 
 enum class COMPOSITION_WORKBENCH_PANE : std::uint8_t
@@ -49,6 +54,9 @@ public:
     virtual void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) = 0;
     virtual void End_WorkbenchFrame() = 0;
     virtual COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() { return {}; }
+    /* The shell picked one boss entry; a session serving several entries
+       narrows what it lists. Sessions with one entry ignore it. */
+    virtual void Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS) {}
     virtual bool Can_AppendCompositionAnimationResource(
         const COMPOSITION_ANIMATION_RESOURCE&, bool, std::string& status) const
     {

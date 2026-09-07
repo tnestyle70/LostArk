@@ -221,6 +221,8 @@ void Client::CPlayerController::Update(
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
 
+	if (LostArk::Shared::KOUKU_HUD_MODE::NONE != CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
+		Cancel_GroundTargeting();
 	if (m_GroundTargeting.Is_Active())
 	{
 		const auto& playerState = CCombatHUDViewModel::Get().Get_Player();
@@ -352,6 +354,14 @@ void Client::CPlayerController::Update(
 		character,
 		requestedSkillId,
 		releasedSkillId);
+
+	if (LostArk::Shared::KOUKU_HUD_MODE::NONE != CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
+	{
+		(void)Poll_EstherSlot(true, useRawKeyboard);
+		m_BasicAttackResendGate.Suppress_UntilRelease();
+		m_wasRightMouseDown = isRightMouseDown;
+		return;
+	}
 
 	if (LostArk::Shared::INVALID_SKILL_ID != releasedSkillId &&
 		nullptr != commandSink &&
@@ -521,6 +531,24 @@ void Client::CPlayerController::Poll_SkillSlots(
 			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
 			CGameInstance::Get().Get_DIKeyState(keyCode);
 	};
+	const auto mode = CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode;
+	if (LostArk::Shared::KOUKU_HUD_MODE::NONE != mode)
+	{
+		constexpr std::array<uint8_t, 8> keys = { DIK_Q, DIK_W, DIK_E, DIK_R, DIK_A, DIK_S, DIK_D, DIK_F };
+		bool_t submitted = false;
+		for (std::size_t i = 0; i < keys.size(); ++i)
+		{
+			const bool_t down = 0 != (readKeyState(keys[i]) & 0x80);
+			if (!isKeyboardBlocked && down && !m_wasKeyDown[keys[i]] && !submitted && m_pCommandSink)
+			{
+				submitted = m_pCommandSink->Request_InteractionSlot(m_iNextActionSequence,
+					static_cast<LostArk::Shared::INTERACTION_SLOT>(i));
+				if (submitted && 0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+			}
+			m_wasKeyDown[keys[i]] = down;
+		}
+		return;
+	}
 	const bool_t isAltDown =
 		(0 != (readKeyState(DIK_LMENU) & 0x80) ||
 			0 != (readKeyState(DIK_RMENU) & 0x80));
@@ -792,6 +820,17 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	return true;
 }
 
+bool_t Client::CPlayerController::Request_DebugKoukuHudMode(
+ const LostArk::Shared::KOUKU_HUD_MODE mode)
+{
+ if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+  !m_pCommandSink->Request_DebugKoukuHudMode(m_iNextActionSequence, mode))
+ { m_debugMadnessFormStatus = "Could not send Clown HUD mode request."; return false; }
+ if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+ m_debugMadnessFormStatus = "Waiting for Server HUD and avatar state...";
+ return true;
+}
+
 bool_t Client::CPlayerController::Request_DebugMadnessForm(
 	const LostArk::Shared::PLAYER_MADNESS_FORM form)
 {
@@ -870,6 +909,14 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 		}
 	}
 	{
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT modeResult{};
+		while (nullptr != m_pCommandSink &&
+			m_pCommandSink->Consume_DebugKoukuHudModeResult(modeResult))
+		{
+			m_debugMadnessFormStatus = modeResult.eResult == DEBUG_KOUKU_HUD_MODE_RESULT::ACCEPTED ?
+				"Server accepted HUD mode; avatar and skills follow the snapshot." :
+				"Server rejected HUD mode (code " + std::to_string(static_cast<unsigned>(modeResult.eResult)) + ").";
+		}
 		S2C_DEBUG_SET_MADNESS_FORM_RESULT formResult{};
 		while (nullptr != m_pCommandSink &&
 			m_pCommandSink->Consume_DebugMadnessFormResult(formResult))

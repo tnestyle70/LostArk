@@ -485,6 +485,7 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 		m_pModelCom)))
 		return E_FAIL;
 	m_strModelTag = pDesc->strModelTag;
+	m_strEffectV2BindingOwner = pDesc->strEffectV2BindingOwner;
 
 	if (!pDesc->strWeaponModelTag.empty() || nullptr != pDesc->pWeaponSocketBone)
 	{

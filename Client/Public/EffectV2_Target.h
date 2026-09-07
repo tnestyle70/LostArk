@@ -27,7 +27,7 @@ enum class EFFECT_V2_TARGET_KIND : uint8_t
 
 /* The entity a v2 effect follows. pKey is identity only for runtime maps;
    liveness always comes from pOwner. strArchetypeId is the binding owner for
-   PREVIEW_BODY only. */
+   PREVIEW_BODY and catalog bosses rendered as NPCs. */
 struct EFFECT_V2_TARGET final
 {
 	EFFECT_V2_TARGET_KIND eKind = EFFECT_V2_TARGET_KIND::NONE;
@@ -55,7 +55,7 @@ struct EFFECT_V2_TARGET final
 };
 
 /* BoneRoot maps CModel::Get_BoneMatrix into world space (NPC: owner world;
-   Valtan: body visual root x owner world; preview body: body transform).
+   Valtan: body visual root x owner world; preview body: body local x parent).
    YawBasis is the owner world for PIVOT_ROTATION::TARGET_YAW on every kind. */
 struct EFFECT_V2_TARGET_VIEW final
 {

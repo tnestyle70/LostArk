@@ -27,6 +27,8 @@ namespace LostArk::Server
 		DEBUG_TELEPORT_TO_PLACEMENT,
 		DEBUG_TELEPORT_TO_POSITION,
 		DEBUG_SET_MADNESS_FORM,
+		INTERACTION_SLOT,
+		DEBUG_SET_KOUKU_HUD_MODE,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
@@ -81,6 +83,8 @@ namespace LostArk::Server
 			DebugTeleportToPlacement;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION DebugTeleportToPosition;
 		LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM DebugSetMadnessForm;
+		LostArk::Shared::C2S_INTERACTION_SLOT InteractionSlot;
+		LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE DebugSetKoukuHudMode;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;

@@ -35,6 +35,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #ifdef _DEBUG
 #include <fstream>
 #include <iterator>
@@ -58,7 +59,8 @@ namespace
 		const std::string_view encounterId,
 		const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId)
 	{
-		return LostArk::Shared::INVALID_NET_ENTITY_ID == ownerBossNetEntityId &&
+		return (LostArk::Shared::INVALID_NET_ENTITY_ID == ownerBossNetEntityId ||
+			archetypeId == "BOSS_KAKULSAYDON_G1_SAYDON") &&
 			encounterId == KOUKU_SAYDON_ENCOUNTER &&
 			Client::CKoukuSaydonPresentationAssetService::Is_ArenaBossArchetype(
 				archetypeId);
@@ -376,8 +378,7 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY:
 			/* Queued rather than played here: the level owns the sequence
 			   player and drains this on its own update. */
-			m_PendingWorldSequencePlays.push_back(
-				event.WorldSequencePlay.strSequenceInstanceId);
+			m_PendingWorldSequencePlays.push_back(event.WorldSequencePlay);
 			break;
 		}
 	}
@@ -1515,7 +1516,7 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			float3_t(
 				Pending.Snapshot.fSkillTargetX,
 				Pending.Snapshot.fSkillTargetY,
-				Pending.Snapshot.fSkillTargetZ)))
+				Pending.Snapshot.fSkillTargetZ), Pending.Snapshot.eKoukuHudMode))
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
 		m_strPendingPresentationFailure =
@@ -1588,6 +1589,24 @@ void Client::CClientReplication::Collect_MinimapMarkers(
 		MINIMAP_MARKER marker{};
 		if (ReadGroundXZ(pTransform, marker.fX, marker.fZ))
 			outSnapshot.Bosses.push_back(marker);
+	}
+}
+
+void Client::CClientReplication::Collect_KoukuPresentationViews(
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
+{
+	bosses.clear(); cards.clear();
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA)) return;
+	for (const auto& [id, entity] : m_WorldEntities)
+		if (entity.eKind == LostArk::Shared::WORLD_ENTITY_KIND::BOSS &&
+			!entity.pNpc.expired() && !entity.bPresentationIsolated && entity.KoukuSnapshot.iNetEntityId == id)
+			bosses.push_back({entity.pNpc, entity.KoukuSnapshot, m_iLastServerTick});
+	for (const auto& snapshot : m_KoukuCardSnapshots)
+	{
+		OBJECT_HANDLE handle;
+		if (m_Registry.Find_Handle(snapshot.iNetEntityId, handle))
+			if (auto character = m_Registry.Resolve(handle)) cards.push_back({character, snapshot});
 	}
 }
 
@@ -1948,7 +1967,7 @@ bool Client::CClientReplication::Create_Character(
 	const CHARACTER_SPEC* spec = nullptr;
 	if (LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN == madnessForm)
 	{
-		/* The clown body is the KoukuSaydon colourless Saydon rig. It is
+		/* The clown body is the dedicated MN_RPCZ_00-1 polymorph rig. It is
 		admitted once per level like an arena boss body; the class stays the
 		wearer's so its quick slots keep resolving. */
 		if (FAILED(CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
@@ -2139,7 +2158,11 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			return false;
 		}
 		const std::shared_ptr<CValtan> owningBoss = foundOwner->second.pValtan.lock();
-		if (nullptr == owningBoss || CValtan::DEAD == owningBoss->Get_State() ||
+		const bool_t liveKoukuOwner =
+			Is_KoukuSaydonArenaBoss(foundOwner->second.strArchetypeId, foundOwner->second.strEncounterId,
+				foundOwner->second.iOwnerBossNetEntityId) && !foundOwner->second.pNpc.expired() &&
+			spawned.strArchetypeId == foundOwner->second.strArchetypeId;
+		if ((!liveKoukuOwner && (nullptr == owningBoss || CValtan::DEAD == owningBoss->Get_State())) ||
 			foundOwner->second.bPresentationIsolated)
 		{
 			m_strPendingPresentationFailure =
@@ -2155,8 +2178,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		owner = &ownerIdentity;
 	}
 	if (!Is_Valid_WorldEntitySpawnOwner(spawned, owner) ||
-		(("BOSS_VALTAN_GHOST" == spawned.strArchetypeId) !=
-		 (INVALID_NET_ENTITY_ID != spawned.iOwnerBossNetEntityId)))
+		(("BOSS_VALTAN_GHOST" == spawned.strArchetypeId && INVALID_NET_ENTITY_ID == spawned.iOwnerBossNetEntityId) ||
+		 (INVALID_NET_ENTITY_ID != spawned.iOwnerBossNetEntityId && "BOSS_VALTAN_GHOST" != spawned.strArchetypeId &&
+		  "BOSS_KAKULSAYDON_G1_SAYDON" != spawned.strArchetypeId)))
 	{
 		m_strPendingPresentationFailure = "Invalid dependent boss ownership graph.";
 		return false;
@@ -2440,6 +2464,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ);
 		desc.fYawDegree = spawned.fYawDegrees;
 		desc.fCollisionRadius = spawned.fCollisionRadius;
+		desc.strEffectV2BindingOwner = std::filesystem::path(pBoss->bodyModel).stem().string();
 		/* A catalog weapon rides the body's socket bone in its rest pose. The
 		prototype was admitted together with the body just above. */
 		const std::wstring weaponTag =
@@ -3255,7 +3280,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				float3_t(
 					player.fSkillTargetX,
 					player.fSkillTargetY,
-					player.fSkillTargetZ)))
+					player.fSkillTargetZ), player.eKoukuHudMode))
 		{
 			allSucceeded = false;
 		}
@@ -3304,6 +3329,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			}
 		}
 	}
+	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
 	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
 	{
@@ -3313,6 +3339,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
+		if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) iter->second.KoukuSnapshot = entity;
 		const bool_t expectsBossCombatState =
 			WORLD_ENTITY_KIND::BOSS == iter->second.eKind;
 		if (expectsBossCombatState != entity.hasBossCombatState)
@@ -3574,8 +3601,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					iter->second.iPatternStageIndex =
 						entity.iPatternStageIndex;
 				}
-				CCombatHUDViewModel::Get().Apply_Boss(
-					snapshot.iServerTick, iter->second.strArchetypeId, entity);
+				if (INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
+					CCombatHUDViewModel::Get().Apply_Boss(
+						snapshot.iServerTick, iter->second.strArchetypeId, entity);
 				continue;
 			}
 
@@ -3875,6 +3903,7 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	m_PendingWorldSequencePlays.clear();
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
 	//registry? local handle??珥덇린?뷀븳??
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?
@@ -3939,6 +3968,7 @@ void Client::CClientReplication::Reset_World()
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_iLastServerTick = 0;
+	m_KoukuCardSnapshots.clear();
 #ifdef _DEBUG
 	m_isCombatObjectHitAreaDebugLoadAttempted = false;
 	m_CombatObjectHitAreasByArchetype.clear();

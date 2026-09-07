@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import re
+import copy
+import json
+import subprocess
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -23,6 +27,69 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         self.panel_cpp = read("Client/Private/WorldSequenceToolPanel.cpp")
         self.map_tool_h = read("Client/Public/MapTool.h")
         self.map_tool_cpp = read("Client/Private/MapTool.cpp")
+
+    def test_v3_object_publisher_accepts_source_and_rejects_invalid_resources(self) -> None:
+        """Exercise the actual publisher function on a preserved source plus one model state."""
+        source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
+        # Keep the real placed curtain state to cover compatibility without scanning every roulette key per mutant.
+        curtain = next(row for row in source["instances"] if row["instanceId"] == "world.sequence.instance.curtain_drop")
+        source["instances"] = [curtain]
+        source["templates"] = [row for row in source["templates"] if row["sequenceId"] == curtain["templateId"]]
+        source["objectResources"] = [row for row in source.get("objectResources", [])
+                                     if row.get("sequenceInstanceId") == curtain["instanceId"]]
+        source["formatVersion"] = 3
+        source.setdefault("objectResources", []).append({
+            "objectId": "test.world.object", "displayName": "Test object", "modelAssetId": "Map/Test/test.wmodel",
+            "diffuseTextureAssetId": "", "modelPreScale": 0.01, "animated": False,
+            "scale": [1, 1, 1], "sequenceInstanceId": "",
+        })
+        source["templates"].append({
+            "sequenceId": "test.world.template", "displayName": "Test state", "category": "Object",
+            "durationMs": 1000, "interpolation": "LINEAR", "animationTracks": [],
+            "objectMotion": {"velocity": [0, 1, 0], "acceleration": [0, -2, 0], "angularVelocityDegrees": [0, 180, 0],
+                             "revolutionDegreesPerSecond": [0, 0, 0], "revolutionOffset": [0, 0, 0],
+                             "count": 2, "intervalMs": 100, "spreadDegrees": 30, "seed": 7},
+            "tracks": [{"slotId": "object", "keys": [
+                {"timeMs": time, "positionOffset": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1],
+                 "scaleMultiplier": [1, 1, 1], "visible": True} for time in (0, 1000)]}],
+        })
+        source["instances"].append({
+            "instanceId": "test.world.instance", "templateId": "test.world.template", "enabled": True,
+            "startDelayMs": 0, "playbackSpeed": 1, "anchorKind": "PLAYER", "position": [1, 2, 3],
+            "bindings": [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "test.world.object"}],
+        })
+        cases = [("valid", source, True)]
+        for name, mutate in (
+            ("bad_count", lambda d: d["templates"][-1]["objectMotion"].update(count=0)),
+            ("spawn_after_lifetime", lambda d: d["templates"][-1]["objectMotion"].update(intervalMs=1000)),
+            ("unknown_resource", lambda d: d["instances"][-1]["bindings"][0].update(targetId="missing.object")),
+            ("path_escape", lambda d: d["objectResources"][-1].update(modelAssetId="Map/../test.wmodel")),
+            ("unknown_property", lambda d: d["objectResources"][-1].update(velocty=1)),
+            ("unknown_alias", lambda d: d["objectResources"][-1].update(modelAssetId="", sequenceInstanceId="missing.instance")),
+            ("invalid_anchor", lambda d: d["instances"][-1].update(anchorKind="BOSS")),
+        ):
+            invalid = copy.deepcopy(source)
+            mutate(invalid)
+            cases.append((name, invalid, False))
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definitions = []
+        for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument"):
+            match = re.search(r"(?m)^function " + re.escape(name) + r" \{.*?^\}", publisher, re.DOTALL)
+            self.assertIsNotNone(match)
+            definitions.append(match.group(0))
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for name, document, _ in cases:
+                (folder / (name + ".json")).write_text(json.dumps(document), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(definitions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{name=$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "validate.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
+                                    capture_output=True, text=True, timeout=45)
+            self.assertEqual(0, result.returncode, result.stderr)
+            actual = {row["name"]: row["valid"] for row in json.loads(result.stdout)}
+            self.assertEqual({name: valid for name, _, valid in cases}, actual)
 
     def test_client_project_registers_each_source_once(self) -> None:
         project = ET.parse(ROOT / "Client/Default/Client.vcxproj")
@@ -80,7 +147,7 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             self.document_cpp,
         )
         self.assertIn(
-            "WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT !=",
+            "WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT == binding.targetKind",
             self.document_cpp,
         )
         self.assertIn("animationTargetSupported", self.document_cpp)

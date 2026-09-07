@@ -64,7 +64,8 @@ namespace
 	static_assert(12u == ETOUI(DEFERRED::SSAO_RAW));
 	static_assert(13u == ETOUI(DEFERRED::SSAO_BLUR));
 	static_assert(15u == DEFERRED_PASS_CHROMATIC_ABERRATION);
-	static_assert(16u == ETOUI(DEFERRED::END));
+	static_assert(16u == ETOUI(DEFERRED::SPOT));
+	static_assert(17u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)

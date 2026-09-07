@@ -85,7 +85,7 @@
       "halfExtents": [2, 0.5, 2],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [2.89700, 1.31800, 740.49400], "durationSeconds": 1.5, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [2.89700, 1.31800, 740.49400], "durationSeconds": 1.5, "arcHeight": 0, "koukuHudMode": "NONE" }
       ]
     },
     {
@@ -97,7 +97,7 @@
       "halfExtents": [1, 0.5, 1],
       "triggerOnce": true,
       "events": [
-        { "type": "movePlayer", "targetPosition": [-1148.70300, -11.52460, -910.57300], "durationSeconds": 1.5, "arcHeight": 0.0 }
+        { "type": "movePlayer", "targetPosition": [-1148.70300, -11.52460, -910.57300], "durationSeconds": 1.5, "arcHeight": 0.0, "koukuHudMode": "MARIO" }
       ]
     },
     {
@@ -308,7 +308,7 @@
         1.32,
         942.33
       ],
-      "yawDegrees": 245,
+      "yawDegrees": 237.0,
       "enabled": false
     },
     {
@@ -317,11 +317,11 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        10.74,
-        2.68,
-        316.45
+        10.24,
+        8.63,
+        317.75
       ],
-      "yawDegrees": 315,
+      "yawDegrees": 226.5,
       "enabled": false
     },
     {
@@ -334,7 +334,7 @@
         10.56,
         321.29
       ],
-      "yawDegrees": 311,
+      "yawDegrees": 216.5,
       "enabled": false
     },
     {
@@ -347,7 +347,7 @@
         1.32,
         942.33
       ],
-      "yawDegrees": 245,
+      "yawDegrees": 277.0,
       "enabled": false
     },
     {
@@ -360,7 +360,7 @@
         0.0,
         1147.44
       ],
-      "yawDegrees": 270,
+      "yawDegrees": 270.0,
       "enabled": false
     }
   ]

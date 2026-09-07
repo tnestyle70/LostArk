@@ -214,9 +214,10 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            domain["tools"], ["Tools/MapPipeline/Publish-MapAuthoring.ps1"]
+            domain["tools"], ["Tools/MapPipeline/Publish-MapAuthoring.ps1", "Tools/RenderingPipeline/light_resources_pipeline.py"]
         )
         expected_outputs = [
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",

@@ -421,11 +421,12 @@ namespace
 		std::string status;
 		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(original, source, status),
 			status, "parse current composition for legacy fixture");
-		const auto pizza = std::find_if(source.Patterns.begin(), source.Patterns.end(),
-			[](const auto& pattern) { return pattern.strPatternId == "KAKULSAYDON_G1_PIZZA"; });
-		Require(pizza != source.Patterns.end() && pizza->Stages.size() >= 2u,
-			"real Pizza fixture is missing");
-		auto mixed = *pizza;
+		const auto legacyOwner = source.Patterns.front().strActorProfileId;
+		const auto fixture = std::find_if(source.Patterns.begin(), source.Patterns.end(),
+			[](const auto& pattern) { return pattern.strLoadError.empty() && pattern.Stages.size() >= 2u &&
+				std::all_of(pattern.Stages.begin(), pattern.Stages.end(), [](const auto& stage) { return !stage.AnimationOccurrences.empty(); }); });
+		Require(fixture != source.Patterns.end(), "real multi-Stage fixture is missing");
+		auto mixed = *fixture;
 		mixed.strPatternId = "KAKULSAYDON_G1_NATIVE_MIXED_LEGACY";
 		mixed.strAuthoringStatus = "DRAFT";
 		for (std::size_t index = 0u; index < mixed.Stages.size(); ++index)
@@ -435,7 +436,7 @@ namespace
 			mixed.Stages[index].AnimationOccurrences.at(0u).strOccurrenceId =
 				mixed.strPatternId + ".animation." + std::to_string(index + 1u);
 		}
-		mixed.Stages[0].AnimationOccurrences[0].strProfileId = "MN_RPCT_05";
+		mixed.Stages[0].AnimationOccurrences[0].strProfileId = fixture->strActorProfileId == "MN_RPCT_05" ? "MN_RPCZ_00" : "MN_RPCT_05";
 		source.Patterns.push_back(mixed);
 		std::string serialized = CKoukuSaydonCompositionDocument::Serialize(source);
 		Require(ReplaceOnce(serialized, "\"formatVersion\": 2", "\"formatVersion\": 1"),
@@ -452,7 +453,7 @@ namespace
 			"load legacy document with mixed-model quarantine");
 		const auto candidate = document.Get_LastGood();
 		Require(candidate.iFormatVersion == 2u &&
-			candidate.Patterns[0].strActorProfileId == "MN_RPCZ_00" &&
+			candidate.Patterns[0].strActorProfileId == legacyOwner &&
 			!candidate.Patterns.back().strLoadError.empty() &&
 			!candidate.Patterns.back().strPreservedJson.empty(),
 			"v1 migration lost deterministic owner or mixed-model raw quarantine");
@@ -469,6 +470,206 @@ namespace
 		Require(WriteText(sourcePath, original), "could not restore scratch source for editor test");
 	}
 
+	void VerifyKoukuPresentationDocument(const std::filesystem::path& sourcePath)
+	{
+		using namespace Client;
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT source;
+		std::string status;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(ReadText(sourcePath), source, status),
+			status, "parse presentation source");
+		auto pattern = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& row) {
+			return row.strLoadError.empty() && !row.Stages.empty() && row.Stages.front().iDurationMs >= 1000u; });
+		Require(pattern != source.Patterns.end() && !source.Worlds.empty(), "presentation test needs an authored Pattern and World");
+		const auto patternId = pattern->strPatternId;
+		pattern->strAuthoringStatus = "DRAFT";
+		pattern->bResetBossToSpawn = true;
+		pattern->PresentationOccurrences.clear();
+		source.Worlds.front().strAnchorKind = "BOSS_SPAWN";
+		source.Worlds.front().AnchorPosition = { -0.319, 1.9, 737.531 };
+		source.Worlds.front().PositionOffset = { 0.0, 0.58, 0.0 };
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION area;
+		area.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+		area.strDisplayName = "Native Area Overlap";
+		area.strLogicType = "DURATION";
+		area.strJudgementKind = "AREA_OVERLAP";
+		area.strInsideOutcome = "FAIL";
+		source.Logics.push_back(area);
+		KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE window;
+		window.strOccurrenceId = patternId + ".logic." + std::to_string(pattern->iNextLogicOccurrenceOrdinal++);
+		window.strLogicId = area.strLogicId;
+		window.iDurationMs = 1000u;
+		pattern->LogicOccurrences.push_back(window);
+		for (std::size_t i = 0u; i < 4u; ++i)
+		{
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+			resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+			resource.strDisplayName = "Native presentation " + std::to_string(i);
+			resource.eKind = static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i);
+			resource.strAssetId = i == 0u ? "boss.kouku.disarm" : i == 1u ? "Sound/native/test.wav" : i == 2u ? "native.camera.shot" : "";
+			if (i == 3u)
+			{
+				resource.strColliderKind = "ROULETTE_CARD_REGION";
+				resource.strShape = "SECTOR";
+				resource.fHalfAngleDegrees = 22.5;
+			}
+			source.PresentationResources.push_back(resource);
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+			box.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern->iNextPresentationOccurrenceOrdinal++);
+			box.strResourceId = resource.strResourceId;
+			box.iDurationMs = 1000u;
+			box.PositionOffset = { 1.0, 0.5, -2.0 };
+			box.RotationDegrees = { 10.0, 22.5, 30.0 };
+			box.Scale = { 1.5, 2.0, 1.5 };
+			box.iFadeInMs = 100u;
+			box.iFadeOutMs = 200u;
+			box.fDissolveStart = 0.25;
+			box.fDissolveEnd = 0.75;
+			if (i == 3u)
+			{
+				box.strRegionId = "native.roulette.spade.black";
+				box.strCardSymbol = "SPADE";
+				box.strCardColor = "BLACK";
+				box.strAnchorKind = "WORLD";
+				box.strWorldId = source.Worlds.front().strWorldId;
+				box.strLogicOccurrenceId = window.strOccurrenceId;
+			}
+			pattern->PresentationOccurrences.push_back(box);
+		}
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE circle;
+		circle.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+		circle.strDisplayName = "Native Circle"; circle.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+		circle.strShape = "CIRCLE"; circle.fRadiusM = 4.25;
+		source.PresentationResources.push_back(circle);
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE circleBox;
+		circleBox.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern->iNextPresentationOccurrenceOrdinal++);
+		circleBox.strResourceId = circle.strResourceId; circleBox.iDurationMs = 1000u;
+		circleBox.bDebugRender = false;
+		pattern->PresentationOccurrences.push_back(circleBox);
+		auto secondCircle = circleBox;
+		secondCircle.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern->iNextPresentationOccurrenceOrdinal++);
+		pattern->PresentationOccurrences.push_back(secondCircle);
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT parsed;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(source), parsed, status),
+			status, "roundtrip presentation resources and windows");
+		Require(parsed == source, "presentation roundtrip changed transforms, fades, card/World/Logic identities or spawn reset");
+		auto damaged = source;
+		auto& damagedPattern = *std::find_if(damaged.Patterns.begin(), damaged.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+		damagedPattern.PresentationOccurrences.front().iFadeInMs = 900u;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(damaged), parsed, status),
+			status, "isolate malformed presentation window");
+		const auto isolated = std::find_if(parsed.Patterns.begin(), parsed.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+		Require(isolated != parsed.Patterns.end() && !isolated->strLoadError.empty() && !isolated->strPreservedJson.empty(),
+			"invalid fade sum did not preserve the broken Pattern JSON");
+		damaged = source;
+		damaged.PresentationResources.back().strAssetId = "Sound/../outside.wav";
+		const auto lastGood = parsed;
+		Require(!CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(damaged), parsed, status) && parsed == lastGood,
+			"invalid presentation resource partially replaced the last-good document");
+		Require(Kouku_IsOutcomeSlotAllowed("ROULETTE_CARD_MATCH", KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT) &&
+			Kouku_IsOutcomeSlotAllowed("AREA_OVERLAP", KOUKU_SAYDON_OUTCOME_SLOT::FAIL) &&
+			!Kouku_IsOutcomeSlotAllowed("ENTER_AREA", KOUKU_SAYDON_OUTCOME_SLOT::FAIL),
+			"roulette/area result slots differ from their Server judgement contracts");
+		const auto originalBytes = ReadText(sourcePath);
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "could not stage Circle editor scratch source");
+		CKoukuSaydonActionWorkbench workbench;
+		RequireEditorStep(workbench.Reload(status), status, "reload Circle Trigger fixture");
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, circleBox, 15u, status), status, "create Trigger damage atomically");
+		const auto findBox = [&](const std::string& id) {
+			const auto& document = workbench.Get_Composition();
+			const auto owner = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+			const auto box = std::find_if(owner->PresentationOccurrences.begin(), owner->PresentationOccurrences.end(), [&](const auto& row) { return row.strOccurrenceId == id; });
+			return *box;
+		};
+		const auto findWindow = [&](const std::string& id) {
+			const auto& document = workbench.Get_Composition();
+			const auto owner = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+			const auto window = std::find_if(owner->LogicOccurrences.begin(), owner->LogicOccurrences.end(), [&](const auto& row) { return row.strOccurrenceId == id; });
+			Require(window != owner->LogicOccurrences.end(), "Collider Trigger has no real Logic window");
+			return *window;
+		};
+		const auto first = findBox(circleBox.strOccurrenceId);
+		const auto firstWindow = findWindow(first.strLogicOccurrenceId);
+		Require(!first.bDebugRender && firstWindow.OnSuccessLogicIds.size() == 1u, "Circle debug flag or Trigger damage Result was lost");
+		const auto firstDamage = firstWindow.OnSuccessLogicIds.front();
+		const auto ordinal = workbench.Get_Composition().iNextLogicOrdinal;
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, 15u, status), status, "reuse existing Trigger damage");
+		Require(workbench.Get_Composition().iNextLogicOrdinal == ordinal && findBox(first.strOccurrenceId).strLogicOccurrenceId == first.strLogicOccurrenceId,
+			"repeated Trigger Apply created duplicate Logic or Result");
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, secondCircle, 15u, status), status, "reuse damage definition with independent Trigger window");
+		const auto second = findBox(secondCircle.strOccurrenceId);
+		Require(second.strLogicOccurrenceId != first.strLogicOccurrenceId && findWindow(second.strLogicOccurrenceId).OnSuccessLogicIds.front() == firstDamage,
+			"independent Colliders unexpectedly shared a window or failed to reuse their Result");
+		RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, first, 20u, status), status, "tune one Trigger damage without mutating shared Result");
+		Require(findWindow(second.strLogicOccurrenceId).OnSuccessLogicIds.front() == firstDamage &&
+			findWindow(first.strLogicOccurrenceId).OnSuccessLogicIds.front() != firstDamage,
+			"damage tuning rewrote another Collider's Result");
+		const auto beforeDebug = workbench.Get_Composition();
+		const auto beforeDebugGeneration = workbench.Get_DraftGeneration();
+		auto expectedDebug = beforeDebug;
+		for (auto& owner : expectedDebug.Patterns)
+			if (owner.strPatternId == patternId)
+				for (auto& box : owner.PresentationOccurrences)
+					if (box.strOccurrenceId == first.strOccurrenceId) box.bDebugRender = true;
+		RequireEditorStep(workbench.Set_PresentationBoxDebugRender(patternId, first.strOccurrenceId, true, status), status, "apply only Collider debug flag");
+		Require(workbench.Get_Composition() == expectedDebug && workbench.Get_DraftGeneration() == beforeDebugGeneration + 1u,
+			"Debug Render changed geometry, timing, outcomes or failed to advance draft generation");
+		Require(!workbench.Set_PresentationBoxDebugRender(patternId, "absent.collider", false, status) &&
+			workbench.Get_Composition() == expectedDebug && workbench.Get_DraftGeneration() == beforeDebugGeneration + 1u,
+			"missing Collider debug target mutated the draft or generation");
+		const auto lastTriggerGood = workbench.Get_Composition();
+		Require(!workbench.Set_ColliderTriggerDamage(patternId, first, 0u, status) && workbench.Get_Composition() == lastTriggerGood,
+			"invalid Trigger damage partially committed Logic or geometry");
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(lastTriggerGood), parsed, status),
+			status, "roundtrip Circle/debugRender/insideOutcome and atomic Trigger wiring");
+		Require(parsed == lastTriggerGood, "Trigger damage save/reload changed its explicit contracts");
+		std::string companionPatternId, companionWorldId, companionWorldBoxId;
+		RequireEditorStep(workbench.Create_Pattern("Native World companion", "NORMAL", companionPatternId, status), status, "create companion Pattern");
+		RequireEditorStep(workbench.Set_PatternDuration(companionPatternId, 2000u, status), status, "set companion Pattern lifetime");
+		RequireEditorStep(workbench.Create_World("Native companion World", source.Worlds.front().strSequenceInstanceId, companionWorldId, status), status, "create companion World");
+		const auto effectResource = std::find_if(source.PresentationResources.begin(), source.PresentationResources.end(),
+			[](const auto& row) { return row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; });
+		Require(effectResource != source.PresentationResources.end(), "companion test has no Effect resource");
+		RequireEditorStep(workbench.Set_WorldCompanionEffect(companionWorldId, effectResource->strResourceId, status), status, "select World companion Effect");
+		RequireEditorStep(workbench.Append_WorldBox(companionPatternId, companionWorldId, 100u, 900u, companionWorldBoxId, status), status, "append World with one explicit companion Effect");
+		const auto companionPattern = [&]() {
+			const auto& document = workbench.Get_Composition();
+			return *std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == companionPatternId; });
+		};
+		auto paired = companionPattern();
+		Require(paired.WorldOccurrences.size() == 1u && paired.PresentationOccurrences.size() == 1u &&
+			paired.PresentationOccurrences.front().strWorldOccurrenceId == companionWorldBoxId &&
+			paired.PresentationOccurrences.front().strResourceId == effectResource->strResourceId &&
+			paired.PresentationOccurrences.front().iStartMs == 100u && paired.PresentationOccurrences.front().iDurationMs == 900u,
+			"World Append did not create one matching Effect box");
+		RequireEditorStep(workbench.Set_WorldBoxWindow(companionPatternId, companionWorldBoxId, 300u, 400u, 1.f, status), status, "move and trim World companion together");
+		paired = companionPattern();
+		Require(paired.PresentationOccurrences.front().iStartMs == 300u && paired.PresentationOccurrences.front().iDurationMs == 400u,
+			"World timing edit left its companion at the old window");
+		auto independentTiming = workbench.Get_Composition();
+		auto timingPattern = std::find_if(independentTiming.Patterns.begin(), independentTiming.Patterns.end(), [&](const auto& row) { return row.strPatternId == companionPatternId; });
+		timingPattern->PresentationOccurrences.front().iStartMs = 320u;
+		timingPattern->PresentationOccurrences.front().iDurationMs = 100u;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(independentTiming), parsed, status), status, "allow independent companion Effect timing");
+		Require(parsed == independentTiming, "World link forced Effect timing equality");
+		auto duplicateEffect = timingPattern->PresentationOccurrences.front();
+		duplicateEffect.strOccurrenceId = companionPatternId + ".presentation." + std::to_string(timingPattern->iNextPresentationOccurrenceOrdinal++);
+		timingPattern->PresentationOccurrences.push_back(duplicateEffect);
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(independentTiming), parsed, status), status, "isolate duplicate World companion");
+		const auto duplicateOwner = std::find_if(parsed.Patterns.begin(), parsed.Patterns.end(), [&](const auto& row) { return row.strPatternId == companionPatternId; });
+		Require(duplicateOwner != parsed.Patterns.end() && !duplicateOwner->strLoadError.empty(), "duplicate World companion was admitted");
+		RequireEditorStep(workbench.Set_WorldCompanionEffect(companionWorldId, "", status), status, "unlink World while retaining explicit Effect");
+		Require(companionPattern().PresentationOccurrences.size() == 1u && companionPattern().PresentationOccurrences.front().strWorldOccurrenceId.empty(),
+			"unlinking World destroyed its independently editable Effect");
+		RequireEditorStep(workbench.Set_WorldCompanionEffect(companionWorldId, effectResource->strResourceId, status), status, "relink World with a new owned Effect");
+		RequireEditorStep(workbench.Delete_WorldBox(companionPatternId, companionWorldBoxId, status), status, "delete World and only its linked Effect");
+		paired = companionPattern();
+		Require(paired.WorldOccurrences.empty() && paired.PresentationOccurrences.size() == 1u && paired.PresentationOccurrences.front().strWorldOccurrenceId.empty(),
+			"World delete removed an independent Effect or left a dangling companion");
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(workbench.Get_Composition()), parsed, status), status, "roundtrip World companion edit transactions");
+		Require(parsed == workbench.Get_Composition(), "World companion roundtrip changed definitions or occurrences");
+		Require(WriteText(sourcePath, originalBytes), "could not restore Circle editor scratch source");
+	}
+
 	void VerifyKoukuTimelineControls(Client::CKoukuSaydonActionWorkbench& workbench,
 		const std::filesystem::path& sourcePath)
 	{
@@ -480,10 +681,23 @@ namespace
 		RequireEditorStep(workbench.Create_Pattern("Timeline control roundtrip", "NORMAL",
 			patternId, status), status, "create timeline control Pattern");
 		RequireEditorRoundtrip(workbench);
-		const auto empty = workbench.Get_Composition();
-		Require(!workbench.Set_PatternDuration(patternId, 10000u, status) &&
-			workbench.Get_Composition() == empty && !workbench.Is_Dirty(),
-			"empty Pattern duration fabricated a Stage or changed its counters");
+		RequireEditorStep(workbench.Set_PatternDuration(patternId, 10000u, status), status,
+			"author a presentation-only Pattern clock");
+		const auto clockOnly = EditorPattern(workbench, patternId);
+		Require(clockOnly.Stages.size() == 1u && clockOnly.Stages.front().iDurationMs == 10000u &&
+			clockOnly.Stages.front().AnimationOccurrences.empty(), "presentation-only lifetime lost the existing Stage clock contract");
+		RequireEditorStep(workbench.Request_PatternPreview(patternId, 0u, status), status,
+			"request presentation-only Pattern preview");
+		KOUKU_SAYDON_COMPOSITION_PATTERN clockPreview;
+		std::uint32_t clockStart = 0u;
+		bool_t clockPaused = false;
+		std::string clockTarget;
+		Require(workbench.Consume_PatternPreviewRequest(clockPreview, clockStart, clockPaused, clockTarget) &&
+			clockPreview.strPatternId == patternId, "presentation-only preview command was not consumable");
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Delete_TimelineSelection(patternId, { clockOnly.Stages.front().strStageId }, {}, status), status,
+			"remove the clock-only fixture Stage before animation timing checks");
+		RequireEditorRoundtrip(workbench);
 		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
 			4219811u, status), status, "append first timeline Stage");
 		RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05",
@@ -554,10 +768,14 @@ namespace
 		Require(!workbench.Duplicate_TimelineSelection(patternId,
 			{ firstStage.strStageId }, { "STALE_BOX" }, status),
 			"stale box selection partially duplicated a valid Stage");
-		const auto foreignBox = EditorPattern(workbench, "KAKULSAYDON_G1_PIZZA").Stages[0].
-			AnimationOccurrences[0].strOccurrenceId;
+		const auto& foreignPatterns = workbench.Get_Composition().Patterns;
+		const auto foreignPattern = std::find_if(foreignPatterns.begin(), foreignPatterns.end(), [&](const auto& candidate) {
+			return candidate.strPatternId != patternId && candidate.strLoadError.empty() && !candidate.Stages.empty() &&
+				!candidate.Stages.front().AnimationOccurrences.empty(); });
+		Require(foreignPattern != foreignPatterns.end(), "foreign Pattern fixture is missing");
+		const auto foreignBox = foreignPattern->Stages.front().AnimationOccurrences.front().strOccurrenceId;
 		Require(!workbench.Duplicate_TimelineSelection(patternId, {}, { foreignBox }, status),
-			"duplicate imported a box owned by another actor Pattern");
+			"duplicate imported a box owned by another Pattern");
 		Require(workbench.Get_Composition() == duplicateBaseline && !workbench.Is_Dirty() &&
 			ReadText(sourcePath) == duplicateBytes,
 			"stale selection consumed ordinals, changed ownership or saved source");
@@ -678,7 +896,23 @@ namespace
 		const std::size_t patternOffset = unresolvedBytes.find("\"patternId\": \"" + patternId + "\"");
 		const std::size_t listOffset = unresolvedBytes.find("\"logicOccurrences\": [", patternOffset);
 		const std::size_t listStart = unresolvedBytes.find('[', listOffset);
-		const std::size_t listEnd = unresolvedBytes.find(']', listStart);
+		std::size_t listEnd = std::string::npos;
+		std::size_t arrayDepth = 0u;
+		bool quoted = false, escaped = false;
+		for (std::size_t i = listStart; i < unresolvedBytes.size(); ++i)
+		{
+			const char c = unresolvedBytes[i];
+			if (quoted)
+			{
+				if (escaped) escaped = false;
+				else if (c == '\\') escaped = true;
+				else if (c == '"') quoted = false;
+				continue;
+			}
+			if (c == '"') quoted = true;
+			else if (c == '[') ++arrayDepth;
+			else if (c == ']' && --arrayDepth == 0u) { listEnd = i; break; }
+		}
 		Require(patternOffset != std::string::npos && listOffset != std::string::npos &&
 			listStart != std::string::npos && listEnd != std::string::npos,
 			"could not locate the scratch Logic reference list");
@@ -747,6 +981,7 @@ namespace
 		std::cout << "Kouku editor fixture: " << sourcePath.string() << '\n';
 
 		VerifyLegacyEditorMigration(sourcePath);
+		VerifyKoukuPresentationDocument(sourcePath);
 		Client::CKoukuSaydonActionWorkbench workbench;
 		std::string status;
 		RequireEditorStep(workbench.Reload(status), status, "load real source");
@@ -807,10 +1042,12 @@ namespace
 			ReadText(sourcePath) == savedBeforeCrossModel,
 			"cross-model rejection changed draft, owner or saved source");
 
-		Require(!workbench.Set_PatternAuthoringStatus(patternId, "PRODUCT", status),
-			"Saydon authoring Pattern was admitted as the Server Kouku PRODUCT");
-		Require(workbench.Get_Composition() == beforeCrossModel && !workbench.Is_Dirty(),
-			"rejected non-boss PRODUCT changed the saved Saydon draft");
+		RequireEditorStep(workbench.Set_PatternAuthoringStatus(patternId, "PRODUCT", status), status,
+			"admit the supported Saydon arena body as PRODUCT");
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Set_PatternAuthoringStatus(patternId, "DRAFT", status), status,
+			"return the native editor fixture to DRAFT");
+		RequireEditorRoundtrip(workbench);
 
 		RequireEditorStep(workbench.Select_ActorProfile("MN_RPCZ_00", status), status,
 			"select Kouku Pattern category");
@@ -913,7 +1150,7 @@ int Run_KoukuCompositionEditorContractTests()
 	{
 		VerifyKoukuEditorRoundtrip();
 		std::cout << "KoukuCompositionEditorContractTests: append/action-zero/model-owners/"
-			"249-stage/batch-delete/duration/multi-duplicate/preview-request/logic/quarantine/save-reload/CAS passed\n";
+			"249-stage/batch-delete/duration/multi-duplicate/preview-request/logic/presentation/region-link/quarantine/save-reload/CAS passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

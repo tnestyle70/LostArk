@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Network/PacketType.h"
+#include "Network/PacketMessages.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -102,6 +102,7 @@ namespace LostArk::Server
 		float fTargetZ = 0.f;
 		float fDurationSeconds = 0.f;
 		float fArcHeight = 0.f;
+		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudModeOnArrival = LostArk::Shared::KOUKU_HUD_MODE::END;
 		LostArk::Shared::WORLD_ID eTargetWorldId =
 			LostArk::Shared::WORLD_ID::END;
 		std::string strTargetId;

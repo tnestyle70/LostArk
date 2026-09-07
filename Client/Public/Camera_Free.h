@@ -24,6 +24,7 @@ public:
 		float3_t vPositionOffset = { 0.4f, 7.5f, 4.5f };
 		float3_t vLookOffset = { 0.f, 1.2f, 0.f };
 		f32_t fFollowResponse = 18.f;
+		f32_t fFollowRollDegrees = 0.f;
 		bool_t isFollowEnabled = { false };
 		bool_t allowCapturedKeyboardInput = { false };
 	}CAMERA_FREE_DESC;
@@ -72,6 +73,9 @@ public:
 	}
 	bool_t Set_FreeMoveSpeed(f32_t metersPerSecond);
 	void Set_PositionOffset(const float3_t& vPositionOffset);
+	bool_t Set_FollowPose(const float3_t& vPositionOffset,
+		const float3_t& vLookOffset, f32_t rollDegrees,
+		f32_t fovYDegrees, f32_t followResponse);
 	void Frame_Area(const float3_t& center, f32_t radius);
 	const float3_t& Get_PositionOffset() const
 	{
@@ -81,6 +85,7 @@ public:
 private:
 	void Update_Shortcuts();
 	void Update_FollowCamera(f32_t fTimeDelta);
+	void Apply_FollowRoll();
 	void Update_FreeCamera(f32_t fTimeDelta);
 	void Remove_AppliedCameraShake();
 	void Apply_CameraShake(f32_t fTimeDelta);
@@ -99,6 +104,7 @@ private:
 	float3_t			m_vLookOffset = { 0.f, 1.2f, 0.f };
 	float3_t			m_vCurrentLookAt = {};
 	f32_t				m_fFollowResponse = 18.f;
+	f32_t				m_fFollowRollDegrees = 0.f;
 	bool_t				m_allowCapturedKeyboardInput = false;
 	float3_t			m_vAppliedShakeOffset = {};
 	f32_t				m_fBaseFovy = 60.f;

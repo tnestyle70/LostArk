@@ -19,6 +19,7 @@
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "PhysicalResourceCatalog.h"
 #include "Shader.h"
 #include "Valtan.h"
 #include "ValtanPatternAuditionService.h"
@@ -195,53 +196,26 @@ void Client::CEffect_Tool_V2::Scan_Resources()
 	m_Domains.clear();
 	m_bVisibleDirty = true;
 
-	std::error_code Error;
-	const std::filesystem::path Root = CRuntimeAssetRoot::Get();
-	const std::filesystem::path EffectRoot = Root / "Effect";
-	if (!std::filesystem::is_directory(EffectRoot, Error) || Error)
+	std::vector<PHYSICAL_RESOURCE_ASSET> physical;
+	std::string scanStatus;
+	if (!Scan_PhysicalResources({"Effect"}, physical, scanStatus))
 	{
-		m_strStatus = "Resources/Effect is missing: " + EffectRoot.string();
+		m_strStatus = scanStatus;
 		return;
 	}
-
 	std::set<std::string> Domains;
 	size_t iTextures = 0u;
 	size_t iModels = 0u;
-	for (std::filesystem::recursive_directory_iterator Iterator(
-		EffectRoot,
-		std::filesystem::directory_options::skip_permission_denied,
-		Error), End; Iterator != End; Iterator.increment(Error))
+	for (const auto& asset : physical)
 	{
-		if (Error)
-		{
-			Error.clear();
-			continue;
-		}
-		if (!Iterator->is_regular_file())
-			continue;
-		const std::string Extension =
-			To_Lower(Iterator->path().extension().string());
-		RESOURCE_KIND eKind = RESOURCE_KIND::END;
-		if (".dds" == Extension)
-			eKind = RESOURCE_KIND::TEXTURE;
-		else if (".wmodel" == Extension)
-			eKind = RESOURCE_KIND::MODEL;
-		else
-			continue;
-		const std::filesystem::path EffectRelative =
-			Iterator->path().lexically_relative(EffectRoot);
-		if (EffectRelative.empty() || !EffectRelative.has_parent_path())
-			continue;
-		const std::string Domain = Domain_FromRelativePath(EffectRelative);
-		if (Domain.empty())
-			continue;
-		Domains.insert(Domain);
-		(RESOURCE_KIND::TEXTURE == eKind ? iTextures : iModels)++;
-		m_Resources.push_back({
-			Iterator->path().lexically_relative(Root).generic_string(),
-			Domain,
-			Iterator->path().filename().string(),
-			eKind });
+		const auto relative = std::filesystem::path(asset.assetId).lexically_relative("Effect");
+		const auto domain = Domain_FromRelativePath(relative);
+		if (domain.empty()) continue;
+		const auto kind = PHYSICAL_RESOURCE_KIND::TEXTURE == asset.kind ?
+			RESOURCE_KIND::TEXTURE : RESOURCE_KIND::MODEL;
+		Domains.insert(domain);
+		(RESOURCE_KIND::TEXTURE == kind ? iTextures : iModels)++;
+		m_Resources.push_back({asset.assetId, domain, asset.fileName, kind});
 	}
 	std::sort(m_Resources.begin(), m_Resources.end(),
 		[](const RESOURCE_ENTRY& Left, const RESOURCE_ENTRY& Right)
@@ -4004,8 +3978,29 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
 		ImGui::SeparatorText("Screen Post (full-screen)");
 		int32_t iProfile = static_cast<int32_t>(S.eProfile);
-		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0Chromatic Aberration (radial)\0"))
+		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0Chromatic Aberration (radial)\0Textured Overlay\0"))
 			S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
+		if (CEffectV2Object::SCREEN_POST_PROFILE::TEXTURED_OVERLAY == S.eProfile)
+		{
+			ImGui::TextDisabled("Base texture covers the screen in normalized viewport coordinates.");
+			ImGui::DragFloat2("Position Start", &S.vOverlayPositionStart.x, 0.01f);
+			ImGui::DragFloat2("Position Hold", &S.vOverlayPositionHold.x, 0.01f);
+			ImGui::DragFloat2("Position End", &S.vOverlayPositionEnd.x, 0.01f);
+			ImGui::DragFloat2("Screen Scale", &S.vOverlayScale.x, 0.01f, 0.01f, 10.f);
+			ImGui::SliderFloat("Enter End (life ratio)", &S.fOverlayEnterEnd, 0.f, S.fOverlayExitStart);
+			ImGui::SliderFloat("Exit Start (life ratio)", &S.fOverlayExitStart, S.fOverlayEnterEnd, 1.f);
+			ImGui::DragFloat("Screen Rotation", &S.fOverlayRotationDegrees, 0.1f);
+			ImGui::SliderFloat("Opacity", &S.fIntensityStart, 0.f, 1.f);
+			ImGui::Checkbox("Opacity Lerp", &S.bIntensityLerp);
+			if (S.bIntensityLerp)
+				ImGui::SliderFloat("Opacity End", &S.fIntensityEnd, 0.f, 1.f);
+			ImGui::ColorEdit4("Tint", &S.vTint.x, ImGuiColorEditFlags_Float);
+			if (!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::BASE))
+				ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "Bind a Base texture to display this overlay.");
+			Draw_PlaybackSection(P, pPreview->Is_Finished());
+			ImGui::End();
+			return;
+		}
 		const char* pIntensityLabel = "Intensity";
 		const char* pSecondaryLabel = "Secondary";
 		const char* pHint = "";
@@ -4491,7 +4486,7 @@ std::string& Client::CEffect_Tool_V2::Current_SlotAssetId()
 bool_t Client::CEffect_Tool_V2::Slot_VisibleForType(const RESOURCE_SLOT eSlot) const
 {
 	if (EFFECT_TYPE::SCREEN_POST == m_eType)
-		return false;
+		return RESOURCE_SLOT::BASE == eSlot;
 	if (RESOURCE_SLOT::MESH != eSlot)
 		return true;
 	return EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;

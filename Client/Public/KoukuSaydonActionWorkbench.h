@@ -35,6 +35,25 @@ namespace Client
 		std::string strStatus;
 	};
 
+	/* One authored world sequence instance of the arena, listed for the WORLD
+	   lane. MainApp reads it from the arena level's loaded document; the first
+	   bound map placement lets a roulette Logic copy its centre. */
+	struct KOUKU_WORLD_SEQUENCE_RESOURCE final
+	{
+		std::string strInstanceId;
+		std::string strDisplayName;
+		std::uint32_t iDurationMs = 0u;
+		bool_t bHasBoundPlacement = false;
+		f32_t fBoundX = 0.f;
+		f32_t fBoundZ = 0.f;
+	};
+
+	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final
+	{
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE Resource;
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
+	};
+
 	/* K-only authoring session and Stage/Animation lane editor. It owns no socket
 	   or runtime executor; typed preview/server-play requests are consumed by
 	   MainApp and routed to their dedicated tools/services. */
@@ -52,6 +71,13 @@ namespace Client
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
 		void Tick_Background() { Poll_PublishProcess(); }
+		bool_t Consume_PresentationPreviewRequest(KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest);
+		/* MainApp supplies admitted camera/audio rows from the existing readers;
+		   a failed refresh preserves the prior complete list and its status. */
+		void Set_PresentationResources(
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> resources,
+			std::string status);
+		bool_t Consume_PresentationResourceRefreshRequest();
 		bool Can_AppendCompositionAnimationResource(
 			const COMPOSITION_ANIMATION_RESOURCE& resource, bool asNewStage,
 			std::string& outStatus) const override;
@@ -71,6 +97,19 @@ namespace Client
 			m_strSequenceResourceStatus = std::move(status);
 			m_bResourceTreeDirty = true;
 		}
+		void Set_WorldSequenceResources(
+			std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> resources, std::string status)
+		{
+			m_WorldSequenceResources = std::move(resources);
+			m_strWorldSequenceResourceStatus = std::move(status);
+		}
+		void Set_RenderingProfileResources(
+			std::vector<std::string> profileIds, std::string status)
+		{
+			m_RenderingProfileIds = std::move(profileIds);
+			m_strRenderingProfileResourceStatus = std::move(status);
+		}
+		void Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS boss) override;
 		bool_t Consume_PreviewTransportRequest(
 			KOUKU_PREVIEW_TRANSPORT& outTransport,
 			std::uint32_t& outSeekMs);
@@ -92,6 +131,7 @@ namespace Client
 			return m_bHasDraft;
 		}
 		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty; }
+		[[nodiscard]] std::uint64_t Get_DraftGeneration() const noexcept { return m_iDraftGeneration; }
 		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT&
 			Get_Composition() const noexcept { return m_Draft; }
 		[[nodiscard]] const std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN>&
@@ -279,15 +319,31 @@ namespace Client
 			std::string_view patternId,
 			std::string_view occurrenceId,
 			std::string& outStatus);
-		/* Wires one outcome slot of a DURATION box to a RESULT Logic; an empty
-		   resultLogicId clears the slot. The box owns the wiring, so the same
-		   definition may succeed into different results on different Patterns. */
-		bool_t Set_LogicBoxOutcome(
+		/* Replaces one outcome slot of a DURATION box with an ordered list of up
+		   to four RESULT Logics; an empty list clears the slot. The box owns the
+		   wiring, so the same definition may succeed into different results on
+		   different Patterns. */
+		bool_t Set_LogicBoxOutcomes(
 			std::string_view patternId,
 			std::string_view occurrenceId,
-			bool_t success,
-			std::string_view resultLogicId,
+			KOUKU_SAYDON_OUTCOME_SLOT slot,
+			const std::vector<std::string>& resultLogicIds,
 			std::string& outStatus);
+		/* Replaces the typed judgement or outcome values of one definition; the
+		   identity, name and type stay. */
+		bool_t Set_LogicDefinitionValues(
+			std::string_view logicId,
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& values,
+			std::string& outStatus);
+
+		// Apply only this debug flag, retaining all uncommitted Box Detail values.
+		bool_t Set_PresentationBoxDebugRender(std::string_view patternId,
+			std::string_view occurrenceId, bool_t visible, std::string& outStatus);
+
+		// Atomically connect ENTER_AREA and a damage RESULT while retaining other outcome slots.
+		bool_t Set_ColliderTriggerDamage(const std::string& patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
+			std::uint32_t percent, std::string& outStatus);
 
 		/* Summon catalog. A definition is only a name today; a box places it on
 		   one Pattern with spawn time (startMs) and lifetime (durationMs). */
@@ -312,6 +368,67 @@ namespace Client
 			std::uint32_t durationMs,
 			std::string& outStatus);
 		bool_t Delete_SummonBox(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::string& outStatus);
+
+		/* World catalog: a definition names one authored world sequence instance
+		   of the arena; a box starts it on the pattern clock at a playback speed. */
+		bool_t Append_WorldResource(const std::string_view instanceId, std::string& outStatus);
+		bool_t Create_World(
+			std::string_view displayName,
+			std::string_view sequenceInstanceId,
+			std::string& outWorldId,
+			std::string& outStatus);
+		bool_t Set_WorldCompanionEffect(std::string_view worldId,
+			std::string_view resourceId, std::string& outStatus);
+		bool_t Delete_World(
+			std::string_view worldId,
+			std::string& outStatus);
+		bool_t Append_WorldBox(
+			std::string_view patternId,
+			std::string_view worldId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outOccurrenceId,
+			std::string& outStatus);
+		bool_t Set_WorldBoxWindow(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			f32_t playbackSpeed,
+			std::string& outStatus);
+		bool_t Delete_WorldBox(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::string& outStatus);
+
+		/* Scene Profile catalog: a definition names one rendering profile; a box
+		   applies it for its window and blends in over blendMs. */
+		bool_t Create_SceneProfile(
+			std::string_view displayName,
+			std::string_view renderingProfileId,
+			std::string& outSceneProfileId,
+			std::string& outStatus);
+		bool_t Delete_SceneProfile(
+			std::string_view sceneProfileId,
+			std::string& outStatus);
+		bool_t Append_SceneProfileBox(
+			std::string_view patternId,
+			std::string_view sceneProfileId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::string& outOccurrenceId,
+			std::string& outStatus);
+		bool_t Set_SceneProfileBoxWindow(
+			std::string_view patternId,
+			std::string_view occurrenceId,
+			std::uint32_t startMs,
+			std::uint32_t durationMs,
+			std::uint32_t blendMs,
+			std::string& outStatus);
+		bool_t Delete_SceneProfileBox(
 			std::string_view patternId,
 			std::string_view occurrenceId,
 			std::string& outStatus);
@@ -365,9 +482,30 @@ namespace Client
 		void Render_ResourceTree();
 		void Render_AnimationResources();
 		void Render_LogicResources();
+		void Render_LogicDefinitionValues(
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic);
 		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		bool_t Render_LogicOutcomeSlots(const std::string& patternId, const std::string& occurrenceId);
+		bool_t Connect_ColliderLogic(const std::string& patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
+			const std::string& logicId, std::string& outStatus);
 		void Render_SummonResources();
 		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
+		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
+			std::string_view displayName, std::string& outStatus);
+		bool_t Append_PresentationBox(std::string_view resourceId, std::string& outStatus);
+		bool_t Set_PresentationBox(std::string_view patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
+		bool_t Delete_PresentationBox(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
+		void Queue_PresentationPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* occurrence = nullptr);
+		void Render_WorldResources();
+		bool_t Render_WorldCompanionSelector(const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world);
+		void Render_WorldBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		void Render_SceneProfileResources();
+		void Render_SceneProfileBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_ResourcesWindow();
 		void Render_Timeline();
 		void Clear_TimelineSelection();
@@ -418,10 +556,54 @@ namespace Client
 		bool_t m_bNewSummonBoxToPatternEnd = true;
 		int32_t m_iSummonBoxStartMs = 0;
 		int32_t m_iSummonBoxDurationMs = 1000;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> m_PresentationResourceInventory;
+		std::string m_strPresentationResourceStatus;
+		std::string m_strSelectedPresentationResourceId;
+		std::string m_strSelectedPresentationSourceId;
+		int32_t m_iLightResourceCategory = 0;
+		std::string m_strSelectedPresentationOccurrenceId;
+		char_t m_NewPresentationName[256]{};
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
+		std::string m_strColliderExecutionType = "DURATION";
+		std::string m_strColliderExecutionEditId;
+		std::string m_strColliderLogicDefinitionId;
+		int32_t m_iColliderDamagePercent = 10;
+		bool_t m_bColliderDamageDirty = false;
+
+		KOUKU_PRESENTATION_PREVIEW_REQUEST m_PendingPresentationPreviewRequest;
+		bool_t m_bPresentationPreviewRequestPending = false;
+		bool_t m_bPresentationResourceRefreshRequested = true;
+		// World lane session state: the arena's sequence list and the box being edited.
+		std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> m_WorldSequenceResources;
+		std::string m_strWorldSequenceResourceStatus;
+		char_t m_NewWorldName[256]{};
+		std::string m_strNewWorldSequenceInstanceId;
+		std::string m_strSelectedWorldId;
+		std::string m_strSelectedWorldOccurrenceId;
+		int32_t m_iWorldBoxStartMs = 0;
+		int32_t m_iWorldBoxDurationMs = 1000;
+		f32_t m_fWorldBoxPlaybackSpeed = 1.f;
+		// Scene Profile lane session state: the rendering profile list and the box being edited.
+		std::vector<std::string> m_RenderingProfileIds;
+		std::string m_strRenderingProfileResourceStatus;
+		char_t m_NewSceneProfileName[256]{};
+		std::string m_strNewSceneProfileRenderingId;
+		std::string m_strSelectedSceneProfileId;
+		std::string m_strSelectedSceneProfileOccurrenceId;
+		bool_t m_bNewSceneProfileBoxToPatternEnd = true;
+		int32_t m_iNewSceneProfileBoxDurationMs = 1000;
+		int32_t m_iSceneProfileBoxStartMs = 0;
+		int32_t m_iSceneProfileBoxDurationMs = 1000;
+		int32_t m_iSceneProfileBoxBlendMs = 500;
+		// Typed Logic values under edit; committed to the draft by Apply Values.
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION m_LogicValueDraft;
+		std::string m_strLogicValueDraftId;
+		// Which gate the shell selected; only the pattern list header and model filter follow it.
+		std::string m_strBossVariantLabel;
 
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		std::string m_strSelectedPatternId;
-		std::string m_strSelectedActorProfileId = "MN_RPCZ_00";
+		std::string m_strSelectedActorProfileId = "MN_RPCT_05";
 		std::string m_strSelectedStageId;
 		std::string m_strSelectedOccurrenceId;
 		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE m_SelectedResource;

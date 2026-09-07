@@ -2910,6 +2910,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM;
 		command.DebugSetMadnessForm = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_INTERACTION_SLOT)
+	{
+		C2S_INTERACTION_SLOT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_INTERACTION_SLOT");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::INTERACTION_SLOT;
+		command.InteractionSlot = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE)
+	{
+		C2S_DEBUG_SET_KOUKU_HUD_MODE request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_SET_KOUKU_HUD_MODE");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_SET_KOUKU_HUD_MODE;
+		command.DebugSetKoukuHudMode = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY)
 	{
 		C2S_SPAWN_WORLD_ENTITY request{};

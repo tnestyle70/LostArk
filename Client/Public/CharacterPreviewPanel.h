@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "EffectV2_Target.h"
 
 #include <array>
 #include <unordered_set>
@@ -75,6 +76,8 @@ public:
 	// Samples the selected animated hammer from the body's current source time
 	// and exact right-hand socket. Called after body playback/seek has settled.
 	void Synchronize_PreviewWeapon();
+	// Publishes the admitted generic body; the authoring tool owns its cues.
+	EFFECT_V2_TARGET Get_PreviewEffectTarget() const;
 
 	void Release(bool_t removeFromLayer);
 

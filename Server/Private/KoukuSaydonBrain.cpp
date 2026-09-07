@@ -187,6 +187,104 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			return false;
 		}
 	}
+	std::uint64_t patternDurationMs = 0u;
+	for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+		patternDurationMs += stage.iDurationMs;
+	std::unordered_set<std::string> triggerIds;
+	for (const auto& trigger : pattern.MechanicTriggers)
+	{
+		if (trigger.strTriggerId.empty() || !triggerIds.insert(trigger.strTriggerId).second ||
+			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
+			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
+			(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind &&
+			 (trigger.strClonePatternId.empty() || trigger.ClockHours.size() != 3u)))
+		{
+			status = "KoukuSaydon mechanic trigger is invalid";
+			return false;
+		}
+	}
+	std::unordered_set<std::string> windowIds;
+	for (const BOSS_PATTERN_LOGIC_WINDOW& window : pattern.LogicWindows)
+	{
+		const std::uint64_t endMs =
+			static_cast<std::uint64_t>(window.iStartMs) + window.iDurationMs;
+		const bool endTickKind =
+			BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS == window.eKind;
+		bool valuesValid = true;
+		switch (window.eKind)
+		{
+		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
+			valuesValid = window.CardRegions.size() == 8u || (window.iSectorCount >= 2u &&
+				window.SectorSymbols.size() == window.iSectorCount && window.fOuterRadiusM > 0.f);
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP:
+		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
+			valuesValid = !window.CardRegions.empty();
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
+			valuesValid = window.fHalfAngleDegrees > 0.f;
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::POSE_INPUT:
+			valuesValid = window.iPoseIndex < 4u;
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
+			valuesValid = window.iThreshold > 0u;
+			break;
+		default:
+			valuesValid = false;
+			break;
+		}
+		const auto resultsValid = [&window](
+			const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results)
+		{
+			if (results.size() > 4u)
+				return false;
+			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
+			{
+				if (BOSS_PATTERN_LOGIC_RESULT_KIND::NONE == result.eKind)
+					return false;
+				/* Only the boss-level stagger window may hand the audition a
+				follow-up pattern; a per-player verdict cannot move the boss. */
+				if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind &&
+					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind)
+					return false;
+			}
+			return true;
+		};
+		if (window.strWindowId.empty() || !windowIds.insert(window.strWindowId).second ||
+			0u == window.iDurationMs || endMs > patternDurationMs || !valuesValid ||
+			(window.bInsideIsFail && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind) ||
+			std::any_of(window.CardRegions.begin(),window.CardRegions.end(),[&](const BOSS_LOGIC_REGION& region)
+			{ return region.WorldTrack.bEnabled && (region.WorldTrack.Keys.empty() ||
+				BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind || region.WorldTrack.iStartMs > window.iStartMs); }) ||
+			!resultsValid(window.OnSuccess) || !resultsValid(window.OnFail) ||
+			!resultsValid(window.OnTimeout) ||
+			(endTickKind && !window.OnTimeout.empty()) ||
+			(BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind &&
+				!window.OnFail.empty()))
+		{
+			status = "KoukuSaydon pattern logic window is out of the pattern lifetime or carries invalid values";
+			return false;
+		}
+	}
+	for (const BOSS_PATTERN_WORLD_SEQUENCE& sequence : pattern.WorldSequences)
+	{
+		if (sequence.strInstanceId.empty() || sequence.iStartMs > patternDurationMs ||
+			sequence.iDurationMs > 600000u ||
+			!(sequence.fPlaybackSpeed >= 0.05f && sequence.fPlaybackSpeed <= 16.f))
+		{
+			status = "KoukuSaydon pattern world sequence cue is invalid";
+			return false;
+		}
+	}
+	for (const BOSS_PATTERN_SCENE_PROFILE& profile : pattern.SceneProfiles)
+	{
+		if (profile.strProfileId.empty() || profile.iStartMs > patternDurationMs)
+		{
+			status = "KoukuSaydon pattern scene profile cue is invalid";
+			return false;
+		}
+	}
 	status.clear();
 	return true;
 }
@@ -319,6 +417,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 	boss.PinnedDefinitionRevision = revision;
 	boss.PatternTerminalReceipt = {};
 	boss.strPatternId = pattern.strPatternId;
+	boss.iPatternStartTick = serverTick;
 	boss.iPatternSequence = boss.iPatternSequence ==
 		(std::numeric_limits<std::uint32_t>::max)() ? 1u :
 		boss.iPatternSequence + 1u;
@@ -340,6 +439,7 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.eResult = result;
 	}
 	boss.strPatternId.clear();
+	boss.iPatternStartTick = 0u;
 	boss.strPatternStageId.clear();
 	boss.strActionId.clear();
 	boss.strDamageProfileId.clear();
@@ -413,4 +513,14 @@ void LostArk::Server::CKoukuSaydonBrain::Abort_Pattern(
 {
 	Finish_Pattern(
 		boss, serverTick, SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED);
+}
+
+void LostArk::Server::CKoukuSaydonBrain::Complete_Pattern(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick) const
+{
+	if (boss.strPatternId.empty())
+		return;
+	Finish_Pattern(
+		boss, serverTick, SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED);
 }

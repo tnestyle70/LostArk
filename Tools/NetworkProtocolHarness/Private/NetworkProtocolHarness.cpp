@@ -2286,6 +2286,127 @@ namespace
 			"Madness form packet identities append without renumbering peers");
 	}
 
+	void Test_KoukuInteractionProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_INTERACTION_SLOT slot{};
+		slot.iRequestSequence = 21u;
+		slot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		slot.eSlot = INTERACTION_SLOT::E;
+		CPacketWriter slotWriter;
+		testRunner.Require(Write_Message(slotWriter, slot) &&
+			slotWriter.Get_Buffer().size() == 7u,
+			"Interaction slot press carries exact sequence, world and typed slot");
+		CPacketReader slotReader{ slotWriter.Get_Buffer() };
+		C2S_INTERACTION_SLOT decodedSlot{};
+		testRunner.Require(Read_Message(slotReader, decodedSlot) &&
+			decodedSlot.iRequestSequence == 21u && decodedSlot.eWorldId == slot.eWorldId &&
+			decodedSlot.eSlot == INTERACTION_SLOT::E && 0u == slotReader.Get_RemainingSize(),
+			"Interaction slot press round trip");
+		auto slotBytes = slotWriter.Get_Buffer();
+		slotBytes.back() = static_cast<std::uint8_t>(INTERACTION_SLOT::END);
+		CPacketReader unknownSlot{ slotBytes };
+		testRunner.Require(!Read_Message(unknownSlot, decodedSlot),
+			"Interaction slot press refuses an unknown slot");
+
+		C2S_DEBUG_SET_KOUKU_HUD_MODE modeRequest{};
+		modeRequest.iRequestSequence = 22u;
+		modeRequest.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		modeRequest.eMode = KOUKU_HUD_MODE::MARIO;
+		CPacketWriter modeWriter;
+		testRunner.Require(Write_Message(modeWriter, modeRequest) &&
+			modeWriter.Get_Buffer().size() == 7u,
+			"HUD mode override intent carries exact sequence, world and typed mode");
+		CPacketReader modeReader{ modeWriter.Get_Buffer() };
+		C2S_DEBUG_SET_KOUKU_HUD_MODE decodedMode{};
+		testRunner.Require(Read_Message(modeReader, decodedMode) &&
+			decodedMode.iRequestSequence == 22u && decodedMode.eMode == KOUKU_HUD_MODE::MARIO &&
+			0u == modeReader.Get_RemainingSize(),
+			"HUD mode override intent round trip");
+		for (std::uint8_t reason = 0u;
+			reason < static_cast<std::uint8_t>(DEBUG_KOUKU_HUD_MODE_RESULT::END); ++reason)
+		{
+			S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
+			result.iRequestSequence = 22u;
+			result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			result.eResult = static_cast<DEBUG_KOUKU_HUD_MODE_RESULT>(reason);
+			result.eActiveOverride = KOUKU_HUD_MODE::MAZE;
+			CPacketWriter resultWriter;
+			testRunner.Require(Write_Message(resultWriter, result) &&
+				8u == resultWriter.Get_Buffer().size(),
+				"HUD mode verdict writer accepts every exact typed reason");
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT read{};
+			testRunner.Require(Read_Message(resultReader, read) &&
+				read.iRequestSequence == 22u && read.eResult == result.eResult &&
+				read.eActiveOverride == KOUKU_HUD_MODE::MAZE &&
+				0u == resultReader.Get_RemainingSize(),
+				"HUD mode verdict echoes correlation, reason and active override");
+		}
+
+		S2C_SCENE_PROFILE_APPLY scene{};
+		scene.strProfileId = "scene.kakulsaydon.find-true-dark.v1";
+		scene.iBlendMs = 500u;
+		scene.iDurationMs = 24000u;
+		CPacketWriter sceneWriter;
+		testRunner.Require(Write_Message(sceneWriter, scene),
+			"Scene profile cue writer accepts a stable profile ID with blend and duration");
+		CPacketReader sceneReader{ sceneWriter.Get_Buffer() };
+		S2C_SCENE_PROFILE_APPLY decodedScene{};
+		testRunner.Require(Read_Message(sceneReader, decodedScene) &&
+			decodedScene.strProfileId == scene.strProfileId &&
+			decodedScene.iBlendMs == 500u && decodedScene.iDurationMs == 24000u &&
+			0u == sceneReader.Get_RemainingSize(),
+			"Scene profile cue round trip");
+		scene.strProfileId = "has space";
+		CPacketWriter invalidScene;
+		testRunner.Require(!Write_Message(invalidScene, scene),
+			"Scene profile cue refuses a non stable profile ID");
+
+		S2C_WORLD_SEQUENCE_PLAY play{};
+		play.strSequenceInstanceId = "world.sequence.instance.8";
+		play.fPlaybackSpeed = 0.5f;
+		play.iDurationMs = 2400u;
+		play.fPositionOffsetX = 0.249f;
+		play.fPositionOffsetZ = 204.799f;
+		CPacketWriter playWriter;
+		testRunner.Require(Write_Message(playWriter, play),
+			"World sequence play carries the pattern playback speed");
+		CPacketReader playReader{ playWriter.Get_Buffer() };
+		S2C_WORLD_SEQUENCE_PLAY decodedPlay{};
+		testRunner.Require(Read_Message(playReader, decodedPlay) &&
+			decodedPlay.strSequenceInstanceId == play.strSequenceInstanceId &&
+			decodedPlay.fPlaybackSpeed == 0.5f && decodedPlay.iDurationMs == 2400u &&
+			decodedPlay.fPositionOffsetX == play.fPositionOffsetX &&
+			decodedPlay.fPositionOffsetZ == play.fPositionOffsetZ && 0u == playReader.Get_RemainingSize(),
+			"World sequence play round trip preserves speed, offsets and pattern lifetime");
+		play.iDurationMs = 0u;
+		CPacketWriter authoredLifetimeWriter;
+		testRunner.Require(Write_Message(authoredLifetimeWriter, play),
+			"World sequence play accepts zero as the authored lifetime");
+		CPacketReader authoredLifetimeReader{ authoredLifetimeWriter.Get_Buffer() };
+		testRunner.Require(Read_Message(authoredLifetimeReader, decodedPlay) &&
+			decodedPlay.iDurationMs == 0u && authoredLifetimeReader.Get_RemainingSize() == 0u,
+			"World sequence authored lifetime round trip");
+		play.iDurationMs = 600001u;
+		CPacketWriter invalidLifetimeWriter;
+		testRunner.Require(!Write_Message(invalidLifetimeWriter, play),
+			"World sequence play refuses lifetime beyond ten minutes");
+		play.iDurationMs = 0u;
+		play.fPlaybackSpeed = 0.f;
+		CPacketWriter zeroSpeed;
+		testRunner.Require(!Write_Message(zeroSpeed, play),
+			"World sequence play refuses a zero playback speed");
+
+		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_INTERACTION_SLOT) &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT) + 1u &&
+			NETWORK_PROTOCOL_VERSION == 63u,
+			"Interaction packet identities remain stable at protocol 63 with World sequence lifetime");
+	}
+
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2399,8 +2520,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(59u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 59");
+			testRunner.Require(63u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 63");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2668,6 +2789,13 @@ namespace
 		first.iCurrentMadness = 35u;
 		first.iMaximumMadness = 100u;
 		first.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		first.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::HEART;
+		first.eMechanicCardColor = MECHANIC_CARD_COLOR::RED;
+		first.eKoukuHudMode = KOUKU_HUD_MODE::DANCE;
+		first.ModeSkillIndexBySlot[0] = 2;
+		first.ModeSkillIndexBySlot[1] = 0;
+		first.ModeSkillIndexBySlot[2] = 3;
+		first.ModeSkillIndexBySlot[3] = 1;
 		first.iSilenceEndTick = 180u;
 		first.iSilenceDurationTicks = 150u;
 		first.iComboStage = 3;
@@ -2695,6 +2823,7 @@ namespace
 		entity.strPatternId = "VALTAN_SWING";
 		entity.strActionId = "valtan.attack.swing.active";
 		entity.iPatternSequence = 7u;
+		entity.iPatternStartTick = 10u;
 		entity.iPatternStageIndex = 1u;
 		entity.iPatternTargetNetEntityId = first.iNetEntityId;
 		entity.fPositionX = 150.f;
@@ -2759,10 +2888,13 @@ namespace
 		/* Protocol 59 adds the KoukuSaydon madness gauge pair and the typed
 		avatar form to every player row. */
 		constexpr std::size_t playerMadnessBytes = 4 + 4 + 1;
+		/* Protocol 60 adds the dealt card symbol, the interaction HUD mode and
+		the eight mode-skill slot indices to every player row. */
+		constexpr std::size_t playerInteractionBytes = 1 + 1 + 1 + KOUKU_HUD_SLOT_COUNT;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes;
+			playerMadnessBytes + playerInteractionBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -2770,7 +2902,7 @@ namespace
 		   snapshot the flag guards. */
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + 1 + (4 * 6) + 1 + 1 + 1 +
+			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
 			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
@@ -2813,11 +2945,22 @@ namespace
 				source.ActiveGameplayRevision &&
 			decoded.RequiredPinnedGameplayRevisions ==
 				source.RequiredPinnedGameplayRevisions &&
+			decoded.Entities.front().iPatternStartTick == 10u &&
 			decoded.Entities.front().PinnedDefinitionRevision ==
 				entity.PinnedDefinitionRevision &&
 			decoded.CombatObjects.front().PinnedDefinitionRevision ==
 				combatObject.PinnedDefinitionRevision,
 			"World Snapshot Header Round Trip");
+
+		S2C_WORLD_SNAPSHOT orphanCard = source;
+		orphanCard.Players.front().eMechanicCardColor = MECHANIC_CARD_COLOR::NONE;
+		std::vector<std::uint8_t> invalidContractPayload;
+		testRunner.Require(!Build_WorldSnapshotPayload(orphanCard, invalidContractPayload),
+			"Reject a card suit without its assigned color");
+		S2C_WORLD_SNAPSHOT orphanClock = source;
+		orphanClock.Entities.front().strPatternId.clear();
+		testRunner.Require(!Build_WorldSnapshotPayload(orphanClock, invalidContractPayload),
+			"Reject a pattern start clock after its pattern has ended");
 
 		S2C_WORLD_SNAPSHOT overfullGauge = source;
 		overfullGauge.iEstherGauge = 1001;
@@ -2865,6 +3008,16 @@ namespace
 			decoded.Players[0].iCurrentMadness == 35u &&
 			decoded.Players[0].iMaximumMadness == 100u &&
 			decoded.Players[0].eMadnessForm == PLAYER_MADNESS_FORM::CLOWN &&
+			decoded.Players[0].eMechanicCardSymbol == MECHANIC_CARD_SYMBOL::HEART &&
+			decoded.Players[0].eMechanicCardColor == MECHANIC_CARD_COLOR::RED &&
+			decoded.Players[0].eKoukuHudMode == KOUKU_HUD_MODE::DANCE &&
+			decoded.Players[0].ModeSkillIndexBySlot[0] == 2 &&
+			decoded.Players[0].ModeSkillIndexBySlot[1] == 0 &&
+			decoded.Players[0].ModeSkillIndexBySlot[2] == 3 &&
+			decoded.Players[0].ModeSkillIndexBySlot[3] == 1 &&
+			decoded.Players[0].ModeSkillIndexBySlot[4] == -1 &&
+			decoded.Players[1].eKoukuHudMode == KOUKU_HUD_MODE::NONE &&
+			decoded.Players[1].ModeSkillIndexBySlot[0] == -1 &&
 			decoded.Players[1].iMaximumMadness == 0u &&
 			decoded.Players[1].eMadnessForm == PLAYER_MADNESS_FORM::NORMAL &&
 			decoded.Players[0].iSilenceEndTick == 180u &&
@@ -3427,6 +3580,38 @@ namespace
 				decodedEstherCast.Players[1].iSkillId == INVALID_SKILL_ID &&
 				decodedEstherCast.Players[1].iActionStartTick == 45,
 				"Esther Cast Player Snapshot Round Trip");
+
+			/* An interaction press carries the resolved mode skill index in
+			the skill id field; anything past the slot count is malformed. */
+			S2C_WORLD_SNAPSHOT interaction = source;
+			interaction.Players[1].eAction = PLAYER_ACTION_STATE::INTERACTION;
+			interaction.Players[1].iSkillId = 2u;
+			interaction.Players[1].iActionStartTick = 46;
+			std::vector<std::uint8_t> interactionPayload;
+			S2C_WORLD_SNAPSHOT decodedInteraction{};
+			bool interactionRoundTrip =
+				Build_WorldSnapshotPayload(interaction, interactionPayload);
+			if (interactionRoundTrip)
+			{
+				CPacketReader interactionReader{ interactionPayload };
+				interactionRoundTrip =
+					Read_Message(interactionReader, decodedInteraction);
+			}
+			testRunner.Require(
+				interactionRoundTrip &&
+				2u == decodedInteraction.Players.size() &&
+				decodedInteraction.Players[1].eAction ==
+					PLAYER_ACTION_STATE::INTERACTION &&
+				decodedInteraction.Players[1].iSkillId == 2u &&
+				decodedInteraction.Players[1].iActionStartTick == 46,
+				"Interaction Player Snapshot Round Trip Carries The Slot Skill Index");
+			S2C_WORLD_SNAPSHOT interactionOutOfRange = interaction;
+			interactionOutOfRange.Players[1].iSkillId =
+				static_cast<SKILL_ID>(KOUKU_HUD_SLOT_COUNT);
+			CPacketWriter interactionOutOfRangeWriter;
+			testRunner.Require(
+				!Write_Message(interactionOutOfRangeWriter, interactionOutOfRange),
+				"Reject An Interaction Whose Skill Index Exceeds The Slot Count");
 
 			S2C_WORLD_SNAPSHOT estherCastWithSkill = estherCast;
 			estherCastWithSkill.Players[1].iSkillId = 34010;
@@ -5538,8 +5723,8 @@ namespace
 		}
 
 		testRunner.Require(
-			59u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 59");
+			63u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 63");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5566,8 +5751,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			59u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 59");
+			63u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 63");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6825,6 +7010,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_KakulAuthoringCommandProtocol(testRunner);
 	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_DebugMadnessFormProtocol(testRunner);
+	Test_KoukuInteractionProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);

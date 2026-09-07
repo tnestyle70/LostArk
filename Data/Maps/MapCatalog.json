@@ -95,6 +95,8 @@
       "sourcePlacements": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements",
       "catalog": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
       "placements": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
+      "sourceLights": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json",
+      "lights": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json",
       "sourceSequences": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
       "sequences": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
       "sourceCameraShots": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",

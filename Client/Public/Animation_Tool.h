@@ -298,7 +298,8 @@ public:
 	explicit CAnimation_Tool(
 		shared_ptr<CCharacterPreviewPanel> pPreviewPanel,
 		CBalanceTool* pBalanceTool,
-		CValtanBossTool* pValtanBossTool);
+		CValtanBossTool* pValtanBossTool,
+		ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CAnimation_Tool();
 
 	void Update(f32_t fTimeDelta, bool_t bIsActiveTool);
@@ -737,6 +738,10 @@ private:
 		std::string& strOutStatus) const;
 	void Sample_KoukuSaydonCompositionPreview(
 		const shared_ptr<Engine::CModel>& pModel);
+	void Reset_KoukuCompositionEffects();
+	void Sample_KoukuCompositionEffects(
+		const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& row,
+		f32_t fSourceSeconds);
 	void Apply_KoukuSaydonPreviewScale(
 		const shared_ptr<Engine::CModel>& pModel, f32_t multiplier);
 	bool_t Start_PendingKoukuSaydonCompositionPreview(
@@ -974,6 +979,8 @@ private:
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;
+	ComPtr<ID3D11Device> m_pPreviewDevice;
+	ComPtr<ID3D11DeviceContext> m_pPreviewContext;
 	/* Non-owning orchestration endpoints. MainApp creates these before the
 	   Workbench and owns all three until Client shutdown. */
 	CBalanceTool* m_pBalanceTool = nullptr;
@@ -1052,6 +1059,9 @@ private:
 	std::string m_strPendingCompositionPreviewTargetAssetName;
 	std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> m_KoukuCompositionPreviewRows;
 	std::vector<f32_t> m_KoukuCompositionPreviewScales;
+	EFFECT_V2_TARGET m_KoukuCompositionEffectTarget;
+	std::string m_strKoukuCompositionEffectOccurrence;
+	f32_t m_fKoukuCompositionEffectSourceSeconds = -1.f;
 	std::weak_ptr<Engine::CModel> m_KoukuScaledPreviewModel;
 	f32_t m_fKoukuSaydonPatternPreviewScale = 1.f;
 	double m_fKoukuCompositionPreviewClockMs = 0.0;

@@ -133,7 +133,7 @@ function Get-EncounterProfiles {
 			'schema','formatVersion','encounterId','bossArchetypeId',
 			'authority','fixedTickHz','patterns')
 		if ($isKoukuSaydon) {
-			$encounterProperties += @('sourceRevision','playAllPatternIds')
+			$encounterProperties += @('sourceRevision','playAllPatternIds','madnessPolicy')
 		}
 		else {
 			$encounterProperties += @('introPatternId','states')
@@ -225,6 +225,7 @@ function Get-EncounterProfiles {
 				# while resolving encounter IDs for placements.
 				$patternProperties += 'verticalOffsetM'
 			}
+			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
 			Assert-ExactProperties $pattern $patternProperties "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"
 			Assert-JsonNumber $pattern.maximumRange "$($document.encounterId) maximumRange"
@@ -632,8 +633,15 @@ function Convert-WorldDocument {
 				[string]$events.Count)
 			foreach ($event in $events) {
 				if ($event.type -eq 'movePlayer') {
-					Assert-ExactProperties $event @(
-						'type','targetPosition','durationSeconds','arcHeight') "$relativePath movePlayer event"
+					$moveKeys = @('type','targetPosition','durationSeconds','arcHeight')
+					$hasKoukuMode = $event.PSObject.Properties.Name -contains 'koukuHudMode'
+					if ($hasKoukuMode) {
+						$moveKeys += 'koukuHudMode'
+						if ($WorldId -cne 'KAKULSAYDON_ARENA' -or $event.koukuHudMode -cnotin @('MARIO','MAZE','NONE')) {
+							throw "movePlayer koukuHudMode requires a Kouku arena mode"
+						}
+					}
+					Assert-ExactProperties $event $moveKeys "$relativePath movePlayer event"
 					if (@($event.targetPosition).Count -ne 3) {
 						throw "movePlayer target requires three coordinates: $($placement.placementId)"
 					}
@@ -649,12 +657,13 @@ function Convert-WorldDocument {
 						throw "movePlayer timing or arc is out of range: $($placement.placementId)"
 					}
 					$triggerFields += @(
-						'movePlayer', '5',
+						'movePlayer', $(if ($hasKoukuMode) { '6' } else { '5' }),
 						(Format-InvariantFloat $event.targetPosition[0]),
 						(Format-InvariantFloat $event.targetPosition[1]),
 						(Format-InvariantFloat $event.targetPosition[2]),
 						(Format-InvariantFloat $duration),
 						(Format-InvariantFloat $arcHeight))
+					if ($hasKoukuMode) { $triggerFields += [string]$event.koukuHudMode }
 				}
 				elseif ($event.type -eq 'changeLevel') {
 					Assert-ExactProperties $event @('type','targetWorldId') "$relativePath changeLevel event"

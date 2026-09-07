@@ -148,9 +148,10 @@ namespace
 		DATA_JSON_VALUE root;
 		std::string parseError;
 		if (!CDataJson::Parse(text, root, parseError) ||
-			!Has_ExactProperties(root,
-				{ "schema", "formatVersion", "bossArchetypeId",
-				  "sourceRevision", "bindings" }))
+			(!Has_ExactProperties(root,
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings" }) &&
+			 !Has_ExactProperties(root,
+				{ "schema", "formatVersion", "bossArchetypeId", "sourceRevision", "bindings", "patterns" })))
 		{
 			outStatus = "KoukuSaydon Product animation binding is malformed: " +
 				parseError;
@@ -342,15 +343,15 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	ComPtr<ID3D11DeviceContext> pContext,
 	const std::uint32_t iLevelIndex)
 {
-	/* The clown avatar is not a catalog boss: MN_RPCT_03 has no Server
-	profile or archetype. It shares the Saydon rig, clip set and admission
-	scale, so the same 0.017 that admits MN_RPCT_05 applies here. */
+	/* Polymorph 4134 is the player's MN_RPCZ_00-1 madness doll. Its
+	100-bone body embeds its original and offline-tuned clips with variant material;
+	the existing MN_RPCZ_00 boss remains a separate catalog presentation. */
 	constexpr std::string_view CLOWN_BODY_ASSET =
-		"Character/KoukuSaton/MN_RPCT_03/MN_RPCT_03.wmodel";
-	constexpr f32_t CLOWN_BODY_PRE_SCALE = 0.017f;
+		"Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel";
+	constexpr f32_t CLOWN_BODY_PRE_SCALE = 0.017f * 0.709f;
 	constexpr std::string_view CLOWN_READY_KEY = "avatar.kouku-saydon.clown";
-	constexpr const char_t* CLOWN_IDLE_CLIP = "rpct00_idle_battle_1";
-	constexpr const char_t* CLOWN_RUN_CLIP = "rpct00_run_battle_1";
+	constexpr const char_t* CLOWN_IDLE_CLIP = "rpcz00p_idle_battle_1";
+	constexpr const char_t* CLOWN_RUN_CLIP = "rpcz00p_run_battle_1";
 	if (nullptr == pDevice || nullptr == pContext || iLevelIndex >= ETOUI(LEVEL::END))
 		return E_INVALIDARG;
 

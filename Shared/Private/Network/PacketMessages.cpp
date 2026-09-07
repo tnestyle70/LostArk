@@ -83,6 +83,38 @@ namespace
 		}
 		return true;
 	}
+	/* A NONE mode carries only empty slots; any other mode may leave slots
+	empty but every filled slot indexes an authored icon list of at most 8. */
+	bool Is_Valid_KoukuHudSlots(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+	{
+		for (std::size_t slot = 0u; slot < LostArk::Shared::KOUKU_HUD_SLOT_COUNT; ++slot)
+		{
+			const std::int8_t index = snapshot.ModeSkillIndexBySlot[slot];
+			if (index < LostArk::Shared::KOUKU_HUD_SLOT_EMPTY ||
+				index >= static_cast<std::int8_t>(LostArk::Shared::KOUKU_HUD_SLOT_COUNT))
+				return false;
+			if (LostArk::Shared::KOUKU_HUD_MODE::NONE == snapshot.eKoukuHudMode &&
+				LostArk::Shared::KOUKU_HUD_SLOT_EMPTY != index)
+				return false;
+		}
+		return true;
+	}
+
+	bool Read_KoukuHudSlots(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+	{
+		for (std::size_t slot = 0u; slot < LostArk::Shared::KOUKU_HUD_SLOT_COUNT; ++slot)
+		{
+			std::uint8_t encoded = 0u;
+			if (!reader.Read_U8(encoded) || encoded > LostArk::Shared::KOUKU_HUD_SLOT_COUNT)
+				return false;
+			snapshot.ModeSkillIndexBySlot[slot] =
+				static_cast<std::int8_t>(static_cast<int>(encoded) - 1);
+		}
+		return true;
+	}
+
     //유효한 플레이어 스냅샷인지 검증 - netentityid, position x y z, locomotion state
     bool Is_Valid_PlayerSnapshot(
         const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -118,6 +150,12 @@ namespace
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
 			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
+			LostArk::Shared::Is_Valid_MechanicCardSymbol(snapshot.eMechanicCardSymbol) &&
+			LostArk::Shared::Is_Valid_MechanicCardColor(snapshot.eMechanicCardColor) &&
+			((LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == snapshot.eMechanicCardSymbol) ==
+			 (LostArk::Shared::MECHANIC_CARD_COLOR::NONE == snapshot.eMechanicCardColor)) &&
+			LostArk::Shared::Is_Valid_KoukuHudMode(snapshot.eKoukuHudMode) &&
+			Is_Valid_KoukuHudSlots(snapshot) &&
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
@@ -175,12 +213,18 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
+			 /* An interaction press carries the mode skill index it resolved to
+			 in the skill id field, and its start tick like every timed action. */
+			 (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == snapshot.eAction &&
+				snapshot.iSkillId < LostArk::Shared::KOUKU_HUD_SLOT_COUNT &&
+				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST != snapshot.eAction &&
-				LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != snapshot.eAction) &&
+				LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION != snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
     }
 
@@ -406,6 +450,7 @@ namespace
 		return snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
 			Is_Valid_WorldEntityAction(snapshot.eAction) &&
 			Is_Valid_StableId(snapshot.strPatternId, true) &&
+			(0u == snapshot.iPatternStartTick || (!snapshot.strPatternId.empty() && 0u != snapshot.iPatternSequence)) &&
 			Is_Valid_StableId(snapshot.strActionId, true) &&
 			std::isfinite(snapshot.fPositionX) &&
 			std::isfinite(snapshot.fPositionY) &&
@@ -2224,6 +2269,131 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_INTERACTION_SLOT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		!Is_Valid_InteractionSlot(message.eSlot))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eSlot));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_INTERACTION_SLOT& message)
+{
+	C2S_INTERACTION_SLOT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t slot = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(slot))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eSlot = static_cast<INTERACTION_SLOT>(slot);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!Is_Valid_InteractionSlot(decoded.eSlot))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_SET_KOUKU_HUD_MODE& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		!Is_Valid_KoukuHudMode(message.eMode))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eMode));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_SET_KOUKU_HUD_MODE& message)
+{
+	C2S_DEBUG_SET_KOUKU_HUD_MODE decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t mode = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(mode))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eMode = static_cast<KOUKU_HUD_MODE>(mode);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!Is_Valid_KoukuHudMode(decoded.eMode))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= DEBUG_KOUKU_HUD_MODE_RESULT::END ||
+		!Is_Valid_KoukuHudMode(message.eActiveOverride))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eActiveOverride));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& message)
+{
+	S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	std::uint8_t mode = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result) || !reader.Read_U8(mode))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<DEBUG_KOUKU_HUD_MODE_RESULT>(result);
+	decoded.eActiveOverride = static_cast<KOUKU_HUD_MODE>(mode);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= DEBUG_KOUKU_HUD_MODE_RESULT::END ||
+		!Is_Valid_KoukuHudMode(decoded.eActiveOverride))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_SCENE_PROFILE_APPLY& message)
+{
+	/* Profile IDs share the stable-ID alphabet and bound of sequence instance
+	IDs; both are opaque presentation names the Client resolves itself. */
+	if (!Is_Valid_SequenceInstanceId(message.strProfileId) ||
+		message.iBlendMs > 600000u || message.iDurationMs > 600000u)
+		return false;
+	if (!writer.Write_String(message.strProfileId, MAX_SEQUENCE_INSTANCE_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iBlendMs);
+	writer.Write_U32(message.iDurationMs);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_SCENE_PROFILE_APPLY& message)
+{
+	S2C_SCENE_PROFILE_APPLY decoded{};
+	if (!reader.Read_String(decoded.strProfileId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!Is_Valid_SequenceInstanceId(decoded.strProfileId) ||
+		!reader.Read_U32(decoded.iBlendMs) || !reader.Read_U32(decoded.iDurationMs) ||
+		decoded.iBlendMs > 600000u || decoded.iDurationMs > 600000u)
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_CHANGE_CHARACTER_CLASS& message)
 {
@@ -2411,6 +2581,15 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iCurrentMadness);
 		writer.Write_U32(player.iMaximumMadness);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eMadnessForm));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eMechanicCardSymbol));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eMechanicCardColor));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eKoukuHudMode));
+		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
+		{
+			/* -1 (empty) travels as 0 so the wire byte stays unsigned. */
+			writer.Write_U8(static_cast<std::uint8_t>(
+				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
+		}
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
@@ -2444,6 +2623,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(entity.fYawDegrees);
 		writer.Write_U32(entity.iActionStartTick);
 		writer.Write_U32(entity.iPatternSequence);
+		writer.Write_U32(entity.iPatternStartTick);
 		writer.Write_U32(entity.iPatternStageIndex);
 		writer.Write_U32(entity.iPatternTargetNetEntityId);
 		writer.Write_U8(entity.PortalRushRoute.isValid ? 1u : 0u);
@@ -2580,6 +2760,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawCombatReady = 0;
 		std::uint8_t rawPatternBound = 0;
 		std::uint8_t rawMadnessForm = 0;
+		std::uint8_t rawCardSymbol = 0;
+		std::uint8_t rawCardColor = 0;
+		std::uint8_t rawHudMode = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -2614,6 +2797,13 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumMadness) ||
 			!reader.Read_U8(rawMadnessForm) ||
 			rawMadnessForm >= static_cast<std::uint8_t>(PLAYER_MADNESS_FORM::END) ||
+			!reader.Read_U8(rawCardSymbol) ||
+			!reader.Read_U8(rawCardColor) ||
+			rawCardColor >= static_cast<std::uint8_t>(MECHANIC_CARD_COLOR::END) ||
+			rawCardSymbol >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END) ||
+			!reader.Read_U8(rawHudMode) ||
+			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
+			!Read_KoukuHudSlots(reader, player) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(rawPatternBound) ||
@@ -2641,6 +2831,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.isCombatReady = 0u != rawCombatReady;
 		player.isPatternBound = 0u != rawPatternBound;
 		player.eMadnessForm = static_cast<PLAYER_MADNESS_FORM>(rawMadnessForm);
+		player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(rawCardSymbol);
+		player.eMechanicCardColor = static_cast<MECHANIC_CARD_COLOR>(rawCardColor);
+		player.eKoukuHudMode = static_cast<KOUKU_HUD_MODE>(rawHudMode);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
@@ -2678,6 +2871,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(entity.fYawDegrees) ||
 			!reader.Read_U32(entity.iActionStartTick) ||
 			!reader.Read_U32(entity.iPatternSequence) ||
+			!reader.Read_U32(entity.iPatternStartTick) ||
 			!reader.Read_U32(entity.iPatternStageIndex) ||
 			!reader.Read_U32(entity.iPatternTargetNetEntityId) ||
 			!reader.Read_U8(rawHasPortalRushRoute) ||
@@ -5160,10 +5354,21 @@ bool LostArk::Shared::Read_Message(
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
-	if (!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId))
+	if (!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId) ||
+		!std::isfinite(message.fPlaybackSpeed) ||
+		message.fPlaybackSpeed < 0.05f || message.fPlaybackSpeed > 16.f ||
+		!std::isfinite(message.fPositionOffsetX) || !std::isfinite(message.fPositionOffsetY) ||
+		!std::isfinite(message.fPositionOffsetZ) || message.iDurationMs > 600000u)
 		return false;
-	return writer.Write_String(
-		message.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES);
+	if (!writer.Write_String(
+			message.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES))
+		return false;
+	writer.Write_F32(message.fPlaybackSpeed);
+	writer.Write_F32(message.fPositionOffsetX);
+	writer.Write_F32(message.fPositionOffsetY);
+	writer.Write_F32(message.fPositionOffsetZ);
+	writer.Write_U32(message.iDurationMs);
+	return true;
 }
 
 bool LostArk::Shared::Read_Message(
@@ -5172,7 +5377,15 @@ bool LostArk::Shared::Read_Message(
 	S2C_WORLD_SEQUENCE_PLAY decoded{};
 	if (!reader.Read_String(
 			decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
-		!Is_Valid_SequenceInstanceId(decoded.strSequenceInstanceId))
+		!Is_Valid_SequenceInstanceId(decoded.strSequenceInstanceId) ||
+		!reader.Read_F32(decoded.fPlaybackSpeed) ||
+		!std::isfinite(decoded.fPlaybackSpeed) ||
+		decoded.fPlaybackSpeed < 0.05f || decoded.fPlaybackSpeed > 16.f ||
+		!reader.Read_F32(decoded.fPositionOffsetX) || !reader.Read_F32(decoded.fPositionOffsetY) ||
+		!reader.Read_F32(decoded.fPositionOffsetZ) ||
+		!std::isfinite(decoded.fPositionOffsetX) || !std::isfinite(decoded.fPositionOffsetY) ||
+		!std::isfinite(decoded.fPositionOffsetZ) ||
+		!reader.Read_U32(decoded.iDurationMs) || decoded.iDurationMs > 600000u)
 	{
 		return false;
 	}

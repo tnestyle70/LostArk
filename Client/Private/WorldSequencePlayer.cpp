@@ -73,7 +73,6 @@ bool_t CWorldSequencePlayer::Load_Area(
 	const std::string& areaId,
 	const TARGET_SET& targets)
 {
-	Clear();
 	if (areaId.empty() || !targets.Is_Complete())
 	{
 		m_Status = "World sequence area or target set is empty";
@@ -92,14 +91,17 @@ bool_t CWorldSequencePlayer::Load_Area(
 	   sequence that points at a placement the level did not load is rejected
 	   here instead of failing halfway through a play. */
 	std::string status;
-	if (!m_Document.Load(path, areaId,
+	CWorldSequenceDocument staged;
+	if (!staged.Load(path, areaId,
 		Collect_Placements(*targets.pCatalog, *targets.pPlacements),
 		Collect_DeployPlacements(*targets.pDeployRuntime), status))
 	{
-		m_Document.Reset_Empty({});
 		m_Status = "World sequence load failed: " + status;
 		return false;
 	}
+	Stop_All(targets, true);
+	m_ObjectModels.clear();
+	m_Document = std::move(staged);
 	m_Status = "World sequence loaded: " +
 		std::to_string(m_Document.Get_Instances().size()) + " instances";
 	return true;
@@ -107,7 +109,9 @@ bool_t CWorldSequencePlayer::Load_Area(
 
 void CWorldSequencePlayer::Clear()
 {
+	for (auto& active : m_Active) Release_Objects(active);
 	m_Active.clear();
+	m_ObjectModels.clear();
 	m_ModelCache.clear();
 	m_Document.Reset_Empty({});
 	m_Status.clear();
@@ -331,9 +335,10 @@ bool_t CWorldSequencePlayer::Apply_RuntimeRecord(
 
 bool_t CWorldSequencePlayer::Play(
 	const std::string& instanceId,
-	const TARGET_SET& targets)
+	const TARGET_SET& targets, const f32_t playbackSpeed, const float3_t& positionOffset, const uint32_t durationMs)
 {
-	if (!Is_Ready() || !targets.Is_Complete())
+	if (!Is_Ready() || !targets.Is_Complete() || !std::isfinite(playbackSpeed) || playbackSpeed <= 0.f ||
+		!std::isfinite(positionOffset.x) || !std::isfinite(positionOffset.y) || !std::isfinite(positionOffset.z))
 	{
 		m_Status = "World sequence player is not ready";
 		return false;
@@ -355,17 +360,25 @@ bool_t CWorldSequencePlayer::Play(
 		});
 	if (m_Active.end() != existing)
 	{
+		existing->durationMs = durationMs;
 		existing->elapsedMs = 0.f;
+		existing->playbackSpeed = playbackSpeed;
+		existing->positionOffset = positionOffset;
 		return true;
 	}
 
 	/* Capture the live pose of every bound target before the first sample so
 	   a replay composes against the placed transform, not against whatever the
 	   previous play left behind. */
+	if (!Prepare_ObjectResources(*instance, targets)) return false;
 	ACTIVE_INSTANCE active;
+	active.durationMs = durationMs;
 	active.instanceId = instanceId;
+	active.playbackSpeed = playbackSpeed;
+	active.positionOffset = positionOffset;
 	for (const WORLD_SEQUENCE_BINDING& binding : instance->bindings)
 	{
+		if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
 		uint64_t targetId = 0;
 		if (!Try_ParseTargetId(binding, targetId))
 		{
@@ -402,6 +415,8 @@ bool_t CWorldSequencePlayer::Play(
 		baseline.placementId = targetId;
 		baseline.record = entry->record;
 		baseline.runtimeVisible = entry->record.visible;
+		baseline.restoreRuntimeVisible = entry->record.visible;
+		(void)CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, baseline.restoreRuntimeVisible);
 		active.placementBaselines.push_back(std::move(baseline));
 	}
 	m_Active.push_back(std::move(active));
@@ -433,11 +448,52 @@ bool_t CWorldSequencePlayer::Try_GetElapsedMs(
 	return true;
 }
 
-void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets)
+bool_t CWorldSequencePlayer::Try_GetSampledPlacementRecord(
+	const std::string& instanceId, const uint64_t placementId,
+	MAP_PLACEMENT_RECORD& outRecord) const
 {
-	for (const ACTIVE_INSTANCE& active : m_Active)
-		Release_DeployPreviews(active, targets);
-	m_Active.clear();
+	const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
+	if (active == m_Active.end()) return false;
+	const auto sampled = active->sampledPlacements.find(placementId);
+	if (sampled == active->sampledPlacements.end()) return false;
+	outRecord = sampled->second;
+	return true;
+}
+
+void CWorldSequencePlayer::Stop_Instance(
+	const std::string& instanceId, const TARGET_SET& targets, const bool_t restorePlacements)
+{
+	const auto found = std::find_if(m_Active.begin(), m_Active.end(),
+		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
+	if (found == m_Active.end()) return;
+	if (restorePlacements && targets.Is_Complete())
+		for (const auto& baseline : found->placementBaselines)
+			if (auto* entry = Find_Placement(*targets.pPlacements, baseline.placementId))
+			{
+				auto record = baseline.record;
+				record.visible = baseline.restoreRuntimeVisible;
+				(void)Apply_RuntimeRecord(targets, m_ModelCache, *entry, record);
+			}
+	Release_DeployPreviews(*found, targets);
+	Release_Objects(*found);
+	m_Active.erase(found);
+}
+
+void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets, const bool_t restorePlacements)
+{
+	while (!m_Active.empty()) Stop_Instance(m_Active.back().instanceId, targets, restorePlacements);
+}
+
+bool_t CWorldSequencePlayer::Seek_InstanceToMs(
+	const std::string& instanceId, const f32_t elapsedMs, const TARGET_SET& targets)
+{
+	if (!targets.Is_Complete() || !std::isfinite(elapsedMs) || elapsedMs < 0.f) return false;
+	const auto found = std::find_if(m_Active.begin(), m_Active.end(),
+		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
+	if (found == m_Active.end()) return false;
+	found->elapsedMs = elapsedMs;
+	return APPLY_RESULT::FAILED != Apply_Instance(*found, targets);
 }
 
 void CWorldSequencePlayer::Release_DeployPreviews(
@@ -467,12 +523,20 @@ bool_t CWorldSequencePlayer::Seek_AllToMs(
 	/* A scrub rewrites the clock rather than advancing it, and applies the
 	   frame in place. A finished instance stays in the list here so the
 	   authoring scrub can step back into it. */
-	for (ACTIVE_INSTANCE& active : m_Active)
+	bool_t succeeded = true;
+	for (size_t index = 0; index < m_Active.size();)
 	{
+		ACTIVE_INSTANCE& active = m_Active[index];
 		active.elapsedMs = elapsedMs;
-		(void)Apply_Instance(active, targets);
+		if (APPLY_RESULT::FAILED == Apply_Instance(active, targets))
+		{
+			const auto id = active.instanceId;
+			Stop_Instance(id, targets, true);
+			succeeded = false;
+		}
+		else ++index;
 	}
-	return true;
+	return succeeded;
 }
 
 f32_t CWorldSequencePlayer::Get_LongestElapsedSpanMs() const
@@ -487,9 +551,9 @@ f32_t CWorldSequencePlayer::Get_LongestElapsedSpanMs() const
 		if (nullptr == instance || nullptr == sequence)
 			continue;
 		const f32_t speed = instance->playbackSpeed > 0.001f ?
-			instance->playbackSpeed : 1.f;
-		const f32_t span = static_cast<f32_t>(instance->startDelayMs) +
-			static_cast<f32_t>(sequence->durationMs) / speed;
+			instance->playbackSpeed * active.playbackSpeed : active.playbackSpeed;
+		const f32_t span = active.durationMs ? static_cast<f32_t>(active.durationMs) :
+			static_cast<f32_t>(instance->startDelayMs) + static_cast<f32_t>(sequence->durationMs) / speed;
 		longest = (std::max)(longest, span);
 	}
 	return longest;
@@ -518,9 +582,16 @@ void CWorldSequencePlayer::Update(
 		}
 		/* Only a broken instance hands its animated targets back; a finished
 		   one leaves them holding the authored final frame. */
-		if (APPLY_RESULT::FAILED == result)
-			Release_DeployPreviews(active, targets);
-		m_Active.erase(m_Active.begin() + static_cast<ptrdiff_t>(index));
+		if (APPLY_RESULT::FAILED == result || active.durationMs != 0u)
+		{
+			const auto id = active.instanceId;
+			Stop_Instance(id, targets, true);
+		}
+		else
+		{
+			Release_Objects(active);
+			m_Active.erase(m_Active.begin() + static_cast<ptrdiff_t>(index));
+		}
 	}
 }
 
@@ -538,14 +609,22 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			active.instanceId;
 		return APPLY_RESULT::FAILED;
 	}
+	if (active.durationMs && active.elapsedMs >= active.durationMs)
+	{
+		(void)Apply_Objects(active, *instance, *sequence, targets, 0.f, false);
+		return APPLY_RESULT::FINISHED;
+	}
 	const f32_t delayedMs =
 		active.elapsedMs - static_cast<f32_t>(instance->startDelayMs);
 	const f32_t durationMs = static_cast<f32_t>(sequence->durationMs);
 	const f32_t localMs = delayedMs <= 0.f ? 0.f :
-		(std::min)(durationMs, delayedMs * instance->playbackSpeed);
+		(std::min)(durationMs, delayedMs * instance->playbackSpeed * active.playbackSpeed);
 
+	if (!Apply_Objects(active, *instance, *sequence, targets, localMs, delayedMs >= 0.f && localMs < durationMs))
+		return APPLY_RESULT::FAILED;
 	for (const WORLD_SEQUENCE_BINDING& binding : instance->bindings)
 	{
+		if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
 		uint64_t targetId = 0;
 		if (!Try_ParseTargetId(binding, targetId))
 			return APPLY_RESULT::FAILED;
@@ -625,9 +704,9 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 				XMStoreFloat3(&rotatedOffset, XMVector3Rotate(
 					XMLoadFloat3(&key.positionOffset), placed));
 				const float3_t posedPosition(
-					placedPosition.x + rotatedOffset.x,
-					placedPosition.y + rotatedOffset.y,
-					placedPosition.z + rotatedOffset.z);
+					placedPosition.x + rotatedOffset.x + active.positionOffset.x,
+					placedPosition.y + rotatedOffset.y + active.positionOffset.y,
+					placedPosition.z + rotatedOffset.z + active.positionOffset.z);
 				vector_t combined = XMQuaternionNormalize(XMQuaternionMultiply(
 					XMLoadFloat4(&key.rotationQuaternion), placed));
 				if (XMVectorGetW(combined) < 0.f)
@@ -656,15 +735,22 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 		{
 			return APPLY_RESULT::FAILED;
 		}
-		const MAP_PLACEMENT_RECORD sampled = delayedMs < 0.f ?
+		MAP_PLACEMENT_RECORD sampled = delayedMs < 0.f ?
 			baseline->record :
 			Compose_SampledRecord(baseline->record, baseline->runtimeVisible,
 				Sample_Track(*sequence, *track, localMs));
+		if (delayedMs >= 0.f)
+		{
+			sampled.position.x += active.positionOffset.x;
+			sampled.position.y += active.positionOffset.y;
+			sampled.position.z += active.positionOffset.z;
+		}
 		if (!Apply_RuntimeRecord(targets, m_ModelCache, *entry, sampled))
 			return APPLY_RESULT::FAILED;
+		active.sampledPlacements[targetId] = std::move(sampled);
 	}
 	/* Hold the settled pose: the sequence stops driving its targets once the
 	   authored duration is spent, leaving the last authored frame in place. */
-	return localMs < durationMs ?
+	return (localMs < durationMs || (active.durationMs && active.elapsedMs < active.durationMs)) ?
 		APPLY_RESULT::PLAYING : APPLY_RESULT::FINISHED;
 }

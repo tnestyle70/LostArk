@@ -446,8 +446,10 @@ bool_t Client::CWorldGameplayDocument::Load(
 				}
 				if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
 				{
-					if (!Is_ExactObject(eventValue,
-						{ "type", "targetPosition", "durationSeconds", "arcHeight" }) ||
+					const auto* koukuMode = eventValue.Find("koukuHudMode");
+					if (!(nullptr == koukuMode ? Is_ExactObject(eventValue,
+						{ "type", "targetPosition", "durationSeconds", "arcHeight" }) : Is_ExactObject(eventValue,
+						{ "type", "targetPosition", "durationSeconds", "arcHeight", "koukuHudMode" })) ||
 						!Read_Position(eventValue.Find("targetPosition"), event.targetPosition))
 					{
 						outStatus = "Gameplay movePlayer event has invalid fields";
@@ -463,6 +465,16 @@ bool_t Client::CWorldGameplayDocument::Load(
 					}
 					event.durationSeconds = static_cast<f32_t>(duration->Get_Number());
 					event.arcHeight = static_cast<f32_t>(arcHeight->Get_Number());
+					if (nullptr != koukuMode)
+					{
+						if (!koukuMode->Is_String() || (koukuMode->Get_String() != "MARIO" &&
+							koukuMode->Get_String() != "MAZE" && koukuMode->Get_String() != "NONE"))
+						{
+							outStatus = "Gameplay movePlayer Kouku HUD mode is invalid";
+							return false;
+						}
+						event.koukuHudMode = koukuMode->Get_String();
+					}
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
 				{
@@ -867,6 +879,8 @@ bool_t Client::CWorldGameplayDocument::Save(
 						<< event.targetPosition.y << ", " << event.targetPosition.z << "], "
 						<< "\"durationSeconds\": " << event.durationSeconds << ", "
 						<< "\"arcHeight\": " << event.arcHeight;
+					if (!event.koukuHudMode.empty())
+						output << ", \"koukuHudMode\": \"" << event.koukuHudMode << "\"";
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
 				{
@@ -1015,7 +1029,9 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 				{
 					if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
 					{
-						return std::isfinite(event.targetPosition.x) &&
+						return (event.koukuHudMode.empty() || event.koukuHudMode == "MARIO" ||
+						event.koukuHudMode == "MAZE" || event.koukuHudMode == "NONE") &&
+						std::isfinite(event.targetPosition.x) &&
 							std::isfinite(event.targetPosition.y) &&
 							std::isfinite(event.targetPosition.z) &&
 							std::abs(event.targetPosition.x) <= 100000.f &&

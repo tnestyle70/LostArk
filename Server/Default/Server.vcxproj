@@ -42,6 +42,7 @@
 	<ClInclude Include="..\Public\ServerNavigation.h" />
 	<ClInclude Include="..\Public\ValtanBrain.h" />
 	<ClInclude Include="..\Public\KoukuSaydonBrain.h" />
+	<ClInclude Include="..\Public\KoukuSaydonLogicRuntime.h" />
 	<ClInclude Include="..\Public\EstherSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
@@ -74,6 +75,7 @@
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonBrain.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonLogicRuntime.cpp" />
 	<ClCompile Include="..\Private\EstherSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp">
 	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>

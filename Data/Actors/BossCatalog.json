@@ -207,9 +207,9 @@
         "patternRecovery": "mn_rpct_06_sk.ao_att_battle_1_05",
         "dead": "mn_rpct_06_sk.ao_dmg_critical_end_1"
       },
-      "bodyModelPreScale": 0.1,
-      "weaponModelPreScale": 0.001,
-      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
+      "bodyModelPreScale": 0.0692,
+      "weaponModelPreScale": 0.0103829,
+      "weaponModelPreRotationDegrees": [-96.5, -6.5, 6.5]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
@@ -232,7 +232,7 @@
         "patternRecovery": "rpcz00_att_battle_3_09",
         "dead": "rpcz00_dead_1"
       },
-      "bodyModelPreScale": 0.017,
+      "bodyModelPreScale": 0.012053,
       "weaponModelPreScale": null,
       "weaponModelPreRotationDegrees": null
     },
@@ -283,8 +283,8 @@
         "dead": "rpct00_dead_1"
       },
       "bodyModelPreScale": 0.017,
-      "weaponModelPreScale": 0.0001,
-      "weaponModelPreRotationDegrees": [0.0, 0.0, 0.0]
+      "weaponModelPreScale": 0.0066019,
+      "weaponModelPreRotationDegrees": [23.0, 8.0, 8.0]
     }
   ]
 }

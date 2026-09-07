@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
 #include "Level.h"
 #include "LobbyCommandService.h"
@@ -54,14 +55,20 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
+	{ return m_FollowCameraProfile; }
+	const std::string& Get_FollowCameraProfileStatus() const
+	{ return m_strFollowCameraProfileStatus; }
+	bool_t Set_FollowCameraProfile(const ARENA_CAMERA_PROFILE& profile,
+		std::string& outStatus);
+
+
 
 private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera();
 	HRESULT Ready_ServerGameplay();
-	bool_t Bind_CameraTarget(
-		const shared_ptr<CCharacter>& character,
-		const float3_t& positionOffset);
+	bool_t Bind_CameraTarget(const shared_ptr<CCharacter>& character);
 	bool_t Request_ClassChange(size_t index);
 	void Consume_ClassChangeResults();
 	bool_t Advance_DeferredClassPresentation();
@@ -169,6 +176,8 @@ public:
 		return Enter_Stage(eStage);
 	}
 	bool_t Debug_Request_KakulSaydonArena();
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
 #endif
 
@@ -209,6 +218,9 @@ private:
 	shared_ptr<CCharacter> m_pActiveCharacter = { nullptr };
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;
+	ARENA_CAMERA_PROFILE m_FollowCameraProfile =
+		CArenaCameraProfile::Default(ARENA_CAMERA_MAP::CHARACTER_SELECT);
+	std::string m_strFollowCameraProfileStatus;
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;

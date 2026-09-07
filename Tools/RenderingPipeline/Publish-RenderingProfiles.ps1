@@ -152,26 +152,7 @@ function Remove-FileBestEffort([string]$Path, [string]$Purpose) {
     }
 }
 
-function Assert-RenderingProfileDocument([object]$Document) {
-    Assert-ExactProperties $Document @(
-        'schema', 'formatVersion', 'revision', 'globalQuality', 'profiles') 'root'
-    if ($Document.schema -isnot [string] -or
-		[string]$Document.schema -cne 'lostark.rendering-profiles') {
-        throw 'Rendering profile schema is invalid.'
-    }
-	Assert-FiniteRange $Document.formatVersion 1.0 1.0 'formatVersion'
-    if ([double]$Document.formatVersion -ne 1.0) {
-        throw 'Rendering profile formatVersion must be 1.'
-    }
-	Assert-FiniteRange $Document.revision 1.0 ([uint32]::MaxValue) 'revision'
-    $revision = [double]$Document.revision
-    if ([double]::IsNaN($revision) -or [double]::IsInfinity($revision) -or
-        $revision -lt 1.0 -or $revision -gt [uint32]::MaxValue -or
-        $revision -ne [math]::Floor($revision)) {
-        throw 'Rendering profile revision must be a positive uint32 integer.'
-    }
-
-    $global = $Document.globalQuality
+function Assert-RenderingQuality([object]$global) {
     Assert-ExactProperties $global @(
         'ssaoEnabled', 'ssaoRadius', 'ssaoBias', 'ssaoIntensity',
         'ssaoPower', 'ssaoDistanceFade',
@@ -208,6 +189,30 @@ function Assert-RenderingProfileDocument([object]$Document) {
     Assert-FiniteFloatRange $global.fxaaEdgeThresholdMin 0.0156 0.0833 `
         'globalQuality.fxaaEdgeThresholdMin'
 
+}
+
+function Assert-RenderingProfileDocument([object]$Document) {
+    Assert-ExactProperties $Document @(
+        'schema', 'formatVersion', 'revision', 'globalQuality', 'profiles') 'root'
+    if ($Document.schema -isnot [string] -or
+		[string]$Document.schema -cne 'lostark.rendering-profiles') {
+        throw 'Rendering profile schema is invalid.'
+    }
+	Assert-FiniteRange $Document.formatVersion 1.0 1.0 'formatVersion'
+    if ([double]$Document.formatVersion -ne 1.0) {
+        throw 'Rendering profile formatVersion must be 1.'
+    }
+	Assert-FiniteRange $Document.revision 1.0 ([uint32]::MaxValue) 'revision'
+    $revision = [double]$Document.revision
+    if ([double]::IsNaN($revision) -or [double]::IsInfinity($revision) -or
+        $revision -lt 1.0 -or $revision -gt [uint32]::MaxValue -or
+        $revision -ne [math]::Floor($revision)) {
+        throw 'Rendering profile revision must be a positive uint32 integer.'
+    }
+
+    $global = $Document.globalQuality
+    Assert-RenderingQuality $global
+
     $profiles = @($Document.profiles)
     if ($profiles.Count -lt 1 -or $profiles.Count -gt 32) {
         throw 'profiles must contain between 1 and 32 entries.'
@@ -215,10 +220,14 @@ function Assert-RenderingProfileDocument([object]$Document) {
     $ids = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     foreach ($profile in $profiles) {
-        Assert-ExactProperties $profile @(
-            'profileId', 'exposureMultiplier', 'bloomIntensityMultiplier',
-            'light', 'shadow', 'fog') `
-            'profile'
+        $profileFields = @('profileId', 'exposureMultiplier', 'bloomIntensityMultiplier', 'light', 'shadow', 'fog')
+        $quality = $global
+        if ($null -ne $profile.PSObject.Properties['qualityOverride']) {
+            $profileFields += 'qualityOverride'
+            Assert-RenderingQuality $profile.qualityOverride
+            $quality = $profile.qualityOverride
+        }
+        Assert-ExactProperties $profile $profileFields 'profile'
 		if ($profile.profileId -isnot [string]) {
 			throw 'profile.profileId must be a string.'
 		}
@@ -324,9 +333,9 @@ function Assert-RenderingProfileDocument([object]$Document) {
         Assert-FiniteRange $fog.patchSoftness 0.001 0.5 `
             "$profileId.fog.patchSoftness"
 
-        $effectiveExposure = [double]$global.exposure *
+        $effectiveExposure = [double]$quality.exposure *
             [double]$profile.exposureMultiplier
-        $effectiveBloom = [double]$global.bloomIntensity *
+        $effectiveBloom = [double]$quality.bloomIntensity *
             [double]$profile.bloomIntensityMultiplier
         Assert-FiniteFloatRange $effectiveExposure 0.01 32.0 "$profileId.effectiveExposure"
         Assert-FiniteFloatRange $effectiveBloom 0.0 16.0 "$profileId.effectiveBloomIntensity"
@@ -338,7 +347,8 @@ function Assert-RenderingProfileDocument([object]$Document) {
         'scene.character-select.warm-high-key.v1',
         'scene.bern.neutral-day.v1',
         'scene.valtan.cool-low-key.v1',
-        'scene.development.neutral.v1')
+        'scene.development.neutral.v1',
+        'scene.kakulsaydon.g1.base.v1')
     foreach ($requiredId in $requiredIds) {
         if (-not $ids.Contains($requiredId)) {
             throw "Required rendering profile is missing: $requiredId"

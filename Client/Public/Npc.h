@@ -214,6 +214,8 @@ public:
 		uint32_t iPrototypeLevelIndex = {};
 		wstring_t strModelTag;
 		wstring_t strShaderTag;
+		// Optional stable binding owner for a catalog boss using the NPC renderer.
+		std::string strEffectV2BindingOwner;
 
 		/* Clip to stand in. Every NPC is cooked under the same "npc" armature
 		name, so the clip names all carry that prefix -- "npc_idle_normal_1",
@@ -267,6 +269,7 @@ public:
 	const wstring_t& Get_ModelTag() const {
 		return m_strModelTag;
 	}
+	const std::string& Get_EffectV2BindingOwner() const { return m_strEffectV2BindingOwner; }
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Restarts the selected clip even when the previous action used the same
 	clip. The network action edge owns restart timing; the model only owns how
@@ -315,6 +318,7 @@ public:
 	f32_t Get_DebugUnadjustedYawDegrees() const { return m_fDebugUnadjustedYawDegrees; }
 	f32_t Get_DebugPresentationYawOffset() const { return m_fDebugPresentationYawOffset; }
 	f32_t Get_DebugWeaponScale() const { return m_fDebugWeaponScale; }
+	const float4x4_t& Get_DebugWeaponRotation() const { return m_DebugWeaponRotation; }
 #endif
 
 public:
@@ -329,6 +333,7 @@ private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	wstring_t m_strModelTag;
+	std::string m_strEffectV2BindingOwner;
 	/* Rest-pose weapon riding m_strWeaponSocketBone of the body; null when the
 	desc declared none. It never starts a clip of its own. */
 	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };

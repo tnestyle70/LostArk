@@ -15,7 +15,8 @@ namespace
 
 	bool_t IsValidSceneLight(const LIGHT_DESC& Light)
 	{
-		if (Light.eType >= LIGHT::END || !IsFinite4(Light.vDiffuse) ||
+		if ((LIGHT::POINT != Light.eType && LIGHT::SPOT != Light.eType &&
+			LIGHT::DIRECTIONAL != Light.eType) || !IsFinite4(Light.vDiffuse) ||
 			!IsFinite4(Light.vAmbient) || !IsFinite4(Light.vSpecular) ||
 			!std::isfinite(Light.fFalloffExponent) ||
 			Light.fFalloffExponent <= 0.f ||
@@ -27,15 +28,27 @@ namespace
 		{
 			return false;
 		}
-		if (LIGHT::DIRECTIONAL == Light.eType)
+		if (LIGHT::POINT != Light.eType)
 		{
-			return IsFinite4(Light.vDirection) &&
+			const float fDirectionLengthSquared =
 				Light.vDirection.x * Light.vDirection.x +
 				Light.vDirection.y * Light.vDirection.y +
-				Light.vDirection.z * Light.vDirection.z > 0.000001f;
+				Light.vDirection.z * Light.vDirection.z;
+			if (!IsFinite4(Light.vDirection) ||
+				!std::isfinite(fDirectionLengthSquared) ||
+				fDirectionLengthSquared <= 0.000001f)
+				return false;
 		}
-		return IsFinite4(Light.vPosition) && std::isfinite(Light.fRange) &&
-			Light.fRange > 0.f;
+		if (LIGHT::DIRECTIONAL != Light.eType &&
+			(!IsFinite4(Light.vPosition) || !std::isfinite(Light.fRange) ||
+			 Light.fRange <= 0.f))
+			return false;
+		return LIGHT::SPOT != Light.eType ||
+			(std::isfinite(Light.fSpotInnerCos) &&
+			 std::isfinite(Light.fSpotOuterCos) &&
+			 Light.fSpotOuterCos > 0.f &&
+			 Light.fSpotOuterCos <= Light.fSpotInnerCos &&
+			 Light.fSpotInnerCos < 1.f);
 	}
 }
 

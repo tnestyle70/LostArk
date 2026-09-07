@@ -1,5 +1,7 @@
 #include "PlayerSkillSystem.h"
 
+#include "KoukuSaydonLogicRuntime.h"
+
 #include "Gameplay/CombatCollisionContract.h"
 #include "ServerCombatHitRuntime.h"
 
@@ -984,6 +986,20 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target,
 		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit)
 	{
+		/* A raised KoukuSaydon shield turns a frontal hit back on its caster:
+		the boss takes nothing and the stagger window sees no lost health. */
+		if (CKoukuSaydonLogicRuntime::Is_ShieldReflected(
+				target, player.fPositionX, player.fPositionZ))
+		{
+			SERVER_WORLD_TO_PLAYER_HIT reflected{};
+			reflected.iRawDamage = rawDamage;
+			reflected.fSourceX = target.fPositionX;
+			reflected.fSourceZ = target.fPositionZ;
+			reflected.iServerTick = serverTick;
+			(void)CServerCombatHitRuntime::Apply_WorldToPlayer(
+				player, reflected, catalog, outDamageEvents);
+			return;
+		}
 		ApplyPlayerHitDamage(target,
 			player.iPlayerId, skill->iSkillId,
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,

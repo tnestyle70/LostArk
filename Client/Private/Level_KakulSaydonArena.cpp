@@ -1,4 +1,5 @@
 #include "Level_KakulSaydonArena.h"
+#include "WorldSequenceObject.h"
 
 #include "Camera_Free.h"
 #include "Character.h"
@@ -16,6 +17,9 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "UILayoutRuntime.h"
+#include "UIInputRouter.h"
+#include "MainApp.h"
+#include "HitAreaWire.h"
 #include "Transform.h"
 
 #include <algorithm>
@@ -105,9 +109,6 @@ namespace
 	constexpr uint64_t KAKULSAYDON_CUTSCENE_SET_END_ID = 300ull;
 	/* The follow camera this level installs. Reused when a shot hands the
 	   camera back so the released pose matches the follow pose exactly. */
-	const float3_t KAKULSAYDON_FOLLOW_POSITION_OFFSET(0.4f, 7.5f, 4.5f);
-	const float3_t KAKULSAYDON_FOLLOW_LOOK_OFFSET(0.f, 1.2f, 0.f);
-	constexpr f32_t KAKULSAYDON_FOLLOW_FOV_DEGREES = 60.f;
 
 	const Client::DATA_JSON_VALUE* Required(
 		const Client::DATA_JSON_VALUE& object,
@@ -431,6 +432,8 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
+	Debug_StopWorldObjectPreview();
+	Debug_StopCompositionWorldPreview();
 	// The gate focus is this arena's session state; the next level starts neutral.
 	CCombatHUDViewModel::Get().Clear_BossFocus();
 #endif
@@ -442,9 +445,97 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	m_pCameraTarget.reset();
 	m_pCamera.reset();
 	m_SequencePlayer.Clear();
+	m_pMapLightAuthoringOverride.reset();
+	m_pMapLightPresentation.reset();
 	m_DeployRuntime.Clear();
 	m_MapRuntime.Clear();
 }
+
+#ifdef _DEBUG
+bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
+	const std::string& patternId, std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues,
+	std::string& status)
+{
+	if (cues.empty())
+	{
+		Debug_StopCompositionWorldPreview();
+		return true;
+	}
+	auto targets = Make_WorldSequenceTargets();
+	auto staged = make_unique<CWorldSequencePlayer>();
+	if (!staged->Load_Area(std::string(KAKULSAYDON_AREA_ID), targets))
+	{
+		status = "WORLD preview: " + staged->Get_Status();
+		return false;
+	}
+	std::unordered_set<std::string> instances;
+	for (const auto& cue : cues)
+	{
+		const auto* instance = staged->Get_Document().Find_Instance(cue.instanceId);
+		if (nullptr == instance || !instance->enabled || 0u == cue.durationMs ||
+			!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f ||
+			!instances.insert(cue.instanceId).second || m_SequencePlayer.Is_Playing(cue.instanceId))
+		{
+			status = "WORLD preview unavailable or already owned by Server playback: " + cue.instanceId;
+			return false;
+		}
+	}
+	Debug_StopCompositionWorldPreview();
+	m_pCompositionWorldPreview = std::move(staged);
+	m_CompositionWorldPreviewCues = std::move(cues);
+	m_strCompositionWorldPreviewPattern = patternId;
+	m_bCompositionWorldPreviewClockBound = false;
+	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
+{
+	if (nullptr != m_pCompositionWorldPreview)
+	{
+		auto targets = Make_WorldSequenceTargets();
+		m_pCompositionWorldPreview->Stop_All(targets, true);
+	}
+	m_pCompositionWorldPreview.reset();
+	m_CompositionWorldPreviewCues.clear();
+	m_strCompositionWorldPreviewPattern.clear();
+	m_bCompositionWorldPreviewClockBound = false;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
+	const std::string& patternId, const bool_t playing, const uint32_t clockMs)
+{
+	if (nullptr == m_pCompositionWorldPreview) return;
+	if (!playing || patternId != m_strCompositionWorldPreviewPattern)
+	{
+		// A pending Animation target admission takes one frame. Wait for that
+		// first matching clock; after binding, a changed owner releases WORLD.
+		if (m_bCompositionWorldPreviewClockBound) Debug_StopCompositionWorldPreview();
+		return;
+	}
+	m_bCompositionWorldPreviewClockBound = true;
+	auto targets = Make_WorldSequenceTargets();
+	for (const auto& cue : m_CompositionWorldPreviewCues)
+	{
+		if (clockMs < cue.startMs || clockMs - cue.startMs >= cue.durationMs)
+		{
+			m_pCompositionWorldPreview->Stop_Instance(cue.instanceId, targets, true);
+			continue;
+		}
+		if (!m_pCompositionWorldPreview->Is_Playing(cue.instanceId) &&
+			!m_pCompositionWorldPreview->Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs))
+		{
+			OutputDebugStringA(("[KoukuWorldPreview] " + m_pCompositionWorldPreview->Get_Status() + "\n").c_str());
+			continue;
+		}
+		if (!m_pCompositionWorldPreview->Seek_InstanceToMs(cue.instanceId,
+			static_cast<f32_t>(clockMs - cue.startMs), targets))
+		{
+			OutputDebugStringA(("[KoukuWorldPreview] " + m_pCompositionWorldPreview->Get_Status() + "\n").c_str());
+			m_pCompositionWorldPreview->Stop_Instance(cue.instanceId, targets, true);
+		}
+	}
+}
+#endif
 
 HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 {
@@ -493,6 +584,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			m_DeployRuntime.Get_Status() + "\n").c_str());
 		m_MapRuntime.Clear();
 		return E_FAIL;
+	}
+	if (!Reload_MapLights())
+	{
+		m_DeployRuntime.Clear();m_MapRuntime.Clear();return E_FAIL;
 	}
 	/* Levers stay INTACT so the player can find them. Each paper stage bridge
 	   only exists once its lever is pulled, so suppress it here rather than
@@ -547,11 +642,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	/* A missing or rejected sequence document only costs the scripted props
 	   their animation. The arena itself, its Server contracts and every other
 	   placement stay enterable, so report the loss instead of blocking entry. */
-	CWorldSequencePlayer::TARGET_SET sequenceTargets{};
-	sequenceTargets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	sequenceTargets.pCatalog = &m_MapRuntime.Get_Catalog();
-	sequenceTargets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	sequenceTargets.pDeployRuntime = &m_DeployRuntime;
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		CWorldSequenceObject::PROTOTYPE_TAG, CWorldSequenceObject::Create(m_pDevice, m_pContext))))
+		return E_FAIL;
+	auto sequenceTargets = Make_WorldSequenceTargets();
 	if (!m_SequencePlayer.Load_Area(pEntry->pMapAreaId, sequenceTargets))
 	{
 		OutputDebugStringA((
@@ -590,6 +684,11 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
+	m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
+		L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView->Set_AllSlotsVisible(false);
+
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex =
@@ -619,6 +718,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	const auto& mapLights=m_pMapLightAuthoringOverride?m_pMapLightAuthoringOverride:m_pMapLightPresentation;
+	if(mapLights && !mapLights->Submit_Frame()) OutputDebugStringA((mapLights->Get_Status()+"\n").c_str());
 	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
 		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 			LEVEL::KAKULSAYDON_ARENA))
@@ -657,6 +758,18 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_Replication.Get_LocalCharacter();
 	// Avatar replacement keeps the same Server player and command sequences.
 	m_PlayerController.Rebind_LocalCharacter(localCharacter);
+#ifdef _DEBUG
+	if (m_bDebugGazeView && localCharacter && localCharacter->Get_Transform())
+	{
+		HIT_AREA_SHAPE cone{};
+		cone.iAreaType = 3;
+		cone.iAreaRange = static_cast<int32_t>(m_fDebugGazeDistance * 100.f);
+		cone.iAreaAngle = static_cast<int32_t>(m_fDebugGazeHalfAngle * 2.f);
+		CHitAreaWire::Draw(*localCharacter->Get_Transform()->Get_WorldMatrixPtr(), cone,
+			40u | (220u << 8u) | (255u << 16u) | (255u << 24u));
+	}
+#endif
+	Update_DeadScene(fTimeDelta);
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
 		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
@@ -701,6 +814,11 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
 			m_iActiveDebugGate = m_iPendingDebugGate;
+			// Commit the gimmick mode only after the Server-approved gate move.
+			using LostArk::Shared::KOUKU_HUD_MODE;
+			(void)m_PlayerController.Request_DebugKoukuHudMode(
+				m_iActiveDebugGate == 3u ? KOUKU_HUD_MODE::MARIO :
+				(m_iActiveDebugGate == 7u ? KOUKU_HUD_MODE::MAZE : KOUKU_HUD_MODE::NONE));
 			m_strDebugGateStatus += "\nGate activation confirmed by Server.";
 		}
 		else
@@ -713,18 +831,19 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	targets.pCatalog = &m_MapRuntime.Get_Catalog();
-	targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	targets.pDeployRuntime = &m_DeployRuntime;
+	auto targets = Make_WorldSequenceTargets();
 	/* The Server decided these started; this level only resolves each stable
 	   instance ID against what it loaded and plays the presentation. */
-	for (const std::string& instanceId :
-		m_Replication.Consume_WorldSequencePlays())
+	for (const auto& play : m_Replication.Consume_WorldSequencePlays())
 	{
+		const std::string& instanceId = play.strSequenceInstanceId;
+#ifdef _DEBUG
+		Debug_StopWorldObjectPreview();
+		Debug_StopCompositionWorldPreview();
+#endif
 		std::string status;
-		if (!Start_ServerRequestedSequence(instanceId, targets, status))
+		if (!Start_ServerRequestedSequence(instanceId, play.fPlaybackSpeed,
+			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs))
 		{
 			OutputDebugStringA((
 				"[Level_KakulSaydonArena][WorldSequence] " + instanceId +
@@ -858,9 +977,9 @@ void Client::CLevel_KakulSaydonArena::Update_CutsceneBossRetire(
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
-	const std::string& instanceId,
+	const std::string& instanceId, const f32_t playbackSpeed, const float3_t& positionOffset,
 	const CWorldSequencePlayer::TARGET_SET& targets,
-	std::string& outStatus)
+	std::string& outStatus, const uint32_t durationMs)
 {
 	/* A bridge unfold is more than its sequence: the Deploy prop must leave
 	   DESPAWNED first. Route those through the bridge contract so the reveal
@@ -880,7 +999,7 @@ bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 	if (KAKULSAYDON_CUTSCENE_SEQUENCE_ID == instanceId)
 		return Start_PopupBookCutscene(targets, outStatus);
 
-	if (!m_SequencePlayer.Play(instanceId, targets))
+	if (!m_SequencePlayer.Play(instanceId, targets, playbackSpeed, positionOffset, durationMs))
 	{
 		outStatus = m_SequencePlayer.Get_Status();
 		return false;
@@ -911,11 +1030,7 @@ bool_t Client::CLevel_KakulSaydonArena::Request_PaperBridgeUnfold(
 		return true;
 	}
 
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	targets.pCatalog = &m_MapRuntime.Get_Catalog();
-	targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	targets.pDeployRuntime = &m_DeployRuntime;
+	auto targets = Make_WorldSequenceTargets();
 
 	/* Reveal before the first sample so the unfold plays from its own opening
 	   frame. A failed reveal leaves the bridge hidden and stays retryable. */
@@ -946,6 +1061,85 @@ bool_t Client::CLevel_KakulSaydonArena::Request_PaperBridgeUnfold(
 	}
 	outStatus = "Paper bridge unfold started";
 	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_DeadScene(
+	const f32_t fTimeDelta)
+{
+	if (nullptr == m_pDeadSceneView)
+		return;
+
+	m_pDeadSceneView->Update(fTimeDelta);
+
+	using LostArk::Shared::PLAYER_ACTION_STATE;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t isDead = player.isValid &&
+		PLAYER_ACTION_STATE::DEAD == player.eAction;
+
+	/* Real Render_DeadScene's own whole-screen AddRectFilled(IM_COL32(0,0,0,160)), now a real
+	slot (DeadScene_Dim, White1x1 tinted) instead of a raw ImGui draw call. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveButton", isDead);
+	/* Spectate is not wired to any server/client command yet -- these two slots exist only
+	so the button and its border can be positioned in the HUD Layout Tool. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateButton", isDead);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_SpectateBorder", isDead);
+	/* Tool-authoring placeholders only (mark where RenderDeadSceneText's labels land) --
+	never shown in real gameplay, regardless of death state. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
+	if (!isDead)
+	{
+		CCombatHUDViewModel::Get().Set_DeadSceneTextRects({});
+		return;
+	}
+
+	/* RenderDeadSceneText() (CMainApp, after EndFrame()) has no access to this Level's
+	m_pDeadSceneView -- push the live, Tool-editable rects through the same Level -> ViewModel ->
+	UI path the rest of the combat HUD uses instead of hand-copying these numbers into
+	MainApp.cpp, which is exactly what went stale and made the title/button text drift off after
+	the panel was repositioned in the Tool. The "부활"/"관전하기" labels are drawn ON their own
+	buttons, so those two read the button slots' own rects directly -- DeadScene_ReviveMessageMarker
+	is a separate free-standing box above the revive button, unrelated to that label. */
+	{
+		HUD_DEADSCENE_TEXT_RECTS textRects;
+		textRects.isValid =
+			m_pDeadSceneView->Get_SlotRect("DeadScene_TitleTextMarker",
+				textRects.fTitleX, textRects.fTitleY,
+				textRects.fTitleWidth, textRects.fTitleHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_ReviveButton",
+				textRects.fReviveTextX, textRects.fReviveTextY,
+				textRects.fReviveTextWidth, textRects.fReviveTextHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_SpectateButton",
+				textRects.fSpectateX, textRects.fSpectateY,
+				textRects.fSpectateWidth, textRects.fSpectateHeight) &&
+			m_pDeadSceneView->Get_SlotRect("DeadScene_ReviveMessageMarker",
+				textRects.fMessageX, textRects.fMessageY,
+				textRects.fMessageWidth, textRects.fMessageHeight);
+		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
+	}
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pDeadSceneView->Get_SlotRect(
+		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
+	{
+		return;
+	}
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fResolutionWidth = m_pDeadSceneView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pDeadSceneView->Get_ResolutionHeight();
+	if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
+	{
+		Router.Claim_Mouse_This_Frame();
+		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_PlayerController.Request_Revive();
+		}
+	}
 }
 
 HRESULT Client::CLevel_KakulSaydonArena::Render()
@@ -1199,8 +1393,8 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
 		KAKUL_DEBUG_GATE{ "4" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
 			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
-		KAKUL_DEBUG_GATE{ "\xEC\xB9\xB4\xEB\x93\x9C\xEB\xAF\xB8\xEB\xA1\x9C", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
-			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		KAKUL_DEBUG_GATE{ "\xEC\xB9\xB4\xEB\x93\x9C\xEB\xAF\xB8\xEB\xA1\x9C", { { nullptr, nullptr } }, float3_t(0.09f, -0.01f, 1351.48f),
+			nullptr, nullptr, nullptr },
 		// 빙고 - 앵콜을 외친 쿠크세이튼 (Saydon holding the hammer)
 		KAKUL_DEBUG_GATE{ "\xEB\xB9\x99\xEA\xB3\xA0" " - " "\xEC\x95\xB5\xEC\xBD\x9C\xEC\x9D\x84" " " "\xEC\x99\xB8\xEC\xB9\x9C" " " "\xEC\xBF\xA0\xED\x81\xAC\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
 			{ { "boss.kakulsaydon.bingo.saydon", nullptr } },
@@ -1336,6 +1530,14 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& ou
 HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	const wstring_t& strLayerTag)
 {
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::KOUKU_SAYDON,
+		m_FollowCameraProfile, m_strFollowCameraProfileStatus))
+	{
+		OutputDebugStringA(("[Level_KakulSaydonArena][FollowCamera] " +
+			m_strFollowCameraProfileStatus + "\n").c_str());
+	}
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	float3_t minimum{};
 	float3_t maximum{};
 	float3_t focus(0.f, 0.f, 0.f);
@@ -1362,28 +1564,29 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
 	{
 		initialEye = float3_t(
-			approvedSpawn.fPositionX + 0.4f,
-			approvedSpawn.fPositionY + 7.5f,
-			approvedSpawn.fPositionZ + 4.5f);
+			approvedSpawn.fPositionX + positionOffset.x,
+			approvedSpawn.fPositionY + positionOffset.y,
+			approvedSpawn.fPositionZ + positionOffset.z);
 		initialAt = float3_t(
-			approvedSpawn.fPositionX,
-			approvedSpawn.fPositionY + 1.2f,
-			approvedSpawn.fPositionZ);
+			approvedSpawn.fPositionX + lookOffset.x,
+			approvedSpawn.fPositionY + lookOffset.y,
+			approvedSpawn.fPositionZ + lookOffset.z);
 	}
 
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 	cameraDesc.vEye = initialEye;
 	cameraDesc.vAt = initialAt;
-	cameraDesc.fFovy = 60.f;
+	cameraDesc.fFovy = m_FollowCameraProfile.fovYDegrees;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar = (std::max)(2000.f, span * 8.f);
 	cameraDesc.fSpeedPerSec = g_KakulSaydonFreeCameraSpeed;
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;
 	cameraDesc.pFollowTarget = nullptr;
-	cameraDesc.vPositionOffset = KAKULSAYDON_FOLLOW_POSITION_OFFSET;
-	cameraDesc.vLookOffset = KAKULSAYDON_FOLLOW_LOOK_OFFSET;
-	cameraDesc.fFollowResponse = 0.f;
+	cameraDesc.vPositionOffset = positionOffset;
+	cameraDesc.vLookOffset = lookOffset;
+	cameraDesc.fFollowResponse = m_FollowCameraProfile.followResponse;
+	cameraDesc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
 	cameraDesc.isFollowEnabled = false;
 
 	shared_ptr<CGameObject> gameObject;
@@ -1410,6 +1613,25 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	return S_OK;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Set_FollowCameraProfile(
+	const ARENA_CAMERA_PROFILE& profile,
+	std::string& outStatus)
+{
+	if (!CArenaCameraProfile::Validate(profile, outStatus))
+		return false;
+	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
+		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
+		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+	{
+		outStatus = "The active follow camera could not apply these settings.";
+		return false;
+	}
+	m_FollowCameraProfile = profile;
+	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
+	m_strFollowCameraProfileStatus = outStatus;
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 {
 	if (nullptr == m_pCamera)
@@ -1430,7 +1652,6 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 	if (nullptr == transform)
 		return false;
 	m_pCameraTarget = localCharacter;
-	m_pCamera->Set_PositionOffset(KAKULSAYDON_FOLLOW_POSITION_OFFSET);
 	m_pCamera->Set_FollowTarget(transform);
 	m_pCamera->Set_FollowEnabled(true);
 	return true;
@@ -1735,6 +1956,74 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 		float4_t(0.f, 0.f, 0.f, m_fTriggerMoveFadeAlpha));
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
+ const std::string_view instanceId, float4x4_t& out) const
+{
+ const CWorldSequencePlayer* player = &m_SequencePlayer;
+#ifdef _DEBUG
+ if (m_pCompositionWorldPreview && m_pCompositionWorldPreview->Is_Playing(std::string(instanceId)))
+  player = m_pCompositionWorldPreview.get();
+#endif
+ if (player->Try_GetObjectPivot(std::string(instanceId), out)) return true;
+ const auto* instance = player->Get_Document().Find_Instance(std::string(instanceId));
+ if (!instance) return false;
+ const WORLD_SEQUENCE_BINDING* binding = nullptr;
+ for (const auto& candidate : instance->bindings)
+ {
+  if (candidate.targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT) continue;
+  if (candidate.slotId == "object") { binding = &candidate; break; }
+  if (binding) return false;
+  binding = &candidate;
+ }
+ if (!binding) return false;
+ uint64_t placementId = 0;
+ MAP_PLACEMENT_RECORD record;
+ if (!CWorldSequencePlayer::Try_ParseTargetId(*binding, placementId) ||
+  !player->Try_GetSampledPlacementRecord(std::string(instanceId), placementId, record)) return false;
+ XMStoreFloat4x4(&out, XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
+  XMMatrixRotationQuaternion(XMLoadFloat4(&record.rotationQuaternion)) *
+  XMMatrixTranslation(record.position.x, record.position.y, record.position.z));
+ return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
+ const std::string_view shotId, const float seconds, const float3_t& offset)
+{
+ if (!m_pCamera || !std::isfinite(seconds) || seconds < 0.f ||
+  !std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(offset.z)) return false;
+ const auto found = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
+  [shotId](const auto& shot) { return shot.strShotId == shotId; });
+ if (found == m_CameraShots.end()) return false;
+ float3_t eye = found->vEye, look = found->vLookAt;
+ float fov = found->fFovYDegrees;
+ VALTAN_CINEMATIC_CAMERA_POSE pose{};
+ if (found->hasCameraTrack)
+ {
+  if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, pose)) return false;
+  eye = pose.vEye; look = pose.vLookAt; fov = pose.fFovYDegrees;
+ }
+ else if (found->followsPlayer)
+ {
+  const auto character = m_Replication.Get_LocalCharacter();
+  if (!character || !character->Get_Transform()) return false;
+  float3_t player; XMStoreFloat3(&player, character->Get_Transform()->Get_State(STATE::POSITION));
+  eye = float3_t(player.x + found->vFollowEyeOffset.x,
+   player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
+  look = float3_t(player.x + found->vFollowLookAtOffset.x,
+   player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
+ }
+ eye.x += offset.x; eye.y += offset.y; eye.z += offset.z;
+ look.x += offset.x; look.y += offset.y; look.z += offset.z;
+ constexpr std::uint64_t owner = 0x4b4f554b55434f4dull;
+ return m_pCamera->Begin_PresentationOverride(owner, Engine::CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW) &&
+  m_pCamera->Apply_PresentationPose(owner, eye, look, fov);
+}
+
+void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera()
+{
+ if (m_pCamera) (void)m_pCamera->End_PresentationOverride(0x4b4f554b55434f4dull);
+}
+
 void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pCamera || m_CameraShots.empty())
@@ -1759,17 +2048,17 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		return;
 	}
 
-	/* The pose the follow camera would hold this frame. This level installs a
-	   zero response follow, so it lands exactly here and a released shot hands
-	   over without a step. */
+	// The same tuned framing is the destination when a camera shot ends.
+	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
 	const float3_t followEye(
-		position.x + KAKULSAYDON_FOLLOW_POSITION_OFFSET.x,
-		position.y + KAKULSAYDON_FOLLOW_POSITION_OFFSET.y,
-		position.z + KAKULSAYDON_FOLLOW_POSITION_OFFSET.z);
+		position.x + positionOffset.x,
+		position.y + positionOffset.y,
+		position.z + positionOffset.z);
 	const float3_t followLook(
-		position.x + KAKULSAYDON_FOLLOW_LOOK_OFFSET.x,
-		position.y + KAKULSAYDON_FOLLOW_LOOK_OFFSET.y,
-		position.z + KAKULSAYDON_FOLLOW_LOOK_OFFSET.z);
+		position.x + lookOffset.x,
+		position.y + lookOffset.y,
+		position.z + lookOffset.z);
 
 	const KAKUL_CAMERA_SHOT* shot = Find_ActiveCameraShot(position);
 	const std::string shotId = nullptr != shot ? shot->strShotId : std::string();
@@ -1803,7 +2092,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		{
 			m_vCameraEyeFrom = followEye;
 			m_vCameraLookFrom = followLook;
-			m_fCameraFovFrom = KAKULSAYDON_FOLLOW_FOV_DEGREES;
+			m_fCameraFovFrom = m_FollowCameraProfile.fovYDegrees;
 		}
 		m_strActiveCameraShotId = shotId;
 		m_fCameraBlendSeconds = static_cast<f32_t>(blendMs) / 1000.f;
@@ -1856,7 +2145,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		}
 		m_vCameraEyeTo = followEye;
 		m_vCameraLookTo = followLook;
-		m_fCameraFovTo = KAKULSAYDON_FOLLOW_FOV_DEGREES;
+		m_fCameraFovTo = m_FollowCameraProfile.fovYDegrees;
 	}
 
 	if (!m_bCameraShotHeld)
@@ -1902,6 +2191,15 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 	/* The hand-back finishes only once the blend has fully played. */
 	if (nullptr == shot && isBlendFinished)
 		Release_CameraShot();
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Reload_MapLights()
+{
+	auto staged=std::make_shared<CMapLightPresentationRuntime>();
+	if(!staged->Load_Runtime(std::string(KAKULSAYDON_AREA_ID)))
+	{OutputDebugStringA(("[Level_KakulSaydonArena] "+staged->Get_Status()+"\n").c_str());return false;}
+	OutputDebugStringA((staged->Get_Status()+"\n").c_str());
+	m_pMapLightPresentation=std::move(staged);return true;
 }
 
 unique_ptr<Client::CLevel_KakulSaydonArena>
