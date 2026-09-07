@@ -4,10 +4,13 @@
 #include "MapAssetObject.h"
 #include "MapAssetRenderUtils.h"
 #include "Model.h"
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <map>
 #include <mutex>
@@ -782,4 +785,259 @@ std::wstring CMapPlacementRuntime::Make_LayerTag(
 	std::wstring layerTag = L"Layer_MapAsset_";
 	layerTag.append(sourceLevel.begin(), sourceLevel.end());
 	return layerTag;
+}
+
+bool_t Client::CMapPlacementRuntime::Read_SelfMotions(
+	const std::string& areaId,
+	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+	std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY>& outMotions)
+{
+	outMotions.clear();
+	if (areaId.empty() || placements.empty())
+		return true;
+
+	const std::filesystem::path path = CProjectDataRoot::Resolve(
+		std::filesystem::path("Maps") / "Authoring" / areaId /
+		(areaId + ".mapmotions.json"));
+	std::error_code existsError{};
+	/* Most areas author none, so absence is the normal case. */
+	if (path.empty() || !std::filesystem::is_regular_file(path, existsError) ||
+		existsError)
+	{
+		return true;
+	}
+
+	std::ifstream input(path, std::ios::binary);
+	if (!input.is_open())
+		return false;
+	const std::string text(
+		(std::istreambuf_iterator<char>(input)),
+		std::istreambuf_iterator<char>());
+	input.close();
+
+	Client::DATA_JSON_VALUE root{};
+	std::string parseError;
+	if (!Client::CDataJson::Parse(text, root, parseError) || !root.Is_Object())
+		return false;
+	const auto& rootObject = root.Get_Object();
+	const auto schemaIter = rootObject.find("schema");
+	const auto motionsIter = rootObject.find("motions");
+	if (schemaIter == rootObject.end() || !schemaIter->second.Is_String() ||
+		"lostark.map-self-motions" != schemaIter->second.Get_String() ||
+		motionsIter == rootObject.end() || !motionsIter->second.Is_Array())
+	{
+		return false;
+	}
+
+	std::unordered_map<uint64_t, size_t> byPlacement;
+	byPlacement.reserve(placements.size());
+	for (size_t index = 0u; index < placements.size(); ++index)
+		byPlacement[placements[index].record.placementId] = index;
+
+	for (const Client::DATA_JSON_VALUE& value : motionsIter->second.Get_Array())
+	{
+		if (!value.Is_Object())
+			continue;
+		const auto& row = value.Get_Object();
+		const auto idIter = row.find("placementId");
+		const auto kindIter = row.find("kind");
+		const auto axisIter = row.find("axis");
+		if (idIter == row.end() || !idIter->second.Is_String() ||
+			kindIter == row.end() || !kindIter->second.Is_String() ||
+			axisIter == row.end() || !axisIter->second.Is_String())
+		{
+			continue;
+		}
+
+		uint64_t placementId = 0ull;
+		try
+		{
+			placementId = std::stoull(idIter->second.Get_String());
+		}
+		catch (const std::exception&)
+		{
+			continue;
+		}
+		const auto placedIter = byPlacement.find(placementId);
+		if (placedIter == byPlacement.end())
+			continue;
+
+		MAP_SELF_MOTION motion{};
+		motion.placementId = placementId;
+		const std::string& kind = kindIter->second.Get_String();
+		if ("ROTATION_CYCLIC" == kind)
+			motion.kind = MAP_SELF_MOTION_KIND::ROTATION_CYCLIC;
+		else if ("ROTATION_ACYCLIC" == kind)
+			motion.kind = MAP_SELF_MOTION_KIND::ROTATION_ACYCLIC;
+		else if ("LOCATION_CYCLIC" == kind)
+			motion.kind = MAP_SELF_MOTION_KIND::LOCATION_CYCLIC;
+		else if ("LOCATION_ACYCLIC" == kind)
+			motion.kind = MAP_SELF_MOTION_KIND::LOCATION_ACYCLIC;
+		else
+			continue;
+		const std::string& axis = axisIter->second.Get_String();
+		if ("X" == axis)
+			motion.axis = MAP_SELF_MOTION_AXIS::X;
+		else if ("Y" == axis)
+			motion.axis = MAP_SELF_MOTION_AXIS::Y;
+		else if ("Z" == axis)
+			motion.axis = MAP_SELF_MOTION_AXIS::Z;
+		else
+			continue;
+
+		const auto readNumber = [&row](const char* key, f32_t& outValue)
+		{
+			const auto iter = row.find(key);
+			if (iter == row.end() || !iter->second.Is_Number())
+				return;
+			const double raw = iter->second.Get_Number();
+			if (std::isfinite(raw))
+				outValue = static_cast<f32_t>(raw);
+		};
+		readNumber("cycleSeconds", motion.cycleSeconds);
+		readNumber("range", motion.range);
+		readNumber("startPhaseSeconds", motion.startPhaseSeconds);
+		/* A cyclic row with no cycle would divide by zero every frame. */
+		if ((MAP_SELF_MOTION_KIND::ROTATION_CYCLIC == motion.kind ||
+			MAP_SELF_MOTION_KIND::LOCATION_CYCLIC == motion.kind) &&
+			motion.cycleSeconds <= 0.f)
+		{
+			continue;
+		}
+
+		MAP_RUNTIME_SELF_MOTION_ENTRY entry{};
+		entry.motion = motion;
+		entry.placementIndex = placedIter->second;
+		const MAP_PLACEMENT_RECORD& record =
+			placements[placedIter->second].record;
+		entry.basePosition = record.position;
+		entry.baseRotation = record.rotationQuaternion;
+		outMotions.push_back(entry);
+	}
+	return true;
+}
+
+void Client::CMapPlacementRuntime::Sample_SelfMotions(
+	const std::vector<MAP_RUNTIME_SELF_MOTION_ENTRY>& motions,
+	const f32_t elapsedSeconds,
+	const uint32_t levelIndex,
+	const CMapAssetCatalog& catalog,
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+	std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements)
+{
+	if (motions.empty() || !std::isfinite(elapsedSeconds))
+		return;
+	for (const MAP_RUNTIME_SELF_MOTION_ENTRY& entry : motions)
+	{
+		if (entry.placementIndex >= placements.size())
+			continue;
+		MAP_RUNTIME_PLACED_ENTRY& placed = placements[entry.placementIndex];
+		const MAP_SELF_MOTION& motion = entry.motion;
+		const f32_t time = elapsedSeconds +
+			motion.startPhaseSeconds;
+
+		f32_t amount = 0.f;
+		switch (motion.kind)
+		{
+		case MAP_SELF_MOTION_KIND::ROTATION_CYCLIC:
+		case MAP_SELF_MOTION_KIND::LOCATION_CYCLIC:
+			amount = motion.range * std::sin(
+				6.283185307f * time / motion.cycleSeconds);
+			break;
+		case MAP_SELF_MOTION_KIND::ROTATION_ACYCLIC:
+		case MAP_SELF_MOTION_KIND::LOCATION_ACYCLIC:
+			/* No cycle authored: turn at range per second, which is how the
+			   original keeps these spinning rather than swinging. */
+			amount = motion.range * time;
+			break;
+		default:
+			continue;
+		}
+		if (!std::isfinite(amount))
+			continue;
+
+		MAP_PLACEMENT_RECORD sampled = placed.record;
+		sampled.position = entry.basePosition;
+		sampled.rotationQuaternion = entry.baseRotation;
+		const bool_t isRotation =
+			MAP_SELF_MOTION_KIND::ROTATION_CYCLIC == motion.kind ||
+			MAP_SELF_MOTION_KIND::ROTATION_ACYCLIC == motion.kind;
+		if (isRotation)
+		{
+			const f32_t radians = XMConvertToRadians(amount);
+			const vector_t axis =
+				MAP_SELF_MOTION_AXIS::X == motion.axis
+				? XMVectorSet(1.f, 0.f, 0.f, 0.f)
+				: (MAP_SELF_MOTION_AXIS::Y == motion.axis
+					? XMVectorSet(0.f, 1.f, 0.f, 0.f)
+					: XMVectorSet(0.f, 0.f, 1.f, 0.f));
+			const vector_t swing = XMQuaternionRotationAxis(axis, radians);
+			const vector_t base = XMVectorSet(
+				entry.baseRotation.x, entry.baseRotation.y,
+				entry.baseRotation.z, entry.baseRotation.w);
+			XMStoreFloat4(&sampled.rotationQuaternion,
+				XMQuaternionNormalize(XMQuaternionMultiply(base, swing)));
+		}
+		else
+		{
+			float3_t offset = entry.basePosition;
+			if (MAP_SELF_MOTION_AXIS::X == motion.axis)
+				offset.x += amount;
+			else if (MAP_SELF_MOTION_AXIS::Y == motion.axis)
+				offset.y += amount;
+			else
+				offset.z += amount;
+			sampled.position = offset;
+		}
+
+		if (nullptr != placed.object)
+		{
+			placed.object->Set_PlacementTransform(sampled.position,
+				sampled.rotationQuaternion, sampled.signedScale);
+			placed.record.position = sampled.position;
+			placed.record.rotationQuaternion = sampled.rotationQuaternion;
+		}
+		else if (nullptr != placed.batch)
+		{
+			const MAP_ASSET_ENTRY* asset = catalog.Find(sampled.assetId);
+			if (nullptr == asset)
+				continue;
+			auto modelIter = modelCache.find(sampled.assetId);
+			if (modelIter == modelCache.end())
+			{
+				modelIter = modelCache.emplace(sampled.assetId,
+					dynamic_pointer_cast<Engine::CModel>(
+						CGameInstance::Get().Clone_Prototype(
+							levelIndex, asset->prototypeTag))).first;
+			}
+			FMapStaticInstance instance{};
+			if (nullptr != modelIter->second &&
+				SUCCEEDED(Build_StaticInstance(
+					*asset, modelIter->second, sampled, instance)) &&
+				SUCCEEDED(placed.batch->Update_Instance(
+					sampled.placementId, instance)))
+			{
+				placed.record.position = sampled.position;
+				placed.record.rotationQuaternion = sampled.rotationQuaternion;
+			}
+		}
+	}
+}
+
+bool_t Client::CMapPlacementRuntime::Load_SelfMotions(
+	const std::string& areaId)
+{
+	m_fSelfMotionElapsedSeconds = 0.f;
+	return Read_SelfMotions(areaId, m_Placements, m_SelfMotions);
+}
+
+void Client::CMapPlacementRuntime::Update_SelfMotions(const f32_t fTimeDelta)
+{
+	if (m_SelfMotions.empty() || !std::isfinite(fTimeDelta))
+		return;
+	m_fSelfMotionElapsedSeconds += fTimeDelta;
+	if (m_fSelfMotionElapsedSeconds > SELF_MOTION_WRAP_SECONDS)
+		m_fSelfMotionElapsedSeconds -= SELF_MOTION_WRAP_SECONDS;
+	Sample_SelfMotions(m_SelfMotions, m_fSelfMotionElapsedSeconds,
+		m_iLevelIndex, m_Catalog, m_SelfMotionModels, m_Placements);
 }

@@ -40,6 +40,15 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 	};
 
+	/* One player's view of one interact-gated box changing. The room turns
+	   these into the prompt the Client draws; nothing else consumes them. */
+	struct SERVER_INTERACT_PROMPT_EDGE final
+	{
+		LostArk::Shared::PLAYER_ID iPlayerId = 0;
+		std::string strTriggerPlacementId;
+		bool bAvailable = false;
+	};
+
 	class CServerTriggerSystem final
 	{
 	public:
@@ -51,6 +60,18 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds) const;
 		void Evaluate_Entries(
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget,
+			std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges);
+		/* Runs one interact-gated box for one player. False means the request
+		   named a box that does not exist, is not gated, is spent, or that this
+		   player is no longer standing in -- the caller changes nothing. */
+		bool Activate_Interact(
+			LostArk::Shared::PLAYER_ID playerId,
+			const std::string& triggerPlacementId,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			std::uint32_t actionStartTick,
 			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
@@ -88,6 +109,15 @@ namespace LostArk::Server
 			const std::string& triggerPlacementId,
 			WORLD_TRIGGER_ACTION& outAction);
 #endif
+		/* The one place an authored action turns into Server state, shared by
+		   entry and by an interact request so the two cannot drift. */
+		bool Run_Action(
+			RUNTIME_TRIGGER& trigger,
+			SERVER_PLAYER& player,
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget) const;
 		static bool Build_WorldTransfer(
 			const SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,

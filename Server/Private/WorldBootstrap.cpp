@@ -206,7 +206,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t count = 0;
 	if (6u != header.size() ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 7u != version ||
+		!ParseNumber(header[1], version) || 8u != version ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -273,14 +273,17 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		else if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind)
 		{
 			int triggerOnce = 0;
+			int requiresInteract = 0;
 			std::uint32_t actionCount = 0;
-			if (fields.size() < 14u || "-" != fields[2] || "-" != fields[3] ||
+			if (fields.size() < 15u || "-" != fields[2] || "-" != fields[3] ||
 				!ParseNumber(fields[9], placement.fHalfExtentX) ||
 				!ParseNumber(fields[10], placement.fHalfExtentY) ||
 				!ParseNumber(fields[11], placement.fHalfExtentZ) ||
 				!ParseNumber(fields[12], triggerOnce) ||
 				(0 != triggerOnce && 1 != triggerOnce) ||
 				!ParseNumber(fields[13], actionCount) || actionCount > 1u ||
+				!ParseNumber(fields[14], requiresInteract) ||
+				(0 != requiresInteract && 1 != requiresInteract) ||
 				(placement.isEnabled && 1u != actionCount) ||
 				!std::isfinite(placement.fHalfExtentX) ||
 				!std::isfinite(placement.fHalfExtentY) ||
@@ -294,7 +297,8 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				return false;
 			}
 			placement.isTriggerOnce = 1 == triggerOnce;
-			std::size_t actionCursor = 14u;
+			placement.requiresInteract = 1 == requiresInteract;
+			std::size_t actionCursor = 15u;
 			for (std::uint32_t actionIndex = 0; actionIndex < actionCount; ++actionIndex)
 			{
 				std::uint32_t payloadCount = 0;

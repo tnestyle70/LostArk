@@ -78,7 +78,19 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
-`World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
+한 Area 안에서 스테이지마다 필요한 정밀도가 다르면 세부 영역 격자를 쓴다.
+`Data/Navigation/<AreaId>.navregions`에 `REGION "<regionId>" <stepHeight>` 행을 두면
+MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cell Size로 Bake한다.
+영역은 자기가 덮는 스테이지의 걷는 범위 전체를 덮어야 한다. 플레이어가 걸어서 영역
+밖으로 나가는 지형에는 쓰지 않는다. 영역끼리 겹치면 publisher와 Server가 모두 거부하고,
+영역에는 runtime blocker를 둘 수 없다. 매니페스트가 없으면 Area는 기본 격자 하나로
+종전과 동일하게 동작한다.
+
+쿠크 2관문의 `BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 저장한 높이에서 서는 보스다.
+Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,
+유한한 좌표·영역 안의 XZ·walkable 검사는 그대로 적용한다. 다른 보스와 playerSpawn은 지면 높이를 검사한다.
+
+``World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
 상태를 시간축으로 편집하는 재사용 저작 레이어다. `templates`는 이름을 가진 상태와 동작 정의,
 `instances`는 template slot과 stable target ID의 Area별 연결을 소유한다. MapTool의
 `Save`는 visual placement와 world sequence를 백업·사후 재검증·rollback이 있는 연결 저장으로

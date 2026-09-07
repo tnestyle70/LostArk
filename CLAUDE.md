@@ -244,7 +244,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v59 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v64 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -407,7 +407,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v59의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v64의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -479,7 +479,7 @@ formatVersion 3이다. `Save` 후 `Publish Area`가 기존 Map publisher로 runt
 template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
 WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
 Action Workbench World Resources에서 저장 상태를 Append하면 box `durationMs`를 Server가
-protocol 63 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리하고 placement를 복구한다.
+protocol 64 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리하고 placement를 복구한다.
 충돌·피해 판정은 기존 Server gameplay 경계에 남는다. Client/UI 실행과 화면 판정은 사용자가 한다.
 
 MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
@@ -609,7 +609,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 - 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
-- 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다.
+- 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다. Area는 선택적으로 `Data/Navigation/<AreaId>.navregions`에 세부 영역 격자를 선언한다. 각 영역은 `<AreaId>.<regionId>` grid ID로 자기 `.navsource/.navpaint`와 런타임 `.navgrid/.navpolicy`를 갖고, Server는 질의의 첫 점을 담는 영역이 있으면 그 격자에서만 판정한다. 영역은 서로 겹칠 수 없고 runtime blocker를 갖지 않으며, 매니페스트가 없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
 - 플레이어 스킬 히트 셰이프: `Data/Animation/HitShapes/<AssetId>.hitshapes.json`이 Server 판정 정본이다. `Tools/CharacterAnimationIntake/build_hitshapes.py`가 `.animevents` HIT 행과 skillbindings 체인에서 생성하고 `Publish-GameplayBalance.ps1`이 `SKILLHIT/SKILLSTAGEHIT` 행으로 publish한다. `areaType`은 원본 SkillEffect 의미 그대로 1=원/링, 2=전방 박스(원본 `AreaAngle`이 폭 cm → `width` m), 3=부채꼴(`angle` 도)이다. Server는 스킬당 damage rate를 sub-hit 수로 분할해 셰이프 안의 대상 전부에 적용하며, 셰이프가 없는 스킬만 `maximumRange` 원형 단일 판정을 유지한다. notify HIT가 없는 스킬은 `fill_animevents_hit_shapes.py`가 `PlayerSkills.json hitTimeMs` 위치에 skilltiming caster 셰이프 한 행을 합성한다. 원작이 투사체/장판으로 때리는 스킬은 `Data/Animation/Reference/<AssetId>/<AssetId>.projectiles`(원본 `XMLData/Projectile/<PK>.loa` 추출) → `Tools/CharacterAnimationIntake/fill_projectiles.py` → `Data/Animation/Authored/<AssetId>/<AssetId>.projectiles.json` → `build_hitshapes.py`의 skill/stage `projectiles[]`(v3) → `SKILLPROJ/SKILLSTAGEPROJ` 행으로 이어지며, Server `CPlayerSkillSystem`이 spawn 시각에 MISSILE(조준 방향 직진, 거리·수명 소멸, 접촉 히트는 대상당 1회)·FIXAREA(조준 지점, 최대 거리 clamp, 예약 시각 히트) 오브젝트를 만들어 caster 히트와 같은 damage rate를 sub-hit로 나눠 적용한다. Client는 Debug 와이어 예측만 그리고 판정하지 않는다.

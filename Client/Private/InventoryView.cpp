@@ -37,7 +37,11 @@ void Client::CInventoryView::Sync_DisplayOrder(const size_t itemCount)
 void Client::CInventoryView::Hide()
 {
 	m_pBackgroundView->Set_SlotVisible("Inventory_PanelBg", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_TopDeco", false);
 	m_pBackgroundView->Set_SlotVisible("Inventory_Title", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_CloseBtn", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_AutoSortBtn", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_SearchBtn", false);
 	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", false);
 	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", false);
 	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", false);
@@ -76,7 +80,11 @@ void Client::CInventoryView::Update(
 	}
 
 	m_pBackgroundView->Set_SlotVisible("Inventory_PanelBg", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_TopDeco", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_Title", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_CloseBtn", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_AutoSortBtn", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_SearchBtn", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", true);
@@ -137,7 +145,7 @@ void Client::CInventoryView::Render_Text()
 	fraction here instead of 100%. */
 	const float2_t vMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strTitle.c_str());
-	constexpr f32_t TITLE_HEIGHT_FRACTION = 0.45f;
+	constexpr f32_t TITLE_HEIGHT_FRACTION = 0.585f;
 	const f32_t fScale = (vMeasured.y > 0.f) ?
 		(fTitleHeight * TITLE_HEIGHT_FRACTION / vMeasured.y) : 1.f;
 	/* Glyphs under the character info window (drawn over this panel) are skipped, not
@@ -300,7 +308,8 @@ void Client::CInventoryView::Update_Drag()
 void Client::CInventoryView::Move_Panel(const f32_t fDeltaX, const f32_t fDeltaY)
 {
 	constexpr const char* STATIC_SLOT_IDS[] = {
-		"Inventory_PanelBg", "Inventory_Title", "Inventory_Button1",
+		"Inventory_PanelBg", "Inventory_TopDeco", "Inventory_Title", "Inventory_CloseBtn",
+		"Inventory_AutoSortBtn", "Inventory_SearchBtn", "Inventory_Button1",
 		"Inventory_CraftingButton", "Inventory_GemButton", "Inventory_BottomBars",
 		"Inventory_Category_All", "Inventory_Category_Combat", "Inventory_Category_Cloth",
 		"Inventory_Category_Use", "Inventory_Category_Gem", "Inventory_Category_Card",
@@ -347,13 +356,15 @@ void Client::CInventoryView::Update_CategoryTabs()
 {
 	struct CATEGORY_ART { const char* pSlotId; const char* pNormalPath; const char* pHoverPath; };
 	constexpr CATEGORY_ART CATEGORIES[] = {
-		{ "Inventory_Category_All", "UI/Inventory/Category All.png", "UI/Inventory/Category all_hover.png" },
-		{ "Inventory_Category_Combat", "UI/Inventory/Category combat.png", "UI/Inventory/Category combat_hover.png" },
-		{ "Inventory_Category_Cloth", "UI/Inventory/Category Cloth.png", "UI/Inventory/Category Cloth_hover .png" },
-		{ "Inventory_Category_Use", "UI/Inventory/Category use.png", "UI/Inventory/Category use_hover.png" },
-		{ "Inventory_Category_Gem", "UI/Inventory/Category Gem.png", "UI/Inventory/Category Gem_hover.png" },
-		{ "Inventory_Category_Card", "UI/Inventory/Category Card.png", "UI/Inventory/Category card_hover.png" },
-		{ "Inventory_Category_Etc", "UI/Inventory/Category etc.png", "UI/Inventory/Category etc_hover.png" },
+		/* Retail inventory.gfx itemSortingGroup tab icons (up / over frames) cropped from
+		Inventory_I1: all, equip, avatar, use, stone, card, etc. */
+		{ "Inventory_Category_All", "UI/Inventory/Retail/inv_tab_all.png", "UI/Inventory/Retail/inv_tab_all_hover.png" },
+		{ "Inventory_Category_Combat", "UI/Inventory/Retail/inv_tab_combat.png", "UI/Inventory/Retail/inv_tab_combat_hover.png" },
+		{ "Inventory_Category_Cloth", "UI/Inventory/Retail/inv_tab_cloth.png", "UI/Inventory/Retail/inv_tab_cloth_hover.png" },
+		{ "Inventory_Category_Use", "UI/Inventory/Retail/inv_tab_use.png", "UI/Inventory/Retail/inv_tab_use_hover.png" },
+		{ "Inventory_Category_Gem", "UI/Inventory/Retail/inv_tab_gem.png", "UI/Inventory/Retail/inv_tab_gem_hover.png" },
+		{ "Inventory_Category_Card", "UI/Inventory/Retail/inv_tab_card.png", "UI/Inventory/Retail/inv_tab_card_hover.png" },
+		{ "Inventory_Category_Etc", "UI/Inventory/Retail/inv_tab_etc.png", "UI/Inventory/Retail/inv_tab_etc_hover.png" },
 	};
 
 	CUIInputRouter& Router = CUIInputRouter::Get();

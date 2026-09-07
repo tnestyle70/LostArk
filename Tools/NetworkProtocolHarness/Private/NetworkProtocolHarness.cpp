@@ -2397,14 +2397,46 @@ namespace
 		testRunner.Require(!Write_Message(zeroSpeed, play),
 			"World sequence play refuses a zero playback speed");
 
+		S2C_INTERACT_PROMPT prompt{};
+		prompt.strTriggerPlacementId = "jump.mario.entry";
+		prompt.bAvailable = true;
+		CPacketWriter promptWriter;
+		testRunner.Require(Write_Message(promptWriter, prompt),
+			"Interact prompt writer survives merged protocol");
+		CPacketReader promptReader{ promptWriter.Get_Buffer() };
+		S2C_INTERACT_PROMPT decodedPrompt{};
+		testRunner.Require(Read_Message(promptReader, decodedPrompt) &&
+			decodedPrompt.strTriggerPlacementId == prompt.strTriggerPlacementId &&
+			decodedPrompt.bAvailable && promptReader.Get_RemainingSize() == 0u,
+			"Interact prompt round trip preserves trigger identity and availability");
+		C2S_INTERACT_TRIGGER interact{};
+		interact.iRequestSequence = 71u;
+		interact.strTriggerPlacementId = prompt.strTriggerPlacementId;
+		CPacketWriter interactWriter;
+		testRunner.Require(Write_Message(interactWriter, interact),
+			"Interact trigger writer survives merged protocol");
+		CPacketReader interactReader{ interactWriter.Get_Buffer() };
+		C2S_INTERACT_TRIGGER decodedInteract{};
+		testRunner.Require(Read_Message(interactReader, decodedInteract) &&
+			decodedInteract.iRequestSequence == interact.iRequestSequence &&
+			decodedInteract.strTriggerPlacementId == interact.strTriggerPlacementId &&
+			interactReader.Get_RemainingSize() == 0u,
+			"Interact trigger round trip preserves request sequence and trigger identity");
+
 		testRunner.Require(Is_Known_Packet_Type(PACKET_TYPE::C2S_INTERACTION_SLOT) &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) &&
-			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_INTERACT_PROMPT) &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_INTERACT_TRIGGER) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 63u,
-			"Interaction packet identities remain stable at protocol 63 with World sequence lifetime");
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
+			NETWORK_PROTOCOL_VERSION == 64u,
+			"Protocol 64 preserves main trigger identities before Kouku HUD and World lifetime integration");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -2520,8 +2552,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(63u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 63");
+			testRunner.Require(64u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 64");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5723,8 +5755,8 @@ namespace
 		}
 
 		testRunner.Require(
-			63u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 63");
+			64u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 64");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5751,8 +5783,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			63u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 63");
+			64u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 64");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

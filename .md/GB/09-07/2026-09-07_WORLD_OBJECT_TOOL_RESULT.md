@@ -110,3 +110,36 @@ Runtime UI Save/Reload 버튼 왕복, GPU 렌더 결과와 패턴 실제 재생�
 사용자 화면 확인 전이므로 visual PASS는 기록하지 않았다. 새 리소스를 각 제품 패턴에 자동 배치하거나
 원작의 모든 패턴 타이밍·충돌·폭발 effect를 완성했다고 처리하지 않는다.
 기존 대규모 dirty 변경은 보존했으며 자동 stage/commit/push는 하지 않았다.
+
+## G05. PR #333 최신 main 통합 검증
+
+사용자가 커밋·push한 `b56347879e73ce6a50f45a7e923d94505bfe3175`와
+main `0f05b7c5dbc33af48756b9b99fbd1eec7fd4eef4`를 병합했다.
+10개 충돌 파일은 양쪽 계약을 합쳤다. 마리오 이동·상호작용·카메라·네비 세부 영역,
+커스터마이징·무력화 UI와 World Object·조명·HUD 변경을 유지한다.
+
+WorldSequence는 v3/revision147, Object Resources10/templates75/instances79다.
+Gameplay는 revision8094/placements64이며 main의 추가32개와 기존 수정, 사용자의 보스 좌표와
+Mario1 HUD 값을 보존했다. Map publisher로 7개 파일을 재생성했고 1Mario camera도 runtime revision62로 맞췄다.
+
+main의 상호작용 packet ID와 기능 브랜치의 HUD/Scene ID 충돌을 해소했다. main 기존68개 ID를 유지하고
+HUD/Scene4개를 뒤에 추가한 protocol64를 사용한다. WORLD duration codec도 그대로 유지한다.
+자동 병합된 커스터마이징 종료 코드의 옛 카메라 함수 두 곳은 현재 ArenaCameraProfile을 소비하도록 수정했다.
+
+Navigation publisher는 이미 Server가 보존하는 Big Saydon의 저작 높이를 지면 높이로 강제해 배포에 실패했다.
+정확한 쿠크 Area+boss kind+Big Saydon archetype의 높이 정책을 Server와 맞췄으며
+finite XYZ·bounds·walkable 검사는 유지했다. 사용자 저장 `(10.24,8.63,317.75)`는 변경하지 않았다.
+
+| 검증 | 결과 |
+|---|---|
+| 최종 Debug Product | PASS, out/BuildPipeline/runs/20260907T015810529Z-debug-product.json |
+| 관련 Python 검사 | WorldSequence/Composition/Effect binding/World admission 103개 PASS |
+| NetworkProtocolHarness | protocol64·WORLD lifetime·interact packet, failures0 |
+| Navigation ContractTest | 기존 검사와 높이 정책 정상/거부7경우 PASS |
+| Map/World/Navigation Publish | PASS, 네비5개 Area+Mario 세부격자3개, Client/Server25파일 일치 |
+| 구조 | 병합 JSON23개/XML2개 parse, 두 기능의 project/filter 등록·GUID 검사 PASS |
+| 충돌·공백 | unmerged path0, origin/main 대비 PR diff --check PASS |
+
+통합 검증 로그는 `out/WorldObjectMerge/`, 데이터 보존 감사는 `out/PRConflictMerge/`에 있다.
+이전 main 문서·참고 TXT의 기존 공백은 무관한 변경으로 정리하지 않았다.
+Client/UI 실행·화면 검증은 하지 않았다. 사용자 요청에 따라 PR merge 뒤 로컬 main을 pull하여 동기화한다.

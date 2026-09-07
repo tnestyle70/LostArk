@@ -32,7 +32,8 @@ namespace Client
 		RAID_ENTRY_PROMPT,
 		RAID_ENTRY_VOTE,
 		CHAT_RECEIVED,
-		WORLD_SEQUENCE_PLAY
+		WORLD_SEQUENCE_PLAY,
+		INTERACT_PROMPT
 	};
 
 	/* Only adjacent full snapshots are replaceable.  Every reliable lifecycle
@@ -83,5 +84,6 @@ namespace Client
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE RaidEntryVote;
 		LostArk::Shared::S2C_CHAT ChatReceived;
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
+		LostArk::Shared::S2C_INTERACT_PROMPT InteractPrompt;
 	};
 }

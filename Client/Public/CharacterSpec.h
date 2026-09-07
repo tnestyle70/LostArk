@@ -167,6 +167,11 @@ struct CHARACTER_SPEC
 	every bone exactly where the clip put it. */
 	const BONE_CHAIN_SPEC* pBoneChains = nullptr;
 	uint32_t iNumBoneChains = 0u;
+
+	/* Retail face race code ("FT", "WR", ...) whose
+	Data/Customizing/FaceSliders/<race>.facesliders.json drives this class's face
+	customizing sliders. Null leaves the face untouched. */
+	const char_t* pFaceSliderRace = nullptr;
 };
 
 NS_END

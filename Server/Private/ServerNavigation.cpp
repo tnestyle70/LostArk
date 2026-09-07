@@ -3,6 +3,7 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -53,6 +54,7 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_ConditionValues.clear();
 	m_BlockCounts.clear();
 	m_iRevision = 0u;
+	m_Regions.clear();
 
 	const std::filesystem::path path = Resolve_DataRoot() / L"Navigation" /
 		std::filesystem::path(areaId + ".navgrid");
@@ -102,7 +104,8 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 
 	m_Walkable = std::move(walkable);
 	m_Heights = std::move(heights);
-	if (!Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId))
+	if (!Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId) ||
+		!Load_Regions(areaId))
 	{
 		// Loading is transactional: a malformed sidecar must never leave a
 		// partially usable grid behind for callers that inspect Is_Loaded().
@@ -112,12 +115,14 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 		m_ConditionValues.clear();
 		m_BlockCounts.clear();
 		m_VoidCounts.clear();
+		m_Regions.clear();
 		m_fMaximumTraversalStepHeight = 0.f;
 		return false;
 	}
 	m_strStatus = "Loaded server navigation: " + std::to_string(m_iWidth) +
 		"x" + std::to_string(m_iHeight) + ", runtime blockers=" +
-		std::to_string(m_RuntimeBlockerRegions.size());
+		std::to_string(m_RuntimeBlockerRegions.size()) + ", regions=" +
+		std::to_string(m_Regions.size());
 	return true;
 }
 
@@ -272,6 +277,145 @@ void LostArk::Server::CServerNavigation::Rebuild_InitialRuntimeBlockers() noexce
 	m_iRevision = 1u;
 }
 
+bool LostArk::Server::CServerNavigation::Load_Regions(const std::string& areaId)
+{
+	/* A detail region is itself a CServerNavigation loaded by its grid id
+	"<AreaId>.<regionId>". The dot is how a region knows it must not look for
+	regions of its own, so nesting stops at one level. */
+	if (areaId.find('.') != std::string::npos)
+		return true;
+	const std::filesystem::path path = Resolve_DataRoot() / L"Navigation" /
+		std::filesystem::path(areaId + ".navregions");
+	if (!std::filesystem::exists(path))
+		return true;
+	std::ifstream input(path);
+	std::string magic;
+	std::string stagedAreaId;
+	std::uint32_t version = 0u;
+	std::uint32_t regionCount = 0u;
+	if (!(input >> magic >> version >> std::quoted(stagedAreaId) >>
+		regionCount) ||
+		magic != "LOSTARK_NAVGRID_REGIONS" || 1u != version ||
+		stagedAreaId != areaId || regionCount > 64u)
+	{
+		m_strStatus = "Server navigation region manifest is invalid: " +
+			path.string();
+		return false;
+	}
+	std::vector<CServerNavigation> regions;
+	std::set<std::string> regionIds;
+	regions.reserve(regionCount);
+	for (std::uint32_t regionIndex = 0u; regionIndex < regionCount;
+		++regionIndex)
+	{
+		std::string rowMagic;
+		std::string regionId;
+		float manifestStepHeight = 0.f;
+		if (!(input >> rowMagic >> std::quoted(regionId) >>
+			manifestStepHeight) ||
+			rowMagic != "REGION" || regionId.empty() || regionId.size() > 32u ||
+			!std::all_of(regionId.begin(), regionId.end(),
+				[](const char value)
+				{
+					return 0 != std::isalnum(
+						static_cast<unsigned char>(value)) ||
+						'_' == value || '-' == value;
+				}) ||
+			!std::isfinite(manifestStepHeight) || manifestStepHeight < 0.f ||
+			!regionIds.insert(regionId).second)
+		{
+			m_strStatus =
+				"Server navigation region manifest row is invalid: " +
+				path.string();
+			return false;
+		}
+		CServerNavigation region;
+		if (!region.Load(areaId + "." + regionId))
+		{
+			m_strStatus = region.m_strStatus;
+			return false;
+		}
+		if (0u != region.Get_DeclaredBlockerRegionCount())
+		{
+			m_strStatus = "Server navigation region declares runtime blockers, "
+				"which detail regions do not support: " + regionId;
+			return false;
+		}
+		if (std::abs(region.m_fMaximumTraversalStepHeight -
+			manifestStepHeight) > 0.000001f)
+		{
+			m_strStatus = "Server navigation region step policy differs from "
+				"its manifest row: " + regionId;
+			return false;
+		}
+		for (const CServerNavigation& other : regions)
+		{
+			if (region.Overlaps_Grid(other))
+			{
+				m_strStatus = "Server navigation regions overlap: " + regionId;
+				return false;
+			}
+		}
+		regions.push_back(std::move(region));
+	}
+	input >> std::ws;
+	if (!input.eof())
+	{
+		m_strStatus =
+			"Server navigation region manifest has trailing data: " +
+			path.string();
+		return false;
+	}
+	m_Regions = std::move(regions);
+	return true;
+}
+
+const LostArk::Server::CServerNavigation*
+LostArk::Server::CServerNavigation::Select_Region(
+	const float x,
+	const float z) const
+{
+	for (const CServerNavigation& region : m_Regions)
+	{
+		if (region.Contains_Point(x, z))
+			return &region;
+	}
+	return nullptr;
+}
+
+bool LostArk::Server::CServerNavigation::Contains_Point(
+	const float x,
+	const float z) const
+{
+	return Is_Loaded() && std::isfinite(x) && std::isfinite(z) &&
+		x >= m_fOriginX && z >= m_fOriginZ &&
+		x < m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize &&
+		z < m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize;
+}
+
+bool LostArk::Server::CServerNavigation::Overlaps_Grid(
+	const CServerNavigation& other) const
+{
+	const float maxX =
+		m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize;
+	const float maxZ =
+		m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize;
+	const float otherMaxX = other.m_fOriginX +
+		static_cast<float>(other.m_iWidth) * other.m_fCellSize;
+	const float otherMaxZ = other.m_fOriginZ +
+		static_cast<float>(other.m_iHeight) * other.m_fCellSize;
+	return m_fOriginX < otherMaxX && other.m_fOriginX < maxX &&
+		m_fOriginZ < otherMaxZ && other.m_fOriginZ < maxZ;
+}
+
+float LostArk::Server::CServerNavigation::Get_CellSize() const
+{
+	float cellSize = m_fCellSize;
+	for (const CServerNavigation& region : m_Regions)
+		cellSize = (std::min)(cellSize, region.m_fCellSize);
+	return cellSize;
+}
+
 bool LostArk::Server::CServerNavigation::Is_CellWalkable(
 	const std::uint32_t index) const
 {
@@ -368,6 +512,8 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 	const float z,
 	SERVER_NAV_POINT& outPoint) const
 {
+	if (const CServerNavigation* region = Select_Region(x, z))
+		return region->Project_Point(x, z, outPoint);
 	if (!Is_Loaded() || x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
 		z >= m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize)
@@ -386,6 +532,8 @@ bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 	const float z,
 	SERVER_NAV_POINT& outPoint) const
 {
+	if (const CServerNavigation* region = Select_Region(x, z))
+		return region->Project_PointOnSameLevel(x, z, outPoint);
 	/* A collapsed cell keeps the baked height of the floor that used to be
 	there, so the hole itself carries the deck to come back to. Measured against
 	the authored Valtan floor regions, one metre of tolerance inside twenty
@@ -455,6 +603,8 @@ bool LostArk::Server::CServerNavigation::Sample_Position(
 	const float z,
 	SERVER_NAV_POINT& outPoint) const
 {
+	if (const CServerNavigation* region = Select_Region(x, z))
+		return region->Sample_Position(x, z, outPoint);
 	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z))
 		return false;
 	const int cellX = static_cast<int>(std::floor((x - m_fOriginX) / m_fCellSize));
@@ -480,6 +630,8 @@ bool LostArk::Server::CServerNavigation::Resolve_TraversalStep(
 	const float toZ,
 	SERVER_NAV_POINT& outPoint) const
 {
+	if (const CServerNavigation* region = Select_Region(fromX, fromZ))
+		return region->Resolve_TraversalStep(fromX, fromZ, toX, toZ, outPoint);
 	SERVER_NAV_POINT fromGround{};
 	SERVER_NAV_POINT toGround{};
 	if (!Sample_Position(fromX, fromZ, fromGround) ||
@@ -498,6 +650,8 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	const float endX,
 	const float endZ) const
 {
+	if (const CServerNavigation* region = Select_Region(startX, startZ))
+		return region->Has_LineOfSight(startX, startZ, endX, endZ);
 	constexpr double LOS_HEIGHT_TOLERANCE = 1.000001;
 	constexpr double CORNER_TOLERANCE = 0.000000000001;
 	if (!Is_PointWalkableExact(startX, startZ) ||
@@ -626,6 +780,8 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	const float goalZ,
 	std::vector<SERVER_NAV_POINT>& outPath) const
 {
+	if (const CServerNavigation* region = Select_Region(startX, startZ))
+		return region->Find_Path(startX, startZ, goalX, goalZ, outPath);
 	outPath.clear();
 	std::uint32_t start = 0;
 	std::uint32_t goal = 0;
@@ -741,6 +897,11 @@ void LostArk::Server::CServerNavigation::Smooth_Path(
 	const float goalZ,
 	std::vector<SERVER_NAV_POINT>& path) const
 {
+	if (const CServerNavigation* region = Select_Region(startX, startZ))
+	{
+		region->Smooth_Path(startX, startZ, goalX, goalZ, path);
+		return;
+	}
 	if (path.empty())
 		return;
 	SERVER_NAV_POINT exactGoal{};
@@ -784,6 +945,12 @@ bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
 	const float minimumDestinationDistance,
 	std::vector<SERVER_NAV_POINT>& outPath) const
 {
+	if (const CServerNavigation* region = Select_Region(startX, startZ))
+	{
+		return region->Find_PathToReachablePointWithinRadius(
+			startX, startZ, centerX, centerZ, radius,
+			minimumDestinationDistance, outPath);
+	}
 	outPath.clear();
 	if (!Is_Loaded() || !std::isfinite(startX) || !std::isfinite(startZ) ||
 		!std::isfinite(centerX) || !std::isfinite(centerZ) ||
@@ -1020,6 +1187,8 @@ bool LostArk::Server::CServerNavigation::Is_PointWalkableExact(
 	const float x,
 	const float z) const
 {
+	if (const CServerNavigation* region = Select_Region(x, z))
+		return region->Is_PointWalkableExact(x, z);
 	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z) ||
 		x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
@@ -1099,6 +1268,8 @@ bool LostArk::Server::CServerNavigation::Is_PointInVoidRegion(
 	const float x,
 	const float z) const
 {
+	if (const CServerNavigation* region = Select_Region(x, z))
+		return region->Is_PointInVoidRegion(x, z);
 	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z) ||
 		x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||

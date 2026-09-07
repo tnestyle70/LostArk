@@ -576,8 +576,13 @@ bool_t Client::CNavGridPaintDocument::Load(
 				outStatus = "NavGrid paint row has trailing data";
 				return false;
 			}
+			/* A WALKABLE row carrying its own height authors floor where the
+			   bake found none, which is the one case allowed to name an
+			   unresolved cell and the same exception the publisher makes.
+			   HEIGHT stays a correction to a surface the bake did resolve. */
 			if (hasExplicitHeight &&
-				!bakedSourceCells[index].surfaceResolved)
+				!bakedSourceCells[index].surfaceResolved &&
+				NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE != overrideState)
 			{
 				outStatus =
 					"NavGrid height override targets an unresolved cell";
@@ -600,6 +605,16 @@ bool_t Client::CNavGridPaintDocument::Load(
 			{
 				stagedSourceCells[index].height = explicitHeight;
 				stagedCellHeightOverrides[index] = explicitHeight;
+				/* Reloading a FORCE_WALKABLE row that authored its own floor
+				   has to rebuild the same surface Paint made, or the cell
+				   comes back unresolved: invisible in the overlay and dropped
+				   by the next save even though the row is still in the file. */
+				if (!stagedSourceCells[index].surfaceResolved &&
+					NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE == overrideState)
+				{
+					stagedSourceCells[index].surfaceResolved = true;
+					stagedSourceCells[index].baseWalkable = true;
+				}
 			}
 			else if (!stagedSourceCells[index].surfaceResolved)
 			{

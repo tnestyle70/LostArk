@@ -47,6 +47,10 @@ namespace
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */
 		{ "Boss UI",        "UI/BossUI/BossUI.json", "UI/BossUI/", false },
+		/* Pattern check (immune) gauge under the boss, retail indicator.gfx immuneGauge. Authored
+		around Immune_Anchor; CBossImmuneGaugeView moves the group to the boss's replicated
+		position at runtime. Boss preview stamps a sample threshold so it shows in the tool. */
+		{ "Boss Immune Gauge", "UI/BossUI/ImmuneGauge_Layout.json", "UI/BossUI/ImmuneGauge/", false },
 		/* Esther skill-select window (3 portrait slots + shared charge gauge) -- shared across
 		classes like Boss UI, so its own document rather than squeezed into Combat HUD. */
 		{ "Esther UI",      "UI/Esther/EstherUI.json", "UI/Esther/", false },

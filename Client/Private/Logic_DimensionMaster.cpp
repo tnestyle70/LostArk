@@ -78,6 +78,14 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 
 	SkillSurfaceEmissives,
 	static_cast<uint32_t>(size(SkillSurfaceEmissives)),
+
+	nullptr,
+	0u,
+
+	nullptr,
+	0u,
+
+	"SP_M",
 };
 
 NS_END

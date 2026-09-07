@@ -325,6 +325,36 @@ class KoukuSaydonWorldAdmissionTests(unittest.TestCase):
         self.assertEqual(COLLECTION_NAME, payload["collectionName"])
         self.assertEqual("forbidden", payload["spawnContract"]["arbitraryRandomWorldPosition"])
 
+    def test_detail_region_owns_the_spawn_cell_it_covers(self) -> None:
+        """A spawn inside a region footprint is judged on the region grid."""
+        self.fixture.install_product()
+        # The base grid is 2x2 of 1 m at the origin and fully walkable, so the
+        # spawn passes on it. Cover that cell with a 2x2 region of 0.5 m whose
+        # cells are all blocked: a finding can then only come from the region.
+        self.fixture.write_text(
+            f"Data/Navigation/{AREA_ID}.navregions",
+            f'LOSTARK_NAVGRID_REGIONS 1 "{AREA_ID}" 1\nREGION "fine" 0.75\n',
+        )
+        region_grid = (
+            struct.pack("<IIfff", 2, 2, 0.5, 0.0, 0.0)
+            + bytes((0, 0, 0, 0))
+            + struct.pack("<4f", 0.0, 0.0, 0.0, 0.0)
+        )
+        for output in ("Server/Bin/DataFiles", "Client/Bin/DataFiles"):
+            self.fixture.write_bytes(
+                f"{output}/Navigation/{AREA_ID}.fine.navgrid", region_grid
+            )
+
+        report = validate_repository(self.fixture.root)
+        findings = report.result(PRODUCT_MODE).own_findings
+        blocked = [
+            finding
+            for finding in findings
+            if finding.code == "navigation.spawn.blocked"
+        ]
+        self.assertTrue(blocked)
+        self.assertIn(f"{AREA_ID}.fine", blocked[0].detail)
+
     def test_random_or_non_walkable_spawn_is_never_admitted(self) -> None:
         self.fixture.install_product()
         world_path = f"Data/Worlds/{AREA_ID}/Gameplay.world.json"

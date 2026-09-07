@@ -121,7 +121,16 @@ namespace LostArk::Server
 		bool Is_HeightTransitionAllowed(float fromY, float toY) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
-		float Get_CellSize() const { return m_fCellSize; }
+		/* The smallest cell size among the base grid and its detail regions.
+		Every caller uses it as a sampling step or probe distance, and a finer
+		step is always safe. */
+		float Get_CellSize() const;
+		/* Detail grids nested inside this Area. A region owns its XZ footprint:
+		a query whose first point lies inside it runs on that grid and never
+		sees base cells, so a region has to cover the whole walkable extent of
+		the stage it refines. Stages joined only by authored moves need no
+		cross-region paths, which is why none exist. */
+		std::size_t Get_RegionCount() const noexcept { return m_Regions.size(); }
 		float Get_MaximumTraversalStepHeight() const
 		{
 			return m_fMaximumTraversalStepHeight;
@@ -147,6 +156,14 @@ namespace LostArk::Server
 		bool Load_RuntimePolicy(const std::string& areaId);
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
+		bool Load_Regions(const std::string& areaId);
+		const CServerNavigation* Select_Region(float x, float z) const;
+		bool Contains_Point(float x, float z) const;
+		bool Overlaps_Grid(const CServerNavigation& other) const;
+		std::size_t Get_DeclaredBlockerRegionCount() const noexcept
+		{
+			return m_RuntimeBlockerRegions.size();
+		}
 
 	private:
 		std::uint32_t m_iWidth = 0;
@@ -164,5 +181,8 @@ namespace LostArk::Server
 		std::vector<std::uint16_t> m_VoidCounts;
 		std::uint64_t m_iRevision = 0u;
 		std::string m_strStatus;
+		/* Owner container of the detail regions in manifest order. Each entry is
+		a fully loaded grid whose own m_Regions stays empty. */
+		std::vector<CServerNavigation> m_Regions;
 	};
 }

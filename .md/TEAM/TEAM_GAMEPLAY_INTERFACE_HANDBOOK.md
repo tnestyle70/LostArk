@@ -105,7 +105,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v63 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v64 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -320,7 +320,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-Shared protocol 63의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+Shared protocol 64의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 맵별 플레이어 시점은 같은 F1 항목의 `Move Player` 아래 `Player Follow Camera`에서 설정한다.
 `Camera map`은 Character Select / KoukuSaydon 두 맵만 선택하며 Valtan profile은 수정하지 않는다.
@@ -690,10 +690,10 @@ PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE �
 Kouku Composition Play는 같은 clock으로 Animation, WORLD와 presentation occurrence를 재생한다.
 WORLD 정의의 optional `positionOffset: [x,y,z]`와 speed, WORLD occurrence의 `durationMs`는
 projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 거쳐 Server cue까지
-전달된다. protocol 63의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
+전달된다. protocol 64의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
 1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 박스 수명은 playback speed와
 별도로 측정하고, Stop/수명 종료에서 원래 배치를 복구하며 생성한 World Object를 정리한다.
-Server/Shared/Client는 같은 protocol 63으로 함께 빌드·재시작한다.
+Server/Shared/Client는 같은 protocol 64으로 함께 빌드·재시작한다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 
 F1 `World Object Tool`의 정의와 이름을 가진 상태는 Area의

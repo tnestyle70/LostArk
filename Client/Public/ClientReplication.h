@@ -435,6 +435,13 @@ namespace Client
 			m_PendingWorldSequencePlays.clear();
 			return pending;
 		}
+		/* The interact-gated box this player is standing in, or empty when the
+		   Server has offered nothing. Held, not drained: the offer stands until
+		   the Server withdraws it. */
+		const std::string& Get_InteractPromptTriggerId() const
+		{
+			return m_strInteractPromptTriggerId;
+		}
 		bool Try_Consume_PartyTransferResult(
 			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
 		// 파티 레이드 입장 투표. 프롬프트 수신 시 Bern이 수락/거절 창을 열고, vote는
@@ -641,6 +648,7 @@ namespace Client
 		bool m_hasPendingRaidEntryVote = false;
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingWorldSequencePlays;
+		std::string m_strInteractPromptTriggerId;
 
 		struct CHAT_BUBBLE_ENTRY
 		{
