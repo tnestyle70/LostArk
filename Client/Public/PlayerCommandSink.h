@@ -15,6 +15,8 @@ class IPlayerCommandSink
 {
 public:
 	virtual ~IPlayerCommandSink() = default;
+	virtual bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK&) { return false; }
+	virtual bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT&) { return false; }
 
 	virtual bool Request_DebugTeleportToPosition(
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ) = 0;

@@ -2,6 +2,18 @@
 
 #include "NetworkManager.h"
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugWorldPlayback(
+	const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	return CNetworkManager::Get().Send_DebugWorldPlayback(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugWorldPlaybackResult(
+	LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugWorldPlaybackResult(result);
+}
+
 std::atomic_uint32_t
 	Client::CNetworkPlayerCommandSink::s_iLiveInstanceCount = 0u;
 

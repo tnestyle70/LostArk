@@ -392,6 +392,9 @@
     <ClCompile Include="..\Private\Level_Loading.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\MainApp_SequenceViewer.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
 	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
@@ -421,7 +424,9 @@
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
-    <ClCompile Include="..\Private\MapTool.cpp" />
+    <ClCompile Include="..\Private\MapTool.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
 	<ClCompile Include="..\Private\WorldSequenceDocument.cpp" />
 	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
 	  <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -562,6 +567,7 @@
     <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json" />
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
+    <None Include="..\..\Data\Maps\SequenceViewer.labels.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements" />

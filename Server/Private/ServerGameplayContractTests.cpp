@@ -1382,16 +1382,17 @@ namespace
 }
 
 int LostArk::Server::Run_ServerGameplayContractTests(
-	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly)
+	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly, const bool worldPlaybackOnly)
 {
 	struct CONTRACT_TEST_RUN_CONTEXT final
 	{
 		bool dimensionMasterGroundTargetOnly = false;
 		bool debugTeleportOnly = false;
+		bool worldPlaybackOnly = false;
 		int result = 1;
 	};
 
-	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, 1 };
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, worldPlaybackOnly, 1 };
 	const auto runContract = [](void* opaque)
 	{
 		CONTRACT_TEST_RUN_CONTEXT& context =
@@ -1402,6 +1403,59 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 	using namespace LostArk::Shared;
 	TESTS tests{ dimensionMasterGroundTargetOnly };
+	if (context.worldPlaybackOnly)
+	{
+		CWorldBootstrap bootstrap;
+		tests.Require(bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && !bootstrap.Get_SequenceInstanceIds().empty(),
+			"Viewer loads published Kouku sequence IDs with the world");
+		tests.Require(bootstrap.Load(WORLD_ID::VALTAN_ARENA) && bootstrap.Get_SequenceInstanceIds().empty(),
+			"Viewer switching to Valtan clears the previous world's sequence IDs");
+		CServerTriggerSystem triggers;
+		WORLD_BOOTSTRAP_PLACEMENT box{};
+		box.strPlacementId = "viewer.trigger"; box.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		box.fHalfExtentX = box.fHalfExtentY = box.fHalfExtentZ = 1.f;
+		box.isTriggerOnce = true; box.requiresInteract = true;
+		WORLD_TRIGGER_ACTION action{}; action.eKind = WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE;
+		action.strTargetId = "viewer.sequence"; box.TriggerActions.push_back(action);
+		std::string status;
+		tests.Require(triggers.Initialize({ box }, status), "Viewer test initializes the real trigger system");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		players[1u].iPlayerId = 1u; players[1u].iCurrentHp = players[1u].iMaximumHp = 100u;
+		players[1u].fPositionX = 50.f;
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		int fired = 0;
+		const auto activate = [&](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
+		{ if (kind != WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE || id != "viewer.sequence") return false; ++fired; return true; };
+		using R = DEBUG_WORLD_PLAYBACK_RESULT;
+		tests.Require(triggers.Debug_Activate(2u, box.strPlacementId, false, players, 1u, transfers, activate) ==
+#ifdef _DEBUG
+			R::INVALID_PLAYER,
+#else
+			R::DISABLED,
+#endif
+			"Viewer rejects missing player without activating a trigger");
+#ifdef _DEBUG
+		tests.Require(triggers.Debug_Activate(1u, "missing", false, players, 1u, transfers, activate) == R::INVALID_TARGET && fired == 0,
+			"Viewer rejects unknown targets without effects");
+		tests.Require(triggers.Debug_Activate(1u, box.strPlacementId, false, players, 1u, transfers, activate) == R::ACCEPTED && fired == 1,
+			"Debug viewer uses the authored action outside the G-key box");
+		tests.Require(triggers.Debug_Activate(1u, box.strPlacementId, false, players, 2u, transfers, activate) == R::ALREADY_USED && fired == 1,
+			"Play preserves the one-shot latch");
+		tests.Require(triggers.Debug_Activate(1u, box.strPlacementId, true, players, 3u, transfers, activate) == R::ACCEPTED && fired == 2,
+			"Replay reuses the same authored action");
+		players[1u].iCurrentHp = 0;
+		tests.Require(triggers.Debug_Activate(1u, box.strPlacementId, true, players, 4u, transfers, activate) == R::INVALID_PLAYER && fired == 2,
+			"Dead viewer cannot activate world actions");
+		players[1u].iCurrentHp = 100;
+		const auto reject = [](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return false; };
+		tests.Require(triggers.Initialize({ box }, status) &&
+			triggers.Debug_Activate(1u, box.strPlacementId, false, players, 5u, transfers, reject) == R::ACTION_REJECTED &&
+			triggers.Debug_Activate(1u, box.strPlacementId, false, players, 6u, transfers, activate) == R::ACCEPTED,
+			"Failed action does not consume the one-shot trigger");
+#endif
+		std::cout << "World playback contract failures: " << tests.failures << '\n';
+		return tests.failures == 0 ? 0 : 1;
+	}
 	/* The existing contract executable can exercise this transport mutation
 	without running unrelated encounter simulations. */
 	if (context.debugTeleportOnly)

@@ -195,9 +195,18 @@ void Client::CPlayerController::Update(
 			isLeftMousePhysicallyDown, false, std::chrono::steady_clock::now());
 		m_wasRightMouseDown = isRightMousePhysicallyDown;
 		(void)Poll_EstherSlot(true, true);
-		(void)Poll_InteractKey(true, true);
 		/* Mario owns arrows only; normal click/skill commands stay consumed.
-		Capture likewise never releases an interrupted hold through the sink. */
+		Capture likewise never releases an interrupted hold through the sink.
+		An interact-gated box is neither: a capture still answers nothing, but
+		a Mario stage must be able to answer one, so only the same conditions
+		Mario already gates its own arrows on suppress the press here. */
+		Submit_InteractIfOffered(
+			isControlCaptured || !gameplayCommandsEnabled ||
+			GetForegroundWindow() != g_hWnd ||
+			CGameInstance::Get().IsKeyboardInputBlocked() ||
+			ImGui::GetIO().WantTextInput ||
+			CUIInputRouter::Get().Is_TextInputActive(),
+			true);
 		return;
 	}
 
@@ -482,22 +491,8 @@ void Client::CPlayerController::Update(
 		}
 	}
 
-	if (Poll_InteractKey(
-		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard) &&
-		nullptr != commandSink)
-	{
-		/* Only the box the Server is offering right now can be answered; with
-		   no offer standing the press is simply nothing. */
-		const std::string& offered =
-			CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
-		if (!offered.empty() &&
-			commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
-		{
-			++m_iNextActionSequence;
-			if (0 == m_iNextActionSequence)
-				m_iNextActionSequence = 1;
-		}
-	}
+	Submit_InteractIfOffered(
+		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
 
 	const std::uint8_t estherSlot = Poll_EstherSlot(
 		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
@@ -787,6 +782,29 @@ bool_t Client::CPlayerController::Update_MarioControls(const bool_t gameplayComm
 		}
 	}
 	return active;
+}
+
+void Client::CPlayerController::Submit_InteractIfOffered(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard)
+{
+	const shared_ptr<IPlayerCommandSink> commandSink = m_pCommandSink;
+	if (!Poll_InteractKey(isKeyboardBlocked, useRawKeyboard) ||
+		nullptr == commandSink)
+	{
+		return;
+	}
+	/* Only the box the Server is offering right now can be answered; with
+	   no offer standing the press is simply nothing. */
+	const std::string& offered =
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+	if (!offered.empty() &&
+		commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
+	{
+		++m_iNextActionSequence;
+		if (0 == m_iNextActionSequence)
+			m_iNextActionSequence = 1;
+	}
 }
 
 void Client::CPlayerController::Set_CommandSink(

@@ -78,6 +78,11 @@ namespace LostArk::Server
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 				const std::string&)>& activateTarget);
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
+		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Debug_Activate(
+			LostArk::Shared::PLAYER_ID playerId, const std::string& triggerId, bool replay,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players, std::uint32_t tick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& transfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND, const std::string&)>& activateTarget);
 		static bool Contains_Placement(
 			const WORLD_BOOTSTRAP_PLACEMENT& box, const SERVER_PLAYER& player);
 		/* Entry for a Server-validated scripted displacement. Authored triggers

@@ -391,6 +391,29 @@ private:
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
 	void RenderDeveloperTools();
+	void RenderSequenceViewer();
+	void UpdateSequenceViewer();
+	void RefreshSequenceViewer();
+	void ExecuteSequenceViewerAction(int action);
+	struct SEQUENCE_VIEWER_ROW
+	{
+		int kind = 0; // trigger, world sequence, boss pattern
+		std::string id, name, location, action, sequenceId, related, error;
+		float3_t position{};
+		bool enabled = true, hasPosition = false;
+	};
+	std::array<std::vector<SEQUENCE_VIEWER_ROW>, 2> m_SequenceViewerRows;
+	std::array<std::string, 2> m_SequenceViewerLoadStatus;
+	std::string m_SequenceViewerSelection;
+	std::string m_SequenceViewerStatus;
+	std::array<char, 256> m_SequenceViewerSearch{};
+	bool m_bSequenceViewerLoaded = false;
+	int m_iSequenceViewerArea = 0, m_iSequenceViewerKind = 0;
+	std::uint32_t m_iSequenceViewerRequest = 0;
+	std::uint32_t m_iSequenceViewerAwaitingRequest = 0;
+	std::chrono::steady_clock::time_point m_SequenceViewerReplyDeadline{};
+	int m_iSequenceViewerPendingEditorAction = -1;
+	std::chrono::steady_clock::time_point m_SequenceViewerPendingDeadline{};
 	void RenderRenderingWorkbench();
 	void RenderLightingWorkbench();
 	void SelectRenderingLight(const string& id);

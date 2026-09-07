@@ -52,7 +52,8 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 65;
+	// 66 adds the F1 world playback request/verdict and sequence transport operation.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 66;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -299,7 +300,9 @@ namespace LostArk::Shared
 		// Mario side-scroll: Debug jump intent/verdict and typed left/right/stop.
 		C2S_DEBUG_MARIO_JUMP,
 		S2C_DEBUG_MARIO_JUMP_RESULT,
-		C2S_MARIO_MOVE
+		C2S_MARIO_MOVE,
+		C2S_DEBUG_WORLD_PLAYBACK,
+		S2C_DEBUG_WORLD_PLAYBACK_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -386,6 +389,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
 		case PACKET_TYPE::S2C_INTERACT_PROMPT:
 		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
+		case PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK:
+		case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 		case PACKET_TYPE::C2S_INTERACTION_SLOT:
 		case PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE:
 		case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:

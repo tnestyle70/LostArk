@@ -2270,8 +2270,38 @@ namespace LostArk::Shared
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.
+	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY, REPLAY, STOP, END };
+	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
+	{
+		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, END
+	};
+	enum class DEBUG_WORLD_PLAYBACK_RESULT : std::uint8_t
+	{
+		ACCEPTED, DISABLED, WRONG_WORLD, INVALID_TARGET, INVALID_PLAYER, ALREADY_USED,
+		ACTION_REJECTED, STALE_REQUEST, END
+	};
+	struct C2S_DEBUG_WORLD_PLAYBACK
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_WORLD_PLAYBACK_OPERATION eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::END;
+		std::string strTargetId;
+	};
+	struct S2C_DEBUG_WORLD_PLAYBACK_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_WORLD_PLAYBACK_OPERATION eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::END;
+		DEBUG_WORLD_PLAYBACK_RESULT eResult = DEBUG_WORLD_PLAYBACK_RESULT::DISABLED;
+		std::string strTargetId;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_DEBUG_WORLD_PLAYBACK&);
+	bool Read_Message(CPacketReader&, C2S_DEBUG_WORLD_PLAYBACK&);
+	bool Write_Message(CPacketWriter&, const S2C_DEBUG_WORLD_PLAYBACK_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_DEBUG_WORLD_PLAYBACK_RESULT&);
 	struct S2C_WORLD_SEQUENCE_PLAY
 	{
+		WORLD_SEQUENCE_OPERATION eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
 		std::string strSequenceInstanceId;
 		/* Multiplies the authored instance speed. 1 plays the sequence as
 		authored; a pattern box may slow a roulette spin or a curtain drop. */

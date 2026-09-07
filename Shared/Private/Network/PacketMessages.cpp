@@ -5515,7 +5515,8 @@ bool LostArk::Shared::Read_Message(
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
-	if (!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId) ||
+	if (message.eOperation >= WORLD_SEQUENCE_OPERATION::END ||
+		!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId) ||
 		!std::isfinite(message.fPlaybackSpeed) ||
 		message.fPlaybackSpeed < 0.05f || message.fPlaybackSpeed > 16.f ||
 		!std::isfinite(message.fPositionOffsetX) || !std::isfinite(message.fPositionOffsetY) ||
@@ -5529,6 +5530,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(message.fPositionOffsetY);
 	writer.Write_F32(message.fPositionOffsetZ);
 	writer.Write_U32(message.iDurationMs);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
 	return true;
 }
 
@@ -5536,6 +5538,7 @@ bool LostArk::Shared::Read_Message(
 	CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message)
 {
 	S2C_WORLD_SEQUENCE_PLAY decoded{};
+	std::uint8_t operation = 0;
 	if (!reader.Read_String(
 			decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
 		!Is_Valid_SequenceInstanceId(decoded.strSequenceInstanceId) ||
@@ -5546,11 +5549,61 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_F32(decoded.fPositionOffsetZ) ||
 		!std::isfinite(decoded.fPositionOffsetX) || !std::isfinite(decoded.fPositionOffsetY) ||
 		!std::isfinite(decoded.fPositionOffsetZ) ||
-		!reader.Read_U32(decoded.iDurationMs) || decoded.iDurationMs > 600000u)
+		!reader.Read_U32(decoded.iDurationMs) || decoded.iDurationMs > 600000u ||
+		!reader.Read_U8(operation) || operation >= static_cast<std::uint8_t>(WORLD_SEQUENCE_OPERATION::END))
 	{
 		return false;
 	}
+	decoded.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);
 	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_WORLD_PLAYBACK& message)
+{
+	if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eOperation >= DEBUG_WORLD_PLAYBACK_OPERATION::END ||
+		!Is_Valid_SequenceInstanceId(message.strTargetId)) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	return writer.Write_String(message.strTargetId, MAX_SEQUENCE_INSTANCE_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_DEBUG_WORLD_PLAYBACK& message)
+{
+	C2S_DEBUG_WORLD_PLAYBACK decoded{};
+	std::uint16_t world = 0;
+	std::uint8_t operation = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !decoded.iRequestSequence ||
+		!reader.Read_U16(world) || !reader.Read_U8(operation) ||
+		operation >= static_cast<std::uint8_t>(DEBUG_WORLD_PLAYBACK_OPERATION::END) ||
+		!reader.Read_String(decoded.strTargetId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!Is_Valid_SequenceInstanceId(decoded.strTargetId)) return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eOperation = static_cast<DEBUG_WORLD_PLAYBACK_OPERATION>(operation);
+	if (!Is_Known_World_Id(decoded.eWorldId)) return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_DEBUG_WORLD_PLAYBACK_RESULT& message)
+{
+	if (message.eResult >= DEBUG_WORLD_PLAYBACK_RESULT::END) return false;
+	C2S_DEBUG_WORLD_PLAYBACK identity{ message.iRequestSequence, message.eWorldId, message.eOperation, message.strTargetId };
+	if (!Write_Message(writer, identity)) return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_WORLD_PLAYBACK_RESULT& message)
+{
+	C2S_DEBUG_WORLD_PLAYBACK identity{};
+	std::uint8_t result = 0;
+	if (!Read_Message(reader, identity) || !reader.Read_U8(result) ||
+		result >= static_cast<std::uint8_t>(DEBUG_WORLD_PLAYBACK_RESULT::END)) return false;
+	message = { identity.iRequestSequence, identity.eWorldId, identity.eOperation,
+		static_cast<DEBUG_WORLD_PLAYBACK_RESULT>(result), std::move(identity.strTargetId) };
 	return true;
 }
 

@@ -320,7 +320,14 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 65의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 66의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+
+F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
+`IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
+경계를 사용한다. Play/Replay/Stop sequence는 기존 `S2C_WORLD_SEQUENCE_PLAY`의 operation으로
+같은 room에 전달한다. Release Server는 요청을 거절하고, 다른 world·없는/비활성 target·사망
+player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
+사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
 맵별 플레이어 시점은 같은 F1 항목의 `Move Player` 아래 `Player Follow Camera`에서 설정한다.
 `Camera map`은 Character Select / KoukuSaydon 두 맵만 선택하며 Valtan profile은 수정하지 않는다.

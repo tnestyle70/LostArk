@@ -90,7 +90,32 @@ MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cel
 Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,
 유한한 좌표·영역 안의 XZ·walkable 검사는 그대로 적용한다. 다른 보스와 playerSpawn은 지면 높이를 검사한다.
 
-``World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
+### F1 Sequence Viewer
+
+Debug Client의 모든 Level에서 `F1 > Sequence Viewer`를 열면 `KoukuSaydon / 쿠크세이튼`와
+`Valtan / 발탄` 탭을 볼 수 있다. 현재 Area와 관계없이 트리거, 맵 시퀀스 인스턴스, 기존
+Boss Tool의 서버 패턴을 조회하며, 한국어 이름·구역·동작·원본 stable ID로 검색한다.
+`Data/Maps/SequenceViewer.labels.json`은 표시 이름만 소유한다. `kind`는
+`trigger/sequence/pattern`, `targetId`는 각 기존 ID, `displayName/location`은 한글을 포함한
+표시 문자열이다. 이 파일을 바꾸고 Refresh하면 이름만 바뀌고 실행 연결은 바뀌지 않는다.
+
+Test의 Play는 MapTool의 현재 문서와 기존 WorldSequencePlayer/카메라를 사용한다.
+이동·소환·전투와 공동 재생은 해당 Server-approved 아레나에서 실행한다. 다른 Level에서는
+Enter Arena로 기존 입장 절차를 요청한다. Go To는 Test에서 카메라를, Arena에서 요청한
+플레이어만 이동시킨다. Arena에서 트리거에 도착하면 그 트리거가 발동할 수 있다.
+Replay는 한 번 실행한 트리거도 같은 authored action으로 다시 요청한다. Stop은 선택 연출의
+표현만 정리하며 피해·소환·보스 전투나 다른 플레이어의 진행을 롤백하지 않는다.
+보스 패턴의 세부 제어는 Open Editor가 여는 기존 Boss Tool에 유지된다.
+
+`Publish-WorldGameplay.ps1`은 worldbootstrap v9에 활성 시퀀스 ID 목록을 함께 저장한다.
+Server는 이 목록으로 직접 재생/정지 명령을 확인한다. Client용
+`DataFiles/World/<Area>.viewer.world.json` 및 `SequenceViewer.labels.json`은 원본 checkout이
+없는 Debug 배포본의 읽기 전용 목록이다. 맵 연출 자체는 기존 Map publisher의
+worldsequences.json이므로 맵 연출을 변경했다면 Map과 World를 모두 publish해야 한다.
+Shared protocol은 66이며 Server와 모든 Client를 함께 빌드·재시작해야 한다.
+서버 승인과 broadcast는 화면 성공 판정이 아니다. 연출 화면과 4인 동시 확인은 사용자가 한다.
+
+`World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
 상태를 시간축으로 편집하는 재사용 저작 레이어다. `templates`는 이름을 가진 상태와 동작 정의,
 `instances`는 template slot과 stable target ID의 Area별 연결을 소유한다. MapTool의
 `Save`는 visual placement와 world sequence를 백업·사후 재검증·rollback이 있는 연결 저장으로

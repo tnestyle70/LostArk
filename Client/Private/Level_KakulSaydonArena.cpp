@@ -863,6 +863,31 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		Debug_StopCompositionWorldPreview();
 #endif
 		std::string status;
+		if (play.eOperation != LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY)
+		{
+			m_SequencePlayer.Stop_Instance(instanceId, targets, true);
+			for (const auto& link : KAKULSAYDON_PAPER_BRIDGE_LINKS)
+			{
+				if (link.bridgeSequenceInstanceId != instanceId) continue;
+				m_SequencePlayer.Stop_Instance(std::string(link.leverSequenceInstanceId), targets, true);
+				m_RaisedPaperBridges.erase(link.bridgePlacementId);
+				m_DeployRuntime.Set_State(link.bridgePlacementId, DEPLOY_PROP_STATE::DESPAWNED);
+			}
+			if (instanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID)
+			{
+				for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
+					if (instance.instanceId.starts_with(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
+						m_SequencePlayer.Stop_Instance(instance.instanceId, targets, true);
+				m_bCutsceneBossVisible = false;
+				Apply_CutsceneSetVisible(false);
+				m_DeployRuntime.Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
+			}
+			const auto activeShot = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
+				[&](const KAKUL_CAMERA_SHOT& shot) { return shot.strShotId == m_strActiveCameraShotId &&
+					shot.strSequenceInstanceId == instanceId; });
+			if (activeShot != m_CameraShots.end()) Release_CameraShot();
+			if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP) continue;
+		}
 		if (!Start_ServerRequestedSequence(instanceId, play.fPlaybackSpeed,
 			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs))
 		{
@@ -915,6 +940,12 @@ bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
 		return false;
 	}
 	Apply_CutsceneSetVisible(true);
+	if (!targets.pDeployRuntime->Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
+	{
+		Apply_CutsceneSetVisible(false);
+		outStatus = "Cutscene boss could not be revealed: " + targets.pDeployRuntime->Get_Status();
+		return false;
+	}
 
 	const size_t prefixLength = strlen(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX);
 	size_t started = 0u;

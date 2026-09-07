@@ -2282,10 +2282,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 63u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 66u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 63");
+			"Mario direction packet retains its appended identity in protocol 66");
 	}
 
 	void Test_MarioStageSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2454,14 +2454,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 63u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 66u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
-			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Mario wire v63 preserves jump packet identities without renumbering existing peers");
+			"Mario wire v66 preserves jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2595,8 +2595,54 @@ namespace
 		testRunner.Require(!Write_Message(invalidScene, scene),
 			"Scene profile cue refuses a non stable profile ID");
 
+		for (const auto operation : { DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_TRIGGER,
+			DEBUG_WORLD_PLAYBACK_OPERATION::REPLAY_TRIGGER, DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_SEQUENCE,
+			DEBUG_WORLD_PLAYBACK_OPERATION::REPLAY_SEQUENCE, DEBUG_WORLD_PLAYBACK_OPERATION::STOP_SEQUENCE })
+		{
+			C2S_DEBUG_WORLD_PLAYBACK request{ 21u, WORLD_ID::KAKULSAYDON_ARENA, operation, "world.sequence.instance.8" };
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, request), "Viewer operation writes a stable target");
+			CPacketReader reader{ writer.Get_Buffer() };
+			C2S_DEBUG_WORLD_PLAYBACK decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+				decoded.eOperation == operation && decoded.strTargetId == request.strTargetId && decoded.iRequestSequence == 21u,
+				"Viewer operation preserves identity and correlation");
+			for (size_t length = 0; length < writer.Get_Buffer().size(); ++length)
+			{
+				std::vector<std::uint8_t> truncated(writer.Get_Buffer().begin(), writer.Get_Buffer().begin() + length);
+				CPacketReader shortReader{ truncated };
+				decoded.strTargetId = "unchanged";
+				testRunner.Require(!Read_Message(shortReader, decoded) && decoded.strTargetId == "unchanged",
+					"Truncated viewer request preserves destination");
+			}
+			request.strTargetId = "../invalid";
+			CPacketWriter invalid;
+			testRunner.Require(!Write_Message(invalid, request), "Viewer refuses path-like IDs");
+		}
+		for (int verdict = 0; verdict < static_cast<int>(DEBUG_WORLD_PLAYBACK_RESULT::END); ++verdict)
+		{
+			S2C_DEBUG_WORLD_PLAYBACK_RESULT result{ 1u, WORLD_ID::VALTAN_ARENA,
+				DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_TRIGGER, static_cast<DEBUG_WORLD_PLAYBACK_RESULT>(verdict), "Stage_1" };
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, result), "Viewer verdict writes");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_DEBUG_WORLD_PLAYBACK_RESULT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+				decoded.eResult == result.eResult && decoded.strTargetId == "Stage_1", "Viewer verdict round trip");
+		}
 		S2C_WORLD_SEQUENCE_PLAY play{};
 		play.strSequenceInstanceId = "world.sequence.instance.8";
+		for (const auto operation : { WORLD_SEQUENCE_OPERATION::PLAY, WORLD_SEQUENCE_OPERATION::REPLAY, WORLD_SEQUENCE_OPERATION::STOP })
+		{
+			play.eOperation = operation;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, play), "World sequence transport operation writes");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_WORLD_SEQUENCE_PLAY decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && decoded.eOperation == operation && reader.Get_RemainingSize() == 0u,
+				"World sequence transport operation round trip");
+		}
+		play.eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
 		play.fPlaybackSpeed = 0.5f;
 		play.iDurationMs = 2400u;
 		play.fPositionOffsetX = 0.249f;
@@ -2668,8 +2714,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 64u,
-			"Protocol 64 preserves main trigger identities before Kouku HUD and World lifetime integration");
+			NETWORK_PROTOCOL_VERSION == 66u,
+			"Protocol 66 preserves main trigger identities before Kouku HUD and World lifetime integration");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -2785,8 +2831,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(65u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 65");
+			testRunner.Require(66u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 66");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5990,8 +6036,8 @@ namespace
 		}
 
 		testRunner.Require(
-			65u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 65");
+			66u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 66");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -6018,8 +6064,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			65u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 65");
+			66u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 66");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

@@ -1606,6 +1606,25 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || request.eWorldId != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) &&
+		Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+{
+	if (m_DebugWorldPlaybackResults.empty()) return false;
+	result = std::move(m_DebugWorldPlaybackResults.front());
+	m_DebugWorldPlaybackResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_InteractTrigger(
 	const std::uint32_t requestSequence,
 	const std::string_view triggerPlacementId)
@@ -2253,6 +2272,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_SessionDiagnostic.Record_EventQueueDepth(0u);
 	m_DebugTeleportResults.clear();
 	m_DebugMarioJumpResults.clear();
+	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
@@ -3459,6 +3479,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugMarioJumpResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
+	{
+		S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugWorldPlaybackResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{ Fail_Protocol(WSAENOBUFS); return; }
+		m_DebugWorldPlaybackResults.push_back(std::move(result));
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:

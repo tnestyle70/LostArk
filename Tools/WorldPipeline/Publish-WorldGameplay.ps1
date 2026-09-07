@@ -974,17 +974,48 @@ function Convert-WorldDocument {
 	}
 
     $sortedRows = @($rows | Sort-Object)
+    $sequenceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $sequencePath = "Data/Maps/Authoring/$AreaId/$AreaId.worldsequences.json"
+    if (Test-Path -LiteralPath (Join-Path $repoRoot $sequencePath)) {
+        $sequenceDocument = Read-ProjectJson $sequencePath
+        if ($sequenceDocument.areaId -cne $AreaId) { throw "Sequence Area mismatch: $sequencePath" }
+        if ($sequenceDocument.schema -cne 'lostark.world-sequences' -or
+            $sequenceDocument.formatVersion -notin @(1, 2, 3) -or
+            $sequenceDocument.instances -isnot [array] -or $sequenceDocument.templates -isnot [array]) {
+            throw "Unsupported sequence document shape: $sequencePath"
+        }
+        $templates = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($template in $sequenceDocument.templates) {
+            Assert-StableId $template.sequenceId 'Sequence viewer template ID'
+            if (-not $templates.Add([string]$template.sequenceId)) { throw 'Duplicate sequence template ID.' }
+        }
+        $allInstanceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($instance in @($sequenceDocument.instances)) {
+            Assert-StableId $instance.instanceId 'Sequence viewer instance ID'
+            if (-not $allInstanceIds.Add([string]$instance.instanceId) -or
+                -not $templates.Contains([string]$instance.templateId)) {
+                throw "Duplicate instance or missing sequence template: $($instance.instanceId)"
+            }
+            if ($instance.enabled -isnot [bool]) { throw 'Sequence enabled must be boolean.' }
+            if ($instance.enabled -and -not $sequenceIds.Add([string]$instance.instanceId)) {
+                throw "Duplicate sequence instance ID: $($instance.instanceId)"
+            }
+        }
+        if ($sequenceIds.Count -gt 4096) { throw 'Sequence viewer ID count exceeds 4096.' }
+    }
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t8`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t9`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }
+    foreach ($sequenceId in @($sequenceIds | Sort-Object)) { $lines.Add($sequenceId) }
     return [ordered]@{
         WorldId = $WorldId
         AreaId = $AreaId
         Lines = $lines
         Count = $sortedRows.Count
         NpcPresentation = $npcPresentationEntries
+        ViewerDocument = $document
     }
 }
 
@@ -1346,6 +1377,41 @@ if ($Mode -eq 'Publish') {
 			})
 		}
 
+		$labels = Read-ProjectJson 'Data/Maps/SequenceViewer.labels.json'
+		if ($labels.schema -cne 'lostark.sequence-viewer-labels' -or $labels.formatVersion -ne 1 -or $labels.entries -isnot [array]) {
+			throw 'Invalid F1 viewer labels document.'
+		}
+		$labelIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		foreach ($entry in $labels.entries) {
+			Assert-StableId $entry.areaId 'Viewer label Area'
+			Assert-StableId $entry.targetId 'Viewer label target'
+			if ($entry.kind -notin @('trigger', 'sequence', 'pattern') -or
+				$entry.displayName -isnot [string] -or [string]::IsNullOrWhiteSpace($entry.displayName) -or
+				$entry.location -isnot [string] -or
+				-not $labelIds.Add("$($entry.areaId)/$($entry.kind)/$($entry.targetId)")) { throw 'Invalid or duplicated viewer label.' }
+		}
+		$labelsName = 'SequenceViewer.labels.json'
+		$labelsStaged = Join-Path $stagingRoot $labelsName
+		[IO.File]::WriteAllText($labelsStaged, ($labels | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+		$promotions.Add([ordered]@{
+			World = @{ WorldId = 'SEQUENCE_VIEWER'; Count = $labels.entries.Count }; Staged = $labelsStaged
+			Destination = Join-Path $clientWorldRoot $labelsName
+			Rollback = Join-Path $clientWorldRoot ".$labelsName.rollback.$transactionId"
+			HadPrevious = $false; Promoted = $false
+		})
+		# Read-only F1 inventory for packaged Debug clients without the authoring checkout.
+		foreach ($world in $worlds) {
+			if ($world.WorldId -notin @('KAKULSAYDON_ARENA', 'VALTAN_ARENA')) { continue }
+			$name = "$($world.AreaId).viewer.world.json"
+			$staged = Join-Path $stagingRoot $name
+			[IO.File]::WriteAllText($staged, ($world.ViewerDocument | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
+			$promotions.Add([ordered]@{
+				World = $world; Staged = $staged
+				Destination = Join-Path $clientWorldRoot $name
+				Rollback = Join-Path $clientWorldRoot ".$name.rollback.$transactionId"
+				HadPrevious = $false; Promoted = $false
+			})
+		}
 		$promotedCount = 0
 		foreach ($promotion in $promotions) {
 			if ([IO.File]::Exists($promotion.Destination)) {

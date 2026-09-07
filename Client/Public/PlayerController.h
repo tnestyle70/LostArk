@@ -553,6 +553,11 @@ namespace Client
 		bool_t Poll_InteractKey(
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
+		/* The one place a G press turns into an answer, shared by the normal
+		   path and by a Mario stage so the two cannot drift apart. */
+		void Submit_InteractIfOffered(
+			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard);
 		void Cancel_GroundTargeting();
 #ifdef _DEBUG
 		void Update_DebugPlayerPlacement(bool_t enabled);

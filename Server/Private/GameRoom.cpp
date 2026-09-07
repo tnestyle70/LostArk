@@ -68,7 +68,7 @@ namespace
 		const char* exit;
 		float rightSign;
 	};
-	constexpr std::array<MARIO_LANE_BINDING, 17u> MARIO_LANES{{
+	constexpr std::array<MARIO_LANE_BINDING, 18u> MARIO_LANES{{
 		{1u, "Mario1_go", "Mario1_Trigger_1", 1.f},
 		{1u, "Mario1_Trigger_1", "Mario1_Trigger_3", 1.f},
 		{1u, "Mario1_Trigger_3", "Mario1_Trigger_5", 1.f},
@@ -82,6 +82,7 @@ namespace
 		{3u, "Mario3_Trigger_8", "Mario3_Trigger_10", -1.f},
 		{3u, "Mario3_Trigger_10", "Mario3_Trigger_12", 1.f},
 		{4u, "Mario4_go", "Mario4_Tigger_2", 1.f},
+		{4u, "Mario4_Tigger_2", "Mario4_Tigger_5", 1.f},
 		{4u, "Mario4_Tigger_3", "Mario4_Tigger_6", 1.f},
 		{4u, "Mario4_Tigger_6", "Mario4_Tigger_7", -1.f},
 		{4u, "Mario4_Tigger_7", "Mario4_Tigger_13", 1.f},
@@ -1918,6 +1919,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_ReturnToBern(
 				command.iSessionId, command.ReturnToBern);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK:
+			Handle_DebugWorldPlayback(command.iSessionId, command.DebugWorldPlayback);
+			break;
 		case ROOM_COMMAND_TYPE::PARTY_INVITE:
 			Handle_PartyInvite(command.iSessionId, command.PartyInvite);
 			break;
@@ -2745,6 +2749,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.erase(sessionId);
 #endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
+	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowStartSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowControlSequenceBySessionId.erase(sessionId);
@@ -3819,15 +3824,6 @@ bool LostArk::Server::CGameRoom::Configure_MarioRail(
 	if (0u == player.iMarioStage || player.iMarioStage > 4u || player.TriggerMove.isActive ||
 		!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionZ))
 		return false;
-	/* This tiny transfer lands immediately beside T3, not on a new floor.
-	Its endpoint is authoritative, but its 1mm displacement cannot define yaw. */
-	if (4u == player.iMarioStage && "Mario4_Tigger_2" == arrivalPlacementId && player.bMarioRailReady)
-	{
-		player.fMarioRailOriginX = player.fPositionX;
-		player.fMarioRailOriginZ = player.fPositionZ;
-		player.strMarioRailArrivalId = arrivalPlacementId;
-		return true;
-	}
 	const auto lane = std::find_if(MARIO_LANES.begin(), MARIO_LANES.end(),
 		[&player, &arrivalPlacementId](const MARIO_LANE_BINDING& candidate)
 		{ return candidate.stage == player.iMarioStage && arrivalPlacementId == candidate.arrival; });
@@ -5211,18 +5207,86 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 		request.strTriggerPlacementId, false });
 }
 
+void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_WORLD_PLAYBACK_RESULT result{ request.iRequestSequence, request.eWorldId,
+		request.eOperation, DEBUG_WORLD_PLAYBACK_RESULT::DISABLED, request.strTargetId };
+#ifdef _DEBUG
+	const auto execute = [&]() -> DEBUG_WORLD_PLAYBACK_RESULT
+	{
+		using Result = DEBUG_WORLD_PLAYBACK_RESULT;
+		using Op = DEBUG_WORLD_PLAYBACK_OPERATION;
+		if (request.eWorldId != m_eWorldId ||
+			(m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
+			return Result::WRONG_WORLD;
+		const auto playerId = m_PlayerIdBySessionId.find(sessionId);
+		if (playerId == m_PlayerIdBySessionId.end()) return Result::INVALID_PLAYER;
+		const auto player = m_Players.find(playerId->second);
+		if (player == m_Players.end() || !player->second.iCurrentHp) return Result::INVALID_PLAYER;
+		auto& last = m_WorldPlaybackRequestSequences[sessionId];
+		if (request.iRequestSequence <= last) return Result::STALE_REQUEST;
+		last = request.iRequestSequence;
+		const bool replay = request.eOperation == Op::REPLAY_TRIGGER || request.eOperation == Op::REPLAY_SEQUENCE;
+		const auto play = [&](const std::string& id)
+		{
+			const auto& ids = m_WorldBootstrap.Get_SequenceInstanceIds();
+			if (std::find(ids.begin(), ids.end(), id) == ids.end()) return false;
+			Broadcast_WorldSequencePlay(id, 1.f, 0.f, 0.f, 0.f, 0u,
+				replay ? WORLD_SEQUENCE_OPERATION::REPLAY : WORLD_SEQUENCE_OPERATION::PLAY);
+			return true;
+		};
+		if (request.eOperation == Op::PLAY_TRIGGER || request.eOperation == Op::REPLAY_TRIGGER)
+		{
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+			const auto verdict = m_ServerTriggerSystem.Debug_Activate(playerId->second, request.strTargetId,
+				replay, m_Players, m_iServerTick ? m_iServerTick : 1u, transfers,
+				[&](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
+				{
+					if (kind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE) return play(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP) return m_SpawnGroupRuntime.Activate(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER) return Activate_Encounter(id);
+					return false;
+				});
+			for (auto& transfer : transfers)
+			{
+				if (std::none_of(m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+					[&](const auto& pending) { return pending.iSessionId == transfer.iSessionId; }))
+					m_PendingWorldTransfers.push_back(std::move(transfer));
+			}
+			return verdict;
+		}
+		const auto& ids = m_WorldBootstrap.Get_SequenceInstanceIds();
+		if (std::find(ids.begin(), ids.end(), request.strTargetId) == ids.end()) return Result::INVALID_TARGET;
+		if (request.eOperation == Op::STOP_SEQUENCE)
+			Broadcast_WorldSequencePlay(request.strTargetId, 1.f, 0.f, 0.f, 0.f, 0u, WORLD_SEQUENCE_OPERATION::STOP);
+		else if (!play(request.strTargetId)) return Result::INVALID_TARGET;
+		return Result::ACCEPTED;
+	};
+	result.eResult = execute();
+#endif
+	const auto session = Find_Session(sessionId);
+	CPacketWriter writer;
+	if (session && Write_Message(writer, result) &&
+		!session->Send_Frame(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT, writer.Get_Buffer()))
+		session->Request_Close();
+}
+
 void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	const std::string& instanceId,
 	const float playbackSpeed, const float positionOffsetX,
-	const float positionOffsetY, const float positionOffsetZ, const std::uint32_t durationMs)
+	const float positionOffsetY, const float positionOffsetZ, const std::uint32_t durationMs,
+	const LostArk::Shared::WORLD_SEQUENCE_OPERATION operation)
 {
 	using namespace LostArk::Shared;
 
 	/* Place before the frame goes out so the snapshot that carries the
 	   cutscene already carries the party on the arena. */
-	(void)Place_PartyForCutscene(instanceId);
+	if (operation != WORLD_SEQUENCE_OPERATION::STOP) (void)Place_PartyForCutscene(instanceId);
 
 	S2C_WORLD_SEQUENCE_PLAY message{};
+	message.eOperation = operation;
 	message.strSequenceInstanceId = instanceId;
 	message.iDurationMs = durationMs;
 	message.fPlaybackSpeed = playbackSpeed;

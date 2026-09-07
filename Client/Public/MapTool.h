@@ -373,6 +373,11 @@ private:
 		const CDeployPropCatalog& catalog);
 	bool_t Ensure_DestructionDebrisAuthoringPrototypes();
 	bool_t Load_EditorAreaRegistry();
+public:
+	// -1 rejected, 0 Area preparation in progress, 1 completed. No authoring writes.
+	int Debug_SequenceViewer(const std::string& areaId, const std::string& sequenceId,
+		const std::string& triggerId, bool_t play, bool_t stop, const float3_t* focus, std::string& status);
+private:
 	bool_t Begin_EditorAreaSwitch(size_t descriptorIndex);
 	void Update_EditorAreaPreload();
 	void Report_EditorAreaPreloadProgress();

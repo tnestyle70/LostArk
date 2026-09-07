@@ -1116,6 +1116,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
 			DEBUG_TOOL::MAP == m_eDebugInputOwner);
 	}
+	UpdateSequenceViewer();
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
 	   authority. Consume it before Animation_Tool::Update so reclaiming after a
 	   domain deep-link does not stop the active preview for one extra frame. */
@@ -8514,6 +8515,7 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
+	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
 	const auto toolButton = [this](

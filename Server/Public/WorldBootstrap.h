@@ -145,9 +145,11 @@ namespace LostArk::Server
 		const std::string& Get_AreaId() const { return m_strAreaId; }
 		const std::string& Get_Status() const { return m_strStatus; }
 		std::uint32_t Get_Revision() const { return m_iRevision; }
+		const std::vector<std::string>& Get_SequenceInstanceIds() const { return m_SequenceInstanceIds; }
 
 	private:
 		std::vector<WORLD_BOOTSTRAP_PLACEMENT> m_Placements;
+		std::vector<std::string> m_SequenceInstanceIds;
 		std::string m_strAreaId;
 		std::string m_strStatus;
 		std::uint32_t m_iRevision = 0;

@@ -3249,6 +3249,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::INTERACT_TRIGGER;
 		command.InteractTrigger = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK)
+	{
+		C2S_DEBUG_WORLD_PLAYBACK request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_DEBUG_WORLD_PLAYBACK"); return; }
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK;
+		command.DebugWorldPlayback = std::move(request);
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_RETURN_TO_BERN)
 	{
 		C2S_RETURN_TO_BERN request{};

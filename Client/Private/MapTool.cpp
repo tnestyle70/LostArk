@@ -2498,7 +2498,7 @@ void Client::CMapTool::Update_MarioIntro()
 	m_bMarioIntroRunning = false;
 	End_CutsceneCameraTrack();
 	m_MarioWalkStatus = "Intro finished: " +
-		m_MarioIntroInstanceId.substr(MARIO_SEQUENCE_ROOT.size());
+		m_MarioIntroInstanceId;
 }
 
 void Client::CMapTool::Stop_MarioIntro()
@@ -2507,6 +2507,97 @@ void Client::CMapTool::Stop_MarioIntro()
 		return;
 	m_bMarioIntroRunning = false;
 	End_CutsceneCameraTrack();
+}
+
+int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
+	const std::string& sequenceId, const std::string& triggerId,
+	const bool_t play, const bool_t stop, const float3_t* focus, std::string& status)
+{
+	if (m_iAuthoringLevelIndex != ETOUI(LEVEL::DEVELOPMENT) || !CMapEditorWorkspaceService::Is_Active())
+	{ status = "Lobby > Test에서 편집 미리보기를 사용할 수 있습니다."; return -1; }
+	if (m_EditorAreaPreload.Is_Active())
+	{ status = m_Status; return 0; }
+	const auto* area = Get_ActiveEditorArea();
+	if (!area || area->areaId != areaId)
+	{
+		if (Has_UnsavedAuthoring())
+		{ status = "Map Tool의 수정 사항을 저장한 뒤 다시 실행해 주세요."; return -1; }
+		const auto found = std::find_if(m_EditorAreas.begin(), m_EditorAreas.end(),
+			[&](const EDITOR_AREA_DESCRIPTOR& value) { return value.areaId == areaId; });
+		if (found == m_EditorAreas.end() || !Begin_EditorAreaSwitch(static_cast<size_t>(found - m_EditorAreas.begin())))
+		{ status = "Area 준비 실패: " + m_Status; return -1; }
+		status = "Area를 준비하고 있습니다."; return 0;
+	}
+	if (!triggerId.empty())
+	{
+		if (!m_WorldGameplayDocument.Find(triggerId))
+		{ status = "현재 편집 문서에 트리거가 없습니다: " + triggerId; return -1; }
+		m_SelectedWorldPlacementId = triggerId;
+		m_eToolMode = TOOL_MODE::WORLD_GAMEPLAY;
+	}
+	else
+	{
+		if (!m_pWorldSequenceToolPanel || !m_pWorldSequenceToolPanel->Select_Instance(sequenceId))
+		{ status = "현재 편집 문서에 시퀀스가 없습니다: " + sequenceId; return -1; }
+		m_eToolMode = TOOL_MODE::WORLD_SEQUENCE;
+	}
+	if (focus)
+	{
+		const auto camera = m_pAssetTestCamera.lock();
+		if (!camera) { status = "편집 카메라가 준비되지 않았습니다."; return -1; }
+		if (m_bCutsceneOriginalRunning || m_bMarioIntroRunning || 0.f <= m_fCutsceneScrubMs)
+		{ status = "컷신 카메라가 재생/편집 중입니다. 해당 연출을 Stop하고 Go To를 다시 눌러 주세요."; return -1; }
+		End_CutsceneCameraTrack();
+		camera->Frame_Area(*focus, 8.f);
+		status = "선택한 트리거 위치로 편집 카메라를 이동했습니다."; return 1;
+	}
+	if (!play && !stop) { status = "Map Tool에서 선택했습니다. 변경은 Save 후 Publish가 필요합니다."; return 1; }
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog; targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.device = m_pDevice; targets.context = m_pContext;
+	if (stop)
+	{
+		if (sequenceId == "world.sequence.instance.original_kouku")
+		{
+			for (const auto& instance : m_ArenaRisePlayer.Get_Document().Get_Instances())
+				if (instance.instanceId.starts_with(KAKUL_ORIGINAL_INSTANCE_PREFIX))
+					m_ArenaRisePlayer.Stop_Instance(instance.instanceId, targets, true);
+			m_bCutsceneOriginalRunning = false;
+			Hide_CutsceneSet(); Apply_CutsceneArenaVisibility(false); End_CutsceneCameraTrack();
+		}
+		m_ArenaRisePlayer.Stop_Instance(sequenceId, targets, true);
+		Stop_MarioIntro();
+		m_fCutsceneScrubMs = m_fCutsceneLoopStartMs = m_fCutsceneLoopEndMs = -1.f;
+		m_ArenaRisePlayer.Set_Paused(false);
+		End_CutsceneCameraTrack();
+		status = "선택 시퀀스의 편집 미리보기를 정지했습니다."; return 1;
+	}
+	if (sequenceId.empty())
+	{ status = "이 트리거는 서버 동작입니다. 아레나에서 Play를 사용해 주세요."; return -1; }
+	if (!m_pWorldSequenceToolPanel || !m_ArenaRisePlayer.Set_Document(
+		m_pWorldSequenceToolPanel->Get_Document(), targets, status)) return -1;
+	m_bArenaRiseAreaLoaded = true;
+	m_fCutsceneScrubMs = m_fCutsceneLoopStartMs = m_fCutsceneLoopEndMs = -1.f;
+	m_ArenaRisePlayer.Set_Paused(false);
+	if (sequenceId == "world.sequence.instance.original_kouku")
+	{
+		const bool_t started = Play_CutsceneOriginalRise();
+		status = m_Status; return started ? 1 : -1;
+	}
+	if (!m_ArenaRisePlayer.Play(sequenceId, targets))
+	{ status = m_ArenaRisePlayer.Get_Status(); return -1; }
+	const auto camera = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
+		[&](const EDITOR_CAMERA_SHOT& shot) { return shot.sequenceInstanceId == sequenceId; });
+	Stop_MarioIntro();
+	if (camera != m_CameraShots.end())
+	{
+		m_iSelectedCameraShot = static_cast<size_t>(camera - m_CameraShots.begin());
+		m_MarioIntroInstanceId = sequenceId; m_bMarioIntroRunning = true;
+	}
+	status = "편집 시퀀스 미리보기 시작 (서버 상태는 바뀌지 않습니다).";
+	return 1;
 }
 
 bool_t Client::CMapTool::Toggle_MarioSequenceLoop()

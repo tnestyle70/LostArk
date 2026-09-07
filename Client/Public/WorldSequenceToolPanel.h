@@ -86,6 +86,15 @@ public:
 
 	/* Stable instance IDs an authored trigger may start, in document order. */
 	std::vector<std::string> Get_InstanceIds() const;
+	const CWorldSequenceDocument& Get_Document() const { return m_Document; }
+	bool_t Select_Instance(const std::string& id)
+	{
+		const auto* instance = m_Document.Find_Instance(id);
+		if (!instance) return false;
+		m_SelectedInstanceId = id;
+		m_SelectedTemplateId = instance->templateId;
+		return true;
+	}
 
 	bool_t Is_Dirty() const noexcept { return m_bDirty; }
 	bool_t Is_Ready() const noexcept { return !m_Document.Get_AreaId().empty(); }
