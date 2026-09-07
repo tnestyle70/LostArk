@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <string_view>
 
 namespace
 {
@@ -260,27 +261,56 @@ void Client::CMainApp::RenderLightingWorkbench()
         ImGui::Checkbox("Preview authored map lights", &m_bPreviewMapLightDraft);
     }
     ImGui::SeparatorText("Create Light");
-    const char* usages[] = { "Map Profile", "Scene Profile", "Anchor Light" };
-    const char* anchors[] = { "Map", "Character", "Boss" };
+    const char* usages[] = { "Map Profile (persistent)", "Scene Profile (mood)", "Anchor Light (pattern)" };
+    const char* anchors[] = { "Map (fixed world)", "Character", "Boss" };
     const char* types[] = { "Directional", "Point", "Spot" };
-    ImGui::Combo("Usage type##CreateLight", &m_iRenderingLightCreateUsage, usages, 3);
+    ImGui::TextUnformatted("Usage type");
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::Combo("##CreateLightUsage", &m_iRenderingLightCreateUsage, usages, 3);
     if (m_iRenderingLightCreateUsage == 1)
     {
         ImGui::TextWrapped("Create a pattern scene mood from the selected scene profile.");
         ImGui::TextWrapped("Source: %s", m_SceneRenderingDraft.Get_DisplayName().c_str());
-        ImGui::InputText("Display name (optional)", m_szRenderingNewProfileName, sizeof(m_szRenderingNewProfileName));
-        ImGui::InputText("New profile ID", m_szRenderingNewProfileId, sizeof(m_szRenderingNewProfileId));
         ImGui::TextDisabled("Light type: Directional (scene profile)");
     }
     else
     {
-        ImGui::InputText("Name##CreateLight", m_szRenderingLightName, sizeof(m_szRenderingLightName));
         if (m_iRenderingLightCreateUsage == 2)
-            ImGui::Combo("Anchor type##CreateLight", &m_iRenderingLightCreateAnchor, anchors, 3);
-        else ImGui::TextDisabled("Anchor type: Map (persistent placement)");
-        ImGui::Combo("Light type##CreateLight", &m_iRenderingLightCreateType, types, 3);
+        {
+            ImGui::TextWrapped("Pattern-only light. Its Action Workbench box controls when it appears and ends.");
+            ImGui::TextUnformatted("Anchor type");
+            ImGui::SetNextItemWidth(-1.f);
+            ImGui::Combo("##CreateLightAnchor", &m_iRenderingLightCreateAnchor, anchors, 3);
+            if (m_iRenderingLightCreateAnchor == 0)
+                ImGui::TextWrapped("Map: fixed World position during the pattern.");
+        }
+        else ImGui::TextWrapped("Persistent map placement. Create near the player, tune its World position, then Save Light and Publish Light.");
+        ImGui::TextUnformatted("Light type");
+        ImGui::SetNextItemWidth(-1.f);
+        ImGui::Combo("##CreateLightType", &m_iRenderingLightCreateType, types, 3);
     }
-    if (ImGui::Button("Create Light"))
+    const bool defaultDirectional = m_iRenderingLightCreateUsage == 0 && m_iRenderingLightCreateType == 0;
+    char defaultName[] = "Default Directional Light";
+    char* createName = defaultDirectional ? defaultName : m_iRenderingLightCreateUsage == 1 ?
+        m_szRenderingNewProfileName : m_szRenderingLightName;
+    const size_t nameCapacity = defaultDirectional ? sizeof(defaultName) : m_iRenderingLightCreateUsage == 1 ?
+        sizeof(m_szRenderingNewProfileName) : sizeof(m_szRenderingLightName);
+    ImGui::TextUnformatted("Light name");
+    ImGui::BeginDisabled(defaultDirectional);
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##CreateLightName", "Enter the light name", createName, nameCapacity);
+    ImGui::EndDisabled();
+    if (m_iRenderingLightCreateUsage == 1)
+    {
+        ImGui::TextUnformatted("New profile ID");
+        ImGui::SetNextItemWidth(-1.f);
+        ImGui::InputText("##CreateSceneProfileId", m_szRenderingNewProfileId, sizeof(m_szRenderingNewProfileId));
+    }
+    const bool hasName = std::string_view(createName).find_first_not_of(" \t\r\n") != std::string_view::npos;
+    if (!hasName) ImGui::TextWrapped("Enter a light name before creating it.");
+    if (defaultDirectional) ImGui::TextWrapped("This map already owns its default directional light. Select it to edit and save.");
+    ImGui::BeginDisabled(!defaultDirectional && !hasName);
+    if (ImGui::Button(defaultDirectional ? "Select Default Directional Light" : "Create Light"))
     {
         const LIGHT type = m_iRenderingLightCreateType == 0 ? LIGHT::DIRECTIONAL : m_iRenderingLightCreateType == 1 ? LIGHT::POINT : LIGHT::SPOT;
         string id;
@@ -313,8 +343,9 @@ void Client::CMainApp::RenderLightingWorkbench()
         }
         m_iRenderingLightUsageCategory = m_iRenderingLightCreateUsage + 1;
     }
+    ImGui::EndDisabled();
     ImGui::SeparatorText("All Lights");
-    const char* usageFilters[] = { "All", "Map Profile", "Scene Profile", "Anchor Light" };
+    const char* usageFilters[] = { "All", "Map Profile (persistent)", "Scene Profile (mood)", "Anchor Light (pattern)" };
     ImGui::Combo("Category##LightUsage", &m_iRenderingLightUsageCategory, usageFilters, 4);
     ImGui::TextWrapped("Select an item for Light Detail and Light Sequencer.");
     const float listHeight = (std::max)(140.f, ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() * 3.f);
@@ -323,6 +354,7 @@ void Client::CMainApp::RenderLightingWorkbench()
         if ((m_iRenderingLightUsageCategory == 0 || m_iRenderingLightUsageCategory == 1) &&
             ImGui::TreeNodeEx("Map Profile", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::TextWrapped("Persistent map lights: enabled placements remain active in this Area.");
             if (ImGui::Selectable("Default Directional Light", m_strSelectedRenderingLightId == "@default-directional"))
                 SelectRenderingLight("@default-directional");
             if (areaReady)
@@ -350,7 +382,8 @@ void Client::CMainApp::RenderLightingWorkbench()
         if ((m_iRenderingLightUsageCategory == 0 || m_iRenderingLightUsageCategory == 3) &&
             ImGui::TreeNodeEx("Anchor Light", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            const char* categories[] = { "All", "Map", "Character", "Boss" };
+            ImGui::TextWrapped("Pattern resources: append to an Action Workbench Light box to set the lifetime.");
+            const char* categories[] = { "All", "Map (fixed world)", "Character", "Boss" };
             ImGui::Combo("Anchor category", &m_iRenderingLightCategory, categories, 4);
             for (int category = 1; category <= 3; ++category)
             {
@@ -453,6 +486,7 @@ void Client::CMainApp::RenderLightDetail()
             float4x4_t player{};
             const float floorY = Lighting_PlayerPivot(player) ? player._42 : record.position.y - 8.f;
             ImGui::Text("Map placement: %s", id.c_str());
+            ImGui::TextWrapped("Persistent map light. Save Light stores this placement; Publish Light applies it on map entry.");
             ImGui::BeginDisabled(m_AreaLightSession.Is_ReadOnly());
             bool changed = ImGui::Checkbox("Enabled##MapLight", &record.enabled);
             changed |= Lighting_EditResource(resource, true, floorY);
@@ -496,7 +530,22 @@ void Client::CMainApp::RenderLightDetail()
             LIGHT_RESOURCE resource = *source;
             ImGui::Text("Reusable resource: %s", id.c_str());
             ImGui::Text("Anchor: %s", resource.strDefaultAnchorKind == "PLAYER" ? "Character" : resource.strDefaultAnchorKind.c_str());
-            if (Lighting_EditResource(resource, false, 0.f)) m_LightResources.Update(resource, m_strLightingStatus);
+            const bool fixedWorld = resource.strDefaultAnchorKind == "MAP";
+            ImGui::TextWrapped(fixedWorld ? "Pattern light at a fixed World position. The Light box controls its lifetime." :
+                "Pattern light following the selected anchor. The Light box controls its lifetime.");
+            float4x4_t player{};
+            const bool hasPlayer = fixedWorld && Lighting_PlayerPivot(player);
+            bool changed = false;
+            if (fixedWorld && resource.eType != LIGHT::DIRECTIONAL)
+            {
+                ImGui::BeginDisabled(!hasPlayer);
+                if (ImGui::Button("Place above player (+8m)"))
+                { resource.vLocalOffset = {player._41, player._42 + 8.f, player._43}; changed = true; }
+                ImGui::EndDisabled();
+            }
+            const float floorY = fixedWorld ? (hasPlayer ? player._42 : resource.vLocalOffset.y - 8.f) : 0.f;
+            changed |= Lighting_EditResource(resource, fixedWorld, floorY);
+            if (changed) m_LightResources.Update(resource, m_strLightingStatus);
             if (ImGui::Button("Save Light")) m_LightResources.Save_Authored(m_strLightingStatus);
             ImGui::SameLine();
             if (ImGui::Button("Publish Light"))
@@ -553,11 +602,12 @@ bool Client::CMainApp::StartLightingPreview()
         const auto* resource = m_LightResources.Find_Resource(id);
         if (!resource) { m_strLightingStatus = "Selected light resource is unavailable."; return false; }
         float4x4_t pivot{};
-        const bool ready = resource->eType == LIGHT::DIRECTIONAL ||
-            (resource->strDefaultAnchorKind == "BOSS" ? Lighting_BossPivot(pivot) : Lighting_PlayerPivot(pivot));
+        XMStoreFloat4x4(&pivot, XMMatrixIdentity());
+        const bool ready = resource->eType == LIGHT::DIRECTIONAL || resource->strDefaultAnchorKind == "MAP" ||
+            (resource->strDefaultAnchorKind == "PLAYER" && Lighting_PlayerPivot(pivot)) ||
+            (resource->strDefaultAnchorKind == "BOSS" && Lighting_BossPivot(pivot));
         if (!ready)
-        { m_strLightingStatus = "Preview needs the selected anchor: a current player or active Kouku gate boss."; return false; }
-        if (resource->eType == LIGHT::DIRECTIONAL) XMStoreFloat4x4(&pivot, XMMatrixIdentity());
+        { m_strLightingStatus = "Selected preview anchor is unavailable: " + resource->strDefaultAnchorKind; return false; }
         m_LightPreviewMapPivot = pivot;
         m_strLightPreviewResourceId = id;
     }

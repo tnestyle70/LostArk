@@ -402,3 +402,17 @@ RenderingProfiles codec·publisher와 Light Resources/Detail/Sequencer가 같은
 댄스타임은 0~31467ms, 룰렛은 0~33669ms에 Scene Profile과 두 Spot을 배치한다.
 Character 조명은 같은 방 Server snapshot의 현재 캐릭터 전원을 대상으로 하며 HP로 제외하지 않는다.
 Server가 확정한 patternId/startTick/sequence를 기존 Client presentation이 소비한다. 별도 protocol은 추가하지 않는다.
+
+
+### 8.2 Map 상시 배치와 패턴 고정 광원 구분
+
+Map Profile은 Area에 상시 배치하고 maplights의 enabled/저장 위치를 소비한다. Anchor Light의 MAP은
+패턴 box 수명 동안 고정 월드 좌표에 제출하는 재사용 광원이며 Level 상시 배치를 만들지 않는다.
+같은 MAP 문자열이 용도와 수명을 혼동시키지 않도록 Create와 Resources/Detail에 역할을 표시한다.
+Create의 Light name은 독립 라벨과 전체 폭 입력으로 표시하고, 신규 조명 이름이 비면 생성을 비활성화한다.
+Map Directional은 기존 기본광을 선택하는 버튼으로 구분한다. 저장 codec과 물리 데이터는 유지한다.
+
+Anchor Light MAP Preview의 플레이어 snapshot 기준을 identity로 바꿔 Composition의 MAP 경로와 맞춘다.
+Detail은 해당 값을 World position으로 표시하고, 플레이어 위치 복사는 명시 버튼을 누를 때만 수행한다.
+PLAYER/BOSS의 추적, Scene Profile, Map Profile 배치 경로는 보존한다. 기존 Product 빌드와 이름 저장/좌표
+소비 경로를 확인하고 Client 화면은 사용자가 검증한다. 사용자 실행 중 draft와 저장 파일은 변경하지 않는다.

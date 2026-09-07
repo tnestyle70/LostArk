@@ -508,7 +508,10 @@ source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
 Valtan의 imported v1 22개는 읽기 전용으로 유지한다. F1 Tools → Rendering Workbench는 왼쪽 Light Resources,
 아래 Light Sequencer, 오른쪽 Light Detail과 Rendering Workbench의 독립 창을 연다. Light Resources의
 Create Light / All Lights는 Map Profile, Scene Profile, Anchor Light 용도로 나뉘고, Anchor Light 아래에
-Map/Character/Boss가 있다. Directional/Point/Spot은 별도의 광원 종류다. Default Directional Light는 선택 Level
+Map/Character/Boss가 있다. Directional/Point/Spot은 별도의 광원 종류다.
+신규 조명은 Create의 Light name을 입력해 만든다. Map Profile은 Area 상시 배치,
+Anchor Light의 Map(fixed world)은 패턴 box 수명 동안의 고정 월드 광원이다. MAP preview도 저장 좌표를 그대로 쓰며,
+플레이어 위치 복사는 명시적인 Place above player (+8m) 버튼으로만 한다. Default Directional Light는 선택 Level
 base profile의 기존 광원을 편집·저장하며 maplights에 복제하지 않는다. Light Sequencer는 선택 항목을
 Play/Pause/Seek/Stop하고 Scene/Map의 임시 preview를 종료 시 복구한다. 품질 패널은 Level별 FXAA/SSAO 등을 저장한다.
 Character/Boss 재사용 조명은 `Data/Rendering/Authored/LightResources.json`을 저장하고

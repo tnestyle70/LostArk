@@ -143,3 +143,29 @@ Server patternId/startTick/sequence와 같은 방 snapshot broadcast를 그대�
 F1 Tools → Rendering Workbench → Light Resources의 세 카테고리와 Light Sequencer를 확인한다.
 F1 Tools → Action Workbench에서 세 패턴을 선택하고 Play Published Product (Server)로 암전·세이튼·전원 Spot을 확인한다.
 밝기·크기·저장 버튼 왕복·다인 화면 결과는 사용자 확인 대기다. 자동 stage/commit/push는 하지 않았다.
+
+
+## G06. 09-07 Map 조명 생성 이름과 수명 구분
+
+Map Profile의 기존 이름 입력은 다른 필드와 같은 한 줄 형식이었다. 사용자의 입력란 발견 문제를
+반영해 Create 공통 Light name 라벨과 전체 폭 입력칸으로 바꾸고 공백 이름의 신규 생성을 막았다.
+이름은 기존 Create → displayName → Save_Authored → maplights JSON 경로를 그대로 사용한다.
+Map Directional은 기존 기본광을 선택하는 버튼/읽기 전용 이름으로 구분해 이름을 입력하고도
+새 광원이 만들어졌다고 오해하는 흐름을 없앴다.
+
+Create/목록/Detail은 Map Profile(persistent), Scene Profile(mood), Anchor Light(pattern)을 안내한다.
+Map Profile은 Area의 enabled 배치로 유지하고 Save Light 뒤 Publish Light로 런타임에 배포한다.
+Anchor Light의 Map(fixed world)은 Action Workbench box의 수명 동안만 고정 월드 위치에 생성한다.
+두 경로는 저장 정본과 수명이 다르며 자동 변환하거나 중복 배치하지 않는다.
+
+확인된 Preview 버그는 MAP을 BOSS가 아니라는 이유로 PLAYER 분기에 넣어 Play 시점의 플레이어
+좌표를 복사한 것이었다. MAP Preview pivot을 identity로 고쳐 Composition의 MAP 처리와 일치시켰다.
+Detail은 World position으로 표시하며 Place above player (+8m)를 명시적으로 누를 때만 위치를 복사한다.
+PLAYER/BOSS 추적은 유지한다. 사용자가 만들고 있는 리소스와 dirty runtime JSON은 수정하지 않는다.
+
+자동 검증은 Debug Product 컴파일·링크·배포 PASS(20260907T043238497Z-debug-product.json),
+git diff --check PASS다. 위치 계산의 CPU 확인에서는 동일 localOffset에 서로 다른 두 플레이어
+위치를 주어도 identity MAP 기준의 결과가 동일했다(map-light-position-check.json). 이는 실제
+Client/GPU 재생 테스트가 아니다. 이름 저장의 기존 codec/호출 경로를 검토했고 데이터·XML 변경과
+새 publisher는 없다. 빌드 로그는 out/ObjectLightWorkspace/map-light-preview-build.log다.
+사용자 종료 후 빌드했으며 Client/UI 실행·입력·Save 버튼 왕복·화면 검증은 사용자 확인 대기다.
