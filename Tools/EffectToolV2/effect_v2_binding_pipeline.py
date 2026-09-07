@@ -50,6 +50,7 @@ GROUP_CHILD_STOPS = {"Kill", "Deactivate"}
 SLOT_FIELDS = ("mesh", "base", "noise", "mask", "emissive", "dissolve")
 BLEND_VALUES = {"Alpha", "Additive", "Opaque", "Multiply"}
 CLIP_CHANNEL_VALUES = {"RGB", "Alpha"}
+UV_MODE_VALUES = {"Planar", "PolarRays", "PolarRings"}
 PARTICLE_SPAWN_SHAPES = {"Point", "Sphere", "Ring", "Box"}
 PARTICLE_VELOCITY_MODES = {"Fixed", "Outward", "Cone"}
 PARTICLE_ALIGNMENTS = {"Camera", "Velocity", "Horizontal"}
@@ -468,6 +469,7 @@ def _validate_leaf_params(
         _optional_bool(params, key, owner, default)
     _optional_enum(params, "colorClipChannel", owner, CLIP_CHANNEL_VALUES, "Alpha")
     _optional_enum(params, "blend", owner, BLEND_VALUES, "Additive")
+    _optional_enum(params, "uvMode", owner, UV_MODE_VALUES, "Planar")
     for key, default in (
         ("colorClip", 0.0),
         ("rimPower", 3.0),
@@ -483,6 +485,11 @@ def _validate_leaf_params(
         ("dissolveSoftness", 0.1),
     ):
         _optional_number(params, key, owner, default)
+    orbit_radius = _optional_number(params, "orbitRadius", owner, 0.0)
+    _optional_number(params, "orbitDegreesPerSecond", owner, 0.0)
+    _optional_number(params, "orbitStartDegrees", owner, 0.0)
+    if orbit_radius < 0.0:
+        raise BindingContractError(f"{owner}.orbitRadius must be >= 0")
     soft_fade = _optional_number(params, "softFadeDistance", owner, 0.0)
     lifetime = _optional_number(params, "lifetime", owner, 0.0)
     play_rate = _optional_number(params, "playRate", owner, 1.0)

@@ -358,3 +358,6 @@ program5 병합 후보 4개 shader는 기존 0~5의 180항목과 이전 PBR 상�
 WARP 198/198 PASS였다. 보존된 이전 실행의 공통 180항목은 실제 수치 최대 차이 0이었다.
 해당 후보를 제품에 적용하고 static vertex layout은 UV1을 포함한 stride64 계약으로 유지했다.
 이는 최종 병합 코드의 C++ 빌드나 사용자 육안 검증을 대신하지 않는다. 통합 뒤 검증은 별도 기록한다.
+
+G13의 통합 검증은 `../09-08/2026-09-08_KOUKU_AUTHORING_MAIN_INTEGRATION_RESULT.md`에 기록했다.
+최종 Debug Product와 program5 자동 검사는 통과했고 전체 재질 확대 및 사용자 화면 검증은 보류다.

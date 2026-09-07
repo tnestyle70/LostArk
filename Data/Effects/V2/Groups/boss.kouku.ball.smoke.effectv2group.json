@@ -1,0 +1,15 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.kouku.ball.smoke",
+  "durationMs": 0,
+  "children": [
+    { "childId": "child.authored.00000", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.green_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00001", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.yellow_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00002", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.orange_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00003", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.red_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00004", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.purple_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00005", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.blue_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [2.0, 2.0, 1.0] } },
+    { "childId": "child.authored.00006", "resource": { "kind": "LEAF", "id": "boss.kouku.ball.smoke.spread_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 1.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.3, 1.3, 1.0] } }
+  ]
+}

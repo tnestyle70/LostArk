@@ -25,10 +25,15 @@ SCALE = 2.0 / 3.0
 
 I1 = CC + "charactercustomizing_i1.dds"
 I1B6 = CC + "charactercustomizing_i1b6.dds"
+I10B = CC + "charactercustomizing_i10b.dds"
 V2IE = SH + "shareimagev2_ie.png"
 V2IB = SH + "shareimagev2_ib.png"
 V2I2 = SH + "shareimagev2_i2.png"
 V2I46 = SH + "shareimagev2_i46.png"
+V2I6 = SH + "shareimagev2_i6.png"
+# sliderTrack_V2_01 is the one component whose bitmap lives on the components atlas,
+# not the shared shareimagev2 pages (see the componentsv2 trace).
+CMP = TEX + "/EFUI_COMPONENTS/componentsv2_i1.png"
 
 _pages = {}
 _cuts = {}
@@ -75,12 +80,42 @@ BTN_O = cut("v2_btn_over", V2I46, 328, 988, 431, 1024)
 FOLD_N = cut("v2_fold_normal", V2I2, 618, 947, 827, 984)
 FOLD_ARROW = cut("v2_fold_arrow", V2IB, 866, 973, 886, 989)
 DIVISION = cut("v2_division", V2IB, 745, 992, 891, 997)
-TRACK = cut("v2_slider_track", V2IE, 352, 678, 503, 686)
+TRACK = cut("v2_slider_track", CMP, 352, 678, 503, 686)
 THUMB_N = cut("v2_slider_thumb", V2IE, 286, 426, 303, 456)
 THUMB_O = cut("v2_slider_thumb_over", V2IE, 267, 426, 284, 456)
 TAB2_N = cut("v2_tab2_normal", V2IE, 785, 287, 867, 320)
 TAB2_O = cut("v2_tab2_over", V2IE, 617, 287, 699, 320)
-TAB2_S = cut("v2_tab2_selected", V2IE, 174, 358, 256, 390)
+
+# ---- left panel: CharCustom_LeftPanel @ (0,0) ---------------------------------------------
+slot("CC_LeftBg", cut("left_bg", I10B, 0, 0, 402, 1080), 0, 0, 402, 1080)
+# leftResetButton sits on the panel head at (245,36) scaled 1.359 horizontally.
+slot("CC_LeftResetBtn", BTN_N, 245, 36, 103 * 1.359, 36, hover=BTN_O)
+
+# CharCustom_LeftRenderer is a 70x70 cell wearing the shared V2Slot_border frame. The three
+# rolling lists sit at leftDressList (37,77), leftActionList (37,197) and, inside
+# bottomPage (33,426), leftCustomizeList (2,151).
+SLOT_BORDER = cut("v2_slot_border", V2I6, 863, 555, 933, 625)
+CELL_PLATE = cut("left_cell", I1, 780, 458, 850, 528)
+
+
+def cell(slot_id, x, y, size=70):
+    """One CharCustom_LeftRenderer cell: plate, then the shared border over it."""
+    slot(slot_id + "_Plate", CELL_PLATE, x, y, size, size)
+    slot(slot_id, SLOT_BORDER, x, y, size, size)
+for i in range(5):
+    cell("CC_LeftDress%d" % i, 37 + 71 * i, 77)
+for i in range(5):
+    cell("CC_LeftAction%d" % i, 37 + 71 * i, 197)
+BOTTOM_PAGE_Y = 296
+for i in range(6):
+    cell("CC_LeftSave%d" % i, 33 + 2 + 59 * i, BOTTOM_PAGE_Y + 151, 56)
+
+# bottomPage @ (33,296) carries the save/load pair at (8,237)/(181,237), scaled 1.5922
+# horizontally. The recommended-style row above them is account content this project has no
+# source for, so it is left out rather than shown as empty frames.
+BOTTOM_X, BOTTOM_Y = 33, BOTTOM_PAGE_Y
+slot("CC_LeftSaveBtn", BTN_N, BOTTOM_X + 8, BOTTOM_Y + 237, 103 * 1.5922, 36, hover=BTN_O)
+slot("CC_LeftLoadBtn", BTN_N, BOTTOM_X + 181, BOTTOM_Y + 237, 103 * 1.5922, 36, hover=BTN_O)
 
 # ---- top panel: CharCustom_TopPanel @ (563,-1) --------------------------------------------
 slot("CC_TopBannerA", cut("top_banner_a", I1, 404, 294, 968, 374), 563, -1, 564, 80)
@@ -112,7 +147,29 @@ for i, (name, x1, y1, x2, y2, ox, oy) in enumerate(TAB_ICONS):
          tx + ox, 73 + 12 + oy, x2 - x1, y2 - y1)
 
 # ---- face tab: CharCustom_Right_TabFace @ (-437,192) --------------------------------------
-# detailElement @ (0,48) > content @ (34,51); foldCheckBox @ (30,8) scaled 1.78 horizontally.
+# The tab is an accordion of two CharCustom_CategoryCheckBox sections. As authored,
+# defaultElement sits at (0,0) with its header at (30,9) collapsed, and detailElement follows
+# at (0,48) with its own header at (30,8) and its content expanded. Expanding the first pushes
+# the second down by its content height, which the view does at runtime.
+DEFAULT_FOLD_X = PANEL_X + 30
+DEFAULT_FOLD_Y = 192 + 9
+slot("CC_FoldDefault_Bg", FOLD_N, DEFAULT_FOLD_X - 1, DEFAULT_FOLD_Y - 1, 209 * 1.7799, 37)
+slot("CC_FoldDefault_Arrow", FOLD_ARROW, DEFAULT_FOLD_X + 178 * 1.7799, DEFAULT_FOLD_Y + 10,
+     20, 16)
+
+# defaultElement > content @ (30,52): a divider at (5,25), the preset list at (7,59) on the
+# same 70x71 renderer the left column uses, and the random/reset pair at y=423.
+DEFAULT_CONTENT_X = PANEL_X + 30
+DEFAULT_CONTENT_Y = 192 + 52
+slot("CC_DefaultDivision", DIVISION, DEFAULT_CONTENT_X + 5, DEFAULT_CONTENT_Y + 25,
+     146 * 2.4726, 5)
+PRESET_COLUMNS = 5
+PRESET_ROWS = 5
+for i in range(PRESET_COLUMNS * PRESET_ROWS):
+    cell("CC_FacePreset%d" % i,
+         DEFAULT_CONTENT_X + 7 + 71 * (i % PRESET_COLUMNS),
+         DEFAULT_CONTENT_Y + 59 + 72 * (i // PRESET_COLUMNS))
+
 FOLD_X = PANEL_X + 30
 FOLD_Y = 192 + 48 + 8
 slot("CC_FoldDetail_Bg", FOLD_N, FOLD_X - 1, FOLD_Y - 1, 209 * 1.7799, 37)
@@ -128,7 +185,7 @@ for i in range(6):
     sx = CONTENT_X + 123 * (i % 3)
     sy = CONTENT_Y + 34 + 33 * (i // 3)
     slot("CC_FaceSub%d_Bg" % i, TAB2_N, sx, sy, 82 * 1.5, 33, hover=TAB2_O)
-    slot("CC_FaceSub%d_Selected" % i, TAB2_S, sx, sy, 82 * 1.5, 33)
+    slot("CC_FaceSub%d_Selected" % i, TAB2_O, sx, sy, 82 * 1.5, 33)
 
 # Each part sprite sits at (0,118) in the content; its sliders are ARKDefaultSlider_V2 at
 # x=157 scaled (1.3576,1.1364) -- a 151x8 track drawn at y=7 of the box, with a 17x30 thumb
@@ -173,13 +230,15 @@ slot("CC_BackIcon", cut("back_icon", I1, 621, 937, 662, 978),
      28 + 20, 1080 - 99 + 6, 41, 41,
      hover=cut("back_icon_over", I1, 578, 937, 619, 978))
 slot("CC_ResetAllIcon", cut("resetall_icon", I1, 790, 804, 854, 868),
-     220 + 27, 1080 - 116 + 4, 64, 64,
+     1364, 988, 64, 64,
      hover=cut("resetall_icon_over", I1, 922, 804, 986, 868))
 
 # ---- left panel mouse guide: leftPanel > bottomPage (33,426) > guideMouseMc (11,291) -------
-GUIDE_X, GUIDE_Y = 33 + 11, 426 + 291
+GUIDE_X, GUIDE_Y = 33 + 11, BOTTOM_PAGE_Y + 291
 slot("CC_GuideRotateIcon", cut("guide_rotate", I1, 972, 68, 1008, 134),
      GUIDE_X + 11, GUIDE_Y + 10, 36, 66)
+slot("CC_GuideEyeTrackIcon", cut("guide_rotate", I1, 972, 68, 1008, 134),
+     GUIDE_X + 11, GUIDE_Y + 80, 36, 66)
 slot("CC_GuideZoomIcon", cut("guide_zoom", I1, 972, 0, 1008, 66),
      GUIDE_X + 11, GUIDE_Y + 149 + 17, 36, 66)
 

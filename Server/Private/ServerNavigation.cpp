@@ -384,6 +384,22 @@ LostArk::Server::CServerNavigation::Select_Region(
 	return nullptr;
 }
 
+bool LostArk::Server::CServerNavigation::Is_InSameDetailRegion(
+	const float x, const float z, const float otherX, const float otherZ) const
+{
+	const CServerNavigation* region = Select_Region(x, z);
+	return nullptr != region && region == Select_Region(otherX, otherZ);
+}
+
+bool LostArk::Server::CServerNavigation::Is_InSameNavigationGrid(
+	const float x, const float z, const float otherX, const float otherZ) const
+{
+	const CServerNavigation* region = Select_Region(x, z);
+	if (region != Select_Region(otherX, otherZ))
+		return false;
+	return nullptr != region || (Contains_Point(x, z) && Contains_Point(otherX, otherZ));
+}
+
 bool LostArk::Server::CServerNavigation::Contains_Point(
 	const float x,
 	const float z) const

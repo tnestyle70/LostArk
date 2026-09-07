@@ -48,6 +48,7 @@ namespace Client
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+		std::uint8_t iMarioStage = 0u;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown

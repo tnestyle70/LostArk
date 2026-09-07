@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 8094,
+  "revision": 8449,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -188,9 +188,9 @@
       "placementId": "Mario1_go",
       "kind": "triggerBox",
       "position": [
-        2.89700007,
-        1.31762552,
-        740.494202
+        3.38000011,
+        1.32000005,
+        945.330017
       ],
       "yawDegrees": 44,
       "enabled": true,
@@ -209,7 +209,7 @@
             -910.572998
           ],
           "durationSeconds": 1.5,
-          "arcHeight": 0.0,
+          "arcHeight": 0,
           "koukuHudMode": "MARIO"
         }
       ]
@@ -582,11 +582,11 @@
       "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        -0.07,
-        1.32,
-        942.33
+        -0.0700000003,
+        1.32000005,
+        942.330017
       ],
-      "yawDegrees": 237.0,
+      "yawDegrees": 237,
       "enabled": false
     },
     {
@@ -595,8 +595,8 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        10.24,
-        8.63,
+        10.2399998,
+        8.63000011,
         317.75
       ],
       "yawDegrees": 226.5,
@@ -608,9 +608,9 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        6.36,
-        10.56,
-        321.29
+        6.36000013,
+        10.5600004,
+        321.290009
       ],
       "yawDegrees": 216.5,
       "enabled": false
@@ -621,9 +621,9 @@
       "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        -0.07,
-        1.32,
-        942.33
+        -0.0700000003,
+        1.32000005,
+        942.330017
       ],
       "yawDegrees": 223.0,
       "enabled": false
@@ -634,9 +634,9 @@
       "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        -0.6,
-        0.0,
-        1147.44
+        -0.600000024,
+        0,
+        1147.43994
       ],
       "yawDegrees": 151.0,
       "enabled": false
@@ -738,9 +738,9 @@
       "placementId": "Mario2_go",
       "kind": "triggerBox",
       "position": [
-        0.703000009,
-        1.29900515,
-        738.098999
+        1.58000004,
+        1.32000005,
+        942.929993
       ],
       "yawDegrees": 40,
       "enabled": true,
@@ -1079,9 +1079,9 @@
       "placementId": "Mario3_go",
       "kind": "triggerBox",
       "position": [
-        -1.69099998,
-        1.31762564,
-        735.915039
+        -0.920000017,
+        1.32000005,
+        941.22998
       ],
       "yawDegrees": 44,
       "enabled": true,
@@ -1246,11 +1246,11 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1656,
-            -20.49,
-            -1425.09
+            -1643.85,
+            -17.93,
+            -1418.61
           ],
-          "durationSeconds": 0.7,
+          "durationSeconds": 0.699999988,
           "arcHeight": 1.5
         }
       ]
@@ -1276,12 +1276,12 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1654.01,
-            -17.93,
+            -1654.01001,
+            -17.9300003,
             -1428.75
           ],
-          "durationSeconds": 0.6,
-          "arcHeight": 1.2
+          "durationSeconds": 0.600000024,
+          "arcHeight": 1.20000005
         }
       ]
     },
@@ -1328,12 +1328,12 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1626.71,
-            -15.37,
-            -1423.92
+            -1626.70996,
+            -15.3699999,
+            -1423.92004
           ],
-          "durationSeconds": 0.6,
-          "arcHeight": 1.2
+          "durationSeconds": 0.600000024,
+          "arcHeight": 1.20000005
         }
       ]
     },
@@ -1357,12 +1357,12 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1646.27,
-            -15.37,
+            -1646.27002,
+            -15.3699999,
             -1436.38
           ],
-          "durationSeconds": 0.6,
-          "arcHeight": 1.2
+          "durationSeconds": 0.600000024,
+          "arcHeight": 1.20000005
         }
       ]
     },
@@ -1387,10 +1387,10 @@
           "type": "movePlayer",
           "targetPosition": [
             -1629.37,
-            -11.97,
+            -11.9700003,
             -1430.88
           ],
-          "durationSeconds": 0.7,
+          "durationSeconds": 0.699999988,
           "arcHeight": 1.5
         }
       ]
@@ -1445,9 +1445,9 @@
       "placementId": "Mario4_go",
       "kind": "triggerBox",
       "position": [
-        -3.90100002,
-        1.31762564,
-        733.617004
+        -3.11999989,
+        1.32000005,
+        939.530029
       ],
       "yawDegrees": 45.5,
       "enabled": true,
@@ -1461,12 +1461,81 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1632.57,
-            -20.49,
-            -1400.92
+            -1632.56995,
+            -20.4899998,
+            -1400.92004
           ],
           "durationSeconds": 1.5,
           "arcHeight": 0
+        }
+      ]
+    },
+    {
+      "placementId": "Mario2_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1434.48999,
+        -9.02000999,
+        -1175.96997
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m2_intro"
+        }
+      ]
+    },
+    {
+      "placementId": "Mario3_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1889.68994,
+        -11.5299997,
+        -1646.20996
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m3_intro"
+        }
+      ]
+    },
+    {
+      "placementId": "Mario4_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1632.56995,
+        -20.4899998,
+        -1400.92004
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m4_intro"
         }
       ]
     }

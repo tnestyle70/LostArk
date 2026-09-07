@@ -2,6 +2,18 @@
 
 #include "NetworkManager.h"
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugWorldPlayback(
+	const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	return CNetworkManager::Get().Send_DebugWorldPlayback(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugWorldPlaybackResult(
+	LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugWorldPlaybackResult(result);
+}
+
 std::atomic_uint32_t
 	Client::CNetworkPlayerCommandSink::s_iLiveInstanceCount = 0u;
 
@@ -33,6 +45,24 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(
 	LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result)
 {
 	return CNetworkManager::Get().Try_Consume_DebugTeleportResult(result);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_MarioMove(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	return CNetworkManager::Get().Send_MarioMove(clientSequence, direction);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_DebugMarioJump(
+	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
+{
+	return CNetworkManager::Get().Send_DebugMarioJump(clientSequence, direction);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugMarioJumpResult(
+	LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugMarioJumpResult(result);
 }
 
 bool Client::CNetworkPlayerCommandSink::Request_DebugMadnessForm(

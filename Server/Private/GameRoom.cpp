@@ -58,6 +58,52 @@ namespace
 	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
 		"LOSTARK_RAID_CLEAR_TEST_MODE";
 
+	/* Project-owned 2D lanes: coordinates remain in the existing published
+	Gameplay placements. Source camera rails established only the fixed screen
+	right sign; neither runtime cameras nor camera edits supply Server input. */
+	struct MARIO_LANE_BINDING
+	{
+		std::uint8_t stage;
+		const char* arrival;
+		const char* exit;
+		float rightSign;
+	};
+	constexpr std::array<MARIO_LANE_BINDING, 18u> MARIO_LANES{{
+		{1u, "Mario1_go", "Mario1_Trigger_1", 1.f},
+		{1u, "Mario1_Trigger_1", "Mario1_Trigger_3", 1.f},
+		{1u, "Mario1_Trigger_3", "Mario1_Trigger_5", 1.f},
+		{2u, "Mario2_go", "Mario2_Trigger_2", 1.f},
+		{2u, "Mario2_Trigger_2", "Mario2_Trigger_4", -1.f},
+		{2u, "Mario2_Trigger_4", "Mario2_Trigger_7", 1.f},
+		{3u, "Mario3_go", "Mario3_Trigger_4", 1.f},
+		{3u, "Mario3_Trigger_4", "Mario3_Trigger_5", -1.f},
+		{3u, "Mario3_Trigger_5", "Mario3_Trigger_6", 1.f},
+		{3u, "Mario3_Trigger_6", "Mario3_Trigger_8", 1.f},
+		{3u, "Mario3_Trigger_8", "Mario3_Trigger_10", -1.f},
+		{3u, "Mario3_Trigger_10", "Mario3_Trigger_12", 1.f},
+		{4u, "Mario4_go", "Mario4_Tigger_2", 1.f},
+		{4u, "Mario4_Tigger_2", "Mario4_Tigger_5", 1.f},
+		{4u, "Mario4_Tigger_3", "Mario4_Tigger_6", 1.f},
+		{4u, "Mario4_Tigger_6", "Mario4_Tigger_7", -1.f},
+		{4u, "Mario4_Tigger_7", "Mario4_Tigger_13", 1.f},
+		{4u, "Mario4_Tigger_5", "Mario4_Tigger_7", 1.f}
+	}};
+
+	void Project_MarioRailPoint(const SERVER_PLAYER& player, float& x, float& z)
+	{
+		if (0u == player.iMarioStage || !player.bMarioRailReady)
+			return;
+		const double axisX = player.fMarioRailRightX;
+		const double axisZ = player.fMarioRailRightZ;
+		const double lengthSquared = axisX * axisX + axisZ * axisZ;
+		if (lengthSquared < 0.5)
+			return;
+		const double along = ((static_cast<double>(x) - player.fMarioRailOriginX) * axisX +
+			(static_cast<double>(z) - player.fMarioRailOriginZ) * axisZ) / lengthSquared;
+		x = static_cast<float>(player.fMarioRailOriginX + axisX * along);
+		z = static_cast<float>(player.fMarioRailOriginZ + axisZ * along);
+	}
+
 	bool Is_RaidClearTestModeEnabled()
 	{
 		char* value = nullptr;
@@ -1807,6 +1853,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_DebugTeleportToPosition(
 				command.iSessionId, command.DebugTeleportToPosition);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_MARIO_JUMP:
+			Handle_DebugMarioJump(command.iSessionId, command.DebugMarioJump);
+			break;
+		case ROOM_COMMAND_TYPE::MARIO_MOVE:
+			Handle_MarioMove(command.iSessionId, command.MarioMove);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM:
 			Handle_DebugSetMadnessForm(
 				command.iSessionId, command.DebugSetMadnessForm);
@@ -1866,6 +1918,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::RETURN_TO_BERN:
 			Handle_ReturnToBern(
 				command.iSessionId, command.ReturnToBern);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK:
+			Handle_DebugWorldPlayback(command.iSessionId, command.DebugWorldPlayback);
 			break;
 		case ROOM_COMMAND_TYPE::PARTY_INVITE:
 			Handle_PartyInvite(command.iSessionId, command.PartyInvite);
@@ -1966,6 +2021,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			return false;
 		},
 		promptEdges);
+	}
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		Update_MarioControlState(player);
 	}
 	for (const SERVER_INTERACT_PROMPT_EDGE& edge : promptEdges)
 		Send_InteractPrompt(edge);
@@ -2699,6 +2759,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.erase(sessionId);
 #endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
+	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowStartSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowControlSequenceBySessionId.erase(sessionId);
@@ -2832,7 +2893,7 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
-	if (player.bPatternBound ||
+	if (0u != player.iMarioStage || player.bPatternBound ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
 		player.fKnockbackRemainingSeconds > 0.f)
@@ -2970,7 +3031,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	}
 	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
 	class skills the Client no longer shows are refused here as well. */
-	if (playerIter->second.bPatternBound ||
+	if (0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
 		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
 		LostArk::Shared::KOUKU_HUD_MODE::NONE != playerIter->second.eKoukuHudMode ||
 		(0u != playerIter->second.iSilenceEndTick &&
@@ -3292,6 +3353,7 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	player.fPositionZ = ground.z;
 	player.fYawDegrees = waypoint->fYawDegrees;
 	Reset_PlayerForDebugTeleport(player);
+	Update_MarioControlState(player);
 #endif
 }
 
@@ -3356,7 +3418,7 @@ LostArk::Server::CGameRoom::Apply_DebugMadnessForm(
 	};
 	/* The form only swaps the presented body. A dead, falling, grabbed or
 	pattern-bound player keeps the body its current action was authored on. */
-	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+	if (0u != player.iMarioStage || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::FALLING == player.eAction ||
 		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound ||
 		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
@@ -3666,6 +3728,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 void LostArk::Server::CGameRoom::Reset_PlayerForDebugTeleport(SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
+	player.Clear_MarioControl();
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
 	player.Clear_SkillTarget();
@@ -3788,11 +3851,304 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	player.fPositionY = ground.y;
 	player.fPositionZ = ground.z;
 	result.eResult = DEBUG_TELEPORT_RESULT::ACCEPTED;
+	Update_MarioControlState(player);
 	result.fPositionX = ground.x;
 	result.fPositionY = ground.y;
 	result.fPositionZ = ground.z;
 	player.LastDebugTeleportResult = result;
 	return result;
+#endif
+}
+
+bool LostArk::Server::CGameRoom::Configure_MarioRail(
+	SERVER_PLAYER& player, const std::string& arrivalPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (0u == player.iMarioStage || player.iMarioStage > 4u || player.TriggerMove.isActive ||
+		!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionZ))
+		return false;
+	const auto lane = std::find_if(MARIO_LANES.begin(), MARIO_LANES.end(),
+		[&player, &arrivalPlacementId](const MARIO_LANE_BINDING& candidate)
+		{ return candidate.stage == player.iMarioStage && arrivalPlacementId == candidate.arrival; });
+	const auto* arrival = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->arrival);
+	const auto* exit = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->exit);
+	if (nullptr == arrival || nullptr == exit || !arrival->isEnabled || !exit->isEnabled ||
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != arrival->eKind ||
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != exit->eKind || arrival->TriggerActions.size() != 1u ||
+		WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER != arrival->TriggerActions.front().eKind)
+	{
+		player.bMarioRailReady = false;
+		std::cout << "[MarioRail] invalid authored binding: " << arrivalPlacementId << '\n';
+		return false;
+	}
+	const double dx = static_cast<double>(exit->fPositionX) - player.fPositionX;
+	const double dz = static_cast<double>(exit->fPositionZ) - player.fPositionZ;
+	const double length = std::hypot(dx, dz);
+	if (!std::isfinite(length) || length < 0.1)
+	{
+		player.bMarioRailReady = false;
+		std::cout << "[MarioRail] unusable arrival-to-exit axis: " << arrivalPlacementId << '\n';
+		return false;
+	}
+	player.fMarioRailOriginX = player.fPositionX;
+	player.fMarioRailOriginZ = player.fPositionZ;
+	player.fMarioRailRightX = static_cast<float>(dx / length) * lane->rightSign;
+	player.fMarioRailRightZ = static_cast<float>(dz / length) * lane->rightSign;
+	player.strMarioRailArrivalId = arrivalPlacementId;
+	player.bMarioRailReady = true;
+	player.iMarioMoveExpiryTick = 0u;
+	player.fMarioDirectionX = player.fMarioDirectionZ = 0.f;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || player.iMarioStage > 4u ||
+		0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction)
+	{
+		player.Clear_MarioControl();
+		return;
+	}
+	if (0u != player.iMarioStage)
+	{
+		/* Every authored finish moves back to the corresponding go box. The
+		Server-owned target, not a Client camera/rectangle, ends this mode. */
+		const auto* entrance = Find_Placement("Mario" + std::to_string(player.iMarioStage) + "_go");
+		if (player.TriggerMove.isActive && nullptr != entrance &&
+			std::abs(player.TriggerMove.fTargetX - entrance->fPositionX) < 0.05f &&
+			std::abs(player.TriggerMove.fTargetY - entrance->fPositionY) < 0.05f &&
+			std::abs(player.TriggerMove.fTargetZ - entrance->fPositionZ) < 0.05f)
+		{
+			player.Clear_MarioControl();
+			return;
+		}
+		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		if (!player.bMarioRailReady && !player.TriggerMove.isActive &&
+			PLAYER_ACTION_STATE::NONE == player.eAction)
+			(void)Configure_MarioRail(player, player.strMarioRailArrivalId);
+		return;
+	}
+	if (player.bPatternBound || INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
+		(PLAYER_ACTION_STATE::NONE != player.eAction && PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction))
+		return;
+	for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
+	{
+		const auto* intro = Find_Placement("Mario" + std::to_string(stage) + "_Intro");
+		if (nullptr == intro || !intro->isEnabled || WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != intro->eKind ||
+			!CServerTriggerSystem::Contains_Placement(*intro, player))
+			continue;
+		player.ePreMarioForm = player.eMadnessForm;
+		player.iMarioStage = stage;
+		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		player.strMarioRailArrivalId = "Mario" + std::to_string(stage) + "_go";
+		player.bMarioRailReady = false;
+		player.iMarioMoveExpiryTick = 0u;
+		player.fMarioDirectionX = player.fMarioDirectionZ = 0.f;
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		player.PendingCommand.Clear();
+		if (!player.TriggerMove.isActive)
+			(void)Configure_MarioRail(player, player.strMarioRailArrivalId);
+		std::cout << "[MarioControl] player=" << player.iPlayerId << " stage=" << static_cast<unsigned>(stage) << '\n';
+		return;
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_MarioMove(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_MARIO_MOVE& request)
+{
+	using namespace LostArk::Shared;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	if (binding == m_PlayerIdBySessionId.end())
+		return;
+	const auto found = m_Players.find(binding->second);
+	if (found == m_Players.end() || found->second.iSessionId != sessionId)
+		return;
+	SERVER_PLAYER& player = found->second;
+	const bool stop = MARIO_DIRECTION::STOP == request.eDirection;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId ||
+		!Is_NewerSequence(request.iClientSequence, player.iLastMarioMoveSequence) ||
+		(!stop && MARIO_DIRECTION::LEFT != request.eDirection && MARIO_DIRECTION::RIGHT != request.eDirection))
+		return;
+	player.iLastMarioMoveSequence = request.iClientSequence;
+	if (0u == player.iMarioStage || player.iMarioStage > 4u || 0u == player.iCurrentHp)
+		return;
+	/* A key-up packet during a jump only releases the directional lease. It
+		never cancels the independently owned scripted motion or its action. */
+	if (stop)
+	{
+		player.iMarioMoveExpiryTick = 0u;
+		player.fMarioDirectionX = player.fMarioDirectionZ = 0.f;
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		return;
+	}
+	if (!player.bMarioRailReady || PLAYER_ACTION_STATE::NONE != player.eAction || player.bPatternBound ||
+		player.TriggerMove.isActive || player.fKnockbackRemainingSeconds > 0.f ||
+		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
+		return;
+	const float sign = MARIO_DIRECTION::RIGHT == request.eDirection ? 1.f : -1.f;
+	player.fMarioDirectionX = player.fMarioRailRightX * sign;
+	player.fMarioDirectionZ = player.fMarioRailRightZ * sign;
+	player.iMarioMoveExpiryTick = m_iServerTick + 9u;
+	if (0u == player.iMarioMoveExpiryTick)
+		player.iMarioMoveExpiryTick = 1u;
+}
+
+void LostArk::Server::CGameRoom::Update_MarioMoveGoal(
+	SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+	if (0u == player.iMarioStage)
+		return;
+	if (!player.bMarioRailReady || 0u == player.iMarioMoveExpiryTick || Has_ReachedServerTick(updateTick, player.iMarioMoveExpiryTick))
+	{
+		player.iMarioMoveExpiryTick = 0u;
+		player.fMarioDirectionX = player.fMarioDirectionZ = 0.f;
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		return;
+	}
+	/* Feed the ordinary one-step navigation/collision mover, not Find_Path:
+		left/right must stop at a gap rather than walking an A* detour. */
+	if (!player.MovePath.empty())
+		player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fMoveGoalX = player.fPositionX + player.fMarioDirectionX * 0.75f;
+	player.fMoveGoalZ = player.fPositionZ + player.fMarioDirectionZ * 0.75f;
+	Project_MarioRailPoint(player, player.fMoveGoalX, player.fMoveGoalZ);
+	player.hasMoveGoal = true;
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugMarioJump(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request)
+{
+	using namespace LostArk::Shared;
+	const auto session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	S2C_DEBUG_MARIO_JUMP_RESULT result{};
+	result.iClientSequence = request.iClientSequence;
+	result.eWorldId = m_eWorldId;
+	result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(binding->second);
+	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+		result = Apply_DebugMarioJump(player->second, request);
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(
+		PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT, writer.Get_Buffer()))
+	{
+		session->Request_Close();
+	}
+	std::cout << "[DebugMarioJump] session=" << sessionId
+		<< " sequence=" << result.iClientSequence
+		<< " result=" << static_cast<unsigned>(result.eResult) << '\n';
+}
+
+LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT
+LostArk::Server::CGameRoom::Apply_DebugMarioJump(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_MARIO_JUMP_RESULT result{};
+	result.iClientSequence = request.iClientSequence;
+	result.eWorldId = m_eWorldId;
+#ifndef _DEBUG
+	(void)player;
+	result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED;
+	return result;
+#else
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId)
+	{
+		result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD;
+		return result;
+	}
+	const auto& previous = player.LastDebugMarioJumpResult;
+	if (0u != request.iClientSequence && request.iClientSequence == previous.iClientSequence)
+		return previous;
+	if (!Is_NewerSequence(request.iClientSequence, previous.iClientSequence))
+	{
+		result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_STALE_SEQUENCE;
+		return result;
+	}
+	const auto reject = [&player, &result](const DEBUG_MARIO_JUMP_RESULT reason)
+	{
+		result.eResult = reason;
+		player.LastDebugMarioJumpResult = result;
+		return result;
+	};
+	if (0u == player.iMarioStage || player.iMarioStage > 4u || !player.bMarioRailReady)
+		return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_OUTSIDE_MARIO);
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction ||
+		player.TriggerMove.isActive || player.bPatternBound || player.bArenaEjectionActive ||
+		player.fKnockbackRemainingSeconds > 0.f || player.iKnockdownEndTick > m_iServerTick ||
+		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
+		return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE);
+	if (MARIO_DIRECTION::LEFT != request.eDirection && MARIO_DIRECTION::RIGHT != request.eDirection)
+		return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_INVALID_TARGET);
+
+	const auto sameStageGrid = [this, &player](const float x, const float z)
+	{
+		return 1u == player.iMarioStage ?
+			m_ServerNavigation.Is_InSameNavigationGrid(player.fPositionX, player.fPositionZ, x, z) :
+			m_ServerNavigation.Is_InSameDetailRegion(player.fPositionX, player.fPositionZ, x, z);
+	};
+	const auto* entrance = Find_Placement("Mario" + std::to_string(player.iMarioStage) + "_go");
+	if (nullptr == entrance || entrance->TriggerActions.size() != 1u ||
+		WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER != entrance->TriggerActions.front().eKind ||
+		!sameStageGrid(entrance->TriggerActions.front().fTargetX, entrance->TriggerActions.front().fTargetZ))
+		return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_OUTSIDE_MARIO);
+	SERVER_NAV_POINT startGround{};
+	if (!m_ServerNavigation.Is_PointWalkableExact(player.fPositionX, player.fPositionZ) ||
+		!m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, startGround) ||
+		!std::isfinite(player.fPositionY) || !std::isfinite(startGround.y) ||
+		std::abs(player.fPositionY - startGround.y) > 0.25f)
+		return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE);
+
+	const float sign = MARIO_DIRECTION::RIGHT == request.eDirection ? 1.f : -1.f;
+	const float directionX = player.fMarioRailRightX * sign;
+	const float directionZ = player.fMarioRailRightZ * sign;
+	Refresh_PlayerBlockingBodies();
+	for (int quarterMetres = 16; quarterMetres >= 3; --quarterMetres)
+	{
+		const float leapDistance = static_cast<float>(quarterMetres) * 0.25f;
+		float x = player.fPositionX + directionX * leapDistance;
+		float z = player.fPositionZ + directionZ * leapDistance;
+		Project_MarioRailPoint(player, x, z);
+		SERVER_NAV_POINT landing{};
+		if (!sameStageGrid(x, z) ||
+			!m_ServerNavigation.Is_PointWalkableExact(x, z) ||
+			!m_ServerNavigation.Sample_Position(x, z, landing) || !std::isfinite(landing.y) ||
+			std::abs(landing.y - startGround.y) > 1.f ||
+			!m_ServerCollisionSystem.Is_PlayerPositionClear(x, landing.y, z, player.iNetEntityId))
+			continue;
+		WORLD_TRIGGER_ACTION jump{};
+		jump.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		jump.fTargetX = landing.x;
+		jump.fTargetY = landing.y;
+		jump.fTargetZ = landing.z;
+		jump.fDurationSeconds = 0.6f;
+		jump.fArcHeight = 1.5f;
+		if (!CServerTriggerSystem::Begin_MovePlayer(player, jump, 0u == m_iServerTick ? 1u : m_iServerTick))
+			return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE);
+		player.iMarioMoveExpiryTick = 0u;
+		player.fMarioDirectionX = player.fMarioDirectionZ = 0.f;
+		/* Begin_MovePlayer only changes the scripted displacement/action. HP,
+		world-sequence state and trigger membership intentionally stay intact. */
+		result.eResult = DEBUG_MARIO_JUMP_RESULT::ACCEPTED;
+		player.LastDebugMarioJumpResult = result;
+		return result;
+	}
+	return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_NO_LANDING);
 #endif
 }
 
@@ -4095,6 +4451,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iResourceAccumulator = 0u;
 	staged.iCurrentMadness = 0u;
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
+	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
@@ -4778,6 +5135,10 @@ std::uint32_t LostArk::Server::CGameRoom::Place_PartyForCutscene(
 		player.hasBufferedComboInput = false;
 		player.PendingCommand.Clear();
 		player.eAction = PLAYER_ACTION_STATE::NONE;
+		/* Party staging replaces the Mario location, not just its camera.
+		Restore the previous avatar and retire any in-flight Mario movement. */
+		player.Clear_MarioControl();
+		player.TriggerMove = {};
 		player.fPositionX = spot.fX;
 		player.fPositionY = spot.fY;
 		player.fPositionZ = spot.fZ;
@@ -4871,20 +5232,83 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 		request.strTriggerPlacementId, false });
 }
 
+void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_WORLD_PLAYBACK_RESULT result{ request.iRequestSequence, request.eWorldId,
+		request.eOperation, DEBUG_WORLD_PLAYBACK_RESULT::DISABLED, request.strTargetId };
+#ifdef _DEBUG
+	const auto execute = [&]() -> DEBUG_WORLD_PLAYBACK_RESULT
+	{
+		using Result = DEBUG_WORLD_PLAYBACK_RESULT;
+		using Op = DEBUG_WORLD_PLAYBACK_OPERATION;
+		if (request.eWorldId != m_eWorldId ||
+			(m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
+			return Result::WRONG_WORLD;
+		const auto playerId = m_PlayerIdBySessionId.find(sessionId);
+		if (playerId == m_PlayerIdBySessionId.end()) return Result::INVALID_PLAYER;
+		const auto player = m_Players.find(playerId->second);
+		if (player == m_Players.end() || !player->second.iCurrentHp) return Result::INVALID_PLAYER;
+		auto& last = m_WorldPlaybackRequestSequences[sessionId];
+		if (request.iRequestSequence <= last) return Result::STALE_REQUEST;
+		last = request.iRequestSequence;
+		const bool replay = request.eOperation == Op::REPLAY_TRIGGER || request.eOperation == Op::REPLAY_SEQUENCE;
+		const auto play = [&](const std::string& id)
+		{
+			const auto& ids = m_WorldBootstrap.Get_SequenceInstanceIds();
+			if (std::find(ids.begin(), ids.end(), id) == ids.end()) return false;
+			Broadcast_WorldSequencePlay(id, 1.f, 0.f, 0.f, 0.f, 0u, {},
+				replay ? WORLD_SEQUENCE_OPERATION::REPLAY : WORLD_SEQUENCE_OPERATION::PLAY);
+			return true;
+		};
+		if (request.eOperation == Op::PLAY_TRIGGER || request.eOperation == Op::REPLAY_TRIGGER)
+		{
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+			const auto verdict = m_ServerTriggerSystem.Debug_Activate(playerId->second, request.strTargetId,
+				replay, m_Players, m_iServerTick ? m_iServerTick : 1u, transfers,
+				[&](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
+				{
+					if (kind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE) return play(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP) return m_SpawnGroupRuntime.Activate(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER) return Activate_Encounter(id);
+					return false;
+				});
+			for (auto& transfer : transfers)
+			{
+				if (std::none_of(m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+					[&](const auto& pending) { return pending.iSessionId == transfer.iSessionId; }))
+					m_PendingWorldTransfers.push_back(std::move(transfer));
+			}
+			return verdict;
+		}
+		const auto& ids = m_WorldBootstrap.Get_SequenceInstanceIds();
+		if (std::find(ids.begin(), ids.end(), request.strTargetId) == ids.end()) return Result::INVALID_TARGET;
+		if (request.eOperation == Op::STOP_SEQUENCE)
+			Broadcast_WorldSequencePlay(request.strTargetId, 1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
+		else if (!play(request.strTargetId)) return Result::INVALID_TARGET;
+		return Result::ACCEPTED;
+	};
+	result.eResult = execute();
+#endif
+	const auto session = Find_Session(sessionId);
+	CPacketWriter writer;
+	if (session && Write_Message(writer, result) &&
+		!session->Send_Frame(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT, writer.Get_Buffer()))
+		session->Request_Close();
+}
+
 void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	const std::string& instanceId,
 	const float playbackSpeed, const float positionOffsetX,
 	const float positionOffsetY, const float positionOffsetZ, const std::uint32_t durationMs,
-	const std::string& targetSequenceInstanceId)
+	const std::string& targetSequenceInstanceId,
+	const LostArk::Shared::WORLD_SEQUENCE_OPERATION operation)
 {
 	using namespace LostArk::Shared;
 
-	/* Place before the frame goes out so the snapshot that carries the
-	   cutscene already carries the party on the arena. */
-	if (targetSequenceInstanceId.empty())
-		(void)Place_PartyForCutscene(instanceId);
-
 	S2C_WORLD_SEQUENCE_PLAY message{};
+	message.eOperation = operation;
 	message.strSequenceInstanceId = instanceId;
 	message.strTargetSequenceInstanceId = targetSequenceInstanceId;
 	message.iDurationMs = durationMs;
@@ -4895,6 +5319,10 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;
+	// Saved-instance PLAY/REPLAY stage the party; STOP and exact motion do not.
+	if ((operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY) &&
+		targetSequenceInstanceId.empty())
+		(void)Place_PartyForCutscene(instanceId);
 	for (const auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
@@ -10278,6 +10706,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eKoukuHudMode = player.eKoukuHudMode;
 		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
+		snapshot.iMarioStage = player.iMarioStage;
 		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.isPatternBound = player.bPatternBound;
 		snapshot.iPatternBindEndTick = player.iPatternBindEndTick;
@@ -14001,6 +14430,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 							SERVER_ENTITY_ACTION::DEAD != entity.eAction;
 					});
 			};
+		Update_MarioControlState(player);
 		if (0u == player.iCurrentHp ||
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
 		{
@@ -14060,9 +14490,15 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			continue;
 		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))
 			continue;
+		const std::string authoredMoveSource = player.TriggerMove.strSourcePlacementId;
 		if (m_ServerTriggerSystem.Update_PlayerMotion(
 			player, fixedDeltaSeconds))
 		{
+			if (authoredMoveSource.empty())
+				Project_MarioRailPoint(player, player.fPositionX, player.fPositionZ);
+			if (0u != player.iMarioStage && !player.TriggerMove.isActive && !authoredMoveSource.empty())
+				(void)Configure_MarioRail(player, authoredMoveSource);
+			Update_MarioControlState(player);
 			continue;
 		}
 		const bool wasKnockbackActive =
@@ -14121,6 +14557,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		}
 		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
 			continue;
+		Update_MarioMoveGoal(player, updateTick);
 		if (!player.hasMoveGoal)
 			continue;
 		float targetX = player.fMoveGoalX;
@@ -14149,7 +14586,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				Wrap_Degrees(desiredYaw - player.fYawDegrees);
 			const float maxYawStep =
 				PLAYER_TURN_DEGREES_PER_SECOND * fixedDeltaSeconds;
-			if (distance <= DIRECT_BEARING_DISTANCE ||
+			if (0u != player.iMarioStage || distance <= DIRECT_BEARING_DISTANCE ||
 				std::abs(yawDifference) <= maxYawStep)
 			{
 				player.fYawDegrees = desiredYaw;
@@ -14194,6 +14631,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				(targetY - player.fPositionY) * moveRatio;
 			proposedZ = player.fPositionZ + stepZ;
 		}
+		Project_MarioRailPoint(player, proposedX, proposedZ);
 		/* A smoothed path can skip many authored cells. Never interpolate Y toward
 		the distant waypoint: doing so raises the player while XZ is still on the
 		lower deck and lets a later height check see an already-raised player.
@@ -14235,6 +14673,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.iMovePathIndex = 0;
 			continue;
 		}
+		Project_MarioRailPoint(player, resolvedX, resolvedZ);
 		/* Body collision may slide XZ away from the point checked above. Validate
 		the final slide destination too and ground it before committing any
 		authoritative coordinate. */
@@ -14379,10 +14818,11 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 	}
 	const float step = (std::min)(
 		fixedDeltaSeconds, player.fKnockbackRemainingSeconds);
-	const float desiredX = player.fPositionX +
+	float desiredX = player.fPositionX +
 		player.fKnockbackDirectionX * player.fKnockbackSpeed * step;
-	const float desiredZ = player.fPositionZ +
+	float desiredZ = player.fPositionZ +
 		player.fKnockbackDirectionZ * player.fKnockbackSpeed * step;
+	Project_MarioRailPoint(player, desiredX, desiredZ);
 	if (player.bArenaEjectionActive)
 	{
 		player.fPositionX = desiredX;
@@ -14416,6 +14856,18 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			reachable,
 			wasClamped);
 	}
+	Project_MarioRailPoint(player, reachable.x, reachable.z);
+	if (0u != player.iMarioStage)
+	{
+		SERVER_NAV_POINT railGround{};
+		if (!player.bMarioRailReady || !m_ServerNavigation.Resolve_TraversalStep(
+			player.fPositionX, player.fPositionZ, reachable.x, reachable.z, railGround))
+		{
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			return;
+		}
+		reachable.y = railGround.y;
+	}
 	float resolvedX = player.fPositionX;
 	float resolvedY = player.fPositionY;
 	float resolvedZ = player.fPositionZ;
@@ -14433,6 +14885,18 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		player.fKnockbackRemainingSeconds = 0.f;
 		player.fKnockbackSpeed = 0.f;
 		return;
+	}
+	Project_MarioRailPoint(player, resolvedX, resolvedZ);
+	if (0u != player.iMarioStage)
+	{
+		SERVER_NAV_POINT railGround{};
+		if (!m_ServerNavigation.Resolve_TraversalStep(
+			player.fPositionX, player.fPositionZ, resolvedX, resolvedZ, railGround))
+		{
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			return;
+		}
+		resolvedY = railGround.y;
 	}
 	player.fPositionX = resolvedX;
 	player.fPositionY = resolvedY;

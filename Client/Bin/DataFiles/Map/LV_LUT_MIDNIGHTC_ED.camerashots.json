@@ -1,1236 +1,501 @@
 {
- "schema": "lostark.camera-shots",
- "formatVersion": 1,
- "areaId": "LV_LUT_MIDNIGHTC_ED",
- "revision": 62,
- "shots": [
-  {
-   "shotId": "shot.1",
-   "sequenceInstanceId": "world.sequence.instance.circusfinale",
-   "box": {
-    "center": [
-     52.5,
-     10,
-     -87.5
-    ],
-    "halfExtents": [
-     32.5,
-     15,
-     27.5
-    ],
-    "yawDegrees": 0
-   },
-   "eye": [
-    38.8578,
-    4.65774,
-    -75.0091
-   ],
-   "lookAt": [
-    46.3628,
-    4.30222,
-    -81.6082
-   ],
-   "fovYDegrees": 60,
-   "blendInMs": 6000,
-   "blendOutMs": 1500,
-   "priority": 10
-  },
-  {
-   "shotId": "shot.mario1",
-   "sequenceInstanceId": "",
-   "box": {
-    "center": [
-     -1181.55,
-     -11.5,
-     -942.25
-    ],
-    "halfExtents": [
-     45,
-     25,
-     45
-    ],
-    "yawDegrees": 0
-   },
-   "eye": [
-    -1194.87,
-    -8.5,
-    -930.142
-   ],
-   "lookAt": [
-    -1181.55,
-    -8.5,
-    -942.25
-   ],
-   "fovYDegrees": 50,
-   "blendInMs": 900,
-   "blendOutMs": 900,
-   "priority": 20,
-   "follow": {
-    "eyeOffset": [
-     -13.319,
-     3,
-     12.108
-    ],
-    "lookAtOffset": [
-     0,
-     3,
-     0
-    ]
-   }
-  },
-  {
-   "shotId": "shot.mario2",
-   "sequenceInstanceId": "",
-   "box": {
-    "center": [
-     -1426.3,
-     -5,
-     -1205.9
-    ],
-    "halfExtents": [
-     60,
-     30,
-     60
-    ],
-    "yawDegrees": 0
-   },
-   "eye": [
-    -1448.83,
-    -0.5,
-    -1191.02
-   ],
-   "lookAt": [
-    -1426.3,
-    -0.5,
-    -1205.9
-   ],
-   "fovYDegrees": 50,
-   "blendInMs": 900,
-   "blendOutMs": 900,
-   "priority": 20,
-   "follow": {
-    "eyeOffset": [
-     -22.53,
-     4.5,
-     14.879
-    ],
-    "lookAtOffset": [
-     0,
-     4.5,
-     0
-    ]
-   }
-  },
-  {
-   "shotId": "shot.kouku.book",
-   "sequenceInstanceId": "world.sequence.instance.original_kouku",
-   "box": {
-    "center": [
-     0,
-     8,
-     737.28
-    ],
-    "halfExtents": [
-     60,
-     50,
-     60
-    ],
-    "yawDegrees": 0
-   },
-   "eye": [
-    -6.435,
-    2.275,
-    743.708
-   ],
-   "lookAt": [
-    2.121,
-    2.459,
-    735.295
-   ],
-   "fovYDegrees": 54.18,
-   "blendInMs": 300,
-   "blendOutMs": 1200,
-   "priority": 20,
-   "cameraTrack": {
-    "durationMs": 37800,
-    "interpolation": "LINEAR",
-    "easing": "LINEAR",
-    "keyframes": [
-     {
-      "sceneId": "shot.kouku.book.k00",
-      "timeMs": 0,
-      "eye": [
-       14.876,
-       89.358,
-       861.881
-      ],
-      "lookAt": [
-       14.144,
-       82.775,
-       851.874
-      ],
-      "fovYDegrees": 49.09
-     },
-     {
-      "sceneId": "shot.kouku.book.k01",
-      "timeMs": 300,
-      "eye": [
-       -0.979,
-       82.412,
-       855.279
-      ],
-      "lookAt": [
-       -0.414,
-       75.959,
-       845.178
-      ],
-      "fovYDegrees": 57.94
-     },
-     {
-      "sceneId": "shot.kouku.book.k02",
-      "timeMs": 600,
-      "eye": [
-       -15.555,
-       75.035,
-       846.051
-      ],
-      "lookAt": [
-       -13.634,
-       68.722,
-       836.029
-      ],
-      "fovYDegrees": 57.77
-     },
-     {
-      "sceneId": "shot.kouku.book.k03",
-      "timeMs": 900,
-      "eye": [
-       -27.762,
-       67.496,
-       834.823
-      ],
-      "lookAt": [
-       -24.506,
-       61.33,
-       825.057
-      ],
-      "fovYDegrees": 57.57
-     },
-     {
-      "sceneId": "shot.kouku.book.k04",
-      "timeMs": 1200,
-      "eye": [
-       -36.932,
-       60.064,
-       822.578
-      ],
-      "lookAt": [
-       -32.444,
-       54.047,
-       813.216
-      ],
-      "fovYDegrees": 57.36
-     },
-     {
-      "sceneId": "shot.kouku.book.k05",
-      "timeMs": 1500,
-      "eye": [
-       -42.88,
-       53.009,
-       810.454
-      ],
-      "lookAt": [
-       -37.33,
-       47.138,
-       801.581
-      ],
-      "fovYDegrees": 57.13
-     },
-     {
-      "sceneId": "shot.kouku.book.k06",
-      "timeMs": 1800,
-      "eye": [
-       -45.847,
-       46.599,
-       799.54
-      ],
-      "lookAt": [
-       -39.452,
-       40.867,
-       791.158
-      ],
-      "fovYDegrees": 56.88
-     },
-     {
-      "sceneId": "shot.kouku.book.k07",
-      "timeMs": 2100,
-      "eye": [
-       -46.353,
-       41.103,
-       790.738
-      ],
-      "lookAt": [
-       -39.361,
-       35.498,
-       782.756
-      ],
-      "fovYDegrees": 56.62
-     },
-     {
-      "sceneId": "shot.kouku.book.k08",
-      "timeMs": 2300,
-      "eye": [
-       -45.622,
-       38.08,
-       786.379
-      ],
-      "lookAt": [
-       -38.381,
-       32.551,
-       778.568
-      ],
-      "fovYDegrees": 56.44
-     },
-     {
-      "sceneId": "shot.kouku.book.k09",
-      "timeMs": 2700,
-      "eye": [
-       -42.404,
-       33.746,
-       781.463
-      ],
-      "lookAt": [
-       -35.019,
-       28.342,
-       773.7
-      ],
-      "fovYDegrees": 56.07
-     },
-     {
-      "sceneId": "shot.kouku.book.k10",
-      "timeMs": 3800,
-      "eye": [
-       -33.431,
-       25.015,
-       772.161
-      ],
-      "lookAt": [
-       -25.947,
-       19.913,
-       764.289
-      ],
-      "fovYDegrees": 54.96
-     },
-     {
-      "sceneId": "shot.kouku.book.k11",
-      "timeMs": 4600,
-      "eye": [
-       -28.139,
-       20.366,
-       766.682
-      ],
-      "lookAt": [
-       -20.599,
-       15.453,
-       758.743
-      ],
-      "fovYDegrees": 54.12
-     },
-     {
-      "sceneId": "shot.kouku.book.k12",
-      "timeMs": 5500,
-      "eye": [
-       -23.552,
-       16.677,
-       761.935
-      ],
-      "lookAt": [
-       -15.966,
-       11.932,
-       753.939
-      ],
-      "fovYDegrees": 53.19
-     },
-     {
-      "sceneId": "shot.kouku.book.k13",
-      "timeMs": 6200,
-      "eye": [
-       -21.063,
-       14.826,
-       759.361
-      ],
-      "lookAt": [
-       -13.453,
-       10.173,
-       751.333
-      ],
-      "fovYDegrees": 52.5
-     },
-     {
-      "sceneId": "shot.kouku.book.k14",
-      "timeMs": 7200,
-      "eye": [
-       -18.886,
-       13.296,
-       757.11
-      ],
-      "lookAt": [
-       -11.258,
-       8.718,
-       749.056
-      ],
-      "fovYDegrees": 51.6
-     },
-     {
-      "sceneId": "shot.kouku.book.k15",
-      "timeMs": 9500,
-      "eye": [
-       -16.177,
-       11.497,
-       754.309
-      ],
-      "lookAt": [
-       -8.529,
-       7.01,
-       746.223
-      ],
-      "fovYDegrees": 50.22
-     },
-     {
-      "sceneId": "shot.kouku.book.k16",
-      "timeMs": 9599,
-      "eye": [
-       -16.177,
-       11.497,
-       754.309
-      ],
-      "lookAt": [
-       -8.529,
-       7.01,
-       746.223
-      ],
-      "fovYDegrees": 50.22
-     },
-     {
-      "sceneId": "shot.kouku.book.k17",
-      "timeMs": 9600,
-      "eye": [
-       -1.67,
-       2.665,
-       739.21
-      ],
-      "lookAt": [
-       7.103,
-       2.722,
-       729.671
-      ],
-      "fovYDegrees": 33.81
-     },
-     {
-      "sceneId": "shot.kouku.book.k18",
-      "timeMs": 12000,
-      "eye": [
-       -1.17,
-       2.465,
-       738.36
-      ],
-      "lookAt": [
-       7.103,
-       2.722,
-       729.671
-      ],
-      "fovYDegrees": 25.86
-     },
-     {
-      "sceneId": "shot.kouku.book.k19",
-      "timeMs": 12099,
-      "eye": [
-       -1.17,
-       2.465,
-       738.36
-      ],
-      "lookAt": [
-       7.103,
-       2.722,
-       729.671
-      ],
-      "fovYDegrees": 25.86
-     },
-     {
-      "sceneId": "shot.kouku.book.k20",
-      "timeMs": 12100,
-      "eye": [
-       -1.439,
-       2.698,
-       738.772
-      ],
-      "lookAt": [
-       6.847,
-       3.142,
-       730.103
-      ],
-      "fovYDegrees": 28.89
-     },
-     {
-      "sceneId": "shot.kouku.book.k21",
-      "timeMs": 12400,
-      "eye": [
-       -2.693,
-       2.477,
-       740.047
-      ],
-      "lookAt": [
-       5.625,
-       3.669,
-       731.48
-      ],
-      "fovYDegrees": 41.59
-     },
-     {
-      "sceneId": "shot.kouku.book.k22",
-      "timeMs": 12800,
-      "eye": [
-       -5.598,
-       2.124,
-       742.979
-      ],
-      "lookAt": [
-       2.71,
-       4.305,
-       734.599
-      ],
-      "fovYDegrees": 60.28
-     },
-     {
-      "sceneId": "shot.kouku.book.k23",
-      "timeMs": 13100,
-      "eye": [
-       -7.456,
-       1.968,
-       744.844
-      ],
-      "lookAt": [
-       0.835,
-       4.42,
-       736.523
-      ],
-      "fovYDegrees": 64.05
-     },
-     {
-      "sceneId": "shot.kouku.book.k24",
-      "timeMs": 14000,
-      "eye": [
-       -8.878,
-       1.812,
-       746.269
-      ],
-      "lookAt": [
-       -0.614,
-       4.495,
-       737.992
-      ],
-      "fovYDegrees": 66.65
-     },
-     {
-      "sceneId": "shot.kouku.book.k25",
-      "timeMs": 15400,
-      "eye": [
-       -9.694,
-       1.759,
-       747.079
-      ],
-      "lookAt": [
-       -1.441,
-       4.389,
-       738.775
-      ],
-      "fovYDegrees": 67.38
-     },
-     {
-      "sceneId": "shot.kouku.book.k26",
-      "timeMs": 15500,
-      "eye": [
-       -9.544,
-       1.778,
-       746.928
-      ],
-      "lookAt": [
-       -1.262,
-       4.294,
-       738.617
-      ],
-      "fovYDegrees": 64.06
-     },
-     {
-      "sceneId": "shot.kouku.book.k27",
-      "timeMs": 15609,
-      "eye": [
-       -7.673,
-       1.97,
-       745.047
-      ],
-      "lookAt": [
-       0.873,
-       3.233,
-       736.718
-      ],
-      "fovYDegrees": 31.55
-     },
-     {
-      "sceneId": "shot.kouku.book.k28",
-      "timeMs": 15729,
-      "eye": [
-       -6.62,
-       2.079,
-       743.989
-      ],
-      "lookAt": [
-       2.035,
-       2.596,
-       735.693
-      ],
-      "fovYDegrees": 15.51
-     },
-     {
-      "sceneId": "shot.kouku.book.k29",
-      "timeMs": 16519,
-      "eye": [
-       -6.67,
-       2.09,
-       744.04
-      ],
-      "lookAt": [
-       1.964,
-       2.504,
-       735.716
-      ],
-      "fovYDegrees": 16.76
-     },
-     {
-      "sceneId": "shot.kouku.book.k30",
-      "timeMs": 16658,
-      "eye": [
-       -5.65,
-       2.284,
-       743.097
-      ],
-      "lookAt": [
-       2.896,
-       2.765,
-       734.687
-      ],
-      "fovYDegrees": 15.35
-     },
-     {
-      "sceneId": "shot.kouku.book.k31",
-      "timeMs": 16800,
-      "eye": [
-       -1.273,
-       2.711,
-       738.878
-      ],
-      "lookAt": [
-       5.761,
-       2.533,
-       729.946
-      ],
-      "fovYDegrees": 16.31
-     },
-     {
-      "sceneId": "shot.kouku.book.k32",
-      "timeMs": 16943,
-      "eye": [
-       -1.783,
-       2.718,
-       739.164
-      ],
-      "lookAt": [
-       6.149,
-       2.55,
-       729.796
-      ],
-      "fovYDegrees": 11.23
-     },
-     {
-      "sceneId": "shot.kouku.book.k33",
-      "timeMs": 17086,
-      "eye": [
-       -1.668,
-       2.768,
-       739.156
-      ],
-      "lookAt": [
-       5.881,
-       2.37,
-       729.573
-      ],
-      "fovYDegrees": 5.78
-     },
-     {
-      "sceneId": "shot.kouku.book.k34",
-      "timeMs": 17228,
-      "eye": [
-       -1.668,
-       2.768,
-       739.156
-      ],
-      "lookAt": [
-       5.881,
-       2.37,
-       729.573
-      ],
-      "fovYDegrees": 5.78
-     },
-     {
-      "sceneId": "shot.kouku.book.k35",
-      "timeMs": 17229,
-      "eye": [
-       -8.981,
-       1.648,
-       757.238
-      ],
-      "lookAt": [
-       -4.087,
-       2.354,
-       746.304
-      ],
-      "fovYDegrees": 17.01
-     },
-     {
-      "sceneId": "shot.kouku.book.k36",
-      "timeMs": 17515,
-      "eye": [
-       -9.04,
-       1.648,
-       757.212
-      ],
-      "lookAt": [
-       -4.312,
-       2.545,
-       746.219
-      ],
-      "fovYDegrees": 24.25
-     },
-     {
-      "sceneId": "shot.kouku.book.k37",
-      "timeMs": 17943,
-      "eye": [
-       -9.18,
-       1.648,
-       757.149
-      ],
-      "lookAt": [
-       -4.653,
-       2.809,
-       746.096
-      ],
-      "fovYDegrees": 25.22
-     },
-     {
-      "sceneId": "shot.kouku.book.k38",
-      "timeMs": 18943,
-      "eye": [
-       -9.908,
-       1.87,
-       757.218
-      ],
-      "lookAt": [
-       -5.006,
-       2.84,
-       746.308
-      ],
-      "fovYDegrees": 25.85
-     },
-     {
-      "sceneId": "shot.kouku.book.k39",
-      "timeMs": 19372,
-      "eye": [
-       -10.481,
-       2.167,
-       757.491
-      ],
-      "lookAt": [
-       -5.249,
-       2.826,
-       746.712
-      ],
-      "fovYDegrees": 24.85
-     },
-     {
-      "sceneId": "shot.kouku.book.k40",
-      "timeMs": 20372,
-      "eye": [
-       -12.272,
-       3.117,
-       758.337
-      ],
-      "lookAt": [
-       -6.262,
-       3.016,
-       747.951
-      ],
-      "fovYDegrees": 14.77
-     },
-     {
-      "sceneId": "shot.kouku.book.k41",
-      "timeMs": 22229,
-      "eye": [
-       -17.988,
-       5.993,
-       761.149
-      ],
-      "lookAt": [
-       -10.752,
-       4.786,
-       751.653
-      ],
-      "fovYDegrees": 17.3
-     },
-     {
-      "sceneId": "shot.kouku.book.k42",
-      "timeMs": 23086,
-      "eye": [
-       -20.434,
-       7.211,
-       761.307
-      ],
-      "lookAt": [
-       -12.675,
-       5.53,
-       752.308
-      ],
-      "fovYDegrees": 18.37
-     },
-     {
-      "sceneId": "shot.kouku.book.k43",
-      "timeMs": 23943,
-      "eye": [
-       -21.436,
-       7.973,
-       759.634
-      ],
-      "lookAt": [
-       -13.203,
-       5.836,
-       751.17
-      ],
-      "fovYDegrees": 19.22
-     },
-     {
-      "sceneId": "shot.kouku.book.k44",
-      "timeMs": 25229,
-      "eye": [
-       -21.684,
-       8.633,
-       756.102
-      ],
-      "lookAt": [
-       -12.815,
-       5.955,
-       748.475
-      ],
-      "fovYDegrees": 19.99
-     },
-     {
-      "sceneId": "shot.kouku.book.k45",
-      "timeMs": 26515,
-      "eye": [
-       -23.046,
-       8.658,
-       754.185
-      ],
-      "lookAt": [
-       -13.524,
-       5.883,
-       747.429
-      ],
-      "fovYDegrees": 16.3
-     },
-     {
-      "sceneId": "shot.kouku.book.k46",
-      "timeMs": 26656,
-      "eye": [
-       -23.046,
-       8.658,
-       754.185
-      ],
-      "lookAt": [
-       -13.524,
-       5.883,
-       747.429
-      ],
-      "fovYDegrees": 16.3
-     },
-     {
-      "sceneId": "shot.kouku.book.k47",
-      "timeMs": 26657,
-      "eye": [
-       -2.45,
-       1.425,
-       741.381
-      ],
-      "lookAt": [
-       1.665,
-       4.298,
-       730.481
-      ],
-      "fovYDegrees": 75.54
-     },
-     {
-      "sceneId": "shot.kouku.book.k48",
-      "timeMs": 27372,
-      "eye": [
-       -2.589,
-       1.432,
-       741.302
-      ],
-      "lookAt": [
-       2.567,
-       5.629,
-       731.311
-      ],
-      "fovYDegrees": 47.86
-     },
-     {
-      "sceneId": "shot.kouku.book.k49",
-      "timeMs": 27800,
-      "eye": [
-       -2.635,
-       1.439,
-       741.266
-      ],
-      "lookAt": [
-       2.754,
-       5.849,
-       731.493
-      ],
-      "fovYDegrees": 38.73
-     },
-     {
-      "sceneId": "shot.kouku.book.k50",
-      "timeMs": 29229,
-      "eye": [
-       -2.67,
-       1.49,
-       741.179
-      ],
-      "lookAt": [
-       3.519,
-       5.5,
-       731.712
-      ],
-      "fovYDegrees": 36.24
-     },
-     {
-      "sceneId": "shot.kouku.book.k51",
-      "timeMs": 30229,
-      "eye": [
-       -2.812,
-       1.532,
-       741.015
-      ],
-      "lookAt": [
-       2.738,
-       5.802,
-       731.27
-      ],
-      "fovYDegrees": 32.74
-     },
-     {
-      "sceneId": "shot.kouku.book.k52",
-      "timeMs": 31372,
-      "eye": [
-       -2.96,
-       1.591,
-       740.804
-      ],
-      "lookAt": [
-       4.937,
-       5.002,
-       732.437
-      ],
-      "fovYDegrees": 28.71
-     },
-     {
-      "sceneId": "shot.kouku.book.k53",
-      "timeMs": 32943,
-      "eye": [
-       -3.135,
-       1.691,
-       740.581
-      ],
-      "lookAt": [
-       4.391,
-       4.192,
-       731.575
-      ],
-      "fovYDegrees": 29.61
-     },
-     {
-      "sceneId": "shot.kouku.book.k54",
-      "timeMs": 33943,
-      "eye": [
-       -3.268,
-       1.772,
-       740.587
-      ],
-      "lookAt": [
-       5.665,
-       4.539,
-       733.069
-      ],
-      "fovYDegrees": 31.89
-     },
-     {
-      "sceneId": "shot.kouku.book.k55",
-      "timeMs": 34372,
-      "eye": [
-       -3.244,
-       1.824,
-       740.576
-      ],
-      "lookAt": [
-       5.4,
-       4.605,
-       732.73
-      ],
-      "fovYDegrees": 33.52
-     },
-     {
-      "sceneId": "shot.kouku.book.k56",
-      "timeMs": 34657,
-      "eye": [
-       -3.747,
-       1.925,
-       741.086
-      ],
-      "lookAt": [
-       4.662,
-       4.238,
-       732.844
-      ],
-      "fovYDegrees": 35.42
-     },
-     {
-      "sceneId": "shot.kouku.book.k57",
-      "timeMs": 35086,
-      "eye": [
-       -5.983,
-       2.251,
-       743.266
-      ],
-      "lookAt": [
-       2.564,
-       2.615,
-       734.85
-      ],
-      "fovYDegrees": 52.31
-     },
-     {
-      "sceneId": "shot.kouku.book.k58",
-      "timeMs": 35229,
-      "eye": [
-       -6.218,
-       2.28,
-       743.495
-      ],
-      "lookAt": [
-       2.337,
-       2.464,
-       735.083
-      ],
-      "fovYDegrees": 54.18
-     },
-     {
-      "sceneId": "shot.kouku.book.k59",
-      "timeMs": 37800,
-      "eye": [
-       -6.435,
-       2.275,
-       743.708
-      ],
-      "lookAt": [
-       2.121,
-       2.459,
-       735.295
-      ],
-      "fovYDegrees": 54.18
-     }
-    ]
-   }
-  },
-  {
-   "shotId": "1Mario",
-   "sequenceInstanceId": "world.sequence.instance.mario_m1_intro",
-   "box": {
-    "center": [
-     -1148.703,
-     -11.5246,
-     -910.572998
-    ],
-    "halfExtents": [
-     10,
-     8,
-     10
-    ],
-    "yawDegrees": 0
-   },
-   "eye": [
-    -1163.12,
-    -10.3,
-    -900.098
-   ],
-   "lookAt": [
-    -1152.32,
-    -10.1484,
-    -912.426
-   ],
-   "fovYDegrees": 50,
-   "blendInMs": 0,
-   "blendOutMs": 900,
-   "priority": 30,
-   "cameraTrack": {
-    "durationMs": 3000,
-    "interpolation": "LINEAR",
-    "easing": "LINEAR",
-    "keyframes": [
-     {
-      "sceneId": "k00",
-      "timeMs": 0,
-      "eye": [
-       -1148.68,
-       9.62,
-       -962.799
-      ],
-      "lookAt": [
-       -1162.02,
-       -7.04298,
-       -949.822
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k01",
-      "timeMs": 958,
-      "eye": [
-       -1139.09,
-       21.6,
-       -972.139
-      ],
-      "lookAt": [
-       -1159.54,
-       -3.94145,
-       -952.248
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k02",
-      "timeMs": 1000,
-      "eye": [
-       -1137.58,
-       19.3472,
-       -975.021
-      ],
-      "lookAt": [
-       -1160.78,
-       -6.32628,
-       -952.163
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k03",
-      "timeMs": 1083,
-      "eye": [
-       -1134.6,
-       14.8952,
-       -980.715
-      ],
-      "lookAt": [
-       -1163.36,
-       -9.8078,
-       -951.667
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k04",
-      "timeMs": 1417,
-      "eye": [
-       -1230.33,
-       -3.02,
-       -889.865
-      ],
-      "lookAt": [
-       -1177.85,
-       -6.29645,
-       -940.609
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k05",
-      "timeMs": 1500,
-      "eye": [
-       -1239.14,
-       -3.02,
-       -900.508
-      ],
-      "lookAt": [
-       -1178.05,
-       -6.29645,
-       -940.468
-      ],
-      "fovYDegrees": 51.0
-     },
-     {
-      "sceneId": "k06",
-      "timeMs": 1583,
-      "eye": [
-       -1233.85,
-       -3.02,
-       -893.64
-      ],
-      "lookAt": [
-       -1177.93,
-       -6.29645,
-       -940.552
-      ],
-      "fovYDegrees": 50.9336
-     },
-     {
-      "sceneId": "k07",
-      "timeMs": 2750,
-      "eye": [
-       -1233.85,
-       -3.02,
-       -893.64
-      ],
-      "lookAt": [
-       -1177.93,
-       -6.29645,
-       -940.552
-      ],
-      "fovYDegrees": 50.0
-     },
-     {
-      "sceneId": "k08",
-      "timeMs": 3000,
-      "eye": [
-       -1163.12,
-       -10.3,
-       -900.098
-      ],
-      "lookAt": [
-       -1152.32,
-       -10.1484,
-       -912.426
-      ],
-      "fovYDegrees": 50.0
-     }
-    ]
-   }
-  }
- ]
+  "schema": "lostark.camera-shots",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 68,
+  "shots": [
+    {
+      "shotId": "1Stage.finale",
+      "sequenceInstanceId": "world.sequence.instance.circusfinale",
+      "box": { "center": [52.5, 10, -87.5], "halfExtents": [32.5, 15, 27.5], "yawDegrees": 0 },
+      "eye": [38.8578, 4.65774, -75.0091],
+      "lookAt": [46.3628, 4.30222, -81.6082],
+      "fovYDegrees": 60,
+      "blendInMs": 6000,
+      "blendOutMs": 1500,
+      "priority": 10
+    },
+    {
+      "shotId": "2Stage.book",
+      "sequenceInstanceId": "world.sequence.instance.original_kouku",
+      "box": { "center": [0, 8, 737.28], "halfExtents": [60, 50, 60], "yawDegrees": 0 },
+      "eye": [-6.435, 2.275, 743.708],
+      "lookAt": [2.121, 2.459, 735.295],
+      "fovYDegrees": 54.18,
+      "blendInMs": 300,
+      "blendOutMs": 1200,
+      "priority": 20,
+      "cameraTrack": {
+        "durationMs": 37800,
+        "interpolation": "LINEAR",
+        "easing": "LINEAR",
+        "keyframes": [
+          { "sceneId": "shot.kouku.book.k00", "timeMs": 0, "eye": [14.876, 89.358, 861.881], "lookAt": [14.144, 82.775, 851.874], "fovYDegrees": 49.09 },
+          { "sceneId": "shot.kouku.book.k01", "timeMs": 300, "eye": [-0.979, 82.412, 855.279], "lookAt": [-0.414, 75.959, 845.178], "fovYDegrees": 57.94 },
+          { "sceneId": "shot.kouku.book.k02", "timeMs": 600, "eye": [-15.555, 75.035, 846.051], "lookAt": [-13.634, 68.722, 836.029], "fovYDegrees": 57.77 },
+          { "sceneId": "shot.kouku.book.k03", "timeMs": 900, "eye": [-27.762, 67.496, 834.823], "lookAt": [-24.506, 61.33, 825.057], "fovYDegrees": 57.57 },
+          { "sceneId": "shot.kouku.book.k04", "timeMs": 1200, "eye": [-36.932, 60.064, 822.578], "lookAt": [-32.444, 54.047, 813.216], "fovYDegrees": 57.36 },
+          { "sceneId": "shot.kouku.book.k05", "timeMs": 1500, "eye": [-42.88, 53.009, 810.454], "lookAt": [-37.33, 47.138, 801.581], "fovYDegrees": 57.13 },
+          { "sceneId": "shot.kouku.book.k06", "timeMs": 1800, "eye": [-45.847, 46.599, 799.54], "lookAt": [-39.452, 40.867, 791.158], "fovYDegrees": 56.88 },
+          { "sceneId": "shot.kouku.book.k07", "timeMs": 2100, "eye": [-46.353, 41.103, 790.738], "lookAt": [-39.361, 35.498, 782.756], "fovYDegrees": 56.62 },
+          { "sceneId": "shot.kouku.book.k08", "timeMs": 2300, "eye": [-45.622, 38.08, 786.379], "lookAt": [-38.381, 32.551, 778.568], "fovYDegrees": 56.44 },
+          { "sceneId": "shot.kouku.book.k09", "timeMs": 2700, "eye": [-42.404, 33.746, 781.463], "lookAt": [-35.019, 28.342, 773.7], "fovYDegrees": 56.07 },
+          { "sceneId": "shot.kouku.book.k10", "timeMs": 3800, "eye": [-33.431, 25.015, 772.161], "lookAt": [-25.947, 19.913, 764.289], "fovYDegrees": 54.96 },
+          { "sceneId": "shot.kouku.book.k11", "timeMs": 4600, "eye": [-28.139, 20.366, 766.682], "lookAt": [-20.599, 15.453, 758.743], "fovYDegrees": 54.12 },
+          { "sceneId": "shot.kouku.book.k12", "timeMs": 5500, "eye": [-23.552, 16.677, 761.935], "lookAt": [-15.966, 11.932, 753.939], "fovYDegrees": 53.19 },
+          { "sceneId": "shot.kouku.book.k13", "timeMs": 6200, "eye": [-21.063, 14.826, 759.361], "lookAt": [-13.453, 10.173, 751.333], "fovYDegrees": 52.5 },
+          { "sceneId": "shot.kouku.book.k14", "timeMs": 7200, "eye": [-18.886, 13.296, 757.11], "lookAt": [-11.258, 8.718, 749.056], "fovYDegrees": 51.6 },
+          { "sceneId": "shot.kouku.book.k15", "timeMs": 9500, "eye": [-16.177, 11.497, 754.309], "lookAt": [-8.529, 7.01, 746.223], "fovYDegrees": 50.22 },
+          { "sceneId": "shot.kouku.book.k16", "timeMs": 9599, "eye": [-16.177, 11.497, 754.309], "lookAt": [-8.529, 7.01, 746.223], "fovYDegrees": 50.22 },
+          { "sceneId": "shot.kouku.book.k17", "timeMs": 9600, "eye": [-1.67, 2.665, 739.21], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 33.81 },
+          { "sceneId": "shot.kouku.book.k18", "timeMs": 12000, "eye": [-1.17, 2.465, 738.36], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 25.86 },
+          { "sceneId": "shot.kouku.book.k19", "timeMs": 12099, "eye": [-1.17, 2.465, 738.36], "lookAt": [7.103, 2.722, 729.671], "fovYDegrees": 25.86 },
+          { "sceneId": "shot.kouku.book.k20", "timeMs": 12100, "eye": [-1.439, 2.698, 738.772], "lookAt": [6.847, 3.142, 730.103], "fovYDegrees": 28.89 },
+          { "sceneId": "shot.kouku.book.k21", "timeMs": 12400, "eye": [-2.693, 2.477, 740.047], "lookAt": [5.625, 3.669, 731.48], "fovYDegrees": 41.59 },
+          { "sceneId": "shot.kouku.book.k22", "timeMs": 12800, "eye": [-5.598, 2.124, 742.979], "lookAt": [2.71, 4.305, 734.599], "fovYDegrees": 60.28 },
+          { "sceneId": "shot.kouku.book.k23", "timeMs": 13100, "eye": [-7.456, 1.968, 744.844], "lookAt": [0.835, 4.42, 736.523], "fovYDegrees": 64.05 },
+          { "sceneId": "shot.kouku.book.k24", "timeMs": 14000, "eye": [-8.878, 1.812, 746.269], "lookAt": [-0.614, 4.495, 737.992], "fovYDegrees": 66.65 },
+          { "sceneId": "shot.kouku.book.k25", "timeMs": 15400, "eye": [-9.694, 1.759, 747.079], "lookAt": [-1.441, 4.389, 738.775], "fovYDegrees": 67.38 },
+          { "sceneId": "shot.kouku.book.k26", "timeMs": 15500, "eye": [-9.544, 1.778, 746.928], "lookAt": [-1.262, 4.294, 738.617], "fovYDegrees": 64.06 },
+          { "sceneId": "shot.kouku.book.k27", "timeMs": 15609, "eye": [-7.673, 1.97, 745.047], "lookAt": [0.873, 3.233, 736.718], "fovYDegrees": 31.55 },
+          { "sceneId": "shot.kouku.book.k28", "timeMs": 15729, "eye": [-6.62, 2.079, 743.989], "lookAt": [2.035, 2.596, 735.693], "fovYDegrees": 15.51 },
+          { "sceneId": "shot.kouku.book.k29", "timeMs": 16519, "eye": [-6.67, 2.09, 744.04], "lookAt": [1.964, 2.504, 735.716], "fovYDegrees": 16.76 },
+          { "sceneId": "shot.kouku.book.k30", "timeMs": 16658, "eye": [-5.65, 2.284, 743.097], "lookAt": [2.896, 2.765, 734.687], "fovYDegrees": 15.35 },
+          { "sceneId": "shot.kouku.book.k31", "timeMs": 16800, "eye": [-1.273, 2.711, 738.878], "lookAt": [5.761, 2.533, 729.946], "fovYDegrees": 16.31 },
+          { "sceneId": "shot.kouku.book.k32", "timeMs": 16943, "eye": [-1.783, 2.718, 739.164], "lookAt": [6.149, 2.55, 729.796], "fovYDegrees": 11.23 },
+          { "sceneId": "shot.kouku.book.k33", "timeMs": 17086, "eye": [-1.668, 2.768, 739.156], "lookAt": [5.881, 2.37, 729.573], "fovYDegrees": 5.78 },
+          { "sceneId": "shot.kouku.book.k34", "timeMs": 17228, "eye": [-1.668, 2.768, 739.156], "lookAt": [5.881, 2.37, 729.573], "fovYDegrees": 5.78 },
+          { "sceneId": "shot.kouku.book.k35", "timeMs": 17229, "eye": [-8.981, 1.648, 757.238], "lookAt": [-4.087, 2.354, 746.304], "fovYDegrees": 17.01 },
+          { "sceneId": "shot.kouku.book.k36", "timeMs": 17515, "eye": [-9.04, 1.648, 757.212], "lookAt": [-4.312, 2.545, 746.219], "fovYDegrees": 24.25 },
+          { "sceneId": "shot.kouku.book.k37", "timeMs": 17943, "eye": [-9.18, 1.648, 757.149], "lookAt": [-4.653, 2.809, 746.096], "fovYDegrees": 25.22 },
+          { "sceneId": "shot.kouku.book.k38", "timeMs": 18943, "eye": [-9.908, 1.87, 757.218], "lookAt": [-5.006, 2.84, 746.308], "fovYDegrees": 25.85 },
+          { "sceneId": "shot.kouku.book.k39", "timeMs": 19372, "eye": [-10.481, 2.167, 757.491], "lookAt": [-5.249, 2.826, 746.712], "fovYDegrees": 24.85 },
+          { "sceneId": "shot.kouku.book.k40", "timeMs": 20372, "eye": [-12.272, 3.117, 758.337], "lookAt": [-6.262, 3.016, 747.951], "fovYDegrees": 14.77 },
+          { "sceneId": "shot.kouku.book.k41", "timeMs": 22229, "eye": [-17.988, 5.993, 761.149], "lookAt": [-10.752, 4.786, 751.653], "fovYDegrees": 17.3 },
+          { "sceneId": "shot.kouku.book.k42", "timeMs": 23086, "eye": [-20.434, 7.211, 761.307], "lookAt": [-12.675, 5.53, 752.308], "fovYDegrees": 18.37 },
+          { "sceneId": "shot.kouku.book.k43", "timeMs": 23943, "eye": [-21.436, 7.973, 759.634], "lookAt": [-13.203, 5.836, 751.17], "fovYDegrees": 19.22 },
+          { "sceneId": "shot.kouku.book.k44", "timeMs": 25229, "eye": [-21.684, 8.633, 756.102], "lookAt": [-12.815, 5.955, 748.475], "fovYDegrees": 19.99 },
+          { "sceneId": "shot.kouku.book.k45", "timeMs": 26515, "eye": [-23.046, 8.658, 754.185], "lookAt": [-13.524, 5.883, 747.429], "fovYDegrees": 16.3 },
+          { "sceneId": "shot.kouku.book.k46", "timeMs": 26656, "eye": [-23.046, 8.658, 754.185], "lookAt": [-13.524, 5.883, 747.429], "fovYDegrees": 16.3 },
+          { "sceneId": "shot.kouku.book.k47", "timeMs": 26657, "eye": [-2.45, 1.425, 741.381], "lookAt": [1.665, 4.298, 730.481], "fovYDegrees": 75.54 },
+          { "sceneId": "shot.kouku.book.k48", "timeMs": 27372, "eye": [-2.589, 1.432, 741.302], "lookAt": [2.567, 5.629, 731.311], "fovYDegrees": 47.86 },
+          { "sceneId": "shot.kouku.book.k49", "timeMs": 27800, "eye": [-2.635, 1.439, 741.266], "lookAt": [2.754, 5.849, 731.493], "fovYDegrees": 38.73 },
+          { "sceneId": "shot.kouku.book.k50", "timeMs": 29229, "eye": [-2.67, 1.49, 741.179], "lookAt": [3.519, 5.5, 731.712], "fovYDegrees": 36.24 },
+          { "sceneId": "shot.kouku.book.k51", "timeMs": 30229, "eye": [-2.812, 1.532, 741.015], "lookAt": [2.738, 5.802, 731.27], "fovYDegrees": 32.74 },
+          { "sceneId": "shot.kouku.book.k52", "timeMs": 31372, "eye": [-2.96, 1.591, 740.804], "lookAt": [4.937, 5.002, 732.437], "fovYDegrees": 28.71 },
+          { "sceneId": "shot.kouku.book.k53", "timeMs": 32943, "eye": [-3.135, 1.691, 740.581], "lookAt": [4.391, 4.192, 731.575], "fovYDegrees": 29.61 },
+          { "sceneId": "shot.kouku.book.k54", "timeMs": 33943, "eye": [-3.268, 1.772, 740.587], "lookAt": [5.665, 4.539, 733.069], "fovYDegrees": 31.89 },
+          { "sceneId": "shot.kouku.book.k55", "timeMs": 34372, "eye": [-3.244, 1.824, 740.576], "lookAt": [5.4, 4.605, 732.73], "fovYDegrees": 33.52 },
+          { "sceneId": "shot.kouku.book.k56", "timeMs": 34657, "eye": [-3.747, 1.925, 741.086], "lookAt": [4.662, 4.238, 732.844], "fovYDegrees": 35.42 },
+          { "sceneId": "shot.kouku.book.k57", "timeMs": 35086, "eye": [-5.983, 2.251, 743.266], "lookAt": [2.564, 2.615, 734.85], "fovYDegrees": 52.31 },
+          { "sceneId": "shot.kouku.book.k58", "timeMs": 35229, "eye": [-6.218, 2.28, 743.495], "lookAt": [2.337, 2.464, 735.083], "fovYDegrees": 54.18 },
+          { "sceneId": "shot.kouku.book.k59", "timeMs": 37800, "eye": [-6.435, 2.275, 743.708], "lookAt": [2.121, 2.459, 735.295], "fovYDegrees": 54.18 }
+        ]
+      }
+    },
+    {
+      "shotId": "1Mario",
+      "sequenceInstanceId": "world.sequence.instance.mario_m1_intro",
+      "box": { "center": [-1148.7, -11.5246, -910.573], "halfExtents": [1, 3, 1], "yawDegrees": 0 },
+      "eye": [-1158.11, -10.05, -904.281],
+      "lookAt": [-1151.32, -10.1484, -912.426],
+      "fovYDegrees": 50,
+      "blendInMs": 0,
+      "blendOutMs": 900,
+      "priority": 30,
+      "cameraTrack": {
+        "durationMs": 3000,
+        "interpolation": "LINEAR",
+        "easing": "LINEAR",
+        "keyframes": [
+          { "sceneId": "k00", "timeMs": 0, "eye": [-1148.68, 9.62, -962.799], "lookAt": [-1162.02, -7.04298, -949.822], "fovYDegrees": 51 },
+          { "sceneId": "k01", "timeMs": 958, "eye": [-1139.09, 21.6, -972.139], "lookAt": [-1159.54, -3.94145, -952.248], "fovYDegrees": 51 },
+          { "sceneId": "k02", "timeMs": 1000, "eye": [-1137.58, 19.3472, -975.021], "lookAt": [-1160.78, -6.32628, -952.163], "fovYDegrees": 51 },
+          { "sceneId": "k03", "timeMs": 1083, "eye": [-1134.6, 14.8952, -980.715], "lookAt": [-1163.36, -9.8078, -951.667], "fovYDegrees": 51 },
+          { "sceneId": "k04", "timeMs": 1417, "eye": [-1230.33, -3.02, -889.865], "lookAt": [-1177.85, -6.29645, -940.609], "fovYDegrees": 51 },
+          { "sceneId": "k05", "timeMs": 1500, "eye": [-1239.14, -3.02, -900.508], "lookAt": [-1178.05, -6.29645, -940.468], "fovYDegrees": 51 },
+          { "sceneId": "k06", "timeMs": 1583, "eye": [-1233.85, -3.02, -893.64], "lookAt": [-1177.93, -6.29645, -940.552], "fovYDegrees": 50.9336 },
+          { "sceneId": "k07", "timeMs": 2750, "eye": [-1233.85, -3.02, -893.64], "lookAt": [-1177.93, -6.29645, -940.552], "fovYDegrees": 50 },
+          { "sceneId": "k08", "timeMs": 3000, "eye": [-1158.11, -10.05, -904.281], "lookAt": [-1151.32, -10.1484, -912.426], "fovYDegrees": 50 }
+        ]
+      }
+    },
+    {
+      "shotId": "1Mario.follow.start",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1156, -11.5, -916], "halfExtents": [16, 10, 20], "yawDegrees": 0 },
+      "eye": [-1165.41, -10.0254, -909.708],
+      "lookAt": [-1158.62, -10.1238, -917.853],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-9.407, 1.4746, 6.292], "lookAtOffset": [-2.617, 1.3762, -1.853] }
+    },
+    {
+      "shotId": "1Mario.follow.lower",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1181.5, -14, -938], "halfExtents": [9.5, 10, 12], "yawDegrees": 0 },
+      "eye": [-1188.68, -12.5254, -929.248],
+      "lookAt": [-1184.54, -12.6238, -939.014],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-7.17547, 1.4746, 8.75178], "lookAtOffset": [-3.04221, 1.3762, -1.01354] }
+    },
+    {
+      "shotId": "1Mario.follow.exit",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1203, -11.5, -958], "halfExtents": [12, 10, 20], "yawDegrees": 0 },
+      "eye": [-1213.45, -10.0254, -953.664],
+      "lookAt": [-1205.21, -10.1238, -960.328],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-10.4538, 1.4746, 4.33589], "lookAtOffset": [-2.20521, 1.3762, -2.32795] }
+    },
+    {
+      "shotId": "2Mario",
+      "sequenceInstanceId": "world.sequence.instance.mario_m2_intro",
+      "box": { "center": [-1434.49, -9.02001, -1175.97], "halfExtents": [1, 3, 1], "yawDegrees": 0 },
+      "eye": [-1441.39, -8.02, -1172.34],
+      "lookAt": [-1423.46, -7.17023, -1184.18],
+      "fovYDegrees": 50,
+      "blendInMs": 0,
+      "blendOutMs": 900,
+      "priority": 30,
+      "cameraTrack": {
+        "durationMs": 3000,
+        "interpolation": "LINEAR",
+        "easing": "LINEAR",
+        "keyframes": [
+          { "sceneId": "2Mario.k00", "timeMs": 0, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k01", "timeMs": 100, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k02", "timeMs": 200, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k03", "timeMs": 300, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k04", "timeMs": 400, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k05", "timeMs": 500, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k06", "timeMs": 600, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k07", "timeMs": 700, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k08", "timeMs": 792, "eye": [-1489.26, 89.361, -1142.01], "lookAt": [-1442.86, 128.433, -1189.34], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k09", "timeMs": 800, "eye": [-1489.26, 89.2787, -1142.01], "lookAt": [-1442.84, 128.304, -1189.36], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k10", "timeMs": 900, "eye": [-1489.26, 76.5468, -1142.01], "lookAt": [-1440.16, 108.162, -1192.1], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k11", "timeMs": 1000, "eye": [-1489.26, 49.9652, -1142.01], "lookAt": [-1436.5, 65.3788, -1195.85], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k12", "timeMs": 1100, "eye": [-1489.26, 20.8149, -1142.01], "lookAt": [-1435.44, 18.4709, -1196.94], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k13", "timeMs": 1167, "eye": [-1489.26, 5.46418, -1142.01], "lookAt": [-1435.95, -5.32205, -1196.43], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k14", "timeMs": 1200, "eye": [-1489.26, 3.27207, -1142.01], "lookAt": [-1435.76, -5.34613, -1196.63], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k15", "timeMs": 1250, "eye": [-1489.26, 5.46418, -1142.01], "lookAt": [-1435.42, 4.7998, -1196.97], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k16", "timeMs": 1300, "eye": [-1489.24, 5.46418, -1142.03], "lookAt": [-1435.47, 2.15336, -1196.92], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k17", "timeMs": 1333, "eye": [-1489.26, 5.46418, -1142.01], "lookAt": [-1435.54, 0.264281, -1196.85], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k18", "timeMs": 1400, "eye": [-1489.37, 5.46418, -1141.9], "lookAt": [-1435.54, 0.253741, -1196.85], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k19", "timeMs": 1417, "eye": [-1489.39, 5.46418, -1141.87], "lookAt": [-1435.55, 0.251067, -1196.85], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k20", "timeMs": 1500, "eye": [-1489.53, 5.46418, -1141.74], "lookAt": [-1435.55, 0.238007, -1196.85], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k21", "timeMs": 1600, "eye": [-1489.69, 5.46418, -1141.59], "lookAt": [-1435.55, 0.22227, -1196.86], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k22", "timeMs": 1700, "eye": [-1489.85, 5.46418, -1141.43], "lookAt": [-1435.56, 0.206529, -1196.86], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k23", "timeMs": 1800, "eye": [-1490.01, 5.46418, -1141.28], "lookAt": [-1435.56, 0.190785, -1196.86], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k24", "timeMs": 1900, "eye": [-1490.17, 5.46418, -1141.12], "lookAt": [-1435.57, 0.175037, -1196.87], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k25", "timeMs": 2000, "eye": [-1490.33, 5.46418, -1140.96], "lookAt": [-1435.57, 0.159286, -1196.87], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k26", "timeMs": 2100, "eye": [-1490.49, 5.46418, -1140.81], "lookAt": [-1435.58, 0.143532, -1196.87], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k27", "timeMs": 2200, "eye": [-1490.65, 5.46418, -1140.65], "lookAt": [-1435.58, 0.127774, -1196.88], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k28", "timeMs": 2300, "eye": [-1490.81, 5.46418, -1140.5], "lookAt": [-1435.59, 0.112013, -1196.88], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k29", "timeMs": 2400, "eye": [-1490.97, 5.46418, -1140.34], "lookAt": [-1435.59, 0.096248, -1196.89], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k30", "timeMs": 2500, "eye": [-1491.14, 5.46418, -1140.19], "lookAt": [-1435.59, 0.0804799, -1196.89], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k31", "timeMs": 2600, "eye": [-1491.3, 5.46418, -1140.03], "lookAt": [-1435.6, 0.0647083, -1196.89], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k32", "timeMs": 2700, "eye": [-1491.46, 5.46418, -1139.87], "lookAt": [-1435.6, 0.0489333, -1196.9], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k33", "timeMs": 2750, "eye": [-1491.54, 5.46418, -1139.8], "lookAt": [-1435.61, 0.0410445, -1196.9], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k34", "timeMs": 2800, "eye": [-1486.24, 3.87296, -1143.18], "lookAt": [-1433.21, -0.600079, -1194.57], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k35", "timeMs": 2900, "eye": [-1463.33, -2.93085, -1157.9], "lookAt": [-1425.87, -4.05368, -1186.87], "fovYDegrees": 50 },
+          { "sceneId": "2Mario.k36", "timeMs": 3000, "eye": [-1441.39, -8.02, -1172.34], "lookAt": [-1423.46, -7.17023, -1184.18], "fovYDegrees": 50 }
+        ]
+      }
+    },
+    {
+      "shotId": "2Mario.follow.floor1",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1435, -13.8702, -1200], "halfExtents": [35, 6.12978, 40], "yawDegrees": 0 },
+      "eye": [-1441.90001, -12.87019, -1196.37003],
+      "lookAt": [-1423.97001, -12.02042, -1208.21003],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-6.90001, 1.00001, 3.62997], "lookAtOffset": [11.02999, 1.84978, -8.21003] }
+    },
+    {
+      "shotId": "2Mario.follow.floor2",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1435, -6.46043, -1200], "halfExtents": [35, 1.28, 40], "yawDegrees": 0 },
+      "eye": [-1437.303691, -5.46042, -1192.551522],
+      "lookAt": [-1433.021655, -4.61065, -1213.607036],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-2.303691, 1.00001, 7.448478], "lookAtOffset": [1.978345, 1.84978, -13.607036] }
+    },
+    {
+      "shotId": "2Mario.follow.floor3",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1435, -0.090218, -1200], "halfExtents": [35, 5.09022, 40], "yawDegrees": 0 },
+      "eye": [-1441.053598, 0.909792, -1195.086674],
+      "lookAt": [-1425.795412, 1.759562, -1210.214736],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-6.053598, 1.00001, 4.913326], "lookAtOffset": [9.204588, 1.84978, -10.214736] }
+    },
+    {
+      "shotId": "3Mario",
+      "sequenceInstanceId": "world.sequence.instance.mario_m3_intro",
+      "box": { "center": [-1889.69, -11.53, -1646.21], "halfExtents": [1, 3, 1], "yawDegrees": 0 },
+      "eye": [-1902.27, -9.66594, -1640.5],
+      "lookAt": [-1882.69, -9.66594, -1648.08],
+      "fovYDegrees": 50,
+      "blendInMs": 0,
+      "blendOutMs": 900,
+      "priority": 30,
+      "cameraTrack": {
+        "durationMs": 3000,
+        "interpolation": "LINEAR",
+        "easing": "LINEAR",
+        "keyframes": [
+          { "sceneId": "3Mario.k00", "timeMs": 0, "eye": [-1975.03, 20.3442, -1607.73], "lookAt": [-1906.84, 12.0354, -1674.44], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k01", "timeMs": 100, "eye": [-1974.82, 20.3442, -1607.94], "lookAt": [-1906.85, 12.0255, -1674.45], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k02", "timeMs": 167, "eye": [-1974.67, 20.3442, -1608.09], "lookAt": [-1906.86, 12.019, -1674.46], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k03", "timeMs": 200, "eye": [-1974.6, 20.3442, -1608.16], "lookAt": [-1906.86, 12.0228, -1674.46], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k04", "timeMs": 300, "eye": [-1974.39, 20.3442, -1608.37], "lookAt": [-1906.9, 12.1122, -1674.51], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k05", "timeMs": 400, "eye": [-1974.17, 20.3442, -1608.59], "lookAt": [-1906.96, 12.3005, -1674.59], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k06", "timeMs": 500, "eye": [-1973.96, 20.3442, -1608.81], "lookAt": [-1907.04, 12.5645, -1674.7], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k07", "timeMs": 600, "eye": [-1973.75, 20.3442, -1609.02], "lookAt": [-1907.13, 12.8811, -1674.83], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k08", "timeMs": 700, "eye": [-1973.53, 20.3442, -1609.24], "lookAt": [-1907.22, 13.2276, -1674.96], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k09", "timeMs": 800, "eye": [-1973.32, 20.3442, -1609.46], "lookAt": [-1907.32, 13.5815, -1675.1], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k10", "timeMs": 900, "eye": [-1973.1, 20.3442, -1609.67], "lookAt": [-1907.42, 13.9205, -1675.23], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k11", "timeMs": 1000, "eye": [-1972.89, 20.3442, -1609.89], "lookAt": [-1907.5, 14.2227, -1675.34], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k12", "timeMs": 1100, "eye": [-1972.67, 20.3442, -1610.1], "lookAt": [-1907.57, 14.4665, -1675.43], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k13", "timeMs": 1200, "eye": [-1972.46, 20.3442, -1610.32], "lookAt": [-1907.62, 14.6304, -1675.49], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k14", "timeMs": 1208, "eye": [-1972.44, 20.3442, -1610.34], "lookAt": [-1907.62, 14.6394, -1675.49], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k15", "timeMs": 1300, "eye": [-1972.24, 20.3442, -1610.54], "lookAt": [-1907.64, 14.7041, -1675.51], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k16", "timeMs": 1400, "eye": [-1972.03, 20.3442, -1610.75], "lookAt": [-1907.63, 14.7052, -1675.5], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k17", "timeMs": 1500, "eye": [-1971.82, 20.3442, -1610.97], "lookAt": [-1907.61, 14.6516, -1675.48], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k18", "timeMs": 1600, "eye": [-1971.6, 20.3442, -1611.18], "lookAt": [-1907.57, 14.5608, -1675.43], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k19", "timeMs": 1700, "eye": [-1971.39, 20.3442, -1611.4], "lookAt": [-1907.53, 14.4503, -1675.38], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k20", "timeMs": 1800, "eye": [-1971.17, 20.3442, -1611.62], "lookAt": [-1907.49, 14.3371, -1675.33], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k21", "timeMs": 1900, "eye": [-1970.96, 20.3442, -1611.83], "lookAt": [-1907.45, 14.2381, -1675.28], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k22", "timeMs": 2000, "eye": [-1970.74, 20.3442, -1612.05], "lookAt": [-1907.42, 14.17, -1675.24], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k23", "timeMs": 2042, "eye": [-1970.66, 20.3442, -1612.14], "lookAt": [-1907.42, 14.1546, -1675.23], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k24", "timeMs": 2100, "eye": [-1970.53, 20.3442, -1612.26], "lookAt": [-1907.41, 14.1461, -1675.23], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k25", "timeMs": 2200, "eye": [-1970.32, 20.3442, -1612.48], "lookAt": [-1907.4, 14.1563, -1675.21], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k26", "timeMs": 2250, "eye": [-1970.21, 20.3442, -1612.59], "lookAt": [-1907.39, 14.17, -1675.21], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k27", "timeMs": 2300, "eye": [-1970.1, 20.3442, -1612.7], "lookAt": [-1907.39, 14.1875, -1675.21], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k28", "timeMs": 2400, "eye": [-1969.89, 20.3442, -1612.91], "lookAt": [-1907.4, 14.2276, -1675.22], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k29", "timeMs": 2500, "eye": [-1969.67, 20.3442, -1613.13], "lookAt": [-1907.42, 14.2645, -1675.24], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k30", "timeMs": 2542, "eye": [-1969.58, 20.3442, -1613.22], "lookAt": [-1907.43, 14.2762, -1675.25], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k31", "timeMs": 2600, "eye": [-1969.46, 20.3442, -1613.35], "lookAt": [-1907.46, 14.2925, -1675.29], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k32", "timeMs": 2700, "eye": [-1969.24, 20.3442, -1613.56], "lookAt": [-1907.54, 14.3272, -1675.37], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k33", "timeMs": 2750, "eye": [-1969.14, 20.3442, -1613.67], "lookAt": [-1907.59, 14.3449, -1675.42], "fovYDegrees": 90 },
+          { "sceneId": "3Mario.k34", "timeMs": 2800, "eye": [-1961.56, 16.7327, -1616.64], "lookAt": [-1902.64, 11.9175, -1670.44], "fovYDegrees": 85.84 },
+          { "sceneId": "3Mario.k35", "timeMs": 2900, "eye": [-1927.56, 0.529837, -1629.97], "lookAt": [-1887.41, -0.54922, -1653.33], "fovYDegrees": 64.08 },
+          { "sceneId": "3Mario.k36", "timeMs": 3000, "eye": [-1902.27, -9.66594, -1640.5], "lookAt": [-1882.69, -9.66594, -1648.08], "fovYDegrees": 50 }
+        ]
+      }
+    },
+    {
+      "shotId": "3Mario.follow.up.floor1",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1889.5, -15.1235, -1656.5], "halfExtents": [14.5, 4.8765, 21.5], "yawDegrees": 0 },
+      "eye": [-1902.08006, -13.25944, -1650.79004],
+      "lookAt": [-1882.50006, -13.25944, -1658.37004],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-12.58006, 1.86406, 5.70996], "lookAtOffset": [6.99994, 1.86406, -1.87004] }
+    },
+    {
+      "shotId": "3Mario.follow.up.floor2",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1889.5, -8.967, -1656.5], "halfExtents": [14.5, 1.28, 21.5], "yawDegrees": 0 },
+      "eye": [-1900.724393, -7.10294, -1648.445525],
+      "lookAt": [-1882.999384, -7.10294, -1659.699718],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-11.224393, 1.86406, 8.054475], "lookAtOffset": [6.500616, 1.86406, -3.199718] }
+    },
+    {
+      "shotId": "3Mario.follow.up.floor3",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1889.5, -1.3435, -1656.5], "halfExtents": [14.5, 6.3435, 21.5], "yawDegrees": 0 },
+      "eye": [-1899.880862, 0.52056, -1647.384121],
+      "lookAt": [-1883.344315, 0.52056, -1660.321486],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-10.380862, 1.86406, 9.115879], "lookAtOffset": [6.155685, 1.86406, -3.821486] }
+    },
+    {
+      "shotId": "3Mario.follow.down.floor3",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1923, -0.0635, -1687.5], "halfExtents": [19, 5.0635, 17.5], "yawDegrees": 0 },
+      "eye": [-1931.402975, 1.80056, -1676.534072],
+      "lookAt": [-1917.708131, 1.80056, -1692.448973],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-8.402975, 1.86406, 10.965928], "lookAtOffset": [5.291869, 1.86406, -4.948973] }
+    },
+    {
+      "shotId": "3Mario.follow.down.floor2",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1923, -6.407, -1687.5], "halfExtents": [19, 1.28, 17.5], "yawDegrees": 0 },
+      "eye": [-1930.287669, -4.54294, -1675.763245],
+      "lookAt": [-1918.218694, -4.54294, -1692.943833],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-7.287669, 1.86406, 11.736755], "lookAtOffset": [4.781306, 1.86406, -5.443833] }
+    },
+    {
+      "shotId": "3Mario.follow.down.floor1",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1923, -13.8435, -1687.5], "halfExtents": [19, 6.1565, 17.5], "yawDegrees": 0 },
+      "eye": [-1927.857912, -11.97944, -1674.56701],
+      "lookAt": [-1919.372604, -11.97944, -1693.772018],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-4.857912, 1.86406, 12.93299], "lookAtOffset": [3.627396, 1.86406, -6.272018] }
+    },
+    {
+      "shotId": "4Mario",
+      "sequenceInstanceId": "world.sequence.instance.mario_m4_intro",
+      "box": { "center": [-1632.57, -20.49, -1400.92], "halfExtents": [1, 3, 1], "yawDegrees": 0 },
+      "eye": [-1639.4, -18.8834, -1395.27],
+      "lookAt": [-1638.41, -18.8164, -1396.29],
+      "fovYDegrees": 50,
+      "blendInMs": 0,
+      "blendOutMs": 900,
+      "priority": 30,
+      "cameraTrack": {
+        "durationMs": 3000,
+        "interpolation": "LINEAR",
+        "easing": "LINEAR",
+        "keyframes": [
+          { "sceneId": "4Mario.k00", "timeMs": 0, "eye": [-1625.02, -7.84973, -1442.56], "lookAt": [-1596.08, -0.361866, -1472.32], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k01", "timeMs": 100, "eye": [-1625.18, -7.89471, -1442.37], "lookAt": [-1596.4, -0.451728, -1471.97], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k02", "timeMs": 200, "eye": [-1625.33, -7.93969, -1442.18], "lookAt": [-1596.73, -0.541567, -1471.62], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k03", "timeMs": 300, "eye": [-1625.48, -7.98468, -1441.99], "lookAt": [-1597.06, -0.631383, -1471.27], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k04", "timeMs": 400, "eye": [-1625.63, -8.02966, -1441.81], "lookAt": [-1597.38, -0.721175, -1470.92], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k05", "timeMs": 500, "eye": [-1625.79, -8.07464, -1441.62], "lookAt": [-1597.71, -0.810943, -1470.57], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k06", "timeMs": 600, "eye": [-1625.94, -8.11963, -1441.43], "lookAt": [-1598.04, -0.900688, -1470.22], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k07", "timeMs": 700, "eye": [-1626.09, -8.16461, -1441.24], "lookAt": [-1598.36, -0.990409, -1469.87], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k08", "timeMs": 800, "eye": [-1626.24, -8.20959, -1441.05], "lookAt": [-1598.69, -1.08011, -1469.52], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k09", "timeMs": 900, "eye": [-1626.4, -8.25458, -1440.86], "lookAt": [-1599.01, -1.16978, -1469.17], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k10", "timeMs": 1000, "eye": [-1626.55, -8.29956, -1440.67], "lookAt": [-1599.34, -1.25943, -1468.82], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k11", "timeMs": 1100, "eye": [-1635.98, -11.0803, -1429.01], "lookAt": [-1619.29, -6.74766, -1446.92], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k12", "timeMs": 1200, "eye": [-1645.4, -13.861, -1417.34], "lookAt": [-1638.86, -12.1549, -1424.63], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k13", "timeMs": 1292, "eye": [-1654.07, -16.4193, -1406.61], "lookAt": [-1651.63, -15.7806, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k14", "timeMs": 1300, "eye": [-1654.09, -16.4193, -1406.59], "lookAt": [-1651.63, -15.7776, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k15", "timeMs": 1400, "eye": [-1654.25, -16.4193, -1406.41], "lookAt": [-1651.64, -15.7395, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k16", "timeMs": 1500, "eye": [-1654.41, -16.4193, -1406.23], "lookAt": [-1651.64, -15.7018, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k17", "timeMs": 1600, "eye": [-1654.57, -16.4193, -1406.05], "lookAt": [-1651.65, -15.6644, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k18", "timeMs": 1700, "eye": [-1654.73, -16.4193, -1405.86], "lookAt": [-1651.65, -15.6274, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k19", "timeMs": 1800, "eye": [-1654.89, -16.4193, -1405.68], "lookAt": [-1651.66, -15.5907, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k20", "timeMs": 1900, "eye": [-1655.05, -16.4193, -1405.5], "lookAt": [-1651.66, -15.5544, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k21", "timeMs": 2000, "eye": [-1655.21, -16.4193, -1405.32], "lookAt": [-1651.67, -15.5184, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k22", "timeMs": 2100, "eye": [-1655.37, -16.4193, -1405.13], "lookAt": [-1651.68, -15.4828, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k23", "timeMs": 2200, "eye": [-1655.53, -16.4193, -1404.95], "lookAt": [-1651.68, -15.4476, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k24", "timeMs": 2300, "eye": [-1655.69, -16.4193, -1404.77], "lookAt": [-1651.69, -15.4127, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k25", "timeMs": 2400, "eye": [-1655.86, -16.4193, -1404.59], "lookAt": [-1651.69, -15.3781, -1409.42], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k26", "timeMs": 2500, "eye": [-1656.02, -16.4193, -1404.41], "lookAt": [-1651.7, -15.3439, -1409.43], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k27", "timeMs": 2600, "eye": [-1656.18, -16.4193, -1404.22], "lookAt": [-1651.7, -15.3101, -1409.43], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k28", "timeMs": 2700, "eye": [-1656.34, -16.4193, -1404.04], "lookAt": [-1651.71, -15.2766, -1409.43], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k29", "timeMs": 2750, "eye": [-1656.42, -16.4193, -1403.95], "lookAt": [-1651.71, -15.26, -1409.43], "fovYDegrees": 100 },
+          { "sceneId": "4Mario.k30", "timeMs": 2800, "eye": [-1654.65, -16.6756, -1403.05], "lookAt": [-1650.3, -15.6906, -1408.05], "fovYDegrees": 94.8 },
+          { "sceneId": "4Mario.k31", "timeMs": 2900, "eye": [-1645.39, -18.0161, -1398.32], "lookAt": [-1643.02, -17.7137, -1400.88], "fovYDegrees": 67.6 },
+          { "sceneId": "4Mario.k32", "timeMs": 3000, "eye": [-1639.4, -18.8834, -1395.27], "lookAt": [-1638.41, -18.8164, -1396.29], "fovYDegrees": 50 }
+        ]
+      }
+    },
+    {
+      "shotId": "4Mario.follow.ground",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -23.6052, -1430], "halfExtents": [30, 4.39478, 40], "yawDegrees": 0 },
+      "eye": [-1641.83, -21.9986, -1424.35],
+      "lookAt": [-1640.84, -21.9316, -1425.37],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-6.8334, 1.60657, 5.65113], "lookAtOffset": [-5.84477, 1.67361, 4.6317] }
+    },
+    {
+      "shotId": "4Mario.follow.floor2.near",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -17.9304, -1406.5], "halfExtents": [30, 1.28, 16.5], "yawDegrees": 0 },
+      "eye": [-1634.45, -16.3239, -1397.65],
+      "lookAt": [-1634.69, -16.2568, -1399.05],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [0.553287, 1.60657, 8.85011], "lookAtOffset": [0.309966, 1.67361, 7.45104] }
+    },
+    {
+      "shotId": "4Mario.follow.floor2.far",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -17.9304, -1446.5], "halfExtents": [30, 1.28, 23.5], "yawDegrees": 0 },
+      "eye": [-1642.84, -16.3239, -1450.65],
+      "lookAt": [-1641.52, -16.2568, -1450.13],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-7.836, 1.60657, -4.15064], "lookAtOffset": [-6.51583, 1.67361, -3.62739] }
+    },
+    {
+      "shotId": "4Mario.follow.floor3.near",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -15.3704, -1416.5], "halfExtents": [30, 1.28, 26.5], "yawDegrees": 0 },
+      "eye": [-1640.6, -13.7639, -1409.62],
+      "lookAt": [-1639.83, -13.6968, -1410.82],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-5.59961, 1.60657, 6.87568], "lookAtOffset": [-4.82886, 1.67361, 5.68296] }
+    },
+    {
+      "shotId": "4Mario.follow.floor3.far",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -15.3704, -1456.5], "halfExtents": [30, 1.28, 13.5], "yawDegrees": 0 },
+      "eye": [-1638.36, -13.7639, -1448.29],
+      "lookAt": [-1637.97, -13.6968, -1449.66],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-3.36259, 1.60657, 8.2051], "lookAtOffset": [-2.97126, 1.67361, 6.84] }
+    },
+    {
+      "shotId": "4Mario.follow.top",
+      "sequenceInstanceId": "",
+      "box": { "center": [-1635, -7.04522, -1430], "halfExtents": [30, 7.04522, 40], "yawDegrees": 0 },
+      "eye": [-1641.88, -5.43865, -1435.6],
+      "lookAt": [-1640.68, -5.37161, -1434.83],
+      "fovYDegrees": 50,
+      "blendInMs": 900,
+      "blendOutMs": 900,
+      "priority": 20,
+      "follow": { "eyeOffset": [-6.87568, 1.60657, -5.59961], "lookAtOffset": [-5.68296, 1.67361, -4.82886] }
+    }
+  ]
 }

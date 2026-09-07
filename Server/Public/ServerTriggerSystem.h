@@ -78,6 +78,19 @@ namespace LostArk::Server
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 				const std::string&)>& activateTarget);
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
+		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Debug_Activate(
+			LostArk::Shared::PLAYER_ID playerId, const std::string& triggerId, bool replay,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players, std::uint32_t tick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& transfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND, const std::string&)>& activateTarget);
+		static bool Contains_Placement(
+			const WORLD_BOOTSTRAP_PLACEMENT& box, const SERVER_PLAYER& player);
+		/* Entry for a Server-validated scripted displacement. Authored triggers
+		and Debug jump admission share the same motion and snapshot state. */
+		static bool Begin_MovePlayer(
+			SERVER_PLAYER& player,
+			const WORLD_TRIGGER_ACTION& action,
+			std::uint32_t actionStartTick);
 #ifdef _DEBUG
 		bool Place_PlayerAtValtanAuditionBait(
 			SERVER_PLAYER& player,
@@ -100,10 +113,6 @@ namespace LostArk::Server
 		static bool Contains(
 			const RUNTIME_TRIGGER& trigger,
 			const SERVER_PLAYER& player);
-		static bool Begin_MovePlayer(
-			SERVER_PLAYER& player,
-			const WORLD_TRIGGER_ACTION& action,
-			std::uint32_t actionStartTick);
 #ifdef _DEBUG
 		static bool Build_ValtanStageBypassMove(
 			const std::string& triggerPlacementId,

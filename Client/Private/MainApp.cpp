@@ -403,6 +403,44 @@ void CMainApp::Hide_ItemUpgrade()
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
 }
 
+void CMainApp::Update_CustomizingSceneProfile()
+{
+	/* The class list wants the stage readable and character creation wants it
+	nearly black behind the panels, which is where the retail screen sits. The
+	profile service belongs to this class, so the swap lives here rather than in
+	the Level, and it only fires when the screen opens or closes. */
+	static constexpr const char_t* CUSTOMIZING_PROFILE_ID =
+		"scene.character-select.customizing-dark.v1";
+	auto* characterSelect = CLevel_CharacterSelect::Get_Active();
+	const bool_t wantsDarkStage =
+		nullptr != characterSelect && characterSelect->Is_CustomizingOpen();
+	const bool_t holdsDarkStage = !m_strSceneProfileBeforeCustomizing.empty();
+	if (wantsDarkStage == holdsDarkStage)
+		return;
+
+	string status;
+	if (wantsDarkStage)
+	{
+		const string previous = m_RenderingProfiles.Get_ActiveProfileId();
+		if (!m_RenderingProfiles.Activate_Profile(CUSTOMIZING_PROFILE_ID, status))
+		{
+			/* A missing profile leaves the bright stage up rather than failing the
+			screen; nothing else on it depends on the swap. */
+			OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
+			return;
+		}
+		m_strSceneProfileBeforeCustomizing = previous;
+		return;
+	}
+
+	if (!m_RenderingProfiles.Activate_Profile(
+		m_strSceneProfileBeforeCustomizing, status))
+	{
+		OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
+	}
+	m_strSceneProfileBeforeCustomizing.clear();
+}
+
 void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pItemUpgradeView)
@@ -927,6 +965,8 @@ namespace
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	Update_CustomizingSceneProfile();
+
 	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
 	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
@@ -1138,6 +1178,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
 			DEBUG_TOOL::MAP == m_eDebugInputOwner);
 	}
+	UpdateSequenceViewer();
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
 	   authority. Consume it before Animation_Tool::Update so reclaiming after a
 	   domain deep-link does not stop the active preview for one extra frame. */
@@ -7319,6 +7360,9 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
 	ImGui::TextWrapped("%s",
 		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
+			ImGui::SeparatorText("Mario Controls (Debug Jump)");
+			ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
+	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
 
 	ImGui::SeparatorText("--진짜 쿠크세이튼 찾기 시야 콜라이더--");
 	static CKoukuSaydonCompositionDocument gazeDocument;
@@ -8599,6 +8643,7 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
+	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
 	const auto toolButton = [this](

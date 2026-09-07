@@ -169,6 +169,8 @@ void CWorldSequencePlayer::Clear()
 {
 	for (auto& active : m_Active) Release_Objects(active);
 	m_Active.clear();
+	for (auto& held : m_Held) Release_Objects(held);
+	m_Held.clear();
 	m_ObjectModels.clear();
 	m_ModelCache.clear();
 	m_Document.Reset_Empty({});
@@ -482,6 +484,21 @@ bool_t CWorldSequencePlayer::Play(
 	   a replay composes against the placed transform, not against whatever the
 	   previous play left behind. */
 	if (!Prepare_ObjectMotionChain(*instance, targets)) return false;
+	// Release only completed owners sharing this new instance's explicit targets.
+	for (size_t i = 0; i < m_Held.size();)
+	{
+		const auto* previous = m_Document.Find_Instance(m_Held[i].instanceId);
+		const bool overlap = m_Held[i].instanceId == instanceId || (previous &&
+			std::any_of(previous->bindings.begin(), previous->bindings.end(), [&](const auto& oldBinding)
+			{
+				return std::any_of(instance->bindings.begin(), instance->bindings.end(), [&](const auto& binding)
+				{ return binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+					binding.targetKind == oldBinding.targetKind && binding.targetId == oldBinding.targetId; });
+			}));
+		if (!overlap) { ++i; continue; }
+		const auto previousId = m_Held[i].instanceId;
+		Stop_Instance(previousId, targets, previousId == instanceId);
+	}
 	ACTIVE_INSTANCE active;
 	active.durationMs = durationMs;
 	active.instanceId = instanceId;
@@ -630,6 +647,13 @@ bool_t CWorldSequencePlayer::Try_GetSampledPlacementRecord(
 void CWorldSequencePlayer::Stop_Instance(
 	const std::string& instanceId, const TARGET_SET& targets, const bool_t restorePlacements)
 {
+	const auto held = std::find_if(m_Held.begin(), m_Held.end(),
+		[&](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
+	if (held != m_Held.end())
+	{
+		m_Active.push_back(std::move(*held));
+		m_Held.erase(held);
+	}
 	const auto found = std::find_if(m_Active.begin(), m_Active.end(),
 		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
 	if (found == m_Active.end()) return;
@@ -649,6 +673,11 @@ void CWorldSequencePlayer::Stop_Instance(
 void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets, const bool_t restorePlacements)
 {
 	while (!m_Active.empty()) Stop_Instance(m_Active.back().instanceId, targets, restorePlacements);
+	while (!m_Held.empty())
+	{
+		const auto id = m_Held.back().instanceId;
+		Stop_Instance(id, targets, restorePlacements);
+	}
 }
 
 bool_t CWorldSequencePlayer::Seek_InstanceToMs(
@@ -756,6 +785,7 @@ void CWorldSequencePlayer::Update(
 		else
 		{
 			Release_Objects(active);
+			m_Held.push_back(std::move(active));
 			m_Active.erase(m_Active.begin() + static_cast<ptrdiff_t>(index));
 		}
 	}

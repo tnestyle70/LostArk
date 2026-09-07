@@ -1,0 +1,10739 @@
+# 2026-09-07 니나브 파르쿠나스(에스더 스킬) FX 수치
+
+근거: `FX_ESTHER_PPNN_00` particle graph + 외부 공용 모듈 패키지(`fx_bs_*`, `bfx_*`) closure. LOD0 기준. 단위는 UE3 원본(cm, 초, 색 0~1 또는 HDR).
+`uniform a ~ b`는 파티클마다 난수, `curve`는 수명 0→1 구간 샘플, `const`는 상수. 모듈 이름은 UE3 클래스명에서 `particlemodule` 접두사를 뺀 것.
+`← 패키지.경로`는 다른 패키지의 공용 모듈을 그대로 참조한 것.
+
+## `par_l_ppnn_esther_sk_01`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 1: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 2: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 3: particlespriteemitter_14
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 4: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_21`
+  - lifetime: const 1.3
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- location
+  - startlocation: const (-15, 5, 10)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_21`
+  - lifetime: const 1.3
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- location
+  - startlocation: const (-800, 0, 1000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 6: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: uniform (0, 0, 50) ~ (-30, 0, 300)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-15, -5, 10)
+
+### emitter 7: particlespriteemitter_12
+- required: material `bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr` textures ['fx_a_atypical_018', 'fx_d_fragment_003', 'fx_e_trex']
+  - material: bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 2
+  - subimages_vertical: 2
+  - randomimagetime: 0.198
+  - randomimagechanges: 4
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0`
+  - lifetime: const 1
+- size ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesize_0`
+  - startsize: const (400, 400, 0)
+- color ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecolor_0`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 1.5
+- location ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2`
+  - startlocation: const (0, 0, 5)
+- parameterdynamic ← `fx_bs_02.item.par_k_bi_holyamul_01.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (15, 10, 50)
+  - alphascaleoverlife: curve 1 → 0
+
+### emitter 8: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 9: particlespriteemitter_1
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 10: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 11: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (-1500, 0, 2000) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 12: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- location
+  - startlocation: const (1500, 1000, 2000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 13: distortion
+- **disabled**
+- required: material `bfx_m_mi_00.bfx_m.bfx_i_pa_backglow_cl_02_tr` textures []
+  - material: bfx_m_mi_00.bfx_m.bfx_i_pa_backglow_cl_02_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - maxdrawcount: 2
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 14: particlespriteemitter_6
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: uniform (0, 0, 50) ~ (-30, 0, 300)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (-15, -5, 10)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 15: color
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 16: particlespriteemitter_15
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 17: 111
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (-1500, 0, 2000) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 18: particlespriteemitter_17
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (-15, 0, 10)
+- velocity
+  - startvelocity: const (115, 0, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 19: line0
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+## `par_l_ppnn_esther_sk_01_1`
+
+- system: {"updatetime_delta": 0.01666666753590107, "bregeneratelodduplicate": true, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: dust
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_5`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=15, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_nethit_001.particlemodulelifetime_1`
+  - lifetime: uniform 1.2 ~ 1.5
+- size
+  - startsize: uniform (1.5, 1, 0) ~ (1, 2, 0)
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- rotationrate ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulerotationrate_13`
+  - startrotationrate: uniform 1 ~ -1
+- sizemultiplylife ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulesizemultiplylife_69`
+  - lifemultiplier: curve (1, 1, 1) → (0, 0, 0)
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemoduleparameterdynamic_47`
+  - dynamicparams: {paramname=extra_alpha_panning_area(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=extra_alpha_intensity(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife ← `fx_bs_04.state.par_k_bossfury_exp_01_loc_int.particlemodulecolorscaleoverlife_35`
+  - colorscaleoverlife: curve (2, 2, 2) → (0, 0, 0.2)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- locationprimitivesphere ← `fx_bs_08.buff.par_u_gbs_itemstun_exp_01.particlemodulelocationprimitivesphere_0`
+  - startradius: const 40
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 3
+  - startlocation: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_00.hit.par_d_prjdead_dirt_01.particlemodulerotationrate_0`
+  - startrotationrate: uniform -1 ~ 1
+- ef:velocityoverlifetime
+  - veloverlife: curve (16, 16, 16) → (8.341, 8.341, 8.341) → (3.32, 3.32, 3.32) → (1.418, 1.418, 1.418) → (1.248, 1.248, 1.248) → (1.099, 1.099, 1.099) → (0.9717, 0.9717, 0.9717) → (0.8633, 0.8633, 0.8633) …
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 1: particlespriteemitter_14
+- required: material `fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr` textures ['fx_a_environ_003_n', 'fx_a_noise_009', 'fx_d_atypical_002_1_ycl', 'fx_d_noise_003', 'fx_i_noise_03', 'fx_m_atypical_002_ycl']
+  - material: fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_5`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=15, countlow=-1, time=0}
+- lifetime ← `fx_bs_18.buff.par_y_event_sirius_buff_03.particlemodulelifetime_11`
+  - lifetime: uniform 0.6 ~ 2
+- size
+  - startsize: const (2.5, 3, 3)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_01.particlemodulesizemultiplylife_114`
+  - lifemultiplier: curve (0.5, 0, 1) → (0.8489, 1.875, 1) → (0.98, 1.922, 1) → (1, 1.5, 1) → (0.995, 1.309, 0.99) → (0.9809, 1.144, 0.9617) → (0.9588, 1.003, 0.9176) → (0.93, 0.8831, 0.86) …
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- location ← `fx_bs_05.prj.par_w_03185_prj_spawn_01.particlemodulelocation_5`
+  - startlocation: uniform (-5, -5, 0) ~ (5, 5, 0)
+- color
+  - startcolor: uniform (0.5, 2, 5) ~ (0.5, 1.5, 5)
+  - startalpha: const 0.5
+- colorscaleoverlife
+  - colorscaleoverlife: curve (1, 4, 10) → (3.969, 4.938, 9.219) → (10.5, 7, 7.5) → (17.03, 9.062, 5.781) → (20, 10, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- orbit ← `fx_bs_05.prj.par_w_03185_prj_spawn_01.particlemoduleorbit_1`
+  - offsetamount: curve (0, 5, 0) → (0, 10, 0) → (0, 5, 0) → (0, 10, 0)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (0.3, 0.2, 0.3) → (0.5, 0.6, 0.5) → (0.3, 0.2, 0.3) → (0.5, 0.6, 0.5)
+- ef:velocityoverlifetime
+  - veloverlife: curve (20, 20, 20) → (16.54, 16.54, 16.54) → (13.58, 13.58, 13.58) → (11.08, 11.08, 11.08) → (8.986, 8.986, 8.986) → (7.264, 7.264, 7.264) → (5.864, 5.864, 5.864) → (4.745, 4.745, 4.745) …
+- velocity ← `bfx_high_01.light.par_j_lighthit_002.particlemodulevelocity_0`
+  - startvelocity: uniform (-100, -100, -100) ~ (100, 100, 100)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 2: 22222
+- required: material `fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr` textures ['fx_a_environ_003_n', 'fx_a_noise_009', 'fx_d_atypical_002_1_ycl', 'fx_d_noise_003', 'fx_i_noise_03', 'fx_m_atypical_002_ycl']
+  - material: fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0`
+  - lifetime: const 1
+- size ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_5`
+  - startsize: const (500, 0, 0)
+- color
+  - startcolor: const (2, 4, 10)
+  - startalpha: const 0.5
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_00.hit.par_l_cdkbo_hit_04.particlemoduleparameterdynamic_26`
+  - dynamicparams: {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=opacity_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- rotation_seeded
+  - startrotation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 3: 22222
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_04.state.par_l_va_guardianangel_01.particlemodulelifetime_13`
+  - lifetime: const 0.85
+- size ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_5`
+  - startsize: const (500, 0, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- color ← `fx_bs_02.item.par_k_item_massteleport_01.particlemodulecolor_25`
+  - startcolor: const (1, 2, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_07.common.par_l_kienapoint_02.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=opacity_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2`
+  - startlocation: const (0, 0, 5)
+- rotation_seeded
+  - startrotation: const 0
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 4: ring-start
+- required: material `fx_m_mi_02.fx_mi.fx_j_circleshine_01_1_ad` textures ['fx_d_atypical_011']
+  - material: fx_m_mi_02.fx_mi.fx_j_circleshine_01_1_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `bfx_low_16.water.par_h_fishing_f_01.particlemodulesize_2`
+  - startsize: const (120, 0, 0)
+- rotation ← `bfx_low_14.portal.par_d_portal_local_001.particlemodulerotation_2`
+  - startrotation: const 0.25
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0.5, 1) → (1.196, 0.6114, 0.9927) → (1.371, 0.73, 0.972) → (1.525, 0.8543, 0.9392) → (1.661, 0.9829, 0.896) → (1.78, 1.115, 0.8438) → (1.883, 1.248, 0.784) → (1.972, 1.381, 0.7183) …
+- parameterdynamic ← `fx_bs_04.state.par_l_va_guardianangel_01.particlemoduleparameterdynamic_14`
+  - dynamicparams: {paramname=speed, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=shinelength, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=innermask, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=shinedetail(0.5,1,2,...), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color ← `fx_bs_07.gadget.par_l_snowpang_sk_01_1.particlemodulecolor_9`
+  - startcolor: const (1, 3, 10)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 5: particlespriteemitter_19
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad` textures ['fx_d_atypical_009']
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `bfx_low_16.water.par_h_fishing_f_01.particlemodulesize_2`
+  - startsize: const (120, 0, 0)
+- rotation ← `bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_1`
+  - startrotation: const 0.5
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0.5, 1) → (1.196, 0.6114, 0.9927) → (1.371, 0.73, 0.972) → (1.525, 0.8543, 0.9392) → (1.661, 0.9829, 0.896) → (1.78, 1.115, 0.8438) → (1.883, 1.248, 0.784) → (1.972, 1.381, 0.7183) …
+- parameterdynamic ← `fx_bs_04.state.par_l_va_guardianangel_01.particlemoduleparameterdynamic_14`
+  - dynamicparams: {paramname=speed, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=shinelength, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=innermask, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=shinedetail(0.5,1,2,...), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color ← `fx_bs_08.buff.par_g_buff_quest_yozillusion_polymorph_01.particlemodulecolor_0`
+  - startcolor: const (1, 2, 3)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 6: particlespriteemitter_20
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_02.item.par_g_gadgetskill_001.particlemodulesize_0`
+  - startsize: const (40, 0, 0)
+- coloroverlife
+  - coloroverlife: curve (1, 5, 20) → (1, 2, 5)
+  - alphaoverlife: curve 0 → 0.05397 → 0.1921 → 0.395 → 0.6433 → 0.9175 → 1.198 → 1.466 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2`
+  - startrotation: curve -1 → 1 → -1 → 1
+- sizemultiplylife ← `fx_bs_04.state.par_l_va_guardianangel_01.particlemodulesizemultiplylife_19`
+  - lifemultiplier: curve (0, 0, 0) → (2, 2, 2) → (4, 4, 4) → (6, 6, 6) → (6.222, 6.222, 6.222) → (6.265, 6.265, 6.265) → (6.152, 6.152, 6.152) → (5.903, 5.903, 5.903) …
+- parameterdynamic ← `fx_bs_04.state.par_l_va_guardianangel_01.particlemoduleparameterdynamic_15`
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 7: particlespriteemitter_21
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 8: particlespriteemitter_22
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 9: particlespriteemitter_23
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 10: line0
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 11: line0
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 12: particlespriteemitter_26
+- **disabled**
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 13: particlespriteemitter_7
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 14: distortion
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesize_19`
+  - startsize: const (320, 0, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_32`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 4
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.4627 → 0.8222 → 1.021 → 1 → 0.8576 → 0.7284 → 0.612 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_07.gadget.par_l_holystaff_sk_03_2.particlemodulesizemultiplylife_0`
+  - lifemultiplier: curve (0.8, 0.8, 0.8) → (1.2, 1.2, 1.2)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 15: particlespriteemitter_6
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesize_19`
+  - startsize: const (320, 0, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_32`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 4
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.4627 → 0.8222 → 1.021 → 1 → 0.8576 → 0.7284 → 0.612 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_07.gadget.par_l_holystaff_sk_03_2.particlemodulesizemultiplylife_0`
+  - lifemultiplier: curve (0.8, 0.8, 0.8) → (1.2, 1.2, 1.2)
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+
+### emitter 16: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+## `par_l_ppnn_esther_sk_02`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 1: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 2: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- locationemitter
+  - emittername: 111
+
+### emitter 3: particlespriteemitter_19
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 4: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- location
+  - startlocation: const (-15, 5, 10)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- location
+  - startlocation: const (-800, 0, 1000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 6: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: uniform (0, 0, 50) ~ (-30, 0, 300)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- location
+  - startlocation: const (-15, -5, 10)
+
+### emitter 7: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 8: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 9: particlespriteemitter_1
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 10: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 11: particlespriteemitter_20
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 12: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- location
+  - startlocation: const (1500, 1000, 2000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 13: distortion
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 14: particlespriteemitter_6
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: uniform (0, 0, 50) ~ (-30, 0, 300)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (-15, -5, 10)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+
+### emitter 15: color
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+
+### emitter 16: line0
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 17: 111
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (-1500, 0, 2000) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 18: particlespriteemitter_22
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (-15, 0, 10)
+- velocity
+  - startvelocity: const (115, 0, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 19: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (1400, 1000, 2000) → (15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+## `par_l_ppnn_esther_sk_02_1`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+
+### emitter 1: m
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 2: line0
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 3: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 4: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+
+### emitter 6: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 7: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+
+### emitter 8: m
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 9: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: const (-200, -120, -250)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- location
+  - startlocation: const (800, 500, 1000)
+
+### emitter 10: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 11: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 12: particlespriteemitter_1
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 13: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 14: particlespriteemitter_23
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 15: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+
+### emitter 16: distortion
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 17: particlespriteemitter_6
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: const (-200, -120, -250)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (800, 500, 1000)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+
+### emitter 18: color
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+
+### emitter 19: particlespriteemitter_24
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0.1, 0.05, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 20: 111
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (-500, 1500, 1900) → (0, 15, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 21: particlespriteemitter_26
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (25, 15, 10)
+- velocity
+  - startvelocity: const (40, -100, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 22: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (1400, 1000, 2000) → (15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+
+## `par_l_ppnn_esther_sk_02_2`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: m
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 1: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location
+  - startlocation: const (-300, 800, 1000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 2: line0
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 3: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location ← `fx_bs_07.common.par_l_beerplay_sk_01.particlemodulelocation_1`
+  - startlocation: const (0, 5, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 4: particlespriteemitter_27
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 6: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 7: 111
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (-300, -1000, 1350) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 8: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+
+### emitter 9: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 10: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+
+### emitter 11: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 12: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: const (50, 100, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- location
+  - startlocation: const (0, -5, 0)
+
+### emitter 13: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 14: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 15: particlespriteemitter_1
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 16: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 17: m
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+
+### emitter 18: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.5, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+
+### emitter 19: distortion
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 20: particlespriteemitter_6
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: const (50, 100, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (0, -5, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+
+### emitter 21: color
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+
+### emitter 22: particlespriteemitter_28
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (-0.1, 0.05, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 23: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (-500, 1500, 2000) → (0, 15, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+
+### emitter 24: particlespriteemitter_32
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (0, 25, 10)
+- velocity
+  - startvelocity: const (30, -115, -150)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 25: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+## `par_l_ppnn_esther_sk_02_3`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 1: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (-300, -1000, 1350) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+
+### emitter 2: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+- location
+  - startlocation: const (1450, -900, 1900)
+
+### emitter 3: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 4: m
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-800, 0, 1000)
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- location ← `fx_bs_04.state.par_g_aurafight_01.particlemodulelocation_11`
+  - startlocation: const (-5, 0, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 6: line0
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 7: particlespriteemitter_38
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 8: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-15, 5, 10)
+
+### emitter 9: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 10: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location
+  - startlocation: const (-300, 800, 1000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 11: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+- location
+  - startlocation: const (2.5, -2.5, 0)
+
+### emitter 12: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- location ← `fx_bs_05.prj.par_l_cham_prj_02.particlemodulelocation_48`
+  - startlocation: const (5, 0, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 13: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+
+### emitter 14: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 15: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: const (-100, 60, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- location
+  - startlocation: const (-350, -800, 1000)
+
+### emitter 16: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 17: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 18: particlespriteemitter_1
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 19: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 20: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location ← `fx_bs_07.common.par_l_beerplay_sk_01.particlemodulelocation_1`
+  - startlocation: const (0, 5, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 21: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: const (5, 0.1, 0)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+
+### emitter 22: 111
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (1400, -900, 2000) → (15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 23: particlespriteemitter_6
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: const (-100, 60, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (-350, -800, 1000)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+
+### emitter 24: color
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+
+### emitter 25: particlespriteemitter_39
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (-0.07, -0.1, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 26: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 27: particlespriteemitter_41
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (-2.5, 2.5, 0)
+- velocity
+  - startvelocity: const (50, 115, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 28: distortion
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+## `par_l_ppnn_esther_sk_02_4`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 1: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location
+  - startlocation: const (-300, 800, 1000)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 2: particlespriteemitter_4
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 3: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 4: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- location ← `fx_bs_05.prj.par_l_cham_prj_02.particlemodulelocation_48`
+  - startlocation: const (5, 0, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 5: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+- location
+  - startlocation: const (1450, -900, 1900)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 6: m
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_001_1`
+  - mesh: fx_sm_00.fm_d_hemisphere_001_1
+  - boverridematerial: True
+  - pitch: 90
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- location
+  - startlocation: const (1500, 1000, 2000)
+
+### emitter 7: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_8`
+  - startrotation: const (0, 0, 0.2)
+- location ← `fx_bs_08.buff.par_l_infectstack_03_1_loc_int.particlemodulelocation_22`
+  - startlocation: const (0, -25, 10)
+- location
+  - startlocation: const (2.5, -2.5, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 8: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_13`
+  - startrotation: const (0, 0, 0.4)
+- location
+  - startlocation: const (-70, 0, 250)
+- location
+  - startlocation: const (25, -15, 10)
+
+### emitter 9: line0
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 10: particlespriteemitter_48
+- **disabled**
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=20, countlow=-1, time=0.15}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: const (1.5, 1.5, 1.5)
+
+### emitter 11: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- location
+  - startlocation: const (-15, 5, 10)
+
+### emitter 12: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (40, -300, 0) ~ (80, -200, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 13: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- location ← `fx_bs_07.common.par_l_beerplay_sk_01.particlemodulelocation_1`
+  - startlocation: const (0, 5, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 14: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_13`
+  - startrotation: const (0, 0, 0.4)
+- location
+  - startlocation: const (-70, 0, 250)
+- location
+  - startlocation: const (2.5, 2.5, 0)
+
+### emitter 15: m
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- location
+  - startlocation: const (-800, 0, 1000)
+
+### emitter 16: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_k_item_return_01.particlemodulespawn_12`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_j_levelup_01_1.particlemodulesize_21`
+  - startsize: const (15, 0, 0)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+
+### emitter 17: m
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- meshrotation
+  - startrotation: const (0, 0.9, 0.1)
+- location
+  - startlocation: const (-430, 1600, 2100)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 18: particlespriteemitter_9
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 0.495
+  - randomimagechanges: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (0.3, 10, 1) ~ (2, 3, 1)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: uniform (30, -25, -40) ~ (80, 25, 5)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- location
+  - startlocation: const (800, -500, 1100)
+
+### emitter 19: particlespriteemitter_10
+- required: material `bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr` textures ['fx_a_atypical_018', 'fx_d_fragment_003', 'fx_e_trex']
+  - material: bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 2
+  - subimages_vertical: 2
+  - randomimagetime: 0.198
+  - randomimagechanges: 4
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=2, time=0}
+- typedatamesh mesh `fx_sm_00.fm_c_screwfront_001`
+  - mesh: fx_sm_00.fm_c_screwfront_001
+  - boverridematerial: True
+  - yaw: -90
+- lifetime
+  - lifetime: uniform 0.4 ~ 0.6
+- size
+  - startsize: uniform (1, 1, 1) ~ (2, 2, 2)
+- location
+  - startlocation: const (-25, 0, 250)
+- parameterdynamic
+  - dynamicparams: {paramname=extra_alpha_panning_area(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=extra_alpha_intensity(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (0.8, 0.85, 0.8)
+  - startalpha: uniform 0.3 ~ 0.1
+- meshrotation
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (0.3, 0.3, 0.3) ~ (5, 5, 5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 1 → 1 → 1 …
+- location
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 20: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 21: particlespriteemitter_1
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 22: particlespriteemitter_10
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemodulelifetime_25`
+  - lifetime: uniform 0.5 ~ 1.3
+- size
+  - startsize: uniform (8, 8, 8) ~ (4, 4, 4)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: const 10
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 0) → (0.8112, 0.8112, 0.8112) → (1.546, 1.546, 1.546) → (2.208, 2.208, 2.208) → (2.802, 2.802, 2.802) → (3.33, 3.33, 3.33) → (3.797, 3.797, 3.797) → (4.206, 4.206, 4.206) …
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- velocity
+  - startvelocity: const (-115, -80, -160)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - positive_z: False
+  - velocity: True
+  - velocityscale: uniform 1 ~ 0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_u_trinity_prj_01.efparticlemodulevelocityoverlifetime_9`
+  - veloverlife: curve (11.34, 11.34, 11.34) → (8.4, 8.4, 8.4) → (3.428, 3.428, 3.428) → (1.257, 1.257, 1.257) → (1.115, 1.115, 1.115) → (0.985, 0.985, 0.985) → (0.8669, 0.8669, 0.8669) → (0.7601, 0.7601, 0.7601) …
+- orbit ← `fx_bs_05.prj.par_u_trinity_prj_01.particlemoduleorbit_4`
+  - offsetamount: curve (-7, -7, -7) → (20, 20, 20) → (-7, -7, -7) → (20, 20, 20)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 23: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- locationdirect
+  - location: curve (1400, -900, 2000) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-70, 0, 250)
+
+### emitter 24: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: uniform (1, 1, -4) ~ (1.5, 1.5, -4)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_08.buff.par_t_quest_nezukafbinding_01.particlemodulemeshrotation_0`
+  - startrotation: const (0, 0.1, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_13`
+  - startrotation: const (0, 0, 0.4)
+- location
+  - startlocation: const (-70, 0, 250)
+
+### emitter 25: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (0.04, 0.04, 4)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.025, 0.6)
+- meshrotation ← `fx_bs_05.prj.par_w_03185_prj_on.particlemodulemeshrotation_20`
+  - startrotation: const (0, 0, 0.8)
+- location
+  - startlocation: const (-600, -1450, 2000)
+- location ← `fx_bs_04.state.par_g_aurafight_01.particlemodulelocation_11`
+  - startlocation: const (-5, 0, 0)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+
+### emitter 26: 111
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.9
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- locationdirect
+  - location: curve (20, 0, 230) → (350, 0, 10)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+
+### emitter 27: color
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - bdeadtrailsondeactivate: False
+  - bdeadtrailsonsourceloss: False
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 400
+  - distancetessellationstepsize: 5
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_07.gadget.par_l_snowpang_sk_01.particlemodulesize_14`
+  - startsize: const (30, 30, 30)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationemitter
+  - emittername: 111
+
+### emitter 28: particlespriteemitter_49
+- required: material `enginematerials.defaultparticle` textures []
+  - material: enginematerials.defaultparticle
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 1.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165`
+  - rate: const 30
+  - ratescale: (미설정 → 엔진 기본값)
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (150, -800, 1.2)
+- sizemultiplylife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (1, 1, 1)
+- coloroverlife
+  - coloroverlife: const (1, 2, 10)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, -0.05, 0)
+- locationemitter
+  - emittername: arrow-head
+
+### emitter 29: distortion
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_111_ts_fs_dt_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_006_1', 'fx_d_atypical_011', 'fx_d_atypical_060_cl', 'fx_d_atypical_069_ycl', 'fx_d_atypical_076_1_cl']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_111_ts_fs_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (30, 400, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_26`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (2.627, 2.627, 2.627) → (4.913, 4.913, 4.913) → (6.958, 6.958, 6.958) → (8.663, 8.663, 8.663) → (10.11, 10.11, 10.11) → (11.45, 11.45, 11.45) → (12.68, 12.68, 12.68) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+
+### emitter 30: particlespriteemitter_51
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (50, 120, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (2, 2.3, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 7, 30) → (0, 0, 0)
+  - alphascaleoverlife: curve 1 → 0.8709 → 0.7533 → 0.6466 → 0.5504 → 0.464 → 0.3871 → 0.3189 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 15, 0)
+- location
+  - startlocation: const (-2.5, -2.5, 0)
+- velocity
+  - startvelocity: const (-115, 70, -150)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+
+### emitter 31: particlespriteemitter_6
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (40, 35, 50)
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: const 10
+- parameterdynamic ← `fx_bs_02.item.par_k_item_return_01.particlemoduleparameterdynamic_3`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 2.5, 10)
+  - alphascaleoverlife: curve 5 → 4.833 → 4.667 → 4.5 → 4.333 → 4.167 → 4 → 3.714 …
+- velocity
+  - startvelocity: uniform (30, -25, -40) ~ (80, 25, 5)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- sizemultiplylife
+  - lifemultiplier: const (0.4, 1, 0)
+- colorscaleoverlife ← `fx_bs_02.item.par_k_item_return_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 20 → 1.5
+- location
+  - startlocation: const (800, -500, 1100)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1.5, 1) → (0.9954, 1.749, 1) → (0.9817, 1.969, 1) → (0.9597, 2.162, 1) → (0.9306, 2.33, 1) → (0.8952, 2.475, 1) → (0.8547, 2.598, 1) → (0.8099, 2.702, 1) …
+
+## `par_l_ppnn_esther_sk_03`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: ring-start
+- required: material `bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_03_ad` textures ['fx_a_noise_017', 'fx_a_noise_018', 'fx_i_environment_001', 'fx_i_thunder_01_cl']
+  - material: bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_03_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=2, time=0}
+- lifetime
+  - lifetime: uniform 0.25 ~ 0.35
+- size
+  - startsize: uniform ? ~ ?
+- color
+  - startcolor: uniform (2, 2, 2) ~ (5, 5, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (0, 0, 0)
+- location
+  - startlocation: const (-10, 0, 220)
+- cameraoffset
+  - cameraoffset: const 20
+
+### emitter 1: arrow-aura
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 6
+  - ratescale: uniform 1 ~ 2
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_a_sprial_008`
+  - mesh: fx_sm_00.fm_a_sprial_008
+  - boverridematerial: True
+  - pitch: 90
+  - yaw: 180
+- lifetime
+  - lifetime: const 0.3
+- size
+  - startsize: const (200, 200, 0)
+- color
+  - startcolor: uniform (0.1, 2, 5) ~ (0.5, 1, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (1, 1, 1) → (1, 2, 10)
+  - alphascaleoverlife: curve 1 → 0
+- meshrotation
+  - startrotation: const (0.5, 0.15, 0)
+- meshrotation
+  - startrotation: curve (0, -0.05, 0) → (1, -0.05, 0) → (0, -0.05, 0) → (1, -0.05, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=panner1, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panner2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (0.6, 0.6, 0.6) → (0.6453, 0.6453, 0.6453) → (0.6873, 0.6873, 0.6873) → (0.7261, 0.7261, 0.7261) → (0.7619, 0.7619, 0.7619) → (0.7946, 0.7946, 0.7946) → (0.8245, 0.8245, 0.8245) → (0.8517, 0.8517, 0.8517) …
+- location
+  - startlocation: const (-80, 0, 0)
+- meshrotationrate
+  - startrotationrate: const (0.2, 0, 0)
+
+### emitter 2: dust
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_060_cl', 'fx_d_atypical_069_ycl', 'fx_d_atypical_076_1_cl', 'fx_d_electric_013_1', 'fx_k_electric_01']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 6
+  - ratescale: uniform 1 ~ 2
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.25 ~ 0.3
+- size
+  - startsize: const (3, 2, 2)
+- subuv
+  - subimageindex: (미설정 → 엔진 기본값)
+- color
+  - startcolor: uniform (1, 1.5, 5) ~ (0.5, 1.5, 5)
+  - startalpha: uniform 0.7 ~ 1
+- rotationrate
+  - startrotationrate: uniform -1 ~ 1
+- sizemultiplylife
+  - lifemultiplier: curve (0.5, 1, 1) → (0.55, 1.5, 1.5)
+- rotation
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=alphadissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=pan[0-2], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=edgestr[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disrotion[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- location
+  - startlocation: const (-80, 0, 230)
+- rotationrate
+  - startrotationrate: const 0.1
+- velocity
+  - startvelocity: const (50, 0, -20)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime
+  - veloverlife: curve (20, 20, 20) → (16.54, 16.54, 16.54) → (13.58, 13.58, 13.58) → (11.08, 11.08, 11.08) → (8.986, 8.986, 8.986) → (7.264, 7.264, 7.264) → (5.864, 5.864, 5.864) → (4.745, 4.745, 4.745) …
+- cameraoffset
+  - cameraoffset: const 100
+- location
+  - startlocation: const (-60, 0, 250)
+
+### emitter 3: electric-centre
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_060_cl', 'fx_d_atypical_069_ycl', 'fx_d_atypical_076_1_cl', 'fx_d_electric_013_1', 'fx_k_electric_01']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=15, countlow=-1, time=0}; {count=5, countlow=-1, time=0.1}
+- lifetime
+  - lifetime: uniform 0.25 ~ 0.3
+- size
+  - startsize: const (3, 2, 2)
+- subuv
+  - subimageindex: (미설정 → 엔진 기본값)
+- color
+  - startcolor: uniform (1, 1.5, 5) ~ (0.5, 1.5, 5)
+  - startalpha: uniform 0.7 ~ 1
+- rotationrate
+  - startrotationrate: uniform -1 ~ 1
+- sizemultiplylife
+  - lifemultiplier: curve (0.5, 1, 1) → (0.55, 1.5, 1.5)
+- rotation
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=alphadissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=pan[0-2], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=edgestr[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disrotion[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- location
+  - startlocation: const (-80, 0, 230)
+- rotationrate
+  - startrotationrate: const 0.1
+- velocity
+  - startvelocity: const (50, 0, -20)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime
+  - veloverlife: curve (20, 20, 20) → (16.54, 16.54, 16.54) → (13.58, 13.58, 13.58) → (11.08, 11.08, 11.08) → (8.986, 8.986, 8.986) → (7.264, 7.264, 7.264) → (5.864, 5.864, 5.864) → (4.745, 4.745, 4.745) …
+- cameraoffset
+  - cameraoffset: const 100
+- location
+  - startlocation: const (-50, 0, 250)
+
+### emitter 4: arrow3
+- required: material `bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad` textures ['fx_c_glow_009', 'fx_c_glow_010']
+  - material: bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.1
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=2, time=0}
+- typedatamesh mesh `fx_sm_00.fm_a_sprial_008`
+  - mesh: fx_sm_00.fm_a_sprial_008
+  - boverridematerial: True
+  - pitch: 90
+  - yaw: 180
+- lifetime
+  - lifetime: uniform 0.05 ~ 0.15
+- size
+  - startsize: uniform (5, 4, 4) ~ (4, 3, 3)
+- color
+  - startcolor: const (1, 2, 25)
+  - startalpha: uniform 1 ~ 2
+- colorscaleoverlife
+  - colorscaleoverlife: curve (0.5, 1.5, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.4998 → 1 → 0.9929 → 0.9711 → 0.9362 → 0.8898 → 0.8316 …
+- meshrotation_seeded
+  - startrotation: uniform (0, 0, 0) ~ (0.5, 0, 0)
+- meshrotation
+  - startrotation: curve (0, -0.05, 0) → (1, -0.05, 0) → (0, -0.05, 0) → (1, -0.05, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=panner1, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panner2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1.5, 1, 1) → (0.6, 0.8, 0.8)
+- location
+  - startlocation: const (-50, 0, 250)
+
+### emitter 5: particlespriteemitter_0
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesize_1`
+  - startsize: const (400, 0, 0)
+- color ← `fx_bs_04.state.par_j_exmove_01.particlemodulecolor_0`
+  - startcolor: const (0.5, 1, 2)
+  - startalpha: const 0.5
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_26`
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 1)
+  - alphascaleoverlife: curve 0 → 0.1667 → 0.3333 → 0.5 → 0.6667 → 0.8333 → 1 → 0.9286 …
+- rotation ← `fx_bs_02.item.par_l_carve_01.particlemodulerotation_5`
+  - startrotation: const -0.125
+- sizemultiplylife ← `fx_bs_00.hit.par_d_hit_rifle_back_02.particlemodulesizemultiplylife_13`
+  - lifemultiplier: curve (0.8, 0.8, 0.8) → (1, 1, 1)
+- location
+  - startlocation: const (20, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+## `par_l_ppnn_esther_sk_03_1`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_3
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulesize_21`
+  - startsize: const (300, 100, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- location
+  - startlocation: const (20, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 1: particlespriteemitter_16
+- required: material `fx_m_mi_03.fx_mi.fx_d_me_ringmaster_01_14_ad` textures ['fx_a_noise_008_n', 'fx_e_fire_005_1', 'fx_f_aura_004_1']
+  - material: fx_m_mi_03.fx_mi.fx_d_me_ringmaster_01_14_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_008_1`
+  - mesh: fx_sm_00.fm_d_hemisphere_008_1
+  - boverridematerial: True
+  - pitch: 90
+- lifetime ← `bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0`
+  - lifetime: const 1
+- size
+  - startsize: uniform (1, 2.5, 2.5) ~ (2, 1.5, 1.5)
+- meshrotation ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1`
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- coloroverlife
+  - coloroverlife: curve (0.2, 0.6, 2) → (0.3, 0.3, 0.3)
+  - alphaoverlife: curve 0.2494 → 0.202 → 0.1604 → 0.1249 → 0.09568 → 0.07312 → 0.05661 → 0.04296 …
+- parameterdynamic
+  - dynamicparams: {paramname=y.pan[1-2], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uvdistort_str[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=twirl_curvature, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotationrate ← `fx_bs_04.state.par_l_voyageboost_01_loop.particlemodulemeshrotationrate_0`
+  - startrotationrate: const (0.1, 0, 0)
+- location
+  - startlocation: const (20, 0, 230)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_swp_defaulthit_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: const (0.7, 0.7, 0.7)
+
+### emitter 2: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (0.075, 0.075, 1.25)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 3: particlespriteemitter_1
+- required: material `fx_m_mi_05.fx_m.fx_b_me_energy_01_tr` textures ['fx_b_atypical_004', 'fx_c_trail_001_cl']
+  - material: fx_m_mi_05.fx_m.fx_b_me_energy_01_tr
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `fx_bs_07.common.par_n_coreenhance_buff_04.particlemodulesize_9`
+  - startsize: const (200, 80, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_9`
+  - startcolor: const (0.1, 0.2, 3)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_05.prj.par_g_magic_hat_01.particlemodulecolorscaleoverlife_0`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- rotation ← `bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_3`
+  - startrotation: const 0
+- location
+  - startlocation: const (20, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 4: particlespriteemitter_17
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_flow_02_28_tr` textures ['fx_b_atypical_004', 'fx_c_trail_005_cl', 'fx_d_atypical_076_cl', 'fx_d_fluid_032_1_cl']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_flow_02_28_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=2, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_helix_002`
+  - mesh: fx_sm_00.fm_d_helix_002
+  - boverridematerial: True
+  - pitch: -90
+- lifetime ← `bfx_low_16.water.par_g_itr_pot01.particlemodulelifetime_6`
+  - lifetime: uniform 0.5 ~ 0.6
+- size
+  - startsize: uniform (2, 2.3, 2.3) ~ (1, 1.5, 1.5)
+- parameterdynamic
+  - dynamicparams: {paramname=distortion[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=pan[1-2], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv.y_controll[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uvdistort[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (1.2, 1.8, 3.5)
+  - startalpha: const 0.5
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.07143 → 0.1429 → 0.2143 → 0.2857 → 0.3571 → 0.4286 → 0.5 …
+- meshrotation ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1`
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (0.8, 1.1, 1.1)
+- location
+  - startlocation: const (20, 0, 230)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_swp_defaulthit_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: const (0.7, 0.7, 0.7)
+
+### emitter 5: particlespriteemitter_18
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_16`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_c_hit_ballista_001_2_loc_int.particlemodulelifetime_8`
+  - lifetime: uniform 0.4 ~ 0.6
+- size
+  - startsize: const (100, 15, 0)
+- meshrotation ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1`
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- color
+  - startcolor: uniform (1, 1, 1) ~ (1, 1, 1)
+  - startalpha: uniform 1 ~ 2
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 1
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotationrate
+  - startrotationrate: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (1.898, 1.898, 1.898) → (2.581, 2.581, 2.581) → (3.024, 3.024, 3.024) → (4, 4, 4) → (5.386, 5.386, 5.386) → (6.556, 6.556, 6.556) → (7.526, 7.526, 7.526) …
+- location
+  - startlocation: const (20, 0, 230)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_swp_defaulthit_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: const (0.7, 0.7, 0.7)
+
+### emitter 6: ring-start
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad` textures ['fx_c_glow_006', 'fx_c_glow_007']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size ← `fx_bs_04.state.par_l_hole_e_01.particlemodulesize_1`
+  - startsize: const (120, 120, 0)
+- color ← `fx_bs_15.prj.par_l_kurzan_war02_prj_01.particlemodulecolor_6`
+  - startcolor: const (1, 1.5, 3)
+  - startalpha: const 0.5
+- colorscaleoverlife ← `fx_bs_05.prj.par_l_imagedestroy_prj_01.particlemodulecolorscaleoverlife_19`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: curve (0.6, 0.6, 0.6) → (0.6453, 0.6453, 0.6453) → (0.6873, 0.6873, 0.6873) → (0.7261, 0.7261, 0.7261) → (0.7619, 0.7619, 0.7619) → (0.7946, 0.7946, 0.7946) → (0.8245, 0.8245, 0.8245) → (0.8517, 0.8517, 0.8517) …
+- location
+  - startlocation: const (20, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+## `par_l_ppnn_esther_sk_03_2`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: line0
+- required: material `fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr` textures ['fx_d_atypical_035_cl', 'fx_d_electric_013', 'fx_d_noise_030', 'fx_k_electric_01']
+  - material: fx_m_mi_03.fx_m.fx_l_pa_trail_09_tr
+  - bkillondeactivate: True
+  - emitterduration: 0.8
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (15, 150, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_1`
+  - startrotation: const -0.15
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 1: particlespriteemitter_4
+- required: material `fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr` textures ['fx_a_noise_008_n', 'fx_b_atypical_004', 'fx_i_atypical_03_ycl']
+  - material: fx_m_mi_02.fx_mi.fx_k_maskedrib_01_05_tr
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterduration: 0.8
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_l_cdkcn_hit_01.particlemodulesize_9`
+  - startsize: const (70, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 2: particlespriteemitter_0
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr` textures ['fx_a_line_005', 'fx_d_atypical_006_ycl', 'fx_d_noise_009', 'fx_d_noise_030', 'fx_m_caustic_001']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_2`
+  - startsize: const (300, 0, 0)
+- color
+  - startcolor: const (3.8, 6, 12.2)
+  - startalpha: uniform 1 ~ 2
+- colorscaleoverlife ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9444 → 0.8889 → 0.8333 → 0.7778 → 0.7222 …
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+- colorscaleoverlife ← `fx_bs_00.hit.par_b_attnormal_mg_01.particlemodulecolorscaleoverlife_0`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 3: p1
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr` textures ['fx_e_noise_008', 'fx_e_trdi', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - nearculldistance: 25
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.8
+  - randomimagetime: 1
+- spawn ← `fx_bs_01.trail.par_a_trail_006.particlemodulespawn_1`
+  - rate: (미설정 → 엔진 기본값)
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - bspawninitialparticle: True
+  - bcatmullromspline: True
+  - tilingdistance: 200
+  - distancetessellationstepsize: 1
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6`
+  - lifetime: const 0.3
+- size ← `fx_bs_08.buff.par_u_buzzling_09_03.particlemodulesize_1`
+  - startsize: const (4, 4, 4)
+- color ← `fx_bs_04.state.par_d_colosseum2_buff_exp_01.particlemodulecolor_5`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 3
+- parameterdynamic ← `fx_cm_01.etc.par_l_trap72_03.particlemoduleparameterdynamic_2`
+  - dynamicparams: {paramname=x_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=y_tiling, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disort, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.7201 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_08.par_v_queen_heal_pjt_01.particlemodulesizemultiplylife_25`
+  - lifemultiplier: const (1, 1, 1)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 4: line0
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (15, 150, 0)
+- color ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulecolor_2`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulecolorscaleoverlife_29`
+  - colorscaleoverlife: curve (10, 10, 10) → (0.5, 0.5, 1)
+  - alphascaleoverlife: ?
+- sizemultiplylife ← `fx_bs_08.buff.par_o_orpheus_star_02.particlemodulesizemultiplylife_39`
+  - lifemultiplier: curve (3, 1, 0) → (5.45, 1, 0) → (8.196, 1, 0) → (11, 1, 0) → (13.62, 1, 0) → (15.83, 1, 0) → (17.38, 1, 0) → (18.04, 1, 0) …
+- rotation ← `fx_bs_00.hit.par_l_counter_hit_02.particlemodulerotation_13`
+  - startrotation: const 0.075
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_14`
+  - colorscaleoverlife: ?
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- rotationrate ← `fx_bs_04.state.par_g_gm_character_01.particlemodulerotationrate_2`
+  - startrotationrate: const 0.2
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 5: m
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size
+  - startsize: const (0.02, 0.02, 1)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: curve (0, 0, 0.5) → (1, 0, 0.5) → (0, 0, 0.5) → (1, 0, 0.5)
+- location
+  - startlocation: const (20, 0, 230)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 6: particlespriteemitter_9
+- required: material `fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad` textures ['fx_e_adba', 'fx_e_ring_001']
+  - material: fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+- spawn ← `fx_bs_08.buff.par_w_egblessing_03.particlemodulespawn_1`
+  - rate: const 0
+  - ratescale: curve 1 → 1.004 → 1.015 → 1.033 → 1.059 → 1.091 → 1.131 → 1.177 …
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_hitgun_default_001.particlemodulelifetime_6`
+  - lifetime: const 0.1
+- size
+  - startsize: const (1.1, 1.1, 0)
+- coloroverlife
+  - coloroverlife: const (5, 10, 50)
+  - alphaoverlife: const 5
+- parameterdynamic ← `fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0) → (2, 5, 0)
+- velocity
+  - startvelocity: uniform (20, -10, 30) ~ (0, 10, 60)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.282, 5.314, 0.6737) → (1.216, 4.735, 0.6747) → (1.152, 3.721, 0.6773) → (1.093, 2.561, 0.681) → (1.044, 1.542, 0.6851) → (1.009, 0.9517, 0.6893) → (0.9842, 0.7832, 0.6936) → (0.9608, 0.6432, 0.6987) …
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (350, -1, 10)
+
+### emitter 7: particlespriteemitter_1
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.8
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: const (0.2, 0.2, 4)
+- coloroverlife
+  - coloroverlife: const (0.15, 0.1, 0.5)
+  - alphaoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_18.buff.par_s_ag_destiny_06_l.particlemodulesizemultiplylife_24`
+  - lifemultiplier: curve (0, 0, 0) → (1.027, 1.027, 1.027) → (1, 1, 1) → (0.8726, 0.8726, 0.8726) → (0.7559, 0.7559, 0.7559) → (0.6493, 0.6493, 0.6493) → (0.5525, 0.5525, 0.5525) → (0.4651, 0.4651, 0.4651) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 8: particlespriteemitter_11
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+- spawn ← `fx_bs_05.par_k_toy_wizarboard_01.particlemodulespawn_10`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- meshrotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 9: t
+- required: material `fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma` textures ['fx_c_atypical_016', 'fx_e_symbol_007', 'fx_l_arrow_normal_01', 'fx_l_arrow_spec_01', 'wp_wgdh_01s_d', 'wp_wgdh_01s_n', 'wp_wgdh_01s_s']
+  - material: fx_m_mi_l_00.fx_mi.fx_l_me_transition_05_8_ma
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.8
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size
+  - startsize: const (25, 15, 0)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: curve (0, 0, 0.5) → (1, 0, 0.5) → (0, 0, 0.5) → (1, 0, 0.5)
+- locationdirect
+  - location: curve (0, 0, 2000) → (0, 0, 1958) → (0, 0, 1894) → (0, 0, 1809) → (0, 0, 1707) → (0, 0, 1589) → (0, 0, 1460) → (0, 0, 1322) …
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `fx_bs_00.hit.par_x_lpda_hit_01.particlemodulecameraoffset_14`
+  - cameraoffset: const -10
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1.5 → 1.438 → 1.375 → 1.312 → 1.25 → 1.188 → 1.125 → 1.062 …
+
+### emitter 10: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.6
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_002`
+  - mesh: fx_sm_00.fm_d_hemisphere_002
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size
+  - startsize: const (25, 15, 0)
+- coloroverlife
+  - coloroverlife: const (1, 3, 5)
+  - alphaoverlife: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: curve (0, 0, 0.5) → (1, 0, 0.5) → (0, 0, 0.5) → (1, 0, 0.5)
+- location
+  - startlocation: uniform (10, 0, 0) ~ (20, 0, 0)
+  - b3ddrawmode: True
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 11: distortion
+- **disabled**
+- required: material `bfx_m_mi_00.bfx_mi.bfx_h_pa_circle_01_02_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_h_pa_circle_01_02_ad
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size ← `fx_bs_05.prj.par_e_cdehj_prj_02_loc_int.particlemodulesize_5`
+  - startsize: const (20, 20, 20)
+- coloroverlife
+  - coloroverlife: const (5, 10, 40)
+  - alphaoverlife: curve 3 → 0.5307 → 0
+  - bclampalpha: False
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 0.8) → (1.205, 0.5406, 0.803) → (1.393, 1.036, 0.8114) → (1.557, 1.47, 0.8243) → (1.691, 1.824, 0.8408) → (1.785, 2.082, 0.8602) → (1.838, 2.24, 0.8843) → (1.878, 2.367, 0.9295) …
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulelocation_11`
+  - startlocation: const (10, 0, 0)
+
+### emitter 12: m
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - bdrawshadowrenderpass: True
+  - nearculldistance: 25
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.8
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size
+  - startsize: const (0.02, 0.02, 1)
+- coloroverlife
+  - coloroverlife: curve (1, 2, 10) → (0.5, 1, 3)
+  - alphaoverlife: curve 0 → 0.05 → 0.1 → 0.09911 → 0.09657 → 0.09259 → 0.08738 → 0.08114 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation
+  - startrotation: const (0, 0.15, 0)
+- location
+  - startlocation: const (350, 1, 10)
+- sizemultiplylife ← `fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: const (1, 1, 1)
+
+### emitter 13: color
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.65
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_15`
+  - rate: const 25
+  - ratescale: (미설정 → 엔진 기본값)
+- typedataribbon
+  - btangentrecalculationeveryframe: True
+  - tilingdistance: 300
+  - distancetessellationstepsize: 10
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_08.buff.par_j_quest_trixionselection_cam_01.particlemodulesize_16`
+  - startsize: const (12, 12, 12)
+- sizemultiplylife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 0, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_04.state.par_l_goldenfinger_01.particlemodulecolorscaleoverlife_1`
+  - colorscaleoverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 0.9375 → 0.875 → 0.8125 …
+- velocity ← `fx_bs_05.prj.par_g_light_prj_01_01.particlemodulevelocity_13`
+  - startvelocity: uniform (-2, -2, -2) ~ (2, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- locationemitter
+  - emittername: 111
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+## `par_l_ppnn_esther_sk_03_3`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_14
+- required: material `fx_m_mi_01.fx_mi.fx_k_pa_glow_01_ad_dt` textures []
+  - material: fx_m_mi_01.fx_mi.fx_k_pa_glow_01_ad_dt
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.1
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_01.fm_h_lighting_01_1`
+  - mesh: fx_sm_01.fm_h_lighting_01_1
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size
+  - startsize: uniform (65, 0, 0) ~ (150, 0, 0)
+- coloroverlife
+  - coloroverlife: const (0.1, 0.5, 5)
+  - alphaoverlife: curve 1 → 1 → 1 → 1 → 1 → 1 → 1 → 1 …
+- parameterdynamic ← `fx_cm_05.ship.war.par_l_war_escape_01.particlemoduleparameterdynamic_0`
+  - dynamicparams: {paramname=trasition_speed(0~1.5), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- meshrotation ← `fx_bs_05.prj.par_t_fireleaf_prj_01.particlemodulemeshrotation_3`
+  - startrotation: curve (-0.25, 0, 0) → (-0.25, 0, 1) → (-0.25, 0, 0) → (-0.25, 0, 1)
+- sizemultiplylife ← `fx_bs_04.state.par_b_statefear_001.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 1, 1) → (1, 3, 1)
+
+### emitter 1: particlespriteemitter_19
+- required: material `fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad` textures ['fx_i_thunder_01_cl', 'fx_m_noise_001']
+  - material: fx_m_mi_h_00.fx_m.fx_h_me_lightingdetail_01_1_ad
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.05
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6832, 0.6832, 0.6832) → (0.8795, 0.8795, 0.8795) → (1.086, 1.086, 1.086) → (1.302, 1.302, 1.302) → (1.523, 1.523, 1.523) → (1.748, 1.748, 1.748) → (1.975, 1.975, 1.975) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color ← `fx_bs_03.mark.par_k_wgl_judgmentspear_circlearea_02.particlemodulecolor_2`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.1
+- colorscaleoverlife ← `fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulecolorscaleoverlife_11`
+  - colorscaleoverlife: curve (10, 10, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.901 → 1.792 → 1.675 → 1.551 → 1.423 → 1.292 → 1.158 …
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+
+### emitter 2: particlespriteemitter_20
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_cd_01_2_tr` textures ['fx_a_environ_001', 'fx_e_trba']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_cd_01_2_tr
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.25
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.85
+- spawn ← `fx_bs_00.hit.par_d_prjdead_poison_01_loc_int.particlemodulespawn_7`
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_a_hemisphere_012`
+  - mesh: fx_sm_00.fm_a_hemisphere_012
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_d_toonhit_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.2 ~ 0.25
+- size ← `fx_bs_05.prj.par_p_tile_59_explo_01.particlemodulesize_8`
+  - startsize: ?
+- sizemultiplylife
+  - lifemultiplier: curve (1.81, 0.01502, 1) → (1.748, 0.3727, 1) → (1.748, 0.8285, 1) → (1.752, 1.026, 1) → (1.742, 1.063, 1) → (1.733, 1.133, 1) → (1.724, 1.229, 1) → (1.715, 1.349, 1) …
+- color ← `fx_bs_04.state.par_u_fullswing_cast_02.particlemodulecolor_40`
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 5 ~ 10
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 5, 10) → (2.688, 4.453, 9.219) → (2, 3.25, 7.5) → (1.312, 2.047, 5.781) → (1, 1.5, 5)
+  - alphascaleoverlife: curve 1 → 0.9932 → 0.9738 → 0.9434 → 0.9036 → 0.8559 → 0.8019 → 0.7432 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- parameterdynamic ← `fx_bs_05.par_y_kazemood_prj_01.particlemoduleparameterdynamic_6`
+  - dynamicparams: {paramname=power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=flowtime, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulemeshrotation_2`
+  - startrotation: curve (0, 0, 0) → (0, 0, 1) → (0, 0, 0) → (0, 0, 1)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_swp_defaulthit_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: const (0.7, 0.7, 0.7)
+
+### emitter 3: impact_particle
+- required: material `fx_m_mi_03.fx_mi.fx_i_pa_thunder_02_ad` textures ['fx_a_noise_014', 'fx_a_noise_018', 'fx_d_noise_009', 'fx_i_environment_001', 'fx_i_shockwave_02_ycl', 'fx_i_thunder_02', 'fx_i_watercaustic_001']
+  - material: fx_m_mi_03.fx_mi.fx_i_pa_thunder_02_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_low_10.dust.par_h_cuttree_02.particlemodulespawn_21`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=4, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_prjdead_holy_01.particlemodulelifetime_12`
+  - lifetime: uniform 0.35 ~ 0.5
+- size
+  - startsize: const (3.5, 0.2, 3.5)
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2`
+  - startrotation: curve -1 → 1 → -1 → 1
+- sizemultiplylife
+  - lifemultiplier: curve (0.3, 0.3, 0.3) → (0.4769, 0.4769, 0.4769) → (0.6866, 0.6866, 0.6866) → (0.7603, 0.7603, 0.7603) → (0.7982, 0.7982, 0.7982) → (0.834, 0.834, 0.834) → (0.8676, 0.8676, 0.8676) → (0.8991, 0.8991, 0.8991) …
+- parameterdynamic ← `fx_bs_00.hit.par_v_rlct_skhit_exp_01.particlemoduleparameterdynamic_1`
+  - dynamicparams: {paramname=param1, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (3, 5, 10)
+  - startalpha: const 5
+- colorscaleoverlife ← `fx_bs_08.buff.par_g_buff_breathbubble_01_loop.particlemodulecolorscaleoverlife_16`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0
+- velocity
+  - startvelocity: uniform (-120, -120, 200) ~ (120, 120, 150)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - negative_x: False
+  - surfaceonly: True
+  - velocityscale: (미설정 → 엔진 기본값)
+  - startlocation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_18`
+  - lifemultiplier: const (0.6, 0.6, 0.6)
+
+### emitter 4: particlespriteemitter_1
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad` textures ['fx_d_atypical_034_cl', 'fx_e_adba']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad
+  - screenalignment: psa_velocity
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.3
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_h_halfsphere_01_1`
+  - mesh: fx_sm_00.fm_h_halfsphere_01_1
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: uniform (60, 15, 0) ~ (30, 30, 0)
+- coloroverlife
+  - coloroverlife: curve (2, 2, 2) → (1.5, 1.5, 1.5)
+  - alphaoverlife: curve 0 → 1.5 → 1.485 → 1.448 → 1.392 → 1.32 → 1.234 → 1.136 …
+- parameterdynamic
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+
+### emitter 5: impact_particle
+- **disabled**
+- required: material `fx_m_mi_01.fx_mi.fx_e_pa_ht_12_3_tr` textures ['fx_e_hit_009r', 'fx_e_trdi']
+  - material: fx_m_mi_01.fx_mi.fx_e_pa_ht_12_3_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_16`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=-1, time=0}
+- lifetime ← `fx_bs_07.gadget.par_l_gadget_arrow_exp_03.particlemodulelifetime_20`
+  - lifetime: uniform 0.8 ~ 0.65
+- size ← `fx_bs_00.hit.par_d_hitfire_01.particlemodulesize_47`
+  - startsize: uniform (70, 70, 70) ~ (80, 80, 80)
+- velocity
+  - startvelocity: uniform (30, -25, -5) ~ (80, 25, 5)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- coloroverlife
+  - coloroverlife: curve (0.5, 1.5, 3) → (0, 0, 0)
+  - alphaoverlife: curve 0 → 0.225 → 0.45 → 0.675 → 0.9 → 1.125 → 1.35 → 1.575 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2`
+  - startrotation: curve -1 → 1 → -1 → 1
+- velocityoverlifetime
+  - veloverlife: curve (8, 8, 8) → (6.205, 6.205, 6.205) → (4.719, 4.719, 4.719) → (3.528, 3.528, 3.528) → (2.616, 2.616, 2.616) → (1.97, 1.97, 1.97) → (1.574, 1.574, 1.574) → (1.335, 1.335, 1.335) …
+  - binworldspace: True
+- sizemultiplylife ← `fx_bs_07.gadget.par_l_gadget_arrow_exp_03.particlemodulesizemultiplylife_17`
+  - lifemultiplier: curve (0, 0, 0) → (0.2431, 0.2431, 0.2431) → (0.4664, 0.4664, 0.4664) → (0.6706, 0.6706, 0.6706) → (0.8566, 0.8566, 0.8566) → (1.025, 1.025, 1.025) → (1.177, 1.177, 1.177) → (1.313, 1.313, 1.313) …
+- parameterdynamic ← `bfx_low_01.explosion.par_g_explosion_02.particlemoduleparameterdynamic_0`
+  - dynamicparams: {paramname=param1, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 6: particlespriteemitter_18
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad` textures ['fx_e_adli', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesize_3`
+  - startsize: const (200, 0, 0)
+- parameterdynamic ← `fx_bs_08.buff.par_g_quest_parypassion_01.particlemoduleparameterdynamic_24`
+  - dynamicparams: {paramname=maintex_tile_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noisevelue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery_uv_noisepan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_32`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 4
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.4627 → 0.8222 → 1.021 → 1 → 0.8576 → 0.7284 → 0.612 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_07.gadget.par_l_holystaff_sk_03_2.particlemodulesizemultiplylife_0`
+  - lifemultiplier: curve (0.8, 0.8, 0.8) → (1.2, 1.2, 1.2)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+
+### emitter 7: particlespriteemitter_12
+- required: material `fx_m_mi_04.fx_mi.fx_d_de_simple_01_12_tr` textures ['fx_a_decal_014', 'fx_a_hit_004', 'fx_c_decal_002_1', 'fx_c_decal_002_3', 'fx_d_normal_016_1']
+  - material: fx_m_mi_04.fx_mi.fx_d_de_simple_01_12_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulespawn_284`
+  - rate: const 5
+  - ratescale: (미설정 → 엔진 기본값)
+- lifetime ← `fx_bs_00.hit.par_b_hitgun_default_001.particlemodulelifetime_35`
+  - lifetime: uniform 0.2 ~ 0.3
+- size ← `fx_cm_01.explosion.par_l_battle_mud_bomb_01.particlemodulesize_2`
+  - startsize: uniform (60, 100, 0) ~ (80, 120, 0)
+- sizemultiplylife
+  - lifemultiplier: const (0.6, 1, 1)
+- parameterdynamic ← `fx_bs_00.hit.par_h_dptm_hit_01_1.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: const (0.5, 1, 3.5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- velocity ← `fx_bs_04.state.par_g_gm_firework_01.particlemodulevelocity_16`
+  - startvelocity: uniform (-10, -10, 5) ~ (10, 10, 10)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+
+### emitter 8: start
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_111_ts_fs_dt_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_006_1', 'fx_d_atypical_011', 'fx_d_atypical_060_cl', 'fx_d_atypical_069_ycl', 'fx_d_atypical_076_1_cl']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_111_ts_fs_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6`
+  - lifetime: const 0.3
+- size ← `fx_bs_07.gadget.par_l_mirrorshot_01.particlemodulesize_3`
+  - startsize: const (80, 150, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_p_tile_58_tree_explo_01.particlemodulesizemultiplylife_12`
+  - lifemultiplier: curve (1.5, 0, 0) → (1.5, 1.543, -0.003854) → (1.5, 1.755, 0) → (1.5, 1.755, 0) → (1.5, 1.743, 0) → (1.5, 1.719, 0) → (1.5, 1.683, 0) → (1.5, 1.634, 0) …
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- coloroverlife
+  - coloroverlife: const (20, 30, 90)
+  - alphaoverlife: const 2
+- orientationaxislock ← `bfx_low_13.light.par_d_unseallight_start_01.particlemoduleorientationaxislock_1`
+  - lockaxisflags: epal_rotate_z
+
+### emitter 9: particlespriteemitter_15
+- required: material `fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad` textures ['fx_a_atypical_009', 'fx_a_fire_006']
+  - material: fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad
+  - screenalignment: psa_rectangle
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.02
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19`
+  - lifetime: const 0.8
+- size ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesize_1`
+  - startsize: const (400, 0, 0)
+- color
+  - startcolor: uniform (0.5, 2, 5) ~ (0.5, 1.5, 5)
+  - startalpha: const 0.5
+- colorscaleoverlife ← `bfx_low_10.dust.par_h_cuttree_02.particlemodulecolorscaleoverlife_6`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.1 → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 0.7 …
+- sizemultiplylife ← `fx_bs_08.buff.par_l_icemon_03_1.particlemodulesizemultiplylife_0`
+  - lifemultiplier: curve (1, 1, 1) → (1, 1, 1) → (1, 1, 1) → (1, 1, 1) → (1, 1, 1) → (1, 1, 1) → (1, 1, 1) → (1, 1, 1) …
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- location ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2`
+  - startlocation: const (0, 0, 5)
+
+### emitter 10: particlespriteemitter_8
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_firework_01_01_ad` textures ['fx_a_atypical_009', 'fx_a_fire_006']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_firework_01_01_ad
+  - screenalignment: psa_velocity
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.8
+- spawn ← `bfx_low_10.dust.par_h_cuttree_02.particlemodulespawn_21`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=4, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_hit_ballista_001_2_loc_int.particlemodulelifetime_8`
+  - lifetime: uniform 0.4 ~ 0.6
+- size
+  - startsize: const (2.5, 3, 3)
+- velocity
+  - startvelocity: uniform (30, -10, 100) ~ (0, 10, 60)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- coloroverlife
+  - coloroverlife: curve (1, 0, 1) → (1, 1, 1)
+  - alphaoverlife: curve 0 → 1 → 1 → 1 → 1 → 1 → 1 → 1 …
+- sizemultiplylife ← `fx_bs_05.prj.par_l_throwstone_exp_01.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1, 3.5, 1) → (1, 5.067, 1) → (0.9996, 5.914, 0.9996) → (0.9874, 5.487, 0.9874) → (0.9595, 5.047, 0.9595) → (0.9179, 4.601, 0.9179) → (0.8646, 4.151, 0.8646) → (0.8015, 3.703, 0.8015) …
+- location
+  - startlocation: const (-70, 0, 250)
+- velocityoverlifetime ← `fx_bs_05.prj.par_g_magic_hat_01.particlemodulevelocityoverlifetime_2`
+  - veloverlife: curve (2.5, 2.5, 2.5) → (2.141, 2.141, 2.141) → (2.024, 2.024, 2.024) → (2.026, 2.026, 2.026) → (2.029, 2.029, 2.029) → (1.935, 1.935, 1.935) → (1.787, 1.787, 1.787) → (1.604, 1.604, 1.604) …
+  - binworldspace: True
+- sizemultiplylife ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_18`
+  - lifemultiplier: const (0.6, 0.6, 0.6)
+
+### emitter 11: dust_smoke_02
+- required: material `fx_m_mi_02.fx_mi.fx_e_pa_ht_18_1_tr` textures ['fx_a_noise_005', 'fx_a_noise_011', 'fx_d_noise_009', 'fx_d_noise_014', 'fx_d_noise_021']
+  - material: fx_m_mi_02.fx_mi.fx_e_pa_ht_18_1_tr
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=2, countlow=-1, time=0}
+- lifetime ← `fx_bs_08.buff.par_l_concentrationline_dust_01.particlemodulelifetime_0`
+  - lifetime: uniform 0.35 ~ 0.25
+- size
+  - startsize: uniform (1, 10, 0) ~ (3, 20, 0)
+- coloroverlife
+  - coloroverlife: const (2.2, 3.8, 9)
+  - alphaoverlife: curve 0.2 → 0.1986 → 0.1944 → 0.1878 → 0.1792 → 0.1688 → 0.1568 → 0.1437 …
+- sizemultiplylife
+  - lifemultiplier: curve (0.5, 0.35, 0) → (0.5988, 2.398, 0) → (0.6813, 4.457, 0) → (0.7488, 6.472, 0) → (0.8028, 8.388, 0) → (0.8449, 10.15, 0) → (0.8765, 11.7, 0) → (0.8991, 12.99, 0) …
+- parameterdynamic
+  - dynamicparams: {paramname=pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=v_coord, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- velocity
+  - startvelocity: uniform (0, -100, 100) ~ (100, 100, 500)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- locationprimitivesphere
+  - startradius: const 10
+  - negative_x: False
+  - surfaceonly: True
+  - velocityscale: (미설정 → 엔진 기본값)
+  - startlocation: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0.5, 1) → (1.196, 0.6114, 0.9927) → (1.371, 0.73, 0.972) → (1.525, 0.8543, 0.9392) → (1.661, 0.9829, 0.896) → (1.78, 1.115, 0.8438) → (1.883, 1.248, 0.784) → (1.972, 1.381, 0.7183) …
+
+### emitter 12: under_crash_01
+- required: material `fx_m_mi_01.fx_mi.fx_h_me_fd_01_1_ts_tr` textures ['fx_bg_softriver_02_n', 'fx_c_noise_001', 'fx_c_ring_004_cl', 'fx_e_atypical_006', 'fx_e_electric_002']
+  - material: fx_m_mi_01.fx_mi.fx_h_me_fd_01_1_ts_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- efvelocityoverlifetime
+  - veloverlife: curve (0.1, 0.1, 1) → (0.09224, 0.09224, 0.597)
+- lifetime ← `bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0`
+  - lifetime: const 1
+- coloroverlife
+  - coloroverlife: const (1, 2, 3)
+  - alphaoverlife: curve 0 → 0.8842 → 1.998 → 1.74 → 1.504 → 1.289 → 1.095 → 0.9193 …
+  - bclampalpha: False
+- size ← `fx_bs_05.prj.par_l_stopmagic_01.particlemodulesize_13`
+  - startsize: const (80, 80, 80)
+- location ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2`
+  - startlocation: const (0, 0, 5)
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+
+### emitter 13: particlespriteemitter_10
+- required: material `bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr` textures ['fx_a_atypical_018', 'fx_d_fragment_003', 'fx_e_trex']
+  - material: bfx_m_mi_00.bfx_mi.bfx_j_pa_lightdust_01_1_tr
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 2
+  - subimages_vertical: 2
+  - randomimagetime: 0.198
+  - randomimagechanges: 4
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_c_screwfront_001`
+  - mesh: fx_sm_00.fm_c_screwfront_001
+  - boverridematerial: True
+  - yaw: -90
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_05.prj.par_g_bottle_electric_01.particlemodulesize_13`
+  - startsize: const (1.5, 1.5, 1.5)
+- location ← `fx_bs_05.prj.par_h_arrow_02_03.particlemodulelocation_11`
+  - startlocation: const (-80, 0, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=time, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=circlelize, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=circlelize_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=thickness, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: uniform (0.5, 1, 5) ~ (0.7, 1.2, 5)
+  - startalpha: uniform 0.5 ~ 4
+- meshrotation ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1`
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- colorscaleoverlife ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulecolorscaleoverlife_4`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0
+- location
+  - startlocation: const (-80, 0, 230)
+
+### emitter 14: particlespriteemitter_11
+- required: material `bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_02_ad` textures ['fx_a_noise_017', 'fx_a_noise_018', 'fx_i_environment_001', 'fx_i_thunder_01_cl']
+  - material: bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_02_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - boffsetcenter: True
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.08
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size ← `fx_bs_04.state.par_l_monstersy_08.particlemodulesize_10`
+  - startsize: const (280, 0, 0)
+- color
+  - startcolor: const (1.5, 3.5, 10)
+  - startalpha: uniform 20 ~ 40
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 5 → 4.52 → 4.064 → 3.631 → 3.222 → 2.837 → 2.475 → 2.138 …
+- parameterdynamic
+  - dynamicparams: {paramname=panningvelocity, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=vcoodvalue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=add0_1, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=powerexp, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- sizemultiplylife
+  - lifemultiplier: curve t0=(0, 0, 0), t1=(0, 0, 0)
+- rotation ← `fx_bs_00.hit.par_k_mar_dancinghit_02.particlemodulerotation_4`
+  - startrotation: curve 1 → 0 → 1 → 0
+- location ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0`
+  - startlocation: const (0, 0, 10)
+
+### emitter 15: particlespriteemitter_17
+- required: material `fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr` textures ['fx_a_line_005', 'fx_d_atypical_043', 'fx_d_noise_030', 'fx_m_atypical_013_yclamp', 'fx_m_noise_008']
+  - material: fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_48_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_10.dust.par_h_cuttree_01.particlemodulelifetime_3`
+  - lifetime: uniform 0.4 ~ 0.5
+- size
+  - startsize: uniform ? ~ ?
+- coloroverlife
+  - coloroverlife: curve (2, 5, 15) → (0, 0, 0)
+  - alphaoverlife: const 3
+- parameterdynamic ← `fx_bs_00.hit.par_d_hit_dpow_01.particlemoduleparameterdynamic_0`
+  - dynamicparams: {paramname=dissolve_density(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=lamp_time(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife ← `bfx_high_01.light.par_j_lighthit_002.particlemodulesizemultiplylife_1`
+  - lifemultiplier: curve (0.2, 0.2, 0.2) → (0.56, 0.56, 0.56) → (0.92, 0.92, 0.92) → (1.28, 1.28, 1.28) → (1.64, 1.64, 1.64) → (2, 2, 2) → (2.2, 2.2, 2.2) → (2.4, 2.4, 2.4) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2`
+  - startrotation: curve -1 → 1 → -1 → 1
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+
+## `par_l_ppnn_esther_sk_03_4`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: ring-start
+- required: material `bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad` textures []
+  - material: bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6`
+  - lifetime: const 0.3
+- size ← `fx_bs_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulesize_6`
+  - startsize: const (200, 200, 0)
+- color ← `fx_bs_15.prj.par_l_kurzan_war02_prj_01.particlemodulecolor_6`
+  - startcolor: const (1, 1.5, 3)
+  - startalpha: const 0.5
+- colorscaleoverlife ← `fx_bs_05.prj.par_l_imagedestroy_prj_01.particlemodulecolorscaleoverlife_19`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- sizemultiplylife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: curve (0.6, 0.6, 0.6) → (0.6453, 0.6453, 0.6453) → (0.6873, 0.6873, 0.6873) → (0.7261, 0.7261, 0.7261) → (0.7619, 0.7619, 0.7619) → (0.7946, 0.7946, 0.7946) → (0.8245, 0.8245, 0.8245) → (0.8517, 0.8517, 0.8517) …
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+
+### emitter 1: particlespriteemitter_35
+- **disabled**
+- required: material `bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_03_ad` textures ['fx_a_noise_017', 'fx_a_noise_018', 'fx_i_environment_001', 'fx_i_thunder_01_cl']
+  - material: bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_03_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `fx_bs_01.trail.par_a_trail_006.particlemodulespawn_1`
+  - rate: (미설정 → 엔진 기본값)
+  - ratescale: (미설정 → 엔진 기본값)
+- lifetime
+  - lifetime: const 0.3
+- size
+  - startsize: uniform ? ~ ?
+- parameterdynamic ← `fx_bs_00.hit.par_h_dptm_hit_01_1.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- color
+  - startcolor: uniform (1, 1.5, 5) ~ (0.5, 1.5, 5)
+  - startalpha: uniform 0.7 ~ 1
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (1, 1, 1) ~ (1, 1, 1)
+  - alphascaleoverlife: curve 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3.714 …
+- subuv ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0`
+  - subimageindex: curve 0 → 3
+- velocity
+  - startvelocity: uniform (0, -2, -2) ~ (0, 2, 2)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location ← `fx_cm_00.dust.par_l_sidedust_01.particlemodulelocation_1`
+  - startlocation: uniform (300, 0, 0) ~ (0, 0, 0)
+- locationprimitivesphere
+  - startradius: uniform 120 ~ 80
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: uniform -1 ~ -0.5
+  - startlocation: (미설정 → 엔진 기본값)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 2: particlespriteemitter_34
+- required: material `bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_02_ad` textures ['fx_a_noise_017', 'fx_a_noise_018', 'fx_i_environment_001', 'fx_i_thunder_01_cl']
+  - material: bfx_m_mi_00.bfx_mi.bfx_i_pa_thunder_02_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `fx_bs_04.state.par_h_colosseum_powerup_01_1_loc_int.particlemodulesize_2`
+  - startsize: const (20, 600, 0)
+- color
+  - startcolor: uniform (2, 6, 12) ~ (2, 5, 8)
+  - startalpha: uniform 20 ~ 40
+- location ← `fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0`
+  - startlocation: const (150, 0, 0)
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- rotation ← `fx_bs_04.state.par_l_elitemn_fastmv_e_01.particlemodulerotation_2`
+  - startrotation: const 0.75
+- colorscaleoverlife ← `fx_bs_07.gadget.par_l_gadget_arrow_prj_03.particlemodulecolorscaleoverlife_5`
+  - colorscaleoverlife: uniform (0.1, 0.1, 0.1) ~ (3, 3, 3)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- velocity ← `fx_bs_05.prj.par_p_tile_05_tonado_02.particlemodulevelocity_27`
+  - startvelocity: const (1000, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 3: shine_loop
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_05_20e_tr` textures ['fx_b_atypical_026', 'fx_e_trli']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_05_20e_tr
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: uniform (120, 150, 0) ~ (70, 200, 0)
+- color
+  - startcolor: const (0.5, 2, 8)
+  - startalpha: const 30
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (0.3, 0.3, 0.3) ~ (5, 5, 5)
+  - alphascaleoverlife: curve 0 → 0.25 → 0.5 → 0.75 → 1 → 1 → 1 → 1 …
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- colorscaleoverlife ← `fx_bs_07.gadget.par_l_dreamlantern_sk_03.particlemodulecolorscaleoverlife_8`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1.442 → 0.5 → 1.442 → 0.5 → 1.442 → 0.5 → 1.442 → 0.5 …
+- rotation ← `fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0`
+  - startrotation: const -0.25
+- sizemultiplylife
+  - lifemultiplier: curve (0.5, 1, 1) → (0.55, 1.5, 1.5)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 4: ggg
+- required: material `fx_m_mi_01.fx_mi.fx_d_pa_shine_01_04_dt_ad` textures ['fx_d_atypical_028', 'fx_d_noise_009', 'fx_e_noise_003']
+  - material: fx_m_mi_01.fx_mi.fx_d_pa_shine_01_04_dt_ad
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.98
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulesize_9`
+  - startsize: const (150, 0, 0)
+- color
+  - startcolor: const (1, 1.5, 5)
+  - startalpha: const 0.5
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- colorscaleoverlife
+  - colorscaleoverlife: const (1.298, 1.298, 1.298)
+  - alphascaleoverlife: curve 1.443 → 1.422 → 1.365 → 1.279 → 1.173 → 1.053 → 0.9273 → 0.8036 …
+- sizemultiplylife
+  - lifemultiplier: curve (2.345, -0.04994, 20) → (2.277, 1.515, 20.06) → (2.228, 2.659, 20.16) → (2.182, 3.477, 20.21) → (2.119, 4.064, 20.1) → (2.02, 4.514, 19.74) → (1.868, 4.922, 19.03) → (1.67, 5.321, 17.91) …
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 5: shockwave_small
+- required: material `bfx_m_mi_00.bfx_mi.bfx_i_pa_glow_02_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_i_pa_glow_02_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_cylinder1500_001`
+  - mesh: fx_sm_00.fm_d_cylinder1500_001
+  - boverridematerial: True
+  - pitch: 90
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size
+  - startsize: uniform (2, 4, 0) ~ (5, 2, 0)
+- coloroverlife
+  - coloroverlife: const (1.2, 3, 5)
+  - alphaoverlife: curve 1.47 → 1.23 → 0.8378 → 0.5552 → 0.468 → 0.3933 → 0.328 → 0.2728 …
+  - bclampalpha: False
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=maintex_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1.932, 1.932, 1.932) → (4.654, 4.654, 4.654)
+- meshrotation ← `fx_bs_04.state.par_x_dh_arkpassive_wp_flare_01.particlemodulemeshrotation_1`
+  - startrotation: const (0, 0, 0)
+  - binheritparent: True
+- location ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1`
+  - startlocation: const (10, 0, 0)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 6: particlespriteemitter_30
+- **disabled**
+- required: material `fx_m_mi_03.fx_mi.fx_m_me_trail_02_18_tr` textures ['fx_a_cloud_022', 'fx_d_noise_030', 'fx_j_mirnoise_02', 'fx_m_atypical_004_loc_int', 'fx_m_flow_04_n', 'fx_m_line_001', 'fx_m_trail_002']
+  - material: fx_m_mi_03.fx_mi.fx_m_me_trail_02_18_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_cylinder1500_001`
+  - mesh: fx_sm_00.fm_d_cylinder1500_001
+  - boverridematerial: True
+  - pitch: 90
+- lifetime ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulelifetime_27`
+  - lifetime: const 0.55
+- size
+  - startsize: const (-0.35, 0.08, 0.08)
+- coloroverlife
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 0.9979 → 0.9262 → 0.8662 → 0.8145 → 0.7678 → 0.7242 → 0.6906 → 0.6647 …
+  - bclampalpha: False
+- parameterdynamic
+  - dynamicparams: {paramname=alpha_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulemeshrotation_7`
+  - startrotation: const (0.25, 0, 0)
+- location ← `fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0`
+  - startlocation: const (150, 0, 0)
+- meshrotationrate ← `fx_bs_05.prj.par_l_cham_prj_01.particlemodulemeshrotationrate_1`
+  - startrotationrate: const (0, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (0, 1, 1)
+- orbit
+  - offsetamount: (미설정 → 엔진 기본값)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (-0.1, -0.1, -0.1) → (0.1, 0.1, 0.1) → (-0.1, -0.1, -0.1) → (0.1, 0.1, 0.1)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 7: particlespriteemitter_31
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad` textures ['fx_a_fragment_002', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_hemisphere_001_1`
+  - mesh: fx_sm_00.fm_d_hemisphere_001_1
+  - boverridematerial: True
+  - pitch: 90
+- lifetime ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20`
+  - lifetime: const 1.5
+- size
+  - startsize: const (35, 430, 0)
+- coloroverlife
+  - coloroverlife: const (10, 20, 30)
+  - alphaoverlife: uniform 0.1 ~ 0
+- parameterdynamic
+  - dynamicparams: {paramname=alphadissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=pan[0-2], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=edgestr[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=disrotion[0-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- meshrotation ← `fx_bs_02.item.par_k_bi_holyamul_01.particlemodulemeshrotation_8`
+  - startrotation: const (0.5, 0, 0)
+- location ← `fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0`
+  - startlocation: const (150, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (0, 1, 1)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 8: 1
+- required: material `fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad` textures []
+  - material: fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad
+  - screenalignment: psa_rectangle
+  - sortmode: psortmode_age_newestfirst
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime_seeded
+  - lifetime: const 1
+- size ← `fx_bs_18.buff.par_l_eadalin_pcshield_loop_01.particlemodulesize_17`
+  - startsize: const (200, 250, 0)
+- rotation ← `fx_bs_04.state.par_l_elitemn_fastmv_e_01.particlemodulerotation_2`
+  - startrotation: const 0.75
+- color
+  - startcolor: const (1, 2, 25)
+  - startalpha: uniform 1 ~ 2
+- sizemultiplylife ← `fx_bs_08.buff.par_l_kamen_blackspace_01.particlemodulesizemultiplylife_11`
+  - lifemultiplier: curve (1, 0, 1) → (1, 0.3333, 1) → (1, 0.6667, 1) → (1, 1, 1) → (0.9412, 1, 1) → (0.8824, 1, 1) → (0.8235, 1, 1) → (0.7647, 1, 1) …
+- velocity_seeded
+  - startvelocity: const (100, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_08.buff.par_l_kamen_blackspace_01.efparticlemodulevelocityoverlifetime_4`
+  - veloverlife: curve (2, 2, 2) → (1.739, 1.739, 1.739) → (1.505, 1.505, 1.505) → (1.295, 1.295, 1.295) → (1.11, 1.11, 1.11) → (0.9461, 0.9461, 0.9461) → (0.8035, 0.8035, 0.8035) → (0.6804, 0.6804, 0.6804) …
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+- location
+  - startlocation: const (-50, 0, 250)
+
+### emitter 9: glow03
+- **disabled**
+- required: material `fx_m_mi_01.fx_mi.fx_h_pa_shine_01_ad` textures ['fx_d_noise_030']
+  - material: fx_m_mi_01.fx_mi.fx_h_pa_shine_01_ad
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0`
+  - lifetime: const 1
+- color ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolor_3`
+  - startcolor: const (0.5, 0.5, 0.5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (2.359, 2.359, 2.359) → (0.2272, 0.2272, 0.2272)
+  - alphascaleoverlife: curve 1 → 0.882 → 0.7728 → 0.6724 → 0.5803 → 0.4962 → 0.4199 → 0.3511 …
+- sizemultiplylife
+  - lifemultiplier: curve (3.126, 0.07475, 20) → (2.951, 2.447, 19.86) → (2.629, 4.519, 19.48) → (2.25, 6.202, 18.94) → (1.903, 7.408, 18.3) → (1.677, 8.051, 17.63) → (1.52, 8.41, 16.77) → (1.366, 8.696, 15.64) …
+- velocity ← `fx_bs_05.prj.par_l_chasebomb_prj_001.particlemodulevelocity_1`
+  - startvelocity: const (20, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_05.prj.par_u_trinity_prj_exp_01.particlemoduleparameterdynamic_49`
+  - dynamicparams: {paramname=alpha_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `fx_bs_00.hit.par_x_lpda_hit_01.particlemodulecameraoffset_12`
+  - cameraoffset: const 5
+- size
+  - startsize: const (30, -35, 0)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 10: arrow-aura
+- required: material `fx_m_mi_02.fx_mi.fx_m_pa_shine_02_1_ad` textures ['fx_a_noise_011']
+  - material: fx_m_mi_02.fx_mi.fx_m_pa_shine_02_1_ad
+  - screenalignment: psa_velocity
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcentery: 0.8
+- spawn ← `fx_bs_00.hit.par_d_skhit_blood_01_loc_int.particlemodulespawn_7`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=2, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_rectan3cross_001`
+  - mesh: fx_sm_00.fm_d_rectan3cross_001
+  - boverridematerial: True
+- lifetime ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_5`
+  - lifetime: uniform 0.3 ~ 0.4
+- size
+  - startsize: const (220, 550, 0)
+- color
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 0.7 ~ 1.2
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- meshrotation ← `fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1`
+  - startrotation: curve (0, 0, 0) → (1, 0, 0) → (0, 0, 0) → (1, 0, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=curve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (0.5219, 3.087, 1) → (0.6289, 2.793, 1) → (0.7359, 2.499, 1) → (0.8429, 2.205, 1) → (0.9499, 1.911, 1) → (1, 1.727, 1) → (1, 1.64, 1) → (1, 1.554, 1) …
+- location
+  - startlocation: const (-60, 0, 250)
+- meshrotationrate ← `fx_bs_05.prj.par_l_cham_prj_01.particlemodulemeshrotationrate_1`
+  - startrotationrate: const (0, 0, 0)
+
+### emitter 11: dust
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_060_cl', 'fx_d_atypical_069_ycl', 'fx_d_atypical_076_1_cl', 'fx_d_electric_013_1', 'fx_k_electric_01']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_112_ts_fs_dt_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.3
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0.05}
+- lifetime ← `fx_bs_00.hit.par_c_hit_ballista_001_2_loc_int.particlemodulelifetime_8`
+  - lifetime: uniform 0.4 ~ 0.6
+- size ← `fx_bs_04.state.par_l_lifespeedup_s_02.particlemodulesize_15`
+  - startsize: uniform (1, 1, 1) ~ (2, 2, 2)
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- color
+  - startcolor: const (0.5, 2, 6)
+  - startalpha: const 5
+- rotationrate ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulerotationrate_13`
+  - startrotationrate: uniform 1 ~ -1
+- sizemultiplylife ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulesizemultiplylife_69`
+  - lifemultiplier: curve (1, 1, 1) → (0, 0, 0)
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemoduleparameterdynamic_47`
+  - dynamicparams: {paramname=extra_alpha_panning_area(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=extra_alpha_intensity(0~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- colorscaleoverlife ← `fx_bs_04.state.par_k_bossfury_exp_01_loc_int.particlemodulecolorscaleoverlife_35`
+  - colorscaleoverlife: curve (2, 2, 2) → (0, 0, 0.2)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelocation_3`
+  - startlocation: const (0, 0, 20)
+- rotationrate ← `fx_bs_00.hit.par_d_prjdead_dirt_01.particlemodulerotationrate_0`
+  - startrotationrate: uniform -1 ~ 1
+- velocity
+  - startvelocity: uniform (-50, 0, 0) ~ (50, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime
+  - veloverlife: curve (3, 3, 3) → (2.667, 2.667, 2.667) → (2.365, 2.365, 2.365) → (2.092, 2.092, 2.092) → (1.846, 1.846, 1.846) → (1.628, 1.628, 1.628) → (1.434, 1.434, 1.434) → (1.263, 1.263, 1.263) …
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- location
+  - startlocation: const (150, 0, 0)
+
+### emitter 12: particlespriteemitter_20
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad` textures []
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- size
+  - startsize: const (1.5, 1.3, 1.3)
+- sizemultiplylife
+  - lifemultiplier: curve (0.9645, 0.9645, 0.9645) → (2.086, 2.086, 2.086)
+- coloroverlife
+  - coloroverlife: curve (1.104, 1.22, 2.409) → (-0.0008059, 0.01047, 0.003869)
+  - alphaoverlife: const 0.5
+- velocity ← `fx_bs_05.prj.par_l_chasebomb_prj_001.particlemodulevelocity_1`
+  - startvelocity: const (20, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 13: particlespriteemitter_24
+- required: material `fx_m_mi_05.fx_m.fx_a_me_panning_02_ad` textures ['fx_a_atypical_048_cl', 'fx_a_line_011', 'fx_a_noise_009', 'fx_a_noise_011']
+  - material: fx_m_mi_05.fx_m.fx_a_me_panning_02_ad
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_00.hit.par_e_hitblack_03.particlemodulespawn_4`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=3, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- size ← `bfx_low_16.water.par_h_fishing_f_01.particlemodulesize_9`
+  - startsize: const (40, 80, 0)
+- velocity_seeded
+  - startvelocity: const (1500, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (1.567, 2.059, 2.059) → (2.204, 3.36, 3.36) → (2.486, 3.793, 3.793) → (2.633, 3.897, 3.897) → (2.775, 4.001, 4.001) → (2.913, 4.103, 4.103) → (3.046, 4.205, 4.205) …
+- coloroverlife
+  - coloroverlife: const (1, 3, 12)
+  - alphaoverlife: const 0.01
+- ef:velocityoverlifetime
+  - veloverlife: curve (2.265, 2.267, 1.784) → (2.106, 2.111, 1.665) → (1.947, 1.955, 1.547) → (1.788, 1.799, 1.428) → (1.629, 1.643, 1.309) → (1.47, 1.488, 1.19) → (1.311, 1.332, 1.071) → (1.154, 1.178, 0.9537) …
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 14: glow03
+- **disabled**
+- required: material `bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad` textures []
+  - material: bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.15
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9`
+  - lifetime: const 0.4
+- color
+  - startcolor: const (0.6, 1.1, 4)
+  - startalpha: const 0.1
+- colorscaleoverlife
+  - colorscaleoverlife: curve (16.3, 16.3, 16.3) → (0.03515, 0.03515, 0.03515)
+  - alphascaleoverlife: curve 0 → 1.667 → 3.333 → 5 → 4.706 → 4.412 → 4.118 → 3.824 …
+- sizemultiplylife
+  - lifemultiplier: curve (1.1, 0.1, 0.1) → (1.3, 0.7, 0.7)
+- parameterdynamic ← `fx_bs_05.prj.par_u_trinity_prj_exp_01.particlemoduleparameterdynamic_49`
+  - dynamicparams: {paramname=alpha_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0`
+  - cameraoffset: const 100
+- size ← `fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulesize_23`
+  - startsize: const (100, 0, 0)
+- location
+  - startlocation: uniform (10, -5, 0) ~ (20, -5, 0)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 15: arrow3
+- required: material `fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad` textures ['fx_d_atypical_055_2_cl', 'fx_d_electric_016', 'fx_d_noise_009', 'fx_k_auraline_08', 'fx_k_auraline_13', 'fx_k_auraline_14']
+  - material: fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_rectan3cross_001`
+  - mesh: fx_sm_00.fm_d_rectan3cross_001
+  - boverridematerial: True
+- lifetime ← `fx_bs_00.hit.par_b_hitgun_dust_001.particlemodulelifetime_7`
+  - lifetime: uniform 0.25 ~ 0.3
+- size
+  - startsize: uniform (5, 4, 4) ~ (4, 3, 3)
+- color
+  - startcolor: const (1.5, 3.5, 12)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (0.5, 1.5, 10) → (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.4998 → 1 → 0.9929 → 0.9711 → 0.9362 → 0.8898 → 0.8316 …
+- meshrotation_seeded
+  - startrotation: curve (0, 0, 0) → (-0.5, 0, 0) → (0, 0, 0) → (-0.5, 0, 0)
+- parameterdynamic
+  - dynamicparams: {paramname=curve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (1.033, 1.033, 1.033) → (1.074, 1.074, 1.074) → (1.124, 1.124, 1.124) → (1.181, 1.181, 1.181) → (1.247, 1.247, 1.247) → (1.32, 1.32, 1.32) → (1.4, 1.4, 1.4) …
+- location
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 16: arrow-head
+- required: material `fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr` textures ['fx_a_cloud_026', 'fx_a_glow_009']
+  - material: fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr
+  - screenalignment: psa_rectangle
+  - sortmode: psortmode_age_newestfirst
+  - interpolationmethod: psuvim_linear_blend
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 8
+  - subimages_vertical: 4
+  - randomimagetime: 1
+- spawn ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulelifetime_7`
+  - lifetime: uniform 2 ~ 1.5
+- size ← `fx_bs_05.prj.par_p_tile_57_explo_01.particlemodulesize_12`
+  - startsize: uniform (100, 100, 0) ~ (120, 120, 0)
+- sizemultiplylife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_44`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6381, 0.6381, 0.6381) → (0.7627, 0.7627, 0.7627) → (0.8745, 0.8745, 0.8745) → (0.9742, 0.9742, 0.9742) → (1.063, 1.063, 1.063) → (1.14, 1.14, 1.14) → (1.208, 1.208, 1.208) …
+- color ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolor_21`
+  - startcolor: const (1.2, 1.1, 1)
+  - startalpha: uniform 1 ~ 2
+- colorscaleoverlife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolorscaleoverlife_33`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8519 → 0.7192 → 0.601 → 0.4965 → 0.4049 → 0.3252 → 0.2567 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_04.state.par_c_blind_001.particlemoduleparameterdynamic_0`
+  - dynamicparams: {paramname=turbulencelerp.a[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=turbulencelerp.e[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- ef:velocityoverlifetime ← `fx_bs_05.par_y_kazemood_prj_02.efparticlemodulevelocityoverlifetime_4`
+  - veloverlife: curve (2, 2, 2) → (1.212, 1.212, 1.212) → (0.7074, 0.7074, 0.7074) → (0.5, 0.5, 0.5) → (0.4493, 0.4493, 0.4493) → (0.4047, 0.4047, 0.4047) → (0.3657, 0.3657, 0.3657) → (0.332, 0.332, 0.332) …
+- ef:locationcirclesurface
+  - velocity: True
+  - velocityscale: const 30
+  - startlocation: const (0, 0, 20)
+  - startradius: const 70
+  - splitcirclecount: 7
+  - startrot: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+
+### emitter 17: glow03
+- required: material `fx_m_mi_03.fx_mi.fx_m_me_trail_02_18_tr` textures ['fx_a_cloud_022', 'fx_d_noise_030', 'fx_j_mirnoise_02', 'fx_m_atypical_004_loc_int', 'fx_m_flow_04_n', 'fx_m_line_001', 'fx_m_trail_002']
+  - material: fx_m_mi_03.fx_mi.fx_m_me_trail_02_18_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - nearculldistance: 25
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14`
+  - lifetime: const 0.5
+- color
+  - startcolor: const (0.2, 0.8, 8)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 2 → 1.972 → 1.896 → 1.784 → 1.648 → 1.5 → 1.352 → 1.216 …
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0.8, 0.8) → (1.1, 2, 2)
+- parameterdynamic
+  - dynamicparams: {paramname=alpha_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- cameraoffset ← `fx_bs_00.hit.par_x_lpda_hit_01.particlemodulecameraoffset_12`
+  - cameraoffset: const 5
+- size
+  - startsize: const (-0.3, 0.03, 0.03)
+- location ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0`
+  - startlocation: (미설정 → 엔진 기본값)
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- rotation ← `bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_1`
+  - startrotation: const 0.5
+- velocity ← `fx_bs_04.state.par_g_madness_03.particlemodulevelocity_5`
+  - startvelocity: const (50, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 18: ggg
+- required: material `fx_m_mi_03.fx_mi.fx_m_pa_worldoffset_02_28_tr` textures ['fx_a_blankwhite_01', 'fx_d_noise_002', 'fx_j_mirnoise_01', 'fx_k_caustictile_01', 'fx_k_fluidtile_01', 'fx_m_flow_04_n', 'fx_m_noise_001', 'fx_m_spatter_001_xyclamp']
+  - material: fx_m_mi_03.fx_mi.fx_m_pa_worldoffset_02_28_tr
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterduration: 5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.05
+- spawn ← `fx_bs_08.buff.par_v_positive_memories_00.particlemodulespawn_0`
+  - rate: const 200
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=0, countlow=-1, time=0}
+- lifetime ← `fx_bs_04.state.par_i_classup_01.particlemodulelifetime_31`
+  - lifetime: uniform 1.5 ~ 0.6
+- size
+  - startsize: const (350, 10, 0)
+- color
+  - startcolor: const (2, 5, 15)
+  - startalpha: const 2
+- colorscaleoverlife
+  - colorscaleoverlife: curve (1.978, 1.978, 1.978) → (1.93, 1.93, 1.93) → (1.846, 1.846, 1.846) → (1.733, 1.733, 1.733) → (1.597, 1.597, 1.597) → (1.445, 1.445, 1.445) → (1.283, 1.283, 1.283) → (1.117, 1.117, 1.117) …
+  - alphascaleoverlife: curve 0.2596 → 0.2507 → 0.2286 → 0.2004 → 0.1732 → 0.1531 → 0.1351 → 0.1175 …
+- cameraoffset ← `fx_bs_00.hit.par_x_lpda_hit_01.particlemodulecameraoffset_12`
+  - cameraoffset: const 5
+- sizemultiplylife
+  - lifemultiplier: curve (0.04639, 0.2295, 0.8943) → (0.3805, 0.3819, 0.8943) → (0.6371, 0.5257, 0.8943) → (0.7158, 0.6517, 0.8943) → (0.7502, 0.765, 0.8943) → (0.7814, 0.8687, 0.8943) → (0.8096, 0.9639, 0.8943) → (0.8349, 1.052, 0.8943) …
+- ef:velocityoverlifetime
+  - veloverlife: curve (4, 4, 4) → (2.744, 2.744, 2.744) → (1.848, 1.848, 1.848) → (1.277, 1.277, 1.277) → (1, 1, 1) → (0.8662, 0.8662, 0.8662) → (0.7482, 0.7482, 0.7482) → (0.6449, 0.6449, 0.6449) …
+- velocity
+  - startvelocity: const (20, 0, 10)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- orbit
+  - offsetamount: curve (0, 150, 0) → (0, 50, 0) → (0, 150, 0) → (0, 50, 0)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (0.3, 0.2, 0.3) → (0.5, 0.6, 0.5) → (0.3, 0.2, 0.3) → (0.5, 0.6, 0.5)
+- location
+  - startlocation: const (-25, 0, 250)
+- location
+  - startlocation: uniform (0, 10, -10) ~ (300, -10, 10)
+  - b3ddrawmode: True
+
+### emitter 19: electric-centre
+- required: material `fx_m_mi_00.fx_mi.fx_d_me_master_01_038_ad` textures ['fx_c_cloud_015', 'fx_d_atypical_009', 'fx_d_atypical_039_1', 'fx_d_atypical_055_1_cl', 'fx_d_noise_009', 'fx_i_shockwave_02_ycl']
+  - material: fx_m_mi_00.fx_mi.fx_d_me_master_01_038_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0}; {count=20, countlow=-1, time=0.1}
+- lifetime ← `fx_bs_00.hit.par_d_hit_dpow_01.particlemodulelifetime_7`
+  - lifetime: uniform 0.25 ~ 0.35
+- size
+  - startsize: const (480, 480, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1.518, 0.5209, 0.9807) → (1.503, 0.5945, 0.981) → (1.488, 0.6548, 0.9818) → (1.471, 0.7034, 0.983) → (1.453, 0.7422, 0.9845) → (1.433, 0.7729, 0.9861) → (1.411, 0.7974, 0.9878) → (1.385, 0.8174, 0.9893) …
+- parameterdynamic ← `fx_bs_00.hit.par_h_dptm_hit_01_1.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=dynamic, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- subuv ← `fx_bs_04.state.par_b_statevermin_001.particlemodulesubuv_1`
+  - subimageindex: curve 0 → 1
+- color
+  - startcolor: uniform (2, 2, 2) ~ (5, 5, 5)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: uniform (20, 20, 20) ~ (30, 30, 30)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-100, 0, 250)
+- velocity ← `fx_bs_04.state.par_g_madness_03.particlemodulevelocity_5`
+  - startvelocity: const (50, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- velocity
+  - startvelocity: uniform (100, 0, 1) ~ (10, 0, 0)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: const (0.8387, 1.118, 2.693)
+  - alphascaleoverlife: curve 0.9865 → 0.0005462
+
+## `par_l_ppnn_spawn_01`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_20
+- required: material `fx_m_mi_03.fx_mi.fx_d_pa_ring_07_21_tr` textures ['fx_b_atypical_004', 'fx_d_atypical_031', 'fx_d_atypical_031_cl', 'fx_d_noise_009', 'fx_i_noise_03']
+  - material: fx_m_mi_03.fx_mi.fx_d_pa_ring_07_21_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `bfx_low_14.portal.par_d_portal_local_001.particlemodulesize_2`
+  - startsize: const (400, 200, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+
+### emitter 1: ghost01
+- required: material `fx_m_mi_03.fx_mi.fx_k_pa_turbulence_01_tr` textures ['fx_c_atypical_017', 'fx_c_noise_008', 'fx_d_atypical_082', 'fx_d_fluid_026', 'fx_d_uvturbulence_001', 'fx_e_atypical_005_cl', 'fx_e_noise_002', 'fx_i_noise_01']
+  - material: fx_m_mi_03.fx_mi.fx_k_pa_turbulence_01_tr
+  - screenalignment: psa_velocity
+  - opacitysourcemode: osm_colorbrightness
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulelifetime_0`
+  - lifetime: uniform 0.5 ~ 0.7
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_24`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 1.5
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- colorscaleoverlife ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulecolorscaleoverlife_30`
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 0)
+  - alphascaleoverlife: curve 0.5981 → 0.4827 → 0.3875 → 0.3103 → 0.2487 → 0.2001 → 0.1623 → 0.1328 …
+- sizemultiplylife ← `fx_esther_lrsa_00.par_d_lrsa_01-4_teleport_01.particlemodulesizemultiplylife_22`
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- parameterdynamic ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemoduleparameterdynamic_11`
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelocation_3`
+  - startlocation: const (0, 0, 20)
+- size ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulesize_5`
+  - startsize: const (80, 0, 0)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+
+### emitter 2: dust01
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt` textures []
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemodulelifetime_11`
+  - lifetime: uniform 3 ~ 2
+- size ← `fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesize_8`
+  - startsize: ?
+- subuv ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulesubuv_1`
+  - subimageindex: curve 10 → 31
+- rotation ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulerotation_8`
+  - startrotation: curve -0.05 → 0.05 → -0.05 → 0.05
+- sizemultiplylife ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemodulesizemultiplylife_5`
+  - lifemultiplier: curve (1, 1, 1) → (1.022, 1.022, 1.022) → (1.046, 1.046, 1.046) → (1.072, 1.072, 1.072) → (1.1, 1.1, 1.1) → (1.131, 1.131, 1.131) → (1.164, 1.164, 1.164) → (1.2, 1.2, 1.2) …
+- ef:locationonground ← `bfx_high_00.explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4`
+  - adjustlocation: (미설정 → 엔진 기본값)
+  - skiplocation: ?
+- color
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: curve 0.5 → 0
+- colorscaleoverlife ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemodulecolorscaleoverlife_8`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8554 → 0.7254 → 0.6093 → 0.5064 → 0.4157 → 0.3365 → 0.2681 …
+- ef:velocityoverlifetime ← `fx_bs_05.prj.par_l_sworda_prj_01.efparticlemodulevelocityoverlifetime_0`
+  - veloverlife: curve (5, 5, 5) → (1.712, 1.712, 1.712) → (0.5, 0.5, 0.5) → (0.4195, 0.4195, 0.4195) → (0.3491, 0.3491, 0.3491) → (0.288, 0.288, 0.288) → (0.2357, 0.2357, 0.2357) → (0.1915, 0.1915, 0.1915) …
+- ef:locationcirclesurface
+  - velocity: True
+  - velocityscale: const 30
+  - startlocation: const (0, 0, 20)
+  - startradius: const 70
+  - splitcirclecount: 7
+  - startrot: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+
+### emitter 3: particlespriteemitter_18
+- required: material `fx_m_mi_01.fx_mi.fx_e_me_ap_25_1_ts_ad` textures ['fx_a_fragment_005', 'fx_a_noise_002', 'fx_e_addi']
+  - material: fx_m_mi_01.fx_mi.fx_e_me_ap_25_1_ts_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulelifetime_3`
+  - lifetime: const 1.2
+- size ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulesize_9`
+  - startsize: const (150, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemodulesizemultiplylife_6`
+  - lifemultiplier: curve (2, 2, 2) → (2.116, 2.116, 2.116) → (2.223, 2.223, 2.223) → (2.322, 2.322, 2.322) → (2.412, 2.412, 2.412) → (2.495, 2.495, 2.495) → (2.57, 2.57, 2.57) → (2.638, 2.638, 2.638) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- color ← `fx_bs_01.trail.par_d_trail_030.particlemodulecolor_1`
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.3
+- location ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2`
+  - startlocation: const (0, 0, 5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.9079 → 0.8197 → 0.7355 → 0.6553 → 0.5793 → 0.5076 → 0.4402 …
+- parameterdynamic ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemoduleparameterdynamic_8`
+  - dynamicparams: {paramname=uv_distort_str[0-x]_or_y.pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=centerhole_pow[1-x]_or_distortion, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+
+### emitter 4: ember01
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad` textures []
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_0`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0}
+- lifetime ← `fx_bs_04.state.par_c_cardstack_05.particlemodulelifetime_0`
+  - lifetime: uniform 0.7 ~ 1.5
+- size ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulesize_37`
+  - startsize: uniform (2, 4, 0) ~ (1, 2, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_01.particlemodulesizemultiplylife_114`
+  - lifemultiplier: curve (0.5, 0, 1) → (0.8489, 1.875, 1) → (0.98, 1.922, 1) → (1, 1.5, 1) → (0.995, 1.309, 0.99) → (0.9809, 1.144, 0.9617) → (0.9588, 1.003, 0.9176) → (0.93, 0.8831, 0.86) …
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- velocity ← `fx_bs_00.hit.par_h_cdepc_hit_01_02.particlemodulevelocity_5`
+  - startvelocity: uniform (0, 0, 20) ~ (0, 0, 50)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- orbit ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemoduleorbit_0`
+  - offsetamount: curve (0, 0, 0) → (0, 15, 0) → (0, 0, 0) → (0, 15, 0)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (0, 0, 0) → (0.5, 0.5, 1) → (0, 0, 0) → (0.5, 0.5, 1)
+- color
+  - startcolor: const (0.5, 1, 5)
+  - startalpha: const 0.85
+- colorscaleoverlife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulecolorscaleoverlife_16`
+  - colorscaleoverlife: curve (0.2, 0.2, 0.2) → (0.1, 0.1, 0.1)
+  - alphascaleoverlife: const 0.9996
+- velocityoverlifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulevelocityoverlifetime_1`
+  - veloverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: uniform 200 ~ 300
+  - startheight: const 1
+  - positive_x: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: uniform 6 ~ 3
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 5: ghost01
+- required: material `fx_m_mi_o_00.fx_mi.fx_o_me_master_01_10_ds_ad` textures ['fx_a_atypical_048', 'fx_c_cloud_015', 'fx_i_shockwave_02_ycl']
+  - material: fx_m_mi_o_00.fx_mi.fx_o_me_master_01_10_ds_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 12
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.15 ~ 0.25
+- size
+  - startsize: uniform (15, 6, 6) ~ (3, 3, 3)
+- parameterdynamic
+  - dynamicparams: {paramname=pann_time, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=sec_pann_time, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 1) → (1, 0.2973, 1) → (1, 0.8153, 1) → (1, 1, 1) → (0.99, 0.8424, 1) → (0.9617, 0.7022, 1) → (0.9176, 0.5785, 1) → (0.86, 0.4701, 1) …
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: uniform 0.3 ~ 0.6
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 7, 30)
+  - alphascaleoverlife: curve 1 → 0.8778 → 0.7656 → 0.6631 → 0.5699 → 0.4855 → 0.4095 → 0.3415 …
+- cameraoffset
+  - cameraoffset: const 50
+- sizemultiplylife
+  - lifemultiplier: curve (0.6663, 0.6663, 0.6663) → (0.9957, 0.9957, 0.9957)
+
+### emitter 6: ice_twinkle
+- required: material `fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad` textures ['fx_d_atypical_055_2_cl', 'fx_d_electric_016', 'fx_d_noise_009', 'fx_k_auraline_08', 'fx_k_auraline_13', 'fx_k_auraline_14']
+  - material: fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.8
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_00.hit.par_d_counterhit_01.particlemodulespawn_4`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=7, countlow=-1, time=0}
+- lifetime ← `fx_bs_02.item.par_l_carvebook_01.particlemodulelifetime_2`
+  - lifetime: uniform 0.8 ~ 1.3
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_wind_01.particlemodulesizemultiplylife_16`
+  - lifemultiplier: curve (1, 1, 1) → (1.199, 1.199, 1.199) → (1.387, 1.387, 1.387) → (1.564, 1.564, 1.564) → (1.731, 1.731, 1.731) → (1.887, 1.887, 1.887) → (2.032, 2.032, 2.032) → (2.167, 2.167, 2.167) …
+- size ← `fx_bs_08.buff.par_r_trackingscroll_01.particlemodulesize_15`
+  - startsize: uniform (120, 0, 0) ~ (80, 0, 0)
+- color
+  - startcolor: uniform (0.7, 0.7, 0.7) ~ (1.2, 1.2, 1.2)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_08.buff.par_s_azakiel_01_l.particlemodulecolorscaleoverlife_6`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8576 → 0.7294 → 0.6147 → 0.5127 → 0.4226 → 0.3438 → 0.2754 …
+- velocity ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulevelocity_5`
+  - startvelocity: uniform (0, 0, 30) ~ (0, 0, 20)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_00.hit.par_j_swp_defaulthit_01.particlemodulesizemultiplylife_17`
+  - lifemultiplier: const (0.7, 0.7, 0.7)
+- ef:locationcirclesurface
+  - velocity: True
+  - velocityscale: uniform 150 ~ 50
+  - startlocation: (미설정 → 엔진 기본값)
+  - startradius: const 60
+  - startrot: (미설정 → 엔진 기본값)
+
+### emitter 7: particlespriteemitter_21
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad` textures []
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_0`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0}
+- lifetime ← `fx_bs_04.state.par_c_cardstack_05.particlemodulelifetime_0`
+  - lifetime: uniform 0.7 ~ 1.5
+- size ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulesize_37`
+  - startsize: uniform (2, 4, 0) ~ (1, 2, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_01.particlemodulesizemultiplylife_114`
+  - lifemultiplier: curve (0.5, 0, 1) → (0.8489, 1.875, 1) → (0.98, 1.922, 1) → (1, 1.5, 1) → (0.995, 1.309, 0.99) → (0.9809, 1.144, 0.9617) → (0.9588, 1.003, 0.9176) → (0.93, 0.8831, 0.86) …
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- velocity ← `fx_bs_00.hit.par_h_cdepc_hit_01_02.particlemodulevelocity_5`
+  - startvelocity: uniform (0, 0, 20) ~ (0, 0, 50)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- orbit ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemoduleorbit_0`
+  - offsetamount: curve (0, 0, 0) → (0, 15, 0) → (0, 0, 0) → (0, 15, 0)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (0, 0, 0) → (0.5, 0.5, 1) → (0, 0, 0) → (0.5, 0.5, 1)
+- color
+  - startcolor: const (0.5, 1, 5)
+  - startalpha: const 0.85
+- colorscaleoverlife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulecolorscaleoverlife_16`
+  - colorscaleoverlife: curve (0.2, 0.2, 0.2) → (0.1, 0.1, 0.1)
+  - alphascaleoverlife: const 0.9996
+- velocityoverlifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulevelocityoverlifetime_1`
+  - veloverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: uniform 200 ~ 300
+  - startheight: const 1
+  - positive_x: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: uniform 6 ~ 3
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 8: ember02
+- **disabled**
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn
+  - rate: const 10
+  - ratescale: (미설정 → 엔진 기본값)
+- lifetime ← `fx_esther_dpwi_00.par_n_dpwi_npcspawn_01_01.particlemodulelifetime_4`
+  - lifetime: uniform 0.5 ~ 1.4
+- size ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesize_16`
+  - startsize: uniform (1, 1, 1) ~ (2.5, 2.5, 2.5)
+- color
+  - startcolor: const (0.5, 1, 5)
+  - startalpha: const 0.85
+- colorscaleoverlife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulecolorscaleoverlife_16`
+  - colorscaleoverlife: curve (0.2, 0.2, 0.2) → (0.1, 0.1, 0.1)
+  - alphascaleoverlife: const 0.9996
+- location ← `fx_bs_08.buff.par_m_ag_destiny01_01.particlemodulelocation_19`
+  - startlocation: uniform (0, 0, 1000) ~ (0, 0, 100)
+- sizemultiplylife ← `fx_bs_08.buff.par_j_ag_destiny02_02.particlemodulesizemultiplylife_37`
+  - lifemultiplier: curve (1.482, 1.482, 1.482) → (0.09439, 0.09439, 0.09439)
+- sizemultiplylife ← `fx_bs_04.state.par_x_dh_arkpassive_wp_flare_01.particlemodulesizemultiplylife_11`
+  - lifemultiplier: uniform (1, 1, 1) ~ (1.3, 1.3, 1.3)
+- velocity ← `fx_bs_08.buff.par_j_ag_destiny02_02.particlemodulevelocity_11`
+  - startvelocity: uniform (-100, -100, -80) ~ (100, 100, -10)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime ← `fx_bs_08.buff.par_j_ag_destiny02_02.efparticlemodulevelocityoverlifetime_7`
+  - veloverlife: curve (0.1, 0.1, 1) → (0.09224, 0.09224, 0.597)
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: uniform 80 ~ 100
+  - startheight: const 1
+  - negative_z: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: uniform 0.1 ~ 0.4
+  - startlocation: uniform (0, 0, 0) ~ (0, 0, 100)
+
+### emitter 9: particlespriteemitter_7
+- required: material `fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad` textures ['fx_d_noise_003', 'fx_e_atypical_005_cl', 'fx_e_fluid_006']
+  - material: fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13`
+  - lifetime: const 0.6
+- size ← `fx_bs_07.gadget.par_l_sylmaelcore_sk_01_2.particlemodulesize_3`
+  - startsize: const (350, 250, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_9`
+  - startcolor: const (0.1, 0.2, 3)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_05.prj.par_g_magic_hat_01.particlemodulecolorscaleoverlife_0`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- rotation ← `bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_3`
+  - startrotation: const 0
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 10: dust02
+- required: material `fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr` textures ['fx_a_cloud_026', 'fx_a_glow_009']
+  - material: fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr
+  - screenalignment: psa_rectangle
+  - sortmode: psortmode_age_newestfirst
+  - interpolationmethod: psuvim_linear_blend
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 8
+  - subimages_vertical: 4
+  - randomimagetime: 1
+- spawn ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_u_kzcg_skhit_nightlea_slash_01.particlemodulelifetime_7`
+  - lifetime: uniform 2 ~ 1.5
+- size ← `fx_bs_05.prj.par_p_tile_57_explo_01.particlemodulesize_12`
+  - startsize: uniform (100, 100, 0) ~ (120, 120, 0)
+- sizemultiplylife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_44`
+  - lifemultiplier: curve (0.5, 0.5, 0.5) → (0.6381, 0.6381, 0.6381) → (0.7627, 0.7627, 0.7627) → (0.8745, 0.8745, 0.8745) → (0.9742, 0.9742, 0.9742) → (1.063, 1.063, 1.063) → (1.14, 1.14, 1.14) → (1.208, 1.208, 1.208) …
+- color ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolor_21`
+  - startcolor: const (1.2, 1.1, 1)
+  - startalpha: uniform 1 ~ 2
+- colorscaleoverlife ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolorscaleoverlife_33`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8519 → 0.7192 → 0.601 → 0.4965 → 0.4049 → 0.3252 → 0.2567 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- parameterdynamic ← `fx_bs_04.state.par_c_blind_001.particlemoduleparameterdynamic_0`
+  - dynamicparams: {paramname=turbulencelerp.a[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=turbulencelerp.e[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- ef:velocityoverlifetime ← `fx_bs_05.par_y_kazemood_prj_02.efparticlemodulevelocityoverlifetime_4`
+  - veloverlife: curve (2, 2, 2) → (1.212, 1.212, 1.212) → (0.7074, 0.7074, 0.7074) → (0.5, 0.5, 0.5) → (0.4493, 0.4493, 0.4493) → (0.4047, 0.4047, 0.4047) → (0.3657, 0.3657, 0.3657) → (0.332, 0.332, 0.332) …
+- ef:locationcirclesurface
+  - velocity: True
+  - velocityscale: const 30
+  - startlocation: const (0, 0, 20)
+  - startradius: const 70
+  - splitcirclecount: 7
+  - startrot: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0`
+  - cameraoffset: const 30
+
+### emitter 11: particlespriteemitter_17
+- required: material `fx_m_mi_03.fx_mi.fx_k_pa_turbulence_01_tr` textures ['fx_c_atypical_017', 'fx_c_noise_008', 'fx_d_atypical_082', 'fx_d_fluid_026', 'fx_d_uvturbulence_001', 'fx_e_atypical_005_cl', 'fx_e_noise_002', 'fx_i_noise_01']
+  - material: fx_m_mi_03.fx_mi.fx_k_pa_turbulence_01_tr
+  - screenalignment: psa_velocity
+  - opacitysourcemode: osm_colorbrightness
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulelifetime_0`
+  - lifetime: uniform 0.5 ~ 0.7
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_24`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 1.5
+- orientationaxislock ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0`
+  - lockaxisflags: epal_z
+- colorscaleoverlife ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulecolorscaleoverlife_30`
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 0)
+  - alphascaleoverlife: curve 0.5981 → 0.4827 → 0.3875 → 0.3103 → 0.2487 → 0.2001 → 0.1623 → 0.1328 …
+- sizemultiplylife ← `fx_esther_lrsa_00.par_d_lrsa_01-4_teleport_01.particlemodulesizemultiplylife_22`
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- parameterdynamic ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemoduleparameterdynamic_11`
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelocation_3`
+  - startlocation: const (0, 0, 20)
+- size ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulesize_5`
+  - startsize: const (80, 0, 0)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+
+## `par_l_ppnn_spawn_trail_01`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: black
+- required: material `fx_m_mi_o_00.fx_mi.fx_o_me_master_01_10_ds_ad` textures ['fx_a_atypical_048', 'fx_c_cloud_015', 'fx_i_shockwave_02_ycl']
+  - material: fx_m_mi_o_00.fx_mi.fx_o_me_master_01_10_ds_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 12
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.15 ~ 0.25
+- size
+  - startsize: uniform (15, 6, 6) ~ (3, 3, 3)
+- parameterdynamic
+  - dynamicparams: {paramname=pann_time, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=sec_pann_time, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (1, 0, 1) → (1, 0.2973, 1) → (1, 0.8153, 1) → (1, 1, 1) → (0.99, 0.8424, 1) → (0.9617, 0.7022, 1) → (0.9176, 0.5785, 1) → (0.86, 0.4701, 1) …
+- color
+  - startcolor: const (2, 2, 2)
+  - startalpha: uniform 0.3 ~ 0.6
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 7, 30)
+  - alphascaleoverlife: curve 1 → 0.8778 → 0.7656 → 0.6631 → 0.5699 → 0.4855 → 0.4095 → 0.3415 …
+- cameraoffset
+  - cameraoffset: const 50
+- sizemultiplylife
+  - lifemultiplier: curve (0.6663, 0.6663, 0.6663) → (0.9957, 0.9957, 0.9957)
+
+## `par_l_ppnn_despawn_01`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_2
+- required: material `fx_m_mi_03.fx_mi.fx_d_pa_ring_07_21_tr` textures ['fx_b_atypical_004', 'fx_d_atypical_031', 'fx_d_atypical_031_cl', 'fx_d_noise_009', 'fx_i_noise_03']
+  - material: fx_m_mi_03.fx_mi.fx_d_pa_ring_07_21_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.65
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_05.prj.par_l_chasebom_prjdead_01.particlemodulesize_15`
+  - startsize: const (400, 100, 0)
+- coloroverlife ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_4`
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 1: ember01
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2`
+  - lifetime: const 0.25
+- size ← `fx_bs_02.item.par_k_item_massteleport_01.particlemodulesize_39`
+  - startsize: const (270, 270, 270)
+- color ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulecolor_1`
+  - startcolor: const (1, 1, 1)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_04.state.par_j_exmove_01.particlemodulecolorscaleoverlife_5`
+  - colorscaleoverlife: curve (0.5, 1, 4) → (1, 0.5, 0.5)
+  - alphascaleoverlife: curve 1 → 1 → 1 → 0.9096 → 0.8153 → 0.719 → 0.6222 → 0.5266 …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_02.item.par_k_item_massteleport_01.particlemodulesizemultiplylife_23`
+  - lifemultiplier: curve (0.5, 1, 1) → (0.5714, 1, 1) → (0.6429, 1, 1) → (0.7143, 1, 1) → (0.7857, 1, 1) → (0.8571, 1, 1) → (0.9286, 1, 1) → (1, 1, 1) …
+- parameterdynamic ← `fx_bs_02.item.par_k_item_massteleport_01.particlemoduleparameterdynamic_20`
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 2: particlespriteemitter_18
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad` textures ['fx_d_atypical_009']
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.03
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelifetime_4`
+  - lifetime: const 0.22
+- size ← `fx_bs_00.hit.par_d_backattackhit_01.particlemodulesize_7`
+  - startsize: const (150, 150, 0)
+- coloroverlife ← `fx_bs_04.state.par_j_exmove_01.particlemodulecoloroverlife_0`
+  - coloroverlife: const (2, 2.4, 7)
+  - alphaoverlife: curve 1 → 0
+- parameterdynamic ← `fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife ← `fx_bs_02.item.par_l_carve_01.particlemodulesizemultiplylife_15`
+  - lifemultiplier: curve (1.5, 1.5, 1.5) → (1, 1, 1)
+- location
+  - startlocation: const (-30, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+
+### emitter 3: 22222
+- required: material `fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad` textures ['fx_e_adli', 'fx_j_chormaticring_01']
+  - material: fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `fx_bs_02.item.par_l_carve_01.particlemodulespawn_0`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0}
+- lifetime ← `fx_bs_04.state.par_c_cardstack_05.particlemodulelifetime_0`
+  - lifetime: uniform 0.7 ~ 1.5
+- size ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulesize_37`
+  - startsize: uniform (2, 4, 0) ~ (1, 2, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_01.particlemodulesizemultiplylife_114`
+  - lifemultiplier: curve (0.5, 0, 1) → (0.8489, 1.875, 1) → (0.98, 1.922, 1) → (1, 1.5, 1) → (0.995, 1.309, 0.99) → (0.9809, 1.144, 0.9617) → (0.9588, 1.003, 0.9176) → (0.93, 0.8831, 0.86) …
+- subuv ← `bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8`
+  - subimageindex: (미설정 → 엔진 기본값)
+- velocity ← `fx_bs_00.hit.par_h_cdepc_hit_01_02.particlemodulevelocity_5`
+  - startvelocity: uniform (0, 0, 20) ~ (0, 0, 50)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- orbit ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemoduleorbit_0`
+  - offsetamount: curve (0, 0, 0) → (0, 15, 0) → (0, 0, 0) → (0, 15, 0)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: curve (0, 0, 0) → (0.5, 0.5, 1) → (0, 0, 0) → (0.5, 0.5, 1)
+- color
+  - startcolor: const (0.5, 1, 5)
+  - startalpha: const 0.85
+- colorscaleoverlife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulecolorscaleoverlife_16`
+  - colorscaleoverlife: curve (0.2, 0.2, 0.2) → (0.1, 0.1, 0.1)
+  - alphascaleoverlife: const 0.9996
+- velocityoverlifetime ← `bfx_low_05.sparkling.par_h_spark_02.particlemodulevelocityoverlifetime_1`
+  - veloverlife: curve (1, 1, 1) → (0.5, 0.5, 0.5)
+- location
+  - startlocation: const (-30, 0, 230)
+- locationprimitivesphere
+  - startradius: (미설정 → 엔진 기본값)
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 0.3
+  - startlocation: (미설정 → 엔진 기본값)
+
+### emitter 4: particlespriteemitter_0
+- required: material `fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad` textures ['fx_d_atypical_055_2_cl', 'fx_d_electric_016', 'fx_d_noise_009', 'fx_k_auraline_08', 'fx_k_auraline_13', 'fx_k_auraline_14']
+  - material: fx_m_mi_01.fx_mi.fx_d_pa_ribbonflow_02_02_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 3 ~ 2
+- size
+  - startsize: const (1, 1, 2)
+- coloroverlife
+  - coloroverlife: const (2, 2.4, 7)
+  - alphaoverlife: curve 1 → 0
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (1.199, 1.199, 1.199) → (1.387, 1.387, 1.387) → (1.564, 1.564, 1.564) → (1.731, 1.731, 1.731) → (1.887, 1.887, 1.887) → (2.032, 2.032, 2.032) → (2.167, 2.167, 2.167) …
+- parameterdynamic
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 50)
+- cameraoffset
+  - cameraoffset: const 30
+
+### emitter 5: particlespriteemitter_21
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bdelayfirstlooponly: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.1
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulelifetime_12`
+  - lifetime: const 0.65
+- size ← `fx_bs_00.hit.par_e_hitholycri_01.particlemodulesize_40`
+  - startsize: const (250, 0, 0)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- color ← `fx_bs_04.state.par_h_damdown_s_01_01_l.particlemodulecolor_0`
+  - startcolor: const (1, 2, 5)
+  - startalpha: const 0.2
+- parameterdynamic ← `fx_bs_07.common.par_l_kienapoint_02.particlemoduleparameterdynamic_9`
+  - dynamicparams: {paramname=alpha_dissolve, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_noise_velue, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=opacity_pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- rotation_seeded
+  - startrotation: const 0
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 6: particlespriteemitter_4
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad` textures ['fx_a_glow_004', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7`
+  - lifetime: const 0.35
+- size ← `fx_bs_04.state.par_h_colosseum_powerup_01_2_loc_int.particlemodulesize_5`
+  - startsize: const (300, 120, 0)
+- color ← `fx_bs_00.hit.par_l_cdkcn_hit_02_l.particlemodulecolor_9`
+  - startcolor: const (0.1, 0.2, 3)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_05.prj.par_g_magic_hat_01.particlemodulecolorscaleoverlife_0`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- sizemultiplylife ← `fx_bs_08.buff.par_j_quest_trixionselection_05.particlemodulesizemultiplylife_2`
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- rotation ← `bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_3`
+  - startrotation: const 0
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 7: particlespriteemitter_7
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_09_04_tr` textures ['fx_d_noise_021', 'fx_e_trba', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_09_04_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 0.23
+- size
+  - startsize: const (22, 50, 50)
+- color
+  - startcolor: const (1, 1, 1)
+  - startalpha: (미설정 → 엔진 기본값)
+- parameterdynamic
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (12, 12, 12) → (11.38, 11.38, 11.38) → (10.72, 10.72, 10.72) → (10.04, 10.04, 10.04) → (9.329, 9.329, 9.329) → (8.606, 8.606, 8.606) → (7.873, 7.873, 7.873) → (7.138, 7.138, 7.138) …
+- colorscaleoverlife
+  - colorscaleoverlife: curve (0.5, 1, 4) → (1, 0.5, 0.5)
+  - alphascaleoverlife: curve 1 → 1 → 1 → 0.9096 → 0.8153 → 0.719 → 0.6222 → 0.5266 …
+- cameraoffset
+  - cameraoffset: const 30
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 8: distortion
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt` textures []
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulelifetime_0`
+  - lifetime: uniform 0.5 ~ 0.7
+- color ← `fx_cm_04.sys.warp.par_l_warp_off_01.particlemodulecolor_24`
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 1.5
+- colorscaleoverlife ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulecolorscaleoverlife_30`
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 0)
+  - alphascaleoverlife: curve 0.5981 → 0.4827 → 0.3875 → 0.3103 → 0.2487 → 0.2001 → 0.1623 → 0.1328 …
+- sizemultiplylife ← `fx_esther_lrsa_00.par_d_lrsa_01-4_teleport_01.particlemodulesizemultiplylife_22`
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- parameterdynamic ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemoduleparameterdynamic_11`
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- size ← `fx_bs_02.item.par_g_gadgetskill_001.particlemodulesize_0`
+  - startsize: const (40, 0, 0)
+- cameraoffset ← `bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1`
+  - cameraoffset: const 20
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 9: particlespriteemitter_17
+- required: material `fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr` textures ['fx_a_environ_003_n', 'fx_a_noise_009', 'fx_d_atypical_002_1_ycl', 'fx_d_noise_003', 'fx_i_noise_03', 'fx_m_atypical_002_ycl']
+  - material: fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_13.light.par_d_unseallight_start_01.particlemodulelifetime_3`
+  - lifetime: const 1.2
+- size ← `bfx_low_16.water.par_h_fishing_s_01.particlemodulesize_5`
+  - startsize: const (80, 0, 0)
+- sizemultiplylife ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemodulesizemultiplylife_6`
+  - lifemultiplier: curve (2, 2, 2) → (2.116, 2.116, 2.116) → (2.223, 2.223, 2.223) → (2.322, 2.322, 2.322) → (2.412, 2.412, 2.412) → (2.495, 2.495, 2.495) → (2.57, 2.57, 2.57) → (2.638, 2.638, 2.638) …
+- rotation ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15`
+  - startrotation: (미설정 → 엔진 기본값)
+- color
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 3
+- colorscaleoverlife ← `fx_bs_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulecolorscaleoverlife_9`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.9079 → 0.8197 → 0.7355 → 0.6553 → 0.5793 → 0.5076 → 0.4402 …
+- parameterdynamic ← `fx_bs_05.prj.par_l_sworda_prj_01.particlemoduleparameterdynamic_8`
+  - dynamicparams: {paramname=uv_distort_str[0-x]_or_y.pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=centerhole_pow[1-x]_or_distortion, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 10: particlespriteemitter_20
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad` textures ['fx_c_glow_006', 'fx_c_glow_007']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_low_05.sparkling.par_h_spark_03.particlemodulelifetime_0`
+  - lifetime: uniform 0.5 ~ 0.7
+- color
+  - startcolor: const (50, 150, 500)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife ← `fx_bs_05.prj.par_p_tile_00_thunder_01.particlemodulecolorscaleoverlife_30`
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 0)
+  - alphascaleoverlife: curve 0.5981 → 0.4827 → 0.3875 → 0.3103 → 0.2487 → 0.2001 → 0.1623 → 0.1328 …
+- sizemultiplylife ← `fx_esther_lrsa_00.par_d_lrsa_01-4_teleport_01.particlemodulesizemultiplylife_22`
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- parameterdynamic ← `fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemoduleparameterdynamic_11`
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- size ← `fx_bs_02.item.par_g_gadgetskill_001.particlemodulesize_0`
+  - startsize: const (40, 0, 0)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- location
+  - startlocation: const (-30, 0, 230)
+
+## `par_l_ppnn_despawn_02`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_2
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad` textures []
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.5 ~ 1.4
+- size
+  - startsize: uniform (1, 1, 1) ~ (2.5, 2.5, 2.5)
+- coloroverlife
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- parameterdynamic
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- location
+  - startlocation: const (-30, 0, 50)
+- cameraoffset
+  - cameraoffset: const 30
+
+### emitter 1: ghost01
+- required: material `fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr` textures ['fx_a_cloud_026', 'fx_a_glow_009']
+  - material: fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr
+  - screenalignment: psa_rectangle
+  - sortmode: psortmode_age_newestfirst
+  - interpolationmethod: psuvim_linear_blend
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 8
+  - subimages_vertical: 4
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.7 ~ 1.5
+- color
+  - startcolor: const (1, 1, 1)
+  - startalpha: const 0.3
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (2, 2, 2) → (2.116, 2.116, 2.116) → (2.223, 2.223, 2.223) → (2.322, 2.322, 2.322) → (2.412, 2.412, 2.412) → (2.495, 2.495, 2.495) → (2.57, 2.57, 2.57) → (2.638, 2.638, 2.638) …
+- parameterdynamic
+  - dynamicparams: {paramname=uv_distort_str[0-x]_or_y.pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=centerhole_pow[1-x]_or_distortion, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- size
+  - startsize: const (400, 100, 0)
+- cameraoffset
+  - cameraoffset: const 30
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 2: particlespriteemitter_18
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad` textures []
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_glow_01_02_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterduration: 0.4
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.5 ~ 1.4
+- size
+  - startsize: uniform (1, 1, 1) ~ (2.5, 2.5, 2.5)
+- coloroverlife
+  - coloroverlife: const (1, 1, 1)
+  - alphaoverlife: curve 1 → 0
+- parameterdynamic
+  - dynamicparams: {paramname=timescale, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=_, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- sizemultiplylife
+  - lifemultiplier: curve (2, 2, 2) → (2.567, 2.567, 2.567) → (3.092, 3.092, 3.092) → (3.578, 3.578, 3.578) → (4.025, 4.025, 4.025) → (4.434, 4.434, 4.434) → (4.808, 4.808, 4.808) → (5.147, 5.147, 5.147) …
+- location
+  - startlocation: const (-30, 0, 50)
+- cameraoffset
+  - cameraoffset: const 30
+
+### emitter 3: ember01
+- required: material `fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad` textures ['fx_e_adli', 'fx_j_chormaticring_01']
+  - material: fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0.05}
+- lifetime
+  - lifetime: const 0.22
+- size
+  - startsize: const (150, 150, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1.482, 1.482, 1.482) → (0.09439, 0.09439, 0.09439)
+- subuv
+  - subimageindex: curve 10 → 31
+- velocity
+  - startvelocity: uniform (0, 0, 30) ~ (0, 0, 20)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- orbit
+  - offsetamount: curve (-5, -5, -5) → (5, 5, 5) → (-5, -5, -5) → (5, 5, 5)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- color
+  - startcolor: const (5, 15, 50)
+  - startalpha: uniform 50 ~ 200
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8576 → 0.7294 → 0.6147 → 0.5127 → 0.4226 → 0.3438 → 0.2754 …
+- velocityoverlifetime
+  - veloverlife: curve (2, 2, 2) → (0.2, 0.2, 0)
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: const 10
+  - startheight: (미설정 → 엔진 기본값)
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 30
+  - startlocation: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 4: particlespriteemitter_0
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 5: ice_twinkle
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.15
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size
+  - startsize: const (1600, 500, 0)
+- color
+  - startcolor: const (2, 5, 10)
+  - startalpha: const 0.5
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife ← `fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesizemultiplylife_3`
+  - lifemultiplier: curve (0, 0, 1) → (1, 0.5, 1) → (2, 1, 1) → (3, 1.5, 1) → (4, 2, 1) → (3.75, 2, 0.9375) → (3.5, 2, 0.875) → (3.25, 2, 0.8125) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- sizemultiplylife ← `fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemodulesizemultiplylife_10`
+  - lifemultiplier: const (0.5, 0.5, 0.5)
+- colorscaleoverlife ← `fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7`
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+
+### emitter 6: particlespriteemitter_21
+- required: material `fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad` textures ['fx_e_adli', 'fx_j_chormaticring_01']
+  - material: fx_m_mi_01.fx_mi.fx_j_pa_chromaring_01_ad
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - bdelayfirstlooponly: True
+  - emitterduration: 0.5
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=30, countlow=-1, time=0.05}
+- lifetime
+  - lifetime: const 0.22
+- size
+  - startsize: const (150, 150, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1.482, 1.482, 1.482) → (0.09439, 0.09439, 0.09439)
+- subuv
+  - subimageindex: curve 10 → 31
+- velocity
+  - startvelocity: uniform (0, 0, 30) ~ (0, 0, 20)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- orbit
+  - offsetamount: curve (-5, -5, -5) → (5, 5, 5) → (-5, -5, -5) → (5, 5, 5)
+  - rotationamount: (미설정 → 엔진 기본값)
+  - rotationrateamount: (미설정 → 엔진 기본값)
+- color
+  - startcolor: const (5, 15, 50)
+  - startalpha: uniform 50 ~ 200
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8576 → 0.7294 → 0.6147 → 0.5127 → 0.4226 → 0.3438 → 0.2754 …
+- velocityoverlifetime
+  - veloverlife: curve (2, 2, 2) → (0.2, 0.2, 0)
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: const 10
+  - startheight: (미설정 → 엔진 기본값)
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 30
+  - startlocation: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 7: particlespriteemitter_4
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad` textures ['fx_c_glow_006', 'fx_c_glow_008']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 1.2
+- size
+  - startsize: uniform (120, 0, 0) ~ (80, 0, 0)
+- color
+  - startcolor: const (1, 1, 1)
+  - startalpha: uniform 0.7 ~ 1.2
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: curve 0 → 0.5 → 1 → 0.9911 → 0.9657 → 0.9259 → 0.8738 → 0.8114 …
+- rotation
+  - startrotation: const 0
+- sizemultiplylife
+  - lifemultiplier: curve (1, 1, 1) → (1.033, 1.033, 1.033) → (1.074, 1.074, 1.074) → (1.124, 1.124, 1.124) → (1.181, 1.181, 1.181) → (1.247, 1.247, 1.247) → (1.32, 1.32, 1.32) → (1.4, 1.4, 1.4) …
+- parameterdynamic
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 50)
+- cameraoffset
+  - cameraoffset: const 30
+
+### emitter 8: particlespriteemitter_7
+- required: material `fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad` textures ['fx_d_noise_003', 'fx_e_atypical_005_cl', 'fx_e_fluid_006']
+  - material: fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 0.1
+- size
+  - startsize: const (270, 270, 270)
+- color
+  - startcolor: const (50, 150, 500)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (0.2, 0.2, 0.2) → (0.1, 0.1, 0.1)
+  - alphascaleoverlife: const 0.9996
+- sizemultiplylife
+  - lifemultiplier: uniform (1, 1, 1) ~ (1.3, 1.3, 1.3)
+- rotation
+  - startrotation: curve -0.05 → 0.05 → -0.05 → 0.05
+- cameraoffset
+  - cameraoffset: const 30
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 9: dust01
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt` textures []
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: (미설정 → 엔진 기본값)
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 0.25
+- size
+  - startsize: const (40, 40, 40)
+- subuv
+  - subimageindex: curve 0 → 1
+- rotation
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.5, 1.5, 1.5) → (1, 1, 1)
+- color
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: curve 0.5 → 0
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.9079 → 0.8197 → 0.7355 → 0.6553 → 0.5793 → 0.5076 → 0.4402 …
+- ef:velocityoverlifetime
+  - veloverlife: curve (10, 10, 10) → (6.355, 6.355, 6.355) → (3.414, 3.414, 3.414) → (1.989, 1.989, 1.989) → (1.589, 1.589, 1.589) → (1.258, 1.258, 1.258) → (0.9892, 0.9892, 0.9892) → (0.7756, 0.7756, 0.7756) …
+- cameraoffset
+  - cameraoffset: const 20
+- locationprimitivesphere
+  - startradius: const 8
+  - positive_x: False
+  - positive_z: False
+  - negative_z: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 20
+  - startlocation: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 10: particlespriteemitter_17
+- required: material `fx_m_mi_01.fx_mi.fx_e_me_ap_25_1_ts_ad` textures ['fx_a_fragment_005', 'fx_a_noise_002', 'fx_e_addi']
+  - material: fx_m_mi_01.fx_mi.fx_e_me_ap_25_1_ts_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.5 ~ 0.7
+- size
+  - startsize: const (40, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (0.5, 1, 1) → (0.5714, 1, 1) → (0.6429, 1, 1) → (0.7143, 1, 1) → (0.7857, 1, 1) → (0.8571, 1, 1) → (0.9286, 1, 1) → (1, 1, 1) …
+- rotation
+  - startrotation: const 0
+- color
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: const 3
+- colorscaleoverlife
+  - colorscaleoverlife: curve (1, 1, 1) → (0, 0, 0)
+  - alphascaleoverlife: curve 0.5981 → 0.4827 → 0.3875 → 0.3103 → 0.2487 → 0.2001 → 0.1623 → 0.1328 …
+- parameterdynamic
+  - dynamicparams: {paramname=trasition_area, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param2, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param3, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=param4, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 11: ember02
+- required: material `bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad` textures ['fx_d_atypical_009']
+  - material: bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - emitterdelay: 0.03
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=7, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 0.35
+- size
+  - startsize: const (300, 120, 0)
+- color
+  - startcolor: const (5, 15, 50)
+  - startalpha: uniform 50 ~ 200
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.8576 → 0.7294 → 0.6147 → 0.5127 → 0.4226 → 0.3438 → 0.2754 …
+- location
+  - startlocation: const (-1450, 0, 2000)
+- sizemultiplylife
+  - lifemultiplier: curve (1.5, 1.5, 0) → (0, 0, 0)
+- sizemultiplylife
+  - lifemultiplier: curve (1.2, 0.9, 0.9) → (1.197, 0.9007, 0.9007) → (1.189, 0.9028, 0.9028) → (1.176, 0.9061, 0.9061) → (1.158, 0.9104, 0.9104) → (1.138, 0.9156, 0.9156) → (1.114, 0.9216, 0.9216) → (1.087, 0.9282, 0.9282) …
+- velocity
+  - startvelocity: const (100, 0, -130)
+  - startvelocityradial: (미설정 → 엔진 기본값)
+- ef:velocityoverlifetime
+  - veloverlife: curve (5, 5, 5) → (1.712, 1.712, 1.712) → (0.5, 0.5, 0.5) → (0.4195, 0.4195, 0.4195) → (0.3491, 0.3491, 0.3491) → (0.288, 0.288, 0.288) → (0.2357, 0.2357, 0.2357) → (0.1915, 0.1915, 0.1915) …
+- locationprimitivecylinder
+  - badjustforworldspace: True
+  - startradius: uniform 60 ~ 70
+  - startheight: const 1
+  - negative_z: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: uniform 0.1 ~ 0.4
+  - startlocation: uniform (0, 0, -50) ~ (0, 0, 50)
+
+### emitter 12: distortion
+- required: material `fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad` textures ['fx_a_fragment_007', 'fx_e_adsi', 'fx_e_normal']
+  - material: fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad
+  - screenalignment: psa_velocity
+  - interpolationmethod: psuvim_random
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - subimages_horizontal: 4
+  - subimages_vertical: 2
+  - randomimagetime: 1
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- typedatamesh mesh `fx_sm_00.fm_d_sphere_001`
+  - mesh: fx_sm_00.fm_d_sphere_001
+  - boverridematerial: True
+- lifetime
+  - lifetime: uniform 0.8 ~ 1.3
+- size
+  - startsize: uniform ? ~ ?
+- color
+  - startcolor: const (5, 10, 25)
+  - startalpha: (미설정 → 엔진 기본값)
+- locationdirect
+  - location: curve (-1500, 0, 2000) → (-15, 0, -50)
+  - locationoffset: (미설정 → 엔진 기본값)
+  - scalefactor: (미설정 → 엔진 기본값)
+  - direction: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (1, 1, 1) → (0.4981, 1.018, 1.2)
+  - alphascaleoverlife: curve t0.0003942=0, t0.3=1, t0.9=0
+
+### emitter 13: arrow-head
+- required: material `fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt` textures []
+  - material: fx_m_mi_02.fx_mi.fx_k_pa_glow_01_01_ad_dt
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn
+  - rate: (미설정 → 엔진 기본값)
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime
+  - lifetime: const 0.25
+- size
+  - startsize: const (40, 40, 40)
+- subuv
+  - subimageindex: curve 0 → 1
+- rotation
+  - startrotation: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (1.5, 1.5, 1.5) → (1, 1, 1)
+- color
+  - startcolor: const (0.5, 1.5, 5)
+  - startalpha: curve 0.5 → 0
+- colorscaleoverlife
+  - colorscaleoverlife: const (1, 1, 1)
+  - alphascaleoverlife: curve 1 → 0.9079 → 0.8197 → 0.7355 → 0.6553 → 0.5793 → 0.5076 → 0.4402 …
+- ef:velocityoverlifetime
+  - veloverlife: curve (10, 10, 10) → (6.355, 6.355, 6.355) → (3.414, 3.414, 3.414) → (1.989, 1.989, 1.989) → (1.589, 1.589, 1.589) → (1.258, 1.258, 1.258) → (0.9892, 0.9892, 0.9892) → (0.7756, 0.7756, 0.7756) …
+- cameraoffset
+  - cameraoffset: const 20
+- locationprimitivesphere
+  - startradius: const 8
+  - positive_x: False
+  - positive_z: False
+  - negative_z: False
+  - surfaceonly: True
+  - velocity: True
+  - velocityscale: const 20
+  - startlocation: (미설정 → 엔진 기본값)
+- location
+  - startlocation: const (-30, 0, 50)
+
+### emitter 14: particlespriteemitter_20
+- required: material `fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad` textures ['fx_c_glow_006', 'fx_c_glow_007']
+  - material: fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad
+  - screenalignment: psa_rectangle
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkillondeactivate: True
+  - buselegacyemittertime: False
+  - boffsetcenter: True
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+  - offsetcenterx: 0.48
+  - offsetcentery: 0.52
+- spawn
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=10, countlow=-1, time=0}
+- lifetime
+  - lifetime: uniform 0.7 ~ 1.5
+- color
+  - startcolor: const (0.1, 0.2, 3)
+  - startalpha: (미설정 → 엔진 기본값)
+- colorscaleoverlife
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- sizemultiplylife
+  - lifemultiplier: curve (2, 2, 2) → (2.116, 2.116, 2.116) → (2.223, 2.223, 2.223) → (2.322, 2.322, 2.322) → (2.412, 2.412, 2.412) → (2.495, 2.495, 2.495) → (2.57, 2.57, 2.57) → (2.638, 2.638, 2.638) …
+- parameterdynamic
+  - dynamicparams: {paramname=uv_distort_str[0-x]_or_y.pan, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=dissolve[0-1], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=uv_sphery[1-x], buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=centerhole_pow[1-x]_or_distortion, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- size
+  - startsize: const (400, 100, 0)
+- cameraoffset
+  - cameraoffset: const 30
+- location
+  - startlocation: const (-30, 0, 50)
+
+## `par_l_ppnn_arrow_01`
+
+- system: {"updatetime_delta": 0.01666666753590107, "busefixedrelativeboundingbox": true, "bfixedboundingboxrecheck": true, "bshouldresetpeakcounts": true, "buserealtimethumbnail": true}
+
+### emitter 0: particlespriteemitter_27
+- required: material `fx_m_mi_00.fx_mi.fx_d_pa_atta_09_04_tr` textures ['fx_d_noise_021', 'fx_e_trba', 'fx_f_ring_001']
+  - material: fx_m_mi_00.fx_mi.fx_d_pa_atta_09_04_tr
+  - ballowimageflipping: True
+  - buselocalspace: True
+  - bkilloncompleted: True
+  - buselegacyemittertime: False
+  - emitterduration: 2
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3`
+  - lifetime: const 0.2
+- size ← `fx_bs_04.state.par_j_exmove_01.particlemodulesize_8`
+  - startsize: const (100, 75, 0)
+- color ← `fx_bs_04.state.par_j_exmove_01.particlemodulecolor_6`
+  - startcolor: const (0.5, 1, 5)
+  - startalpha: const 0.85
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_10`
+  - dynamicparams: {paramname=none, buseemittertime=False, bspawntimeonly=True, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=none, buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 14
+- sizemultiplylife
+  - lifemultiplier: curve (0, 0, 1) → (0.3333, 0.5, 1) → (0.6667, 1, 1) → (1, 1.5, 1) → (1.333, 2, 1) → (1.667, 2.5, 1) → (2, 3, 1) → (2.75, 2.75, 0.875) …
+- colorscaleoverlife ← `fx_bs_02.item.par_l_carve_01.particlemodulecolorscaleoverlife_20`
+  - colorscaleoverlife: curve (3, 3, 3) → (1, 1, 1)
+  - alphascaleoverlife: (미설정 → 엔진 기본값)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50
+- location
+  - startlocation: const (-30, 0, 230)
+
+### emitter 1: particlespriteemitter_0
+- required: material `fx_m_mi_03.fx_m.fx_c_pa_ring_06_ad` textures []
+  - material: fx_m_mi_03.fx_m.fx_c_pa_ring_06_ad
+  - ballowimageflipping: True
+  - bsquareimageflipping: True
+  - buselocalspace: True
+  - buselegacyemittertime: False
+  - emitterloops: 1
+  - spawnrate: (미설정 → 엔진 기본값)
+  - randomimagetime: 1
+- spawn ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11`
+  - rate: const 0
+  - ratescale: (미설정 → 엔진 기본값)
+  - burstlist: {count=1, countlow=-1, time=0}
+- lifetime ← `fx_bs_00.hit.par_k_flms_hit_backcri_01.particlemodulelifetime_6`
+  - lifetime: const 0.23
+- size ← `fx_bs_02.item.par_l_carve_01.particlemodulesize_12`
+  - startsize: const (22, 50, 50)
+- coloroverlife ← `fx_bs_04.state.par_j_exmove_01.particlemodulecoloroverlife_5`
+  - coloroverlife: curve (0.5, 1, 3) → (0, 0, 0)
+  - alphaoverlife: curve 1 → 0.9888 → 0.957 → 0.9077 → 0.8438 → 0.7681 → 0.6836 → 0.5933 …
+- sizemultiplylife ← `fx_bs_02.item.par_l_carve_01.particlemodulesizemultiplylife_14`
+  - lifemultiplier: curve (12, 12, 12) → (11.38, 11.38, 11.38) → (10.72, 10.72, 10.72) → (10.04, 10.04, 10.04) → (9.329, 9.329, 9.329) → (8.606, 8.606, 8.606) → (7.873, 7.873, 7.873) → (7.138, 7.138, 7.138) …
+- parameterdynamic ← `fx_bs_02.item.par_l_carve_01.particlemoduleparameterdynamic_12`
+  - dynamicparams: {paramname=emissive_tiling(0.5~2), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=alpha_power(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=panning_area(-1~1), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}; {paramname=fresnel_alpha(1~), buseemittertime=False, bspawntimeonly=False, valuemethod=edpv_userset, bscalevelocitybyparamvalue=False}
+  - updateflags: 15
+- location
+  - startlocation: const (-30, 0, 230)
+- cameraoffset ← `bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1`
+  - cameraoffset: const 50

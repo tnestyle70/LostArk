@@ -120,7 +120,32 @@ MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cel
 Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,
 유한한 좌표·영역 안의 XZ·walkable 검사는 그대로 적용한다. 다른 보스와 playerSpawn은 지면 높이를 검사한다.
 
-``World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
+### F1 Sequence Viewer
+
+Debug Client의 모든 Level에서 `F1 > Sequence Viewer`를 열면 `KoukuSaydon / 쿠크세이튼`와
+`Valtan / 발탄` 탭을 볼 수 있다. 현재 Area와 관계없이 트리거, 맵 시퀀스 인스턴스, 기존
+Boss Tool의 서버 패턴을 조회하며, 한국어 이름·구역·동작·원본 stable ID로 검색한다.
+`Data/Maps/SequenceViewer.labels.json`은 표시 이름만 소유한다. `kind`는
+`trigger/sequence/pattern`, `targetId`는 각 기존 ID, `displayName/location`은 한글을 포함한
+표시 문자열이다. 이 파일을 바꾸고 Refresh하면 이름만 바뀌고 실행 연결은 바뀌지 않는다.
+
+Test의 Play는 MapTool의 현재 문서와 기존 WorldSequencePlayer/카메라를 사용한다.
+이동·소환·전투와 공동 재생은 해당 Server-approved 아레나에서 실행한다. 다른 Level에서는
+Enter Arena로 기존 입장 절차를 요청한다. Go To는 Test에서 카메라를, Arena에서 요청한
+플레이어만 이동시킨다. Arena에서 트리거에 도착하면 그 트리거가 발동할 수 있다.
+Replay는 한 번 실행한 트리거도 같은 authored action으로 다시 요청한다. Stop은 선택 연출의
+표현만 정리하며 피해·소환·보스 전투나 다른 플레이어의 진행을 롤백하지 않는다.
+보스 패턴의 세부 제어는 Open Editor가 여는 기존 Boss Tool에 유지된다.
+
+`Publish-WorldGameplay.ps1`은 worldbootstrap v9에 활성 시퀀스 ID 목록을 함께 저장한다.
+Server는 이 목록으로 직접 재생/정지 명령을 확인한다. Client용
+`DataFiles/World/<Area>.viewer.world.json` 및 `SequenceViewer.labels.json`은 원본 checkout이
+없는 Debug 배포본의 읽기 전용 목록이다. 맵 연출 자체는 기존 Map publisher의
+worldsequences.json이므로 맵 연출을 변경했다면 Map과 World를 모두 publish해야 한다.
+Shared protocol은 66이며 Server와 모든 Client를 함께 빌드·재시작해야 한다.
+서버 승인과 broadcast는 화면 성공 판정이 아니다. 연출 화면과 4인 동시 확인은 사용자가 한다.
+
+`World Sequence`는 map placement, Deploy ANIM과 생성형 World Object의 상대 위치·회전·크기·표시
 상태를 시간축으로 편집하는 재사용 저작 레이어다. `templates`는 이름을 가진 상태와 동작 정의,
 `instances`는 template slot과 stable target ID의 Area별 연결을 소유한다. MapTool의
 `Save`는 visual placement와 world sequence를 백업·사후 재검증·rollback이 있는 연결 저장으로
@@ -162,7 +187,7 @@ Action Workbench는 부모 Object를 선택해 기본 상태로 Append하며, WO
 `objectResourceId`와 `sequenceInstanceId`가 부모 및 Append 당시 초기 상태를 저장한다. 이후 기본 상태를
 변경해도 기존 박스의 초기 상태는 바뀌지 않는다. Map 모델 occurrence의 optional `placement`는 절대
 `position`, degree `rotationDegrees`, Object 기본 크기의 배수 `scale`을 소유한다. 기존 placement 없는 문서는
-원래 동작을 유지한다. 이 TRS는 projector → Server → Shared protocol 67 → 기존 Client player로 전달된다.
+원래 동작을 유지한다. 이 TRS는 projector → Server → Shared protocol 68 → 기존 Client player로 전달된다.
 Object Tool Save가 기존 `Publish-MapAuthoring.ps1 -Scope WorldSequences`를 비동기 실행하며 이 scope는
 해당 Area worldsequences만 원자 배포한다. 조명·카메라 등 다른 Area 파일은 갱신하지 않는다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
@@ -224,13 +249,19 @@ Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Hei
 Server room admission이 실패한다. publisher는 실제 bake 결과, player spawn/trigger 연결성, cell
 통계와 Area별 step policy를 함께 검증한다.
 
-Navigation `Walkability` 브러시는 높이가 해석된 셀에 대해 `Block`, `Force Walkable`,
-`Reset` 세 명령을 제공한다. `Block`과 `Force Walkable`은 bake 결과보다 우선하는 수동
-override이며 `Reset`은 해당 셀의 walkability와 명시적 높이를 bake 결과 상속으로 되돌린다.
+Navigation `Walkability` 브러시는 `Block`, `Force Walkable`, `Reset`을 제공한다.
+`Force Walkable`은 선택한 grid 범위 안의 실제 렌더 표면을 피킹해, bake가 놓친 빈 셀에도
+명시적 높이를 가진 통행 셀을 추가할 수 있다. 기존 높이가 있는 셀은 기본적으로 그 높이를 유지한다.
+`Use Picked Height`를 명시적으로 켜면 기존 셀도 클릭한 표면 높이로 교체한다. 브러시 범위에 같은
+높이가 적용되므로 겹친 층이나 경사진 곳은 Brush 0부터 확인한다. 피킹 실패/선택 grid 밖/잘못된
+높이는 상태 문구로 알리고 셀을 바꾸지 않는다. Walkability에서는 live 셀을 표시하고 미저장 Bake
+Preview는 Bake 모드에서만 표시한다. Client 제품 아레나는 열람용이며 편집은 Lobby → Test에서 한다.
+
+수동 override는 bake보다 우선하며 `Reset`은 walkability와 명시적 높이를 원래 bake 상태로 되돌린다.
 `.navpaint` version 3은 `x z BLOCKED|WALKABLE [height]` 또는 `x z HEIGHT height`를 저장한다.
-명시적 높이는 bake가 surface를 해석한 셀에만 허용된다. 기존 version 2의
-`x z BLOCKED|WALKABLE`과 version 1의 `x z`(`BLOCKED`)도 호환 로드한다. 높이가 없는
-`NO_SURFACE` 셀은 강제로 이동 가능하게 만들 수 없다.
+`WALKABLE height`는 원래 `NO_SURFACE`였던 셀도 명시적인 바닥으로 만들 수 있다. 기존 version 2의
+`x z BLOCKED|WALKABLE`과 version 1의 `x z`(`BLOCKED`)도 호환 로드한다. 저장 후 제품 반영에는
+Navigation publisher 실행과 Server 재시작이 필요하다. 재베이크 없이 paint만 저장·배포할 수 있다.
 
 MapTool은 Client `.navgrid`/`.navpolicy`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
 Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은

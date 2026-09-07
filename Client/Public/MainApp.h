@@ -239,6 +239,7 @@ private:
 	(which simply wasn't called and drew nothing), these slots live under LEVEL::STATIC and would
 	otherwise keep showing across a level change or while closed. */
 	void Update_ItemUpgrade(f32_t fTimeDelta);
+	void Update_CustomizingSceneProfile();
 	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
 	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
@@ -392,6 +393,29 @@ private:
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
 	void RenderDeveloperTools();
+	void RenderSequenceViewer();
+	void UpdateSequenceViewer();
+	void RefreshSequenceViewer();
+	void ExecuteSequenceViewerAction(int action);
+	struct SEQUENCE_VIEWER_ROW
+	{
+		int kind = 0; // trigger, world sequence, boss pattern
+		std::string id, name, location, action, sequenceId, related, error;
+		float3_t position{};
+		bool enabled = true, hasPosition = false;
+	};
+	std::array<std::vector<SEQUENCE_VIEWER_ROW>, 2> m_SequenceViewerRows;
+	std::array<std::string, 2> m_SequenceViewerLoadStatus;
+	std::string m_SequenceViewerSelection;
+	std::string m_SequenceViewerStatus;
+	std::array<char, 256> m_SequenceViewerSearch{};
+	bool m_bSequenceViewerLoaded = false;
+	int m_iSequenceViewerArea = 0, m_iSequenceViewerKind = 0;
+	std::uint32_t m_iSequenceViewerRequest = 0;
+	std::uint32_t m_iSequenceViewerAwaitingRequest = 0;
+	std::chrono::steady_clock::time_point m_SequenceViewerReplyDeadline{};
+	int m_iSequenceViewerPendingEditorAction = -1;
+	std::chrono::steady_clock::time_point m_SequenceViewerPendingDeadline{};
 	void RenderRenderingWorkbench();
 	void RenderLightingWorkbench();
 	void SelectRenderingLight(const string& id);
@@ -411,6 +435,9 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	CRenderingProfileService m_RenderingProfiles;
+	/* Set while the character-creation screen holds the dark stage profile, so the
+	swap happens on the open/close edge instead of every frame. */
+	string m_strSceneProfileBeforeCustomizing;
 	CLightResourceCatalog m_LightResources;
 	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };

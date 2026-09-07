@@ -242,6 +242,8 @@ private:
 	CWorldSequenceDocument m_Document;
 	bool_t m_bPaused = false;
 	std::vector<ACTIVE_INSTANCE> m_Active;
+	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
+	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;
 	std::unordered_map<std::string, OBJECT_MODEL> m_ObjectModels;
 	std::string m_Status;

@@ -4168,6 +4168,15 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
 	if (bTrailCenterline)
 		ImGui::TextDisabled("Centerline trail samples the pivot position only: use Start/End Width for thickness, Point Lifetime for length.");
 	Draw_LerpTrack("Velocity (m/s)", P.Velocity, 0.05f, -1000.f, 1000.f);
+	ImGui::DragFloat("Orbit Radius (m, 0 = off)", &P.fOrbitRadius, 0.05f, 0.f, 1000.f, "%.3f");
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Revolves around the Position track point on the pivot's XZ plane. Angle = Start + Speed x local time (Play Rate applies, resets on loop).");
+	ImGui::BeginDisabled(0.f == P.fOrbitRadius);
+	ImGui::Indent(24.f);
+	ImGui::DragFloat("Orbit Speed (deg/s)", &P.fOrbitDegreesPerSecond, 1.f, -3600.f, 3600.f);
+	ImGui::DragFloat("Orbit Start (deg)", &P.fOrbitStartDegrees, 1.f, -360.f, 360.f);
+	ImGui::Unindent(24.f);
+	ImGui::EndDisabled();
 	if (CEffectV2Object::SHAPE::MESH == eShape)
 	{
 		ImGui::DragFloat("Mesh Pre-Scale", &P.fMeshPreScale, 0.00005f, 0.00001f, 10.f, "%.5f");
@@ -4444,6 +4453,11 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
 		ImGui::TextDisabled("Bind a Noise texture to use Distortion and Noise.");
 
 	ImGui::SeparatorText("UV");
+	int32_t iUVMode = static_cast<int32_t>(P.eUVMode);
+	if (ImGui::Combo("UV Mode", &iUVMode, "Planar\0Polar Rays (U = radius, V = angle)\0Polar Rings (U = angle, V = radius)\0"))
+		P.eUVMode = static_cast<CEffectV2Object::UV_MODE>(iUVMode);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Polar modes wrap the texture around the quad centre. Use a horizontally tiling streak texture for Rays: TileCount V = ray count multiplier (integer for a seamless wrap), Speed V = rotation, Speed U = flow along the ray.");
 	ImGui::DragFloat2("UV Start", &P.vUVStart.x, 0.01f, -10.f, 10.f);
 	ImGui::DragFloat2("UV Speed (uv/s)", &P.vUVSpeed.x, 0.01f, -10.f, 10.f);
 	ImGui::DragFloat2("UV TileCount", &P.vUVTileCount.x, 0.01f, 0.01f, 64.f);

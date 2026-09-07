@@ -237,6 +237,9 @@
     <ClCompile Include="..\Private\MainApp.cpp">
       <Filter>00.MainApp</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MainApp_SequenceViewer.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\LevelRegistry.cpp">
       <Filter>01.Levels</Filter>
     </ClCompile>
@@ -733,6 +736,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\SkillWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CustomizingIconDocument.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CustomizingView.cpp">
@@ -1300,6 +1306,9 @@
     <ClInclude Include="..\Public\SkillWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CustomizingIconDocument.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\CustomizingView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
@@ -1864,6 +1873,9 @@
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\SequenceViewer.labels.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -2084,6 +2096,9 @@
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Mario4.navpaint">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource">

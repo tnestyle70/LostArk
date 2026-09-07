@@ -205,6 +205,10 @@ public:
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ);
 	bool Try_Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result);
+	bool Send_DebugMarioJump(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction);
+	bool Send_MarioMove(std::uint32_t clientSequence, LostArk::Shared::MARIO_DIRECTION direction);
+	bool Try_Consume_DebugMarioJumpResult(
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT& result);
 	/* Debug F1 clown/player avatar toggle. The Server owns the form; the
 	snapshot is the only accepted presentation result. */
 	bool Send_DebugSetMadnessForm(
@@ -224,6 +228,8 @@ public:
 	changeLevel trigger used -- no separate result message. */
 	/* Answers the prompt the Server last offered. Carries only the box's own
 	   id -- the Server re-tests that this player is still inside it. */
+	bool Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
+	bool Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
 	bool Send_InteractTrigger(
 		std::uint32_t requestSequence,
 		std::string_view triggerPlacementId);
@@ -506,6 +512,8 @@ private:
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
 	std::deque<LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT>
 		m_DebugTeleportResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;

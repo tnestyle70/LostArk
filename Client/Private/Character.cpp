@@ -1990,18 +1990,55 @@ void CCharacter::Restore_DefaultEquipmentVisibility()
 	Apply_DefaultEquipmentVisibility(0u);
 }
 
-void CCharacter::Set_HeadPartsVisible(const bool_t isVisible)
+void CCharacter::Set_CreationPreviewActive(const bool_t isActive)
 {
 	if (nullptr == m_pSpec)
 		return;
-	if (isVisible)
+
+	/* Set before the idle is re-driven below so Set_Animation picks the right
+	pose on the way in and on the way out. */
+	m_isCreationPreviewActive = isActive;
+	Set_Animation(CHARACTER_ANIM::IDLE, true);
+
+	/* Weapons are their own part list, so restoring them is an explicit show rather than
+	part of the equipment visibility rule. */
+	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
+		Set_PartVisible(m_pSpec->pWeapons[index].pPartTag, !isActive);
+
+	if (!isActive)
 	{
+		/* Put back whatever avatar pieces were worn when the preview started. Unhiding them
+		re-derives the whole default/avatar visibility rule, so no separate restore is needed
+		unless the character wore none. */
+		if (m_isCreationPreviewAvatarHeadRestored)
+			Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_HEAD, true);
+		if (m_isCreationPreviewAvatarArmorRestored)
+			Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_ARMOR, true);
+		m_isCreationPreviewAvatarHeadRestored = false;
+		m_isCreationPreviewAvatarArmorRestored = false;
+
 		if (m_isEquipmentPreviewActive)
 			Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
 		else
 			Restore_DefaultEquipmentVisibility();
 		return;
 	}
+
+	/* An avatar costume (the Mokoko onesie the classes ship wearing) hides the class's own
+	outfit, which is the opposite of what character creation should show. Taking it off is a
+	real unequip, so the default pieces underneath come back on their own. */
+	if (Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_HEAD))
+	{
+		m_isCreationPreviewAvatarHeadRestored = true;
+		Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_HEAD, false);
+	}
+	if (Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_ARMOR))
+	{
+		m_isCreationPreviewAvatarArmorRestored = true;
+		Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND::AVATAR_ARMOR, false);
+	}
+
+	/* The helmet goes last: it is a HEAD-slot default piece the avatar removal just revealed. */
 	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
 	{
 		const EQUIPMENT_PART_SPEC& equipment = m_pSpec->pEquipment[index];
@@ -2082,6 +2119,17 @@ bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
 		return false;
+	/* Character creation stands the class still in the retail customizing pose
+	rather than its battle idle. That clip arrives through an attached animation
+	set, so a build whose resources do not carry it keeps the class's own idle
+	instead of losing the pose entirely. */
+	if (m_isCreationPreviewActive && CHARACTER_ANIM::IDLE == eAnim)
+	{
+		const char_t* pCustomizingIdle =
+			m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::CUSTOMIZING_IDLE)];
+		if (nullptr != pCustomizingIdle && Set_Animation(pCustomizingIdle, true))
+			return true;
+	}
 	return Set_Animation(Resolve_LocomotionClip(eAnim), isLoop);
 }
 

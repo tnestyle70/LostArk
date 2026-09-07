@@ -95,7 +95,8 @@ namespace LostArk::Server
 			float& outZ,
 			bool& outWasBlocked,
 			LostArk::Shared::NET_ENTITY_ID ignoredBodyId =
-				LostArk::Shared::INVALID_NET_ENTITY_ID) const;
+				LostArk::Shared::INVALID_NET_ENTITY_ID,
+			bool allowBodySlide = true) const;
 		bool Resolve_PlayerMove(
 			const SERVER_PLAYER& player,
 			float proposedX,

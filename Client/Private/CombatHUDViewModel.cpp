@@ -231,6 +231,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 				break;
 			}
 	}
+	m_Player.iMarioStage = snapshot.iMarioStage;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.isPatternBound = snapshot.isPatternBound;
 	m_Player.iPatternBindEndTick = snapshot.iPatternBindEndTick;

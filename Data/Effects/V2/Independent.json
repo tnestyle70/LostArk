@@ -29,6 +29,11 @@
     "boss.kouku.card.heart.red",
     "boss.kouku.card.spade.black",
     "boss.kouku.card.spade.red",
-    "boss.kouku.dance"
+    "boss.kouku.dance",
+    "boss.kouku.dance.clap",
+    "boss.kouku.find.core",
+    "boss.kouku.ball.smoke",
+    "boss.kouku.medusa.blue",
+    "boss.kouku.medusa.red"
   ]
 }

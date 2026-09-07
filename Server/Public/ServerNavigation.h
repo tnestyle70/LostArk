@@ -147,6 +147,13 @@ namespace LostArk::Server
 		the stage it refines. Stages joined only by authored moves need no
 		cross-region paths, which is why none exist. */
 		std::size_t Get_RegionCount() const noexcept { return m_Regions.size(); }
+		/* Both points must belong to the same loaded detail grid, not the base
+		grid. An authored stage entrance can identify its whole refined region
+		without duplicating that region's bounds in gameplay code. */
+		bool Is_InSameDetailRegion(float x, float z, float otherX, float otherZ) const;
+		/* Includes the base grid, for an explicitly admitted stage without a
+		separate refinement grid. Neither point may lie outside loaded grids. */
+		bool Is_InSameNavigationGrid(float x, float z, float otherX, float otherZ) const;
 		float Get_MaximumTraversalStepHeight() const
 		{
 			return m_fMaximumTraversalStepHeight;

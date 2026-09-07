@@ -226,7 +226,30 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			m_pDevice, m_pContext, m_pLoader->Get_EffectLoadJob(),
 			m_iEffectLoadJobEpoch);
 	}
-	if (!bProgressDeterminate)
+	if (bProgressDeterminate)
+	{
+		/* Take the highest fraction any lane has published so far. A later lane starting from
+		   a small numerator no longer drags the bar backwards. */
+		m_fTargetProgress = (max)(m_fTargetProgress,
+			std::clamp(m_fDisplayProgress, 0.f, 1.f));
+		m_hasDeterminateProgress = true;
+	}
+	if (m_hasDeterminateProgress)
+	{
+		/* Completion is the one case that snaps: the load really is done, so the bar must not
+		   still be easing while the Level activates. */
+		if (bProgressDeterminate && m_fDisplayProgress >= 1.f)
+		{
+			m_fShownProgress = 1.f;
+		}
+		else
+		{
+			const f32_t fStep = std::clamp((max)(0.f, fTimeDelta), 0.f, 0.1f);
+			m_fShownProgress += (m_fTargetProgress - m_fShownProgress) *
+				(1.f - std::exp(-6.f * fStep));
+		}
+	}
+	else
 	{
 		m_fIndeterminateProgress = std::fmod(
 			m_fIndeterminateProgress + (max)(0.f, fTimeDelta) * 0.45f,
@@ -234,10 +257,10 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	const f32_t fTrackLeft = m_fProgressTrackX - m_fProgressTrackWidth * 0.5f;
-	const f32_t fFillWidth = bProgressDeterminate ?
-		m_fProgressTrackWidth * m_fDisplayProgress :
+	const f32_t fFillWidth = m_hasDeterminateProgress ?
+		m_fProgressTrackWidth * m_fShownProgress :
 		m_fProgressTrackWidth * 0.18f;
-	const f32_t fFillLeft = bProgressDeterminate ? fTrackLeft :
+	const f32_t fFillLeft = m_hasDeterminateProgress ? fTrackLeft :
 		fTrackLeft + (m_fProgressTrackWidth - fFillWidth) *
 		m_fIndeterminateProgress;
 

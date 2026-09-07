@@ -2,7 +2,7 @@
   "schema": "lostark.map-self-motions",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1,
+  "revision": 2,
   "motions": [
     {
       "placementId": "10011184818400596228",
@@ -971,6 +971,46 @@
       "cycleSeconds": 10.0,
       "range": 10.0,
       "startPhaseSeconds": 1.9458816051483154
+    },
+    {
+      "placementId": "16687001690465268843",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 1.56467866897583
+    },
+    {
+      "placementId": "9698554489548818177",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.364171028137207
+    },
+    {
+      "placementId": "18111904362447992771",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 2.1772444248199463
+    },
+    {
+      "placementId": "16604805168055844864",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 0.8435426950454712
+    },
+    {
+      "placementId": "16988743889141117816",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 7.0,
+      "range": 10.0,
+      "startPhaseSeconds": 0.7040049433708191
     }
   ]
 }

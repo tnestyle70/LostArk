@@ -823,6 +823,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+#ifdef _DEBUG
+	m_PlayerController.Set_DebugMarioJumpEnabled(true);
+#endif
 	if (!m_PlayerController.Initialize_TargetingPreview(
 			ETOUI(LEVEL::KAKULSAYDON_ARENA)) ||
 		!m_PlayerController.Initialize_ClickMoveEffect(
@@ -900,10 +903,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 	Update_DeadScene(fTimeDelta);
-	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
-		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
-		!m_pCamera->Is_PresentationOverrideActive());
 
 #ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
@@ -966,7 +965,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	   instance ID against what it loaded and plays the presentation. */
 	for (const auto& play : m_Replication.Consume_WorldSequencePlays())
 	{
-		if (play.iRunEpoch != 0u)
+		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
+			play.iRunEpoch != 0u)
 		{
 			Consume_OwnedWorldCue(play, targets);
 			continue;
@@ -977,12 +977,39 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		Debug_StopCompositionWorldPreview();
 #endif
 		std::string status;
-		if (!play.strTargetSequenceInstanceId.empty())
+		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY &&
+			!play.strTargetSequenceInstanceId.empty())
 		{
 			if (!m_SequencePlayer.Apply_ObjectMotion(play.strTargetSequenceInstanceId, instanceId, targets))
 				OutputDebugStringA(("[Level_KakulSaydonArena][WorldMotion] " +
 					m_SequencePlayer.Get_Status() + "\n").c_str());
 			continue;
+		}
+		if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::REPLAY ||
+			play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP)
+		{
+			m_SequencePlayer.Stop_Instance(instanceId, targets, true);
+			for (const auto& link : KAKULSAYDON_PAPER_BRIDGE_LINKS)
+			{
+				if (link.bridgeSequenceInstanceId != instanceId) continue;
+				m_SequencePlayer.Stop_Instance(std::string(link.leverSequenceInstanceId), targets, true);
+				m_RaisedPaperBridges.erase(link.bridgePlacementId);
+				m_DeployRuntime.Set_State(link.bridgePlacementId, DEPLOY_PROP_STATE::DESPAWNED);
+			}
+			if (instanceId == KAKULSAYDON_CUTSCENE_SEQUENCE_ID)
+			{
+				for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
+					if (instance.instanceId.starts_with(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX))
+						m_SequencePlayer.Stop_Instance(instance.instanceId, targets, true);
+				m_bCutsceneBossVisible = false;
+				Apply_CutsceneSetVisible(false);
+				m_DeployRuntime.Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::DESPAWNED);
+			}
+			const auto activeShot = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
+				[&](const KAKUL_CAMERA_SHOT& shot) { return shot.strShotId == m_strActiveCameraShotId &&
+					shot.strSequenceInstanceId == instanceId; });
+			if (activeShot != m_CameraShots.end()) Release_CameraShot();
+			if (play.eOperation == LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP) continue;
 		}
 		if (!Start_ServerRequestedSequence(instanceId, play.fPlaybackSpeed,
 			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs,
@@ -1037,6 +1064,19 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CutsceneBossRetire(targets);
 	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
+	// Consume this frame's Server-started camera sequence before accepting input.
+	// A completed shot may keep following the player and must not block controls.
+	const bool_t isCameraTrackPlaying = std::any_of(
+		m_CameraShots.begin(), m_CameraShots.end(),
+		[this](const KAKUL_CAMERA_SHOT& shot)
+		{
+			return shot.hasCameraTrack && !shot.strSequenceInstanceId.empty() &&
+				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
+		});
+	m_PlayerController.Update(
+		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
+		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+		!m_pCamera->Is_PresentationOverrideActive());
 	Update_TriggerMoveFade(fTimeDelta);
 	m_MapRuntime.Update_SelfMotions(fTimeDelta);
 	if (nullptr != m_pMadnessGaugeView)
@@ -1065,6 +1105,12 @@ bool_t Client::CLevel_KakulSaydonArena::Start_PopupBookCutscene(
 		return false;
 	}
 	Apply_CutsceneSetVisible(true);
+	if (!targets.pDeployRuntime->Set_State(KAKULSAYDON_CUTSCENE_BOSS_PLACEMENT_ID, DEPLOY_PROP_STATE::INTACT))
+	{
+		Apply_CutsceneSetVisible(false);
+		outStatus = "Cutscene boss could not be revealed: " + targets.pDeployRuntime->Get_Status();
+		return false;
+	}
 
 	const size_t prefixLength = strlen(KAKULSAYDON_CUTSCENE_INSTANCE_PREFIX);
 	size_t started = 0u;
@@ -1334,7 +1380,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	if (FAILED(drawn))
 		return drawn;
 	/* Drawn last so it sits over the scene. The text only reports what the
-	   Server is offering -- pressing G submits a command and the Server
+	   Server is offering -- pressing the shown key submits a command and the Server
 	   decides, so nothing here can move the player by itself. */
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
@@ -1342,7 +1388,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	{
 		/* ASCII only: this file carries no other non-ASCII byte and has no BOM,
 		   so a UTF-8 Korean literal here is read back in the system codepage. */
-		static const tchar_t* const PROMPT = TEXT("[ G ]");
+		const tchar_t* const PROMPT = 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage
+			? TEXT("[ Up ]") : TEXT("[ G ]");
 		const float2_t size = CGameInstance::Get().Measure_Text(
 			TEXT("Font_YoonGasiIIM"), PROMPT);
 		CGameInstance::Get().Draw_Text(
@@ -1617,13 +1664,14 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 			{ { nullptr, nullptr } },
 			float3_t(-1150.f, -11.52f, -909.28f),
 			nullptr, nullptr, nullptr },
-		// 2마리오 ~ 카드미로: no navigation yet
-		KAKUL_DEBUG_GATE{ "2" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
-			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
-		KAKUL_DEBUG_GATE{ "3" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
-			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
-		KAKUL_DEBUG_GATE{ "4" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } }, float3_t(0.f, 0.f, 0.f),
-			nullptr, nullptr, "navigation " "\xEB\xAF\xB8\xEB\xB3\xB4\xEC\x9C\xA0\xEB\xA1\x9C" " " "\xEB\xB3\xB4\xEB\xA5\x98" },
+		// Mario2/3/4_go destinations use their published detail navigation grids.
+		KAKUL_DEBUG_GATE{ "2" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } },
+			float3_t(-1434.48999f, -9.02000999f, -1175.96997f), nullptr, nullptr, nullptr },
+		KAKUL_DEBUG_GATE{ "3" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } },
+			float3_t(-1889.68994f, -11.5299997f, -1646.20996f), nullptr, nullptr, nullptr },
+		KAKUL_DEBUG_GATE{ "4" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4", { { nullptr, nullptr } },
+			float3_t(-1632.57f, -20.49f, -1400.92f), nullptr, nullptr, nullptr },
+		// Card maze: main's admitted Debug entry destination.
 		KAKUL_DEBUG_GATE{ "\xEC\xB9\xB4\xEB\x93\x9C\xEB\xAF\xB8\xEB\xA1\x9C", { { nullptr, nullptr } }, float3_t(0.09f, -0.01f, 1351.48f),
 			nullptr, nullptr, nullptr },
 		// 빙고 - 앵콜을 외친 쿠크세이튼 (Saydon holding the hammer)

@@ -244,7 +244,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v64 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v65 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -364,7 +364,12 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 광기 HUD 바는 `CCombatHUDViewModel::Get_KoukuGimmick()`의 Server 수치를 읽으며, 상태 임계값 49/100은
 최대치 대비 백분율로 적용한다. F1 `Kouku UI Preview`를 명시 활성화한 동안만 표시값을 덮어쓰고,
 해제·session reset 시 최신 snapshot으로 돌아간다. 광대 몸체 교체는 원래 class 스킬을 유지하므로
-실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 게이지 증가·자동 변신·모드별 스킬과 패턴은 후속이다.
+실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 광기 게이지에 의한 자동 변신·모드별 스킬과 패턴은 후속이다.
+마리오 1~4 입장은 별도로 Server가 기존 Intro trigger에서 `iMarioStage`를 확정하고 CLOWN으로 자동 전환한다.
+마리오에서는 Server가 정한 구간별 고정 진행선으로만 ←/→ 왕복한다. 카메라와 마우스로 깊이 방향을 조종하지 않는다.
+Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.
+키 해제 또는 300ms 입력 만료 시 서버 이동이 정지한다. 기존 퇴장·다른 F1 이동·책 컷신 배치는 전용 상태를
+해제하고 입장 전 외형을 복원한다. 조작·패킷·착지 조건은 팀 인터페이스 사용서 4.2절이 정본이다.
 
 `Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
 JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.
@@ -408,7 +413,7 @@ Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분하고, v8은 무기 row마다
 `weaponModelPreRotationDegrees`(pitch/yaw/roll, 무기 없는 row는 null)로 socket 전 회전을 굽는다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v64의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v65의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -502,7 +507,7 @@ Map 모델 Object는 Append 때 현재 캐릭터 앞 위치를 절대 좌표로 
 Composition Save는 편집본을 저장한 뒤 준비된 PRODUCT 자료를 비동기로 생성한다. 기존 PRODUCT의
 유효한 Object Append·Transform·시간 변경은 상태를 유지하고, 미완성 DRAFT는 자동 승격하지 않는다.
 Server 재시작 전에는 새 revision이 전투에 적용됐다고 표시하지 않는다. box `durationMs`와 optional
-placement TRS는 protocol 67 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리한다.
+placement TRS는 protocol 68 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리한다.
 여러 카드의 접촉은 Composition `TRIGGER / OBJECT_CONTACT`와 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result로 연결한다. 대상은 저장 Motion ID가 아니라 같은 Pattern의 WORLD occurrence 목록이며 실제 맞은 카드별로 반응한다. 전체 조커찾기 제한시간은 `DURATION / EXTERNAL_SIGNAL`과 접촉 Result의 `COMPLETE_LOGIC_WINDOW`로 분리한다. Collider의 `BOSS → WEAPON → Bone`에서 실제 망치 Bone을 선택하며, Product publish가 기존 WModel에서 서버용 Bone 궤적을 계산한다. 자세한 저작 순서는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md` 17.7을 따른다.
 
 자식 Motion의 On Complete에서 반복·마지막 자세·다음 모션을 저장한다. `OBJECT_OVERLAP`과

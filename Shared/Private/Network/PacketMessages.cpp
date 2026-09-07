@@ -156,6 +156,7 @@ namespace
 			 (LostArk::Shared::MECHANIC_CARD_COLOR::NONE == snapshot.eMechanicCardColor)) &&
 			LostArk::Shared::Is_Valid_KoukuHudMode(snapshot.eKoukuHudMode) &&
 			Is_Valid_KoukuHudSlots(snapshot) &&
+			snapshot.iMarioStage <= 4u &&
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
@@ -2204,6 +2205,96 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_MARIO_MOVE& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eDirection >= MARIO_DIRECTION::END)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eDirection));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_MARIO_MOVE& message)
+{
+	C2S_MARIO_MOVE decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t direction = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(direction))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eDirection = static_cast<MARIO_DIRECTION>(direction);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eDirection >= MARIO_DIRECTION::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_MARIO_JUMP& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		(message.eDirection != MARIO_DIRECTION::LEFT && message.eDirection != MARIO_DIRECTION::RIGHT))
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eDirection));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_MARIO_JUMP& message)
+{
+	C2S_DEBUG_MARIO_JUMP decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t direction = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(direction))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eDirection = static_cast<MARIO_DIRECTION>(direction);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		(decoded.eDirection != MARIO_DIRECTION::LEFT && decoded.eDirection != MARIO_DIRECTION::RIGHT))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_DEBUG_MARIO_JUMP_RESULT& message)
+{
+	if (0u == message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eResult >= DEBUG_MARIO_JUMP_RESULT::END)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_DEBUG_MARIO_JUMP_RESULT& message)
+{
+	S2C_DEBUG_MARIO_JUMP_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(result))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eResult = static_cast<DEBUG_MARIO_JUMP_RESULT>(result);
+	if (0u == decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eResult >= DEBUG_MARIO_JUMP_RESULT::END)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -2590,6 +2681,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U8(static_cast<std::uint8_t>(
 				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
 		}
+		writer.Write_U8(player.iMarioStage);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
@@ -2804,6 +2896,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawHudMode) ||
 			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
 			!Read_KoukuHudSlots(reader, player) ||
+			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(rawPatternBound) ||
@@ -5423,6 +5516,14 @@ bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
 	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER;
+	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
+		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
+	// Viewer transport owns saved instances; bundle cues and exact motion remain PLAY/STOP_OWNER.
+	if ((transportControl && (message.iRunEpoch != 0u || !message.strTargetSequenceInstanceId.empty() ||
+		!message.strTargetCueId.empty())) ||
+		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY &&
+			(!message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty())))
+		return false;
 	const bool identityPlacement = message.fWorldPositionX == 0.f && message.fWorldPositionY == 0.f && message.fWorldPositionZ == 0.f &&
 		message.fWorldRotationXDegrees == 0.f && message.fWorldRotationYDegrees == 0.f && message.fWorldRotationZDegrees == 0.f &&
 		message.fWorldScaleX == 1.f && message.fWorldScaleY == 1.f && message.fWorldScaleZ == 1.f;
@@ -5491,6 +5592,54 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLA
 	decoded.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);
 	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;
 	message = std::move(decoded); return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_WORLD_PLAYBACK& message)
+{
+	if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eOperation >= DEBUG_WORLD_PLAYBACK_OPERATION::END ||
+		!Is_Valid_SequenceInstanceId(message.strTargetId)) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eOperation));
+	return writer.Write_String(message.strTargetId, MAX_SEQUENCE_INSTANCE_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_DEBUG_WORLD_PLAYBACK& message)
+{
+	C2S_DEBUG_WORLD_PLAYBACK decoded{};
+	std::uint16_t world = 0;
+	std::uint8_t operation = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !decoded.iRequestSequence ||
+		!reader.Read_U16(world) || !reader.Read_U8(operation) ||
+		operation >= static_cast<std::uint8_t>(DEBUG_WORLD_PLAYBACK_OPERATION::END) ||
+		!reader.Read_String(decoded.strTargetId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!Is_Valid_SequenceInstanceId(decoded.strTargetId)) return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.eOperation = static_cast<DEBUG_WORLD_PLAYBACK_OPERATION>(operation);
+	if (!Is_Known_World_Id(decoded.eWorldId)) return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_DEBUG_WORLD_PLAYBACK_RESULT& message)
+{
+	if (message.eResult >= DEBUG_WORLD_PLAYBACK_RESULT::END) return false;
+	C2S_DEBUG_WORLD_PLAYBACK identity{ message.iRequestSequence, message.eWorldId, message.eOperation, message.strTargetId };
+	if (!Write_Message(writer, identity)) return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_WORLD_PLAYBACK_RESULT& message)
+{
+	C2S_DEBUG_WORLD_PLAYBACK identity{};
+	std::uint8_t result = 0;
+	if (!Read_Message(reader, identity) || !reader.Read_U8(result) ||
+		result >= static_cast<std::uint8_t>(DEBUG_WORLD_PLAYBACK_RESULT::END)) return false;
+	message = { identity.iRequestSequence, identity.eWorldId, identity.eOperation,
+		static_cast<DEBUG_WORLD_PLAYBACK_RESULT>(result), std::move(identity.strTargetId) };
+	return true;
 }
 
 namespace

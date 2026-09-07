@@ -616,6 +616,32 @@
       },
       "cutinMovie": { "framePrefix": "UI/EstherCutin/Bahunturr/Bahunturr", "frameCount": 107, "fps": 30, "delayMs": 500 },
       "shaderProfile": "esther"
+    },
+    {
+      "archetypeId": "NPC_59504",
+      "clientPresentationId": "npc.59504.client.v1",
+      "modelAssetId": "Character/NPC/Npc_59504/Npc_59504.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/MN_PPNN_00/MN_PPNN_00.wmodel",
+      "idleClip": "npc_idle_battle_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "esther.strike": "npc_sk_parkunas",
+        "esther.allied": ["npc_att_battle_8_01", "npc_att_battle_10"]
+      },
+      "shaderProfile": "esther"
+    },
+    {
+      "archetypeId": "NPC_59620",
+      "clientPresentationId": "npc.59620.client.v1",
+      "modelAssetId": "Character/NPC/Npc_59620/Npc_59620.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/MN_SLINN_00/MN_SLINN_00.wmodel",
+      "idleClip": "npc_idle_normal_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "esther.strike": "npc_sk_magicshield",
+        "esther.allied": ["npc_att_battle_1_01", "npc_att_battle_1_02", "npc_att_battle_1_03"]
+      },
+      "shaderProfile": "esther"
     }
   ]
 }

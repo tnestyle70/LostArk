@@ -320,7 +320,14 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-Shared protocol 66의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 66의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+
+F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
+`IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
+경계를 사용한다. Play/Replay/Stop sequence는 기존 `S2C_WORLD_SEQUENCE_PLAY`의 operation으로
+같은 room에 전달한다. Release Server는 요청을 거절하고, 다른 world·없는/비활성 target·사망
+player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
+사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
 맵별 플레이어 시점은 같은 F1 항목의 `Move Player` 아래 `Player Follow Camera`에서 설정한다.
 `Camera map`은 Character Select / KoukuSaydon 두 맵만 선택하며 Valtan profile은 수정하지 않는다.
@@ -336,6 +343,46 @@ Yaw 0은 +Z다. FOV와 응답(0이면 즉시 follow)도 함께 저장한다. `Ap
 위치·주시점·FOV도 같은 값으로 돌아온다. 연출 자체의 roll은 기존 override를 따르고 follow 복귀
 후 저장한 roll을 적용한다. Character Select에서는 카메라 튜닝만 추가하며 `Move Player`는
 비활성이다. 새 Server command와 Resources 전달물은 없다.
+
+### 4.2 마리오 변신·방향키 조작·Debug 점프
+
+Server가 기존 `Mario1_Intro`~`Mario4_Intro` OBB 진입을 검사해 `PLAYER_SNAPSHOT.iMarioStage`를
+0(일반)/1~4로 보낸다. 입장 시 기존 `eMadnessForm=CLOWN` 외형 교체 경로를 사용하고,
+기존 퇴장 이동·다른 F1 배치·아레나 컷신 강제 배치 시 전용 상태를 해제하고 입장 전 외형을 복원한다.
+사망/낙하·프로필 교체·월드 전환도 상태를 정리한다. 일반 F1 Clown만 켠 상태는 마리오 모드가 아니다.
+
+Client는 마리오에서 `Request_MarioMove`로 `MARIO_DIRECTION { STOP=0, LEFT=1, RIGHT=2 }`만 제출한다.
+`C2S_MARIO_MOVE { iClientSequence, eWorldId, eDirection }`는 7바이트이며 자유 XZ/카메라 방향을 받지 않는다.
+Server는 session/world/순서/enum/마리오 상태를 검사하고 기존 navigation·collision 이동기에
+0.75m 직접 목표를 공급한다. A* 우회 경로는 만들지 않는다. 입력 유지 시 100ms 갱신,
+키 해제 시 STOP, 입력이 끊기면 9틱(30Hz에서 300ms) 만료로 정지한다.
+
+Server의 17개 stable entry/exit trigger 연결이 구간별 진행선을 소유한다. 승인된 실제 착지점부터
+다음 출구 trigger 중심까지의 XZ 축과 고정 RIGHT 부호를 사용한다. 카메라의 회전/보정은 축을 바꾸지 않는다.
+진행 중 위치를 고정 원점/축으로 복원해 왕복·점프·knockback의 깊이 방향 누적 오차를 막고,
+Mario body 충돌에서만 옆미끄러짐을 끈다. 기존 navigation의 구멍/높이/충돌을 강제로 개방하지 않는다.
+기존 저작 movePlayer 완료 시 출처 placement ID로 다음 구간을 선택한다. 일반 Debug 점프는 축/원점을 바꾸지 않는다.
+초기 이동 도중에는 Clown 상태만 적용하고 착지 후 진행선을 확정한다.
+M4 Tigger_2→Tigger_3의 1.4mm 인접 연결은 기존 축을 유지한 채 승인 착지점으로 원점만 옮긴다.
+유효한 연결이 없으면 자유 이동으로 대체하지 않는다. 마리오 밖의 회전/이동/충돌 처리는 유지한다.
+
+Debug follow-player에서 ↑의 새 누름은 현재 Server가 제안한 건너가기 trigger가 있으면 기존
+`Request_InteractTrigger`를 우선 제출한다. 없으면 최근 ←/→ 방향으로
+`Request_DebugMarioJump` → `C2S_DEBUG_MARIO_JUMP { iClientSequence, eWorldId, eDirection }`를 보낸다.
+이 요청도 7바이트이며 LEFT/RIGHT만 허용한다. 착지 좌표는 Server가 같은 진행선에서 결정한다.
+마리오에서는 ↓/Shift 점프/우클릭 이동/일반 스킬을 막고,
+컷신·UI·자유 카메라·공중·사망·잡힘 중 입력은 제출하지 않는다. 자유 카메라 Shift 가속은 유지한다.
+몸체 교체는 물리 입력 edge/capture 상태를 보존해 계속 눌린 입력을 새 입력으로 재해석하지 않는다.
+상호작용 안내도 마리오에서는 `[ Up ]`, 일반 아레나에서는 `[ G ]`다.
+
+Debug Server는 session의 플레이어만 대상으로 하며 명시적인 stage 1은 같은 기본 grid,
+stage 2/3/4는 authored `MarioN_go` 목적지와 같은 상세 navregion인지 검사한다.
+최대 4m부터 0.25m씩 줄여 최소 0.75m의 같은 region 착지를 찾으며, 시작은 바닥에서 0.25m 이내,
+착지는 시작 바닥과 높이 차이 1m 이내의 exact walkable/collision-clear 지점이어야 한다.
+허용된 점프는 기존 `CServerTriggerSystem::Begin_MovePlayer`의 0.6초/arcHeight 1.5m 이동과
+`TRIGGER_MOVE` snapshot을 재사용한다. 테스트용 gap 통과이며 새 jump 스킬/스켈레탈 clip은 아니다.
+HP·소품 상태·trigger membership은 초기화하지 않는다. 새 요청 순서를 검사하고 중복에는 이전 verdict만 반환한다.
+Release Server는 점프에 `REJECTED_DISABLED`를 반환한다. F1 `Mario Controls (Debug Jump)`에 승인/거절 이유를 표시한다.
 
 ## 5. Character와 Animation
 
