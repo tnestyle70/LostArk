@@ -1317,6 +1317,9 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             raise CompositionError("roulette Collider must link the judging Logic occurrence")
         if kind == "ROULETTE_CARD_MATCH" and resource["colliderKind"] != "ROULETTE_CARD_REGION":
             raise CompositionError("roulette needs ROULETTE_CARD_REGION resources")
+        if kind == "STAGGER_WINDOW" and (resource["shape"] != "SECTOR" or
+                                         row["anchorKind"] != "BOSS" or row["bone"] or not row["followBoss"]):
+            raise CompositionError("Shield reflection requires following boss-pivot SECTOR colliders without a bone")
         if row["rotationDegrees"][0] != 0 or row["rotationDegrees"][2] != 0:
             raise CompositionError("XZ gameplay Collider supports only Y rotation")
         position, yaw, scale = list(row["positionOffset"]), row["rotationDegrees"][1], list(row["scale"])
@@ -1448,7 +1451,10 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             if logic["logicType"] != "DURATION" and kind != "ENTER_AREA":
                 continue
             window = _project_logic_window(box, logic, logics, 0.0)
-            if kind in {"ROULETTE_CARD_MATCH", "AREA_OVERLAP", "ENTER_AREA"}:
+            linked_shields = kind == "STAGGER_WINDOW" and any(
+                row.get("logicOccurrenceId") == box["occurrenceId"]
+                for row in source.get("presentationOccurrences", []))
+            if kind in {"ROULETTE_CARD_MATCH", "AREA_OVERLAP", "ENTER_AREA"} or linked_shields:
                 if world_sequences is None:
                     world_sequences = load_world_sequences(root, document["areaId"])
                 window["cardRegions"] = _project_collider_regions(document, source, box, logic, world_sequences, root)

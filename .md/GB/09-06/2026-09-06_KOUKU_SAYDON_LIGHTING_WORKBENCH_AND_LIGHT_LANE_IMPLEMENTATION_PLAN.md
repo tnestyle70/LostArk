@@ -402,3 +402,34 @@ RenderingProfiles codec·publisher와 Light Resources/Detail/Sequencer가 같은
 댄스타임은 0~31467ms, 룰렛은 0~33669ms에 Scene Profile과 두 Spot을 배치한다.
 Character 조명은 같은 방 Server snapshot의 현재 캐릭터 전원을 대상으로 하며 HP로 제외하지 않는다.
 Server가 확정한 patternId/startTick/sequence를 기존 Client presentation이 소비한다. 별도 protocol은 추가하지 않는다.
+
+
+### 8.2 Map 상시 배치와 패턴 고정 광원 구분
+
+Map Profile은 Area에 상시 배치하고 maplights의 enabled/저장 위치를 소비한다. Anchor Light의 MAP은
+패턴 box 수명 동안 고정 월드 좌표에 제출하는 재사용 광원이며 Level 상시 배치를 만들지 않는다.
+같은 MAP 문자열이 용도와 수명을 혼동시키지 않도록 Create와 Resources/Detail에 역할을 표시한다.
+Create의 Light name은 독립 라벨과 전체 폭 입력으로 표시하고, 신규 조명 이름이 비면 생성을 비활성화한다.
+Map Directional은 기존 기본광을 선택하는 버튼으로 구분한다. 저장 codec과 물리 데이터는 유지한다.
+
+Anchor Light MAP Preview의 플레이어 snapshot 기준을 identity로 바꿔 Composition의 MAP 경로와 맞춘다.
+Detail은 해당 값을 World position으로 표시하고, 플레이어 위치 복사는 명시 버튼을 누를 때만 수행한다.
+PLAYER/BOSS의 추적, Scene Profile, Map Profile 배치 경로는 보존한다. 기존 Product 빌드와 이름 저장/좌표
+소비 경로를 확인하고 Client 화면은 사용자가 검증한다. 사용자 실행 중 draft와 저장 파일은 변경하지 않는다.
+
+### 8.3 Complete Play 애니메이션 회귀와 무력화 V2 연결
+
+조명 revision이 추가된 patternbindings를 읽는 두 Client 소비자의 root 계약을 맞춘다.
+애니메이션 loader도 optional lightResourceRevision을 정수·양수 검증 후 수용하고, 실패한 action을
+idle 성공으로 숨기지 않게 기존 presentation 진단에 남긴다. 무력화·댄스타임·룰렛의 동일 오류를
+실제 생성 문서와 clip binding으로 확인한다. 보스와 World Object의 기존 실행 경로는 유지한다.
+
+이펙트 작업자의 boss.kouku.disarm 그룹 21개 child를 기존 LEAF presentation occurrence로 연결한다.
+방패 2개와 별·연기·데칼 등의 원본 asset, local transform과 내부 시작 시각을 보존하고,
+무력화 방패 Logic 수명에 맞춰 Sequencer에서 각 항목을 편집할 수 있게 한다. 그룹 자체를 동시에 재생하지 않는다.
+별이 그려지는 원본 alpha/dissolve 곡선은 occurrence fade 0에서 보존하고 양수 fade의 명시 override는 유지한다.
+
+반사 판정은 같은 방패 중심·방향의 BOSS anchor SECTOR collider 2개를 Logic에 연결해 Server가 소비한다.
+기존 linked region 전송 계약을 재사용하고 Client 판정이나 새 protocol을 만들지 않는다.
+사용자가 직전에 저장한 Composition과 새 pattern은 보존하며, 필요한 publisher·판정 검사·최소 Product
+컴파일 후 실행 준비를 마친다. 방패/별의 화면과 최종 타이밍은 사용자 실제 재생으로 조정한다.

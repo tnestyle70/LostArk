@@ -3,6 +3,9 @@
 
 #ifdef _DEBUG
 #include "CompositionTimeline.h"
+#include "Animation.h"
+#include "BinaryAsset/WModelDecoder.h"
+#include "RuntimeAssetRoot.h"
 #include "Level_KakulSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "WorldSequencePlayer.h"
@@ -132,6 +135,10 @@ bool CWorldObjectTool::Load_Source()
     m_SourcePath = sourcePath; m_PlacementPath = placementPath; m_DeployPath = deployPath;
     m_SourceBytes = std::move(sourceAfter); m_PlacementBytes = std::move(mapAfter); m_DeployBytes = std::move(deployAfter);
     m_Ready = true; m_Dirty = false; ++m_SavedGeneration;
+    m_PristinePatternId.clear();
+    m_AnimationObjectId.clear();
+    m_AnimationCandidateObjectId.clear();
+    m_AnimationCandidateModelAssetId.clear();
     if (!m_Document.Find_ObjectResource(m_SelectedObject))
         m_SelectedObject = m_Document.Get_ObjectResources().empty() ? "" : m_Document.Get_ObjectResources().front().objectId;
     Select_Object(m_SelectedObject);
@@ -171,6 +178,7 @@ bool CWorldObjectTool::Save_Source()
     }
     m_SourceBytes = std::move(stagedBytes); m_Document = std::move(verified);
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
+    m_PristinePatternId.clear();
     m_Status = "Object resources and states saved. Map/deploy placement files were preserved. Publish to apply to Product.";
     return true;
 }
@@ -224,6 +232,7 @@ void CWorldObjectTool::Poll_Publish()
 
 void CWorldObjectTool::Mark_Dirty()
 {
+    m_PristinePatternId.clear();
     m_Document.Touch(); m_Dirty = true; m_PreviewDirty = m_PreviewActive;
 }
 
@@ -318,11 +327,12 @@ bool CWorldObjectTool::Create_Object()
     resource.anchorKind = m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
     WORLD_SEQUENCE_TEMPLATE sequence;
     WORLD_SEQUENCE_INSTANCE instance;
-    if (!Build_State(resource, "Default", sequence, instance)) return false;
+    if (!Build_State(resource, resource.displayName, sequence, instance)) return false;
     m_Document.Get_ObjectResources().push_back(resource);
     m_Document.Get_Templates().push_back(std::move(sequence));
     m_Document.Get_Instances().push_back(std::move(instance));
     Mark_Dirty(); Select_Object(resource.objectId);
+    m_PristinePatternId = m_SelectedInstance;
     m_NewObjectName[0] = 0;
     m_NewStateName[0] = 0;
     return true;
@@ -337,7 +347,9 @@ void CWorldObjectTool::Create_State()
     if (!Build_State(*resource, m_NewStateName.data(), sequence, instance)) return;
     m_Document.Get_Templates().push_back(std::move(sequence));
     m_Document.Get_Instances().push_back(instance); Mark_Dirty(); Select_State(instance.instanceId);
+    m_PristinePatternId = instance.instanceId;
     m_NewStateName[0] = 0;
+    m_Status = "Pattern created. Select an Animation Resource, Append Animation, then Save.";
 }
 
 bool CWorldObjectTool::Build_State(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
@@ -436,6 +448,7 @@ void CWorldObjectTool::Render()
                 ImGui::TextWrapped("%s", m_Status.c_str());
             }
             Render_PhysicalResources();
+            if (m_Ready) Render_AnimationResources();
         }
         ImGui::End();
     }
@@ -544,11 +557,16 @@ void CWorldObjectTool::Render_Resources()
         ImGui::EndPopup();
     }
     ImGui::SetNextItemWidth(-1.f);
-    ImGui::InputTextWithHint("##ObjectSearch", "Search object or state", m_ObjectSearch.data(), m_ObjectSearch.size());
-    const float treeHeight = (std::max)(180.f, ImGui::GetContentRegionAvail().y * .48f);
+    ImGui::InputTextWithHint("##ObjectSearch", "Search object or pattern", m_ObjectSearch.data(), m_ObjectSearch.size());
+    const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * .28f);
     if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
     {
         const auto search = Lower(m_ObjectSearch.data());
+        const auto stateMatches = [&search](const std::string& id, const WORLD_SEQUENCE_TEMPLATE* sequence)
+        {
+            const auto searchable = sequence ? sequence->displayName + " " + sequence->sequenceId + " " + id : id;
+            return Lower(searchable).find(search) != std::string::npos;
+        };
         for (const char* anchor : {"WORLD", "PLAYER"})
         {
             const char* category = std::string(anchor) == "WORLD" ? "Map" : "Character";
@@ -560,13 +578,14 @@ void CWorldObjectTool::Render_Resources()
             {
                 if (resource.anchorKind != anchor) continue;
                 const auto states = StateIds(resource);
-                bool matches = search.empty() || Lower(resource.displayName + " " + resource.objectId).find(search) != std::string::npos;
+                const bool resourceMatches = search.empty() || Lower(resource.displayName + " " + resource.objectId).find(search) != std::string::npos;
+                bool matches = resourceMatches;
                 if (!matches)
                     for (const auto& id : states)
                     {
                         const auto* state = m_Document.Find_Instance(id);
                         const auto* sequence = state ? m_Document.Find_Template(state->templateId) : nullptr;
-                        if (sequence && Lower(sequence->displayName).find(search) != std::string::npos) { matches = true; break; }
+                        if (stateMatches(id, sequence)) { matches = true; break; }
                     }
                 if (!matches) continue;
                 ImGui::PushID(resource.objectId.c_str());
@@ -583,18 +602,244 @@ void CWorldObjectTool::Render_Resources()
                     {
                         const auto* instance = m_Document.Find_Instance(id);
                         const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+                        if (!resourceMatches && !stateMatches(id, sequence)) continue;
                         ImGui::PushID(id.c_str());
                         if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), id == m_SelectedInstance))
                         { m_SelectedObject = resource.objectId; Select_State(id); }
                         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
                         ImGui::PopID();
                     }
-                    if (states.empty()) ImGui::TextDisabled("No states");
+                    if (states.empty()) ImGui::TextDisabled("No patterns");
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
             }
             ImGui::TreePop();
+        }
+    }
+    ImGui::EndChild();
+    if (ImGui::CollapsingHeader("Additional motion patterns"))
+    {
+        const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+        ImGui::BeginDisabled(!resource || !resource->sequenceInstanceId.empty());
+        ImGui::SetNextItemWidth(-1.f);
+        ImGui::InputTextWithHint("##NewPattern", "Motion pattern name", m_NewStateName.data(), m_NewStateName.size());
+        ImGui::BeginDisabled(!m_NewStateName[0]);
+        if (ImGui::Button("Add Motion Pattern")) Create_State();
+        ImGui::EndDisabled();
+        ImGui::EndDisabled();
+    }
+}
+
+void CWorldObjectTool::Refresh_AnimationResources()
+{
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const std::string modelAssetId = !resource || !resource->sequenceInstanceId.empty() ? "" :
+        (m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
+            m_AnimationCandidateModelAssetId : resource->modelAssetId);
+    if (m_AnimationObjectId != m_SelectedObject || m_AnimationModelAssetId != modelAssetId)
+    {
+        m_AnimationResources.clear();
+        m_SelectedAnimationClip.clear();
+    }
+    m_AnimationObjectId = m_SelectedObject;
+    m_AnimationModelAssetId = modelAssetId;
+    m_AnimationCatalogReady = false;
+    if (!resource)
+    { m_AnimationResourceStatus = "Select or Create Object first."; return; }
+    if (!resource->sequenceInstanceId.empty())
+    { m_AnimationResourceStatus = "This placed object uses its existing sequence tracks; it has no separate native clip catalog."; return; }
+    if (modelAssetId.empty())
+    { m_AnimationResourceStatus = "Select a WModel in Physical Resources to list its native animations."; return; }
+    const auto path = CRuntimeAssetRoot::Resolve(modelAssetId);
+    std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> catalog;
+    std::string status;
+    if (path.empty() || !Engine::CWModelDecoder::Read_AnimationCatalog(path, catalog, status))
+    {
+        m_AnimationResourceStatus = "Animation catalog unavailable: " + modelAssetId + ": " +
+            (path.empty() ? "invalid Resources-relative path" : status) + ". Existing object and patterns are unchanged.";
+        return;
+    }
+    std::vector<ANIMATION_RESOURCE> staged;
+    for (const auto& clip : catalog)
+    {
+        // Match the CAnimation clock used by WorldSequenceObject::Sample.
+        const double duration = static_cast<double>(clip.durationTicks) / Engine::CAnimation::COOKED_TICK_RATE * 1000.;
+        if (clip.name.empty() || !std::isfinite(duration) || duration <= 0.)
+        { m_AnimationResourceStatus = "Invalid animation timing: " + modelAssetId + ". Existing patterns are unchanged."; return; }
+        staged.push_back({clip.name, duration});
+    }
+    m_AnimationResources = std::move(staged);
+    m_AnimationCatalogReady = true;
+    if (std::none_of(m_AnimationResources.begin(), m_AnimationResources.end(), [&](const auto& clip) {
+        return clip.clipName == m_SelectedAnimationClip;
+    })) m_SelectedAnimationClip.clear();
+    m_AnimationResourceStatus = m_AnimationResources.empty() ?
+        "This model has no native animation. Assign Model, then author Transform keys or Motion in Object Detail." :
+        std::to_string(m_AnimationResources.size()) + " native clips. Select one and Append Animation to the selected object pattern.";
+}
+
+bool CWorldObjectTool::Stage_SelectedModel(CWorldSequenceDocument& candidate)
+{
+    auto* resource = candidate.Find_ObjectResource(m_SelectedObject);
+    if (!resource || !resource->sequenceInstanceId.empty() || !m_AnimationCatalogReady ||
+        m_AnimationObjectId != m_SelectedObject || m_AnimationModelAssetId.empty())
+    { m_Status = "Select an available physical WModel for this object first."; return false; }
+    // A resource can own several saved patterns. Keep all of their clip bindings valid.
+    for (const auto& instance : candidate.Get_Instances())
+    {
+        const auto* sequence = candidate.Find_Template(instance.templateId);
+        if (!sequence) continue;
+        for (const auto& binding : instance.bindings)
+        {
+            if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || binding.targetId != resource->objectId) continue;
+            for (const auto& animation : sequence->animationTracks)
+            {
+                if (animation.slotId != binding.slotId) continue;
+                if (std::none_of(m_AnimationResources.begin(), m_AnimationResources.end(), [&](const auto& clip) {
+                    return clip.clipName == animation.clipName;
+                }))
+                {
+                    m_Status = "Model change refused: pattern '" + sequence->displayName + "' uses '" + animation.clipName +
+                        "', which is absent from " + m_AnimationModelAssetId + ". Existing model and patterns are unchanged.";
+                    return false;
+                }
+            }
+        }
+    }
+    resource->modelAssetId = m_AnimationModelAssetId;
+    resource->animated = !m_AnimationResources.empty();
+    return true;
+}
+
+bool CWorldObjectTool::Assign_SelectedModel()
+{
+    Refresh_AnimationResources();
+    if (!m_AnimationCatalogReady) { m_Status = m_AnimationResourceStatus; return false; }
+    CWorldSequenceDocument candidate = m_Document;
+    if (!Stage_SelectedModel(candidate)) return false;
+    std::string status;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { m_Status = "Model assignment refused: " + status + ". Existing draft preserved."; return false; }
+    const auto pristinePattern = m_PristinePatternId;
+    m_Document = std::move(candidate);
+    Mark_Dirty();
+    // Assigning a model does not edit the newly created pattern's default timing.
+    m_PristinePatternId = pristinePattern;
+    m_Status = "Model assigned. Append Animation or tune Transform/Motion, then Save.";
+    return true;
+}
+
+bool CWorldObjectTool::Append_SelectedAnimation()
+{
+    const auto selectedClip = m_SelectedAnimationClip;
+    Refresh_AnimationResources();
+    if (!m_AnimationCatalogReady) { m_Status = m_AnimationResourceStatus; return false; }
+    const auto found = std::find_if(m_AnimationResources.begin(), m_AnimationResources.end(), [&](const auto& clip) {
+        return clip.clipName == selectedClip;
+    });
+    if (selectedClip.empty() || found == m_AnimationResources.end())
+    { m_Status = "Select an available native animation first; the current object pattern is unchanged."; return false; }
+    const double nativeMs = std::ceil(found->durationMs);
+    if (!std::isfinite(nativeMs) || nativeMs < 1. || nativeMs > CWorldSequenceDocument::MAX_DURATION_MS)
+    { m_Status = "The selected animation exceeds the supported 600-second pattern lifetime."; return false; }
+    const uint32_t clipMs = static_cast<uint32_t>(nativeMs);
+    CWorldSequenceDocument candidate = m_Document;
+    auto* instance = candidate.Find_Instance(m_SelectedInstance);
+    auto* sequence = instance ? candidate.Find_Template(instance->templateId) : nullptr;
+    if (!sequence)
+    { m_Status = "Select or create an object pattern before appending animation."; return false; }
+    if (!Stage_SelectedModel(candidate)) return false;
+    std::string slotId;
+    for (const auto& binding : instance->bindings)
+    {
+        if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || binding.targetId != m_SelectedObject) continue;
+        if (!slotId.empty())
+        { m_Status = "This pattern has multiple bindings for the selected object; choose a single-object pattern."; return false; }
+        slotId = binding.slotId;
+    }
+    if (slotId.empty())
+    { m_Status = "The selected pattern does not bind the selected object. Existing draft preserved."; return false; }
+    if (sequence->tracks.size() + sequence->animationTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    { m_Status = "The pattern has reached its track limit. Existing draft preserved."; return false; }
+    const bool firstOfSlot = std::none_of(sequence->animationTracks.begin(), sequence->animationTracks.end(), [&](const auto& clip) {
+        return clip.slotId == slotId;
+    });
+    const bool pristine = firstOfSlot && sequence->animationTracks.empty() && m_PristinePatternId == m_SelectedInstance;
+    const uint32_t oldDuration = sequence->durationMs;
+    const uint32_t startMs = firstOfSlot ? 0u : oldDuration;
+    if (startMs > CWorldSequenceDocument::MAX_DURATION_MS - clipMs)
+    { m_Status = "Appending this clip would exceed the 600-second pattern lifetime. Existing draft preserved."; return false; }
+    const uint32_t duration = pristine ? clipMs : (std::max)(oldDuration, startMs + clipMs);
+    for (auto& track : sequence->tracks)
+    {
+        if (track.keys.empty())
+        { m_Status = "The pattern has an empty Transform track. Existing draft preserved."; return false; }
+        if (pristine)
+            track.keys.back().timeMs = duration;
+        else if (duration > oldDuration)
+        {
+            if (track.keys.size() >= CWorldSequenceDocument::MAX_KEY_COUNT)
+            { m_Status = "Extending this pattern would exceed its Transform key limit. Existing draft preserved."; return false; }
+            // Preserve every authored time; extend only the final held pose.
+            auto endpoint = track.keys.back(); endpoint.timeMs = duration;
+            track.keys.push_back(endpoint);
+        }
+    }
+    WORLD_SEQUENCE_ANIMATION_TRACK animation;
+    animation.slotId = slotId; animation.clipName = selectedClip; animation.startMs = startMs;
+    animation.playbackRate = 1.f; animation.loop = false; animation.holdLastFrame = true;
+    sequence->animationTracks.push_back(std::move(animation));
+    sequence->durationMs = duration;
+    std::string status;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { m_Status = "Animation append refused: " + status + ". Existing draft preserved."; return false; }
+    m_Document = std::move(candidate);
+    Mark_Dirty();
+    m_Status = "Appended " + selectedClip + " at " + std::to_string(startMs) + " ms. Play in Object Sequencer, tune in Object Detail, then Save.";
+    return true;
+}
+
+void CWorldObjectTool::Render_AnimationResources()
+{
+    ImGui::SeparatorText("Animation Resources");
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    const std::string modelAssetId = !resource || !resource->sequenceInstanceId.empty() ? "" :
+        (m_AnimationCandidateObjectId == m_SelectedObject && !m_AnimationCandidateModelAssetId.empty() ?
+            m_AnimationCandidateModelAssetId : resource->modelAssetId);
+    if (m_AnimationObjectId != m_SelectedObject || m_AnimationModelAssetId != modelAssetId)
+        Refresh_AnimationResources();
+    if (!resource || !resource->sequenceInstanceId.empty())
+    { ImGui::TextWrapped("%s", m_AnimationResourceStatus.c_str()); return; }
+    if (ImGui::Button("Refresh Animations")) Refresh_AnimationResources();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!m_AnimationCatalogReady || m_AnimationModelAssetId.empty());
+    if (ImGui::Button("Assign Model")) { Assign_SelectedModel(); resource = m_Document.Find_ObjectResource(m_SelectedObject); }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("%s", m_AnimationResourceStatus.c_str());
+    if (!modelAssetId.empty()) ImGui::TextWrapped("Model: %s", modelAssetId.c_str());
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (sequence) ImGui::TextWrapped("Selected pattern: %s", sequence->displayName.c_str());
+    ImGui::BeginDisabled(!m_AnimationCatalogReady || m_SelectedAnimationClip.empty() || !sequence);
+    if (ImGui::Button("Append Animation")) Append_SelectedAnimation();
+    ImGui::EndDisabled();
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##AnimationSearch", "Search native animation", m_AnimationSearch.data(), m_AnimationSearch.size());
+    const auto search = Lower(m_AnimationSearch.data());
+    const float height = (std::max)(100.f, ImGui::GetContentRegionAvail().y);
+    if (ImGui::BeginChild("NativeAnimationCatalog", ImVec2(0.f, height), true))
+    {
+        for (const auto& clip : m_AnimationResources)
+        {
+            if (!search.empty() && Lower(clip.clipName).find(search) == std::string::npos) continue;
+            ImGui::PushID(clip.clipName.c_str());
+            const float nameWidth = (std::max)(80.f, ImGui::GetContentRegionAvail().x - 82.f);
+            if (ImGui::Selectable(clip.clipName.c_str(), clip.clipName == m_SelectedAnimationClip, 0, ImVec2(nameWidth, 0.f)))
+                m_SelectedAnimationClip = clip.clipName;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%.3f ms\n%s", clip.clipName.c_str(), clip.durationMs, m_AnimationModelAssetId.c_str());
+            ImGui::SameLine(); ImGui::TextDisabled("%.0f ms", clip.durationMs);
+            ImGui::PopID();
         }
     }
     ImGui::EndChild();
@@ -623,16 +868,12 @@ void CWorldObjectTool::Render_Detail()
         changed |= ImGui::DragFloat("Model Import Scale", &resource->modelPreScale, .001f, .000001f, 1000.f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::DragFloat3("Object Scale", &resource->scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::Checkbox("Animated Model", &resource->animated);
-        ImGui::SetNextItemWidth((std::max)(80.f, ImGui::GetContentRegionAvail().x - 90.f));
-        ImGui::InputTextWithHint("##NewState", "New state name", m_NewStateName.data(), m_NewStateName.size());
-        ImGui::SameLine();
-        if (ImGui::Button("Add State")) { if (changed) Mark_Dirty(); Create_State(); return; }
     }
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!sequence) { if (changed) Mark_Dirty(); return; }
-    ImGui::SeparatorText("State");
-    changed |= EditText("State Name", sequence->displayName);
+    ImGui::SeparatorText("Pattern");
+    changed |= EditText("Pattern Name", sequence->displayName);
     ImGui::TextDisabled("%s", instance->instanceId.c_str());
     changed |= ImGui::Checkbox("Enabled", &instance->enabled);
     if (!alias)
@@ -887,20 +1128,7 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             }
             ImGui::PopID();
         }
-        const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-        ImGui::BeginDisabled(!resource || !resource->animated || !resource->sequenceInstanceId.empty() ||
-            sequence.tracks.size() + sequence.animationTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT);
-        if (ImGui::Button("Add Animation Clip"))
-        {
-            uint32_t start = 0;
-            for (const auto& clip : sequence.animationTracks) if (clip.slotId == "object") start = (std::max)(start, clip.startMs + 1);
-            if (start < sequence.durationMs)
-            {
-                WORLD_SEQUENCE_ANIMATION_TRACK clip; clip.slotId = "object"; clip.startMs = start; clip.clipName = "Assign actual model clip";
-                sequence.animationTracks.push_back(clip); Mark_Dirty();
-            }
-        }
-        ImGui::EndDisabled();
+        ImGui::TextWrapped("Select a native clip in Object Resources, then Append Animation to this Pattern.");
     }
 }
 
@@ -936,7 +1164,7 @@ void CWorldObjectTool::Render_PhysicalResources()
     if (ImGui::InputTextWithHint("##PhysicalSearch", "Search full relative path", m_PhysicalSearch.data(), m_PhysicalSearch.size())) Rebuild_PhysicalTree();
     ImGui::TextDisabled("%zu matching files", m_PhysicalTree.iRecursiveLeafCount);
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_PhysicalStatus.c_str());
-    if (ImGui::BeginChild("PhysicalResourceFolders", ImVec2(0, (std::max)(120.f, ImGui::GetContentRegionAvail().y)), true))
+    if (ImGui::BeginChild("PhysicalResourceFolders", ImVec2(0, (std::max)(100.f, ImGui::GetContentRegionAvail().y * .40f)), true))
     {
         RenderResourceTree(m_PhysicalTree, [this](size_t index) {
             if (index >= m_PhysicalAssets.size()) return;
@@ -944,13 +1172,25 @@ void CWorldObjectTool::Render_PhysicalResources()
             ImGui::PushID(asset.assetId.c_str());
             auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
             ImGui::BeginDisabled(!resource || !resource->sequenceInstanceId.empty());
-            if (ImGui::Selectable(asset.fileName.c_str(), asset.assetId == m_SelectedPhysical))
+            if (ImGui::Selectable(asset.fileName.c_str(), asset.assetId == m_SelectedPhysical &&
+                (asset.kind != PHYSICAL_RESOURCE_KIND::MODEL || m_AnimationCandidateObjectId == m_SelectedObject)))
             {
                 m_SelectedPhysical = asset.assetId;
-                if (asset.kind == PHYSICAL_RESOURCE_KIND::MODEL) resource->modelAssetId = asset.assetId;
-                else resource->diffuseTextureAssetId = asset.assetId;
-                Mark_Dirty();
-                m_Status = "Assigned " + asset.assetId + ". Save stores the slot on " + resource->displayName + ".";
+                if (asset.kind == PHYSICAL_RESOURCE_KIND::MODEL)
+                {
+                    m_AnimationCandidateModelAssetId = asset.assetId;
+                    m_AnimationCandidateObjectId = m_SelectedObject;
+                    Refresh_AnimationResources();
+                    m_Status = "Model candidate selected. Append Animation links its model and clip; Assign Model links only the model.";
+                }
+                else
+                {
+                    resource->diffuseTextureAssetId = asset.assetId;
+                    const auto pristinePattern = m_PristinePatternId;
+                    Mark_Dirty();
+                    m_PristinePatternId = pristinePattern;
+                    m_Status = "Assigned diffuse " + asset.assetId + ". Save stores it on " + resource->displayName + ".";
+                }
             }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", asset.assetId.c_str());

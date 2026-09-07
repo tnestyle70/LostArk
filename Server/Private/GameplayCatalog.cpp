@@ -2550,6 +2550,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				std::any_of(window->CardRegions.begin(), window->CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& value) { return value.strRegionId == region.strRegionId; }))
 			{ m_strStatus = "Boss Logic region window/order is invalid"; return false; }
+			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW &&
+				(!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
+				 region.eCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE))
+			{ m_strStatus = "Shield reflection requires boss-pivot sector regions without card mapping"; return false; }
 			window->CardRegions.push_back(std::move(region));
 		}
 		else if (!fields.empty() && ("PATTERNLOGICREGIONWORLD" == fields[0] || "PATTERNLOGICREGIONWORLDKEY" == fields[0]))

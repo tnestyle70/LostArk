@@ -8,6 +8,8 @@ import re
 import unittest
 import xml.etree.ElementTree as ET
 
+from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as projector
+
 
 ROOT = Path(__file__).resolve().parents[2]
 AREA_ID = "LV_LUT_MIDNIGHTC_ED"
@@ -40,6 +42,39 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         cls.character_preview_cpp = read(
             "Client/Private/CharacterPreviewPanel.cpp"
         )
+
+    def test_projected_animation_bindings_match_strict_client_reader(self) -> None:
+        document = projector.load_json(ROOT / projector.SOURCE_PATH)
+        product = projector.project_presentation(document, ROOT)
+        service = read("Client/Private/KoukuSaydonPresentationAssetService.cpp")
+        loader = service[service.index("bool Load_PresentationBindings(") :]
+        header = loader[: loader.index("const DATA_JSON_VALUE* schema")]
+        accepted_headers = {
+            frozenset(re.findall(r'"([^"\n]+)"', names))
+            for names in re.findall(
+                r"Has_ExactProperties\(root,\s*\{([^}]+)\}\)", header
+            )
+        }
+        # Compare today's real producer output to the reader's exact field sets:
+        # adding LIGHT metadata must not silently discard every animation row.
+        self.assertTrue(product["bindings"])
+        self.assertIn("lightResourceRevision", product)
+        self.assertIn(frozenset(product), accepted_headers)
+        for removed in ((), ("patterns",), ("lightResourceRevision",),
+                        ("patterns", "lightResourceRevision")):
+            with self.subTest(legacy_without=removed):
+                keys = frozenset(key for key in product if key not in removed)
+                self.assertIn(keys, accepted_headers)
+                self.assertNotIn(keys | {"unexpectedField"}, accepted_headers)
+
+        row_guard = re.search(
+            r"Has_ExactProperties\(value,\s*\{([^}]+)\}\)", loader
+        )
+        self.assertIsNotNone(row_guard)
+        accepted_row = frozenset(re.findall(r'"([^"\n]+)"', row_guard.group(1)))
+        for row in product["bindings"]:
+            with self.subTest(action=row["actionId"]):
+                self.assertEqual(frozenset(row), accepted_row)
 
     def test_registry_owns_exact_product_identity(self) -> None:
         descriptor = re.search(

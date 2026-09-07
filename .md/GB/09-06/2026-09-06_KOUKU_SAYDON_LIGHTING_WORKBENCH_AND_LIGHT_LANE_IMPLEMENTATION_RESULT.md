@@ -143,3 +143,73 @@ Server patternId/startTick/sequence와 같은 방 snapshot broadcast를 그대�
 F1 Tools → Rendering Workbench → Light Resources의 세 카테고리와 Light Sequencer를 확인한다.
 F1 Tools → Action Workbench에서 세 패턴을 선택하고 Play Published Product (Server)로 암전·세이튼·전원 Spot을 확인한다.
 밝기·크기·저장 버튼 왕복·다인 화면 결과는 사용자 확인 대기다. 자동 stage/commit/push는 하지 않았다.
+
+
+## G06. 09-07 Map 조명 생성 이름과 수명 구분
+
+Map Profile의 기존 이름 입력은 다른 필드와 같은 한 줄 형식이었다. 사용자의 입력란 발견 문제를
+반영해 Create 공통 Light name 라벨과 전체 폭 입력칸으로 바꾸고 공백 이름의 신규 생성을 막았다.
+이름은 기존 Create → displayName → Save_Authored → maplights JSON 경로를 그대로 사용한다.
+Map Directional은 기존 기본광을 선택하는 버튼/읽기 전용 이름으로 구분해 이름을 입력하고도
+새 광원이 만들어졌다고 오해하는 흐름을 없앴다.
+
+Create/목록/Detail은 Map Profile(persistent), Scene Profile(mood), Anchor Light(pattern)을 안내한다.
+Map Profile은 Area의 enabled 배치로 유지하고 Save Light 뒤 Publish Light로 런타임에 배포한다.
+Anchor Light의 Map(fixed world)은 Action Workbench box의 수명 동안만 고정 월드 위치에 생성한다.
+두 경로는 저장 정본과 수명이 다르며 자동 변환하거나 중복 배치하지 않는다.
+
+확인된 Preview 버그는 MAP을 BOSS가 아니라는 이유로 PLAYER 분기에 넣어 Play 시점의 플레이어
+좌표를 복사한 것이었다. MAP Preview pivot을 identity로 고쳐 Composition의 MAP 처리와 일치시켰다.
+Detail은 World position으로 표시하며 Place above player (+8m)를 명시적으로 누를 때만 위치를 복사한다.
+PLAYER/BOSS 추적은 유지한다. 사용자가 만들고 있는 리소스와 dirty runtime JSON은 수정하지 않는다.
+
+자동 검증은 Debug Product 컴파일·링크·배포 PASS(20260907T043238497Z-debug-product.json),
+git diff --check PASS다. 위치 계산의 CPU 확인에서는 동일 localOffset에 서로 다른 두 플레이어
+위치를 주어도 identity MAP 기준의 결과가 동일했다(map-light-position-check.json). 이는 실제
+Client/GPU 재생 테스트가 아니다. 이름 저장의 기존 codec/호출 경로를 검토했고 데이터·XML 변경과
+새 publisher는 없다. 빌드 로그는 out/ObjectLightWorkspace/map-light-preview-build.log다.
+사용자 종료 후 빌드했으며 Client/UI 실행·입력·Save 버튼 왕복·화면 검증은 사용자 확인 대기다.
+
+## G07. Complete Play 애니메이션 로드 수정과 무력화 V2 동기화
+
+조명 기능에서 patternbindings root에 lightResourceRevision을 추가했지만, 애니메이션 소비자인
+KoukuSaydonPresentationAssetService의 strict property 목록이 이전 형식만 허용했다. 생성된 문서 전체가
+malformed로 거부되어 무력화·댄스타임·룰렛의 보스 애니메이션이 기본 idle에 머물렀다. World 룰렛은
+독립 경로로 정상 실행돼 오브젝트만 움직였다. 로더가 현재/legacy root를 허용하고 optional revision을
+positive uint32로 검사하게 수정했다. 누락된 Product action을 idle 성공으로 숨기지 않고 실패 진단을 남긴다.
+실제 projector 출력과 strict reader의 root/row 계약을 연결한 회귀 검사는 수정 전 실패·수정 후 성공했다.
+
+이펙트 작업자는 boss.kouku.disarm 그룹에 21개 child를 저장했으나 Composition은 예전 단일 방패 leaf와
+yaw90/b_effectroot 변환을 유지했다. 전체 그룹을 21개 LEAF occurrence로 전개해 방패2·모으기3·블러1·
+별line5·연기5·decal5를 Sequencer의 개별 Effect box로 연결했다. 그룹 자체를 중복 실행하지 않는다.
+작업자의 Source V2 파일은 그대로이며 child asset/offset/rotation/scale/start를 사용한다.
+21개×9 위치 계산에서 원본 그룹과 오차 0m였다. 사용자 Save revision78과 새 Pattern8을 보존하고
+최종 Composition revision81 및 대응 Product로 publish했다.
+
+방패 창은 5263~15947ms이며 별은 원본 그룹 내부 시작 offset을 이 창에 더한다. 방패와 늦은 decal은
+이 창에 맞춰 수명을 조절했다. Composition Fade 0은 기존 Runtime의 -1 보존값, dissolve는 (-1,-1) 쌍으로
+전달해 별의 원본 dissolveInEnd=.701을 유지한다. 양수 fade만 명시 override한다. 공용 EffectV2Runtime의
+기존 zero/negative 계약은 수정하지 않았다. Particle LEAF는 native emitter 수명을 유지하며 표시 box만
+최종 정리 시각을 소유한다. 연기5개는 emission .7초+최대 particle 잔향 .9초=1.6초로 배치했다.
+
+방패 앞/뒤 중심은 [0,.5,0]/[0,.5,.5], yaw는 0/180도다. 같은 BOSS SECTOR 2개를 STAGGER Logic에 연결해
+Server가 두 방향을 판정한다. 기존 Collider region 전송 경계를 재사용했다. 원본 메시 4,778 vertex의
+외곽을 기준으로 반각35.868636도/전체71.737272도/Debug 반경2.148847m를 적용했다. 이는 texture alpha의
+최종 가시 실루엣을 판정한 값은 아니다. followBoss=false 또는 잘못된 anchor/shape는 publish에서 거부한다.
+
+| 실제 확인 | 결과 |
+|---|---|
+| Composition projector | 52/52 PASS; 21개 전개, 방패 연결, followBoss 거부 포함 |
+| 바인딩 reader 회귀 | 실제 생성 문서 검사 1/1 PASS; 이전 reader로 실패 재현 |
+| 기존 Effect occurrence/product | 9/9 PASS |
+| Composition/Gameplay publish | PASS, sourceRevision81, 6 Product patterns/66 stages |
+| 첫 Debug Product | PASS, 20260907T051604640Z-debug-product.json |
+| 신규 Server 방패 검사 | 두 방향·회전·중심·35도 내부/40도 외부·종료 해제 PASS |
+| Server 전체 contract | 8 FAIL: 기존 NPC fixture v7와 WorldBootstrap reader v8 불일치. HEAD에도 동일 코드이며 이번 수정 밖 |
+| Client product 전체 source 검사 | 16 PASS/2 기존 FAIL: Level scene 기본값과 Add_GameObject 호출수 기대. HEAD에서도 동일 실패 |
+| V2 source/물리 입력 | 171 leaf/29 group 검사 PASS. 전체 validator는 기존 Composition-only curtain_1 집계 누락으로 실패 |
+
+구조화된 근거는 out/ShieldCounterAlignment와 out/WorldObjectMotionAudit에 있다. 기존 전체 검사 실패를
+관련 기능 PASS로 숨기거나 무관한 fixture를 이번 기능에서 바꾸지 않았다. 물리 Resources·효과 source는
+추가로 전달할 변경이 없고 Drive 업로드도 하지 않았다. 실제 보스 모션·방패/별의 방향·최종 타이밍은
+새 Server + Client에서 Action Workbench의 무력화 시작·댄스타임·룰렛 Complete Play로 사용자 확인한다.

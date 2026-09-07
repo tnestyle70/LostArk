@@ -997,6 +997,10 @@ Resources의 Map/Character 분류와 Create의 anchor는 resource.anchorKind(WOR
 Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
 상대 경로만 저장한다. 카드의 들썩임·뒤집힘은 별도 named state로 두되 같은 모델을 공유한다.
+왼쪽 저장 트리에서 Create Object로 이름을 입력하고 생성한 항목을 선택한다. 같은 Resources 창 아래의
+원본 모델·Animation 목록에서 클립을 골라 Append하면 선택한 Object의 모델과 animation track에 연결된다.
+아래 Sequencer에서 재생하고 오른쪽 Detail에서 편집한 뒤 Save한다. 원본 클립 전체를 저장 상태로
+자동 복제하지 않으며, 목록은 기존 WModel decoder로 물리 모델에서 직접 읽는다.
 Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
 마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
@@ -1048,9 +1052,16 @@ Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이�
 이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
 `dissolveStart/dissolveEnd`는 정규화 수명 내 dissolve-out 시작/종료 시점이며
-`0 <= start < end <= 1`이다. box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.
-방패 `boss.kouku.disarm.shield_1`은 반복 animation clip binding에서 단일 Composition occurrence로
-이관했다. 전체 무력화 창에서 한 번 fade-in/hold/dissolve-out하고 yaw +90°를 적용한다.
+`0 <= start < end <= 1`이다. Fade 0은 추가 occurrence fade 없이 원본 leaf의 alpha/dissolve 곡선을
+유지한다. 양수 Fade In/Out은 해당 원본 곡선을 덮어쓰며 dissolveStart/End는 양수 Fade Out에 적용한다.
+box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.
+Particle LEAF의 box는 잔향을 포함한 표시 창이고 emitter 수명/loop는 Source Effect 값을 사용한다.
+방패·메시 효과의 box 수명 override는 유지한다.
+무력화는 작업자의 `boss.kouku.disarm` 그룹 21개 child(방패 2개·별·연기·데칼 등)를 개별 LEAF box로
+연결한다. 방패 Logic 창 5263~15947ms 안에서 원본 child의 시작 offset을 유지하며 Sequencer에서
+각 항목을 편집한다. 그룹 자체를 함께 재생하지 않는다. leaf 디자인 수정은 그대로 소비하지만 그룹의
+배치/시간 변경은 해당 Composition box와 다시 맞춰야 한다. 앞/뒤 방패는 boss pivot과 같은 중심·방향의
+SECTOR collider 2개를 STAGGER_WINDOW Logic에 연결하며 Server가 반사 방향을 판정한다.
 진짜 하트 3 box와 가짜 별 3 box도 각 소유 pattern에 배치했다. 이관 후
 `MN_RPCT_05.effectv2bindings.json`의 방패·별 row는 제거하여 두 경로가 동시에 재생되지 않는다.
 

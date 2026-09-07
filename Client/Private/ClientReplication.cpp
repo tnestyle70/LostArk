@@ -3600,16 +3600,22 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 							action.strClip.c_str(), false,
 							action.fPlayRate, 0.05f) :
 						boss->Play_DefaultIdle(0.08f);
-					if (!played)
+					const bool_t missingProductAction = !hasAction &&
+						!entity.strPatternId.empty() && !entity.strActionId.empty();
+					if (!played || missingProductAction)
 					{
+						// Idle keeps the body usable, but cannot acknowledge a missing
+						// Product animation as successfully presented.
 						m_strPendingPresentationFailure = hasAction ?
 							"KoukuSaydon Product animation clip could not start: " +
 								action.strClip :
 							"KoukuSaydon Server action has no admitted Product animation binding: " +
 								entity.strActionId;
+						OutputDebugStringA(("[KoukuSaydonAnimation] " +
+							m_strPendingPresentationFailure + "\n").c_str());
 						allSucceeded = false;
 					}
-					else
+					if (played)
 					{
 						iter->second.strCurrentClip = hasAction ?
 							action.strClip : iter->second.strResolvedIdleClip;

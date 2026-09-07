@@ -184,3 +184,41 @@ Client/UI는 실행·조작·캡처하지 않았다. 사용자가 종료했다�
 Server + Client profile을 Ctrl+F5로 시작한 뒤 Lobby → KoukuSaydon → F1 Tools → World Object Tool →
 Map 리소스/상태 선택 → Object Sequencer Play로 확인한다. 창 배치가 필요하면 Windows → Reset layout을 사용한다.
 기존 사용자 미커밋 파일을 보존했으며 자동 stage/commit/push는 하지 않았다.
+
+## G07. 원본 Animation Resources와 선택한 Object의 Append
+
+왼쪽 Object Resources 상단은 저장한 Object/모션 패턴 트리이고, Create Object에서 이름과 Map/Character
+anchor로 새 항목과 빈 기본 패턴을 만든다. 같은 창 아래 Physical Resources에서 WModel 후보를 고르면
+Animation Resources가 기존 WModel decoder로 실제 clip 이름과 길이를 읽는다. 선택 후 Append Animation은
+선택 Object의 모델·animated 속성과 정확한 animationTracks 항목을 함께 검증·반영한다. 별도 GPU 로드나
+두 번째 모델 catalog/runtime은 없다. static 모델은 Assign Model 후 Transform/Motion으로 저작한다.
+
+Append 후 기존 아래 Object Sequencer에서 재생하고 오른쪽 Object Detail에서 튜닝한 뒤 Save한다.
+추가 모션은 왼쪽 Additional motion patterns에서 만들 수 있다. 새 미편집 패턴의 첫 clip은 native 길이를
+사용하고 기존 저작 key 시각은 바꾸지 않으며 필요한 끝 구간만 마지막 pose로 연장한다. 다른 저장 패턴의
+clip이 새 모델에 없다면 변경 전체를 취소한다. Reload는 미저장 모델 후보도 초기화하고 placeholder clip
+추가는 제거했다. 리소스 이름 검색은 전체 하위 상태를, 상태 이름/ID 검색은 일치한 하위 상태만 표시한다.
+
+물리 모델 10종에서 원본 clip 110개를 확인했다(카드14/조커14/세토68/갈고리9/폭탄5).
+이 110개는 Animation 재료 목록이고 자동 저장 패턴은 아니다. 기존 idle 5개와 요청 카드 4개,
+세토 3개·갈고리 4개·폭탄 2개의 대표 모션, 총 18개 native 패턴을 미리 연결했다.
+빈 카드의 card_hop/card_flip ID는 보존하고 원본 body clip으로 교체했으며 합성 Transform은 제거했다.
+조커는 요청한 별도 두 이름으로 저장했다. 공·칼날·빙고의 Motion 및 커튼/룰렛의 배치 key는 유지했다.
+세토 보행은 제자리 모션이고 실제 이동 경로는 별도 저작한다. 돌진과 갈고리 전방 이동은 native root가
+움직이므로 기본 Velocity를 더하지 않는다. 세부 clip과 물리 경로는 같은 날짜 Resource Ledger를 따른다.
+
+WorldSequence source/runtime은 v3/revision151, 86 templates/90 instances다. 기존 10 resources와 79 instances,
+요청 카드 2개를 제외한 기존 template 73개를 보존했다. 새 추출·Resources 파일 변경·Drive 업로드는 없다.
+
+| 실제 확인 | 결과 |
+|---|---|
+| Map Publish / 기존 WorldSequence 계약 검사 | PASS, 26개 검사; source/runtime semantic equality |
+| 물리 clip 연결 | 설치 WModel 110개 확인, 미리 저장한 native clip/binding 일치 |
+| 데이터 보존·parse | 변경 JSON 5개 parse; final-json-preservation.json; 변경 XML 없음 |
+| 첫 통합 Debug Product | PASS, 20260907T051604640Z-debug-product.json, Engine→Shared→Server→Client 배포 |
+| 최종 Client 증분 컴파일·링크·배포 | PASS, client-final-incremental.log; Diffuse 선택 뒤 첫 clip 수명 보완까지 반영 |
+| UI 입력·저장·실제 화면 | 사용자 확인 대기; Client/UI 실행·조작·캡처 없음 |
+
+로그와 수치 근거는 out/WorldObjectMotionAudit에 있다. 새 화면은 Server + Client profile을 Ctrl+F5로 시작한 뒤
+Lobby → KoukuSaydon → F1 Tools → World Object Tool에서 확인한다. 실제 입력·Save/Reload 버튼 왕복과
+모션 외형은 자동 검증 성공으로 대신 판정하지 않는다.

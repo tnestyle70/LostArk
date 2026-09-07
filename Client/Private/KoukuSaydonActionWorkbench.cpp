@@ -5967,12 +5967,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		if (ImGui::InputInt("Fade in ms", &fadeIn)) edit.iFadeInMs = static_cast<std::uint32_t>((std::max)(0, fadeIn));
 		if (ImGui::InputInt("Fade out ms", &fadeOut)) edit.iFadeOutMs = static_cast<std::uint32_t>((std::max)(0, fadeOut));
 		float startRatio = static_cast<float>(edit.fDissolveStart), endRatio = static_cast<float>(edit.fDissolveEnd);
+		ImGui::BeginDisabled(edit.iFadeOutMs == 0u);
 		if (ImGui::SliderFloat("Dissolve out start", &startRatio, 0.f, 1.f)) edit.fDissolveStart = startRatio;
 		if (ImGui::SliderFloat("Dissolve out end", &endRatio, 0.f, 1.f)) edit.fDissolveEnd = endRatio;
+		ImGui::EndDisabled();
 		char bone[128]{};
 		(void)Copy_Text(bone, std::size(bone), edit.strBone);
 		if (ImGui::InputText("Bone (empty = pivot)", bone, std::size(bone))) edit.strBone = bone;
-		ImGui::TextDisabled("Per-box overrides. Source Effect V2 files are preserved.");
+		ImGui::TextDisabled("Fade 0 keeps authored alpha/dissolve. Positive fades override; dissolve-out follows Fade Out.");
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
 	{
