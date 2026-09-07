@@ -7,7 +7,7 @@
     "mesh": "Effect/Warlord/Meshes/FX_SM_03/fx_w_wgl_gdd_b_01.wmodel",
     "base": "Effect/Warlord/Textures/FX_TEX_03/fx_e_symbol_057.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_01/fx_c_glow_001.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_01/fx_c_glow_001.dds",
     "emissive": "Effect/Warlord/Textures/FX_TEX_03/fx_e_symbol_057.dds",
     "dissolve": "Effect/Warlord/Textures/FX_TEX_03/fx_e_noise_006.dds"
   },

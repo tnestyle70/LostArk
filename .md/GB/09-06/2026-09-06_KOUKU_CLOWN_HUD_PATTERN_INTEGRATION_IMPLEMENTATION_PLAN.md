@@ -167,7 +167,7 @@ Debug Render 체크를 반영한다. 실패 이유는 Preview 상태에 표시�
 보존하고 배포 closure를 검증한다. 커튼은 원본 KoukuSaton_Curtain의 post-process material
 참조를 기존 Effect V2 `TexturedOverlay`와 `Add_ScreenOverlay`에 연결한다. 원본 재질
 `FX_M_MI_D_00.FX_M.FX_D_Po_Curtain`이 참조하는 `fx_tex_high_00.fx_d_symbol_100_ycl` DDS를
-`Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`에 설치하고 leaf `boss.kouku.curtain_1`이 소비한다.
+`Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`에 설치하고 leaf `boss.kouku.curtain_1`이 소비한다.
 원본 cooked graph가 제거한 이동식은 동일 재현으로 단정하지 않으며, 하강·유지·상승 비율은
 프로젝트 조정값으로 저장한다. 새 렌더러나 맵 mesh 변형 경로를 만들지 않는다.
 

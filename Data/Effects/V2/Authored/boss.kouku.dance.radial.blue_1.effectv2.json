@@ -5,9 +5,9 @@
   "effectType": "Decal",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_a_glow_008.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_glow_008.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_03/fx_e_ring_002.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_03/fx_e_ring_002.dds",
     "emissive": "",
     "dissolve": "Effect/Valtan/Textures/Custom/fx_radialmask_centerdark_01.dds"
   },

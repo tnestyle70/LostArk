@@ -33,11 +33,11 @@
 ### 월드오브젝트_공
 
 - 저장 ID: `world.object.kouku.ball`
-- 모델/alias: `Effect/KakulSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel`
+- 모델/alias: `Effect/KoukuSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel`
 - 근거: `FX_MN_RPCT_05_G.par_g_rpct_05_circusball_01_01` 등 TypeDataMesh → `fx_sm_01.fm_k_ppct_ball_01`; 원본 `wp_mn_ppct_00_mi.props.txt`의 texture_diffuse → wp_mn_ppct_00_c.
 - 단위/배수: modelPreScale=0.01, scale=1.
 - 애니메이션: 0; transform/motion.
-- 텍스처: WModel 자체 texture가 비어 있어 `Effect/KakulSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds`를 명시 diffuse override한다.
+- 텍스처: WModel 자체 texture가 비어 있어 `Effect/KoukuSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds`를 명시 diffuse override한다.
 
 ### 월드오브젝트_세토
 
@@ -51,7 +51,7 @@
 ### 월드오브젝트_칼날
 
 - 저장 ID: `world.object.kouku.cutting_blade`
-- 모델/alias: `Effect/KakulSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel`
+- 모델/alias: `Effect/KoukuSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel`
 - 근거: MN_ISTM_00-4 Action 4222009 `투명NPC_칼날 발사` → notify SkillEffect 421991302 → Key 12 / ValueA 421991301 → data1 Projectile 421991301.loa → `FX_MN_RPCT_07_V.Par_V_RPCT_Cutting_pjt_01` → TypeDataMesh `fx_sm_01.fm_o_cngn_01`, Required material `mn_cngn_00.mat.mn_cngn_00_mi`. 두 swing mesh는 trail이므로 본체로 등록하지 않았다.
 - 단위/배수: modelPreScale=0.01, scale=1.
 - 애니메이션: 0; transform/motion.
@@ -119,7 +119,7 @@ UModel CLI의 `-export`, 저장소 `Cook-ActorXWModel.ps1`, `ModelAssetConverter
 - `Client/Bin/Resources/Character/KoukuSaton/MN_PPCT_00`
 - `Client/Bin/Resources/Character/KoukuSaton/MN_UMAX_00`
 - `Client/Bin/Resources/Character/KoukuSaton/MN_RHCN_01`
-- `Client/Bin/Resources/Effect/KakulSaydon/WorldObjects/CuttingBlade`
+- `Client/Bin/Resources/Effect/KoukuSaydon/WorldObjects/CuttingBlade`
 
 6개 폴더 총 33파일, 51,146,900 bytes가 현재 PC의 runtime Resources에 설치되어 Drive 전달을 위해 폴더 단위로 복사 가능한 상태다. Drive 업로드는 실행하지 않았다. 공/빙고/커튼/룰렛은 기존 리소스 팩의 위 경로를 재사용한다. Resources는 Git 제외 입력이며 binary force-add를 하지 않았다.
 

@@ -5,11 +5,11 @@
   "effectType": "Particle",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
-    "emissive": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
-    "dissolve": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
+    "emissive": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_fluid_013.dds",
+    "dissolve": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
   },
   "params": {
     "position": { "start": [0.4, 2.15, 1.4], "end": [0.0, 0.0, 0.0], "lerp": false },

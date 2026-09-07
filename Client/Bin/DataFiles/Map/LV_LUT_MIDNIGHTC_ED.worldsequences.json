@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 147,
+  "revision": 148,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -35,8 +35,8 @@
     {
       "objectId": "world.object.kouku.ball",
       "displayName": "월드오브젝트_공",
-      "modelAssetId": "Effect/KakulSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel",
-      "diffuseTextureAssetId": "Effect/KakulSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds",
+      "modelAssetId": "Effect/KoukuSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel",
+      "diffuseTextureAssetId": "Effect/KoukuSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds",
       "modelPreScale": 0.01,
       "animated": false,
       "scale": [
@@ -63,7 +63,7 @@
     {
       "objectId": "world.object.kouku.cutting_blade",
       "displayName": "월드오브젝트_칼날",
-      "modelAssetId": "Effect/KakulSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel",
+      "modelAssetId": "Effect/KoukuSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.01,
       "animated": false,

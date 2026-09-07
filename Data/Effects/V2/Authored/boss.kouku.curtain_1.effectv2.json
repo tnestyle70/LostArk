@@ -5,7 +5,7 @@
   "effectType": "ScreenPost",
   "slots": {
     "mesh": "",
-    "base": "Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds",
+    "base": "Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds",
     "noise": "",
     "mask": "",
     "emissive": "",

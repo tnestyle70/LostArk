@@ -158,7 +158,7 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
     def test_kouku_saton_is_only_a_physical_resource_alias_in_client_source(self) -> None:
         resource_alias_path = re.compile(
             r"(?:Resources[\\/])?"
-            r"(?:Character|Effect|Map|Sound|UI)[\\/]KoukuSaton(?:[\\/]|\")"
+            r"(?:Character|Map|Sound|UI)[\\/]KoukuSaton(?:[\\/]|\")"
         )
         violations: list[str] = []
         for directory in (ROOT / "Client/Public", ROOT / "Client/Private"):

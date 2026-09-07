@@ -5,10 +5,10 @@
   "effectType": "Texture",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
-    "emissive": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
+    "emissive": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_b_ring_004.dds",
     "dissolve": ""
   },
   "params": {

@@ -337,8 +337,8 @@ Material native tail 88바이트를 끝까지 해석한 단일 texture reference
 원본 하단의 투명 끝이 유지 구간에서 화면 아래로 내려가도록 했다. Effect Tool에서 위치·크기·회전·
 진입/퇴장 비율과 opacity를 저장한다. 이 profile은 alpha envelope를 사용하고 texture dissolve는 사용하지 않는다.
 
-필수 Resources 상대 ID는 `Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`, 물리 위치는
-`C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`다.
+필수 Resources 상대 ID는 `Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`, 물리 위치는
+`C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`다.
 1,048,704바이트가 기존 원본 추출과 동일함을 확인했다. Resources는 Git에 추가하지 않았고
 **Drive 전달은 미수행**이다. 원본 커튼 사운드 WAV 3종은 기존 폴더에 존재하지만 선택 근거가 없어
 하나를 임의 연결하지 않았다. 기존 원형 맵 커튼 11개를 화면 전체 연출의 원본으로 간주하지 않는다.
