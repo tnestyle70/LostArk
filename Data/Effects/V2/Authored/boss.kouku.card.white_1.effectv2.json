@@ -5,9 +5,9 @@
   "effectType": "Texture",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_m_cardalpha_01.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_m_cardalpha_01.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_m_cardalpha_01.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_m_cardalpha_01.dds",
     "emissive": "",
     "dissolve": ""
   },

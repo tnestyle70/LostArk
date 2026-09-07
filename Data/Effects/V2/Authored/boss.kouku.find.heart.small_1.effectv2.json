@@ -5,7 +5,7 @@
   "effectType": "Particle",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_l_symbol_12_cl.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_l_symbol_12_cl.dds",
     "noise": "",
     "mask": "",
     "emissive": "",

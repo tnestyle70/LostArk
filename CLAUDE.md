@@ -431,6 +431,12 @@ V1 Product 문서가 참조하는 DDS/WModel dependency closure는 팀장 Drive�
 `Client/Bin/Resources` 같은 상대 asset ID에 있어야 한다. Git clone/pull은 Effect binary를 전달하지 않으며,
 팀원은 실행 전에 필요한 물리 리소스를 같은 경로로 전달받는다.
 
+쿠크 Effect 물리 정본은 `Client/Bin/Resources/Effect/KoukuSaydon`이다.
+`Meshes`, `Textures`, `Screen`, `WorldObjects`를 이 폴더 아래에 전달하고 V2 Effect 슬롯과
+World Object의 모델·texture는 `Effect/KoukuSaydon/...` 상대 asset ID를 저장한다.
+Effect Resource Library와 World Object Tool의 물리 목록은 이 폴더를 재귀 검색한다.
+Character/UI/Sound의 기존 `KoukuSaton` 경로와 원본 package 이름은 별개의 계약이다.
+
 #### Artist F와 Effect 화면 검증은 사용자 전용
 
 - 에이전트는 Client UI를 자율적으로 실행·조작하지 않고 화면을 직접 캡처하거나 스크린샷을 만들지 않으며, visual fidelity를 대신 판정하지 않는다.

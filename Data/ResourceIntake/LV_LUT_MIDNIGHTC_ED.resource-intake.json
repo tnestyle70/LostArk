@@ -2746,7 +2746,7 @@
     "admissionState": "source-closure-verified",
     "productRuntimeComplete": false,
     "physicalPayload": {
-      "runtimeRoot": "Client/Bin/Resources/Effect/KoukuSaton",
+      "runtimeRoot": "Client/Bin/Resources/Effect/KoukuSaydon",
       "wmodelCount": 101,
       "wmodelBytes": 3477406,
       "wmodelAggregateSha256": "f65b1759836c19768c9293a4b5eed1ec181d1c16b568ee34be0b605b25e0b191",
@@ -3139,7 +3139,7 @@
       "Character/KoukuSaton/WP_MN_RPCT_07",
       "Character/KoukuSaton/WP_MN_RPCT_08"
     ],
-    "effectPhysicalRoot": "Effect/KoukuSaton",
+    "effectPhysicalRoot": "Effect/KoukuSaydon",
     "uiRasterPhysicalRoot": "UI/KoukuSaton",
     "soundRuntimeRoot": "Sound/KoukuSaton",
     "audioRoots": [

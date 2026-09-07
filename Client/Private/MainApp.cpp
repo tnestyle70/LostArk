@@ -7032,7 +7032,7 @@ void CMainApp::RefreshDebugResourceFiles()
 			startsWith(path, "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "DataFiles/Map/LV_LUT_MIDNIGHTC_ED") ||
-			startsWith(path, "Resources/Effect/KoukuSaton/") ||
+			startsWith(path, "Resources/Effect/KoukuSaydon/") ||
 			startsWith(path, "Resources/Effect/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Resources/UI/KoukuSaton/") ||
 			startsWith(path, "Resources/UI/LV_LUT_MIDNIGHTC_ED/") ||

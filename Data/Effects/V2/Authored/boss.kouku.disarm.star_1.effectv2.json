@@ -4,12 +4,12 @@
   "effectId": "boss.kouku.disarm.star_1",
   "effectType": "Mesh",
   "slots": {
-    "mesh": "Effect/KakulSaydon/Meshes/fx_sm_00/fm_d_plane_003.wmodel",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
+    "mesh": "Effect/KoukuSaydon/Meshes/fx_sm_00/fm_d_plane_003.wmodel",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
-    "emissive": "Effect/KakulSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
-    "dissolve": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_atypical_076_cl.dds"
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
+    "emissive": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
+    "dissolve": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_atypical_076_cl.dds"
   },
   "params": {
     "position": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },

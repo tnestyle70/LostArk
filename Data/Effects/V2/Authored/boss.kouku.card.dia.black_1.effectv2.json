@@ -5,7 +5,7 @@
   "effectType": "Texture",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_symbol_090_1.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_symbol_090_1.dds",
     "noise": "",
     "mask": "",
     "emissive": "",

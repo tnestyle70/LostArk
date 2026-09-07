@@ -726,7 +726,7 @@ Preview/Append는 두 항목을 함께 준비하고 제품은 명시적으로 �
 연결된 Effect box의 시간·속성은 독립 편집할 수 있다. Preview의 source draft generation 변경은
 현재 clock에서 다시 stage하며 실패 이유와 정상 기존 항목을 보존한다.
 Effect V2 `TexturedOverlay`는 기존 `Add_ScreenOverlay`를 사용한다. 전체화면 커튼
-`boss.kouku.curtain_1`의 원본 texture ID는 `Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`이며
+`boss.kouku.curtain_1`의 원본 texture ID는 `Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`이며
 World mesh나 카메라 위치를 바꿔 화면 효과를 흉내 내지 않는다. 이 profile은 alpha envelope를 사용하고
 texture dissolve는 사용하지 않는다. 원본 texture 근거와 조정한 이동 시간, Resources 전달 및
 사용자 화면 검증 상태는 대응 RESULT에 기록한다.

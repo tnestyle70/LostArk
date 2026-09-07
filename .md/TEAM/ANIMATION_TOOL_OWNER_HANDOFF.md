@@ -1073,8 +1073,8 @@ WORLD의 `companionEffectResourceId`는 World Preview/Append 때 EFFECT를 함�
 전체화면 커튼 leaf는 `boss.kouku.curtain_1`이다. Effect V2 `TexturedOverlay`가 기존 screen overlay
 pass로 Base DDS를 합성하고 normalized 위치 start/hold/end와 enterEnd/exitStart로 이동한다.
 이 profile은 opacity/alpha envelope를 사용하며 texture dissolve를 사용하지 않는다.
-필수 자산은 `Effect/KoukuSaton/Screen/fx_d_symbol_100_ycl.dds`, 물리 폴더는
-`Client/Bin/Resources/Effect/KoukuSaton/Screen`이다. 원본 재질/텍스처 연결과 프로젝트 이동곡선을
+필수 자산은 `Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`, 물리 폴더는
+`Client/Bin/Resources/Effect/KoukuSaydon/Screen`이다. 원본 재질/텍스처 연결과 프로젝트 이동곡선을
 구분하고 사용자 육안 승인 전 원작 동일 재현으로 표기하지 않는다. 전달/검증 상태는 대응 RESULT를 따른다.
 사용자가 Collider와 바닥 UV의 일치, 카드 표시, 포즈 및 효과 방향·타이밍을 직접 확인해야 하며
 agent의 데이터 parse/컴파일 성공을 visual PASS로 사용하지 않는다.
