@@ -204,9 +204,12 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t version = 0;
 	std::uint32_t revision = 0;
 	std::uint32_t count = 0;
-	if (6u != header.size() ||
+	std::uint32_t sequenceCount = 0;
+	if ((6u != header.size() && 7u != header.size()) ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 8u != version ||
+		!ParseNumber(header[1], version) || (8u != version && 9u != version) ||
+		(8u == version && 6u != header.size()) ||
+		(9u == version && (7u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u)) ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -642,6 +645,16 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		staged.push_back(std::move(placement));
 	}
+	std::vector<std::string> sequences;
+	std::unordered_set<std::string> sequenceIds;
+	for (std::uint32_t i = 0; i < sequenceCount; ++i)
+	{
+		if (!std::getline(input, line)) { m_strStatus = "World sequence ID list is truncated"; return false; }
+		StripCarriageReturn(line);
+		if (!IsStableId(line) || !sequenceIds.insert(line).second)
+		{ m_strStatus = "World sequence ID is invalid or duplicated"; return false; }
+		sequences.push_back(line);
+	}
 	if (std::getline(input, line))
 	{
 		m_strStatus = "World bootstrap has trailing rows";
@@ -673,6 +686,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	}
 
 	m_Placements = std::move(staged);
+	m_SequenceInstanceIds = std::move(sequences);
 	m_strAreaId = stagedAreaId;
 	m_iRevision = revision;
 	m_strStatus = "Loaded world bootstrap: " +

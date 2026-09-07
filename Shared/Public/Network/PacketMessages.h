@@ -581,6 +581,60 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& message);
 
+	enum class MARIO_DIRECTION : std::uint8_t
+	{
+		STOP = 0,
+		LEFT = 1,
+		RIGHT = 2,
+		END
+	};
+
+	/* Logical side-scroll intent only. The Server resolves the current segment
+	axis; STOP releases movement at its authoritative player position. */
+	struct C2S_MARIO_MOVE
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		MARIO_DIRECTION eDirection = MARIO_DIRECTION::STOP;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_MARIO_MOVE& message);
+	bool Read_Message(CPacketReader& reader, C2S_MARIO_MOVE& message);
+
+	/* Debug test aid: LEFT/RIGHT selects a side, never a world-space aim or
+	landing. The Server owns the bounded jump and the snapshot owns position. */
+	struct C2S_DEBUG_MARIO_JUMP
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		MARIO_DIRECTION eDirection = MARIO_DIRECTION::STOP;
+	};
+
+	enum class DEBUG_MARIO_JUMP_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_DISABLED,
+		REJECTED_WRONG_WORLD,
+		REJECTED_PLAYER_STATE,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_OUTSIDE_MARIO,
+		REJECTED_INVALID_TARGET,
+		REJECTED_NO_LANDING,
+		END
+	};
+
+	struct S2C_DEBUG_MARIO_JUMP_RESULT
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_MARIO_JUMP_RESULT eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_DEBUG_MARIO_JUMP& message);
+	bool Read_Message(CPacketReader& reader, C2S_DEBUG_MARIO_JUMP& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_DEBUG_MARIO_JUMP_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_DEBUG_MARIO_JUMP_RESULT& message);
+
 	/* Which body a player presents. NORMAL is the class body; CLOWN is the
 	colourless KoukuSaydon body a full madness gauge turns the player into. */
 	enum class PLAYER_MADNESS_FORM : std::uint8_t
@@ -939,6 +993,8 @@ namespace LostArk::Shared
 		KOUKU_HUD_MODE eKoukuHudMode = KOUKU_HUD_MODE::NONE;
 		std::int8_t ModeSkillIndexBySlot[KOUKU_HUD_SLOT_COUNT] =
 			{ -1, -1, -1, -1, -1, -1, -1, -1 };
+		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
+		std::uint8_t iMarioStage = 0u;
 		bool isCombatReady = true;
 		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
 		late Client present the remaining window without deciding its lifetime. */
@@ -2214,8 +2270,38 @@ namespace LostArk::Shared
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.
+	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY, REPLAY, STOP, END };
+	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
+	{
+		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, END
+	};
+	enum class DEBUG_WORLD_PLAYBACK_RESULT : std::uint8_t
+	{
+		ACCEPTED, DISABLED, WRONG_WORLD, INVALID_TARGET, INVALID_PLAYER, ALREADY_USED,
+		ACTION_REJECTED, STALE_REQUEST, END
+	};
+	struct C2S_DEBUG_WORLD_PLAYBACK
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_WORLD_PLAYBACK_OPERATION eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::END;
+		std::string strTargetId;
+	};
+	struct S2C_DEBUG_WORLD_PLAYBACK_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_WORLD_PLAYBACK_OPERATION eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::END;
+		DEBUG_WORLD_PLAYBACK_RESULT eResult = DEBUG_WORLD_PLAYBACK_RESULT::DISABLED;
+		std::string strTargetId;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_DEBUG_WORLD_PLAYBACK&);
+	bool Read_Message(CPacketReader&, C2S_DEBUG_WORLD_PLAYBACK&);
+	bool Write_Message(CPacketWriter&, const S2C_DEBUG_WORLD_PLAYBACK_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_DEBUG_WORLD_PLAYBACK_RESULT&);
 	struct S2C_WORLD_SEQUENCE_PLAY
 	{
+		WORLD_SEQUENCE_OPERATION eOperation = WORLD_SEQUENCE_OPERATION::PLAY;
 		std::string strSequenceInstanceId;
 		/* Multiplies the authored instance speed. 1 plays the sequence as
 		authored; a pattern box may slow a roulette spin or a curtain drop. */

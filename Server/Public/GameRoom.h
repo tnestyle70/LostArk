@@ -185,7 +185,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests(bool, bool);
+		friend int Run_ServerGameplayContractTests(bool, bool, bool);
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -344,6 +344,16 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request);
 		void Reset_PlayerForDebugTeleport(SERVER_PLAYER& player);
+		void Handle_DebugMarioJump(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
+		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT Apply_DebugMarioJump(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
+		void Handle_MarioMove(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_MOVE& request);
+		void Update_MarioControlState(SERVER_PLAYER& player);
+		void Update_MarioMoveGoal(SERVER_PLAYER& player, std::uint32_t updateTick);
+		bool Configure_MarioRail(SERVER_PLAYER& player, const std::string& arrivalPlacementId);
 		/* Debug F1 clown/player avatar toggle: swaps only the replicated
 		madness form of this session's player; Release answers REJECTED_DISABLED. */
 		void Handle_DebugSetMadnessForm(
@@ -871,7 +881,10 @@ namespace LostArk::Server
 		void Broadcast_WorldSequencePlay(
 			const std::string& instanceId, float playbackSpeed = 1.f,
 			float positionOffsetX = 0.f, float positionOffsetY = 0.f, float positionOffsetZ = 0.f,
-			std::uint32_t durationMs = 0u);
+			std::uint32_t durationMs = 0u,
+			LostArk::Shared::WORLD_SEQUENCE_OPERATION operation = LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY);
+		void Handle_DebugWorldPlayback(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
+		std::unordered_map<SESSION_ID, std::uint32_t> m_WorldPlaybackRequestSequences;
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);

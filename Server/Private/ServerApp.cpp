@@ -2888,6 +2888,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_POSITION;
 		command.DebugTeleportToPosition = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_MARIO_JUMP)
+	{
+		C2S_DEBUG_MARIO_JUMP request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_MARIO_JUMP");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_MARIO_JUMP;
+		command.DebugMarioJump = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_MARIO_MOVE)
+	{
+		C2S_MARIO_MOVE request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_MARIO_MOVE");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::MARIO_MOVE;
+		command.MarioMove = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS)
 	{
 		C2S_CHANGE_CHARACTER_CLASS request{};
@@ -3226,6 +3248,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::INTERACT_TRIGGER;
 		command.InteractTrigger = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK)
+	{
+		C2S_DEBUG_WORLD_PLAYBACK request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_DEBUG_WORLD_PLAYBACK"); return; }
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_WORLD_PLAYBACK;
+		command.DebugWorldPlayback = std::move(request);
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_RETURN_TO_BERN)
 	{

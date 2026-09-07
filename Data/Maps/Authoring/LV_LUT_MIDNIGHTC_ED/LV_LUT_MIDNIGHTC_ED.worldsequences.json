@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 151,
+  "revision": 152,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -117761,6 +117761,117 @@
           "holdLastFrame": true
         }
       ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m2_intro",
+      "displayName": "mario_m2_intro",
+      "category": "World",
+      "durationMs": 3000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "obj01",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m3_intro",
+      "displayName": "mario_m3_intro",
+      "category": "World",
+      "durationMs": 3000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "obj01",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m4_intro",
+      "displayName": "mario_m4_intro",
+      "category": "World",
+      "durationMs": 3000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "obj01",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
     }
   ],
   "instances": [
@@ -119526,6 +119637,42 @@
           "targetKind": "OBJECT_RESOURCE",
           "targetId": "world.object.kouku.bingo_bomb"
         }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.mario_m2_intro",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m2_intro",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [0, 0, 0],
+      "bindings": [
+        { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "11284422400836074445" }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.mario_m3_intro",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m3_intro",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [0, 0, 0],
+      "bindings": [
+        { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "13607882261321843072" }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.mario_m4_intro",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m4_intro",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [0, 0, 0],
+      "bindings": [
+        { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "17873503318011911402" }
       ]
     }
   ]

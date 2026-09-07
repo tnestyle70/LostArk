@@ -128,6 +128,8 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
 	{
 		fired = Begin_MovePlayer(player, action, actionStartTick);
+		if (fired)
+			player.TriggerMove.strSourcePlacementId = trigger.Definition.strPlacementId;
 	}
 	else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
 	{
@@ -177,6 +179,30 @@ bool LostArk::Server::CServerTriggerSystem::Activate_Interact(
 			outTransfers, activateTarget);
 	}
 	return false;
+}
+
+LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT LostArk::Server::CServerTriggerSystem::Debug_Activate(
+	const LostArk::Shared::PLAYER_ID playerId, const std::string& triggerId, const bool replay,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players, const std::uint32_t tick,
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& transfers,
+	const std::function<bool(WORLD_TRIGGER_ACTION_KIND, const std::string&)>& activateTarget)
+{
+	using Result = LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT;
+#ifndef _DEBUG
+	(void)playerId; (void)triggerId; (void)replay; (void)players; (void)tick; (void)transfers; (void)activateTarget;
+	return Result::DISABLED;
+#else
+	const auto player = players.find(playerId);
+	if (player == players.end() || !player->second.iCurrentHp || player->second.TriggerMove.isActive)
+		return Result::INVALID_PLAYER;
+	const auto trigger = std::find_if(m_Triggers.begin(), m_Triggers.end(),
+		[&](const RUNTIME_TRIGGER& value) { return value.Definition.strPlacementId == triggerId; });
+	if (trigger == m_Triggers.end()) return Result::INVALID_TARGET;
+	if (!replay && trigger->Definition.isTriggerOnce && trigger->hasFired) return Result::ALREADY_USED;
+	// Debug bypasses only entry/G-key/one-shot admission. The authored action is shared.
+	return Run_Action(*trigger, player->second, tick, transfers, activateTarget) ?
+		Result::ACCEPTED : Result::ACTION_REJECTED;
+#endif
 }
 
 void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
@@ -341,7 +367,13 @@ bool LostArk::Server::CServerTriggerSystem::Contains(
 	const RUNTIME_TRIGGER& trigger,
 	const SERVER_PLAYER& player)
 {
-	const WORLD_BOOTSTRAP_PLACEMENT& box = trigger.Definition;
+	return Contains_Placement(trigger.Definition, player);
+}
+
+bool LostArk::Server::CServerTriggerSystem::Contains_Placement(
+	const WORLD_BOOTSTRAP_PLACEMENT& box,
+	const SERVER_PLAYER& player)
+{
 	const float deltaX = player.fPositionX - box.fPositionX;
 	const float deltaZ = player.fPositionZ - box.fPositionZ;
 	const float yaw = box.fYawDegrees * DEGREES_TO_RADIANS;
@@ -381,6 +413,7 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.iComboStage = 0;
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
+	player.TriggerMove = {};
 	player.TriggerMove.fStartX = player.fPositionX;
 	player.TriggerMove.fStartY = player.fPositionY;
 	player.TriggerMove.fStartZ = player.fPositionZ;

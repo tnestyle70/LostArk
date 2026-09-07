@@ -27,6 +27,10 @@ int main(const int argumentCount, char** arguments)
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests(false, true);
 	}
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--world-playback-contract-test")
+	{
+		return LostArk::Server::Run_ServerGameplayContractTests(false, false, true);
+	}
 	if (2 == argumentCount &&
 		std::string_view(arguments[1]) == "--navigation-contract-test")
 	{

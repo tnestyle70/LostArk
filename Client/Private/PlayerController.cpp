@@ -142,14 +142,12 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 		return;
 	m_pLocalCharacter = character;
 	Cancel_GroundTargeting();
-	m_wasRightMouseDown = false;
-	m_wasKeyDown.fill(false);
+	// This is the same Server player, not a new input session. Preserve physical
+	// press/release gates even when the restored body arrives after the Mario
+	// stage snapshot, so a held key or mouse press never becomes a fresh input.
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
 	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
-	m_BasicAttackPressEdgeGate.Reset();
-	m_BasicAttackResendGate.Reset();
-	m_CaptureInputGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -164,6 +162,7 @@ void Client::CPlayerController::Update(
 #else
 	(void)debugPlacementEnabled;
 #endif
+	const bool_t marioControlsActive = Update_MarioControls(gameplayCommandsEnabled);
 	/* One-shot, consumed here regardless of which branch below actually
 	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
 	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
@@ -179,14 +178,14 @@ void Client::CPlayerController::Update(
 		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
 			static_cast<uint8_t>(key)) & 0x80);
 		m_CaptureInputGate.Observe(key, down, isControlCaptured);
-		if (isControlCaptured)
+		if (isControlCaptured || marioControlsActive)
 			m_wasKeyDown[key] = down;
 	}
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
-		isLeftMousePhysicallyDown, isControlCaptured);
+		isLeftMousePhysicallyDown, isControlCaptured || marioControlsActive);
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
-		isRightMousePhysicallyDown, isControlCaptured);
-	if (isControlCaptured)
+		isRightMousePhysicallyDown, isControlCaptured || marioControlsActive);
+	if (isControlCaptured || marioControlsActive)
 	{
 		Cancel_GroundTargeting();
 		m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -195,8 +194,19 @@ void Client::CPlayerController::Update(
 		(void)m_BasicAttackPressEdgeGate.Should_Submit(
 			isLeftMousePhysicallyDown, false, std::chrono::steady_clock::now());
 		m_wasRightMouseDown = isRightMousePhysicallyDown;
-		/* No command sink is called, including ReleaseSkill for a hold which
-		was interrupted by the authoritative capture. */
+		(void)Poll_EstherSlot(true, true);
+		/* Mario owns arrows only; normal click/skill commands stay consumed.
+		Capture likewise never releases an interrupted hold through the sink.
+		An interact-gated box is neither: a capture still answers nothing, but
+		a Mario stage must be able to answer one, so only the same conditions
+		Mario already gates its own arrows on suppress the press here. */
+		Submit_InteractIfOffered(
+			isControlCaptured || !gameplayCommandsEnabled ||
+			GetForegroundWindow() != g_hWnd ||
+			CGameInstance::Get().IsKeyboardInputBlocked() ||
+			ImGui::GetIO().WantTextInput ||
+			CUIInputRouter::Get().Is_TextInputActive(),
+			true);
 		return;
 	}
 
@@ -481,22 +491,8 @@ void Client::CPlayerController::Update(
 		}
 	}
 
-	if (Poll_InteractKey(
-		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard) &&
-		nullptr != commandSink)
-	{
-		/* Only the box the Server is offering right now can be answered; with
-		   no offer standing the press is simply nothing. */
-		const std::string& offered =
-			CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
-		if (!offered.empty() &&
-			commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
-		{
-			++m_iNextActionSequence;
-			if (0 == m_iNextActionSequence)
-				m_iNextActionSequence = 1;
-		}
-	}
+	Submit_InteractIfOffered(
+		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
 
 	const std::uint8_t estherSlot = Poll_EstherSlot(
 		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
@@ -745,9 +741,79 @@ bool_t Client::CPlayerController::Poll_InteractKey(
 	return pressed;
 }
 
+bool_t Client::CPlayerController::Update_MarioControls(const bool_t gameplayCommandsEnabled)
+{
+	using namespace LostArk::Shared;
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t active = player.isValid && !player.isPreview && 0u != player.iMarioStage;
+	const bool_t inputAllowed = active && gameplayCommandsEnabled &&
+		GetForegroundWindow() == g_hWnd && !CGameInstance::Get().IsKeyboardInputBlocked() &&
+		!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive() &&
+		!Is_PlayerControlCaptured(player);
+	const bool_t leftDown = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_LEFT) & 0x80);
+	const bool_t rightDown = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_RIGHT) & 0x80);
+	m_CaptureInputGate.Observe(DIK_LEFT, leftDown, !inputAllowed);
+	m_CaptureInputGate.Observe(DIK_RIGHT, rightDown, !inputAllowed);
+	const bool_t left = inputAllowed && leftDown && !m_CaptureInputGate.Is_Blocked(DIK_LEFT);
+	const bool_t right = inputAllowed && rightDown && !m_CaptureInputGate.Is_Blocked(DIK_RIGHT);
+	std::int8_t direction = left == right ? 0 : (left ? -1 : 1);
+	if (0 != direction)
+		m_iMarioFacing = direction;
+#ifdef _DEBUG
+	const bool_t jumpSubmitted = Update_DebugMarioJump(inputAllowed);
+#else
+	constexpr bool_t jumpSubmitted = false;
+#endif
+	if (jumpSubmitted || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction)
+		direction = 0;
+	const auto now = std::chrono::steady_clock::now();
+	const bool_t shouldSend = direction != m_iLastMarioMoveDirection ||
+		(0 != direction && now - m_MarioMoveSentAt >= std::chrono::milliseconds(100));
+	if (nullptr != m_pCommandSink && shouldSend)
+	{
+		const MARIO_DIRECTION intent = direction < 0 ? MARIO_DIRECTION::LEFT :
+			(direction > 0 ? MARIO_DIRECTION::RIGHT : MARIO_DIRECTION::STOP);
+		if (m_pCommandSink->Request_MarioMove(m_iNextMarioMoveSequence, intent))
+		{
+			m_iLastMarioMoveDirection = direction;
+			m_MarioMoveSentAt = now;
+			if (0u == ++m_iNextMarioMoveSequence)
+				m_iNextMarioMoveSequence = 1u;
+		}
+	}
+	return active;
+}
+
+void Client::CPlayerController::Submit_InteractIfOffered(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard)
+{
+	const shared_ptr<IPlayerCommandSink> commandSink = m_pCommandSink;
+	if (!Poll_InteractKey(isKeyboardBlocked, useRawKeyboard) ||
+		nullptr == commandSink)
+	{
+		return;
+	}
+	/* Only the box the Server is offering right now can be answered; with
+	   no offer standing the press is simply nothing. */
+	const std::string& offered =
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+	if (!offered.empty() &&
+		commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
+	{
+		++m_iNextActionSequence;
+		if (0 == m_iNextActionSequence)
+			m_iNextActionSequence = 1;
+	}
+}
+
 void Client::CPlayerController::Set_CommandSink(
 	const shared_ptr<IPlayerCommandSink>& commandSink)
 {
+	if (m_pCommandSink != commandSink)
+	{
+		m_iLastMarioMoveDirection = 0;
+	}
 #ifdef _DEBUG
 	if (m_pCommandSink != commandSink)
 	{
@@ -757,6 +823,8 @@ void Client::CPlayerController::Set_CommandSink(
 		m_debugPlacementStatus.clear();
 		m_pendingDebugMadnessFormSequence = 0u;
 		m_debugMadnessFormStatus.clear();
+		m_pendingDebugMarioJumpSequence = 0u;
+		m_debugMarioJumpStatus.clear();
 	}
 #endif
 	m_pCommandSink = commandSink;
@@ -887,6 +955,92 @@ bool_t Client::CPlayerController::Request_DebugMadnessForm(
 	if (0u == ++m_nextDebugMadnessFormSequence)
 		m_nextDebugMadnessFormSequence = 1u;
 	m_debugMadnessFormStatus = "Waiting for the Server avatar verdict...";
+	return true;
+}
+
+bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCommandsEnabled)
+{
+	using namespace LostArk::Shared;
+	// Observe the physical edge even outside Mario, during cutscenes and in UI.
+	// A held Up key must not become a new jump when gameplay regains control.
+	const bool_t upDown = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_UP) & 0x80);
+	const bool_t upPressed = upDown && !m_wasDebugMarioUpDown;
+	m_wasDebugMarioUpDown = upDown;
+	if (nullptr != m_pCommandSink)
+	{
+		S2C_DEBUG_MARIO_JUMP_RESULT result{};
+		while (m_pCommandSink->Consume_DebugMarioJumpResult(result))
+		{
+			if (0u == m_pendingDebugMarioJumpSequence ||
+				result.iClientSequence != m_pendingDebugMarioJumpSequence ||
+				WORLD_ID::KAKULSAYDON_ARENA != result.eWorldId)
+				continue;
+			m_pendingDebugMarioJumpSequence = 0u;
+			switch (result.eResult)
+			{
+			case DEBUG_MARIO_JUMP_RESULT::ACCEPTED:
+				m_debugMarioJumpStatus = "Server accepted the jump; release Up before the next jump."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED:
+				m_debugMarioJumpStatus = "Test jump requires a Debug Server."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD:
+				m_debugMarioJumpStatus = "Test jump requires the KoukuSaydon world."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE:
+				m_debugMarioJumpStatus = "Cannot jump while airborne, acting, dead or captured."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_STALE_SEQUENCE:
+				m_debugMarioJumpStatus = "Server rejected an old jump request."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_OUTSIDE_MARIO:
+				m_debugMarioJumpStatus = "Jump requires a Server-approved Mario entry."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_INVALID_TARGET:
+				m_debugMarioJumpStatus = "Invalid jump direction. Press Left or Right to choose a direction."; break;
+			case DEBUG_MARIO_JUMP_RESULT::REJECTED_NO_LANDING:
+				m_debugMarioJumpStatus = "No clear landing within 4 m on this Mario floor."; break;
+			default:
+				m_debugMarioJumpStatus = "Server returned an unsupported jump result."; break;
+			}
+		}
+	}
+	if (0u != m_pendingDebugMarioJumpSequence &&
+		std::chrono::steady_clock::now() - m_debugMarioJumpSentAt > std::chrono::seconds(5))
+	{
+		m_pendingDebugMarioJumpSequence = 0u;
+		m_debugMarioJumpStatus = "No Server jump reply. Check the connection; press Up again to retry.";
+	}
+	if (!upPressed || !m_debugMarioJumpEnabled || !gameplayCommandsEnabled ||
+		GetForegroundWindow() != g_hWnd || CGameInstance::Get().IsKeyboardInputBlocked() ||
+		ImGui::GetIO().WantTextInput || CUIInputRouter::Get().Is_TextInputActive() ||
+		m_GroundTargeting.Is_Active() || 0u != m_pendingDebugMarioJumpSequence ||
+		nullptr == m_pCommandSink)
+		return false;
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.isPreview || 0u == player.iMarioStage || 0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::NONE != player.eAction || Is_PlayerControlCaptured(player))
+		return false;
+	// Authored long/high crossings use the Server's offered move trigger. Up
+	// answers that offer before trying the short free jump; never invent a target.
+	const std::string& offered = CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+	if (!offered.empty())
+	{
+		if (!m_pCommandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
+		{
+			m_debugMarioJumpStatus = "Could not send the offered crossing request.";
+			return false;
+		}
+		if (0u == ++m_iNextActionSequence)
+			m_iNextActionSequence = 1u;
+		m_debugMarioJumpStatus = "Requested the Server-offered crossing with Up.";
+		return true;
+	}
+	const MARIO_DIRECTION direction = m_iMarioFacing < 0 ? MARIO_DIRECTION::LEFT : MARIO_DIRECTION::RIGHT;
+	if (!m_pCommandSink->Request_DebugMarioJump(m_nextDebugMarioJumpSequence, direction))
+	{
+		m_debugMarioJumpStatus = "Could not send the jump request.";
+		return false;
+	}
+	m_pendingDebugMarioJumpSequence = m_nextDebugMarioJumpSequence;
+	if (0u == ++m_nextDebugMarioJumpSequence)
+		m_nextDebugMarioJumpSequence = 1u;
+	m_debugMarioJumpSentAt = std::chrono::steady_clock::now();
+	m_debugMarioJumpStatus = "Waiting for Server jump approval...";
 	return true;
 }
 

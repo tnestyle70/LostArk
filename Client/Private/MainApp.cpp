@@ -1116,6 +1116,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
 			DEBUG_TOOL::MAP == m_eDebugInputOwner);
 	}
+	UpdateSequenceViewer();
 	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
 	   authority. Consume it before Animation_Tool::Update so reclaiming after a
 	   domain deep-link does not stop the active preview for one extra frame. */
@@ -7247,6 +7248,9 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
 	ImGui::TextWrapped("%s",
 		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
+			ImGui::SeparatorText("Mario Controls (Debug Jump)");
+			ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
+	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
 
 	ImGui::SeparatorText("--진짜 쿠크세이튼 찾기 시야 콜라이더--");
 	static CKoukuSaydonCompositionDocument gazeDocument;
@@ -8511,6 +8515,7 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
+	RenderSequenceViewer();
 	ImGui::SeparatorText("Tools");
 
 	const auto toolButton = [this](

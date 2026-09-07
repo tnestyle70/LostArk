@@ -5,9 +5,16 @@
 
 namespace LostArk::Shared
 {
-	/* 64 combines the main v60 interact-trigger packet identities with the
+	/* 65 combines the v63 Mario stage/move/jump contracts with the v64 Kouku
+	HUD/scene cues; both packet groups are appended after C2S_INTERACT_TRIGGER.
+	64 combines the main v60 interact-trigger packet identities with the
 	v63 Kouku HUD/scene cues and World sequence lifetime. Neither previous
 	peer is wire-compatible; main packet identities stay in their old order.
+	63 restricts Mario movement/jump intent to typed left/right/stop; only
+	the Server resolves segment axes. 62 adds Server-owned Mario stage state
+	and a direction/stop input packet.
+	61 adds the bounded Debug Mario jump intent and Server verdict. The
+	Server owns the landing and movement; Release keeps a typed rejection.
 	60 combines two contracts that each shipped independently as 59:
 	the interact-gated trigger box and the Debug KoukuSaydon madness-form
 	toggle. Neither v59 peer is wire-compatible with the combined enum.
@@ -45,7 +52,8 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 64;
+	// 66 adds the F1 world playback request/verdict and sequence transport operation.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 66;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -287,7 +295,14 @@ namespace LostArk::Shared
 		C2S_INTERACTION_SLOT,
 		C2S_DEBUG_SET_KOUKU_HUD_MODE,
 		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT,
-		S2C_SCENE_PROFILE_APPLY
+		S2C_SCENE_PROFILE_APPLY,
+
+		// Mario side-scroll: Debug jump intent/verdict and typed left/right/stop.
+		C2S_DEBUG_MARIO_JUMP,
+		S2C_DEBUG_MARIO_JUMP_RESULT,
+		C2S_MARIO_MOVE,
+		C2S_DEBUG_WORLD_PLAYBACK,
+		S2C_DEBUG_WORLD_PLAYBACK_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -374,10 +389,15 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
 		case PACKET_TYPE::S2C_INTERACT_PROMPT:
 		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
+		case PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK:
+		case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 		case PACKET_TYPE::C2S_INTERACTION_SLOT:
 		case PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE:
 		case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
 		case PACKET_TYPE::S2C_SCENE_PROFILE_APPLY:
+		case PACKET_TYPE::C2S_DEBUG_MARIO_JUMP:
+		case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+		case PACKET_TYPE::C2S_MARIO_MOVE:
 			return true;
 		default:
 			return  false;
