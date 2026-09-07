@@ -5,26 +5,36 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 50,
+  "sourceRevision": 81,
+  "madnessPolicy": {
+    "maximum": 100,
+    "clownHoldMs": 15000
+  },
   "playAllPatternIds": [
-    "KAKULSAYDON_G1_PIZZA"
+    "KAKULSAYDON_G1_PATTERN_1",
+    "KAKULSAYDON_G1_PATTERN_2",
+    "KAKULSAYDON_G1_PATTERN_4",
+    "KAKULSAYDON_G1_PATTERN_5",
+    "KAKULSAYDON_G1_PATTERN_6",
+    "KAKULSAYDON_G1_PATTERN_7"
   ],
   "patterns": [
     {
-      "patternId": "KAKULSAYDON_G1_PIZZA",
+      "patternId": "KAKULSAYDON_G1_PATTERN_1",
       "category": "MECHANIC",
       "minimumPhase": 1,
       "maximumPhase": 1,
       "targetPolicy": "NONE",
       "aimPolicy": "NONE",
-      "displayName": "1관문 / 피자(룰렛) 패턴",
-      "actionId": "kakulsaydon.g1.pizza",
+      "displayName": "세이튼_무력화 시작",
+      "actionId": "kakulsaydon.g1.pattern.1",
       "sourceActionIds": [
-        4219714
+        4219945
       ],
       "bossArchetypeIds": [
-        "BOSS_KAKULSAYDON_G1_KOUKU",
-        "BOSS_KAKULSAYDON_G2_KOUKU"
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
       ],
       "selectionMode": "AUDITION_ONLY",
       "minimumHealthBar": 0,
@@ -40,10 +50,10 @@
       "maximumRange": 1.0,
       "stages": [
         {
-          "stageId": "WINDUP_A",
-          "actionId": "kakulsaydon.g1.pizza.windup-a",
-          "stageKind": "WINDUP",
-          "durationMs": 2500,
+          "stageId": "STAGE_39",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -60,8 +70,1703 @@
           "downMs": 0
         },
         {
-          "stageId": "SECTOR_SWEEP_A",
-          "actionId": "kakulsaydon.g1.pizza.sector-sweep-a",
+          "stageId": "STAGE_43",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
+          "stageKind": "ACTIVE",
+          "durationMs": 2267,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_51",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.51",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_53",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.53",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_54",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.54",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_55",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.55",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_52",
+          "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.52",
+          "stageKind": "ACTIVE",
+          "durationMs": 2200,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_1.logic.1",
+          "kind": "STAGGER_WINDOW",
+          "startMs": 5263,
+          "durationMs": 10684,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "kouku.stagger.shield.1",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0.0,
+                0.5,
+                0.0
+              ],
+              "yawDegrees": 0.0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 2.148847,
+              "halfAngleDegrees": 35.868636,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            },
+            {
+              "regionId": "kouku.stagger.shield.2",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_CURRENT",
+              "center": [
+                0.0,
+                0.5,
+                0.5
+              ],
+              "yawDegrees": 180.0,
+              "halfExtents": [
+                1,
+                1,
+                1
+              ],
+              "radiusM": 2.148847,
+              "halfAngleDegrees": 35.868636,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 1000,
+          "shieldArcDegrees": 71.737272,
+          "endsPatternOnSuccess": true,
+          "onSuccess": [
+            {
+              "kind": "FOLLOWUP_PATTERN",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": "KAKULSAYDON_G1_PATTERN_4"
+            }
+          ],
+          "onFail": [],
+          "onTimeout": [
+            {
+              "kind": "INSTANT_DEATH",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        }
+      ],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_2",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_진짜세이튼찾기",
+      "actionId": "kakulsaydon.g1.pattern.2",
+      "sourceActionIds": [
+        4219823,
+        4219824,
+        4219842
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 2067,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 1833,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.3",
+          "stageKind": "ACTIVE",
+          "durationMs": 867,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_5",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.5",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_6",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.6",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_7",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.7",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_8",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.8",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_9",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.9",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_10",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.10",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_11",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.11",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_12",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.12",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_13",
+          "actionId": "KAKULSAYDON_G1_PATTERN_2.stage.13",
+          "stageKind": "ACTIVE",
+          "durationMs": 2167,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_2.logic.3",
+          "kind": "GAZE_REAL_BOSS",
+          "startMs": 19749,
+          "durationMs": 5627,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 45.0,
+          "maxDistanceM": 30.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "INSTANT_DEATH",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": []
+        }
+      ],
+      "mechanicTriggers": [
+        {
+          "triggerId": "KAKULSAYDON_G1_PATTERN_2.logic.1",
+          "kind": "REAL_GAZE_TELEPORT",
+          "startMs": 1988,
+          "durationMs": 24146,
+          "hudMode": "NONE",
+          "teleportPosition": [
+            -6.36,
+            1.3,
+            937.92
+          ],
+          "clonePatternId": "KAKULSAYDON_G1_PATTERN_5",
+          "clockHours": [
+            4,
+            7,
+            10
+          ],
+          "faceCenterYawOffsetDegrees": -90.0
+        }
+      ],
+      "worldSequences": [],
+      "sceneProfiles": [
+        {
+          "renderingProfileId": "scene.kakulsaydon.find-true-dark.v1",
+          "startMs": 2007,
+          "durationMs": 24127,
+          "blendMs": 500
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_4",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_무력화성공",
+      "actionId": "kakulsaydon.g1.pattern.4",
+      "sourceActionIds": [
+        4219946
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_4.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 1167,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_4.stage.3",
+          "stageKind": "ACTIVE",
+          "durationMs": 1667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_4.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 1333,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_5",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_가짜세이튼",
+      "actionId": "kakulsaydon.g1.pattern.5",
+      "sourceActionIds": [
+        4219857,
+        4219891
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_38",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.38",
+          "stageKind": "ACTIVE",
+          "durationMs": 1833,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_25",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.25",
+          "stageKind": "ACTIVE",
+          "durationMs": 867,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_26",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.26",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_27",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.27",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_28",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.28",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_29",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.29",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_30",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.30",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_31",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.31",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_32",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.32",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_33",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.33",
+          "stageKind": "ACTIVE",
+          "durationMs": 2400,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_34",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.34",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_35",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.35",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_36",
+          "actionId": "KAKULSAYDON_G1_PATTERN_5.stage.36",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_6",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_댄스타임",
+      "actionId": "kakulsaydon.g1.pattern.6",
+      "sourceActionIds": [
+        4219895,
+        4219897
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_503",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.503",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_584",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.584",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_570",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.570",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_571",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.571",
+          "stageKind": "ACTIVE",
+          "durationMs": 500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_572",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.572",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_573",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.573",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_585",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.585",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_586",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.586",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_574",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.574",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_576",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.576",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_582",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.582",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_581",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.581",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_577",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.577",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_578",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.578",
+          "stageKind": "ACTIVE",
+          "durationMs": 800,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_579",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.579",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_583",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.583",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_589",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.589",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_590",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.590",
+          "stageKind": "ACTIVE",
+          "durationMs": 500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_591",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.591",
+          "stageKind": "ACTIVE",
+          "durationMs": 1000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_587",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.587",
+          "stageKind": "ACTIVE",
+          "durationMs": 2000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_580",
+          "actionId": "KAKULSAYDON_G1_PATTERN_6.stage.580",
+          "stageKind": "ACTIVE",
+          "durationMs": 4667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": true,
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_6.logic.1",
+          "kind": "POSE_INPUT",
+          "startMs": 3969,
+          "durationMs": 3606,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 1,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_6.logic.2",
+          "kind": "POSE_INPUT",
+          "startMs": 11492,
+          "durationMs": 2061,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 2,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 20,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 20,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_6.logic.3",
+          "kind": "POSE_INPUT",
+          "startMs": 17489,
+          "durationMs": 2829,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 3,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 20,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 20,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_6.logic.4",
+          "kind": "POSE_INPUT",
+          "startMs": 22295,
+          "durationMs": 2536,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        }
+      ],
+      "mechanicTriggers": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.sequence.instance.curtain_drop",
+          "startMs": 0,
+          "durationMs": 2671,
+          "playbackSpeed": 1.310370683670044,
+          "positionOffset": [
+            0.249,
+            0,
+            204.799
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "sceneProfiles": [
+        {
+          "renderingProfileId": "scene.kakulsaydon.find-true-dark.v1",
+          "startMs": 0,
+          "durationMs": 31467,
+          "blendMs": 500
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_7",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "세이튼_룰렛",
+      "actionId": "kakulsaydon.g1.pattern.7",
+      "sourceActionIds": [
+        4219811,
+        4219813
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 4333,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.3",
           "stageKind": "ACTIVE",
           "durationMs": 4667,
           "hitShape": "NONE",
@@ -80,10 +1785,10 @@
           "downMs": 0
         },
         {
-          "stageId": "RECOVERY_A",
-          "actionId": "kakulsaydon.g1.pizza.recovery-a",
-          "stageKind": "RECOVERY",
-          "durationMs": 1000,
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -100,28 +1805,8 @@
           "downMs": 0
         },
         {
-          "stageId": "WINDUP_B",
-          "actionId": "kakulsaydon.g1.pizza.windup-b",
-          "stageKind": "WINDUP",
-          "durationMs": 2500,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0
-        },
-        {
-          "stageId": "SECTOR_SWEEP_B",
-          "actionId": "kakulsaydon.g1.pizza.sector-sweep-b",
+          "stageId": "STAGE_10",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.10",
           "stageKind": "ACTIVE",
           "durationMs": 4667,
           "hitShape": "NONE",
@@ -140,10 +1825,10 @@
           "downMs": 0
         },
         {
-          "stageId": "RECOVERY_B",
-          "actionId": "kakulsaydon.g1.pizza.recovery-b",
-          "stageKind": "RECOVERY",
-          "durationMs": 1000,
+          "stageId": "STAGE_11",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.11",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -158,6 +1843,835 @@
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0
+        },
+        {
+          "stageId": "STAGE_12",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.12",
+          "stageKind": "ACTIVE",
+          "durationMs": 4667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_13",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.13",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_14",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.14",
+          "stageKind": "ACTIVE",
+          "durationMs": 4667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_15",
+          "actionId": "KAKULSAYDON_G1_PATTERN_7.stage.15",
+          "stageKind": "ACTIVE",
+          "durationMs": 2667,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": true,
+      "logicWindows": [
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_7.logic.1",
+          "kind": "ROULETTE_CARD_MATCH",
+          "startMs": 5690,
+          "durationMs": 4793,
+          "sectorCount": 8,
+          "sectorSymbols": [
+            "SPADE",
+            "CLUB",
+            "DIAMOND",
+            "HEART",
+            "CLUB",
+            "SPADE",
+            "HEART",
+            "DIAMOND"
+          ],
+          "centerX": -0.319,
+          "centerZ": 737.531,
+          "outerRadiusM": 8.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "roulette.round.1.sector.1",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 81.42306529611878,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.1.sector.2",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 126.42306529611878,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.1.sector.3",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 171.42306529611878,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.1.sector.4",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 216.42306529611878,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.1.sector.5",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 261.42306529611875,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.1.sector.6",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 306.42306529611875,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.1.sector.7",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 351.42306529611875,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.1.sector.8",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 396.42306529611875,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "BLACK"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_7.logic.2",
+          "kind": "ROULETTE_CARD_MATCH",
+          "startMs": 12734,
+          "durationMs": 4755,
+          "sectorCount": 8,
+          "sectorSymbols": [
+            "SPADE",
+            "CLUB",
+            "DIAMOND",
+            "HEART",
+            "CLUB",
+            "SPADE",
+            "HEART",
+            "DIAMOND"
+          ],
+          "centerX": -0.319,
+          "centerZ": 737.531,
+          "outerRadiusM": 8.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "roulette.round.2.sector.1",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 298.69199741801685,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.2.sector.2",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 343.69199741801685,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.2.sector.3",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 388.69199741801685,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.2.sector.4",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 433.69199741801685,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.2.sector.5",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 478.69199741801685,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.2.sector.6",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 523.6919974180169,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.2.sector.7",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 568.6919974180169,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.2.sector.8",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 613.6919974180169,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "BLACK"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "CLOWN_TRANSFORM",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "CLOWN_TRANSFORM",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_7.logic.3",
+          "kind": "ROULETTE_CARD_MATCH",
+          "startMs": 20098,
+          "durationMs": 4914,
+          "sectorCount": 8,
+          "sectorSymbols": [
+            "SPADE",
+            "CLUB",
+            "DIAMOND",
+            "HEART",
+            "CLUB",
+            "SPADE",
+            "HEART",
+            "DIAMOND"
+          ],
+          "centerX": -0.319,
+          "centerZ": 737.531,
+          "outerRadiusM": 8.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "SUCCESS",
+          "cardRegions": [
+            {
+              "regionId": "roulette.round.3.sector.1",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 166.78799987795549,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.3.sector.2",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 211.78799987795549,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.3.sector.3",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 256.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.3.sector.4",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 301.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.3.sector.5",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 346.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "CLUB",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.3.sector.6",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 391.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "SPADE",
+              "cardColor": "BLACK"
+            },
+            {
+              "regionId": "roulette.round.3.sector.7",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 436.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "HEART",
+              "cardColor": "RED"
+            },
+            {
+              "regionId": "roulette.round.3.sector.8",
+              "shape": "SECTOR",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 481.7879998779555,
+              "halfExtents": [
+                4.0,
+                2.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 22.5,
+              "cardSymbol": "DIAMOND",
+              "cardColor": "BLACK"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "CLOWN_TRANSFORM",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": [
+            {
+              "kind": "CLOWN_TRANSFORM",
+              "percent": 0,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 10,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ]
+        },
+        {
+          "windowId": "KAKULSAYDON_G1_PATTERN_7.logic.5",
+          "kind": "AREA_OVERLAP",
+          "startMs": 27487,
+          "durationMs": 4744,
+          "sectorCount": 0,
+          "sectorSymbols": [],
+          "centerX": 0.0,
+          "centerZ": 0.0,
+          "outerRadiusM": 0.0,
+          "stopYawDegrees": 0.0,
+          "normalYawOffsetDegrees": 0.0,
+          "insideOutcome": "FAIL",
+          "cardRegions": [
+            {
+              "regionId": "KAKULSAYDON_G1_PATTERN_7.presentation.25",
+              "shape": "CIRCLE",
+              "anchorKind": "BOSS_SPAWN",
+              "center": [
+                -5.999999996841865e-09,
+                0.5799999800000002,
+                6.000000098538294e-06
+              ],
+              "yawDegrees": 12.383999981040047,
+              "halfExtents": [
+                4.0,
+                4.0,
+                4.0
+              ],
+              "radiusM": 8.0,
+              "halfAngleDegrees": 180,
+              "cardSymbol": "NONE",
+              "cardColor": "NONE"
+            }
+          ],
+          "halfAngleDegrees": 0.0,
+          "maxDistanceM": 0.0,
+          "poseIndex": 0,
+          "threshold": 0,
+          "shieldArcDegrees": 0.0,
+          "endsPatternOnSuccess": false,
+          "onSuccess": [],
+          "onFail": [
+            {
+              "kind": "MAX_HP_PERCENT_DAMAGE",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            },
+            {
+              "kind": "MADNESS_GAUGE_ADD_PERCENT",
+              "percent": 50,
+              "durationMs": 0,
+              "patternId": ""
+            }
+          ],
+          "onTimeout": []
+        }
+      ],
+      "mechanicTriggers": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.sequence.instance.8",
+          "startMs": 0,
+          "durationMs": 33773,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0,
+            0.58,
+            0
+          ],
+          "anchorKind": "BOSS_SPAWN",
+          "anchorPosition": [
+            -0.319,
+            1.9,
+            737.531
+          ]
+        }
+      ],
+      "sceneProfiles": [
+        {
+          "renderingProfileId": "scene.kakulsaydon.find-true-dark.v1",
+          "startMs": 0,
+          "durationMs": 33669,
+          "blendMs": 500
         }
       ]
     }

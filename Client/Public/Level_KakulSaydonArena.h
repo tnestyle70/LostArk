@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
 #include "DeployPropRuntime.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
+#include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "WorldSequencePlayer.h"
@@ -34,6 +36,8 @@ class CKoukuMadnessGaugeView;
 class CLevel_KakulSaydonArena final : public CLevel
 {
 public:
+	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights) { m_pMapLightAuthoringOverride = std::move(lights); }
+	bool_t Reload_MapLights();
 	struct KAKUL_STAGE_MARKER final
 	{
 		std::string strStageId;
@@ -88,6 +92,14 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
+	{ return m_FollowCameraProfile; }
+	const std::string& Get_FollowCameraProfileStatus() const
+	{ return m_strFollowCameraProfileStatus; }
+	bool_t Set_FollowCameraProfile(const ARENA_CAMERA_PROFILE& profile,
+		std::string& outStatus);
+
+
 	static CLevel_KakulSaydonArena* Get_Active()
 	{
 		return s_pActiveInstance;
@@ -105,8 +117,23 @@ public:
 	}
 
 #ifdef _DEBUG
+	void Set_DebugGazeView(bool visible, float halfAngleDegrees, float distanceM)
+	{ m_bDebugGazeView = visible; m_fDebugGazeHalfAngle = halfAngleDegrees; m_fDebugGazeDistance = distanceM; }
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	struct COMPOSITION_WORLD_PREVIEW_CUE final
+	{
+		std::string instanceId;
+		uint32_t startMs = 0u;
+		uint32_t durationMs = 0u;
+		f32_t playbackSpeed = 1.f;
+		float3_t positionOffset{};
+	};
+	bool_t Debug_BeginCompositionWorldPreview(const std::string& patternId,
+		std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues, std::string& status);
+	void Debug_SampleCompositionWorldPreview(const std::string& patternId,
+		bool_t playing, uint32_t clockMs);
+	void Debug_StopCompositionWorldPreview();
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
 
@@ -162,6 +189,24 @@ public:
 	{
 		return m_StageMarkers;
 	}
+	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
+		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
+	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
+	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset);
+	void Stop_CompositionCamera();
+	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out) const;
+	// Authoring inventory reads the placed centre even before any sequence plays.
+	bool_t Try_GetWorldSequencePlacementBaseline(const WORLD_SEQUENCE_INSTANCE& instance,
+		float3_t& outPosition) const;
+	const CWorldSequenceDocument& Get_WorldSequenceDocument() const { return m_SequencePlayer.Get_Document(); }
+	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
+	bool_t Reload_WorldObjectRuntime(std::string& status);
+#ifdef _DEBUG
+	bool_t Debug_BeginWorldObjectPreview(const CWorldSequenceDocument&, const std::string& instanceId,
+		std::string& status, bool_t previewAtCharacter = true);
+	bool_t Debug_SampleWorldObjectPreview(f32_t clockMs, std::string& status);
+	void Debug_StopWorldObjectPreview();
+#endif
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_CameraShots() const
 	{
 		return m_CameraShots;
@@ -176,6 +221,7 @@ public:
 		std::string& outStatus);
 
 private:
+	CWorldSequencePlayer::TARGET_SET Make_WorldSequenceTargets();
 	/* The cutscene is one show spread over several instances. Starting the
 	   named one starts them all and swaps the arena for the cutscene copy. */
 	bool_t Start_PopupBookCutscene(
@@ -187,9 +233,9 @@ private:
 	void Update_CutsceneBossRetire(
 		const CWorldSequencePlayer::TARGET_SET& targets);
 	bool_t Start_ServerRequestedSequence(
-		const std::string& instanceId,
+		const std::string& instanceId, f32_t playbackSpeed, const float3_t& positionOffset,
 		const CWorldSequencePlayer::TARGET_SET& targets,
-		std::string& outStatus);
+		std::string& outStatus, uint32_t durationMs = 0u);
 	bool_t Load_StageMarkers(std::string& outStatus);
 	bool_t Load_CameraShots(std::string& outStatus);
 	void Update_CameraShots(f32_t fTimeDelta);
@@ -198,6 +244,7 @@ private:
 	   letting the camera travel that distance on screen. Server owns the
 	   move; this only reads the action state it already replicates. */
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
+	void Update_DeadScene(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;
 	void Release_CameraShot();
@@ -220,12 +267,27 @@ private:
 	   suppress the bridges before the first rendered frame instead of letting
 	   them appear already unfolded. */
 	CDeployPropRuntime m_DeployRuntime;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 	CWorldSequencePlayer m_SequencePlayer;
+#ifdef _DEBUG
+	unique_ptr<CWorldSequencePlayer> m_pWorldObjectPreview;
+	std::string m_WorldObjectPreviewInstance;
+#endif
+#ifdef _DEBUG
+	unique_ptr<CWorldSequencePlayer> m_pCompositionWorldPreview;
+	std::vector<COMPOSITION_WORLD_PREVIEW_CUE> m_CompositionWorldPreviewCues;
+	std::string m_strCompositionWorldPreviewPattern;
+	bool_t m_bCompositionWorldPreviewClockBound = false;
+#endif
 	bool_t m_bCutsceneBossVisible = false;
 	bool_t m_bCutsceneSetVisible = false;
 	std::unordered_set<uint64_t> m_RaisedPaperBridges;
 	shared_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;
+	ARENA_CAMERA_PROFILE m_FollowCameraProfile =
+		CArenaCameraProfile::Default(ARENA_CAMERA_MAP::KOUKU_SAYDON);
+	std::string m_strFollowCameraProfileStatus;
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;
@@ -252,6 +314,9 @@ private:
 #ifdef _DEBUG
 	/* Debug gate command sequence and the accumulated Server replies shown in
 	   the F1 arena panel. Session state only; never persisted. */
+	bool m_bDebugGazeView = false;
+	float m_fDebugGazeHalfAngle = 45.f;
+	float m_fDebugGazeDistance = 30.f;
 	std::uint32_t m_iNextDebugGateRequestSequence = 1u;
 	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
 	   that button stays disabled until another gate or Despawn is chosen. */
@@ -265,6 +330,7 @@ private:
 	/* One full-screen slot, black, whose alpha is the whole effect. Built
 	   hidden so the first rendered frame after activation cannot flash it. */
 	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;
+	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
 	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
 	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
 	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;

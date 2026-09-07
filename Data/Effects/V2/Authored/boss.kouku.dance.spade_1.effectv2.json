@@ -5,9 +5,9 @@
   "effectType": "Decal",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47_1.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47_1.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47_1.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47_1.dds",
     "emissive": "",
     "dissolve": ""
   },

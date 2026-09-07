@@ -138,6 +138,8 @@ vector      g_vLightDir;
 vector      g_vLightPos;
 float       g_fLightRange;
 float       g_fLightFalloffExponent;
+float       g_fSpotInnerCos = 1.f;
+float       g_fSpotOuterCos = 1.f;
 vector      g_vLightDiffuse;
 vector      g_vLightAmbient;
 vector      g_vLightSpecular;
@@ -334,7 +336,7 @@ float Resolve_PointLightAttenuation(float fDistance)
     return fAttenuation;
 }
 
-PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
+PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
 {
     PS_OUT_LIGHT Out;
     
@@ -368,6 +370,20 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
     vector vLightDir = vWorldPos - g_vLightPos;
     
     float fAtt = Resolve_PointLightAttenuation(length(vLightDir));
+    if (bSpot)
+    {
+        // The direction points from the light into the illuminated cone.
+        if (dot(vLightDir.xyz, vLightDir.xyz) <= 0.000000000001f)
+        {
+            Out.vShade = 0.f;
+            Out.vSpecular = 0.f;
+            return Out;
+        }
+        float fCosAngle = dot(normalize(vLightDir.xyz), normalize(g_vLightDir.xyz));
+        float fCone = saturate((fCosAngle - g_fSpotOuterCos) /
+            max(g_fSpotInnerCos - g_fSpotOuterCos, 0.0001f));
+        fAtt *= fCone * fCone;
+    }
     
     float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
@@ -388,6 +404,16 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
 }
 
 
+
+PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
+{
+    return Resolve_LocalLight(In, false);
+}
+
+PS_OUT_LIGHT PS_MAIN_SPOT(PS_IN In)
+{
+    return Resolve_LocalLight(In, true);
+}
 
 bool Is_SSAOBackground(float4 vDepthDesc)
 {
@@ -1198,6 +1224,16 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_CHROMATIC_ABERRATION();
+    }
+
+    pass Spot
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SPOT();
     }
 
 }

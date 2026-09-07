@@ -530,6 +530,93 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternLogicKind(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_LOGIC_KIND& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_LOGIC_KIND;
+		if ("ROULETTE_CARD_MATCH" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
+		else if ("GAZE_REAL_BOSS" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS;
+		else if ("POSE_INPUT" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::POSE_INPUT;
+		else if ("STAGGER_WINDOW" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+		else if ("AREA_OVERLAP" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+		else if ("ENTER_AREA" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossPatternLogicResultKind(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_LOGIC_RESULT_KIND& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_LOGIC_RESULT_KIND;
+		if ("NONE" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::NONE;
+		else if ("INSTANT_DEATH" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+		else if ("MAX_HP_PERCENT_DAMAGE" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
+		else if ("MADNESS_GAUGE_ADD_PERCENT" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
+		else if ("CLOWN_TRANSFORM" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::CLOWN_TRANSFORM;
+		else if ("FOLLOWUP_PATTERN" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseMechanicCardSymbol(
+		const std::string_view value,
+		LostArk::Shared::MECHANIC_CARD_SYMBOL& output)
+	{
+		using LostArk::Shared::MECHANIC_CARD_SYMBOL;
+		if ("HEART" == value)
+			output = MECHANIC_CARD_SYMBOL::HEART;
+		else if ("SPADE" == value)
+			output = MECHANIC_CARD_SYMBOL::SPADE;
+		else if ("CLUB" == value)
+			output = MECHANIC_CARD_SYMBOL::CLUB;
+		else if ("DIAMOND" == value)
+			output = MECHANIC_CARD_SYMBOL::DIAMOND;
+		else
+			return false;
+		return true;
+	}
+
+	/* "HEART,SPADE,..." into typed symbols; "-" is the empty list. */
+	bool ParseMechanicCardSymbols(
+		const std::string_view packed,
+		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL>& output)
+	{
+		output.clear();
+		if ("-" == packed)
+			return true;
+		std::size_t begin = 0u;
+		while (begin <= packed.size())
+		{
+			const std::size_t end = packed.find(',', begin);
+			const std::string_view token = packed.substr(begin,
+				std::string_view::npos == end ? std::string_view::npos : end - begin);
+			LostArk::Shared::MECHANIC_CARD_SYMBOL symbol{};
+			if (!ParseMechanicCardSymbol(token, symbol) || output.size() >= 64u)
+				return false;
+			output.push_back(symbol);
+			if (std::string_view::npos == end)
+				break;
+			begin = end + 1u;
+		}
+		return true;
+	}
+
 	bool ParseBossPatternStageOutcome(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_STAGE_OUTCOME& output)
@@ -1277,6 +1364,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	using TIMELINE_MAP = decltype(m_ValtanTimelines);
 	using PLAYER_MAP = decltype(m_Players);
 	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
+	using KOUKU_MADNESS_MAP = decltype(m_KoukuMadnessPolicies);
 	struct LOAD_ROLLBACK final
 	{
 		SKILL_MAP& skills;
@@ -1292,6 +1380,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		DAMAGE_MAP& damages;
 		LostArk::Shared::GameplayDataRevision& presentationGenerationId;
 		std::uint32_t& koukuSaydonProductSourceRevision;
+		KOUKU_MADNESS_MAP& koukuMadnessPolicies;
 		SKILL_MAP previousSkills;
 		BOSS_MAP previousBosses;
 		BOSS_PART_MAP previousBossParts;
@@ -1305,6 +1394,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		DAMAGE_MAP previousDamages;
 		LostArk::Shared::GameplayDataRevision previousPresentationGenerationId{};
 		std::uint32_t previousKoukuSaydonProductSourceRevision = 0u;
+		KOUKU_MADNESS_MAP previousKoukuMadnessPolicies;
 		bool committed = false;
 
 		LOAD_ROLLBACK(
@@ -1320,7 +1410,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget,
 			LostArk::Shared::GameplayDataRevision& presentationGenerationTarget,
-			std::uint32_t& koukuSaydonProductSourceRevisionTarget)
+			std::uint32_t& koukuSaydonProductSourceRevisionTarget,
+			KOUKU_MADNESS_MAP& koukuMadnessPolicyTarget)
 			: skills(skillTarget)
 			, bosses(bossTarget)
 			, bossParts(bossPartTarget)
@@ -1335,6 +1426,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, presentationGenerationId(presentationGenerationTarget)
 			, koukuSaydonProductSourceRevision(
 				koukuSaydonProductSourceRevisionTarget)
+			, koukuMadnessPolicies(koukuMadnessPolicyTarget)
 			, previousSkills(std::move(skillTarget))
 			, previousBosses(std::move(bossTarget))
 			, previousBossParts(std::move(bossPartTarget))
@@ -1349,6 +1441,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, previousPresentationGenerationId(presentationGenerationTarget)
 			, previousKoukuSaydonProductSourceRevision(
 				koukuSaydonProductSourceRevisionTarget)
+			, previousKoukuMadnessPolicies(std::move(koukuMadnessPolicyTarget))
 		{
 		}
 
@@ -1370,6 +1463,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			presentationGenerationId = previousPresentationGenerationId;
 			koukuSaydonProductSourceRevision =
 				previousKoukuSaydonProductSourceRevision;
+			koukuMadnessPolicies = std::move(previousKoukuMadnessPolicies);
 		}
 	};
 	LOAD_ROLLBACK rollback{
@@ -1379,7 +1473,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		m_ValtanTimelines, m_Players,
 		m_DamageRatePercentByProfileId,
 		m_ValtanPresentationGenerationId,
-		m_iKoukuSaydonProductSourceRevision };
+		m_iKoukuSaydonProductSourceRevision,
+		m_KoukuMadnessPolicies };
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_BossParts.clear();
@@ -1390,6 +1485,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_BossPatternSequences.clear();
 	m_ValtanTimelines.clear();
 	m_Players.clear();
+	m_KoukuMadnessPolicies.clear();
 	m_DamageRatePercentByProfileId.clear();
 	m_ValtanPresentationGenerationId = {};
 	m_iKoukuSaydonProductSourceRevision = 0u;
@@ -2340,6 +2436,402 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			owner->AuditionBossArchetypeIds.emplace_back(fields[3]);
+		}
+		else if (!fields.empty() && "PATTERNLOGIC" == fields[0])
+		{
+			/* One KoukuSaydon judgement window. Row order is the authored box
+			order; the outcome rows that follow reference it by windowId. */
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			std::uint32_t windowIndex = 0u;
+			std::uint32_t endsPattern = 0u;
+			if ((20u != fields.size() && 21u != fields.size() && 22u != fields.size()) || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], windowIndex) ||
+				!IsStableId(fields[4]) ||
+				!ParseBossPatternLogicKind(fields[5], window.eKind) ||
+				!ParseNumber(fields[6], window.iStartMs) ||
+				!ParseNumber(fields[7], window.iDurationMs) || 0u == window.iDurationMs ||
+				!ParseNumber(fields[8], window.iSectorCount) || window.iSectorCount > 64u ||
+				!ParseNumber(fields[9], window.fCenterX) || !std::isfinite(window.fCenterX) ||
+				!ParseNumber(fields[10], window.fCenterZ) || !std::isfinite(window.fCenterZ) ||
+				!ParseNumber(fields[11], window.fOuterRadiusM) ||
+				!std::isfinite(window.fOuterRadiusM) || window.fOuterRadiusM < 0.f ||
+				!ParseNumber(fields[12], window.fStopYawDegrees) ||
+				!std::isfinite(window.fStopYawDegrees) ||
+				!ParseNumber(fields[13], window.fHalfAngleDegrees) ||
+				!std::isfinite(window.fHalfAngleDegrees) ||
+				window.fHalfAngleDegrees < 0.f || window.fHalfAngleDegrees > 180.f ||
+				!ParseNumber(fields[14], window.fMaxDistanceM) ||
+				!std::isfinite(window.fMaxDistanceM) || window.fMaxDistanceM < 0.f ||
+				!ParseNumber(fields[15], window.iPoseIndex) || window.iPoseIndex > 7u ||
+				!ParseNumber(fields[16], window.iThreshold) ||
+				!ParseNumber(fields[17], window.fShieldArcDegrees) ||
+				!std::isfinite(window.fShieldArcDegrees) ||
+				window.fShieldArcDegrees < 0.f || window.fShieldArcDegrees > 360.f ||
+				!ParseNumber(fields[18], endsPattern) || endsPattern > 1u ||
+				!ParseMechanicCardSymbols(fields[19], window.SectorSymbols))
+			{
+				m_strStatus = "Boss pattern logic window row is invalid";
+				return false;
+			}
+			if (fields.size() >= 21u && (!ParseNumber(fields[20], window.fNormalYawOffsetDegrees) ||
+				!std::isfinite(window.fNormalYawOffsetDegrees)))
+			{ m_strStatus = "Boss shield normal offset is invalid"; return false; }
+			if (22u == fields.size())
+			{
+				if (fields[21] != "0" && fields[21] != "1")
+				{ m_strStatus = "Boss Logic inside outcome is invalid"; return false; }
+				window.bInsideIsFail = fields[21] == "1";
+			}
+			window.strWindowId = std::string(fields[4]);
+			window.bEndsPatternOnSuccess = 1u == endsPattern;
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss pattern logic window encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (owners->second.end() == owner ||
+				owner->LogicWindows.size() != windowIndex ||
+				owner->LogicWindows.size() >= 64u ||
+				std::any_of(owner->LogicWindows.begin(), owner->LogicWindows.end(),
+					[&window](const BOSS_PATTERN_LOGIC_WINDOW& existing)
+					{ return existing.strWindowId == window.strWindowId; }))
+			{
+				m_strStatus = "Boss pattern logic window owner is missing, out of order, or duplicated";
+				return false;
+			}
+			owner->LogicWindows.push_back(std::move(window));
+		}
+		else if (!fields.empty() && "PATTERNLOGICREGION" == fields[0])
+		{
+			BOSS_LOGIC_REGION region{};
+			std::uint32_t ordinal = 0u;
+			if (19u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[4], ordinal) || ordinal >= 64u || !IsStableId(fields[5]))
+			{ m_strStatus = "Boss Logic region identity is invalid"; return false; }
+			region.strRegionId = std::string(fields[5]);
+			if ("BOSS_CURRENT" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			else if ("BOSS_SPAWN" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
+			else if ("WORLD" != fields[6]) { m_strStatus = "Boss Logic region anchor is invalid"; return false; }
+			region.bSector = "SECTOR" == fields[7];
+			region.bCircle = "CIRCLE" == fields[7];
+			if (!region.bSector && !region.bCircle && "BOX" != fields[7]) { m_strStatus = "Boss Logic region shape is invalid"; return false; }
+			float* numbers[] = { &region.fCenterX, &region.fCenterY, &region.fCenterZ, &region.fYawDegrees,
+				&region.fHalfX, &region.fHalfY, &region.fHalfZ, &region.fRadiusM, &region.fHalfAngleDegrees };
+			for (std::size_t index = 0u; index < 9u; ++index)
+				if (!ParseNumber(fields[index + 8u], *numbers[index]) || !std::isfinite(*numbers[index]))
+				{ m_strStatus = "Boss Logic region geometry is invalid"; return false; }
+			if (region.fHalfX <= 0.f || region.fHalfY <= 0.f || region.fHalfZ <= 0.f ||
+				region.fRadiusM <= 0.f || region.fHalfAngleDegrees <= 0.f || region.fHalfAngleDegrees > 180.f)
+			{ m_strStatus = "Boss Logic region dimensions are invalid"; return false; }
+			if ("NONE" != fields[17])
+			{
+				std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> symbols;
+				if (!ParseMechanicCardSymbols(fields[17], symbols) || symbols.size() != 1u)
+				{ m_strStatus = "Boss Logic region card suit is invalid"; return false; }
+				region.eCardSymbol = symbols.front();
+			}
+			if ("RED" == fields[18]) region.eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::RED;
+			else if ("BLACK" == fields[18]) region.eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::BLACK;
+			else if ("NONE" != fields[18]) { m_strStatus = "Boss Logic region card color is invalid"; return false; }
+			if (("NONE" == fields[17]) != ("NONE" == fields[18]))
+			{ m_strStatus = "Boss Logic region card pair is incomplete"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Boss Logic region encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const BOSS_PATTERN_DEFINITION& value) { return value.strPatternId == fields[2]; });
+			if (owner == owners->second.end()) { m_strStatus = "Boss Logic region pattern is missing"; return false; }
+			const auto window = std::find_if(owner->LogicWindows.begin(), owner->LogicWindows.end(),
+				[&](const BOSS_PATTERN_LOGIC_WINDOW& value) { return value.strWindowId == fields[3]; });
+			if (window == owner->LogicWindows.end() || window->CardRegions.size() != ordinal ||
+				std::any_of(window->CardRegions.begin(), window->CardRegions.end(),
+					[&](const BOSS_LOGIC_REGION& value) { return value.strRegionId == region.strRegionId; }))
+			{ m_strStatus = "Boss Logic region window/order is invalid"; return false; }
+			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW &&
+				(!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
+				 region.eCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE))
+			{ m_strStatus = "Shield reflection requires boss-pivot sector regions without card mapping"; return false; }
+			window->CardRegions.push_back(std::move(region));
+		}
+		else if (!fields.empty() && ("PATTERNLOGICREGIONWORLD" == fields[0] || "PATTERNLOGICREGIONWORLDKEY" == fields[0]))
+		{
+			const bool isKey = "PATTERNLOGICREGIONWORLDKEY" == fields[0];
+			if ((isKey ? 16u : 17u) != fields.size())
+			{ m_strStatus = "Boss Logic WORLD row width is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Boss Logic WORLD encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(),owners->second.end(),
+				[&](const BOSS_PATTERN_DEFINITION& row) { return row.strPatternId == fields[2]; });
+			if (owner == owners->second.end()) { m_strStatus = "Boss Logic WORLD pattern is missing"; return false; }
+			const auto window = std::find_if(owner->LogicWindows.begin(),owner->LogicWindows.end(),
+				[&](const BOSS_PATTERN_LOGIC_WINDOW& row) { return row.strWindowId == fields[3]; });
+			if (window == owner->LogicWindows.end() || BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window->eKind)
+			{ m_strStatus = "Boss Logic WORLD Trigger window is missing"; return false; }
+			const auto region = std::find_if(window->CardRegions.begin(),window->CardRegions.end(),
+				[&](const BOSS_LOGIC_REGION& row) { return row.strRegionId == fields[4]; });
+			if (region == window->CardRegions.end() || BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region->eAnchor)
+			{ m_strStatus = "Boss Logic WORLD region is missing or has a BOSS anchor"; return false; }
+			auto& track = region->WorldTrack;
+			if (!isKey)
+			{
+				std::uint32_t smooth = 0u;
+				if (track.bEnabled || !ParseNumber(fields[5],track.iStartMs) ||
+					!ParseNumber(fields[6],track.iStartDelayMs) || !ParseNumber(fields[7],track.iDurationMs) ||
+					track.iDurationMs == 0u || !ParseNumber(fields[8],track.fPlaybackSpeed) ||
+					!std::isfinite(track.fPlaybackSpeed) || track.fPlaybackSpeed <= 0.f ||
+					!ParseNumber(fields[9],smooth) || smooth > 1u)
+				{ m_strStatus = "Boss Logic WORLD clock is invalid"; return false; }
+				float* numbers[] = {&track.fBaselineX,&track.fBaselineY,&track.fBaselineZ,&track.fBaselineYawDegrees,
+					&track.fBaselineScaleX,&track.fBaselineScaleY,&track.fBaselineScaleZ};
+				for (std::size_t index = 0u; index < 7u; ++index)
+					if (!ParseNumber(fields[index+10u],*numbers[index]) || !std::isfinite(*numbers[index]))
+					{ m_strStatus = "Boss Logic WORLD baseline is invalid"; return false; }
+				if (track.fBaselineScaleX <= 0.f || track.fBaselineScaleY <= 0.f || track.fBaselineScaleZ <= 0.f ||
+					std::fabs(track.fBaselineScaleX-track.fBaselineScaleZ) > 0.0001f)
+				{ m_strStatus = "Boss Logic WORLD baseline scale is invalid"; return false; }
+				track.bEnabled = true; track.bSmoothStep = 1u == smooth;
+			}
+			else
+			{
+				BOSS_LOGIC_WORLD_TRANSFORM_KEY key{};
+				std::uint32_t ordinal = 0u, visible = 0u;
+				if (!track.bEnabled || !ParseNumber(fields[5],ordinal) || ordinal != track.Keys.size() || ordinal >= 4096u ||
+					!ParseNumber(fields[6],key.iTimeMs) || key.iTimeMs > track.iDurationMs ||
+					(!track.Keys.empty() && track.Keys.back().iTimeMs >= key.iTimeMs) ||
+					!ParseNumber(fields[15],visible) || visible > 1u)
+				{ m_strStatus = "Boss Logic WORLD key clock/order is invalid"; return false; }
+				float* numbers[] = {&key.fOffsetX,&key.fOffsetY,&key.fOffsetZ,&key.fRotationY,&key.fRotationW,
+					&key.fScaleX,&key.fScaleY,&key.fScaleZ};
+				for (std::size_t index = 0u; index < 8u; ++index)
+					if (!ParseNumber(fields[index+7u],*numbers[index]) || !std::isfinite(*numbers[index]))
+					{ m_strStatus = "Boss Logic WORLD key transform is invalid"; return false; }
+				if (key.fScaleX < 0.f || key.fScaleY < 0.f || key.fScaleZ < 0.f ||
+					std::fabs(key.fScaleX-key.fScaleZ) > 0.0001f ||
+					std::fabs(key.fRotationY*key.fRotationY+key.fRotationW*key.fRotationW-1.f) > 0.001f)
+				{ m_strStatus = "Boss Logic WORLD key scale/quaternion is invalid"; return false; }
+				key.bVisible = 1u == visible; track.Keys.push_back(key);
+			}
+		}
+		else if (!fields.empty() && "PATTERNLOGICOUTCOME" == fields[0])
+		{
+			BOSS_PATTERN_LOGIC_RESULT result{};
+			std::uint32_t ordinal = 0u;
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				("SUCCESS" != fields[4] && "FAIL" != fields[4] && "TIMEOUT" != fields[4]) ||
+				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
+				!ParseBossPatternLogicResultKind(fields[6], result.eKind) ||
+				BOSS_PATTERN_LOGIC_RESULT_KIND::NONE == result.eKind ||
+				!ParseNumber(fields[7], result.iPercent) || result.iPercent > 100u ||
+				!ParseNumber(fields[8], result.iDurationMs) ||
+				("-" != fields[9] && !IsStableId(fields[9])))
+			{
+				m_strStatus = "Boss pattern logic outcome row is invalid";
+				return false;
+			}
+			result.strPatternId = "-" == fields[9] ? "" : std::string(fields[9]);
+			if ((BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind) !=
+				!result.strPatternId.empty())
+			{
+				m_strStatus = "Boss pattern logic outcome follow-up target is inconsistent";
+				return false;
+			}
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss pattern logic outcome encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (owners->second.end() == owner)
+			{
+				m_strStatus = "Boss pattern logic outcome has no pattern owner";
+				return false;
+			}
+			const auto window = std::find_if(owner->LogicWindows.begin(), owner->LogicWindows.end(),
+				[&fields](const BOSS_PATTERN_LOGIC_WINDOW& candidate)
+				{ return candidate.strWindowId == fields[3]; });
+			if (owner->LogicWindows.end() == window)
+			{
+				m_strStatus = "Boss pattern logic outcome has no window owner";
+				return false;
+			}
+			std::vector<BOSS_PATTERN_LOGIC_RESULT>& slot =
+				"SUCCESS" == fields[4] ? window->OnSuccess :
+				("FAIL" == fields[4] ? window->OnFail : window->OnTimeout);
+			if (slot.size() != ordinal || slot.size() >= 4u)
+			{
+				m_strStatus = "Boss pattern logic outcome ordinal is out of order or over capacity";
+				return false;
+			}
+			slot.push_back(std::move(result));
+		}
+		else if (!fields.empty() && "PATTERNMECHANICTRIGGER" == fields[0])
+		{
+			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
+			std::uint32_t mode = 0u;
+			if ((16u != fields.size() && 17u != fields.size()) || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[5], trigger.iStartMs) ||
+				!ParseNumber(fields[6], trigger.iDurationMs) || 0u == trigger.iDurationMs ||
+				!ParseNumber(fields[7], mode) || mode >= static_cast<std::uint32_t>(LostArk::Shared::KOUKU_HUD_MODE::END) ||
+				!ParseNumber(fields[8], trigger.fTeleportX) || !std::isfinite(trigger.fTeleportX) ||
+				!ParseNumber(fields[9], trigger.fTeleportY) || !std::isfinite(trigger.fTeleportY) ||
+				!ParseNumber(fields[10], trigger.fTeleportZ) || !std::isfinite(trigger.fTeleportZ) ||
+				fields[15] != "1")
+			{
+				m_strStatus = "KoukuSaydon mechanic trigger row is invalid";
+				return false;
+			}
+			if (17u == fields.size() && (!ParseNumber(fields[16], trigger.fFaceCenterYawOffsetDegrees) ||
+				!std::isfinite(trigger.fFaceCenterYawOffsetDegrees)))
+			{ m_strStatus = "KoukuSaydon face-center offset is invalid"; return false; }
+			trigger.strTriggerId = std::string(fields[3]);
+			trigger.eHudMode = static_cast<LostArk::Shared::KOUKU_HUD_MODE>(mode);
+			if (fields[4] == "REAL_GAZE_TELEPORT")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT;
+				if (!IsStableId(fields[11]))
+					return false;
+				trigger.strClonePatternId = std::string(fields[11]);
+				for (std::size_t index = 12u; index < 15u; ++index)
+				{
+					std::uint32_t hour = 0u;
+					if (!ParseNumber(fields[index], hour) || hour < 2u || hour > 12u ||
+						trigger.ClockHours.end() != std::find(trigger.ClockHours.begin(), trigger.ClockHours.end(), hour))
+						return false;
+					trigger.ClockHours.push_back(hour);
+				}
+			}
+			else if (fields[4] != "HUD_ENTER" || fields[11] != "-" ||
+				fields[12] != "0" || fields[13] != "0" || fields[14] != "0")
+				return false;
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+				return false;
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
+				return false;
+			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNSPAWNRESET" == fields[0])
+		{
+			if (4u != fields.size() || fields[3] != "1")
+			{
+				m_strStatus = "Boss pattern spawn-reset row is invalid";
+				return false;
+			}
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+				return false;
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || owner->bResetBossToSpawn)
+				return false;
+			owner->bResetBossToSpawn = true;
+		}
+		else if (!fields.empty() && "PATTERNWORLDSEQUENCE" == fields[0])
+		{
+			BOSS_PATTERN_WORLD_SEQUENCE sequence{};
+			if ((6u != fields.size() && 9u != fields.size() && 13u != fields.size() && 14u != fields.size()) || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], sequence.iStartMs) ||
+				!IsStableId(fields[4]) ||
+				!ParseNumber(fields[5], sequence.fPlaybackSpeed) ||
+				!std::isfinite(sequence.fPlaybackSpeed) ||
+				sequence.fPlaybackSpeed < 0.05f || sequence.fPlaybackSpeed > 16.f)
+			{
+				m_strStatus = "Boss pattern world sequence row is invalid";
+				return false;
+			}
+			if (9u <= fields.size() &&
+				(!ParseNumber(fields[6], sequence.fPositionOffsetX) || !std::isfinite(sequence.fPositionOffsetX) ||
+				 !ParseNumber(fields[7], sequence.fPositionOffsetY) || !std::isfinite(sequence.fPositionOffsetY) ||
+				 !ParseNumber(fields[8], sequence.fPositionOffsetZ) || !std::isfinite(sequence.fPositionOffsetZ)))
+			{
+				m_strStatus = "Boss pattern world sequence position offset is invalid";
+				return false;
+			}
+			if (13u <= fields.size())
+			{
+				if ((fields[9] != "NONE" && fields[9] != "BOSS_SPAWN") ||
+					!ParseNumber(fields[10], sequence.fAnchorPositionX) || !std::isfinite(sequence.fAnchorPositionX) ||
+					!ParseNumber(fields[11], sequence.fAnchorPositionY) || !std::isfinite(sequence.fAnchorPositionY) ||
+					!ParseNumber(fields[12], sequence.fAnchorPositionZ) || !std::isfinite(sequence.fAnchorPositionZ))
+				{
+					m_strStatus = "Boss pattern world sequence anchor is invalid";
+					return false;
+				}
+				sequence.bAnchorBossSpawn = fields[9] == "BOSS_SPAWN";
+			}
+			if (14u == fields.size() && (!ParseNumber(fields[13], sequence.iDurationMs) ||
+				sequence.iDurationMs == 0u || sequence.iDurationMs > 600000u))
+			{ m_strStatus = "Boss pattern world sequence lifetime is invalid"; return false; }
+			sequence.strInstanceId = std::string(fields[4]);
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss pattern lane owner encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+					[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+					{ return pattern.strPatternId == fields[2]; });
+			if (m_BossPatterns.end() == owners || owners->second.end() == owner ||
+				owner->WorldSequences.size() >= 16u)
+			{
+				m_strStatus = "Boss pattern world sequence owner is missing or over capacity";
+				return false;
+			}
+			owner->WorldSequences.push_back(std::move(sequence));
+		}
+		else if (!fields.empty() && "PATTERNSCENEPROFILE" == fields[0])
+		{
+			BOSS_PATTERN_SCENE_PROFILE profile{};
+			if (7u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], profile.iStartMs) ||
+				!ParseNumber(fields[4], profile.iDurationMs) ||
+				!ParseNumber(fields[5], profile.iBlendMs) || profile.iBlendMs > 600000u ||
+				!IsStableId(fields[6]))
+			{
+				m_strStatus = "Boss pattern scene profile row is invalid";
+				return false;
+			}
+			profile.strProfileId = std::string(fields[6]);
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == owners)
+			{
+				m_strStatus = "Boss pattern lane owner encounter is missing";
+				return false;
+			}
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+					[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+					{ return pattern.strPatternId == fields[2]; });
+			if (m_BossPatterns.end() == owners || owners->second.end() == owner ||
+				owner->SceneProfiles.size() >= 16u)
+			{
+				m_strStatus = "Boss pattern scene profile owner is missing or over capacity";
+				return false;
+			}
+			owner->SceneProfiles.push_back(std::move(profile));
+		}
+		else if (!fields.empty() && "KOUKUMADNESS" == fields[0])
+		{
+			BOSS_ENCOUNTER_MADNESS_POLICY policy{};
+			if (4u != fields.size() || !IsStableId(fields[1]) ||
+				!ParseNumber(fields[2], policy.iMaximum) || 0u == policy.iMaximum ||
+				policy.iMaximum > 1000000u ||
+				!ParseNumber(fields[3], policy.iClownHoldMs) ||
+				policy.iClownHoldMs > 600000u ||
+				!m_KoukuMadnessPolicies.emplace(std::string(fields[1]), policy).second)
+			{
+				m_strStatus = "KoukuSaydon madness policy row is invalid or duplicated";
+				return false;
+			}
 		}
 		else if (!fields.empty() && "PATTERNVERTICALOFFSET" == fields[0])
 		{
@@ -5804,6 +6296,14 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternSequence(
 {
 	const auto iter = m_BossPatternSequences.find(encounterId);
 	return m_BossPatternSequences.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::BOSS_ENCOUNTER_MADNESS_POLICY*
+LostArk::Server::CGameplayCatalog::Find_KoukuMadnessPolicy(
+	const std::string& encounterId) const noexcept
+{
+	const auto found = m_KoukuMadnessPolicies.find(encounterId);
+	return m_KoukuMadnessPolicies.end() == found ? nullptr : &found->second;
 }
 
 std::uint32_t

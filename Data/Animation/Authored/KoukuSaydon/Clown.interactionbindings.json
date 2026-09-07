@@ -1,0 +1,67 @@
+{
+  "schema": "lostark.clown-interaction-bindings",
+  "formatVersion": 1,
+  "modelAssetId": "Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel",
+  "modes": [
+    {
+      "mode": "POLYMORPH",
+      "skills": [
+        {
+          "clip": "rpcz00p_att_battle_1_01",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_att_battle_2_01",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_att_battle_4_01",
+          "playRate": 1.0
+        }
+      ]
+    },
+    {
+      "mode": "MARIO",
+      "skills": [
+        {
+          "clip": "rpcz00p_project_tuned_hammer",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_att_battle_3_01",
+          "playRate": 1.0
+        }
+      ]
+    },
+    {
+      "mode": "DANCE",
+      "skills": [
+        {
+          "clip": "rpcz00p_project_tuned_pose_arms_folded",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_project_tuned_pose_superman",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_project_tuned_pose_arms_open",
+          "playRate": 1.0
+        },
+        {
+          "clip": "rpcz00p_project_tuned_pose_one_leg",
+          "playRate": 1.0
+        }
+      ]
+    },
+    {
+      "mode": "MAZE",
+      "skills": [
+        {
+          "clip": "rpcz00p_project_tuned_hammer",
+          "playRate": 1.0
+        }
+      ]
+    }
+  ]
+}

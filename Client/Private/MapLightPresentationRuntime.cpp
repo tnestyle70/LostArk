@@ -3,6 +3,9 @@
 #include "Effect_LightPresentation.h"
 #include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 bool_t Client::CMapLightPresentationRuntime::Load(
 	const std::filesystem::path& path,
@@ -32,6 +35,12 @@ bool_t Client::CMapLightPresentationRuntime::Load_Runtime(
 		CMapAssetCatalog::Get_MapDataRoot() /
 			std::filesystem::path(areaId + ".maplights.json"),
 		areaId);
+}
+
+bool_t Client::CMapLightPresentationRuntime::Replace_Document(const CMapLightDocument& document)
+{
+	if (!document.Is_Ready()) {m_Status="Cannot preview an unready light document.";return false;}
+	m_Document=document;m_Status="Map light authoring preview ready.";return true;
 }
 
 bool_t Client::CMapLightPresentationRuntime::Submit_Frame()
@@ -67,13 +76,10 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 	}
 
 	CPresentation_Manager& presentation = CPresentation_Manager::Get();
-	const uint64_t lightCount = static_cast<uint64_t>(
-		m_Document.Get_Lights().size());
-	presentation.Register_ProviderSubmissionExpectation(
-		lightCount, lightCount, 0u, 0u);
-
+	std::vector<LIGHT_DESC> lights;
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
+		if (!record.enabled) continue;
 		EFFECT_EVALUATED_LIGHT evaluated{};
 		evaluated.vWorldPosition = record.position;
 		evaluated.fRange = record.radiusMeters;
@@ -85,18 +91,42 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		LIGHT_DESC light{};
 		if (!Try_BuildEffectPointLightDesc(evaluated, light))
 		{
+			if (record.kind == LIGHT::DIRECTIONAL) light = {};
+			else
+			{
 			m_Status = "Map point light mapping failed: " + record.lightId;
 			return E_FAIL;
+			}
 		}
+		light.eType=record.kind;
+		if (record.kind==LIGHT::SPOT || record.kind==LIGHT::DIRECTIONAL)
+		{
+			const auto& r=record.rotationDegrees;
+			const matrix_t rotation=XMMatrixRotationRollPitchYaw(XMConvertToRadians(r.x),XMConvertToRadians(r.y),XMConvertToRadians(r.z));
+			XMStoreFloat4(&light.vDirection,XMVectorSetW(XMVector3Normalize(rotation.r[2]),0.f));
+			light.fSpotInnerCos=std::cos(XMConvertToRadians(record.innerConeDegrees));
+			light.fSpotOuterCos=std::cos(XMConvertToRadians(record.outerConeDegrees));
+			light.vDiffuse={record.color.x*record.brightness,record.color.y*record.brightness,record.color.z*record.brightness,1.f};
+			light.vAmbient={0,0,0,0};light.vSpecular={0,0,0,0};
+		}
+		lights.push_back(light);
+	}
+	const size_t used=presentation.Get_TransientLights().size();
+	const size_t budget=used<56u?56u-used:0u;
+	const size_t count=(std::min)(lights.size(),budget);
+	presentation.Register_ProviderSubmissionExpectation(count,count,0u,0u);
+	for(size_t i=0;i<count;++i)
+	{
+		const LIGHT_DESC& light=lights[i];
 		const HRESULT result = presentation.Add_TransientLight(light);
 		if (FAILED(result))
 		{
-			m_Status = "Map point light submission failed: " + record.lightId;
+			m_Status = "Map light submission failed.";
 			return E_FAIL;
 		}
 	}
 	m_Status = "Map light presentation submitted: " +
-		std::to_string(m_Document.Get_Lights().size()) + " point lights";
+		std::to_string(count) + " lights; skipped by budget: "+std::to_string(lights.size()-count);
 	return S_OK;
 }
 

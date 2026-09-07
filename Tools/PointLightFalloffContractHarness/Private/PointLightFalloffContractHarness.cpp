@@ -23,10 +23,14 @@
 using namespace Client;
 using namespace Engine;
 
-static_assert(sizeof(LIGHT_DESC) == 92u);
+static_assert(sizeof(LIGHT_DESC) == 100u);
 static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
+static_assert(offsetof(LIGHT_DESC, fSpotInnerCos) == 92u);
+static_assert(offsetof(LIGHT_DESC, fSpotOuterCos) == 96u);
+static_assert(16u == ETOUI(DEFERRED::SPOT));
+static_assert(17u == ETOUI(DEFERRED::END));
 
 namespace
 {
@@ -118,6 +122,16 @@ namespace
 		return Evaluated;
 	}
 
+	LIGHT_DESC MakeValidSpotLight()
+	{
+		LIGHT_DESC Desc = MakeValidPointLight();
+		Desc.eType = LIGHT::SPOT;
+		Desc.vDirection = float4_t(0.f, -1.f, 0.f, 0.f);
+		Desc.fSpotInnerCos = 0.95f;
+		Desc.fSpotOuterCos = 0.85f;
+		return Desc;
+	}
+
 	bool_t SameBits(const float Left, const float Right)
 	{
 		return std::bit_cast<std::uint32_t>(Left) ==
@@ -192,7 +206,8 @@ namespace
 		std::shared_ptr<CVIBuffer_Rect> Buffer(std::move(BufferPrototype));
 		const bool_t bRendered = SUCCEEDED(CLight::Render_Desc(
 			Reconstructed, Shader, Buffer, true)) &&
-			SUCCEEDED(CLight::Render_Desc(Legacy, Shader, Buffer));
+			SUCCEEDED(CLight::Render_Desc(Legacy, Shader, Buffer)) &&
+			SUCCEEDED(CLight::Render_Desc(MakeValidSpotLight(), Shader, Buffer, true));
 		Context->ClearState();
 		return bRendered;
 	}
@@ -321,9 +336,66 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 	}
 	std::filesystem::remove(InvalidMapLightsPath);
 
+	if (!MapLights.Serialize().empty())
+		return Fail("imported v1 map lights were serialized as authored v2");
+	const std::string AuthoredMapText = R"json({
+  "schema": "lostark.map-light-presentation", "formatVersion": 2,
+  "areaId": "LV_LUT_MIDNIGHTC_ED", "provenance": "PROJECT_AUTHORED",
+  "nextLightOrdinal": 7, "lights": [{
+    "lightId": "light.kouku.gate2.6", "displayName": "Gate 2 spot",
+    "kind": "SPOT", "groupId": "gate2", "enabled": false,
+    "position": [2.04, 18.56, 316.95], "rotationDegrees": [90, 15, 5],
+    "rangeMeters": 12, "falloffExponent": 2, "innerConeDegrees": 8,
+    "outerConeDegrees": 24, "color": [1, 0.5, 0.25, 1], "brightness": 6
+  }]
+})json";
+	CMapLightDocument AuthoredMap;
+	if (!AuthoredMap.Parse(AuthoredMapText, "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
+		2u != AuthoredMap.Get_FormatVersion() || 7u != AuthoredMap.Get_NextLightOrdinal() ||
+		1u != AuthoredMap.Get_Lights().size())
+		return Fail("authored v2 map spot did not parse");
+	const auto& AuthoredSpot = AuthoredMap.Get_Lights().front();
+	if (AuthoredSpot.lightId != "light.kouku.gate2.6" ||
+		AuthoredSpot.displayName != "Gate 2 spot" || AuthoredSpot.groupId != "gate2" ||
+		AuthoredSpot.enabled || AuthoredSpot.kind != LIGHT::SPOT ||
+		!SameBits(AuthoredSpot.position.x, 2.04f) || !SameBits(AuthoredSpot.position.y, 18.56f) ||
+		!SameBits(AuthoredSpot.position.z, 316.95f) ||
+		!SameBits(AuthoredSpot.rotationDegrees.x, 90.f) ||
+		!SameBits(AuthoredSpot.rotationDegrees.y, 15.f) ||
+		!SameBits(AuthoredSpot.rotationDegrees.z, 5.f) ||
+		!SameBits(AuthoredSpot.radiusMeters, 12.f) ||
+		!SameBits(AuthoredSpot.innerConeDegrees, 8.f) ||
+		!SameBits(AuthoredSpot.outerConeDegrees, 24.f) ||
+		!SameBits(AuthoredSpot.color.y, 0.5f) || !SameBits(AuthoredSpot.brightness, 6.f))
+		return Fail("authored v2 map spot values changed during parse");
+	const std::string AuthoredSaved = AuthoredMap.Serialize();
+	CMapLightDocument AuthoredReopened;
+	if (AuthoredSaved.empty() ||
+		!AuthoredReopened.Parse(AuthoredSaved, "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
+		AuthoredSaved != AuthoredReopened.Serialize())
+		return Fail("authored v2 map light Parse/Serialize/Parse changed values");
+	auto InvalidAuthoredSpots = AuthoredMap.Get_Lights();
+	InvalidAuthoredSpots.front().innerConeDegrees = 30.f;
+	if (AuthoredMap.Replace_Authored(InvalidAuthoredSpots, 8u, MapLightStatus) ||
+		AuthoredSaved != AuthoredMap.Serialize() || 7u != AuthoredMap.Get_NextLightOrdinal())
+		return Fail("invalid authored map cone changed the last good document");
+	const std::string EmptyAuthoredMapText = R"json({
+  "schema": "lostark.map-light-presentation", "formatVersion": 2,
+  "areaId": "LV_LUT_MIDNIGHTC_ED", "provenance": "PROJECT_AUTHORED",
+  "nextLightOrdinal": 8, "lights": []
+})json";
+	if (!AuthoredMap.Parse(EmptyAuthoredMapText, "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
+		!AuthoredMap.Get_Lights().empty() || 8u != AuthoredMap.Get_NextLightOrdinal() ||
+		!AuthoredReopened.Parse(AuthoredMap.Serialize(), "LV_LUT_MIDNIGHTC_ED", MapLightStatus) ||
+		!AuthoredReopened.Get_Lights().empty())
+		return Fail("empty authored v2 map lights did not round trip");
+
 	const LIGHT_DESC DefaultDesc{};
 	if (!SameBits(DefaultDesc.fFalloffExponent, 1.f))
 		return Fail("LIGHT_DESC default exponent is not bit-exact 1.0f");
+	if (!SameBits(DefaultDesc.fSpotInnerCos, 1.f) ||
+		!SameBits(DefaultDesc.fSpotOuterCos, 1.f))
+		return Fail("LIGHT_DESC cone defaults changed legacy initialization");
 
 	const LIGHT_DESC Valid = MakeValidPointLight();
 	auto Light = CLight::Create(Valid);
@@ -424,7 +496,7 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 		return Fail("CLight rejected mapped legacy exponent 1.0");
 
 	if (!RenderWithDeferredShader(RepoRoot, StoredTwo, StoredLegacy))
-		return Fail("mapped 2.0/1.0 descriptors did not bind and render");
+		return Fail("mapped 2.0/1.0 and spot descriptors did not bind and render");
 
 	for (const float InvalidValue : {
 		0.f, -1.f, std::numeric_limits<float>::quiet_NaN(),
@@ -521,11 +593,82 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 	}
 
 	Presentation.Clear_TransientLights();
+	const LIGHT_DESC Spot = MakeValidSpotLight();
+	LIGHT_DESC Directional = Spot;
+	Directional.eType = LIGHT::DIRECTIONAL;
+	Directional.fRange = 0.f;
+	const std::vector<LIGHT_DESC> MixedLights{ Valid, Spot, Directional };
+	if (FAILED(LightManager->Replace_SceneLights(MixedLights)))
+		return Fail("scene light manager rejected mixed point/spot/directional lights");
+	for (const LIGHT_DESC& Desc : MixedLights)
+	{
+		if (nullptr == CLight::Create(Desc) ||
+			FAILED(Presentation.Add_TransientLight(Desc)))
+			return Fail("valid spot/directional light did not reach render boundary");
+	}
+	if (3u != Presentation.Get_TransientLights().size() ||
+		!SameBits(Presentation.Get_TransientLights()[1u].fSpotInnerCos, Spot.fSpotInnerCos) ||
+		!SameBits(Presentation.Get_TransientLights()[1u].fSpotOuterCos, Spot.fSpotOuterCos))
+		return Fail("transient spot cone values were changed");
+
+	std::vector<LIGHT_DESC> InvalidSpots;
+	for (const float InvalidValue : { 0.f, -1.f,
+		std::numeric_limits<float>::quiet_NaN(),
+		std::numeric_limits<float>::infinity() })
+	{
+		LIGHT_DESC Invalid = Spot;
+		Invalid.fRange = InvalidValue;
+		InvalidSpots.push_back(Invalid);
+		Invalid = Spot;
+		Invalid.fSpotOuterCos = InvalidValue;
+		InvalidSpots.push_back(Invalid);
+		Invalid = Spot;
+		Invalid.fSpotInnerCos = InvalidValue;
+		InvalidSpots.push_back(Invalid);
+	}
+	LIGHT_DESC InvalidSpot = Spot;
+	InvalidSpot.fSpotInnerCos = 1.f;
+	InvalidSpots.push_back(InvalidSpot);
+	InvalidSpot = Spot;
+	InvalidSpot.fSpotOuterCos = 0.98f;
+	InvalidSpots.push_back(InvalidSpot);
+	for (const LIGHT Type : { LIGHT::SPOT, LIGHT::DIRECTIONAL })
+	{
+		InvalidSpot = Spot;
+		InvalidSpot.eType = Type;
+		InvalidSpot.vDirection = float4_t(0.f, 0.f, 0.f, 0.f);
+		InvalidSpots.push_back(InvalidSpot);
+		InvalidSpot.vDirection.x = std::numeric_limits<float>::quiet_NaN();
+		InvalidSpots.push_back(InvalidSpot);
+	}
+	InvalidSpot = Spot;
+	InvalidSpot.eType = static_cast<LIGHT>(-1);
+	InvalidSpots.push_back(InvalidSpot);
+	InvalidSpot.eType = LIGHT::END;
+	InvalidSpots.push_back(InvalidSpot);
+	for (const LIGHT_DESC& Invalid : InvalidSpots)
+	{
+		if (nullptr != CLight::Create(Invalid) ||
+			E_INVALIDARG != CLight::Render_Desc(Invalid, nullptr, nullptr) ||
+			E_INVALIDARG != LightManager->Replace_SceneLights({ Invalid }) ||
+			3u != LightManager->Get_SceneLightCount() ||
+			E_FAIL != Presentation.Add_TransientLight(Invalid) ||
+			3u != Presentation.Get_TransientLights().size())
+			return Fail("invalid spot/directional descriptor changed committed lights");
+	}
+	LIGHT_DESC HardCone = Spot;
+	HardCone.fSpotOuterCos = HardCone.fSpotInnerCos;
+	if (nullptr == CLight::Create(HardCone) ||
+		FAILED(Presentation.Add_TransientLight(HardCone)))
+		return Fail("equal inner/outer spot cone was rejected");
+	Presentation.Clear_TransientLights();
 	std::cout <<
 		"PointLightFalloffContractHarness PASS: artist-exact-tuple-"
 		"desc-transient-shader-point-shadow0; legacy1; "
 		"invalid-evaluated-rollback; abi/default; "
 		"final-boundary; scene-rollback; transient-no-push; "
-		"valtan-map-light-strict-load-rollback-twenty-two-submit\n";
+		"valtan-map-light-strict-load-rollback-twenty-two-submit; "
+		"spot-pass16-cone-binding; mixed-scene-transient; invalid-cone-direction-rollback; "
+		"map-v2-roundtrip-cone-rollback-empty; map-v1-read-only\n";
 	return 0;
 }

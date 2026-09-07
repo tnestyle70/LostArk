@@ -12,10 +12,9 @@ namespace
 {
 	using namespace Client;
 
-	/* The colourless Saydon body (MN_RPCT_03) as a playable avatar. It has no
-	weapon or equipment, no class logic and no skill binding document, so a
-	skill action keeps the pose it is in; IDLE/RUN come from the rpct00 clip
-	set the body embeds. The class stays the wearer's through CHARACTER_DESC. */
+	/* The player's madness doll uses the Polymorph 4134 MN_RPCZ_00-1 body,
+	material and animation set. It keeps the wearer's class identity through
+	CHARACTER_DESC while the Server owns its interaction actions. */
 	const CHARACTER_SPEC Spec_KoukuSaydonClown =
 	{
 		"KoukuSaydonClown",
@@ -35,8 +34,8 @@ namespace
 		/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
 		ESTHER_CAST. Only locomotion is authored for the avatar today. */
 		{
-			"rpct00_idle_battle_1",
-			"rpct00_run_battle_1",
+			"rpcz00p_idle_battle_1",
+			"rpcz00p_run_battle_1",
 			nullptr,
 			nullptr,
 			nullptr,

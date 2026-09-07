@@ -52,6 +52,9 @@ namespace
 	// The caster's Esther call converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
+	// One KoukuSaydon interaction HUD press converted to fixed 30 Hz room ticks.
+	constexpr std::uint32_t KOUKU_INTERACTION_TICKS =
+		(LostArk::Shared::KOUKU_INTERACTION_ACTION_MS * 30u + 999u) / 1000u;
 	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
 		"LOSTARK_RAID_CLEAR_TEST_MODE";
 
@@ -742,6 +745,7 @@ namespace
 		player.iCurrentMadness = 0u;
 		player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 		player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		player.Clear_KoukuInteractionState();
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iActionStartTick = actionTick;
 		player.isCombatReady = true;
@@ -1858,6 +1862,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_DebugSetMadnessForm(
 				command.iSessionId, command.DebugSetMadnessForm);
 			break;
+		case ROOM_COMMAND_TYPE::INTERACTION_SLOT:
+			Handle_InteractionSlot(command.iSessionId, command.InteractionSlot);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_SET_KOUKU_HUD_MODE:
+			Handle_DebugSetKoukuHudMode(
+				command.iSessionId, command.DebugSetKoukuHudMode);
+			break;
 		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
 			Handle_ChangeCharacterClass(
 				command.iSessionId, command.ChangeCharacterClass);
@@ -2042,6 +2053,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		});
 	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
 	Update_WorldEntities(fixedDeltaSeconds);
+	Update_KoukuPlayerModes(updateTick);
 	if (!m_isReady)
 	{
 		recordTickDuration();
@@ -2341,6 +2353,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iCurrentMadness = 0u;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	player.Clear_KoukuInteractionState();
 	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
 	if (m_ServerNavigation.Is_Loaded())
 	{
@@ -3001,8 +3014,11 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 			sessionId, "C2S_USE_SKILL", "missing-player-state");
 		return;
 	}
+	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
+	class skills the Client no longer shows are refused here as well. */
 	if (0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
 		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
+		LostArk::Shared::KOUKU_HUD_MODE::NONE != playerIter->second.eKoukuHudMode ||
 		(0u != playerIter->second.iSilenceEndTick &&
 		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
@@ -3062,7 +3078,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 {
 	using namespace LostArk::Shared;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
-	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+	if ((WORLD_ID::VALTAN_ARENA != m_eWorldId &&
+		 WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) ||
 		sessionIter == m_PlayerIdBySessionId.end())
 	{
 		return;
@@ -3085,37 +3102,40 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
-	/* Always revives at the arena's own authored center (the Valtan boss's own
-	placement, "boss.valtan.center") instead of wherever the player died --
-	a fixed, known-safe spot regardless of how the death happened (fall,
-	pattern hit, etc.), rather than reviving in place and only recovering when
-	that exact spot turned out unwalkable. isEnabled/eKind aren't checked here
-	(unlike a player's own strSpawnPlacementId lookup) since this is one
-	specific, verified placement id, not caller-influenced data. */
-	constexpr const char* VALTAN_ARENA_CENTER_PLACEMENT_ID = "boss.valtan.center";
-	const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter =
-		Find_Placement(VALTAN_ARENA_CENTER_PLACEMENT_ID);
-	if (nullptr == arenaCenter)
-		return;
+	/* Kouku revives at the death position. Valtan retains its authored safe
+	center. Navigation admission is staged before any player state changes. */
+	float reviveX = player.fPositionX;
+	float reviveY = player.fPositionY;
+	float reviveZ = player.fPositionZ;
+	float reviveYaw = player.fYawDegrees;
+	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
+	{
+		const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter = Find_Placement("boss.valtan.center");
+		if (nullptr == arenaCenter)
+			return;
+		reviveX = arenaCenter->fPositionX;
+		reviveY = arenaCenter->fPositionY;
+		reviveZ = arenaCenter->fPositionZ;
+		reviveYaw = arenaCenter->fYawDegrees;
+	}
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
-		if (!m_ServerNavigation.Project_Point(
-			arenaCenter->fPositionX, arenaCenter->fPositionZ, projected))
-		{
+		if (!m_ServerNavigation.Project_Point(reviveX, reviveZ, projected))
 			return;
+		// Project_Point provides a safe floor if the death location is unwalkable.
+		if (WORLD_ID::VALTAN_ARENA == m_eWorldId ||
+			!m_ServerNavigation.Is_PointWalkableExact(reviveX, reviveZ))
+		{
+			reviveX = projected.x;
+			reviveZ = projected.z;
 		}
-		player.fPositionX = projected.x;
-		player.fPositionY = projected.y;
-		player.fPositionZ = projected.z;
+		reviveY = projected.y;
 	}
-	else
-	{
-		player.fPositionX = arenaCenter->fPositionX;
-		player.fPositionY = arenaCenter->fPositionY;
-		player.fPositionZ = arenaCenter->fPositionZ;
-	}
-	player.fYawDegrees = arenaCenter->fYawDegrees;
+	player.fPositionX = reviveX;
+	player.fPositionY = reviveY;
+	player.fPositionZ = reviveZ;
+	player.fYawDegrees = reviveYaw;
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
@@ -3124,6 +3144,11 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentMadness = 0u;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	player.Clear_KoukuInteractionState();
+#ifdef _DEBUG
+	if (m_KoukuSaydonPatternAudition.LogicLedger.Is_Active())
+		player.iKoukuSuppressedPatternSequence = m_KoukuSaydonPatternAudition.LogicLedger.iPatternSequence;
+#endif
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
@@ -3385,13 +3410,272 @@ LostArk::Server::CGameRoom::Apply_DebugMadnessForm(
 		return reject(DEBUG_MADNESS_FORM_RESULT::REJECTED_PLAYER_STATE);
 	if (request.eForm == player.eMadnessForm)
 		return reject(DEBUG_MADNESS_FORM_RESULT::REJECTED_SAME_FORM);
+	player.Clear_KoukuInteractionState();
 	player.eMadnessForm = request.eForm;
+	if (PLAYER_MADNESS_FORM::NORMAL == request.eForm &&
+		m_KoukuSaydonPatternAudition.LogicLedger.Is_Active())
+		player.iKoukuSuppressedPatternSequence = m_KoukuSaydonPatternAudition.LogicLedger.iPatternSequence;
+	player.eAction = PLAYER_ACTION_STATE::NONE;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.TriggerMove = {};
+	player.iActionStartTick = 0u;
+	player.fActionElapsedSeconds = 0.f;
+	player.PendingCommand.Clear();
 	result.eResult = DEBUG_MADNESS_FORM_RESULT::ACCEPTED;
 	result.eActiveForm = player.eMadnessForm;
 	player.LastDebugMadnessFormResult = result;
 	return result;
 #endif
 }
+
+void LostArk::Server::CGameRoom::Handle_InteractionSlot(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_INTERACTION_SLOT& request)
+{
+	using namespace LostArk::Shared;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(binding->second);
+	if (player == m_Players.end() || player->second.iSessionId != sessionId ||
+		request.eWorldId != m_eWorldId ||
+		!Is_Valid_InteractionSlot(request.eSlot) ||
+		KOUKU_HUD_MODE::NONE == player->second.eKoukuHudMode)
+		return;
+	SERVER_PLAYER& state = player->second;
+	const std::int8_t skillIndex =
+		state.ModeSkillIndexBySlot[static_cast<std::size_t>(request.eSlot)];
+	if (skillIndex < 0)
+	{
+		m_strStatus = "KoukuSaydon interaction slot is empty in the current HUD mode";
+		return;
+	}
+	/* Every interaction skill is one fixed-length action today: the press is
+	refused while any action runs, exactly like a class skill, and Update_Players
+	returns the action to NONE after KOUKU_INTERACTION_ACTION_MS. */
+	if (state.bPatternBound || state.fKnockbackRemainingSeconds > 0.f ||
+		0u == state.iCurrentHp || PLAYER_ACTION_STATE::NONE != state.eAction)
+	{
+		m_strStatus = "KoukuSaydon interaction slot refused while another action runs";
+		return;
+	}
+	if (!Is_NewerSequence(request.iRequestSequence, state.iLastKoukuInteractionSequence))
+		return;
+	state.iLastKoukuInteractionSequence = request.iRequestSequence;
+	const SKILL_ID cooldownId = Kouku_InteractionCooldownSkillId(
+		state.eKoukuHudMode, static_cast<std::uint32_t>(skillIndex));
+	const auto cooldown = state.CooldownEndTickBySkillId.find(cooldownId);
+	if (state.CooldownEndTickBySkillId.end() != cooldown &&
+		!CKoukuSaydonLogicRuntime::Has_ReachedTick(m_iServerTick, cooldown->second))
+		return;
+	state.eAction = PLAYER_ACTION_STATE::INTERACTION;
+	state.iCurrentSkillId = static_cast<SKILL_ID>(skillIndex);
+	state.iActionStartTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
+		1u : m_iServerTick + 1u;
+	state.CooldownEndTickBySkillId[cooldownId] = CKoukuSaydonLogicRuntime::Add_Ticks(
+		state.iActionStartTick,
+		CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_INTERACTION_COOLDOWN_MS));
+	state.fActionElapsedSeconds = 0.f;
+	state.iComboStage = 0u;
+	state.hasBufferedComboInput = false;
+	state.hasMoveGoal = false;
+	state.MovePath.clear();
+	state.iMovePathIndex = 0;
+	state.Clear_SkillTarget();
+	state.PendingCommand.Clear();
+	m_strStatus = "KoukuSaydon interaction slot started mode skill " +
+		std::to_string(skillIndex);
+#ifdef _DEBUG
+	/* The dance answer is judged only while an authored POSE_INPUT window of
+	the running pattern is open; the Debug dance override plays the pose alone. */
+	if (KOUKU_HUD_MODE::DANCE == state.eKoukuHudMode &&
+		KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
+			m_KoukuSaydonPatternAudition.ePhase &&
+		m_KoukuSaydonPatternAudition.LogicLedger.Is_Active())
+	{
+		const CGameplayCatalog* pinnedCatalog = m_GameplayCatalog.Resolve(
+			m_KoukuSaydonPatternAudition.PinnedGameplayRevision);
+		std::string status;
+		const BOSS_PATTERN_DEFINITION* pattern = nullptr == pinnedCatalog ? nullptr :
+			CKoukuSaydonBrain::Find_AnimationOnlyPattern(
+				*pinnedCatalog, m_KoukuSaydonPatternAudition.LogicLedger.strPatternId, status);
+		if (nullptr != pattern)
+		{
+			(void)CKoukuSaydonLogicRuntime::Record_InteractionSlot(
+				m_KoukuSaydonPatternAudition.LogicLedger, *pattern, state,
+				request.eSlot, status);
+			m_strStatus = "KoukuSaydon dance input: " + status;
+		}
+	}
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugSetKoukuHudMode(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (nullptr == session)
+		return;
+	S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_SESSION;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	const auto player = binding == m_PlayerIdBySessionId.end() ?
+		m_Players.end() : m_Players.find(binding->second);
+	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+		result = Apply_DebugKoukuHudMode(player->second, request);
+	CPacketWriter writer;
+	if (!Write_Message(writer, result) || !session->Send_Frame(
+		PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT, writer.Get_Buffer()))
+	{
+		session->Request_Close();
+	}
+}
+
+LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT
+LostArk::Server::CGameRoom::Apply_DebugKoukuHudMode(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE& request)
+{
+	using namespace LostArk::Shared;
+	S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
+	result.iRequestSequence = request.iRequestSequence;
+	result.eWorldId = m_eWorldId;
+	result.eActiveOverride = player.eDebugKoukuHudModeOverride;
+#ifndef _DEBUG
+	result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_DISABLED;
+	return result;
+#else
+	if (request.eWorldId != m_eWorldId)
+	{
+		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_WRONG_WORLD;
+		return result;
+	}
+	const auto& previous = player.LastDebugKoukuHudModeResult;
+	if (0u != request.iRequestSequence &&
+		request.iRequestSequence == previous.iRequestSequence)
+		return previous;
+	if (!Is_NewerSequence(request.iRequestSequence, previous.iRequestSequence))
+	{
+		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_STALE_SEQUENCE;
+		return result;
+	}
+	/* The clown HUD comes from the madness form alone. Mario, maze and the
+	dance party may be forced so the HUD and its slot clips can be checked
+	before the gimmick that owns them exists; a running dance pattern still
+	wins over the forced dance layout. */
+	if (KOUKU_HUD_MODE::NONE != request.eMode &&
+		KOUKU_HUD_MODE::POLYMORPH != request.eMode &&
+		KOUKU_HUD_MODE::MARIO != request.eMode &&
+		KOUKU_HUD_MODE::MAZE != request.eMode &&
+		KOUKU_HUD_MODE::DANCE != request.eMode)
+	{
+		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_UNSUPPORTED_MODE;
+		player.LastDebugKoukuHudModeResult = result;
+		return result;
+	}
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound)
+	{
+		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_UNSUPPORTED_MODE;
+		player.LastDebugKoukuHudModeResult = result;
+		return result;
+	}
+	player.Clear_KoukuInteractionState();
+	if (m_KoukuSaydonPatternAudition.LogicLedger.Is_Active())
+		player.iKoukuSuppressedPatternSequence = m_KoukuSaydonPatternAudition.LogicLedger.iPatternSequence;
+	player.eMadnessForm = KOUKU_HUD_MODE::NONE == request.eMode ?
+		PLAYER_MADNESS_FORM::NORMAL : PLAYER_MADNESS_FORM::CLOWN;
+	player.iMadnessFormEndTick = 0u;
+	player.eAction = PLAYER_ACTION_STATE::NONE;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.TriggerMove = {};
+	player.iActionStartTick = 0u;
+	player.fActionElapsedSeconds = 0.f;
+	player.PendingCommand.Clear();
+	player.eDebugKoukuHudModeOverride = request.eMode;
+	result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::ACCEPTED;
+	result.eActiveOverride = player.eDebugKoukuHudModeOverride;
+	player.LastDebugKoukuHudModeResult = result;
+	return result;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	const BOSS_ENCOUNTER_MADNESS_POLICY* policy =
+		WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId ?
+			m_GameplayCatalog.Active().Find_KoukuMadnessPolicy(
+				std::string(KOUKUSAYDON_G1_ENCOUNTER_ID)) :
+			nullptr;
+	const KOUKUSAYDON_LOGIC_LEDGER* ledger = nullptr;
+#ifdef _DEBUG
+	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
+		m_KoukuSaydonPatternAudition.ePhase)
+		ledger = &m_KoukuSaydonPatternAudition.LogicLedger;
+#endif
+	CKoukuSaydonLogicRuntime::Update_PlayerModes(
+		m_Players, ledger, policy, serverTick);
+
+}
+
+
+void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(
+	SERVER_PLAYER& player, const SERVER_WORLD_ENTITY& boss)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+		return;
+	player.Clear_KoukuAssignedCard();
+	if ("BOSS_KAKULSAYDON_G1_KOUKU" == boss.strArchetypeId ||
+		"BOSS_KAKULSAYDON_G1_SAYDON" == boss.strArchetypeId)
+		CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, boss.iNetEntityId, m_iServerTick);
+}
+
+#ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
+	const KOUKUSAYDON_LOGIC_OUTPUT& output,
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t serverTick)
+{
+	for (const auto& trigger : output.MechanicTriggers)
+		m_PendingKoukuMechanicTriggers.push_back({ boss.iNetEntityId, boss.iPatternSequence, trigger });
+	for (const KOUKUSAYDON_LOGIC_WORLD_PLAY& play : output.WorldSequencePlays)
+		Broadcast_WorldSequencePlay(play.strInstanceId, play.fPlaybackSpeed,
+			play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ, play.iDurationMs);
+	/* A follow-up joins the audition right after the running slot, with a
+	one-tick transition, so Play All and Play Selected both continue into it. */
+	std::size_t insertAt = m_KoukuSaydonPatternAudition.iPatternIndex + 1u;
+	for (const std::string& followup : output.FollowupPatternIds)
+	{
+		if (insertAt > m_KoukuSaydonPatternAudition.PatternIds.size())
+			break;
+		m_KoukuSaydonPatternAudition.PatternIds.insert(
+			m_KoukuSaydonPatternAudition.PatternIds.begin() + insertAt, followup);
+		m_KoukuSaydonPatternAudition.TransitionTicks.insert(
+			m_KoukuSaydonPatternAudition.TransitionTicks.begin() + (insertAt - 1u), 1u);
+		++insertAt;
+	}
+	if (!output.strStatus.empty())
+		m_strStatus = "KoukuSaydon logic: " + output.strStatus;
+	if (!output.bEndPatternEarly)
+		return false;
+	m_KoukuSaydonBrain.Complete_Pattern(boss, serverTick);
+	return true;
+}
+#endif
 
 void LostArk::Server::CGameRoom::Reset_PlayerForDebugTeleport(SERVER_PLAYER& player)
 {
@@ -4130,6 +4414,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
 	staged.eStance = profile->eDefaultStance;
 	staged.iCurrentSkillId = INVALID_SKILL_ID;
@@ -4326,6 +4611,8 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	{
 		if (!Despawn_KoukuSaydonArenaDebugEntities())
 			Mark_RuntimeFailure("despawn-all.koukusaydon-arena");
+		else if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())
+			player->second.Clear_KoukuAssignedCard();
 		return;
 	}
 
@@ -4925,7 +5212,9 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 }
 
 void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
-	const std::string& instanceId)
+	const std::string& instanceId,
+	const float playbackSpeed, const float positionOffsetX,
+	const float positionOffsetY, const float positionOffsetZ, const std::uint32_t durationMs)
 {
 	using namespace LostArk::Shared;
 
@@ -4935,6 +5224,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 
 	S2C_WORLD_SEQUENCE_PLAY message{};
 	message.strSequenceInstanceId = instanceId;
+	message.iDurationMs = durationMs;
+	message.fPlaybackSpeed = playbackSpeed;
+	message.fPositionOffsetX = positionOffsetX;
+	message.fPositionOffsetY = positionOffsetY;
+	message.fPositionOffsetZ = positionOffsetZ;
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;
@@ -5667,6 +5961,8 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		{
 			session->Request_Close();
 		}
+		if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())
+			Apply_KoukuGateEntryCard(player->second, *existing);
 		return;
 	}
 	if (m_iNextNetEntityId == INVALID_NET_ENTITY_ID)
@@ -5692,6 +5988,8 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
+	if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())
+		Apply_KoukuGateEntryCard(player->second, m_WorldEntities.back());
 	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
 	if (!Send_WorldEntitySpawnResult(
 		session,
@@ -6057,6 +6355,17 @@ bool LostArk::Server::CGameRoom::Flush_KoukuSaydonPatternAuditionLifecycle()
 
 void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition()
 {
+	SERVER_WORLD_ENTITY* ledgerBoss = nullptr;
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (entity.iNetEntityId == m_KoukuSaydonPatternAudition.iBossEntityId)
+		{
+			ledgerBoss = &entity;
+			break;
+		}
+	}
+	CKoukuSaydonLogicRuntime::Discard(
+		m_KoukuSaydonPatternAudition.LogicLedger, m_Players, ledgerBoss);
 	m_KoukuSaydonPatternAudition = {};
 }
 #endif
@@ -6132,7 +6441,12 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(
 		const BOSS_PATTERN_DEFINITION* pattern =
 			CKoukuSaydonBrain::Find_AnimationOnlyPattern(
 				*pinnedCatalog, selectedPatternId, status);
-		if (nullptr == pattern || !m_KoukuSaydonBrain.Begin_Pattern(
+		const bool resetAdmitted = nullptr == pattern || !pattern->bResetBossToSpawn ||
+			(m_ServerNavigation.Is_PointWalkableExact(boss.fSpawnPositionX, boss.fSpawnPositionZ) &&
+			 std::isfinite(boss.fSpawnPositionY));
+		if (!resetAdmitted)
+			status = "KoukuSaydon spawn reset is not on the active navigation";
+		if (nullptr == pattern || !resetAdmitted || !m_KoukuSaydonBrain.Begin_Pattern(
 			boss, *pattern, m_KoukuSaydonPatternAudition.PinnedGameplayRevision,
 			serverTick, status))
 		{
@@ -6145,6 +6459,14 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(
 			Clear_KoukuSaydonPatternAudition();
 			return true;
 		}
+		if (pattern->bResetBossToSpawn)
+		{
+			boss.fPositionX = boss.fSpawnPositionX;
+			boss.fPositionY = boss.fSpawnPositionY;
+			boss.fPositionZ = boss.fSpawnPositionZ;
+		}
+		CKoukuSaydonLogicRuntime::Build(*pattern, boss, serverTick,
+			m_KoukuSaydonPatternAudition.LogicLedger);
 		m_KoukuSaydonPatternAudition.ePhase =
 			KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
 		Queue_KoukuSaydonPatternAuditionLifecycle(
@@ -6161,8 +6483,28 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(
 	const std::uint32_t occurrenceSequence = boss.iPatternSequence;
 	const std::uint32_t previousStageIndex = boss.iPatternStageIndex;
 	std::string status;
-	const KOUKUSAYDON_BRAIN_UPDATE_RESULT update =
-		m_KoukuSaydonBrain.Update(boss, *pinnedCatalog, serverTick, status);
+	KOUKUSAYDON_BRAIN_UPDATE_RESULT update = KOUKUSAYDON_BRAIN_UPDATE_RESULT::RUNNING;
+	{
+		/* Logic windows judge on the pattern clock before the brain advances
+		its stage, so a window ending on the completion tick is still judged. */
+		bool completedEarly = false;
+		std::string logicStatus;
+		const BOSS_PATTERN_DEFINITION* runningPattern =
+			CKoukuSaydonBrain::Find_AnimationOnlyPattern(
+				*pinnedCatalog, boss.strPatternId, logicStatus);
+		if (nullptr != runningPattern &&
+			m_KoukuSaydonPatternAudition.LogicLedger.Is_Active())
+		{
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(boss, *runningPattern,
+				m_KoukuSaydonPatternAudition.LogicLedger, m_Players, *pinnedCatalog,
+				pinnedCatalog->Find_KoukuMadnessPolicy(boss.strEncounterId),
+				serverTick, m_TickDamageEvents, output);
+			completedEarly = Apply_KoukuLogicOutput(output, boss, serverTick);
+		}
+		update = completedEarly ? KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED :
+			m_KoukuSaydonBrain.Update(boss, *pinnedCatalog, serverTick, status);
+	}
 	if (KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED == update)
 	{
 		Queue_KoukuSaydonPatternAuditionLifecycle(
@@ -6185,6 +6527,8 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(
 	if (KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED != update)
 		return true;
 
+	CKoukuSaydonLogicRuntime::Discard(
+		m_KoukuSaydonPatternAudition.LogicLedger, m_Players, &boss);
 	Queue_KoukuSaydonPatternAuditionLifecycle(
 		completedPatternId, occurrenceSequence, previousStageIndex,
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED);
@@ -10221,6 +10565,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentMadness = player.iCurrentMadness;
 		snapshot.iMaximumMadness = player.iMaximumMadness;
 		snapshot.eMadnessForm = player.eMadnessForm;
+		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
+		snapshot.eMechanicCardColor = player.eMechanicCardColor;
+		snapshot.eKoukuHudMode = player.eKoukuHudMode;
+		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
+			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
 		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.isPatternBound = player.bPatternBound;
@@ -10266,6 +10615,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.fYawDegrees = entity.fYawDegrees;
 		snapshot.iActionStartTick = entity.iActionStartTick;
 		snapshot.iPatternSequence = entity.iPatternSequence;
+		snapshot.iPatternStartTick = entity.iPatternStartTick;
 		snapshot.iPatternStageIndex = entity.iPatternStageIndex;
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
@@ -10552,13 +10902,16 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 				return BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP == pattern.Finale.eKind &&
 					pattern.Finale.strGhostArchetypeId == staged.strArchetypeId;
 			});
-		if (isDependentArchetype !=
+		const bool isKoukuClone = LostArk::Shared::INVALID_NET_ENTITY_ID != ownerBossNetEntityId &&
+			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+			staged.strArchetypeId.starts_with(KOUKUSAYDON_ARENA_BOSS_ARCHETYPE_PREFIX);
+		if ((isDependentArchetype || isKoukuClone) !=
 			(LostArk::Shared::INVALID_NET_ENTITY_ID != ownerBossNetEntityId))
 		{
 			m_strStatus = "Boss archetype requires its declared primary/dependent spawn role";
 			return false;
 		}
-		if (isDependentArchetype)
+		if (isDependentArchetype || isKoukuClone)
 		{
 			const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 				[ownerBossNetEntityId](const SERVER_WORLD_ENTITY& candidate)
@@ -10573,8 +10926,14 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 				return false;
 			}
 			const bool ownerRunsFinale = std::any_of(patterns->begin(), patterns->end(),
-				[&owner, &staged](const BOSS_PATTERN_DEFINITION& pattern)
+				[&owner, &staged, isKoukuClone](const BOSS_PATTERN_DEFINITION& pattern)
 				{
+					if (isKoukuClone)
+						return pattern.strPatternId == owner->strPatternId &&
+							owner->strArchetypeId == staged.strArchetypeId &&
+							std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
+								[](const BOSS_PATTERN_MECHANIC_TRIGGER& trigger)
+								{ return BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind; });
 					const bool directFinaleOccurrence =
 						pattern.strPatternId == owner->strPatternId;
 					const bool phaseThreeFinaleController =
@@ -10633,13 +10992,19 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 			KoukuSaydon gate bosses up to 2.8 m on that area's 4 m grid, onto
 			the fixed player position the gate teleports to. Off-grid or
 			blocked placements still project to the nearest walkable cell. */
+			/* Big Saydon stands above the G2 floor. Its saved transform owns
+			the height while navigation still admits its XZ footprint. */
+			const bool preserveAuthoredHeight =
+				LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+				staged.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
 			SERVER_NAV_POINT projected{};
 			if (m_ServerNavigation.Is_PointWalkableExact(
 					staged.fPositionX, staged.fPositionZ) &&
 				m_ServerNavigation.Sample_Position(
 					staged.fPositionX, staged.fPositionZ, projected))
 			{
-				staged.fPositionY = projected.y;
+				if (!preserveAuthoredHeight)
+					staged.fPositionY = projected.y;
 			}
 			else if (m_ServerNavigation.Project_Point(
 				staged.fPositionX,
@@ -10647,7 +11012,8 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 				projected))
 			{
 				staged.fPositionX = projected.x;
-				staged.fPositionY = projected.y;
+				if (!preserveAuthoredHeight)
+					staged.fPositionY = projected.y;
 				staged.fPositionZ = projected.z;
 			}
 			else
@@ -13272,6 +13638,11 @@ bool LostArk::Server::CGameRoom::Activate_Encounter(
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
 	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		Apply_KoukuGateEntryCard(player, m_WorldEntities.back());
+	}
 	return true;
 }
 
@@ -14015,10 +14386,16 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		roster owns the summon, this block only releases the caster once the
 		call clip has run out. Signed difference keeps ordering across a
 		wrapped tick counter. */
-		if (LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST ==
-				player.eAction &&
+		const bool estherCastElapsed =
+			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
-				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0)
+				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0;
+		/* A KoukuSaydon interaction press is the same kind of fixed lock. */
+		const bool interactionElapsed =
+			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
+			static_cast<std::int32_t>(updateTick -
+				(player.iActionStartTick + KOUKU_INTERACTION_TICKS)) >= 0;
+		if (estherCastElapsed || interactionElapsed)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -14899,7 +15276,7 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 	};
 	for (auto child = m_WorldEntities.begin(); child != m_WorldEntities.end();)
 	{
-		if (INVALID_NET_ENTITY_ID == child->iOwnerBossNetEntityId)
+		if (INVALID_NET_ENTITY_ID == child->iOwnerBossNetEntityId || child->bKoukuGazeClone)
 		{
 			++child;
 			continue;
@@ -15155,12 +15532,157 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 	return true;
 }
 
+#ifdef _DEBUG
+void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	// This executes outside the world iteration: vector growth cannot invalidate a boss reference.
+	for (const auto& pending : m_PendingKoukuMechanicTriggers)
+	{
+		auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[&pending](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == pending.iBossEntityId; });
+		if (owner == m_WorldEntities.end() || owner->strPatternId.empty() ||
+			owner->iPatternSequence != pending.iPatternSequence || 0u == owner->iCurrentHp)
+			continue;
+		const auto& trigger = pending.Trigger;
+		const CGameplayCatalog* catalog = m_GameplayCatalog.Resolve(owner->PinnedDefinitionRevision);
+		std::string status;
+		const BOSS_PATTERN_DEFINITION* clonePattern = nullptr == catalog ? nullptr :
+			CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, trigger.strClonePatternId, status);
+		if (nullptr == clonePattern || trigger.ClockHours.size() != 3u ||
+			std::find(clonePattern->AuditionBossArchetypeIds.begin(), clonePattern->AuditionBossArchetypeIds.end(),
+				owner->strArchetypeId) == clonePattern->AuditionBossArchetypeIds.end())
+		{
+			m_strStatus = "KoukuSaydon teleport preserved the boss: clone pattern/body is unavailable: " + status;
+			continue;
+		}
+		const float dx = trigger.fTeleportX - owner->fSpawnPositionX;
+		const float dz = trigger.fTeleportZ - owner->fSpawnPositionZ;
+		const float radius = std::sqrt(dx * dx + dz * dz);
+		if (!std::isfinite(radius) || radius <= 0.01f ||
+			(m_ServerNavigation.Is_Loaded() &&
+			 !m_ServerNavigation.Is_PointWalkableExact(trigger.fTeleportX, trigger.fTeleportZ)))
+		{
+			m_strStatus = "KoukuSaydon teleport preserved the boss: target is not walkable";
+			continue;
+		}
+		const float anchor = std::atan2(dx, dz);
+		std::vector<SERVER_WORLD_ENTITY> clones;
+		NET_ENTITY_ID nextId = m_iNextNetEntityId;
+		bool admitted = true;
+		for (const std::uint32_t hour : trigger.ClockHours)
+		{
+			const float angle = anchor + static_cast<float>(hour - 1u) * 0.52359877559829887f;
+			WORLD_BOOTSTRAP_PLACEMENT placement{};
+			placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			placement.strPlacementId = owner->strPlacementId + ".gaze." +
+				std::to_string(owner->iPatternSequence) + "." + std::to_string(hour);
+			placement.strArchetypeId = owner->strArchetypeId;
+			placement.strEncounterId = owner->strEncounterId;
+			placement.fPositionX = owner->fSpawnPositionX + std::sin(angle) * radius;
+			placement.fPositionY = trigger.fTeleportY;
+			placement.fPositionZ = owner->fSpawnPositionZ + std::cos(angle) * radius;
+			placement.fYawDegrees = std::atan2(owner->fSpawnPositionX - placement.fPositionX,
+				owner->fSpawnPositionZ - placement.fPositionZ) * 57.29577951308232f + trigger.fFaceCenterYawOffsetDegrees;
+			SERVER_WORLD_ENTITY clone{};
+			if (INVALID_NET_ENTITY_ID == nextId ||
+				(m_ServerNavigation.Is_Loaded() && !m_ServerNavigation.Is_PointWalkableExact(
+					placement.fPositionX, placement.fPositionZ)) ||
+				!Build_WorldEntity(placement, nextId, clone, catalog, owner->iNetEntityId))
+			{
+				admitted = false;
+				break;
+			}
+			// Static placement admission projects to cell centres; retain this admitted exact circle.
+			clone.fPositionX = clone.fSpawnPositionX = placement.fPositionX;
+			clone.fPositionY = clone.fSpawnPositionY = placement.fPositionY;
+			clone.fPositionZ = clone.fSpawnPositionZ = placement.fPositionZ;
+			clone.fYawDegrees = placement.fYawDegrees;
+			clone.bKoukuGazeClone = true;
+			clone.iKoukuCloneOwnerSequence = owner->iPatternSequence;
+			clone.iKoukuCloneEndTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick,
+				CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+			clone.PinnedDefinitionRevision = owner->PinnedDefinitionRevision;
+			if (!m_KoukuSaydonBrain.Begin_Pattern(clone, *clonePattern,
+				owner->PinnedDefinitionRevision, serverTick, status))
+			{
+				admitted = false;
+				break;
+			}
+			std::vector<std::uint8_t> payload;
+			if (!Build_WorldEntitySpawnedPayload(clone, payload))
+			{
+				admitted = false;
+				break;
+			}
+			clones.push_back(std::move(clone));
+			++nextId;
+		}
+		if (!admitted || clones.size() != 3u)
+		{
+			m_strStatus = "KoukuSaydon teleport preserved all actors: clone admission failed: " + status;
+			continue;
+		}
+		const auto ownerIndex = static_cast<std::size_t>(std::distance(m_WorldEntities.begin(), owner));
+		m_WorldEntities.reserve(m_WorldEntities.size() + clones.size());
+		auto& committedOwner = m_WorldEntities[ownerIndex];
+		committedOwner.fPositionX = trigger.fTeleportX;
+		committedOwner.fPositionY = trigger.fTeleportY;
+		committedOwner.fPositionZ = trigger.fTeleportZ;
+		committedOwner.fYawDegrees = std::atan2(-dx, -dz) * 57.29577951308232f + trigger.fFaceCenterYawOffsetDegrees;
+		for (auto& clone : clones)
+		{
+			m_WorldEntities.push_back(std::move(clone));
+			Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+		}
+		m_iNextNetEntityId = nextId;
+		m_strStatus = "KoukuSaydon real boss teleported; three inward-facing clones started";
+	}
+	m_PendingKoukuMechanicTriggers.clear();
+}
+
+void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serverTick)
+{
+	for (auto clone = m_WorldEntities.begin(); clone != m_WorldEntities.end();)
+	{
+		if (!clone->bKoukuGazeClone)
+		{
+			++clone;
+			continue;
+		}
+		const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+			[&clone](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == clone->iOwnerBossNetEntityId; });
+		bool live = owner != m_WorldEntities.end() && !owner->strPatternId.empty() &&
+			owner->iPatternSequence == clone->iKoukuCloneOwnerSequence && owner->iCurrentHp > 0u &&
+			!CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, clone->iKoukuCloneEndTick);
+		const auto* catalog = m_GameplayCatalog.Resolve(clone->PinnedDefinitionRevision);
+		if (live && nullptr != catalog && !clone->strPatternId.empty())
+		{
+			std::string status;
+			const auto result = m_KoukuSaydonBrain.Update(*clone, *catalog, serverTick, status);
+			live = KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION != result &&
+				KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD != result;
+		}
+		if (live)
+		{
+			++clone;
+			continue;
+		}
+		Broadcast_WorldEntityDespawned(clone->iNetEntityId);
+		clone = m_WorldEntities.erase(clone);
+	}
+}
+#endif
+
 void LostArk::Server::CGameRoom::Update_WorldEntities(
 	const float fixedDeltaSeconds)
 {
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+#ifdef _DEBUG
+	Update_KoukuGazeClones(updateTick);
+#endif
 	if (!Update_DependentBosses(updateTick))
 	{
 		Mark_RuntimeFailure("world-update.dependent-bosses-before-primary");
@@ -15179,6 +15701,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	Update_PendingEstherSummons(fixedDeltaSeconds);
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
+		if (entity.bKoukuGazeClone)
+			continue;
 		if (entity.isEstherSummon)
 		{
 			/* The clip carries its own entrance and exit; the room only clocks
@@ -16130,6 +16654,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
 		iter = m_WorldEntities.erase(iter);
 	}
+#ifdef _DEBUG
+	Commit_KoukuMechanicTriggers(updateTick);
+#endif
 	if (!Update_DependentBosses(updateTick))
 		Mark_RuntimeFailure("world-update.dependent-bosses-after-primary");
 }

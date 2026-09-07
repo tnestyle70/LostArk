@@ -949,16 +949,152 @@ Save를 막지 않으며 저장된 source ID와 revision 문자열을 보존한�
 DRAFT Pattern은 원본의 긴 기획 Action을 담을 수 있도록 최대 1,024 Stage를 허용하며
 Pattern 전체 600초 제한은 유지한다. PRODUCT는 기존 64 Stage 제한을 유지한다.
 
-`PRODUCT` 투영과 Server 재생은 현재 Gate 1 몸체 `MN_RPCZ_00` Pattern만 지원한다.
-Saydon과 Large Saydon의 DRAFT 저장이 Gate 1 boss를 다른 모델로 바꾸지는 않는다.
+`PRODUCT` 투영은 실제 Kouku Arena boss catalog/placement에 연결된 몸체를 확인한다.
+현재 Gate 1 Kouku와 Saydon Pattern을 Server가 각 대상 archetype으로 재생한다.
+다른 몸체의 DRAFT 저장만으로 실제 boss archetype을 바꾸지는 않는다.
 기존 publisher의 runtime timing 제한과 검증 후 명시적 배포 절차를 유지한다.
 
 대형 이름 Action의 로컬 preview는 현재 Client가 읽은 BossCatalog의 대형 세이튼
 `bodyModelPreScale / 0.017` 비율을 사용하고 일반 동작/정지 시 기준 크기로 복원한다.
-현재 `0.1 / 0.017`이며, 무기도 catalog의 `weaponModelPreScale`과 v8
-`weaponModelPreRotationDegrees`를 사용한다. 저장한 catalog 값은 다음 Client 실행에서 로드한다.
+현재 저장된 catalog 값으로 비율을 계산하며, 무기도 catalog의 `weaponModelPreScale`과 v8
+`weaponModelPreRotationDegrees`를 사용한다. Arena Boss Tuning에서 조절한 현재 body/weapon scale과
+weapon rotation도 다음 preview에 적용한다. G2 Kouku scale과 G2 Big Saydon position/yaw는
+기존 Save Tuning에 포함된다. 저장한 catalog 값은 다음 Client 실행에서 로드한다.
+Big Saydon 위치/yaw는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`에 저장하므로
+`Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Publish` 후 Server를 재시작해야 반영된다.
+G2 Big Saydon의 저장 Y는 Server 생성·spawn 복귀에서 유지하며 XZ navigation 검사는 계속 수행한다.
+다른 보스의 navigation 높이 처리는 변경하지 않는다.
 Large Saydon의 오른손 `b_wp_1`에는
 기존 `Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel`을 부착한다.
 무기 자체 skeleton과 대응 clip을 source seconds로 동기화하고, 대응이 없으면 bind pose를 쓴다.
 필요한 물리 폴더는 `Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06`이며
 모델과 인접 texture는 팀 Drive Resources 입력으로 전달한다. preview는 Server boss를 바꾸지 않는다.
+
+### 17.5 Clown과 Composition WORLD
+
+Animation Resources의 `MN_RPCZ_00-1`은 변신 플레이어의 실제 100본·28클립 CModel을 읽는다.
+원본 23클립에 보스의 춤 4개와 원본 망치 action 56411을 대상 골격으로 오프라인 보정한 5클립을
+추가했다. `project_tuned` 클립은 사용자 자세 확인 전이며 원작 동일 재현으로 승인하지 않는다.
+mode/index 바인딩은 `Data/Animation/Authored/KoukuSaydon/Clown.interactionbindings.json`이다.
+Dance Q/W/E/R은 양팔 모으기/슈퍼맨/양팔 벌리기/한 다리 올리기이고 각 clip은 3초다.
+Clown body admission scale은 `0.017 × 0.709`다. 프라이팬으로 확인된 별도 `IT_GSTFP_00`
+장착 part는 ClownSpec에서 제외했다. 본체 mesh와 망치 몸동작 clip은 보존하며 본체의 단일 submesh를
+숨기지 않는다. 전달 대상 본체 폴더는 `Client/Bin/Resources/Character/KoukuSaton/MN_RPCZ_00-1`이다.
+
+Kouku Composition Play/seek/Stop은 기존 `CWorldSequencePlayer`의 로컬 clock을 공유한다.
+WORLD box의 `Lifetime ms`는 실제 표시 수명이다. sequence의 동작 속도는 Playback speed가 정하고,
+box 종료 시 동적 object를 제거하고 원래 placement를 복구한다. Server WORLD cue의 `durationMs`도
+같은 값을 전달하며 0인 기존 호출은 sequence 자체의 길이를 사용한다.
+`positionOffset`은 재생 중에만 적용하고 Stop에서 원래 placement를 복구한다.
+Dance/Roulette의 `resetBossToSpawn`은 Server 패턴 시작 때 적용된다. WORLD 앵커와 Collider도
+같은 실제 placement TRS를 사용한다. 룰렛은 단일 transform track에 회전·감속·정지·짧은 재회전을
+네 회차로 저작하고 speed 1로 샘플한다. 모든 판정 창은 WORLD 표시 수명 안에 있어야 한다.
+저작 값은 단일 Composition 정본에 저장하고 명시 publish 후 Server를 재시작한다.
+
+F1 Tools → World Object Tool에서 카드·조커카드·공·세토·칼날·갈고리·빙고폭탄·빙고와
+기존 커튼·룰렛을 편집한다. Object Resources는 왼쪽, Object Sequencer는 아래, Object Detail은 오른쪽의 독립 창이다.
+Resources의 Map/Character 분류와 Create의 anchor는 resource.anchorKind(WORLD/PLAYER)에 저장하고 상태 생성에 사용한다.
+Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
+Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
+상대 경로만 저장한다. 카드의 들썩임·뒤집힘은 별도 named state로 두되 같은 모델을 공유한다.
+왼쪽 저장 트리에서 Create Object로 이름을 입력하고 생성한 항목을 선택한다. 같은 Resources 창 아래의
+원본 모델·Animation 목록에서 클립을 골라 Append하면 선택한 Object의 모델과 animation track에 연결된다.
+아래 Sequencer에서 재생하고 오른쪽 Detail에서 편집한 뒤 Save한다. 원본 클립 전체를 저장 상태로
+자동 복제하지 않으며, 목록은 기존 WModel decoder로 물리 모델에서 직접 읽는다.
+Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
+count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
+마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
+살아 있는 복제 플레이어마다 적용되고 Map은 저작 위치에 고정된다. Object Tool의 Preview at Character는
+모델 상태의 Map preview만 현재 캐릭터 위치로 옮기고 저장 위치와 커튼/룰렛 배치는 유지한다.
+
+`Save` → `Publish Area` 후 Action Workbench → Resources → World에서 상태를 선택해
+Append한다. Save는 source와 연결 placement의 외부 변경을 검사하고, Publish 성공 뒤 runtime을
+다시 읽는다. 문서 정본은 Area `.worldsequences.json` v3이며 기존 World sequence와 sampler를 확장한다.
+커튼/룰렛은 기존 sequence ID를 가리키므로 Object Detail의 편집이 원래 상태를 갱신한다.
+Effect의 기존 WORLD anchor는 살아 있는 단일 object의 pose를 조회할 수 있다. 복수 object의
+각 입자에 자동으로 effect를 붙이는 별도 이벤트 저작은 아직 제공하지 않는다.
+이 도구는 Client 표현을 저작하며 gameplay collision/damage를 판정하지 않는다.
+
+### 17.6 Composition Resources·독립 효과·Collider 판정 연결
+
+Resources는 실제 V2 group/leaf, Sound catalog, Camera shot, Scene Profile, WORLD 목록과
+Collider 정의를 읽는다. 선택한 항목을 Preview하거나 Append하고 Sequencer의 Box Detail에서
+시간과 배치 값을 편집한다. optional `presentationResources/presentationOccurrences`는 기존
+Composition parse → validate → stage → Save/Reload/CAS 경로를 사용한다. WORLD와
+SCENE_PROFILE은 기존 정의·배치를 유지한다. 다른 pattern의 잘못된 row는 격리하고 정상 row의 저장을 유지한다.
+
+| 소유 데이터 | Box Detail 및 런타임 소비 |
+|---|---|
+| resourceId/displayName/kind/assetId | 안정적인 리소스 정의이며 EFFECT는 GROUP/LEAF를 구분 |
+| occurrenceId/resourceId/startMs/durationMs | pattern 시간에 배치된 독립 instance와 수명 |
+| positionOffset/rotationDegrees/scale/followBoss/bone | box별 transform과 owner/bone 추적 |
+| fadeInMs/fadeOutMs/dissolveStart/dissolveEnd | V2 runtime clone별 alpha/dissolve override |
+| volume | 해당 Sound channel의 volume override |
+| Collider shape/halfExtents/radiusM/halfAngleDegrees/colliderKind | 재사용 geometry와 명시적 판정 지역 용도 |
+| Collider regionId/cardSymbol/cardColor/anchorKind/worldId/logicOccurrenceId | 배치별 카드와 앵커, 기존 Logic box 연결 |
+| Collider debugRender | 기본 true의 debug wire 표시 스위치이며 gameplay 판정을 끄지 않음 |
+| WORLD companionEffectResourceId / EFFECT worldOccurrenceId | 같은 Composition EFFECT 정의 및 같은 pattern WORLD box 연결, Preview/Append 동반 배치 |
+| LIGHT assetId/defaultAnchorKind | LightResources catalog 또는 해당 Area v2 map light의 stable ID. 색·cone을 Composition에 복제하지 않음 |
+| LIGHT anchorKind/brightnessMultiplier | MAP 고정 world 위치, PLAYER 같은 방에 존재하는 복제 캐릭터마다 1개, BOSS 현재 pattern 소유자. 수명·fade·밝기 배율 적용 |
+
+조명 저작은 F1 Tools → Rendering Workbench의 Level 선택 후 독립 Light Resources에서 한다.
+Create Light와 All Lights는 Map Profile / Scene Profile / Anchor Light로 나누며 Anchor Light 아래에 Map/Character/Boss가 있다.
+Light Detail과 품질 전용 Rendering Workbench는 별도 창이고, 아래 Light Sequencer에서 Play/Pause/Seek/Stop한다.
+Scene/Map preview 종료 시 이전 상태를 복구한다. 단일 Character 리소스 audition은 로컬 캐릭터를 사용하고,
+Composition preview와 Server Product는 같은 방의 Server snapshot에 존재하는 모든 캐릭터에게 조명을 적용한다.
+Character/Boss 리소스는 Save Light → Publish Light로 LightResources runtime을 배포하고,
+Action Workbench → Resources → Light에서 선택 → Append selected Light로 패턴에 놓는다.
+같은 위치의 맵 조명을 패턴에서 재사용할 때는 해당 v2 map light ID를 참조한다. Map 고정 조명은 기존 Layer 수명을,
+Append한 조명은 box 수명을 따르므로 중첩 배치가 필요하지 않으면 맵 원본의 enabled를 끈다.
+Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이나 Server gameplay 판정을 추가하지 않는다.
+패턴의 Scene Profile은 Level base qualityOverride를 상속하므로 쿠크 전용 품질 튜닝이 패턴 전환으로 사라지지 않는다.
+씬프로필_암전은 기존 scene.kakulsaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
+이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
+
+`dissolveStart/dissolveEnd`는 정규화 수명 내 dissolve-out 시작/종료 시점이며
+`0 <= start < end <= 1`이다. Fade 0은 추가 occurrence fade 없이 원본 leaf의 alpha/dissolve 곡선을
+유지한다. 양수 Fade In/Out은 해당 원본 곡선을 덮어쓰며 dissolveStart/End는 양수 Fade Out에 적용한다.
+box 편집은 전역 group/leaf 디자인을 바꾸지 않는다.
+Particle LEAF의 box는 잔향을 포함한 표시 창이고 emitter 수명/loop는 Source Effect 값을 사용한다.
+방패·메시 효과의 box 수명 override는 유지한다.
+무력화는 작업자의 `boss.kouku.disarm` 그룹 21개 child(방패 2개·별·연기·데칼 등)를 개별 LEAF box로
+연결한다. 방패 Logic 창 5263~15947ms 안에서 원본 child의 시작 offset을 유지하며 Sequencer에서
+각 항목을 편집한다. 그룹 자체를 함께 재생하지 않는다. leaf 디자인 수정은 그대로 소비하지만 그룹의
+배치/시간 변경은 해당 Composition box와 다시 맞춰야 한다. 앞/뒤 방패는 boss pivot과 같은 중심·방향의
+SECTOR collider 2개를 STAGGER_WINDOW Logic에 연결하며 Server가 반사 방향을 판정한다.
+진짜 하트 3 box와 가짜 별 3 box도 각 소유 pattern에 배치했다. 이관 후
+`MN_RPCT_05.effectv2bindings.json`의 방패·별 row는 제거하여 두 경로가 동시에 재생되지 않는다.
+
+`CKoukuSaydonPresentationPlayer`는 명시 publish한 Product `patterns[]`와 snapshot pattern clock을
+소비한다. GROUP/LEAF는 기존 V2 runtime의 같은 group handle로 추적하고 Sound/Camera도 기존
+서비스의 독립 handle을 사용한다. Play/seek/pause/Stop은 Preview clock과 함께 움직이며 owner 종료 때
+자기 instance만 정리한다. Scene Profile은 즉시 적용/복원한다. blendMs 시간 보간은 현재 범위가 아니다.
+G1 카드 8종은 Server의 문양·색 snapshot을 따라 머리 위에 지속 표시하고 NONE/owner 종료 때 정리한다.
+
+룰렛 Collider는 `ROULETTE_CARD_REGION`으로 정의한다. 각 box의 `logicOccurrenceId`로 한 판정 창의
+8개 지역을 기존 DURATION에 연결하고 RESULT를 공유한다. 3회차의 24 box에서 각 창과 문양·색은
+배치가 소유한다. `anchorKind=WORLD`는 worldId로 실제 sequence instance를 resolve하고 Product의
+`worldSequenceInstanceId`로 실제 placement TRS를 찾는다. Server는 창 종료 tick의 XZ 포함과
+카드 문양·색 일치를 판정하며 Client Collider Preview는 `CHitAreaWire` debug mirror다.
+일반 영역은 `CIRCLE`도 지원한다. DURATION `AREA_OVERLAP`의 `insideOutcome=SUCCESS|FAIL`이
+안쪽 플레이어에게 실행할 기존 결과 슬롯을 정하고, 바깥은 Timeout을 사용한다. 네 번째 룰렛 창은
+카드 지역 24개와 별개인 WORLD Circle 1개를 기존 Duration/Fail 결과에 연결한다.
+TRIGGER `ENTER_AREA`는 최초 진입 Success, 미진입 Timeout을 사용한다. 피해는 기존
+`MAX_HP_PERCENT_DAMAGE` RESULT의 최대 HP %이며 Trigger와 함께 원자 생성·재사용한다.
+WORLD entry는 같은 pattern의 WORLD box와 단일 실제 MAP_PLACEMENT TRS/key를 Server tick에서
+샘플한다. 잘못된 binding·transform과 WORLD 수명을 벗어난 판정 창은 publisher가 거부한다.
+
+Box Detail의 `debugRender`는 현재 preview/runtime debug wire에 즉시 반영한다. 단독 Collider
+Preview는 마지막 유효 시점에 머물며 source draft generation이 바뀌면 선택과 clock에서 다시 stage한다.
+WORLD의 `companionEffectResourceId`는 World Preview/Append 때 EFFECT를 함께 준비하는 정의
+참조다. 배치된 EFFECT의 `worldOccurrenceId`가 대상 WORLD box를 명시하며, 제품은 Effect lane에
+저장한 box만 실행한다. 동반 box의 시간·속성은 독립 편집할 수 있다.
+
+전체화면 커튼 leaf는 `boss.kouku.curtain_1`이다. Effect V2 `TexturedOverlay`가 기존 screen overlay
+pass로 Base DDS를 합성하고 normalized 위치 start/hold/end와 enterEnd/exitStart로 이동한다.
+이 profile은 opacity/alpha envelope를 사용하며 texture dissolve를 사용하지 않는다.
+필수 자산은 `Effect/KoukuSaydon/Screen/fx_d_symbol_100_ycl.dds`, 물리 폴더는
+`Client/Bin/Resources/Effect/KoukuSaydon/Screen`이다. 원본 재질/텍스처 연결과 프로젝트 이동곡선을
+구분하고 사용자 육안 승인 전 원작 동일 재현으로 표기하지 않는다. 전달/검증 상태는 대응 RESULT를 따른다.
+사용자가 Collider와 바닥 UV의 일치, 카드 표시, 포즈 및 효과 방향·타이밍을 직접 확인해야 하며
+agent의 데이터 parse/컴파일 성공을 visual PASS로 사용하지 않는다.

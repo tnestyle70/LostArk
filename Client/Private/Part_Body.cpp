@@ -46,6 +46,15 @@ bool_t CPart_Body::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return m_pModelCom->Set_Animation(pClipName, isLoop);
 }
 
+bool_t CPart_Body::Try_Get_PresentationRootMatrix(float4x4_t* pOutWorld) const
+{
+	if (nullptr == pOutWorld || nullptr == m_pTransformCom || nullptr == m_pParentMatrix)
+		return false;
+	XMStoreFloat4x4(pOutWorld,
+		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) * XMLoadFloat4x4(m_pParentMatrix));
+	return true;
+}
+
 void CPart_Body::Priority_Update(f32_t fTimeDelta)
 {
 }

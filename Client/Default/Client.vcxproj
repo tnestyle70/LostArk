@@ -112,6 +112,7 @@
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
 	<ClInclude Include="..\Public\KoukuSaydonPresentationAssetService.h" />
+	<ClInclude Include="..\Public\KoukuSaydonPresentationPlayer.h" />
 	<ClInclude Include="..\Public\MonsterPresentationContract.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
@@ -319,6 +320,7 @@
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
@@ -557,6 +559,8 @@
 	<None Include="..\..\Data\Encounters\KoukuSaydon\KoukuSaydonEncounter.json" />
 	<None Include="..\..\Data\KoukuSaydon\Gate1\KoukuSaydonComposition.json" />
 	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json" />
+    <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
@@ -935,4 +939,29 @@
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\ArenaCameraProfile.h" />
+    <ClCompile Include="..\Private\ArenaCameraProfile.cpp" />
+    <None Include="..\..\Data\Camera\CharacterSelect.camera.json" />
+    <None Include="..\..\Data\Camera\KoukuSaydon.camera.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\LightResourceCatalog.h" />
+    <ClCompile Include="..\Private\LightResourceCatalog.cpp" />
+    <ClInclude Include="..\Public\AreaLightAuthoringSession.h" />
+    <ClCompile Include="..\Private\AreaLightAuthoringSession.cpp" />
+    <ClCompile Include="..\Private\MainApp_RenderingLighting.cpp" />
+    <None Include="..\..\Data\Rendering\Authored\LightResources.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.maplights.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\WorldSequenceObject.cpp" />
+    <ClCompile Include="..\Private\WorldSequencePlayer_Objects.cpp" />
+    <ClCompile Include="..\Private\Level_KakulSaydonArena_WorldObjects.cpp" />
+    <ClCompile Include="..\Private\WorldObjectTool.cpp" />
+    <ClCompile Include="..\Private\PhysicalResourceCatalog.cpp" />
+    <ClInclude Include="..\Public\WorldSequenceObject.h" />
+    <ClInclude Include="..\Public\WorldObjectTool.h" />
+    <ClInclude Include="..\Public\PhysicalResourceCatalog.h" />
+  </ItemGroup>
 </Project>

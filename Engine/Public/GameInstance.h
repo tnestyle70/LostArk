@@ -53,6 +53,11 @@ public: /* For.Input_Device */
 #ifdef _WIN64
 public: /* For.Sound_Manager */
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
+	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u);
+	void Pause_SoundCue(uint64_t handle, bool_t paused);
+	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
+	void Stop_SoundCue(uint64_t handle);
+
 	HRESULT Play_LoopingSound(const wstring_t& strSoundFilePath, f32_t fVolume);
 	void Stop_LoopingSound();
 	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,

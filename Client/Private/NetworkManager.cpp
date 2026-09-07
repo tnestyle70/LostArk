@@ -1454,6 +1454,47 @@ bool CNetworkManager::Send_DebugSetMadnessForm(
 		writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
+ LostArk::Shared::INTERACTION_SLOT slot)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_INTERACTION_SLOT message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eSlot = slot;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_INTERACTION_SLOT, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugKoukuHudMode(std::uint32_t sequence,
+ LostArk::Shared::KOUKU_HUD_MODE mode)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_SET_KOUKU_HUD_MODE message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eMode = mode;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_DebugKoukuHudModeResult(
+ LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result)
+{
+ if (m_DebugKoukuHudModeResults.empty()) return false;
+ result = m_DebugKoukuHudModeResults.front();
+ m_DebugKoukuHudModeResults.pop_front();
+ return true;
+}
+
 bool CNetworkManager::Try_Consume_DebugMadnessFormResult(
 	LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result)
 {
@@ -2213,6 +2254,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugTeleportResults.clear();
 	m_DebugMarioJumpResults.clear();
 	m_DebugMadnessFormResults.clear();
+	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	m_CharacterClassChangeResults.clear();
 	m_ValtanAuditionResults.clear();
@@ -3417,6 +3459,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_DebugMarioJumpResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+	{
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugKoukuHudModeResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{ Fail_Protocol(WSAENOBUFS); return; }
+		m_DebugKoukuHudModeResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:

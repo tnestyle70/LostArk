@@ -4,7 +4,7 @@
   "effectId": "boss.kouku.disarm.converge_1",
   "effectType": "Mesh",
   "slots": {
-    "mesh": "Effect/KakulSaydon/Meshes/fx_sm_00/fm_a_cylinder_002.wmodel",
+    "mesh": "Effect/KoukuSaydon/Meshes/fx_sm_00/fm_a_cylinder_002.wmodel",
     "base": "Effect/Esther/Thirain/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
     "noise": "",
     "mask": "Effect/Esther/Thirain/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",

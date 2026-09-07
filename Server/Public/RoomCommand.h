@@ -29,6 +29,8 @@ namespace LostArk::Server
 		DEBUG_MARIO_JUMP,
 		MARIO_MOVE,
 		DEBUG_SET_MADNESS_FORM,
+		INTERACTION_SLOT,
+		DEBUG_SET_KOUKU_HUD_MODE,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
@@ -86,6 +88,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_MARIO_JUMP DebugMarioJump;
 		LostArk::Shared::C2S_MARIO_MOVE MarioMove;
 		LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM DebugSetMadnessForm;
+		LostArk::Shared::C2S_INTERACTION_SLOT InteractionSlot;
+		LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE DebugSetKoukuHudMode;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;

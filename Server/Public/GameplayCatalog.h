@@ -581,6 +581,157 @@ namespace LostArk::Server
 		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 	};
 
+	/* KoukuSaydon Logic window kinds. End-tick kinds judge every player once
+	when the window closes (Success or Fail); STAGGER_WINDOW is boss-level and
+	continuous (Success early or Timeout); POSE_INPUT is continuous per player
+	(Success/Fail on the first answer, Timeout without one). */
+	enum class BOSS_PATTERN_LOGIC_KIND : std::uint8_t
+	{
+		ROULETTE_CARD_MATCH,
+		GAZE_REAL_BOSS,
+		POSE_INPUT,
+		STAGGER_WINDOW,
+		AREA_OVERLAP,
+		ENTER_AREA
+	};
+
+	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
+	{
+		NONE,
+		INSTANT_DEATH,
+		MAX_HP_PERCENT_DAMAGE,
+		MADNESS_GAUGE_ADD_PERCENT,
+		CLOWN_TRANSFORM,
+		FOLLOWUP_PATTERN
+	};
+
+	struct BOSS_PATTERN_LOGIC_RESULT final
+	{
+		BOSS_PATTERN_LOGIC_RESULT_KIND eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::NONE;
+		std::uint32_t iPercent = 0u;
+		std::uint32_t iDurationMs = 0u;
+		std::string strPatternId;
+	};
+
+	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
+	like the Workbench box it came from. Which value fields are meaningful is
+	decided by eKind; the rest stay at their zero defaults. */
+	enum class BOSS_LOGIC_REGION_ANCHOR : std::uint8_t { WORLD, BOSS_CURRENT, BOSS_SPAWN };
+	struct BOSS_LOGIC_WORLD_TRANSFORM_KEY final
+	{
+		std::uint32_t iTimeMs = 0u;
+		float fOffsetX = 0.f, fOffsetY = 0.f, fOffsetZ = 0.f;
+		float fRotationY = 0.f, fRotationW = 1.f;
+		float fScaleX = 1.f, fScaleY = 1.f, fScaleZ = 1.f;
+		bool bVisible = true;
+	};
+	struct BOSS_LOGIC_WORLD_TRANSFORM_TRACK final
+	{
+		bool bEnabled = false;
+		std::uint32_t iStartMs = 0u, iStartDelayMs = 0u, iDurationMs = 0u;
+		float fPlaybackSpeed = 1.f;
+		bool bSmoothStep = false;
+		float fBaselineX = 0.f, fBaselineY = 0.f, fBaselineZ = 0.f;
+		float fBaselineYawDegrees = 0.f;
+		float fBaselineScaleX = 1.f, fBaselineScaleY = 1.f, fBaselineScaleZ = 1.f;
+		std::vector<BOSS_LOGIC_WORLD_TRANSFORM_KEY> Keys;
+	};
+	struct BOSS_LOGIC_REGION final
+	{
+		std::string strRegionId;
+		BOSS_LOGIC_REGION_ANCHOR eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD;
+		bool bSector = false;
+		bool bCircle = false;
+		BOSS_LOGIC_WORLD_TRANSFORM_TRACK WorldTrack;
+		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
+		float fYawDegrees = 0.f;
+		float fHalfX = 1.f, fHalfY = 1.f, fHalfZ = 1.f;
+		float fRadiusM = 1.f, fHalfAngleDegrees = 45.f;
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		LostArk::Shared::MECHANIC_CARD_COLOR eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
+	};
+
+	struct BOSS_PATTERN_LOGIC_WINDOW final
+	{
+		std::string strWindowId;
+		BOSS_PATTERN_LOGIC_KIND eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		std::uint32_t iSectorCount = 0u;
+		float fCenterX = 0.f;
+		float fCenterZ = 0.f;
+		float fOuterRadiusM = 0.f;
+		float fStopYawDegrees = 0.f;
+		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> SectorSymbols;
+		float fHalfAngleDegrees = 0.f;
+		float fMaxDistanceM = 0.f;
+		std::uint32_t iPoseIndex = 0u;
+		std::uint32_t iThreshold = 0u;
+		float fShieldArcDegrees = 0.f;
+		float fNormalYawOffsetDegrees = 0.f;
+		std::vector<BOSS_LOGIC_REGION> CardRegions;
+		bool bInsideIsFail = false;
+		bool bEndsPatternOnSuccess = false;
+		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnSuccess;
+		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnFail;
+		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnTimeout;
+	};
+
+	enum class BOSS_PATTERN_MECHANIC_TRIGGER_KIND : std::uint8_t
+	{
+		HUD_ENTER,
+		REAL_GAZE_TELEPORT
+	};
+
+	struct BOSS_PATTERN_MECHANIC_TRIGGER final
+	{
+		std::string strTriggerId;
+		BOSS_PATTERN_MECHANIC_TRIGGER_KIND eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		LostArk::Shared::KOUKU_HUD_MODE eHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+		float fTeleportX = 0.f;
+		float fTeleportY = 0.f;
+		float fTeleportZ = 0.f;
+		std::string strClonePatternId;
+		std::vector<std::uint32_t> ClockHours;
+		float fFaceCenterYawOffsetDegrees = 0.f;
+	};
+
+	/* Presentation cues the pattern clock fires. The Server only knows the
+	stable IDs it broadcasts; the Client resolves them. */
+	struct BOSS_PATTERN_WORLD_SEQUENCE final
+	{
+		std::uint32_t iDurationMs = 0u;
+		std::string strInstanceId;
+		std::uint32_t iStartMs = 0u;
+		float fPlaybackSpeed = 1.f;
+		float fPositionOffsetX = 0.f;
+		float fPositionOffsetY = 0.f;
+		float fPositionOffsetZ = 0.f;
+		bool bAnchorBossSpawn = false;
+		float fAnchorPositionX = 0.f;
+		float fAnchorPositionY = 0.f;
+		float fAnchorPositionZ = 0.f;
+	};
+
+	struct BOSS_PATTERN_SCENE_PROFILE final
+	{
+		std::string strProfileId;
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+		std::uint32_t iBlendMs = 0u;
+	};
+
+	/* Per-encounter madness gauge policy (KOUKUMADNESS row). A maximum of 0
+	leaves the player's default; the hold is how long a gauge-filled clown
+	form lasts before the player body returns. */
+	struct BOSS_ENCOUNTER_MADNESS_POLICY final
+	{
+		std::uint32_t iMaximum = 0u;
+		std::uint32_t iClownHoldMs = 0u;
+	};
+
 	struct BOSS_PATTERN_STAGE_DEFINITION
 	{
 		std::string strStageId;
@@ -846,6 +997,13 @@ namespace LostArk::Server
 		target. Valtan patterns never carry it. */
 		std::vector<std::string> AuditionBossArchetypeIds;
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
+		/* KoukuSaydon authoring lanes projected beside the stages. Valtan
+		patterns never carry them. */
+		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
+		bool bResetBossToSpawn = false;
+		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;
+		std::vector<BOSS_PATTERN_WORLD_SEQUENCE> WorldSequences;
+		std::vector<BOSS_PATTERN_SCENE_PROFILE> SceneProfiles;
 	};
 
 	enum class BOSS_PART_DAMAGE_CONDITION : std::uint8_t
@@ -998,6 +1156,9 @@ namespace LostArk::Server
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
 		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
 			const std::string& encounterId) const noexcept;
+		/* Madness gauge policy of one encounter, or nullptr when it authored none. */
+		[[nodiscard]] const BOSS_ENCOUNTER_MADNESS_POLICY* Find_KoukuMadnessPolicy(
+			const std::string& encounterId) const noexcept;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
@@ -1081,6 +1242,8 @@ namespace LostArk::Server
 		std::unordered_map<std::string, BOSS_PATTERN_SEQUENCE_DEFINITION>
 			m_BossPatternSequences;
 		std::uint32_t m_iKoukuSaydonProductSourceRevision = 0u;
+		std::unordered_map<std::string, BOSS_ENCOUNTER_MADNESS_POLICY>
+			m_KoukuMadnessPolicies;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

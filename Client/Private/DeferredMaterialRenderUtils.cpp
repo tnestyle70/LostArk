@@ -49,7 +49,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	const shared_ptr<Engine::CShader>& pShader,
 	uint32_t iMeshIndex,
 	const DEFERRED_MATERIAL_PROFILE& Profile,
-	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride)
+	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride,
+	const ComPtr<ID3D11ShaderResourceView>& diffuseOverride)
 {
 	if (nullptr == pShader || iMeshIndex >= Model.Get_NumMeshes())
 	{
@@ -84,7 +85,7 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		return true;
 	};
 
-	if (BindFailed(Model.Bind_Material(
+	if (BindFailed(diffuseOverride ? pShader->Bind_Texture("g_DiffuseTexture", diffuseOverride) : Model.Bind_Material(
 		pShader, "g_DiffuseTexture", iMeshIndex, aiTextureType_DIFFUSE, 0)) ||
 		BindFailed(pShader->Bind_RawValue(
 			"g_HasNormalTexture", &iHasNormal, sizeof(iHasNormal))) ||

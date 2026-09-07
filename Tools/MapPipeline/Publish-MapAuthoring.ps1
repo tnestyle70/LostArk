@@ -438,6 +438,28 @@ function Read-MapLightDocument {
     $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
     try { $document = $raw | ConvertFrom-Json }
     catch { throw "Map light JSON parse failed: $Path" }
+    if ((Test-JsonNumber $document.formatVersion) -and
+        [double]$document.formatVersion -eq 2.0) {
+        # Validate original JSON before PowerShell can collapse duplicate keys.
+        # The existing map publisher still owns staging and atomic promotion.
+        $validator = Join-Path $PSScriptRoot '..\RenderingPipeline\light_resources_pipeline.py'
+        $python = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -eq $python) { $python = Get-Command python -ErrorAction SilentlyContinue }
+        if ($null -eq $python -or -not (Test-Path -LiteralPath $validator -PathType Leaf)) {
+            throw 'Map light v2 requires the strict light pipeline and Python.'
+        }
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $validationOutput = & $python.Source $validator --mode Validate --source $Path --map-lights-area $AreaId 2>&1
+            $validationExitCode = $LASTEXITCODE
+        }
+        finally { $ErrorActionPreference = $previousErrorActionPreference }
+        if ($validationExitCode -ne 0) {
+            throw "Map light v2 validation failed: $($validationOutput -join ' ')"
+        }
+        return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    }
     Assert-ExactJsonProperties $document `
         @('schema','formatVersion','areaId','provenance','lights') `
         'Map light root'
@@ -1312,16 +1334,17 @@ function Read-WorldSequenceDocument {
     $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
     try { $document = $raw | ConvertFrom-Json }
     catch { throw "World sequence JSON parse failed: $Path" }
-    Assert-ExactJsonProperties $document `
-        @('schema','formatVersion','areaId','revision','templates','instances') `
-        'World sequence root'
+    $rootProperties = @('schema','formatVersion','areaId','revision','templates','instances')
+    if ($document.formatVersion -eq 3) { $rootProperties += 'objectResources' }
+    Assert-ExactJsonProperties $document $rootProperties 'World sequence root'
     if ($document.schema -isnot [string] -or
         $document.schema -ne 'lostark.world-sequences' -or
         -not (Test-JsonNumber $document.formatVersion) -or
-        [double]$document.formatVersion -ne 2.0 -or
+        [double]$document.formatVersion -notin @(2.0, 3.0) -or
         $document.areaId -isnot [string] -or $document.areaId -ne $AreaId -or
         -not (Test-JsonNumber $document.revision) -or
-        [double]$document.revision -lt 0) {
+        [double]$document.revision -lt 1 -or [double]$document.revision -gt 4294967295 -or
+        [double]$document.revision -ne [math]::Floor([double]$document.revision)) {
         throw "World sequence header is invalid: $Path"
     }
     if ($document.templates -isnot [System.Array] -or
@@ -1335,12 +1358,70 @@ function Read-WorldSequenceDocument {
         throw "World sequence document exceeds its limits: $Path"
     }
     $stableId = '^[A-Za-z0-9._-]{1,128}$'
+    function Assert-SequenceVector($Value, [string]$Label, [bool]$Positive = $false) {
+        if ($Value -isnot [System.Array] -or @($Value).Count -ne 3) { throw "$Label must contain three numbers" }
+        foreach ($component in $Value) {
+            if (-not (Test-JsonNumber $component) -or [math]::Abs([double]$component) -gt 100000 -or
+                ($Positive -and [double]$component -lt 0.000001)) { throw "$Label component is invalid" }
+        }
+    }
+    function Assert-SequenceAssetPath([string]$Value, [bool]$Model) {
+        if ([string]::IsNullOrWhiteSpace($Value) -or $Value.Length -gt 1024 -or
+            $Value.StartsWith('/') -or $Value.Contains(':') -or $Value.Contains('\') -or
+            $Value -match '[\x00-\x1f\x7f]' -or @($Value.Split('/') | Where-Object { $_ -in @('', '.', '..') }).Count -gt 0 -or
+            ($Model -and -not $Value.EndsWith('.wmodel', [StringComparison]::OrdinalIgnoreCase))) {
+            throw "Invalid Resources-relative world object asset ID: $Value"
+        }
+    }
+    $objectResources = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    if ($document.formatVersion -eq 3) {
+        if ($document.objectResources -isnot [System.Array] -or @($document.objectResources).Count -gt 2048) {
+            throw 'World object resource list is invalid'
+        }
+        foreach ($resource in $document.objectResources) {
+            $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind')) {
+                if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
+            }
+            Assert-ExactJsonProperties $resource $fields 'World object resource'
+            if ($resource.objectId -isnot [string] -or $resource.objectId -cnotmatch $stableId -or
+                $objectResources.ContainsKey($resource.objectId) -or $resource.displayName -isnot [string] -or
+                [Text.Encoding]::UTF8.GetByteCount($resource.displayName) -notin 1..128 -or
+                $resource.displayName -match '[\x00-\x1f\x7f]' -or
+                $resource.modelAssetId -isnot [string] -or $resource.animated -isnot [bool] -or
+                -not (Test-JsonNumber $resource.modelPreScale) -or
+                [double]$resource.modelPreScale -lt 0.000001 -or [double]$resource.modelPreScale -gt 100000) {
+                throw "Invalid world object resource: $($resource.objectId)"
+            }
+            Assert-SequenceVector $resource.scale 'World object scale' $true
+            if ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cnotin @('WORLD','PLAYER')) {
+                throw 'World object resource anchor must be WORLD or PLAYER'
+            }
+            $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne ''
+            if ($alias) {
+                if ($resource.sequenceInstanceId -isnot [string] -or $resource.sequenceInstanceId -cnotmatch $stableId -or
+                    ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cne 'WORLD') -or
+                    $resource.modelAssetId -ne '' -or $resource.animated -or
+                    ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId'] -and $resource.diffuseTextureAssetId -ne '')) {
+                    throw 'World object alias must refer only to an existing sequence instance'
+                }
+            } else {
+                Assert-SequenceAssetPath $resource.modelAssetId $true
+                if ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId']) {
+                    if ($resource.diffuseTextureAssetId -isnot [string]) { throw 'World object diffuse path must be a string' }
+                    if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
+                }
+            }
+            $objectResources[$resource.objectId] = $resource
+        }
+    }
     $trackCounts = @{}
+    $templateRows = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     $templateIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($template in $templates) {
-        Assert-ExactJsonProperties $template `
-            @('sequenceId','displayName','category','durationMs','interpolation',
-              'tracks','animationTracks') 'World sequence template'
+        $templateProperties = @('sequenceId','displayName','category','durationMs','interpolation','tracks','animationTracks')
+        if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['objectMotion']) { $templateProperties += 'objectMotion' }
+        Assert-ExactJsonProperties $template $templateProperties 'World sequence template'
         if ($template.sequenceId -isnot [string] -or
             $template.sequenceId -notmatch $stableId -or
             -not $templateIds.Add([string]$template.sequenceId) -or
@@ -1358,6 +1439,24 @@ function Read-WorldSequenceDocument {
             $template.animationTracks -isnot [System.Array]) {
             throw "World sequence template is invalid: $($template.sequenceId)"
         }
+        if ([double]$template.durationMs -ne [math]::Floor([double]$template.durationMs)) { throw 'World sequence duration must be integer milliseconds' }
+        if ($null -ne $template.PSObject.Properties['objectMotion']) {
+            $motion = $template.objectMotion
+            Assert-ExactJsonProperties $motion @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset','count','intervalMs','spreadDegrees','seed') 'World object motion'
+            foreach ($field in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
+                Assert-SequenceVector $motion.$field "World object motion $field"
+            }
+            foreach ($field in @('count','intervalMs','seed')) {
+                if (-not (Test-JsonNumber $motion.$field) -or [double]$motion.$field -lt 0 -or
+                    [double]$motion.$field -gt 4294967295 -or [double]$motion.$field -ne [math]::Floor([double]$motion.$field)) { throw "Invalid object motion $field" }
+            }
+            if ($motion.count -lt 1 -or $motion.count -gt 128 -or $motion.intervalMs -gt 600000 -or
+                ([double]$motion.count - 1) * [double]$motion.intervalMs -ge [double]$template.durationMs -or
+                -not (Test-JsonNumber $motion.spreadDegrees) -or $motion.spreadDegrees -lt 0 -or $motion.spreadDegrees -gt 180) {
+                throw 'World object spawn count, interval or spread exceeds its lifetime'
+            }
+        }
+        $templateRows[[string]$template.sequenceId] = $template
         $tracks = @($template.tracks)
         $animationTracks = @($template.animationTracks)
         $total = $tracks.Count + $animationTracks.Count
@@ -1399,6 +1498,12 @@ function Read-WorldSequenceDocument {
                         throw "World sequence key component is not finite: $($template.sequenceId)/$($track.slotId)"
                     }
                 }
+                Assert-SequenceVector $key.positionOffset 'World sequence key position'
+                Assert-SequenceVector $key.scaleMultiplier 'World sequence key scale' $true
+                $quaternionLength = 0.0
+                foreach ($component in $key.rotationQuaternion) { $quaternionLength += [double]$component * [double]$component }
+                if ([math]::Abs([math]::Sqrt($quaternionLength) - 1.0) -gt 0.001 -or
+                    [double]$key.timeMs -ne [math]::Floor([double]$key.timeMs)) { throw 'World sequence key time or quaternion is invalid' }
                 $previous = [double]$key.timeMs
             }
             if ([double]$keys[0].timeMs -ne 0 -or
@@ -1459,9 +1564,13 @@ function Read-WorldSequenceDocument {
     }
     $instanceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($instance in $instances) {
-        Assert-ExactJsonProperties $instance `
-            @('instanceId','templateId','enabled','startDelayMs','playbackSpeed',
-              'bindings') 'World sequence instance'
+        $instanceProperties = @('instanceId','templateId','enabled','startDelayMs','playbackSpeed','bindings')
+        foreach ($optional in @('anchorKind','position')) {
+            if ($document.formatVersion -eq 3 -and $null -ne $instance.PSObject.Properties[$optional]) { $instanceProperties += $optional }
+        }
+        Assert-ExactJsonProperties $instance $instanceProperties 'World sequence instance'
+        if ($null -ne $instance.PSObject.Properties['anchorKind'] -and $instance.anchorKind -cnotin @('WORLD','PLAYER')) { throw 'Invalid world object anchor' }
+        if ($null -ne $instance.PSObject.Properties['position']) { Assert-SequenceVector $instance.position 'World object instance position' }
         if ($instance.instanceId -isnot [string] -or
             $instance.instanceId -notmatch $stableId -or
             -not $instanceIds.Add([string]$instance.instanceId) -or
@@ -1477,6 +1586,7 @@ function Read-WorldSequenceDocument {
             $instance.bindings -isnot [System.Array]) {
             throw "World sequence instance is invalid: $($instance.instanceId)"
         }
+        if ([double]$instance.startDelayMs -ne [math]::Floor([double]$instance.startDelayMs)) { throw 'World sequence start delay must be integer milliseconds' }
         $bindings = @($instance.bindings)
         if ($bindings.Count -ne $trackCounts[[string]$instance.templateId]) {
             throw "World sequence instance binding count does not match its template: $($instance.instanceId)"
@@ -1489,13 +1599,36 @@ function Read-WorldSequenceDocument {
             if ($binding.slotId -isnot [string] -or
                 -not $boundSlots.Add([string]$binding.slotId) -or
                 $binding.targetKind -isnot [string] -or
-                $binding.targetKind -notin @('MAP_PLACEMENT','DEPLOY_PLACEMENT') -or
+                $binding.targetKind -cnotin @('MAP_PLACEMENT','DEPLOY_PLACEMENT','OBJECT_RESOURCE') -or
                 $binding.targetId -isnot [string] -or
-                $binding.targetId -notmatch '^[0-9]{1,20}$' -or
+                ($binding.targetKind -eq 'OBJECT_RESOURCE' -and $binding.targetId -cnotmatch $stableId) -or
+                ($binding.targetKind -ne 'OBJECT_RESOURCE' -and $binding.targetId -notmatch '^[0-9]{1,20}$') -or
                 -not $boundTargets.Add("$($binding.targetKind):$($binding.targetId)")) {
                 throw "World sequence binding is invalid: $($instance.instanceId)"
             }
+            $template = $templateRows[$instance.templateId]
+            $transformTracks = @($template.tracks | Where-Object { $_.slotId -ceq $binding.slotId })
+            $animationTracks = @($template.animationTracks | Where-Object { $_.slotId -ceq $binding.slotId })
+            if ($binding.targetKind -eq 'OBJECT_RESOURCE') {
+                if (-not $objectResources.ContainsKey($binding.targetId)) { throw 'Unknown world object binding resource' }
+                $resource = $objectResources[$binding.targetId]
+                if ($resource.modelAssetId -eq '' -or ($animationTracks.Count -gt 0 -and -not $resource.animated) -or
+                    ($transformTracks.Count -eq 0 -and $animationTracks.Count -eq 0)) { throw 'Invalid object resource slot or animation binding' }
+            } else {
+                $numericTarget = [uint64]0
+                if (-not [uint64]::TryParse($binding.targetId, [ref]$numericTarget) -or $numericTarget -eq 0) { throw 'Placed sequence target ID is outside uint64 range' }
+                if (($null -ne $instance.PSObject.Properties['anchorKind'] -and $instance.anchorKind -ne 'WORLD') -or
+                    ($null -ne $instance.PSObject.Properties['position'] -and @($instance.position | Where-Object { $_ -ne 0 }).Count -gt 0)) {
+                    throw 'Placed sequences cannot use object instance anchors'
+                }
+                if (($binding.targetKind -eq 'MAP_PLACEMENT' -and ($transformTracks.Count -ne 1 -or $animationTracks.Count -gt 0)) -or
+                    ($binding.targetKind -eq 'DEPLOY_PLACEMENT' -and $animationTracks.Count -eq 0)) { throw 'Invalid placed sequence slot binding' }
+            }
         }
+    }
+    foreach ($resource in $objectResources.Values) {
+        if ($null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne '' -and
+            -not $instanceIds.Contains($resource.sequenceInstanceId)) { throw 'Unknown world object sequence alias' }
     }
     return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
 }

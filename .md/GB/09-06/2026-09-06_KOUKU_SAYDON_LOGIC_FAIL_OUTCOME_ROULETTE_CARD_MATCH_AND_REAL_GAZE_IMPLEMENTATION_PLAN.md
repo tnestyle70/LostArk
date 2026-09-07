@@ -1,10 +1,10 @@
 # 2026-09-06 KoukuSaydon Logic FAIL outcome 분리, 룰렛 카드 판정, 진짜 세이튼 응시 판정 구현 계획서
 
-> 문서 종류: 구현 계획서 (Logic 판정 모델 확장 + Server 판정 런타임 2종)
+> 문서 종류: 구현 계획서 (Logic 판정 모델 확장 + Server 판정 런타임 + 인터랙션 HUD 모드 Server 계약)
 >
-> 상태: 실측 완료 / 구현 전 / §8 미결 3건은 G01 착수 전에 사용자 결정
+> 상태: 실측 완료 / 구현 전 / §8 미결은 G01 착수 전에 사용자 결정
 >
-> 기준 브랜치: `codex/kouku-scale-1p7` (composition revision 50, protocol 59)
+> 기준 브랜치: `GB/koukusaydon-pattern-1-complete` (main `d9b7c2d8` 기준, PR #325·#327·#328 통합 뒤. composition revision 50, protocol 59)
 >
 > 선행 문서: [Lane/Box Workbench 계획](../09-05/2026-09-05_KOUKU_SAYDON_LANE_BOX_COMPOSITION_WORKBENCH_IMPLEMENTATION_PLAN.md), [무력화 반사 계획](../09-05/2026-09-05_KOUKU_SAYDON_SHIELD_STAGGER_AND_COMMON_GROGGY_PATTERN_IMPLEMENTATION_PLAN.md), [관문 수정·광기 수치·광대 아바타 계획](2026-09-06_KOUKU_SAYDON_GATE_FIX_HAMMER_MADNESS_CLOWN_AVATAR_IMPLEMENTATION_PLAN.md). 그 문서의 G05 “Logic 런타임(후속)” 중 진짜 찾기·RESULT 적용 부분은 이 문서가 소유한다.
 >
@@ -18,6 +18,7 @@
 4. **RESULT가 typed 값으로 적용된다.** `INSTANT_DEATH`, `MAX_HP_PERCENT_DAMAGE`, `MADNESS_GAUGE_ADD_PERCENT` 세 kind를 Server가 기존 `Apply_WorldToPlayer`와 `iCurrentMadness`로 적용한다.
 5. **HUD 미준비를 격리한다.** 카드 문양은 snapshot과 F1 텍스트까지만 연결하고 머리 위 이미지는 UI 슬라이스에 남긴다. Client는 판정을 만들지 않는다.
 6. **룰렛 연출이 패턴 시계에 붙는다.** 패턴의 WORLD box 시작 tick에 Server가 기존 `S2C_WORLD_SEQUENCE_PLAY`로 룰렛 instance를 재생시키고, 룰렛은 시퀀스대로 나타나 돌고 멈추고 사라진다. 판정 창의 종료 시각은 projector가 같은 시퀀스의 정지 구간에서 yaw를 읽어 Product에 굽는다. 저작자는 yaw를 손으로 옮겨 적지 않는다.
+7. **인터랙션 HUD 4종이 Server 상태로 켜진다.** 이미 Client에 있는 `HUD_KOUKU_HUD_MODE {POLYMORPH, MARIO, DANCE, MAZE}`와 `Update_KoukuHudMode`를 그대로 두고, 공급자를 Debug preview에서 `PLAYER_SNAPSHOT`으로 바꾼다. 무채색 광대(POLYMORPH)는 광기 100 변신, 댄스(DANCE)는 댄스타임 패턴 진행 중, 마리오·카드미로는 우선 Debug typed 명령으로 켠다. 댄스의 Q/W/E/R 포즈 배치는 Server가 플레이어마다 섞어 보내고 같은 배치로 판정한다.
 
 종료 증거: Debug Product 빌드 PASS, `NetworkProtocolHarness` failures 0(v60 snapshot round-trip), `Server.exe --contract-test` failures 0(룰렛 일치/불일치, 응시 성공/실패, abort 시 결과 미적용, WORLD box tick에 재생 broadcast), python 테스트 OK(`test_project_kouku_saydon_composition.py`, `test_kouku_saydon_runtime_inputs.py`), publisher 재실행 뒤 bootstrap에 `PATTERNLOGIC`/`PATTERNLOGICOUTCOME`/`PATTERNWORLDSEQUENCE` 행, `git diff --check` 0. 사용자 runtime 확인은 §7.
 
@@ -35,7 +36,8 @@
 | publisher | Kouku 블록(3030~3275)이 `PATTERNBOSS/PATTERNPOLICY/PATTERNSOURCE/PATTERNSTAGE/PATTERNSTAGEBRANCH(TIMEOUT→다음)`만 emit. stage는 animation-only 검사 |
 | Server 정의 | `BOSS_PATTERN_DEFINITION`(`GameplayCatalog.h:798~`)에 Logic 개념 없음. `Validate_AnimationOnlyPattern`은 stage TIMEOUT branch 하나만 통과 |
 | Server 실행 | `Update_KoukuSaydonBoss`(`GameRoom.cpp:5604~5760`) → `CKoukuSaydonBrain::Update`가 stage duration만 본다. 플레이어 접근은 GameRoom의 `m_Players`(`GameRoom.h:1194`)만 가능 |
-| 저작 문서 | revision 50. Logic 정의 9개(DURATION `방패무력화`, RESULT `전원전멸/즉사/최대체력20%/10%/50%감소/무력화성공/삐에로변신`, TRIGGER `순간이동`). `PATTERN_1`에 DURATION box 1개(Success→무력화성공, Timeout→전원전멸), `PATTERN_2`에 TRIGGER 1988ms·Summon 2007~26133ms, `PIZZA`(PRODUCT, 6 stage 16334ms)와 `PATTERN_6`(댄스타임 21 stage)에는 box 없음 |
+| 저작 문서 | revision 50. Logic 정의 16개: DURATION `방패무력화`(1), `슈퍼맨/양팔벌리기/한다리올리기/양팔모으기`(10~13), `세이튼_룰렛`(14), `진짜세이튼찾기`(16); RESULT `전원전멸/즉사/최대체력20%/10%/50%감소/무력화성공/삐에로변신`(2~8), `광기게이지50%`(15); TRIGGER `순간이동`(9). 모두 이름만 있고 판정 값 없음 |
+| 저작된 box | `PATTERN_1` 무력화 창 1개(S→무력화성공, T→전원전멸). `PATTERN_2`(26134ms) 순간이동 1988+1000, `진짜세이튼찾기` 19749+5627(T→즉사), Summon 2007+24126. `PATTERN_6` 댄스타임(31467ms) 포즈 창 4개: 슈퍼맨 3969+3606(T→10%), 양팔벌리기 11492+2061(T→20%), 한다리올리기 17489+2829(T→20%), 양팔모으기 22295+2536(T→50%). `PATTERN_7` `세이튼_룰렛`(9 stage 33669ms, 12_06 → (13_01+13_02)×4) 룰렛 창 4개: 4286+4793(T→광기50%), 11724+4694 / 18965+4768 / 26403+4694(T→삐에로변신). 모두 Timeout slot에만 연결되어 있어 §3의 Fail slot로 옮겨야 한다 |
 
 ### 1.2 Server에 이미 있는 재료
 
@@ -86,6 +88,21 @@ template의 정지(hold) 구간 (quaternion → Y축 yaw):
 
 yaw는 placement 40의 identity 회전에 합성되므로 그대로 세계 yaw다. 판정은 2초 정지 구간의 끝에 두고, 1초 정지는 연출이다.
 
+### 1.6 인터랙션 HUD 모드 현재 (PR #328 `feature/kouku-gimmick-ui`, Client만 있음)
+
+| 계약 | 위치 | 내용 |
+|---|---|---|
+| 모드 enum | `CombatHUDViewModel.h:176` `HUD_KOUKU_HUD_MODE {NONE, POLYMORPH, MARIO, DANCE, MAZE}` | 첨부 스크린샷 4장 = MAZE(Q), MARIO(Q W), DANCE(Q W E R), POLYMORPH(Q W E) |
+| HUD 상태 | `HUD_KOUKU_GIMMICK_STATE{isValid, iMadnessGauge/Maximum, eHudMode, ModeSkillIndexBySlot[8](Q W E R A S D F, -1 = 빈 슬롯), CooldownEnd/DurationTicks[8]}` | HUD가 그리는 전부. 값은 만들지 않음 |
+| 모드 정의 | `Data/UI/KoukuSaydon/KoukuHudModes.json` `modes[]`: POLYMORPH skills 43340/43341/43343(폭탄 던지기·나팔 불기·특급 배송), MARIO 2개(skillId 0), DANCE 4개(skillId 0, `randomOrder true`, `skill_dance_0..3.png`), MAZE 56411(뿅망치 내려치기). `madness{maximum 100, stateThresholds [49,100], holdMs 15000}` | 아이콘·표시 이름·엠블럼 슬롯 |
+| 그리기 | `CMainApp::Update_KoukuHudMode`: 모드가 있으면 `Set_ActiveOwnerClass("KoukuSaydonInteraction")`로 class identity 슬롯 숨김, 엠블럼 표시, `Skill_<K>_Icon`에 모드 아이콘, 쿨다운 파이 | 변경 없음 |
+| 공급자 | `CCombatHUDViewModel::Get_KoukuGimmick()`: `_DEBUG` F1 `Kouku UI Preview`가 켜져 있으면 preview, 아니면 `m_Player`의 광기 값만 채우고 **`eHudMode`는 항상 NONE** (`CombatHUDViewModel.cpp:226~240`) | 이 계획이 채우는 빈자리 |
+| 광기 값 | `PLAYER_SNAPSHOT::iCurrentMadness/iMaximumMadness/eMadnessForm`(v59) → `HUD_PLAYER_STATE` | 있음. `iMaximumMadness`는 아직 0 |
+| 광대 몸체 | F1 `Change to Clown`이 Debug 명령으로 `eMadnessForm = CLOWN` → `Replace_CharacterClass`로 MN_RPCT_03 교체. **class 스킬 입력은 유지**(09-06 관문 계획 RESULT) | HUD 모드와 아직 연결되지 않음 |
+| 입력 | `CPlayerController`가 `CCombatHUDViewModel::Get_Player()`로 bind/silence/action을 읽고, 슬롯 키 → `PlayerSkills.json` (class, inputSlot) → `IPlayerCommandSink::Request_UseSkill(skillId)` (`PlayerController.cpp:411`) | 모드 슬롯(skillId 0)을 보낼 경로 없음 |
+
+UI 담당 계획([TJ 기믹 UI PLAN](../../TJ/09-06/2026-09-06_쿠크세이튼_기믹UI_PLAN.md) §4.1)이 “B단계: Server 계약은 보스 담당과 합의 후”로 남긴 부분이 이 문서 G06이다.
+
 ## 2. 요구사항 ↔ 반영
 
 | # | 요구 | 반영 | G |
@@ -96,6 +113,10 @@ yaw는 placement 40의 identity 회전에 합성되므로 그대로 세계 yaw�
 | R4 | 판정은 플레이어마다 | 창 종료 tick에 살아 있는 플레이어 전원을 개별 판정, RESULT도 개별 적용 | G02 |
 | R5 | HUD·회색광대 미준비 | 카드 문양은 snapshot + F1 텍스트. 머리 위 이미지·회색광대 body는 범위 밖 | G04 |
 | R6 | 패턴 시작에 룰렛이 생기고 돌다 멈추는 연출과 판정을 한 시계로 | pattern WORLD box(`worldSequenceOccurrences`) → Server가 시작 tick에 `Broadcast_WorldSequencePlay`, projector가 판정 창 종료 시각의 시퀀스 yaw를 `stopYawDegrees`로 파생 | G01, G02, G05 |
+| R7 | HUD 4종(카드미로·마리오·춤·무채색 광대)을 Server 상태로 표시 | `PLAYER_SNAPSHOT::eKoukuHudMode` + `ModeSkillIndexBySlot[8]`(v60), Server가 form·패턴·Debug 명령에서 모드를 결정, `Get_KoukuGimmick()` fallback이 snapshot을 읽음 | G04, G06 |
+| R8 | 춤 패턴: 포즈 4종을 Q/W/E/R 아이콘과 연동해 플레이어마다 판정 | DURATION kind `POSE_INPUT{poseIndex 0..3}`, DANCE 모드 진입 시 Server가 플레이어별 슬롯↔포즈 셔플, `C2S_INTERACTION_SLOT`으로 입력, Success/Fail/Timeout | G01, G02, G06 |
+| R9 | 광기 100이면 광대로 변신하고 기본 광대 HUD | Server: `iCurrentMadness >= iMaximumMadness` → `eMadnessForm CLOWN` + `iMadnessFormEndTick = +holdMs`, 모드 POLYMORPH. RESULT `CLOWN_TRANSFORM`도 같은 함수 | G02, G06 |
+| R10 | 마리오·카드미로는 “연동만” | Debug typed 명령 `C2S_DEBUG_SET_KOUKU_HUD_MODE{MARIO|MAZE|NONE}`로 모드를 켜고 끔. 관문 trigger 연결과 모드 스킬 판정은 후속 | G06 |
 
 ## 3. 판정 모델
 
@@ -104,11 +125,15 @@ Logic 정의는 palette(kind와 kind 공통 값), box는 배치(창·결과 연�
 | kind | 판정 시점 | 판정 대상 | 사용 slot | 정의 값 | box 값 |
 |---|---|---|---|---|---|
 | `ROULETTE_CARD_MATCH` | 창 종료 tick 1회 | 플레이어 개별 | Success, Fail (**Timeout 금지**) | `sectorCount`, `sectorSymbols[]`(룰렛 mesh yaw 0°에서 +Z부터 시계 방향, 길이 = sectorCount, 토큰 HEART/SPADE/CLUB/DIAMOND), `centerX`, `centerZ`, `outerRadiusM`, `worldSequenceInstanceId`(룰렛 instance) | 없음. `stopYawDegrees`는 projector가 같은 패턴의 WORLD box와 시퀀스 template에서 파생한다(§5.6) |
-| `GAZE_REAL_BOSS` | 창 종료 tick 1회 | 플레이어 개별 | Success, Fail (**Timeout 금지**) | `halfAngleDegrees`(1~180) | 없음 |
+| `GAZE_REAL_BOSS` | 창 종료 tick 1회 | 플레이어 개별 | Success, Fail (**Timeout 금지**) | `halfAngleDegrees`(1~180), `maxDistanceM`(0 = 무제한, 기본 30) | 없음 |
 | `STAGGER_WINDOW` (무력화 계획 소유) | 창 중 연속 | 보스 | Success, Timeout | 그 계획의 값 | 없음 |
-| `POSE_INPUT` (댄스타임, 후속) | 창 중 연속 | 플레이어 개별 | Success, Fail, Timeout | 후속 | 후속 |
+| `POSE_INPUT` (댄스타임) | 창 중 연속 | 플레이어 개별 | Success, Fail, Timeout | `poseIndex` 0~3 = `KoukuHudModes.json` DANCE `skills[]` 순서(`skill_dance_0..3.png`). 정의 하나가 포즈 하나(슈퍼맨/양팔벌리기/한다리올리기/양팔모으기) | 없음 |
 
 Timeout은 “창이 끝났는데 조건이 아직 충족되지 않았다”는 연속 판정 전용 결과다. 창 종료에 한 번 판정하는 kind는 그 순간 Success 아니면 Fail로 반드시 결정되므로 Timeout이 존재하지 않는다. projector와 Box Detail이 이 규칙을 강제한다.
+
+**outcome slot은 RESULT 목록이다(2026-09-06 결정).** 한 slot에 RESULT를 1~4개 순서대로 연결할 수 있다. 예: 룰렛 Fail → `광기게이지50%증가` + `최대체력10%감소`. JSON key는 `onSuccessLogicIds`, `onFailLogicIds`, `onTimeoutLogicIds`(배열)이며 reader는 이전 단수 key(`onSuccessLogicId`, `onTimeoutLogicId`)를 길이 1 배열로 읽어 보존한다. writer는 배열만 쓴다. Server는 authored 순서로 적용하고, 앞 RESULT로 사망한 플레이어에게 뒤 피해 RESULT는 `NOT_ADMITTED`로 건너뛰되 광기 가산은 적용한다.
+
+판정 대상이 “플레이어 개별”인 kind는 해당 플레이어에게만, “보스”인 kind(무력화)는 살아 있는 플레이어 전원에게 RESULT를 적용한다. 그래서 `전원전멸`은 별도 kind가 아니라 보스 창의 Timeout에 연결한 `INSTANT_DEATH`다. 무력화 Success의 “그로기 패턴 재생”은 플레이어 RESULT가 아니라 패턴 전이이며 [무력화 계획](../09-05/2026-09-05_KOUKU_SAYDON_SHIELD_STAGGER_AND_COMMON_GROGGY_PATTERN_IMPLEMENTATION_PLAN.md)의 follow-up branch가 소유한다.
 
 RESULT 정의 typed 값:
 
@@ -116,9 +141,10 @@ RESULT 정의 typed 값:
 |---|---|---|
 | `INSTANT_DEATH` | 없음 | `Apply_WorldToPlayer(raw = iCurrentHp, bIgnoreDefense = true)` |
 | `MAX_HP_PERCENT_DAMAGE` | `percent` 1~100 | `raw = round(iMaximumHp × percent / 100)`, `bIgnoreDefense = true` |
-| `MADNESS_GAUGE_ADD_PERCENT` | `percent` 1~100 | `iCurrentMadness = min(iMaximumMadness, iCurrentMadness + round(iMaximumMadness × percent / 100))` |
+| `MADNESS_GAUGE_ADD_PERCENT` | `percent` 1~100 | `iCurrentMadness = min(iMaximumMadness, iCurrentMadness + round(iMaximumMadness × percent / 100))`. 최대치에 닿으면 §5.8의 변신 규칙이 같은 tick에 적용 |
+| `CLOWN_TRANSFORM` | `durationMs` (0 = `KoukuHudModes.json holdMs` 15000) | `eMadnessForm = CLOWN`, `iMadnessFormEndTick = tick + duration`, `iCurrentMadness = 0`. 이미 CLOWN이면 종료 tick만 연장. 기존 `삐에로변신` 정의가 이 kind를 갖는다 |
 
-기존 RESULT 이름과의 대응: `즉사` → INSTANT_DEATH, `최대체력10%감소` → MAX_HP_PERCENT_DAMAGE 10(20/50도 같은 방식), 룰렛 실패용 `광기게이지50%증가`는 새 RESULT 정의로 만든다. `전원전멸`, `무력화성공`, `삐에로변신`은 이 계획에서 typed 값을 갖지 않으며 연결되면 projector가 “미지원 RESULT kind”로 거부한다.
+기존 RESULT 이름과의 대응: `즉사`·`전원전멸` → INSTANT_DEATH(적용 범위는 창의 판정 대상이 정한다), `최대체력10%감소` → MAX_HP_PERCENT_DAMAGE 10(20/50도 같은 방식), `광기게이지50%`(logic.15) → MADNESS_GAUGE_ADD_PERCENT 50, `삐에로변신`(logic.8) → CLOWN_TRANSFORM. `무력화성공`만 이 계획에서 typed 값을 갖지 않으며(패턴 전이는 무력화 계획의 branch) 연결되면 projector가 “미지원 RESULT kind”로 거부한다.
 
 ## 4. 변경할 파일
 
@@ -126,8 +152,8 @@ RESULT 정의 typed 값:
 
 | G | 파일 | 역할 |
 |---|---|---|
-| G01 | `Client/Public/KoukuSaydonCompositionDocument.h`, `Client/Private/KoukuSaydonCompositionDocument.cpp` | 정의 `strJudgementKind`+값, RESULT `strOutcomeKind/iPercent`, box `strOnFailLogicId`; pattern `WorldSequenceOccurrences{occurrenceId, sequenceInstanceId, startMs}`+`iNextWorldSequenceOccurrenceOrdinal`; reader optional, writer 항상 기록; Validate |
-| G01 | `Client/Public/KoukuSaydonActionWorkbench.h`, `Client/Private/KoukuSaydonActionWorkbench.cpp` | `Set_LogicBoxOutcome` slot enum, Box Detail `Fail` row·Timeout 비활성, Selected Logic kind/값 편집, `Count_LogicReferences`에 onFail; WORLD lane(`Append_WorldSequenceBox`, 시작 이동, 삭제); `Set_WorldSequenceResources(vector<WORLD_SEQUENCE_RESOURCE>)`와 ROULETTE 정의의 `Fill from placement` 버튼 |
+| G01 | `Client/Public/KoukuSaydonCompositionDocument.h`, `Client/Private/KoukuSaydonCompositionDocument.cpp` | 정의 `strJudgementKind`+값, RESULT `strOutcomeKind/iPercent`, box outcome 목록 3개(`OnSuccessLogicIds/OnFailLogicIds/OnTimeoutLogicIds`, 각 0~4; 단수 구 key는 읽기 호환); pattern `WorldSequenceOccurrences{occurrenceId, sequenceInstanceId, startMs}`+`iNextWorldSequenceOccurrenceOrdinal`; writer는 배열만 기록; Validate |
+| G01 | `Client/Public/KoukuSaydonActionWorkbench.h`, `Client/Private/KoukuSaydonActionWorkbench.cpp` | `Set_LogicBoxOutcome(slot, ordinal, resultId)`·`Remove_LogicBoxOutcome`, Box Detail slot 3개 × RESULT 목록 row(`+ Add`)·AT_END kind의 Timeout 비활성, Selected Logic kind/값 편집, `Count_LogicReferences`가 세 목록을 셈; WORLD lane(`Append_WorldSequenceBox`, 시작 이동, 삭제); `Set_WorldSequenceResources(vector<WORLD_SEQUENCE_RESOURCE>)`와 ROULETTE 정의의 `Fill from placement` 버튼 |
 | G01 | `Client/Public/Level_KakulSaydonArena.h`, `Client/Private/Level_KakulSaydonArena.cpp`, `Client/Private/MainApp.cpp` | Level이 로드한 `CWorldSequencePlayer::Get_Document()` instance 목록과 binding된 `MAP_RUNTIME_PLACED_ENTRY`(위치·scale·모델 local bounds)를 읽기 전용 `WORLD_SEQUENCE_RESOURCE{instanceId, displayName, durationMs, placementId, x, z, scale, boundsRadiusM}`로 만들어 `Set_ModelResources`처럼 Workbench에 전달 |
 | G01 | `Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py`, `test_project_kouku_saydon_composition.py` | key 집합, kind/값 검증, slot 규칙, PRODUCT 허용(소비 가능한 kind만), Product `logicWindows`·`worldSequences` 투영, worldsequences.json 읽어 `stopYawDegrees` 파생·hold 검증 |
 | G01 | `Tools/GameplayPipeline/Publish-GameplayBalance.ps1`, `Tools/KoukuSaydonPipeline/test_kouku_saydon_runtime_inputs.py` | Kouku Product pattern key `logicWindows`·`worldSequences`, `PATTERNLOGIC`/`PATTERNLOGICOUTCOME`/`PATTERNWORLDSEQUENCE` 행 |
@@ -138,8 +164,16 @@ RESULT 정의 typed 값:
 | G02 | `Server/Public/GameRoom.h`, `Server/Private/GameRoom.cpp` | `KOUKUSAYDON_PATTERN_AUDITION_STATE::LogicWindows` ledger, `Update_KoukuSaydonBoss` 호출 지점, abort/clear 정리, 광기 최대치(§8) |
 | G02 | `Server/Private/ServerGameplayContractTests.cpp` | 룰렛·응시·abort 계약 테스트 |
 | G03 | (G01·G02로 완결) `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` | `PATTERN_2`에 `GAZE_REAL_BOSS` box·`즉사` Fail 연결은 Workbench Save로 저작 |
-| G05 | (G01·G02로 완결) `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` | `PIZZA`에 WORLD box(`world.sequence.instance.8`, 0ms)와 ROULETTE 창 3개(종료 5500/12900/20300) 저작, 패턴 길이 22200 이상으로 조정 |
+| G05 | (G01·G02로 완결) `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json` | `PATTERN_7 세이튼_룰렛`에 WORLD box(`world.sequence.instance.8`)를 놓고 기존 룰렛 창 4개를 시퀀스 정지 구간 끝으로 다시 맞춤(§8-9), Timeout 연결을 Fail로 이동 |
 | G05 (선택) | `Client/Private/Level_KakulSaydonArena.cpp` 또는 `MainApp.cpp` Debug | 룰렛 부채꼴 경계·문양 Debug wire(같은 §5.4 수식). 시각 확인용, 판정 아님 |
+| G06 | `Shared/Public/Network/PacketType.h`, `PacketMessages.h`, `Shared/Private/Network/PacketMessages.cpp`, `Tools/NetworkProtocolHarness/...` | (G04와 같은 v60 안에서) `KOUKU_HUD_MODE` enum, `PLAYER_SNAPSHOT::eKoukuHudMode`·`ModeSkillIndexBySlot[8]`, `C2S_INTERACTION_SLOT{iRequestSequence, eWorldId, eSlot}`, `C2S_DEBUG_SET_KOUKU_HUD_MODE`/`S2C_..._RESULT`, writer/reader/validator, round-trip |
+| G06 | `Server/Public/ServerPlayer.h`, `Server/Public/RoomCommand.h`, `Server/Private/ServerApp.cpp`, `Server/Public|Private/GameRoom.*` | `eKoukuHudMode`, `ModeSkillIndexBySlot`, `iMadnessFormEndTick`, `eDebugHudModeOverride`; `Handle_InteractionSlot`, `Handle_DebugSetKoukuHudMode`; 모드 결정·변신 만료를 tick 함수 `Update_KoukuPlayerModes`로; snapshot 기록; 리셋 3곳 |
+| G06 | `Server/Public|Private/KoukuSaydonLogicRuntime.*` | `POSE_INPUT` 창: DANCE 진입 시 플레이어별 셔플, `Record_InteractionSlot(player, slot)`, 창 종료 Timeout |
+| G06 | `Server/Private/ServerGameplayContractTests.cpp` | 모드 결정·셔플·포즈 판정·변신 만료 테스트 |
+| G06 | `Client/Public/PlayerCommandSink.h`, `Client/Public|Private/NetworkPlayerCommandSink.*`, `Client/Public|Private/NetworkManager.*` | `Request_InteractionSlot`, `Request_DebugKoukuHudMode`/`Consume_...Result` |
+| G06 | `Client/Public|Private/PlayerController.*` | `eKoukuHudMode != NONE`이면 Q..F 키를 class 스킬 대신 `Request_InteractionSlot`으로, LMB·이동은 유지 |
+| G06 | `Client/Public|Private/CombatHUDViewModel.*` | `HUD_PLAYER_STATE::eKoukuHudMode/ModeSkillIndexBySlot`, `Get_KoukuGimmick()` fallback이 이를 읽음(preview는 Debug override 유지) |
+| G06 | `Client/Private/MainApp.cpp` | F1 `KoukuSaydon Arena`에 `HUD Mode: MARIO / MAZE / Clear` 버튼 3개(Debug 명령) |
 | G04 | `Shared/Public/Network/PacketType.h`, `PacketMessages.h`, `Shared/Private/Network/PacketMessages.cpp`, `Tools/NetworkProtocolHarness/...` | v60, `MECHANIC_CARD_SYMBOL`, `PLAYER_SNAPSHOT::eMechanicCardSymbol`, writer/reader/validator, round-trip |
 | G04 | `Server/Public/ServerPlayer.h`, `Server/Private/GameRoom.cpp` | `eMechanicCardSymbol` 필드, snapshot 기록, 리셋 3곳 |
 | G04 | `Client/Public|Private/CombatHUDViewModel.*`, `Client/Private/MainApp.cpp` | `HUD_PLAYER_STATE::eMechanicCardSymbol`, F1 `KoukuSaydon Arena` `Card: HEART` 텍스트 |
@@ -163,23 +197,25 @@ RESULT 정의 typed 값:
     "outcomeKind": "INSTANT_DEATH" }
 ],
 "worldSequenceOccurrences": [
-  { "occurrenceId": "KAKULSAYDON_G1_PIZZA.world.1", "sequenceInstanceId": "world.sequence.instance.8", "startMs": 0 }
+  { "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.world.1", "sequenceInstanceId": "world.sequence.instance.8", "startMs": 0 }
 ],
 "logicOccurrences": [
-  { "occurrenceId": "KAKULSAYDON_G1_PIZZA.logic.1", "logicId": "kakulsaydon.g1.logic.10",
+  { "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.1", "logicId": "kakulsaydon.g1.logic.10",
     "startMs": 0, "durationMs": 5500,
-    "onSuccessLogicId": "", "onFailLogicId": "kakulsaydon.g1.logic.12", "onTimeoutLogicId": "" },
-  { "occurrenceId": "KAKULSAYDON_G1_PIZZA.logic.2", "logicId": "kakulsaydon.g1.logic.10",
+    "onSuccessLogicIds": [], "onFailLogicIds": ["kakulsaydon.g1.logic.12", "kakulsaydon.g1.logic.5"], "onTimeoutLogicIds": [] },
+  { "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.2", "logicId": "kakulsaydon.g1.logic.10",
     "startMs": 5500, "durationMs": 7400,
-    "onSuccessLogicId": "", "onFailLogicId": "kakulsaydon.g1.logic.12", "onTimeoutLogicId": "" },
-  { "occurrenceId": "KAKULSAYDON_G1_PIZZA.logic.3", "logicId": "kakulsaydon.g1.logic.10",
+    "onSuccessLogicIds": [], "onFailLogicIds": ["kakulsaydon.g1.logic.12", "kakulsaydon.g1.logic.5"], "onTimeoutLogicIds": [] },
+  { "occurrenceId": "KAKULSAYDON_G1_PATTERN_7.logic.3", "logicId": "kakulsaydon.g1.logic.10",
     "startMs": 12900, "durationMs": 7400,
-    "onSuccessLogicId": "", "onFailLogicId": "kakulsaydon.g1.logic.12", "onTimeoutLogicId": "" },
+    "onSuccessLogicIds": [], "onFailLogicIds": ["kakulsaydon.g1.logic.12", "kakulsaydon.g1.logic.5"], "onTimeoutLogicIds": [] },
   { "occurrenceId": "KAKULSAYDON_G1_PATTERN_2.logic.2", "logicId": "kakulsaydon.g1.logic.11",
     "startMs": 2007, "durationMs": 21960,
-    "onSuccessLogicId": "", "onFailLogicId": "kakulsaydon.g1.logic.3", "onTimeoutLogicId": "" }
+    "onSuccessLogicIds": [], "onFailLogicIds": ["kakulsaydon.g1.logic.3"], "onTimeoutLogicIds": [] }
 ]
 ```
+
+`kakulsaydon.g1.logic.5`는 기존 `세이튼로직_최대체력10%감소` 정의에 `outcomeKind MAX_HP_PERCENT_DAMAGE, percent 10`을 붙인 것이다.
 
 - 정의의 kind별 값 key는 그 kind에서만 허용된다. `judgementKind`가 없는 DURATION은 “값 없는 창”으로 읽히며 Workbench 편집은 되지만 PRODUCT 투영은 거부된다(기존 `방패무력화` 정의 보존).
 - reader는 새 key를 optional로 읽고 writer는 정의 type·kind가 요구하는 key만 쓴다. `onFailLogicId`는 항상 쓴다.
@@ -195,14 +231,14 @@ projector는 PRODUCT 패턴의 box를 `worldSequences[]`와 `logicWindows[]`로 
   { "sequenceInstanceId": "world.sequence.instance.8", "startMs": 0 }
 ],
 "logicWindows": [
-  { "windowId": "KAKULSAYDON_G1_PIZZA.logic.1", "kind": "ROULETTE_CARD_MATCH",
+  { "windowId": "KAKULSAYDON_G1_PATTERN_7.logic.1", "kind": "ROULETTE_CARD_MATCH",
     "startMs": 0, "durationMs": 5500,
     "sectorCount": 6, "sectorSymbols": ["HEART","SPADE","CLUB","DIAMOND","HEART","SPADE"],
     "centerX": -0.319, "centerZ": 737.531, "outerRadiusM": 12.0, "stopYawDegrees": 0.0,
-    "halfAngleDegrees": 0,
-    "onSuccess": { "kind": "NONE", "percent": 0 },
-    "onFail":    { "kind": "MADNESS_GAUGE_ADD_PERCENT", "percent": 50 },
-    "onTimeout": { "kind": "NONE", "percent": 0 } }
+    "halfAngleDegrees": 0, "maxDistanceM": 0,
+    "onSuccess": [],
+    "onFail":    [ { "kind": "MADNESS_GAUGE_ADD_PERCENT", "percent": 50 }, { "kind": "MAX_HP_PERCENT_DAMAGE", "percent": 10 } ],
+    "onTimeout": [] }
 ]
 ```
 
@@ -210,8 +246,8 @@ publisher(`Publish-GameplayBalance.ps1` Kouku 블록)는 pattern `Assert-ExactPr
 
 ```text
 PATTERNWORLDSEQUENCE\t<encounterId>\t<patternId>\t<startMs>\t<sequenceInstanceId>
-PATTERNLOGIC\t<encounterId>\t<patternId>\t<windowIndex>\t<windowId>\t<kind>\t<startMs>\t<durationMs>\t<sectorCount>\t<centerX>\t<centerZ>\t<outerRadiusM>\t<stopYawDegrees>\t<halfAngleDegrees>\t<HEART,SPADE,...|->
-PATTERNLOGICOUTCOME\t<encounterId>\t<patternId>\t<windowId>\t<SUCCESS|FAIL|TIMEOUT>\t<outcomeKind>\t<percent>
+PATTERNLOGIC\t<encounterId>\t<patternId>\t<windowIndex>\t<windowId>\t<kind>\t<startMs>\t<durationMs>\t<sectorCount>\t<centerX>\t<centerZ>\t<outerRadiusM>\t<stopYawDegrees>\t<halfAngleDegrees>\t<maxDistanceM>\t<HEART,SPADE,...|->
+PATTERNLOGICOUTCOME\t<encounterId>\t<patternId>\t<windowId>\t<SUCCESS|FAIL|TIMEOUT>\t<ordinal 0..3>\t<outcomeKind>\t<percent>
 ```
 
 검증: `startMs + durationMs ≤ Σ stage durationMs`, 같은 kind 창 겹침 금지, `sectorSymbols` 길이 = `sectorCount`(2~64), 토큰 4종, `outerRadiusM > 0`, `halfAngleDegrees` 1~180, AT_END kind의 TIMEOUT 행 금지, outcomeKind별 percent 범위, WORLD `sequenceInstanceId`가 composition `areaId`의 worldsequences 문서에 존재하고 `MAP_PLACEMENT` binding을 가질 것. Server `GameplayCatalog.cpp`는 `PATTERNSTAGEBRANCH` parse(3585~)와 같은 방식으로 owner pattern을 찾아 `LogicWindows`/`WorldSequences`에 push하고, `PATTERNLOGICOUTCOME`은 같은 windowId의 slot을 채운다(중복 slot 거부). Server는 instance ID를 문자열로만 다루며 시퀀스 내용을 알지 않는다.
@@ -256,12 +292,13 @@ sectorSymbols[sector] == p.card → SUCCESS, else FAIL
 
 ```text
 dx = b.x − p.x, dz = b.z − p.z
-dist² < 0.01                    → SUCCESS (밀착)
+dist² < 0.01                                   → SUCCESS (밀착)
+maxDistanceM > 0 && dist² > maxDistanceM²      → FAIL (너무 멀다)
 diff = wrap180(deg(dx, dz) − p.fYawDegrees)
-|diff| ≤ halfAngleDegrees       → SUCCESS, else FAIL
+|diff| ≤ halfAngleDegrees                      → SUCCESS, else FAIL
 ```
 
-보스의 forward는 어느 식에도 들어가지 않는다. 플레이어가 보스 정면·뒤 어디에 서 있든 자기 몸이 보스를 향하면 성공이다. 진짜/가짜 분신 런타임이 들어온 뒤에도 `b`는 패턴을 소유한 본체이므로 이 식은 그대로다.
+이 식이 곧 “반각 halfAngle, 길이 maxDistance인 XZ 평면 cone 안에 보스 중심이 있는가”다. 3D 절두체나 ray를 따로 만들 필요가 없다. ray는 선 하나라 정확히 겨눠야만 맞아 판정으로 쓸 수 없고, 절두체는 쿼터뷰에서 Y가 의미 없으므로 이 2D cone과 같다. 보스의 forward는 어느 식에도 들어가지 않는다. 플레이어가 보스 정면·뒤 어디에 서 있든 자기 몸이 보스를 향하면 성공이다. 진짜/가짜 분신 런타임이 들어온 뒤에도 `b`는 패턴을 소유한 본체이므로 이 식은 그대로다.
 
 ### 5.5 Client 흐름
 
@@ -271,7 +308,7 @@ PLAYER_SNAPSHOT.eMechanicCardSymbol → CClientReplication → CCombatHUDViewMod
 판정 결과 → 기존 DAMAGE_EVENT / HP / iCurrentMadness snapshot으로 관찰
 ```
 
-Workbench Box Detail: `Success`, `Fail`, `Timeout` 세 combo. 정의 kind가 AT_END면 Timeout combo를 disabled로 그리고 tooltip “창 종료 판정 kind는 Timeout이 없습니다”. ROULETTE box Detail은 같은 패턴의 WORLD box 시작을 기준으로 환산한 시퀀스 시각과, 그 시각이 정지 구간이면 yaw를, 아니면 “정지 구간 밖” 경고를 **읽기 전용**으로 보여준다(`WORLD_SEQUENCE_RESOURCE`가 나르는 template을 `CWorldSequencePlayer::Sample_Track`으로 sampling). Selected Logic 패널은 DURATION이면 kind combo와 kind 값, RESULT면 outcomeKind combo와 percent를 편집하고 `Set_LogicDefinitionValues`로 candidate → `Commit_Candidate`한다. 실패는 draft를 유지한다.
+Workbench Box Detail: `Success`, `Fail`, `Timeout` 세 slot. slot마다 연결된 RESULT가 한 줄씩(combo + 삭제) 나오고 마지막에 `+ Add Result` combo가 있다(최대 4). 정의 kind가 AT_END면 Timeout slot 전체를 disabled로 그리고 tooltip “창 종료 판정 kind는 Timeout이 없습니다”. ROULETTE box Detail은 같은 패턴의 WORLD box 시작을 기준으로 환산한 시퀀스 시각과, 그 시각이 정지 구간이면 yaw를, 아니면 “정지 구간 밖” 경고를 **읽기 전용**으로 보여준다(`WORLD_SEQUENCE_RESOURCE`가 나르는 template을 `CWorldSequencePlayer::Sample_Track`으로 sampling). Selected Logic 패널은 DURATION이면 kind combo와 kind 값, RESULT면 outcomeKind combo와 percent를 편집하고 `Set_LogicDefinitionValues`로 candidate → `Commit_Candidate`한다. 실패는 draft를 유지한다.
 
 Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_ModelResources`/`Set_SequenceResources`(animation clip 시퀀스)가 오는 것과 같은 방식으로 `CMainApp`이 아레나 Level의 `CWorldSequencePlayer::Get_Document()` instance 목록과 binding placement를 `WORLD_SEQUENCE_RESOURCE`로 넘긴다. WORLD lane의 instance 콤보는 이 목록을 쓰고, ROULETTE 정의의 `Fill from placement`는 선택 instance가 binding한 배치(40번)의 위치를 `centerX/centerZ`에, 모델 local bounds의 XZ 반경 × scale을 `outerRadiusM`에 복사한다. 칸 수와 문양 순서는 mesh 텍스처에 있어 코드가 읽지 못하므로 사용자가 적는다(현재 mesh 기준 6칸).
 
@@ -281,7 +318,7 @@ Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_Model
 
 ```text
 저작 (Workbench)
-  PIZZA에 WORLD box { instance.8, startMs 0 } 하나, ROULETTE 창 3개(종료 5500 / 12900 / 20300)
+  PATTERN_7에 WORLD box { instance.8, startMs S } 하나, ROULETTE 창(종료 S+5500 / S+12900 / S+20300)
   Box Detail이 창 종료의 시퀀스 시각과 정지 yaw를 읽기 전용으로 표시 → 저작자는 정지 구간 안에 종료를 놓는다
 
 투영 (projector)
@@ -301,9 +338,77 @@ Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_Model
   시퀀스 시작 지연은 네트워크 왕복 수십 ms이고 판정은 2초 정지 구간 끝에 있으므로 칸 index가 바뀌지 않는다
 ```
 
-- `PIZZA`의 stage 합계는 지금 16334ms라 22200ms 시퀀스보다 짧다. 세 번째 판정(20300)을 두려면 패턴 길이를 22200 이상으로 늘려야 하며(stage clip 반복 또는 `HOLD_LAST_POSE`), projector가 `창 종료 ≤ 패턴 길이`로 강제한다. 패턴이 끝나도 Client 시퀀스는 자기 길이대로 끝난다.
+- `PATTERN_7 세이튼_룰렛`은 33669ms라 22200ms 시퀀스를 다 담는다. 지금 저작된 창 4개는 9079/16418/23733/31097ms에 끝나는데 시퀀스의 2초 정지 끝은 S+5500/S+12900/S+20300 세 곳이다. 창 4개를 유지하려면 1초 정지(S+7400, S+14800)를 판정에 쓰거나 시퀀스를 다시 저작해야 하고, 3개로 줄이면 WORLD box 시작 S를 첫 창 끝에서 5500을 뺀 값(3579)으로 두면 된다(§8-9). projector가 `창 종료 ≤ 패턴 길이`와 정지 구간 안을 강제한다. 패턴이 끝나도 Client 시퀀스는 자기 길이대로 끝난다.
 - 룰렛 mesh의 문양 배열은 mesh yaw 0에서 +Z 칸을 `sectorSymbols[0]`로 두고 시계 방향으로 적는다. 배치 40의 회전이 identity라 mesh yaw = 세계 yaw다. 실제 mesh의 칸 수·문양 순서는 MapTool에서 눈으로 확인해 적는다(§8-1).
 - 같은 패턴을 다시 Play하면 Server가 다시 broadcast하고 `CWorldSequencePlayer::Play`가 baseline에 대해 rewind한다. abort 시 시퀀스는 Client에서 끝까지 재생되며 Server는 판정만 버린다.
+
+### 5.7 댄스타임 연출의 lane 배치 (방향만, 구현은 후속)
+
+원본 `4219879 댄스타임 준비` action의 notify는 `DominantDirectionalLight_Control`(화면 어두워짐), `Par_V_PPCT_spot_Dance_01`(스포트라이트 particle), `Par_MP_Light_01/05_L`(조명), `EmitTriggerSignal`(광대 변신·UI 교체 신호), `HidePawn`이다. 커튼 mesh를 spawn하는 notify는 없다. 스크린샷의 붉고 어두운 배경은 아레나에 이미 서 있는 커튼 벽이 어두워진 조명 아래 보이는 것이다.
+
+| 연출 요소 | 원본 근거 | 이 프로젝트의 lane | 새 row 필요 여부 |
+|---|---|---|---|
+| 화면 어두워짐 | `DominantDirectionalLight_Control` | **SCENE_PROFILE lane** (`Data/Rendering/Authored/RenderingProfiles.json` profile + `blendMs`, Client `CRenderingProfileService::Activate_Profile`) — [Lane/Box 계획 G06](../09-05/2026-09-05_KOUKU_SAYDON_LANE_BOX_COMPOSITION_WORKBENCH_IMPLEMENTATION_PLAN.md) | 없음. 어두운 profile 하나를 저작 |
+| 스포트라이트·손 트레일 | `Par_V_PPCT_spot_Dance_01`, `Par_V_RPCT_HandSwing_Trail_01` | **EFFECT lane** (Authored Effect 문서) | 없음 |
+| 커튼 | 아레나 배치에 `BG_RAD_KOUKUSATON_CURTAIN01/01A/01B/01C_SM` 30여 개가 x ±28m, y 14.7~39.4m, z 709~970m에 정적으로 서 있다 | 움직여야 하면 **WORLD lane**: 룰렛처럼 해당 배치에 world sequence(내려오기·visible)를 저작하고 box로 재생 | 없음. 룰렛과 같은 WORLD box |
+| 광대 변신·Q/W/E/R 아이콘 교체 | `EmitTriggerSignal` | Server `eMadnessForm`(09-06 관문 계획 G04)과 `POSE_INPUT` 창의 HUD 계약 | 후속 슬라이스 |
+
+즉 “연출용 mesh를 따로 관리하는 row”는 만들지 않는다. 맵에 있는 것을 움직이면 WORLD, 빛이면 SCENE_PROFILE, 파티클이면 EFFECT다. 룰렛과 커튼은 같은 WORLD lane이며 차이는 어느 배치를 어떤 시퀀스로 움직이느냐뿐이다.
+
+### 5.8 인터랙션 HUD 모드의 Server 계약 (G06)
+
+Client `HUD_KOUKU_HUD_MODE`와 `Update_KoukuHudMode`는 그대로 두고 공급자만 바꾼다. Server가 플레이어마다 모드와 슬롯 배치를 결정해 snapshot으로 보내고, HUD는 그것을 그린다.
+
+```text
+PLAYER_SNAPSHOT (v60, G04의 eMechanicCardSymbol과 같은 bump)
+  += KOUKU_HUD_MODE eKoukuHudMode        (NONE, POLYMORPH, MARIO, DANCE, MAZE, END)
+  += int8 ModeSkillIndexBySlot[8]         (Q W E R A S D F; -1 = 빈 슬롯; KoukuHudModes.json modes[].skills index)
+  검증: eKoukuHudMode < END, 각 index -1..7, NONE이면 전부 -1
+
+SERVER_PLAYER
+  += eKoukuHudMode, ModeSkillIndexBySlot[8], iMadnessFormEndTick, eDebugHudModeOverride(Debug 전용, NONE|MARIO|MAZE)
+```
+
+모드 결정은 tick마다 한 함수(`Update_KoukuPlayerModes`)가 우선순위대로 정한다. 위가 이긴다.
+
+| 우선순위 | 조건 (Server 상태) | 모드 | 슬롯 배치 |
+|---|---|---|---|
+| 1 | 같은 world의 세이튼이 `POSE_INPUT` 창을 하나 이상 가진 패턴을 실행 중 | DANCE | 패턴 시작 tick에 플레이어별 `Mix_DeterministicRandom(seed ^ playerId ^ patternSequence)`로 0..3을 Q/W/E/R에 섞어 고정. 패턴이 끝나면 해제 |
+| 2 | `eDebugHudModeOverride`가 MARIO 또는 MAZE (Debug 명령) | MARIO / MAZE | 정의 순서 그대로 Q.. |
+| 3 | `eMadnessForm == CLOWN` | POLYMORPH | 0,1,2 → Q,W,E |
+| 4 | 그 외 | NONE | 전부 -1 |
+
+변신 규칙(R9)도 같은 함수에 있다. `iMaximumMadness > 0`이고 `iCurrentMadness >= iMaximumMadness`이면 `eMadnessForm = CLOWN`, `iMadnessFormEndTick = tick + holdMs·30/1000`, `iCurrentMadness = 0`. `iMadnessFormEndTick`에 도달하면 `NORMAL`로 되돌린다. Debug `Change to Clown`은 종료 tick 없이 CLOWN을 유지하므로 `Return to Player`로만 풀린다. `CLOWN_TRANSFORM` RESULT는 이 규칙의 함수를 그대로 호출한다. `holdMs`는 지금 Client `KoukuHudModes.json`에만 있어 Server가 읽을 수 없으므로 G01의 `BossProfiles.json` 세이튼 row에 `madnessPolicy{maximum 100, clownHoldMs 15000}`을 두고 publisher가 `BOSSMADNESS` 행으로 싣는다(09-05 광기 계획 §4.1의 축소판). 이것이 §8-2 광기 최대치의 정본이다.
+
+입력은 하나의 typed 명령이다.
+
+```text
+CPlayerController: eKoukuHudMode != NONE 이면 Q W E R A S D F 키 edge → IPlayerCommandSink::Request_InteractionSlot(slot)
+  (class 스킬 해석·cooldown 표시는 건너뛴다. LMB 평타·우클릭 이동·F6·Debug 명령은 그대로)
+→ C2S_INTERACTION_SLOT{iRequestSequence, eWorldId, eSlot}
+→ CGameRoom::Handle_InteractionSlot(session, msg)
+   ├─ 플레이어 없음 / world 불일치 / 모드 NONE / 슬롯 index -1 → 무시 + JSONL reason
+   ├─ DANCE: CKoukuSaydonLogicRuntime::Record_InteractionSlot(player, ModeSkillIndexBySlot[slot], tick)  (§5.9)
+   └─ POLYMORPH / MARIO / MAZE: 이번 범위에서는 수신만 기록(status). 43340·43341·43343·56411 스킬 판정은 후속 슬라이스
+```
+
+Client는 `CClientReplication::Apply_LocalPlayer`가 두 필드를 `HUD_PLAYER_STATE`에 복사하고, `Get_KoukuGimmick()` fallback이 `eHudMode`와 `ModeSkillIndexBySlot`을 여기서 채운다. `_DEBUG` preview override는 그대로 남아 UI 담당의 배치 조정 수단으로 쓴다. F1 `KoukuSaydon Arena`에 `HUD Mode: MARIO / MAZE / Clear` 버튼이 `C2S_DEBUG_SET_KOUKU_HUD_MODE`를 보낸다.
+
+### 5.9 댄스타임 판정 (`POSE_INPUT`, G02·G06)
+
+저작은 이미 사용자가 한 형태 그대로다. 포즈마다 DURATION 정의 하나(`슈퍼맨`, `양팔벌리기`, `한다리올리기`, `양팔모으기`)에 `poseIndex`를 붙이고, `PATTERN_6`의 창 4개는 그대로 두되 Timeout에 걸린 RESULT를 유지하고 Fail에도 같은 RESULT를 건다(오답과 무응답을 같은 벌칙으로 둘지는 §8-10).
+
+```text
+패턴 시작 tick: 모드 DANCE, 플레이어별 슬롯↔포즈 셔플 (§5.8)  → HUD에 4 아이콘이 섞여 표시
+창 열림(startTick): 살아 있는 플레이어마다 answer = NONE
+Handle_InteractionSlot(DANCE): 열린 POSE_INPUT 창이 있고 answer == NONE 이면
+   pose = ModeSkillIndexBySlot[slot]
+   pose == window.poseIndex → answer = SUCCESS,  else → answer = FAIL   (첫 입력만 인정)
+창 종료(endTick): SUCCESS → onSuccess RESULT(보통 없음), FAIL → onFail, NONE → onTimeout. 다음 창이 열릴 때 answer 초기화
+패턴 종료/abort: 모드 해제, 미평가 창 폐기
+```
+
+포즈 index와 실제 clip의 대응(`att_battle_25_03~06` 중 어느 것이 슈퍼맨인지)은 저작자가 `poseIndex`로 적는다. HUD 아이콘 `skill_dance_0..3.png`도 같은 index를 쓰므로 한 곳만 맞추면 된다. “세이튼이 뒤를 보면 다른 동작”은 정의에 `invert true`를 두면 Success/Fail 조건만 뒤집히므로 후속에 값 하나로 추가할 수 있다.
 
 ## 6. G별 구현 범위
 
@@ -334,9 +439,16 @@ Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_Model
 - 종료: `NetworkProtocolHarness` failures 0, Server+Client 같은 revision 재시작.
 
 ### G05 — 룰렛 저작과 시각 확인
-- Workbench에서 `PIZZA`에 WORLD box(`world.sequence.instance.8`, 0ms)와 `세이튼로직_룰렛카드` 창 3개(종료 5500/12900/20300, Fail → `광기게이지50%증가`)를 놓고 패턴 길이를 22200 이상으로 맞춘 뒤 Save·publish. Box Detail의 읽기 전용 yaw가 0/180/0으로 읽히는지 확인한다.
+- Workbench에서 `PATTERN_7 세이튼_룰렛`에 WORLD box(`world.sequence.instance.8`)를 놓고 기존 `세이튼_룰렛` 창의 종료를 정지 구간 끝(S+5500/S+12900/S+20300)에 맞춘다. Timeout에 걸린 `광기게이지50%`·`삐에로변신`을 Fail slot로 옮기고 Save·publish. Box Detail의 읽기 전용 yaw가 0/180/0으로 읽히는지 확인한다.
 - 선택: 아레나 Debug wire로 `centerX/centerZ`, `outerRadiusM`, `sectorCount`, 현재 창의 `stopYawDegrees`에서 부채꼴 경계와 문양 문자를 그린다. 시각 확인용이며 판정에는 관여하지 않는다. 룰렛 mesh 칸과 어긋나면 `sectorSymbols` 순서 또는 `sectorCount`를 고친다.
 - 종료: publish → Server 재시작 → 사용자 runtime 확인(§7).
+
+### G06 — 인터랙션 HUD 모드 Server 계약과 슬롯 입력
+- Shared(v60, G04와 함께): `KOUKU_HUD_MODE`, snapshot 두 필드, `C2S_INTERACTION_SLOT`, `C2S_DEBUG_SET_KOUKU_HUD_MODE`/RESULT. 하네스 round-trip과 범위 거부.
+- Server: `SERVER_PLAYER` 필드, `Update_KoukuPlayerModes`(모드 우선순위·셔플·변신 만료), `Handle_InteractionSlot`, `Handle_DebugSetKoukuHudMode`(Release는 REJECTED_DISABLED), snapshot 기록, 리셋 3곳. `BossProfiles.json` 세이튼 `madnessPolicy{maximum, clownHoldMs}`와 `BOSSMADNESS` 행.
+- 계약 테스트: (a) CLOWN form → POLYMORPH·Q/W/E = 0/1/2; (b) POSE 패턴 시작 → DANCE·플레이어 두 명의 셔플이 결정론적이고 서로 다를 수 있음·4개 모두 0..3 한 번씩; (c) 정답 슬롯 → SUCCESS, 오답 → FAIL, 무입력 → Timeout RESULT; (d) 광기 100 도달 → CLOWN + 종료 tick 뒤 NORMAL; (e) Debug MARIO 명령 → 모드 MARIO, Clear → NONE.
+- Client: sink/NetworkManager 메서드, Controller 분기, ViewModel 복사와 `Get_KoukuGimmick()` fallback, F1 버튼 3개.
+- 종료: 빌드 PASS, 하네스·계약 테스트 0 failures, 사용자 runtime: `Change to Clown` → HUD가 Q/W/E 광대 아이콘으로 바뀜, `PATTERN_6` Play → Q/W/E/R에 포즈 4개가 섞여 표시되고 창마다 정답/오답/무입력 결과가 HP에 반영, F1 `HUD Mode: MARIO`/`MAZE` → 스크린샷 2·1과 같은 HUD.
 
 ## 7. 검증 요약
 
@@ -348,7 +460,8 @@ Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_Model
 | Shared | `NetworkProtocolHarness` | failures 0 |
 | Server | `Server.exe --contract-test` | failures 0 (§6 G02 a~d) |
 | diff | `git diff --check` | 0 |
-| runtime (사용자) | Server+Client 재시작 → F1 `1관문 - 세이튼` → `PIZZA` Play: 패턴 시작과 함께 룰렛이 나타나 3.5초 돌고 멈추는 것을 확인, 정지마다 F1 `Card:` 문양 확인, 정지 끝에 다른 칸에 선 플레이어의 광기 값 상승·같은 칸은 불변, 22.2초에 룰렛이 사라짐 → `PATTERN_2` Play: 보스를 등진 플레이어만 창 종료 tick에 사망 | 눈으로 확인, 서면 판정 |
+| Server | `Server.exe --contract-test` (§6 G06 a~e) | failures 0 |
+| runtime (사용자) | Server+Client 재시작 → F1 `1관문 - 세이튼` → `PATTERN_7` Play: 패턴 시작과 함께 룰렛이 나타나 3.5초 돌고 멈추는 것을 확인, 정지마다 F1 `Card:` 문양 확인, 정지 끝에 다른 칸에 선 플레이어의 광기 값 상승·같은 칸은 불변, 22.2초에 룰렛이 사라짐 → `PATTERN_2` Play: 보스를 등진 플레이어만 창 종료 tick에 사망 → `PATTERN_6` Play: Q/W/E/R 포즈 아이콘이 섞여 뜨고 정답/오답/무입력이 HP에 반영 → `Change to Clown`: Q/W/E 광대 HUD → F1 `HUD Mode: MARIO`/`MAZE`: 스크린샷 2·1의 HUD | 눈으로 확인, 서면 판정 |
 
 에이전트는 빌드·하네스·계약 테스트·publish까지 수행하고 runtime 재생과 화면 판정은 사용자가 한다.
 
@@ -364,8 +477,15 @@ Workbench는 world sequence 문서를 직접 열지 않는다. 지금 `Set_Model
 
 미결(G01 착수 전 결정):
 1. **룰렛 문양 배열.** 칸 수는 사용자가 실제 mesh를 보고 **6칸**으로 결정했다(2026-09-06). 6칸에 문양 4종을 어떻게 배열할지(예: 4종 + 2종 반복, 또는 3종 × 2)와 `sectorSymbols[0]`(mesh yaw 0에서 +Z 방향 칸)이 어느 문양인지는 MapTool에서 배치 40번을 `visible`로 켜고 확인해 적는다. 중심·반경은 `Fill from placement`가 채운다.
-6. **룰렛은 Summon이 아니다.** Summon은 Server world entity(archetype·HP·brain·`S2C_WORLD_ENTITY_SPAWNED`)를 만드는 lane이고, 룰렛은 이미 맵에 있는 배치 40번을 world sequence로 보이고 돌리는 Client presentation이다. 따라서 WORLD lane box(`worldSequenceOccurrences`)로 재생 시각만 패턴 시계에 묶고, Server는 `Broadcast_WorldSequencePlay`만 한다. 가짜 세이튼 3체만 Summon lane이다.
 2. **광기 최대치.** `iMaximumMadness`가 0이라 룰렛 RESULT가 지금은 값을 만들 수 없다. (a) 이 계획 G02에서 아레나 진입 시 임시 100 고정, (b) 09-05 광기 계획의 `madnessPolicy.maximum` publish를 선행. 권장 (a).
 3. **카운터 스킬로 벌칙을 막을 수 있는가.** 현재 `Apply_WorldToPlayer`는 `Try_Counter` ABSORBED를 먼저 본다. INSTANT_DEATH가 카운터에 막히는 것이 의도가 아니면 `bIgnoreDefense`와 함께 `bIgnoreCounter`를 둔다. 권장: 막히지 않게(`bIgnoreCounter = true`).
 4. 진짜 찾기 반각: 09-06 계획이 45°로 고정했다. 저작 값이므로 60°로 완화해도 코드 변경은 없다.
 5. **판정 3회 중 어느 정지에 두는가.** 시퀀스는 2초 정지 3회와 1초 정지 3회를 가진다. 기본은 2초 정지의 끝(5500/12900/20300) 3회이며, 1초 정지도 판정으로 쓰려면 창을 더 놓으면 된다(코드 변경 없음).
+6. **룰렛은 Summon이 아니다.** Summon은 Server world entity(archetype·HP·brain·`S2C_WORLD_ENTITY_SPAWNED`)를 만드는 lane이고, 룰렛은 이미 맵에 있는 배치 40번을 world sequence로 보이고 돌리는 Client presentation이다. 따라서 WORLD lane box(`worldSequenceOccurrences`)로 재생 시각만 패턴 시계에 묶고, Server는 `Broadcast_WorldSequencePlay`만 한다. 가짜 세이튼 3체만 Summon lane이다.
+7. **outcome slot은 RESULT 목록(1~4)이다.** 사용자가 “광기 게이지 증가 + 체력 10% 감소”를 한 Fail에 걸기를 원해 단일 참조 대신 순서 있는 목록으로 확정했다(§3).
+8. **댄스타임 연출은 새 row가 아니다.** 어두워짐은 SCENE_PROFILE, 스포트라이트는 EFFECT, 커튼 이동은 WORLD lane이다(§5.7). 원본 action에 커튼 spawn notify는 없다.
+9. **룰렛 창 4개 vs 시퀀스 정지 3회.** `PATTERN_7`의 창 4개(종료 9079/16418/23733/31097)는 시퀀스의 2초 정지 끝(S+5500/12900/20300)과 맞지 않는다. (a) 창을 3개로 줄이고 S = 3579로 맞춤, (b) 1초 정지(S+7400, S+14800)도 판정으로 써 4개 유지, (c) 시퀀스를 4회 정지로 다시 저작. 권장 (a).
+10. **댄스 오답과 무응답의 벌칙.** 사용자는 “다른 동작이나 무입력 모두 timeout”이라 했으나 모델상 오답은 Fail이다. Fail과 Timeout에 같은 RESULT를 걸면 요구와 같다. 오답을 더 무겁게 할지 여기서 정한다.
+11. **광대 HUD 중 class 스킬 차단.** 현재 Debug 광대는 class 스킬을 유지한다(09-06 관문 RESULT). 모드가 NONE이 아니면 Controller가 Q..F를 슬롯 명령으로 보내므로 class 스킬은 자연히 막힌다. 광대 스킬 3종(43340/43341/43343)·뿅망치(56411)·마리오 Q/W의 Server 판정은 후속이며 이번에는 수신만 한다.
+12. **포즈 index ↔ clip.** `att_battle_25_03~06` 중 어느 clip이 슈퍼맨/양팔벌리기/한다리올리기/양팔모으기인지는 Workbench에서 재생해 보고 `poseIndex`로 적는다. HUD 아이콘 `skill_dance_0..3.png`는 같은 index다.
+13. **마리오·카드미로 진입 조건.** 이번에는 Debug 명령으로만 켠다. 관문 3 마리오 1~4 진입과 관문 2 카드 미로 진입은 해당 gimmick의 trigger/Server 상태가 생길 때 `Update_KoukuPlayerModes` 우선순위 2에 조건을 더한다.

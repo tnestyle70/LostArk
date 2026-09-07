@@ -19,7 +19,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.world-sequences";
-	constexpr uint32_t FORMAT_VERSION = 2;
+	constexpr uint32_t FORMAT_VERSION = 3;
 	constexpr uint32_t LEGACY_FORMAT_VERSION = 1;
 	constexpr f32_t MIN_SCALE = 0.000001f;
 	constexpr f32_t MIN_RUNTIME_SCALE_DETERMINANT = 0.000001f;
@@ -100,6 +100,44 @@ namespace
 			{
 				return nullptr != value.Find(key);
 			});
+	}
+
+	bool_t Is_ObjectShape(const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> required,
+		const std::initializer_list<const char_t*> optional)
+	{
+		if (!value.Is_Object()) return false;
+		for (const char_t* key : required)
+			if (nullptr == value.Find(key)) return false;
+		for (const auto& entry : value.Get_Object())
+		{
+			const auto matches = [&entry](const char_t* key) { return entry.first == key; };
+			if (std::none_of(required.begin(), required.end(), matches) &&
+				std::none_of(optional.begin(), optional.end(), matches)) return false;
+		}
+		return true;
+	}
+
+	bool_t Is_BoundedFloat3(const float3_t& value)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+			std::abs(value.x) <= MAX_COMPONENT && std::abs(value.y) <= MAX_COMPONENT &&
+			std::abs(value.z) <= MAX_COMPONENT;
+	}
+
+	bool_t Is_ResourcePath(const std::string& value, const bool_t model)
+	{
+		if (value.empty() || value.size() > 1024u || value.front() == '/' ||
+			value.find(':') != std::string::npos || value.find('\\') != std::string::npos ||
+			!Is_ValidUtf8DisplayText(value)) return false;
+		std::istringstream parts(value);
+		std::string part;
+		while (std::getline(parts, part, '/'))
+			if (part.empty() || part == "." || part == "..") return false;
+		std::string extension = value.size() > 7u ? value.substr(value.size() - 7u) : std::string();
+		std::transform(extension.begin(), extension.end(), extension.begin(),
+			[](const unsigned char character) { return static_cast<char_t>(std::tolower(character)); });
+		return value.back() != '/' && (!model || extension == ".wmodel");
 	}
 
 	bool_t Read_Uint32(
@@ -294,9 +332,9 @@ bool_t Client::CWorldSequenceDocument::Load(
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	if (!CDataJson::Parse(text, root, parseError) ||
-		!Is_ExactObject(root,
+		!Is_ObjectShape(root,
 			{ "schema", "formatVersion", "areaId", "revision",
-			  "templates", "instances" }))
+			  "templates", "instances" }, { "objectResources" }))
 	{
 		outStatus = "World sequence JSON root is invalid: " + parseError;
 		return false;
@@ -313,8 +351,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	if (nullptr == schema || !schema->Is_String() ||
 		schema->Get_String() != SCHEMA ||
 		!Read_Uint32(version, parsedFormatVersion) ||
-		(LEGACY_FORMAT_VERSION != parsedFormatVersion &&
-			FORMAT_VERSION != parsedFormatVersion) ||
+		(parsedFormatVersion < LEGACY_FORMAT_VERSION || parsedFormatVersion > FORMAT_VERSION) ||
 		nullptr == areaId || !areaId->Is_String() ||
 		areaId->Get_String() != expectedAreaId ||
 		!Read_Uint32(revision, parsedRevision) || 0u == parsedRevision ||
@@ -330,6 +367,49 @@ bool_t Client::CWorldSequenceDocument::Load(
 	CWorldSequenceDocument staged;
 	staged.m_AreaId = expectedAreaId;
 	staged.m_iRevision = parsedRevision;
+	const DATA_JSON_VALUE* objects = root.Find("objectResources");
+	if ((parsedFormatVersion < 3u && nullptr != objects) ||
+		(parsedFormatVersion == 3u && (nullptr == objects || !objects->Is_Array() ||
+			objects->Get_Array().size() > MAX_INSTANCE_COUNT)))
+	{
+		outStatus = "World object resource list is invalid";
+		return false;
+	}
+	if (nullptr != objects)
+	{
+		for (const DATA_JSON_VALUE& row : objects->Get_Array())
+		{
+			WORLD_SEQUENCE_OBJECT_RESOURCE object;
+			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind" }) ||
+				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
+				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
+				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
+				!Read_Float3(row.Find("scale"), object.scale))
+			{
+				outStatus = "World object resource fields are invalid";
+				return false;
+			}
+			object.objectId = row.Find("objectId")->Get_String();
+			object.displayName = row.Find("displayName")->Get_String();
+			object.modelAssetId = row.Find("modelAssetId")->Get_String();
+			object.animated = row.Find("animated")->Get_Boolean();
+			if (const auto* anchor = row.Find("anchorKind"))
+			{
+				if (!anchor->Is_String()) { outStatus = "World object resource anchor must be WORLD or PLAYER"; return false; }
+				object.anchorKind = anchor->Get_String();
+			}
+			for (const char_t* key : { "diffuseTextureAssetId", "sequenceInstanceId" })
+			{
+				const auto* field = row.Find(key);
+				if (nullptr == field) continue;
+				if (!field->Is_String()) { outStatus = "Invalid world object optional path/reference"; return false; }
+				(std::string(key) == "sequenceInstanceId" ? object.sequenceInstanceId :
+					object.diffuseTextureAssetId) = field->Get_String();
+			}
+			staged.m_ObjectResources.push_back(std::move(object));
+		}
+	}
 	for (const DATA_JSON_VALUE& templateValue : templates->Get_Array())
 	{
 		const bool_t validTemplateShape =
@@ -337,9 +417,9 @@ bool_t Client::CWorldSequenceDocument::Load(
 			Is_ExactObject(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
 				  "interpolation", "tracks" }) :
-			Is_ExactObject(templateValue,
+			Is_ObjectShape(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
-				  "interpolation", "tracks", "animationTracks" });
+				  "interpolation", "tracks", "animationTracks" }, { "objectMotion" });
 		if (!validTemplateShape)
 		{
 			outStatus = "World sequence template shape is invalid";
@@ -363,7 +443,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 				parsedTemplate.interpolation) ||
 			nullptr == tracks || !tracks->Is_Array() ||
 			tracks->Get_Array().size() > MAX_TRACK_COUNT ||
-			(FORMAT_VERSION == parsedFormatVersion &&
+			(2u <= parsedFormatVersion &&
 				(nullptr == animationTracks || !animationTracks->Is_Array() ||
 					animationTracks->Get_Array().size() > MAX_TRACK_COUNT ||
 					tracks->Get_Array().size() +
@@ -375,6 +455,26 @@ bool_t Client::CWorldSequenceDocument::Load(
 		parsedTemplate.sequenceId = sequenceId->Get_String();
 		parsedTemplate.displayName = displayName->Get_String();
 		parsedTemplate.category = category->Get_String();
+		if (const DATA_JSON_VALUE* motion = templateValue.Find("objectMotion"))
+		{
+			auto& value = parsedTemplate.objectMotion;
+			if (parsedFormatVersion < 3u || !Is_ExactObject(*motion,
+				{ "velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond",
+				  "revolutionOffset", "count", "intervalMs", "spreadDegrees", "seed" }) ||
+				!Read_Float3(motion->Find("velocity"), value.velocity) ||
+				!Read_Float3(motion->Find("acceleration"), value.acceleration) ||
+				!Read_Float3(motion->Find("angularVelocityDegrees"), value.angularVelocityDegrees) ||
+				!Read_Float3(motion->Find("revolutionDegreesPerSecond"), value.revolutionDegreesPerSecond) ||
+				!Read_Float3(motion->Find("revolutionOffset"), value.revolutionOffset) ||
+				!Read_Uint32(motion->Find("count"), value.count, 128u) ||
+				!Read_Uint32(motion->Find("intervalMs"), value.intervalMs, MAX_DURATION_MS) ||
+				!Read_FiniteFloat(motion->Find("spreadDegrees"), value.spreadDegrees) ||
+				!Read_Uint32(motion->Find("seed"), value.seed))
+			{
+				outStatus = "World object motion is invalid";
+				return false;
+			}
+		}
 
 		for (const DATA_JSON_VALUE& trackValue : tracks->Get_Array())
 		{
@@ -423,7 +523,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			}
 			parsedTemplate.tracks.push_back(std::move(parsedTrack));
 		}
-		if (FORMAT_VERSION == parsedFormatVersion)
+		if (2u <= parsedFormatVersion)
 		{
 			for (const DATA_JSON_VALUE& trackValue :
 				animationTracks->Get_Array())
@@ -473,9 +573,9 @@ bool_t Client::CWorldSequenceDocument::Load(
 
 	for (const DATA_JSON_VALUE& instanceValue : instances->Get_Array())
 	{
-		if (!Is_ExactObject(instanceValue,
+		if (!Is_ObjectShape(instanceValue,
 			{ "instanceId", "templateId", "enabled", "startDelayMs",
-			  "playbackSpeed", "bindings" }))
+			  "playbackSpeed", "bindings" }, { "anchorKind", "position" }))
 		{
 			outStatus = "World sequence instance shape is invalid";
 			return false;
@@ -501,6 +601,13 @@ bool_t Client::CWorldSequenceDocument::Load(
 		parsedInstance.instanceId = instanceId->Get_String();
 		parsedInstance.templateId = templateId->Get_String();
 		parsedInstance.enabled = enabled->Get_Boolean();
+		const DATA_JSON_VALUE* anchor = instanceValue.Find("anchorKind");
+		const DATA_JSON_VALUE* position = instanceValue.Find("position");
+		if ((parsedFormatVersion < 3u && (anchor || position)) ||
+			(anchor && !anchor->Is_String()) ||
+			(position && !Read_Float3(position, parsedInstance.position)))
+		{ outStatus = "World object instance anchor is invalid"; return false; }
+		if (anchor) parsedInstance.anchorKind = anchor->Get_String();
 		for (const DATA_JSON_VALUE& bindingValue : bindings->Get_Array())
 		{
 			const bool_t validBindingShape =
@@ -548,6 +655,8 @@ bool_t Client::CWorldSequenceDocument::Load(
 					return false;
 				}
 				parsedBinding.targetId = targetId->Get_String();
+				if (parsedFormatVersion < 3u && parsedBinding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+				{ outStatus = "Object resource binding requires formatVersion 3"; return false; }
 			}
 			parsedInstance.bindings.push_back(std::move(parsedBinding));
 		}
@@ -592,6 +701,22 @@ bool_t Client::CWorldSequenceDocument::Save(
 		<< "  \"formatVersion\": " << FORMAT_VERSION << ",\n"
 		<< "  \"areaId\": \"" << CDataJson::Escape(m_AreaId) << "\",\n"
 		<< "  \"revision\": " << m_iRevision << ",\n"
+		<< "  \"objectResources\": [";
+	for (size_t index = 0u; index < m_ObjectResources.size(); ++index)
+	{
+		const auto& object = m_ObjectResources[index];
+		output << (index == 0u ? "\n" : ",\n") << "    {\n"
+			<< "      \"objectId\": \"" << CDataJson::Escape(object.objectId) << "\",\n"
+			<< "      \"displayName\": \"" << CDataJson::Escape(object.displayName) << "\",\n"
+			<< "      \"modelAssetId\": \"" << CDataJson::Escape(object.modelAssetId) << "\",\n"
+			<< "      \"anchorKind\": \"" << CDataJson::Escape(object.anchorKind) << "\",\n"
+			<< "      \"diffuseTextureAssetId\": \"" << CDataJson::Escape(object.diffuseTextureAssetId) << "\",\n"
+			<< "      \"modelPreScale\": " << object.modelPreScale << ",\n"
+			<< "      \"animated\": " << (object.animated ? "true" : "false") << ",\n"
+			<< "      \"scale\": [" << object.scale.x << ", " << object.scale.y << ", " << object.scale.z << "],\n"
+			<< "      \"sequenceInstanceId\": \"" << CDataJson::Escape(object.sequenceInstanceId) << "\"\n    }";
+	}
+	output << (m_ObjectResources.empty() ? "],\n" : "\n  ],\n")
 		<< "  \"templates\": [";
 	for (size_t templateIndex = 0; templateIndex < m_Templates.size();
 		++templateIndex)
@@ -604,6 +729,19 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"category\": \"" << CDataJson::Escape(value.category) << "\",\n"
 			<< "      \"durationMs\": " << value.durationMs << ",\n"
 			<< "      \"interpolation\": \"" << Interpolation_ToString(value.interpolation) << "\",\n"
+			<< "      \"objectMotion\": {\n";
+		const auto& motion = value.objectMotion;
+		const auto writeVector = [&output](const char_t* name, const float3_t& vector)
+		{
+			output << "        \"" << name << "\": [" << vector.x << ", " << vector.y << ", " << vector.z << "],\n";
+		};
+		writeVector("velocity", motion.velocity);
+		writeVector("acceleration", motion.acceleration);
+		writeVector("angularVelocityDegrees", motion.angularVelocityDegrees);
+		writeVector("revolutionDegreesPerSecond", motion.revolutionDegreesPerSecond);
+		writeVector("revolutionOffset", motion.revolutionOffset);
+		output << "        \"count\": " << motion.count << ", \"intervalMs\": " << motion.intervalMs
+			<< ", \"spreadDegrees\": " << motion.spreadDegrees << ", \"seed\": " << motion.seed << "\n      },\n"
 			<< "      \"tracks\": [";
 		for (size_t trackIndex = 0; trackIndex < value.tracks.size(); ++trackIndex)
 		{
@@ -665,6 +803,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"enabled\": " << (value.enabled ? "true" : "false") << ",\n"
 			<< "      \"startDelayMs\": " << value.startDelayMs << ",\n"
 			<< "      \"playbackSpeed\": " << value.playbackSpeed << ",\n"
+			<< "      \"anchorKind\": \"" << CDataJson::Escape(value.anchorKind) << "\",\n"
+			<< "      \"position\": [" << value.position.x << ", " << value.position.y << ", " << value.position.z << "],\n"
 			<< "      \"bindings\": [";
 		for (size_t bindingIndex = 0; bindingIndex < value.bindings.size();
 			++bindingIndex)
@@ -705,10 +845,31 @@ bool_t Client::CWorldSequenceDocument::Validate(
 {
 	if (m_AreaId.empty() || m_AreaId.size() > 128u || 0u == m_iRevision ||
 		m_Templates.size() > MAX_TEMPLATE_COUNT ||
-		m_Instances.size() > MAX_INSTANCE_COUNT)
+		m_Instances.size() > MAX_INSTANCE_COUNT || m_ObjectResources.size() > MAX_INSTANCE_COUNT)
 	{
 		outStatus = "World sequence document header is invalid";
 		return false;
+	}
+	std::unordered_set<std::string> objectIds;
+	for (const WORLD_SEQUENCE_OBJECT_RESOURCE& object : m_ObjectResources)
+	{
+		const bool_t alias = !object.sequenceInstanceId.empty();
+		if (!Is_ValidStableId(object.objectId) || !objectIds.insert(object.objectId).second ||
+			object.displayName.empty() || object.displayName.size() > 128u ||
+			!Is_ValidUtf8DisplayText(object.displayName) ||
+			(object.anchorKind != "WORLD" && object.anchorKind != "PLAYER") ||
+			(alias && object.anchorKind != "WORLD") ||
+			!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE ||
+			object.modelPreScale > MAX_COMPONENT || !Is_BoundedFloat3(object.scale) ||
+			object.scale.x < MIN_SCALE || object.scale.y < MIN_SCALE || object.scale.z < MIN_SCALE ||
+			(alias ? (!object.modelAssetId.empty() || !Is_ValidStableId(object.sequenceInstanceId) ||
+				nullptr == Find_Instance(object.sequenceInstanceId) || !object.diffuseTextureAssetId.empty() || object.animated) :
+				(!Is_ResourcePath(object.modelAssetId, true) ||
+					(!object.diffuseTextureAssetId.empty() && !Is_ResourcePath(object.diffuseTextureAssetId, false)))))
+		{
+			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
+			return false;
+		}
 	}
 	std::unordered_set<std::string> templateIds;
 	for (const WORLD_SEQUENCE_TEMPLATE& value : m_Templates)
@@ -729,6 +890,14 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				value.sequenceId;
 			return false;
 		}
+		const auto& motion = value.objectMotion;
+		if (!Is_BoundedFloat3(motion.velocity) || !Is_BoundedFloat3(motion.acceleration) ||
+			!Is_BoundedFloat3(motion.angularVelocityDegrees) ||
+			!Is_BoundedFloat3(motion.revolutionDegreesPerSecond) || !Is_BoundedFloat3(motion.revolutionOffset) ||
+			motion.count < 1u || motion.count > 128u || motion.intervalMs > MAX_DURATION_MS ||
+			static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs ||
+			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > 180.f)
+		{ outStatus = "Invalid object motion in template: " + value.sequenceId; return false; }
 		std::unordered_set<std::string> slotIds;
 		for (const WORLD_SEQUENCE_TRACK& track : value.tracks)
 		{
@@ -811,6 +980,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			value.startDelayMs > MAX_DURATION_MS ||
 			!std::isfinite(value.playbackSpeed) || value.playbackSpeed < 0.05f ||
 			value.playbackSpeed > 8.f ||
+			(value.anchorKind != "WORLD" && value.anchorKind != "PLAYER") ||
+			!Is_BoundedFloat3(value.position) ||
 			value.bindings.size() != Count_BoundSlots(*targetTemplate))
 		{
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
@@ -848,9 +1019,11 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			const bool_t bindingShapeIsValid =
 				WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT ==
 					binding.targetKind ?
-				hasAnimationSlot : (hasTransformSlot && !hasAnimationSlot);
+				hasAnimationSlot : (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ?
+				(hasTransformSlot || hasAnimationSlot) : (hasTransformSlot && !hasAnimationSlot));
 			if (!boundSlots.insert(binding.slotId).second ||
-				!Parse_Uint64Text(binding.targetId, targetId) ||
+				(binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ?
+					!Is_ValidStableId(binding.targetId) : !Parse_Uint64Text(binding.targetId, targetId)) ||
 				!boundTargets.insert(uniqueTarget).second ||
 				!bindingShapeIsValid)
 			{
@@ -861,6 +1034,16 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			/* The binding's own kind decides which target table admits it. A
 			   Deploy slot that also carries a transform track is still a
 			   Deploy binding. */
+			if (WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE == binding.targetKind)
+			{
+				const auto* object = Find_ObjectResource(binding.targetId);
+				if (!object || object->modelAssetId.empty() || !object->sequenceInstanceId.empty() ||
+					(hasAnimationSlot && !object->animated))
+				{ outStatus = "Invalid object resource binding: " + value.instanceId + "/" + binding.slotId; return false; }
+				continue;
+			}
+			if (value.anchorKind != "WORLD" || value.position.x != 0.f || value.position.y != 0.f || value.position.z != 0.f)
+			{ outStatus = "Placed sequences cannot use object instance anchors: " + value.instanceId; return false; }
 			if (WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT == binding.targetKind)
 			{
 				const auto deploy = availableDeployPlacements.find(targetId);
@@ -939,6 +1122,7 @@ void Client::CWorldSequenceDocument::Reset_Empty(const std::string& areaId)
 	m_iRevision = 1;
 	m_Templates.clear();
 	m_Instances.clear();
+	m_ObjectResources.clear();
 }
 
 void Client::CWorldSequenceDocument::Touch()
@@ -993,6 +1177,20 @@ Client::CWorldSequenceDocument::Find_Instance(
 	return m_Instances.end() == found ? nullptr : &*found;
 }
 
+Client::WORLD_SEQUENCE_OBJECT_RESOURCE* Client::CWorldSequenceDocument::Find_ObjectResource(const std::string& objectId)
+{
+	const auto found = std::find_if(m_ObjectResources.begin(), m_ObjectResources.end(),
+		[&objectId](const auto& value) { return value.objectId == objectId; });
+	return found == m_ObjectResources.end() ? nullptr : &*found;
+}
+
+const Client::WORLD_SEQUENCE_OBJECT_RESOURCE* Client::CWorldSequenceDocument::Find_ObjectResource(const std::string& objectId) const
+{
+	const auto found = std::find_if(m_ObjectResources.begin(), m_ObjectResources.end(),
+		[&objectId](const auto& value) { return value.objectId == objectId; });
+	return found == m_ObjectResources.end() ? nullptr : &*found;
+}
+
 bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 	const CWorldSequenceDocument& other) const
 {
@@ -1014,9 +1212,20 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 	};
 	if (m_AreaId != other.m_AreaId || m_iRevision != other.m_iRevision ||
 		m_Templates.size() != other.m_Templates.size() ||
-		m_Instances.size() != other.m_Instances.size())
+		m_Instances.size() != other.m_Instances.size() ||
+		m_ObjectResources.size() != other.m_ObjectResources.size())
 	{
 		return false;
+	}
+	for (size_t index = 0u; index < m_ObjectResources.size(); ++index)
+	{
+		const auto& left = m_ObjectResources[index];
+		const auto& right = other.m_ObjectResources[index];
+		if (left.objectId != right.objectId || left.displayName != right.displayName ||
+			left.anchorKind != right.anchorKind ||
+			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
+			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
+			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId) return false;
 	}
 	for (size_t templateIndex = 0u; templateIndex < m_Templates.size();
 		++templateIndex)
@@ -1028,7 +1237,14 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.category != right.category || left.durationMs != right.durationMs ||
 			left.interpolation != right.interpolation ||
 			left.tracks.size() != right.tracks.size() ||
-			left.animationTracks.size() != right.animationTracks.size())
+			left.animationTracks.size() != right.animationTracks.size() ||
+			!sameFloat3(left.objectMotion.velocity, right.objectMotion.velocity) ||
+			!sameFloat3(left.objectMotion.acceleration, right.objectMotion.acceleration) ||
+			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||
+			!sameFloat3(left.objectMotion.revolutionDegreesPerSecond, right.objectMotion.revolutionDegreesPerSecond) ||
+			!sameFloat3(left.objectMotion.revolutionOffset, right.objectMotion.revolutionOffset) ||
+			left.objectMotion.count != right.objectMotion.count || left.objectMotion.intervalMs != right.objectMotion.intervalMs ||
+			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed)
 		{
 			return false;
 		}
@@ -1084,7 +1300,8 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.templateId != right.templateId || left.enabled != right.enabled ||
 			left.startDelayMs != right.startDelayMs ||
 			!sameFloat(left.playbackSpeed, right.playbackSpeed) ||
-			left.bindings.size() != right.bindings.size())
+			left.bindings.size() != right.bindings.size() || left.anchorKind != right.anchorKind ||
+			!sameFloat3(left.position, right.position))
 		{
 			return false;
 		}
@@ -1141,6 +1358,8 @@ const char_t* Client::CWorldSequenceDocument::TargetKind_ToString(
 		return "MAP_PLACEMENT";
 	case WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT:
 		return "DEPLOY_PLACEMENT";
+	case WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE:
+		return "OBJECT_RESOURCE";
 	default:
 		return "INVALID";
 	}
@@ -1154,6 +1373,8 @@ bool_t Client::CWorldSequenceDocument::Try_ParseTargetKind(
 		outTargetKind = WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT;
 	else if ("DEPLOY_PLACEMENT" == value)
 		outTargetKind = WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT;
+	else if ("OBJECT_RESOURCE" == value)
+		outTargetKind = WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
 	else
 		return false;
 	return true;

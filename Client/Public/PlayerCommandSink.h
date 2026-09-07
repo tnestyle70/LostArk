@@ -34,6 +34,13 @@ public:
 	virtual bool Consume_DebugMadnessFormResult(
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result) = 0;
 
+	virtual bool Request_InteractionSlot(std::uint32_t sequence,
+		LostArk::Shared::INTERACTION_SLOT slot) = 0;
+	virtual bool Request_DebugKoukuHudMode(std::uint32_t sequence,
+		LostArk::Shared::KOUKU_HUD_MODE mode) = 0;
+	virtual bool Consume_DebugKoukuHudModeResult(
+		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
+
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,

@@ -6,8 +6,8 @@
   "slots": {
     "mesh": "",
     "base": "",
-    "noise": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_noise_023_ycl.dds",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_k_smoke_01.dds",
+    "noise": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_noise_023_ycl.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_k_smoke_01.dds",
     "emissive": "",
     "dissolve": ""
   },

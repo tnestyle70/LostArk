@@ -47,11 +47,14 @@
       "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
         "Data/KoukuSaydon/**",
+        "Data/Rendering/Authored/LightResources.json",
+        "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.maplights.json",
         "Data/Animation/Reference/KoukuSaydon/**"
       ],
       "tools": [
         "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
-        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py"
+        "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+        "Tools/RenderingPipeline/light_resources_pipeline.py"
       ],
       "outputs": [
         "Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
@@ -142,14 +145,16 @@
         "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/**",
         "Data/Maps/MapCatalog.json"
       ],
-      "tools": ["Tools/MapPipeline/Publish-MapAuthoring.ps1"],
+      "tools": ["Tools/MapPipeline/Publish-MapAuthoring.ps1", "Tools/RenderingPipeline/light_resources_pipeline.py"],
       "outputs": [
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements"
       ],
       "requiredOutputPatterns": [
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",

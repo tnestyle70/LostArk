@@ -23,7 +23,7 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 optional rest-pose weapon socketed on the body rig. Product animation bindings
 are admitted for the Gate 1 Kouku only. It deliberately does not share
 Valtan's armour prototype or joined presentation graph. */
-/* The colourless Saydon body a player wears while PLAYER_MADNESS_FORM::CLOWN.
+/* The MN_RPCZ_00-1 madness doll a player wears while PLAYER_MADNESS_FORM::CLOWN.
 Shared with the clown CHARACTER_SPEC so the spec and the admission agree. */
 inline constexpr const wchar_t* KOUKU_CLOWN_BODY_PROTOTYPE_TAG =
 	L"Prototype_Component_Model_KoukuSaydonClown";
@@ -32,8 +32,8 @@ class CKoukuSaydonPresentationAssetService final
 {
 public:
 	static void Begin_LevelLoad(std::uint32_t iLevelIndex);
-	/* Admits the clown avatar body (MN_RPCT_03) once per level with the same
-	Saydon admission scale and verifies its idle/run clips. S_FALSE when it
+	/* Admits the Polymorph 4134 avatar body (MN_RPCZ_00-1) once per level
+	and its socketed hammer, and verifies its own idle/run clips. S_FALSE when it
 	is already ready; the failure reason lands in Get_Status(). */
 	static HRESULT Ensure_ClownBodyPrototype(
 		ComPtr<ID3D11Device> pDevice,

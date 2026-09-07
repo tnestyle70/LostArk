@@ -673,15 +673,21 @@ function Assert-NavigationGrid {
 function Assert-NavigationPlacements {
     param(
         [object]$BaseGrid,
-        [object[]]$RegionGrids
+        [object[]]$RegionGrids,
+        [string]$AuthoringRoot = $repoRoot
     )
-    $world = Get-Content -LiteralPath (Join-Path $repoRoot $BaseGrid.WorldPath) `
+    $world = Get-Content -LiteralPath (Join-Path $AuthoringRoot $BaseGrid.WorldPath) `
         -Raw -Encoding UTF8 | ConvertFrom-Json
     foreach ($placement in @($world.placements | Where-Object {
         $_.kind -eq 'boss' -or ($_.enabled -and $_.kind -eq 'playerSpawn') })) {
         $x = [double]$placement.position[0]
         $y = [double]$placement.position[1]
         $z = [double]$placement.position[2]
+        if ([double]::IsNaN($x) -or [double]::IsInfinity($x) -or
+            [double]::IsNaN($y) -or [double]::IsInfinity($y) -or
+            [double]::IsNaN($z) -or [double]::IsInfinity($z)) {
+            throw "Gameplay placement position is not finite: $($placement.placementId)"
+        }
         # Same dispatch as CServerNavigation::Select_Region: the first region
         # whose footprint contains the point owns it, otherwise the base grid.
         $owner = $BaseGrid
@@ -708,7 +714,15 @@ function Assert-NavigationPlacements {
         $cellCount = [uint64]$bounds.Width * [uint64]$bounds.Height
         $heightOffset = 20 + [int]$cellCount + 4 * $index
         $cellHeight = [BitConverter]::ToSingle($bytes, $heightOffset)
-        if ([Math]::Abs($y - $cellHeight) -gt 0.25) {
+        # Match CGameRoom::Build_WorldEntity: Big Saydon owns its authored
+        # height above the G2 floor; its XZ footprint must still be walkable.
+        $preserveAuthoredHeight =
+            $BaseGrid.AreaId -ceq 'LV_LUT_MIDNIGHTC_ED' -and
+            $world.areaId -ceq 'LV_LUT_MIDNIGHTC_ED' -and
+            $placement.kind -ceq 'boss' -and
+            $placement.archetypeId -ceq 'BOSS_KAKULSAYDON_G2_BIG_SAYDON'
+        if (-not $preserveAuthoredHeight -and
+            [Math]::Abs($y - $cellHeight) -gt 0.25) {
             throw "Gameplay placement height differs from server navigation: $($placement.placementId) grid=$($owner.AreaId)"
         }
     }
@@ -765,6 +779,52 @@ function Invoke-NavigationPaintContractTest {
         if ($policy.Count -ne 1 -or
             $policy[0] -ne 'LOSTARK_NAVIGATION_POLICY 1 "TEST_NAV_PAINT" 0.75') {
             throw 'Navigation runtime step policy was not emitted canonically'
+        }
+
+        $placementPath = Join-Path $fixtureRoot 'placement.world.json'
+        $placementCases = @(
+            @{ Name='authored boss height'; Error=$null },
+            @{ Name='other boss'; Archetype='BOSS_KAKULSAYDON_G2_KOUKU'; Error='height differs' },
+            @{ Name='other area'; Area='OTHER_AREA'; Error='height differs' },
+            @{ Name='other kind'; Kind='playerSpawn'; Error='height differs' },
+            @{ Name='blocked footprint'; Blocked=$true; X=0.5; Error='not on a walkable' },
+            @{ Name='outside footprint'; X=3.5; Error='outside server navigation' },
+            @{ Name='non-finite height'; Y='NaN'; Error='not finite' }
+        )
+        foreach ($case in $placementCases) {
+            $area = if ($case.ContainsKey('Area')) { $case.Area } else { 'LV_LUT_MIDNIGHTC_ED' }
+            $kind = if ($case.ContainsKey('Kind')) { $case.Kind } else { 'boss' }
+            $archetype = if ($case.ContainsKey('Archetype')) { $case.Archetype } else {
+                'BOSS_KAKULSAYDON_G2_BIG_SAYDON'
+            }
+            $x = if ($case.ContainsKey('X')) { $case.X } else { 1.5 }
+            $y = if ($case.ContainsKey('Y')) { $case.Y } else { 8.63 }
+            $placementDocument = @{
+                areaId=$area
+                placements=@(@{
+                    placementId='boss.height.contract'; kind=$kind; archetypeId=$archetype
+                    enabled=($kind -eq 'playerSpawn'); position=@($x, $y, 0.5)
+                })
+            }
+            [IO.File]::WriteAllText($placementPath,
+                ($placementDocument | ConvertTo-Json -Depth 8), [Text.Encoding]::UTF8)
+            $placementGrid = [pscustomobject]@{
+                AreaId=$area; WorldPath='placement.world.json'
+                Bytes=$(if ($case.Blocked) { $grid.Bytes } else { $heightGrid.Bytes })
+            }
+            $failure = $null
+            try {
+                Assert-NavigationPlacements -BaseGrid $placementGrid -RegionGrids @() `
+                    -AuthoringRoot $fixtureRoot
+            }
+            catch {
+                $failure = $_.Exception.Message
+            }
+            if (($null -eq $case.Error -and $null -ne $failure) -or
+                ($null -ne $case.Error -and
+                    ($null -eq $failure -or $failure -notlike "*$($case.Error)*"))) {
+                throw "Navigation placement contract failed: $($case.Name): $failure"
+            }
         }
 
         $regionSource = @(
@@ -924,7 +984,7 @@ function Invoke-NavigationPaintContractTest {
 
 if ($Mode -eq 'ContractTest') {
     Invoke-NavigationPaintContractTest
-    Write-Host 'Server navigation ContractTest succeeded: navpaint and runtime blocker acceptance/rejection cases.'
+    Write-Host 'Server navigation ContractTest succeeded: navpaint, runtime blockers and placement height acceptance/rejection cases.'
     return
 }
 

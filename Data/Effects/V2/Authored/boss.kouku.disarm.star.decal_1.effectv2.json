@@ -5,11 +5,11 @@
   "effectType": "Decal",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_a_decal_020.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_decal_020.dds",
     "noise": "",
     "mask": "",
     "emissive": "",
-    "dissolve": "Effect/KakulSaydon/Textures/FX_TEX_02/fx_d_atypical_076_2_cl.dds"
+    "dissolve": "Effect/KoukuSaydon/Textures/FX_TEX_02/fx_d_atypical_076_2_cl.dds"
   },
   "params": {
     "position": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },

@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 10,
+  "revision": 17,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -48,21 +48,21 @@
       },
       "fog": {
         "enabled": true,
-        "color": [0.62, 0.7, 0.8, 1],
+        "color": [0.620000005, 0.699999988, 0.800000012, 1],
         "density": 0.5,
-        "heightFalloff": 0.08,
+        "heightFalloff": 0.0799999982,
         "topHeight": 24,
         "startDistance": 8,
-        "maximumOpacity": 0.92,
-        "driftSpeed": 0.12,
+        "maximumOpacity": 0.920000017,
+        "driftSpeed": 0.119999997,
         "driftHeightAmplitude": 1.5,
-        "driftDensityAmplitude": 0.06,
-        "coveragePercent": 0.45,
-        "windDirectionX": 0.8,
-        "windDirectionZ": 0.6,
+        "driftDensityAmplitude": 0.0599999987,
+        "coveragePercent": 0.449999988,
+        "windDirectionX": 0.800000012,
+        "windDirectionZ": 0.600000024,
         "windSpeed": 1.5,
-        "patchScale": 0.012,
-        "patchSoftness": 0.18
+        "patchScale": 0.0120000001,
+        "patchSoftness": 0.180000007
       }
     },
     {
@@ -90,12 +90,12 @@
       },
       "fog": {
         "enabled": false,
-        "color": [0.55, 0.62, 0.72, 1],
-        "density": 0.35,
-        "heightFalloff": 0.08,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
         "topHeight": 0,
         "startDistance": 0,
-        "maximumOpacity": 0.9,
+        "maximumOpacity": 0.899999976,
         "driftSpeed": 0,
         "driftHeightAmplitude": 0,
         "driftDensityAmplitude": 0,
@@ -103,8 +103,8 @@
         "windDirectionX": 1,
         "windDirectionZ": 0,
         "windSpeed": 0,
-        "patchScale": 0.01,
-        "patchSoftness": 0.15
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     },
     {
@@ -132,12 +132,12 @@
       },
       "fog": {
         "enabled": false,
-        "color": [0.55, 0.62, 0.72, 1],
-        "density": 0.35,
-        "heightFalloff": 0.08,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
         "topHeight": 0,
         "startDistance": 0,
-        "maximumOpacity": 0.9,
+        "maximumOpacity": 0.899999976,
         "driftSpeed": 0,
         "driftHeightAmplitude": 0,
         "driftDensityAmplitude": 0,
@@ -145,8 +145,94 @@
         "windDirectionX": 1,
         "windDirectionZ": 0,
         "windSpeed": 0,
-        "patchScale": 0.01,
-        "patchSoftness": 0.15
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
+      }
+    },
+    {
+      "profileId": "scene.kakulsaydon.find-true-dark.v1",
+      "displayName": "씬프로필_암전",
+      "exposureMultiplier": 0.550000012,
+      "bloomIntensityMultiplier": 0.800000012,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0.119999997, 0.119999997, 0.159999996, 1],
+        "ambient": [0.0500000007, 0.0500000007, 0.0799999982, 1],
+        "specular": [0.100000001, 0.100000001, 0.119999997, 1]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.899999976,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
+      }
+    },
+    {
+      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.0399999991, "ssaoBias": 0, "ssaoIntensity": 0.689999998, "ssaoPower": 2.0999999, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 2.74000001, "bloomSoftKnee": 1, "bloomIntensity": 2.6099999, "bloomScatter": 1, "exposure": 0.730000019, "whitePoint": 1, "gamma": 1.90499997, "fxaaEnabled": true, "fxaaSubpixel": 0, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006},
+      "profileId": "scene.kakulsaydon.g1.base.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0, 0, 0.5, 0],
+        "diffuse": [0.800000012, 0.800000012, 0.800000012, 1],
+        "ambient": [0.25, 0.25, 0.25, 1],
+        "specular": [0.5, 0.5, 0.5, 1]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      },
+      "fog": {
+        "enabled": false,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
+        "topHeight": 0,
+        "startDistance": 0,
+        "maximumOpacity": 0.899999976,
+        "driftSpeed": 0,
+        "driftHeightAmplitude": 0,
+        "driftDensityAmplitude": 0,
+        "coveragePercent": 1,
+        "windDirectionX": 1,
+        "windDirectionZ": 0,
+        "windSpeed": 0,
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     },
     {
@@ -174,12 +260,12 @@
       },
       "fog": {
         "enabled": false,
-        "color": [0.55, 0.62, 0.72, 1],
-        "density": 0.35,
-        "heightFalloff": 0.08,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
         "topHeight": 0,
         "startDistance": 0,
-        "maximumOpacity": 0.9,
+        "maximumOpacity": 0.899999976,
         "driftSpeed": 0,
         "driftHeightAmplitude": 0,
         "driftDensityAmplitude": 0,
@@ -187,8 +273,8 @@
         "windDirectionX": 1,
         "windDirectionZ": 0,
         "windSpeed": 0,
-        "patchScale": 0.01,
-        "patchSoftness": 0.15
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     },
     {
@@ -216,12 +302,12 @@
       },
       "fog": {
         "enabled": false,
-        "color": [0.55, 0.62, 0.72, 1],
-        "density": 0.35,
-        "heightFalloff": 0.08,
+        "color": [0.550000012, 0.620000005, 0.720000029, 1],
+        "density": 0.349999994,
+        "heightFalloff": 0.0799999982,
         "topHeight": 0,
         "startDistance": 0,
-        "maximumOpacity": 0.9,
+        "maximumOpacity": 0.899999976,
         "driftSpeed": 0,
         "driftHeightAmplitude": 0,
         "driftDensityAmplitude": 0,
@@ -229,8 +315,8 @@
         "windDirectionX": 1,
         "windDirectionZ": 0,
         "windSpeed": 0,
-        "patchScale": 0.01,
-        "patchSoftness": 0.15
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     },
     {
@@ -258,21 +344,21 @@
       },
       "fog": {
         "enabled": false,
-        "color": [0.45, 0.52, 0.66, 1],
-        "density": 0.4,
-        "heightFalloff": 0.08,
+        "color": [0.449999988, 0.519999981, 0.660000026, 1],
+        "density": 0.400000006,
+        "heightFalloff": 0.0799999982,
         "topHeight": 0,
         "startDistance": 8,
-        "maximumOpacity": 0.85,
-        "driftSpeed": 0.1,
-        "driftHeightAmplitude": 1.0,
-        "driftDensityAmplitude": 0.05,
+        "maximumOpacity": 0.850000024,
+        "driftSpeed": 0.100000001,
+        "driftHeightAmplitude": 1,
+        "driftDensityAmplitude": 0.0500000007,
         "coveragePercent": 1,
         "windDirectionX": 1,
         "windDirectionZ": 0,
         "windSpeed": 0,
-        "patchScale": 0.01,
-        "patchSoftness": 0.15
+        "patchScale": 0.00999999978,
+        "patchSoftness": 0.150000006
       }
     }
   ]

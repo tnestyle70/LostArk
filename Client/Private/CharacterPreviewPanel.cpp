@@ -11,6 +11,7 @@
 #include "Level_ValtanArena.h"
 #include "Level_KakulSaydonArena.h"
 #include "Model.h"
+#include "Npc.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayableCharacterAssetService.h"
@@ -31,6 +32,43 @@ namespace
 	constexpr const char* SAYDON_HAMMER_ASSET = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel";
 	constexpr const wchar_t* SAYDON_HAMMER_PROTOTYPE = L"Prototype_Component_Model_AnimationPreview_KoukuSaydon_WP_MN_RPCT_06";
 	constexpr const char* SAYDON_HAMMER_SOCKET = "b_wp_1";
+
+	const char* Resolve_KoukuPreviewArchetype(const std::string_view asset)
+	{
+#ifdef _DEBUG
+		if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+		{
+			const auto gate = arena->Get_ActiveDebugGate();
+			const auto& gates = Client::CLevel_KakulSaydonArena::Get_DebugGates();
+			if (gate < gates.size() && nullptr != gates[gate].pHudFocusArchetypeId)
+				if (const auto* boss = Client::CActorCatalog::Find_Boss(gates[gate].pHudFocusArchetypeId))
+					if (std::filesystem::path(boss->bodyModel).stem().string() == asset)
+						return gates[gate].pHudFocusArchetypeId;
+		}
+#endif
+		if (asset == "MN_RPCT_00") return "BOSS_KAKULSAYDON_G1_SAYDON";
+		if (asset == "MN_RPCT_06") return "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+		if (asset == "MN_RPCZ_00") return "BOSS_KAKULSAYDON_G2_KOUKU";
+		if (asset == "MN_RPCT_05") return "BOSS_KAKULSAYDON_G3_SAYDON";
+		return nullptr;
+	}
+
+	f32_t Resolve_KoukuPreviewBodyMultiplier(const Client::ANIMATION_PREVIEW_ASSET* asset,
+		const f32_t fallback)
+	{
+		const char* archetype = nullptr == asset ? nullptr : Resolve_KoukuPreviewArchetype(asset->pAssetName);
+		if (nullptr == archetype) return fallback;
+		const auto* boss = Client::CActorCatalog::Find_Boss(archetype);
+		if (nullptr == boss || !std::isfinite(boss->bodyModelPreScale) ||
+			boss->bodyModelPreScale <= 0.f || asset->fPreviewScale <= 0.f) return fallback;
+		f32_t liveMultiplier = 1.f;
+#ifdef _DEBUG
+		if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+			if (const auto npc = arena->Debug_FindArenaBossNpc(archetype))
+				liveMultiplier = npc->Get_DebugPresentationScale();
+#endif
+		return boss->bodyModelPreScale / asset->fPreviewScale * liveMultiplier;
+	}
 
 	std::string Resolve_SaydonHammerClip(const std::string_view bodyClip)
 	{
@@ -211,7 +249,8 @@ bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
 		CAnimationTargetService::Resolve_Model() != expectedModel)
 		return false;
 	auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
-	XMStoreFloat4x4(&root, XMMatrixScaling(multiplier, multiplier, multiplier) *
+	const f32_t currentMultiplier = Resolve_KoukuPreviewBodyMultiplier(m_pPreviewAsset, multiplier);
+	XMStoreFloat4x4(&root, XMMatrixScaling(currentMultiplier, currentMultiplier, currentMultiplier) *
 		XMLoadFloat4x4(&m_PreviewUnscaledParentMatrix));
 	CAnimationTargetService::Bind_Preview(expectedModel, m_pPreviewAsset->pAssetName, root);
 	// ImGui can seek after the level update; refresh the existing part's cached
@@ -224,19 +263,40 @@ bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
 
 void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 {
-	if (nullptr == m_pPreviewAsset || std::string_view(m_pPreviewAsset->pAssetName) != "MN_RPCT_06") return;
+	if (nullptr == m_pPreviewAsset) return;
 	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+	// Read live tuning on every seek/play frame, including a paused clip while
+	// the designer rotates the hammer. The player Clown variant is excluded.
+	if (nullptr != body && nullptr != body->Get_Model() &&
+		nullptr != Resolve_KoukuPreviewArchetype(m_pPreviewAsset->pAssetName))
+	{
+		const f32_t scale = Resolve_KoukuPreviewBodyMultiplier(m_pPreviewAsset, 1.f);
+		auto& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
+		XMStoreFloat4x4(&root, XMMatrixScaling(scale, scale, scale) *
+			XMLoadFloat4x4(&m_PreviewUnscaledParentMatrix));
+		CAnimationTargetService::Bind_Preview(body->Get_Model(), m_pPreviewAsset->pAssetName, root);
+		body->Update(0.f);
+	}
+	if (std::string_view(m_pPreviewAsset->pAssetName) != "MN_RPCT_06") return;
 	const auto weapon = dynamic_pointer_cast<CPart_Body>(m_pPreviewWeaponObject.lock());
 	if (nullptr == body || nullptr == weapon || nullptr == body->Get_Model() || nullptr == weapon->Get_Model()) return;
 	const auto bodyRoot = dynamic_pointer_cast<CTransform>(body->Get_Component(g_strTransformComTag));
 	const auto bodyModel = body->Get_Model();
 	const auto weaponModel = weapon->Get_Model();
 	if (nullptr == bodyRoot || !bodyModel->Has_Bone(SAYDON_HAMMER_SOCKET)) return;
-	// Source wp_1_20 is b_wp_1 with zero offset/rotation and unit scale.
-	// Its bone already carries the body pretransform; the hammer adds no second
-	// preview scale or yaw. Only the selected actor parent contains the 100x.
+	matrix_t weaponLocal = XMMatrixIdentity();
+#ifdef _DEBUG
+	if (const auto* arena = CLevel_KakulSaydonArena::Get_Active())
+		if (const auto npc = arena->Debug_FindArenaBossNpc("BOSS_KAKULSAYDON_G2_BIG_SAYDON"))
+		{
+			const f32_t scale = npc->Get_DebugWeaponScale();
+			weaponLocal = XMLoadFloat4x4(&npc->Get_DebugWeaponRotation()) * XMMatrixScaling(scale, scale, scale);
+		}
+#endif
+	// Mirror CNpc's tuned socket transform once; the body bone already carries
+	// body pre-scale and the selected actor parent carries its live multiplier.
 	XMStoreFloat4x4(&m_PreviewWeaponParentMatrices[m_iPreviewParentMatrixIndex],
-		bodyModel->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) *
+		weaponLocal * bodyModel->Get_BoneMatrix(SAYDON_HAMMER_SOCKET) *
 		XMLoadFloat4x4(bodyRoot->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(&m_PreviewParentMatrices[m_iPreviewParentMatrixIndex]));
 	weaponModel->Set_AnimPaused(true);
@@ -283,6 +343,16 @@ bool_t Client::CCharacterPreviewPanel::Declares_Weapon(
 	return nullptr != asset.pWeaponModelAssetId &&
 		nullptr != asset.pWeaponPrototypeTag &&
 		nullptr != asset.pWeaponSocketBone;
+}
+
+Client::EFFECT_V2_TARGET Client::CCharacterPreviewPanel::Get_PreviewEffectTarget() const
+{
+	const auto body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
+	if (nullptr == body || nullptr == m_pPreviewAsset ||
+		m_iPreviewLevelIndex != CGameInstance::Get().Get_CurrentLevelID() ||
+		body->Get_Model() != CAnimationTargetService::Resolve_Model())
+		return {};
+	return EFFECT_V2_TARGET::From_PreviewBody(body, m_pPreviewAsset->pAssetName);
 }
 
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)

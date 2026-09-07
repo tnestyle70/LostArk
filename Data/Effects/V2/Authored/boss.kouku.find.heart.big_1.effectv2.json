@@ -5,10 +5,10 @@
   "effectType": "Texture",
   "slots": {
     "mesh": "",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_05/fx_l_symbol_12_cl.dds",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_05/fx_l_symbol_12_cl.dds",
     "noise": "",
     "mask": "",
-    "emissive": "Effect/KakulSaydon/Textures/FX_TEX_04/fx_g_symbol_love_01.dds",
+    "emissive": "Effect/KoukuSaydon/Textures/FX_TEX_04/fx_g_symbol_love_01.dds",
     "dissolve": ""
   },
   "params": {

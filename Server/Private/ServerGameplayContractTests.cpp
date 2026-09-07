@@ -1,4 +1,4 @@
-﻿#include "ServerGameplayContractTests.h"
+#include "ServerGameplayContractTests.h"
 
 #include "ClientSession.h"
 #include "BossCombatRuntime.h"
@@ -797,6 +797,590 @@ namespace
 	};
 }
 
+namespace
+{
+	/* KoukuSaydon Logic runtime: synthetic windows judged on a fixed clock so
+	the verdict rules never depend on which pattern the composition authors.
+	A function of its own keeps these rooms and players off the contract
+	frame, which already sits close to the 1 MiB production stack. */
+	void Run_KoukuSaydonLogicRuntimeContracts(
+		TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+	{
+		using namespace LostArk::Shared;
+		using namespace LostArk::Server;
+		/* KoukuSaydon Logic runtime: synthetic windows judged on a fixed clock so
+		the verdict rules never depend on which pattern the composition authors. */
+		const auto makePlayer = [](const PLAYER_ID id, const float x, const float z,
+			const float yaw) -> SERVER_PLAYER
+		{
+			SERVER_PLAYER player{};
+			player.iPlayerId = id;
+			player.iNetEntityId = static_cast<NET_ENTITY_ID>(1000u + id);
+			player.iCurrentHp = player.iMaximumHp = 1000u;
+			player.iCurrentMadness = 0u;
+			player.iMaximumMadness = 100u;
+			player.fPositionX = x;
+			player.fPositionZ = z;
+			player.fYawDegrees = yaw;
+			return player;
+		};
+		SERVER_WORLD_ENTITY logicBoss{};
+		logicBoss.iNetEntityId = 4242u;
+		logicBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		logicBoss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+		logicBoss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		logicBoss.iCurrentHp = logicBoss.iMaximumHp = 100000u;
+		logicBoss.iPatternSequence = 7u;
+		logicBoss.fYawDegrees = 0.f;
+		BOSS_ENCOUNTER_MADNESS_POLICY policy{};
+		policy.iMaximum = 100u;
+		policy.iClownHoldMs = 15000u;
+		std::vector<DAMAGE_EVENT> logicEvents;
+		{
+			BOSS_PATTERN_DEFINITION anchoredPattern{};
+			anchoredPattern.strPatternId = "KAKULSAYDON_TEST_ANCHORED_WORLD";
+			BOSS_PATTERN_WORLD_SEQUENCE world{};
+			world.strInstanceId = "world.sequence.instance.8";
+			world.bAnchorBossSpawn = true;
+			world.fAnchorPositionX = -.319f;
+			world.fAnchorPositionY = 1.9f;
+			world.fAnchorPositionZ = 737.531f;
+			world.fPositionOffsetY = .58f;
+			anchoredPattern.WorldSequences.push_back(world);
+			auto anchorBoss = std::make_unique<SERVER_WORLD_ENTITY>(logicBoss);
+			anchorBoss->fSpawnPositionX = -.07f;
+			anchorBoss->fSpawnPositionY = 1.32f;
+			anchorBoss->fSpawnPositionZ = 942.33f;
+			anchorBoss->fPositionX = 99.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(anchoredPattern, *anchorBoss, 1u, ledger);
+			CKoukuSaydonLogicRuntime::Update(*anchorBoss, anchoredPattern, ledger, players,
+				catalog, &policy, 1u, logicEvents, output);
+			tests.Require(output.WorldSequencePlays.size() == 1u &&
+				std::abs(output.WorldSequencePlays.front().fPositionOffsetX - .249f) < .001f &&
+				std::abs(output.WorldSequencePlays.front().fPositionOffsetY) < .001f &&
+				std::abs(output.WorldSequencePlays.front().fPositionOffsetZ - 204.799f) < .001f,
+				"Anchor the roulette World cue to the owning boss spawn and preserve its authored height offset");
+		}
+
+		{
+			std::uint32_t cardMask = 0u;
+			bool stable = true;
+			for (PLAYER_ID id = 1u; id <= 128u; ++id)
+			{
+				auto player = makePlayer(id, 0.f, 0.f, 0.f);
+				CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, logicBoss.iNetEntityId, 42u);
+				const auto suit = player.eMechanicCardSymbol;
+				const auto color = player.eMechanicCardColor;
+				const std::uint32_t index = static_cast<std::uint32_t>(suit) - 1u +
+					(MECHANIC_CARD_COLOR::BLACK == color ? 4u : 0u);
+				cardMask |= 1u << index;
+				player.Clear_KoukuInteractionState();
+				CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, logicBoss.iNetEntityId, 43u);
+				stable = stable && suit == player.eMechanicCardSymbol && color == player.eMechanicCardColor;
+			}
+			tests.Require(0xffu == cardMask && stable,
+				"Deal all eight suit/color cards on Server and preserve the chosen card across form and HUD changes");
+		}
+
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_ROULETTE";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "roulette.1";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
+			window.iStartMs = 0u;
+			window.iDurationMs = 1000u;
+			window.iSectorCount = 4u;
+			window.SectorSymbols = { MECHANIC_CARD_SYMBOL::HEART, MECHANIC_CARD_SYMBOL::SPADE,
+				MECHANIC_CARD_SYMBOL::CLUB, MECHANIC_CARD_SYMBOL::DIAMOND };
+			window.fOuterRadiusM = 20.f;
+			window.OnFail.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT, 50u, 0u, {} });
+			pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, 5.f, 0.f));   // sector 0 = HEART
+			players.emplace(2u, makePlayer(2u, 5.f, 0.f, 0.f));   // sector 1 = SPADE
+			players.emplace(3u, makePlayer(3u, 0.f, 50.f, 0.f));  // outside the wheel
+			for (auto& [id, player] : players)
+				CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, logicBoss.iNetEntityId, 99u);
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 100u, ledger);
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 100u, logicEvents, output);
+			const bool dealt = ledger.Windows.front().bOpened &&
+				MECHANIC_CARD_SYMBOL::NONE != players.at(1u).eMechanicCardSymbol &&
+				MECHANIC_CARD_SYMBOL::NONE != players.at(2u).eMechanicCardSymbol;
+			for (auto& [id, player] : players)
+			{
+				(void)id;
+				player.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::HEART;
+				player.eMechanicCardColor = MECHANIC_CARD_COLOR::RED;
+			}
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 129u, logicEvents, output);
+			const bool notYet = !ledger.Windows.front().bClosed &&
+				0u == players.at(2u).iCurrentMadness;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 130u, logicEvents, output);
+			tests.Require(dealt && notYet && ledger.Windows.front().bClosed &&
+				0u == players.at(1u).iCurrentMadness &&
+				50u == players.at(2u).iCurrentMadness &&
+				50u == players.at(3u).iCurrentMadness &&
+				MECHANIC_CARD_SYMBOL::HEART == players.at(1u).eMechanicCardSymbol &&
+				MECHANIC_CARD_COLOR::RED == players.at(1u).eMechanicCardColor,
+				"Judge the roulette card against the sector under each player at the window end tick only");
+		}
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_CARD_REGIONS";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "regions.1";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
+			window.iDurationMs = 1000u;
+			window.OnFail.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,10u,0u,{}});
+			window.OnTimeout.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,20u,0u,{}});
+			for (std::uint32_t index = 0u; index < 8u; ++index)
+			{
+				BOSS_LOGIC_REGION region{};
+				region.strRegionId = "region." + std::to_string(index);
+				region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
+				region.bSector = true;
+				region.fRadiusM = 8.f;
+				region.fHalfAngleDegrees = 22.5f;
+				region.fYawDegrees = 22.5f + 45.f * index;
+				region.eCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(1u + index / 2u);
+				region.eCardColor = index % 2u == 0u ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
+				window.CardRegions.push_back(region);
+			}
+			pattern.LogicWindows.push_back(window);
+			auto boss = logicBoss;
+			boss.fSpawnPositionX = 100.f; boss.fSpawnPositionZ = 200.f;
+			boss.fPositionX = -10.f; boss.fPositionZ = -20.f;
+			std::map<PLAYER_ID,SERVER_PLAYER> players;
+			for (PLAYER_ID id = 1u; id <= 4u; ++id)
+			{
+				auto player = makePlayer(id, 102.f, 205.f, 0.f);
+				player.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::HEART;
+				player.eMechanicCardColor = id == 2u ? MECHANIC_CARD_COLOR::BLACK : MECHANIC_CARD_COLOR::RED;
+				if (id == 3u) player.eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::SPADE;
+				if (id == 4u) player.fPositionZ = 250.f;
+				players.emplace(id,player);
+			}
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern,boss,600u,ledger);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,629u,logicEvents,output);
+			const bool untouched = std::all_of(players.begin(),players.end(),[](const auto& pair){return pair.second.iCurrentHp == 1000u;});
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,630u,logicEvents,output);
+			tests.Require(untouched && players.at(1u).iCurrentHp == 1000u && players.at(2u).iCurrentHp == 900u &&
+				players.at(3u).iCurrentHp == 900u && players.at(4u).iCurrentHp == 800u &&
+				ledger.Windows[0].Answers.at(4u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT,
+				"Judge explicit roulette suit and color at the end only, anchored to spawn: correct success, wrong fail, outside timeout");
+		}
+		for (const auto kind : { BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP, BOSS_PATTERN_LOGIC_KIND::ENTER_AREA })
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_COLLIDER_RESULT";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "geometry.1";
+			window.eKind = kind;
+			window.iDurationMs = 1000u;
+			window.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,10u,0u,{}});
+			window.OnTimeout.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,20u,0u,{}});
+			BOSS_LOGIC_REGION region{};
+			region.strRegionId = "geometry.box";
+			region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			region.fCenterZ = 5.f;
+			region.fHalfX = region.fHalfZ = 1.f;
+			window.CardRegions.push_back(region);
+			pattern.LogicWindows.push_back(window);
+			auto boss = logicBoss; boss.fPositionX = 10.f; boss.fPositionZ = 20.f; boss.fYawDegrees = 90.f;
+			std::map<PLAYER_ID,SERVER_PLAYER> players;
+			players.emplace(1u,makePlayer(1u,15.f,20.f,0.f));
+			players.emplace(2u,makePlayer(2u,50.f,50.f,0.f));
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern,boss,700u,ledger);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,700u,logicEvents,output);
+			const bool early = players.at(1u).iCurrentHp == (kind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ? 900u : 1000u);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,701u,logicEvents,output);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,730u,logicEvents,output);
+			tests.Require(early && players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 800u,
+				"Reuse existing Result slots for linked Collider Duration or first-enter Trigger exactly once and timeout outside");
+		}
+		{
+			auto boss = logicBoss; boss.bKoukuShieldActive = true; boss.fKoukuShieldArcDegrees = 90.f;
+			boss.fKoukuShieldNormalYawOffsetDegrees = 90.f;
+			tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,boss.fPositionX+10.f,boss.fPositionZ) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,boss.fPositionX,boss.fPositionZ+10.f),
+				"Apply the authored shield normal yaw correction to the same visual front");
+		}
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_TWO_SHIELDS";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "shield.pair";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+			window.iDurationMs = 1000u;
+			window.iThreshold = 1000u;
+			window.fShieldArcDegrees = 71.737272f;
+			BOSS_LOGIC_REGION front{};
+			front.strRegionId = "shield.front";
+			front.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			front.bSector = true;
+			front.fHalfAngleDegrees = 35.868636f;
+			front.fRadiusM = 2.148847f;
+			auto back = front;
+			back.strRegionId = "shield.back";
+			back.fCenterZ = 0.5f;
+			back.fYawDegrees = 180.f;
+			window.CardRegions = {front, back};
+			pattern.LogicWindows.push_back(window);
+			auto boss = logicBoss;
+			boss.fPositionX = 10.f; boss.fPositionZ = 20.f; boss.fYawDegrees = 90.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern, boss, 900u, ledger);
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, &policy, 900u, logicEvents, output);
+			tests.Require(boss.KoukuShieldRegions.size() == 2u &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 30.f, 20.f) &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, -10.f, 20.f) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 10.f, 30.f),
+				"Reflect both authored shield directions at a translated and rotated boss, including ranged attacks");
+			// The rear shield's half-metre centre shift changes this near-edge answer.
+			tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 10.1f, 20.25f),
+				"Use the rear shield local centre rather than the boss pivot for reflection");
+			const float inside = 35.f * 0.017453292519943295f;
+			const float outside = 40.f * 0.017453292519943295f;
+			tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,
+				10.f + 10.f * std::cos(inside), 20.f - 10.f * std::sin(inside)) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss,
+				10.f + 10.f * std::cos(outside), 20.f - 10.f * std::sin(outside)),
+				"Match the native shield mesh arc: 35 degrees reflects and 40 degrees remains open");
+			CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, &policy, 930u, logicEvents, output);
+			tests.Require(!boss.bKoukuShieldActive && boss.KoukuShieldRegions.empty() &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(boss, 30.f, 20.f),
+				"Remove both shield regions when the stagger window closes");
+		}
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_CIRCLE_FAIL";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "circle.fail"; window.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+			window.bInsideIsFail = true; window.iDurationMs = 1000u;
+			window.OnFail.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,50u,0u,{}});
+			window.OnFail.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT,50u,0u,{}});
+			BOSS_LOGIC_REGION region{}; region.strRegionId = "circle.1"; region.bCircle = true;
+			region.fCenterX = 10.f; region.fCenterZ = 20.f; region.fRadiusM = 8.f;
+			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID,SERVER_PLAYER> players;
+			players.emplace(1u,makePlayer(1u,10.f,20.f,0.f));
+			players.emplace(2u,makePlayer(2u,20.f,20.f,0.f));
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern,logicBoss,800u,ledger);
+			CKoukuSaydonLogicRuntime::Update(logicBoss,pattern,ledger,players,catalog,&policy,829u,logicEvents,output);
+			const bool unchanged = players.at(1u).iCurrentHp == 1000u;
+			CKoukuSaydonLogicRuntime::Update(logicBoss,pattern,ledger,players,catalog,&policy,830u,logicEvents,output);
+			tests.Require(unchanged && players.at(1u).iCurrentHp == 500u && players.at(1u).iCurrentMadness == 50u &&
+				players.at(2u).iCurrentHp == 1000u && ledger.Windows.front().Answers.at(1u) == KOUKUSAYDON_LOGIC_ANSWER::FAIL &&
+				ledger.Windows.front().Answers.at(2u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT,
+				"Execute the authored Fail Result at Circle Duration end, including the centre, and Timeout outside");
+		}
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_ANIMATED_WORLD_TRIGGER";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "world.trigger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+			window.iStartMs = 200u; window.iDurationMs = 1300u;
+			window.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,10u,0u,{}});
+			window.OnTimeout.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE,20u,0u,{}});
+			BOSS_LOGIC_REGION region{}; region.strRegionId = "world.moving.circle"; region.bCircle = true;
+			region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN; region.fCenterZ = 1.f; region.fRadiusM = 1.f;
+			auto& track = region.WorldTrack; track.bEnabled = true;
+			track.iStartMs = 200u; track.iStartDelayMs = 100u; track.iDurationMs = 1100u;
+			track.fPlaybackSpeed = 2.f; track.bSmoothStep = true;
+			track.fBaselineX = 2.f; track.fBaselineZ = 3.f;
+			track.fBaselineScaleX = track.fBaselineScaleY = track.fBaselineScaleZ = 2.f;
+			BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.bVisible = false; track.Keys.push_back(key);
+			key.iTimeMs = 100u; key.bVisible = true; track.Keys.push_back(key);
+			key.iTimeMs = 1100u; key.fOffsetX = 10.f; key.fRotationY = key.fRotationW = 0.7071067811865475f;
+			key.fScaleX = key.fScaleY = key.fScaleZ = 2.f; track.Keys.push_back(key);
+			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+			auto boss = logicBoss; boss.fSpawnPositionX = 100.f; boss.fSpawnPositionZ = 200.f;
+			std::map<PLAYER_ID,SERVER_PLAYER> players;
+			players.emplace(1u,makePlayer(1u,109.12132f,205.12132f,0.f));
+			players.emplace(2u,makePlayer(2u,999.f,999.f,0.f));
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Build(pattern,boss,1000u,ledger);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1006u,logicEvents,output);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1015u,logicEvents,output);
+			const bool waiting = players.at(1u).iCurrentHp == 1000u;
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1018u,logicEvents,output);
+			const bool sweptThrough = players.at(1u).iCurrentHp == 900u;
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1021u,logicEvents,output);
+			CKoukuSaydonLogicRuntime::Update(boss,pattern,ledger,players,catalog,&policy,1045u,logicEvents,output);
+			tests.Require(waiting && sweptThrough && players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 800u,
+				"Sample the actual WORLD Trigger translation, quaternion, scale, visibility and clock every tick; fire damage once before its final pose");
+		}
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_GAZE";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "gaze.1";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS;
+			window.iStartMs = 0u;
+			window.iDurationMs = 1000u;
+			window.fHalfAngleDegrees = 45.f;
+			window.fMaxDistanceM = 30.f;
+			window.OnFail.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH, 0u, 0u, {} });
+			pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, -10.f, 0.f));    // south of the boss, facing +Z toward it
+			players.emplace(2u, makePlayer(2u, 0.f, -10.f, 180.f));  // same spot, back turned
+			players.emplace(3u, makePlayer(3u, 10.f, 0.f, 0.f));     // east of the boss, facing +Z (90 degrees off)
+			players.emplace(4u, makePlayer(4u, 0.f, -40.f, 0.f));    // facing it but beyond 30 m
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 200u, ledger);
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 200u, logicEvents, output);
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 230u, logicEvents, output);
+			tests.Require(ledger.Windows.front().bClosed &&
+				1000u == players.at(1u).iCurrentHp &&
+				0u == players.at(2u).iCurrentHp && PLAYER_ACTION_STATE::DEAD == players.at(2u).eAction &&
+				0u == players.at(3u).iCurrentHp && 0u == players.at(4u).iCurrentHp,
+				"Judge the real-boss gaze by player facing toward the boss inside the cone at the window end tick");
+		}
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_DANCE";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "pose.1";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::POSE_INPUT;
+			window.iStartMs = 0u;
+			window.iDurationMs = 1000u;
+			window.iPoseIndex = 2u;
+			window.OnFail.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE, 10u, 0u, {} });
+			window.OnTimeout.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE, 20u, 0u, {} });
+			pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, 0.f, 0.f));
+			players.emplace(2u, makePlayer(2u, 0.f, 0.f, 0.f));
+			players.emplace(3u, makePlayer(3u, 0.f, 0.f, 0.f));
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 300u, ledger);
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, &policy, 300u);
+			const auto slotOfPose = [](const SERVER_PLAYER& player, const std::int8_t pose)
+			{
+				for (std::size_t slot = 0u; slot < 4u; ++slot)
+				{
+					if (player.ModeSkillIndexBySlot[slot] == pose)
+						return static_cast<INTERACTION_SLOT>(slot);
+				}
+				return INTERACTION_SLOT::END;
+			};
+			bool layoutDealt = true;
+			for (const auto& [id, player] : players)
+			{
+				(void)id;
+				bool seen[4] = { false, false, false, false };
+				for (std::size_t slot = 0u; slot < 4u; ++slot)
+				{
+					const std::int8_t pose = player.ModeSkillIndexBySlot[slot];
+					if (pose < 0 || pose > 3 || seen[pose] || pose != static_cast<std::int8_t>(slot))
+						layoutDealt = false;
+					else
+						seen[pose] = true;
+				}
+				layoutDealt = layoutDealt && KOUKU_HUD_MODE::DANCE == player.eKoukuHudMode &&
+					-1 == player.ModeSkillIndexBySlot[4];
+			}
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 300u, logicEvents, output);
+			std::string answerStatus;
+			const INTERACTION_SLOT rightSlot = slotOfPose(players.at(1u), 2);
+			const INTERACTION_SLOT wrongSlot = slotOfPose(players.at(2u), 0);
+			const bool rightRecorded = CKoukuSaydonLogicRuntime::Record_InteractionSlot(
+				ledger, pattern, players.at(1u), rightSlot, answerStatus);
+			const bool wrongRecorded = CKoukuSaydonLogicRuntime::Record_InteractionSlot(
+				ledger, pattern, players.at(2u), wrongSlot, answerStatus);
+			const bool secondAnswerRefused = !CKoukuSaydonLogicRuntime::Record_InteractionSlot(
+				ledger, pattern, players.at(2u), rightSlot, answerStatus);
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 330u, logicEvents, output);
+			tests.Require(layoutDealt && rightRecorded && wrongRecorded && secondAnswerRefused &&
+				ledger.Windows.front().bClosed &&
+				1000u == players.at(1u).iCurrentHp &&
+				900u == players.at(2u).iCurrentHp &&
+				800u == players.at(3u).iCurrentHp,
+				"Keep fixed QWER pose order and judge the first answer as success, fail or timeout");
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 331u);
+			tests.Require(KOUKU_HUD_MODE::NONE == players.at(1u).eKoukuHudMode &&
+				-1 == players.at(1u).ModeSkillIndexBySlot[0],
+				"Return the class HUD when no dance pattern runs");
+		}
+
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_STAGGER";
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "stagger.1";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+			window.iStartMs = 0u;
+			window.iDurationMs = 2000u;
+			window.iThreshold = 1000u;
+			window.fShieldArcDegrees = 90.f;
+			window.bEndsPatternOnSuccess = true;
+			window.OnSuccess.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_TEST_GROGGY" });
+			window.OnTimeout.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH, 0u, 0u, {} });
+			pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, 10.f, 180.f));
+			SERVER_WORLD_ENTITY staggerBoss = logicBoss;
+			staggerBoss.iCurrentHp = 5000u;
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			CKoukuSaydonLogicRuntime::Build(pattern, staggerBoss, 400u, ledger);
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
+				&policy, 400u, logicEvents, output);
+			const bool shieldRaised = staggerBoss.bKoukuShieldActive &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 0.f, 10.f) &&
+				CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 4.f, 10.f) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 10.f, 0.f) &&
+				!CKoukuSaydonLogicRuntime::Is_ShieldReflected(staggerBoss, 0.f, -10.f);
+			staggerBoss.iCurrentHp -= 999u;
+			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
+				&policy, 410u, logicEvents, output);
+			const bool belowThreshold = !ledger.Windows.front().bClosed && output.FollowupPatternIds.empty();
+			staggerBoss.iCurrentHp -= 1u;
+			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
+				&policy, 411u, logicEvents, output);
+			tests.Require(shieldRaised && belowThreshold && ledger.Windows.front().bClosed &&
+				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly &&
+				1u == output.FollowupPatternIds.size() &&
+				"KAKULSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
+				1000u == players.at(1u).iCurrentHp,
+				"Raise the frontal shield for the stagger window and hand the follow-up to the audition once the lost health reaches the threshold");
+
+			KOUKUSAYDON_LOGIC_LEDGER timeoutLedger;
+			SERVER_WORLD_ENTITY timeoutBoss = logicBoss;
+			CKoukuSaydonLogicRuntime::Build(pattern, timeoutBoss, 500u, timeoutLedger);
+			KOUKUSAYDON_LOGIC_OUTPUT timeoutOutput;
+			CKoukuSaydonLogicRuntime::Update(timeoutBoss, pattern, timeoutLedger, players, catalog,
+				&policy, 500u, logicEvents, timeoutOutput);
+			CKoukuSaydonLogicRuntime::Update(timeoutBoss, pattern, timeoutLedger, players, catalog,
+				&policy, 560u, logicEvents, timeoutOutput);
+			tests.Require(timeoutLedger.Windows.front().bClosed && !timeoutOutput.bEndPatternEarly &&
+				0u == players.at(1u).iCurrentHp,
+				"Wipe the living raid when the stagger window times out");
+		}
+
+		{
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, 0.f, 0.f));
+			SERVER_PLAYER& clown = players.at(1u);
+			clown.iCurrentMadness = 60u;
+			BOSS_PATTERN_LOGIC_RESULT gauge{ BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT, 50u, 0u, {} };
+			CKoukuSaydonLogicRuntime::Apply_Result(clown, gauge, logicBoss, catalog, &policy, 600u, logicEvents);
+			const bool transformed = PLAYER_MADNESS_FORM::CLOWN == clown.eMadnessForm &&
+				0u == clown.iCurrentMadness && 0u != clown.iMadnessFormEndTick;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 601u);
+			const bool polymorphHud = KOUKU_HUD_MODE::POLYMORPH == clown.eKoukuHudMode &&
+				0 == clown.ModeSkillIndexBySlot[0] && 1 == clown.ModeSkillIndexBySlot[1] &&
+				2 == clown.ModeSkillIndexBySlot[2] && -1 == clown.ModeSkillIndexBySlot[3];
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 600u + 451u);
+			const bool restored = PLAYER_MADNESS_FORM::NORMAL == clown.eMadnessForm &&
+				KOUKU_HUD_MODE::NONE == clown.eKoukuHudMode;
+			clown.eDebugKoukuHudModeOverride = KOUKU_HUD_MODE::MARIO;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1100u);
+			const bool mario = KOUKU_HUD_MODE::MARIO == clown.eKoukuHudMode &&
+				0 == clown.ModeSkillIndexBySlot[0] && 1 == clown.ModeSkillIndexBySlot[1] &&
+				-1 == clown.ModeSkillIndexBySlot[2];
+			/* Debug dance keeps the same fixed QWER order as the pattern. */
+			clown.eDebugKoukuHudModeOverride = KOUKU_HUD_MODE::DANCE;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1101u);
+			std::uint32_t dealtPoseMask = 0u;
+			for (std::uint32_t slot = 0u; slot < 4u; ++slot)
+			{
+				if (clown.ModeSkillIndexBySlot[slot] >= 0 && clown.ModeSkillIndexBySlot[slot] < 4)
+					dealtPoseMask |= 1u << static_cast<std::uint32_t>(clown.ModeSkillIndexBySlot[slot]);
+			}
+			std::int8_t firstDeal[4] = {};
+			std::copy(std::begin(clown.ModeSkillIndexBySlot), std::begin(clown.ModeSkillIndexBySlot) + 4, firstDeal);
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1102u);
+			const bool danceParty = KOUKU_HUD_MODE::DANCE == clown.eKoukuHudMode &&
+				0xFu == dealtPoseMask && -1 == clown.ModeSkillIndexBySlot[4] &&
+				std::equal(std::begin(firstDeal), std::end(firstDeal), std::begin(clown.ModeSkillIndexBySlot));
+			clown.eDebugKoukuHudModeOverride = KOUKU_HUD_MODE::NONE;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1103u);
+			const bool overrideCleared = KOUKU_HUD_MODE::NONE == clown.eKoukuHudMode;
+			clown.eKoukuAreaHudMode = KOUKU_HUD_MODE::MARIO;
+			clown.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+			clown.iMadnessFormEndTick = 1104u;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1104u);
+			const bool areaSurvivesTimedForm = PLAYER_MADNESS_FORM::CLOWN == clown.eMadnessForm &&
+				KOUKU_HUD_MODE::MARIO == clown.eKoukuHudMode && 0u == clown.iMadnessFormEndTick;
+			tests.Require(transformed && polymorphHud && restored && mario && danceParty &&
+				overrideCleared && areaSurvivesTimedForm,
+				"Fill the gauge into a timed clown form, restore it, and keep Mario active when that timer ends");
+		}
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			pattern.strPatternId = "KAKULSAYDON_TEST_TRIGGERS";
+			BOSS_PATTERN_MECHANIC_TRIGGER hud{};
+			hud.strTriggerId = "hud.mario";
+			hud.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER;
+			hud.iStartMs = 1000u;
+			hud.iDurationMs = 1000u;
+			hud.eHudMode = KOUKU_HUD_MODE::MARIO;
+			pattern.MechanicTriggers.push_back(hud);
+			BOSS_PATTERN_MECHANIC_TRIGGER teleport{};
+			teleport.strTriggerId = "teleport.real";
+			teleport.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT;
+			teleport.iStartMs = 1000u;
+			teleport.iDurationMs = 1000u;
+			teleport.fTeleportX = -6.36f;
+			teleport.fTeleportY = 1.3f;
+			teleport.fTeleportZ = 937.92f;
+			teleport.strClonePatternId = "KAKULSAYDON_TEST_CLONE";
+			teleport.ClockHours = { 4u, 7u, 10u };
+			pattern.MechanicTriggers.push_back(teleport);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			players.emplace(1u, makePlayer(1u, 0.f, 0.f, 0.f));
+			KOUKUSAYDON_LOGIC_LEDGER ledger;
+			CKoukuSaydonLogicRuntime::Build(pattern, logicBoss, 1200u, ledger);
+			KOUKUSAYDON_LOGIC_OUTPUT output;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 1229u, logicEvents, output);
+			const bool pending = output.MechanicTriggers.empty() && ledger.eHudMode == KOUKU_HUD_MODE::NONE;
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 1230u, logicEvents, output);
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, &policy, 1230u);
+			const bool entered = KOUKU_HUD_MODE::MARIO == players.at(1u).eKoukuHudMode &&
+				PLAYER_MADNESS_FORM::CLOWN == players.at(1u).eMadnessForm && output.MechanicTriggers.size() == 1u;
+			output = {};
+			CKoukuSaydonLogicRuntime::Update(logicBoss, pattern, ledger, players, catalog,
+				&policy, 1231u, logicEvents, output);
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1231u);
+			tests.Require(pending && entered && output.MechanicTriggers.empty() &&
+				PLAYER_MADNESS_FORM::NORMAL == players.at(1u).eMadnessForm &&
+				Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::DANCE, 0u) !=
+				Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::POLYMORPH, 0u),
+				"Fire a teleport once on the pattern clock; enter Mario with a clown and restore the player at exit");
+		}
+
+	}
+}
+
 int LostArk::Server::Run_ServerGameplayContractTests(
 	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly)
 {
@@ -1514,27 +2098,36 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			catalog.Find_BossPatternSequence("ENCOUNTER_KAKULSAYDON_G1");
 		const std::uint32_t productSourceRevision =
 			CKoukuSaydonBrain::Resolve_ProductSourceRevision(catalog);
-		const auto pizza = nullptr == patterns ?
+		/* The Gate 1 Saydon owns every Product pattern; the first one in the
+		authored Play All order is the reference occurrence these tests run. */
+		const std::string firstProductId =
+			nullptr != sequence && !sequence->PatternIds.empty() ?
+				sequence->PatternIds.front() : std::string{};
+		const auto firstProduct = nullptr == patterns ?
 			std::vector<BOSS_PATTERN_DEFINITION>::const_iterator{} :
 			std::find_if(patterns->begin(), patterns->end(),
-				[](const BOSS_PATTERN_DEFINITION& pattern)
+				[&firstProductId](const BOSS_PATTERN_DEFINITION& pattern)
 				{
-					return "KAKULSAYDON_G1_PIZZA" == pattern.strPatternId;
+					return firstProductId == pattern.strPatternId;
 				});
+		const std::size_t firstProductStageCount =
+			nullptr != patterns && patterns->end() != firstProduct ?
+				firstProduct->Stages.size() : 0u;
+		const std::uint32_t firstProductLastStage = 0u == firstProductStageCount ?
+			0u : static_cast<std::uint32_t>(firstProductStageCount - 1u);
 		std::string animationStatus;
 		const bool exactProduct = 0u != productSourceRevision && nullptr != patterns &&
-			patterns->end() != pizza && nullptr != sequence &&
+			patterns->end() != firstProduct && nullptr != sequence &&
 			"KAKULSAYDON_G1_PLAY_ALL" == sequence->strSequenceId &&
-			1u == sequence->PatternIds.size() &&
-			"KAKULSAYDON_G1_PIZZA" == sequence->PatternIds.front() &&
+			!sequence->PatternIds.empty() && !firstProductId.empty() &&
 			CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
-				*pizza, animationStatus);
+				*firstProduct, animationStatus);
 		tests.Require(
 			(nullptr == koukuParts || koukuParts->empty()) &&
 			nullptr != valtanParts && !valtanParts->empty(),
 			"Admit an unarmoured KoukuSaydon boss while retaining Valtan exact parts");
 		tests.Require(exactProduct,
-			"Admit the exact KoukuSaydon Pizza animation-only Product sequence");
+			"Admit the exact KoukuSaydon Saydon animation-only Product sequence");
 
 		if (exactProduct)
 		{
@@ -1551,7 +2144,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			CKoukuSaydonBrain brain;
 			std::string status;
 			const bool began = brain.Begin_Pattern(
-				boss, *pizza, catalog.Get_ActiveRevision(), 1u, status);
+				boss, *firstProduct, catalog.Get_ActiveRevision(), 1u, status);
 			std::vector<std::string> visitedActions;
 			if (began)
 				visitedActions.push_back(boss.strActionId);
@@ -1573,37 +2166,37 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					break;
 				}
 			}
-			tests.Require(began && 6u == visitedActions.size() &&
+			tests.Require(began && firstProductStageCount == visitedActions.size() &&
 				KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED == terminal &&
 				boss.strPatternId.empty() &&
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
 					boss.PatternTerminalReceipt.eResult &&
 				boss.PatternTerminalReceipt.iPatternSequence == boss.iPatternSequence,
-				"Run all six KoukuSaydon Pizza stages on the fixed Server clock");
+				"Run every stage of the first KoukuSaydon Product on the fixed Server clock");
 
-			BOSS_PATTERN_DEFINITION unsupported = *pizza;
+			BOSS_PATTERN_DEFINITION unsupported = *firstProduct;
 			unsupported.Stages.front().Actions.push_back({});
 			const bool rejectsAction =
 				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 					unsupported, status);
-			unsupported = *pizza;
+			unsupported = *firstProduct;
 			unsupported.Stages.front().eHitShape = BOSS_PATTERN_HIT_SHAPE::CIRCLE;
 			const bool rejectsHit =
 				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 					unsupported, status);
-			unsupported = *pizza;
+			unsupported = *firstProduct;
 			unsupported.Stages.front().eHitActivationKind =
 				BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW;
 			const bool rejectsHitWindow =
 				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 					unsupported, status);
-			unsupported = *pizza;
+			unsupported = *firstProduct;
 			unsupported.Stages.front().Motion.eKind =
 				BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD;
 			const bool rejectsMotion =
 				!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 					unsupported, status);
-			unsupported = *pizza;
+			unsupported = *firstProduct;
 			unsupported.Stages.front().Branches.push_back({
 				BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
 				unsupported.Stages[1u].strActionId, {} });
@@ -1651,6 +2244,68 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					selectedTransitions.empty();
 				tests.Require(koukuSelected && saydonSelected && emptyPreserved,
 					"Select Play All by boss body in authored order and preserve selection on no compatible Product");
+			}
+
+			{
+				/* G2 Big Saydon is tuned above the floor. A saved Y must survive
+				the same entity build and fixed ticks that consume the world bootstrap. */
+				auto heightRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+				const auto* bigPlacement = heightRoom->Find_Placement("boss.kakulsaydon.g2.big-saydon");
+				const auto* regularPlacement = heightRoom->Find_Placement("boss.kakulsaydon.g1.saydon");
+				const bool heightFixtureReady = heightRoom->Is_Ready() &&
+					nullptr != bigPlacement && nullptr != regularPlacement &&
+					heightRoom->m_ServerNavigation.Is_Loaded();
+				tests.Require(heightFixtureReady, "Load the saved Big Saydon height contract placements and navigation");
+				if (heightFixtureReady)
+				{
+					constexpr float authoredHeight = 8.63f;
+					WORLD_BOOTSTRAP_PLACEMENT raisedPlacement = *bigPlacement;
+					raisedPlacement.fPositionY = authoredHeight;
+					auto raisedBoss = std::make_unique<SERVER_WORLD_ENTITY>();
+					SERVER_NAV_POINT bigGround{};
+					const bool raisedBuilt = heightRoom->m_ServerNavigation.Is_PointWalkableExact(
+							raisedPlacement.fPositionX, raisedPlacement.fPositionZ) &&
+						heightRoom->m_ServerNavigation.Sample_Position(
+							raisedPlacement.fPositionX, raisedPlacement.fPositionZ, bigGround) &&
+						heightRoom->Build_WorldEntity(raisedPlacement, heightRoom->m_iNextNetEntityId, *raisedBoss);
+					tests.Require(raisedBuilt && std::abs(bigGround.y - authoredHeight) > 0.1f &&
+						std::abs(raisedBoss->fPositionX - raisedPlacement.fPositionX) < 0.001f &&
+						std::abs(raisedBoss->fPositionZ - raisedPlacement.fPositionZ) < 0.001f &&
+						std::abs(raisedBoss->fPositionY - authoredHeight) < 0.001f &&
+						std::abs(raisedBoss->fSpawnPositionY - authoredHeight) < 0.001f,
+						"Keep Big Saydon saved Y 8.63 in current and spawn transforms without shifting walkable XZ");
+					bool heightPersisted = raisedBuilt;
+					if (raisedBuilt)
+					{
+						const NET_ENTITY_ID raisedId = raisedBoss->iNetEntityId;
+						++heightRoom->m_iNextNetEntityId;
+						heightRoom->m_WorldEntities.push_back(std::move(*raisedBoss));
+						for (std::uint32_t tick = 0u; heightPersisted && tick < 90u; ++tick)
+						{
+							++heightRoom->m_iServerTick;
+							heightRoom->Update_WorldEntities(1.f / 30.f);
+							const auto live = std::find_if(heightRoom->m_WorldEntities.begin(),
+								heightRoom->m_WorldEntities.end(), [raisedId](const SERVER_WORLD_ENTITY& candidate)
+								{ return candidate.iNetEntityId == raisedId; });
+							heightPersisted = heightRoom->m_WorldEntities.end() != live &&
+								SERVER_ENTITY_ACTION::IDLE == live->eAction && live->strPatternId.empty() &&
+								std::abs(live->fPositionY - authoredHeight) < 0.001f &&
+								std::abs(live->fSpawnPositionY - authoredHeight) < 0.001f;
+						}
+					}
+					tests.Require(heightPersisted, "Keep the spawned Big Saydon authored height through 90 arena fixed ticks");
+					WORLD_BOOTSTRAP_PLACEMENT regularRaised = *regularPlacement;
+					regularRaised.fPositionY = authoredHeight;
+					auto regularBoss = std::make_unique<SERVER_WORLD_ENTITY>();
+					SERVER_NAV_POINT regularGround{};
+					const bool regularBuilt = heightRoom->m_ServerNavigation.Sample_Position(
+							regularRaised.fPositionX, regularRaised.fPositionZ, regularGround) &&
+						heightRoom->Build_WorldEntity(regularRaised, heightRoom->m_iNextNetEntityId, *regularBoss);
+					tests.Require(regularBuilt && std::abs(regularGround.y - authoredHeight) > 0.1f &&
+						std::abs(regularBoss->fPositionY - regularGround.y) < 0.001f &&
+						std::abs(regularBoss->fSpawnPositionY - regularGround.y) < 0.001f,
+						"Keep ordinary arena bosses on navigation height despite a different authored Y");
+				}
 			}
 
 			{
@@ -1785,22 +2440,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 #ifdef _DEBUG
 				{
-					/* The audition scope may name the raised gate boss, but a
-					Kouku-body pattern must not play on a Saydon body. */
+					/* The audition scope may name the enabled Gate 1 Kouku, but a
+					Saydon-body pattern must not play on the Kouku body. */
 					C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST saydonRequest{};
 					saydonRequest.iRequestSequence = 1u;
 					saydonRequest.eOperation =
 						KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 					saydonRequest.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 					saydonRequest.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-					saydonRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g1.saydon";
-					saydonRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+					saydonRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g1.kouku";
+					saydonRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
 					saydonRequest.Scope.ExpectedGameplayRevision =
 						arenaRoom->m_GameplayCatalog.Get_ActiveRevision();
 					saydonRequest.Scope.iExpectedSourceRevision =
 						CKoukuSaydonBrain::Resolve_ProductSourceRevision(
 							arenaRoom->m_GameplayCatalog.Active());
-					saydonRequest.strPatternId = "KAKULSAYDON_G1_PIZZA";
+					saydonRequest.strPatternId = firstProductId;
 					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT saydonResult{};
 					const KOUKUSAYDON_PATTERN_AUDITION_RESULT saydonVerdict =
 						built && idle ?
@@ -1812,14 +2467,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 							saydonVerdict &&
 						CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE ==
 							arenaRoom->m_KoukuSaydonPatternAudition.ePhase,
-						"Reject a Kouku-body pattern audition on a raised Saydon gate boss");
+						"Reject a Saydon-body pattern audition on the Gate 1 Kouku boss");
 				}
 
 				/* Exercise the room dispatch with the original Kouku still first
 				in its entity list. Updating that idle actor must never abort an
 				accepted occurrence owned by a later, Debug-activated boss. */
 				const WORLD_BOOTSTRAP_PLACEMENT* secondKoukuPlacement =
-					arenaRoom->Find_Placement("boss.kakulsaydon.g2.kouku");
+					arenaRoom->Find_Placement("boss.kakulsaydon.g3.saydon");
 				auto secondKouku = std::make_unique<SERVER_WORLD_ENTITY>();
 				const bool secondBuilt = nullptr != secondKoukuPlacement &&
 					arenaRoom->Build_WorldEntity(*secondKoukuPlacement,
@@ -1835,13 +2490,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				secondRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				secondRequest.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 				secondRequest.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-				secondRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				secondRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				secondRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g3.saydon";
+				secondRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
 				secondRequest.Scope.ExpectedGameplayRevision =
 					arenaRoom->m_GameplayCatalog.Get_ActiveRevision();
 				secondRequest.Scope.iExpectedSourceRevision =
 					CKoukuSaydonBrain::Resolve_ProductSourceRevision(arenaRoom->m_GameplayCatalog.Active());
-				secondRequest.strPatternId = "KAKULSAYDON_G1_PIZZA";
+				secondRequest.strPatternId = firstProductId;
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT secondResult{};
 				const bool secondQueued = secondBuilt &&
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
@@ -1874,7 +2529,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					std::none_of(lifecycle.begin(), lifecycle.end(), [](const auto& entry)
 						{ return KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED == entry.Message.eState; });
 				tests.Require(completed,
-					"Complete a raised Gate 2 Kouku pattern through room ticks while the original Kouku stays idle");
+					"Complete a raised Gate 3 Saydon pattern through room ticks while the original Kouku stays idle");
 
 				secondRequest.iRequestSequence = 2u;
 				secondRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL;
@@ -1932,8 +2587,214 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 #ifdef _DEBUG
 			auto room = std::make_unique<CGameRoom>(
 				WORLD_ID::KAKULSAYDON_ARENA);
-			SERVER_WORLD_ENTITY* liveBoss =
-				room->Find_KoukuSaydonAuditionBoss();
+			/* Every Product plays on the Saydon body, so the audition target is
+			the Gate 1 Saydon raised from its disabled placement. */
+			const auto raiseGateSaydon = [](CGameRoom& target) -> SERVER_WORLD_ENTITY*
+			{
+				const WORLD_BOOTSTRAP_PLACEMENT* placement =
+					target.Find_Placement("boss.kakulsaydon.g1.saydon");
+				SERVER_WORLD_ENTITY raised{};
+				if (nullptr == placement ||
+					!target.Build_WorldEntity(*placement, target.m_iNextNetEntityId, raised))
+					return nullptr;
+				++target.m_iNextNetEntityId;
+				target.m_WorldEntities.push_back(raised);
+				return target.Find_KoukuSaydonArenaBoss(
+					"boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON");
+			};
+			/* Use the published room, navigation and patterns through the same
+			request -> fixed tick -> factory -> wire admission as Complete Play. */
+			const auto exerciseProductionGaze = [&](const bool exhaustCloneIds)
+			{
+				auto gazeRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+				SERVER_WORLD_ENTITY* raised = raiseGateSaydon(*gazeRoom);
+				const bool ready = gazeRoom->Is_Ready() && nullptr != raised;
+				if (!ready)
+				{
+					tests.Require(false, "Build the production Saydon gaze room and owner");
+					return;
+				}
+				const NET_ENTITY_ID ownerId = raised->iNetEntityId;
+				const float centerX = raised->fSpawnPositionX;
+				const float centerZ = raised->fSpawnPositionZ;
+				const float beforeY = raised->fPositionY;
+				const float beforeYaw = raised->fYawDegrees;
+				const std::size_t beforeCount = gazeRoom->m_WorldEntities.size();
+				if (exhaustCloneIds)
+					gazeRoom->m_iNextNetEntityId = (std::numeric_limits<NET_ENTITY_ID>::max)() - 1u;
+				const NET_ENTITY_ID beforeNextId = gazeRoom->m_iNextNetEntityId;
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+				request.iRequestSequence = 1u;
+				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+				request.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+				request.Scope.strBossPlacementId = "boss.kakulsaydon.g1.saydon";
+				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+				request.Scope.ExpectedGameplayRevision = gazeRoom->m_GameplayCatalog.Get_ActiveRevision();
+				request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(
+					gazeRoom->m_GameplayCatalog.Active());
+				request.strPatternId = "KAKULSAYDON_G1_PATTERN_2";
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+				const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
+					gazeRoom->Evaluate_KoukuSaydonPatternAudition(8199u, request, result);
+				bool triggerFired = false;
+				for (std::uint32_t tick = 0u; queued && !triggerFired && tick < 120u; ++tick)
+				{
+					gazeRoom->Update_WorldEntities(1.f / 30.f);
+					++gazeRoom->m_iServerTick;
+					const auto& cues = gazeRoom->m_KoukuSaydonPatternAudition.LogicLedger.MechanicTriggers;
+					triggerFired = std::any_of(cues.begin(), cues.end(),
+						[](const auto& cue) { return cue.bStarted; });
+				}
+				const auto findOwner = [&]() -> SERVER_WORLD_ENTITY*
+				{
+					return gazeRoom->Find_KoukuSaydonArenaBoss(
+						"boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON");
+				};
+				SERVER_WORLD_ENTITY* owner = findOwner();
+				if (exhaustCloneIds)
+				{
+					/* Two valid children stage before the third would get the zero
+					ID. No actor or ID counter may commit from that partial set. */
+					tests.Require(queued && triggerFired && nullptr != owner &&
+						gazeRoom->m_WorldEntities.size() == beforeCount &&
+						gazeRoom->m_iNextNetEntityId == beforeNextId &&
+						owner->fPositionX == centerX && owner->fPositionY == beforeY &&
+						owner->fPositionZ == centerZ && owner->fYawDegrees == beforeYaw &&
+						gazeRoom->m_PendingKoukuMechanicTriggers.empty() &&
+						gazeRoom->Get_Status().find("clone admission failed") != std::string::npos,
+						"Preserve the production gaze owner and IDs when the third staged clone cannot be admitted");
+					return;
+				}
+				bool admitted = queued && triggerFired && nullptr != owner &&
+					gazeRoom->m_WorldEntities.size() == beforeCount + 3u &&
+					gazeRoom->m_iNextNetEntityId == beforeNextId + 3u;
+				if (!admitted)
+				{
+					std::cerr << "Production gaze admission: " << gazeRoom->Get_Status() << '\n';
+					tests.Require(false, "Commit three production gaze clones at the teleport trigger tick");
+					return;
+				}
+				const float dx = owner->fPositionX - centerX;
+				const float dz = owner->fPositionZ - centerZ;
+				const float radius = std::sqrt(dx * dx + dz * dz);
+				const auto looksAtCenter = [centerX, centerZ](const SERVER_WORLD_ENTITY& entity)
+				{
+					const float x = centerX - entity.fPositionX;
+					const float z = centerZ - entity.fPositionZ;
+					const float distance = std::sqrt(x * x + z * z);
+					const float yaw = (entity.fYawDegrees + 90.f) * 0.017453292519943295f;
+					return distance > 0.f && (std::sin(yaw) * x + std::cos(yaw) * z) / distance > 0.9999f;
+				};
+				std::vector<std::uint8_t> ownerPayload;
+				S2C_WORLD_ENTITY_SPAWNED ownerMessage{};
+				const bool ownerWritten = gazeRoom->Build_WorldEntitySpawnedPayload(*owner, ownerPayload);
+				CPacketReader ownerReader{ ownerPayload };
+				admitted = admitted && ownerWritten && Read_Message(ownerReader, ownerMessage) &&
+					std::abs(owner->fPositionX + 6.36f) < 0.001f &&
+					std::abs(owner->fPositionY - 1.3f) < 0.001f &&
+					std::abs(owner->fPositionZ - 937.92f) < 0.001f &&
+					gazeRoom->m_ServerNavigation.Is_PointWalkableExact(owner->fPositionX, owner->fPositionZ) &&
+					looksAtCenter(*owner);
+				std::size_t cloneCount = 0u;
+				for (const auto& clone : gazeRoom->m_WorldEntities)
+				{
+					if (!clone.bKoukuGazeClone)
+						continue;
+					++cloneCount;
+					std::vector<std::uint8_t> payload;
+					S2C_WORLD_ENTITY_SPAWNED message{};
+					const bool written = gazeRoom->Build_WorldEntitySpawnedPayload(clone, payload);
+					CPacketReader reader{ payload };
+					const float cloneX = clone.fPositionX - centerX;
+					const float cloneZ = clone.fPositionZ - centerZ;
+					admitted = admitted && written && Read_Message(reader, message) &&
+						Is_Valid_WorldEntitySpawnOwner(message, &ownerMessage) &&
+						clone.iOwnerBossNetEntityId == ownerId &&
+						clone.iKoukuCloneOwnerSequence == owner->iPatternSequence &&
+						clone.strPatternId == "KAKULSAYDON_G1_PATTERN_5" &&
+						clone.iActionStartTick == gazeRoom->m_iServerTick &&
+						clone.iPatternStartTick == gazeRoom->m_iServerTick &&
+						clone.PinnedDefinitionRevision == owner->PinnedDefinitionRevision &&
+						gazeRoom->m_ServerNavigation.Is_PointWalkableExact(clone.fPositionX, clone.fPositionZ) &&
+						std::abs(std::sqrt(cloneX * cloneX + cloneZ * cloneZ) - radius) < 0.002f &&
+						std::abs(clone.fPositionY - owner->fPositionY) < 0.001f && looksAtCenter(clone);
+				}
+				tests.Require(admitted && 3u == cloneCount,
+					"Commit production Pattern 2 into three Pattern 5 clones on the real navgrid with inward yaw and valid spawn owners");
+				gazeRoom->Update_WorldEntities(1.f / 30.f);
+				++gazeRoom->m_iServerTick;
+				tests.Require(gazeRoom->m_WorldEntities.size() == beforeCount + 3u &&
+					gazeRoom->m_iNextNetEntityId == beforeNextId + 3u,
+					"Keep the production gaze trigger one-shot across the next room tick");
+				owner = findOwner();
+				if (nullptr != owner)
+					gazeRoom->m_KoukuSaydonBrain.Complete_Pattern(*owner, gazeRoom->m_iServerTick);
+				gazeRoom->Update_WorldEntities(1.f / 30.f);
+				++gazeRoom->m_iServerTick;
+				tests.Require(nullptr != findOwner() && 0u == findOwner()->iPatternStartTick &&
+					gazeRoom->m_WorldEntities.size() == beforeCount &&
+					std::none_of(gazeRoom->m_WorldEntities.begin(), gazeRoom->m_WorldEntities.end(),
+						[](const auto& entity) { return entity.bKoukuGazeClone; }),
+					"Remove all three production gaze clones on the owning pattern termination edge");
+			};
+			exerciseProductionGaze(false);
+			exerciseProductionGaze(true);
+			for (const char* patternId : { "KAKULSAYDON_G1_PATTERN_6", "KAKULSAYDON_G1_PATTERN_7" })
+			{
+				auto centeredRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+				auto* centeredBoss = raiseGateSaydon(*centeredRoom);
+				if (nullptr == centeredBoss)
+				{
+					tests.Require(false, "Raise the production Dance/Roulette owner");
+					continue;
+				}
+				SERVER_PLAYER cardPlayer{};
+				cardPlayer.iPlayerId = 8197u;
+				cardPlayer.iNetEntityId = centeredRoom->m_iNextNetEntityId++;
+				cardPlayer.iCurrentHp = cardPlayer.iMaximumHp = 100u;
+				centeredRoom->m_Players.emplace(cardPlayer.iPlayerId, cardPlayer);
+				centeredRoom->Apply_KoukuGateEntryCard(centeredRoom->m_Players.at(cardPlayer.iPlayerId), *centeredBoss);
+				const auto assignedSuit = centeredRoom->m_Players.at(cardPlayer.iPlayerId).eMechanicCardSymbol;
+				const auto assignedColor = centeredRoom->m_Players.at(cardPlayer.iPlayerId).eMechanicCardColor;
+				const float centerX = centeredBoss->fSpawnPositionX;
+				const float centerY = centeredBoss->fSpawnPositionY;
+				const float centerZ = centeredBoss->fSpawnPositionZ;
+				centeredBoss->fPositionX += 5.f;
+				centeredBoss->fPositionZ -= 4.f;
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+				request.iRequestSequence = 1u;
+				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+				request.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+				request.Scope.strBossPlacementId = "boss.kakulsaydon.g1.saydon";
+				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+				request.Scope.ExpectedGameplayRevision = centeredRoom->m_GameplayCatalog.Get_ActiveRevision();
+				request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(centeredRoom->m_GameplayCatalog.Active());
+				request.strPatternId = patternId;
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+				const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ==
+					centeredRoom->Evaluate_KoukuSaydonPatternAudition(8197u, request, result);
+				centeredRoom->Update_WorldEntities(1.f / 30.f);
+				++centeredRoom->m_iServerTick;
+				centeredBoss = centeredRoom->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+				tests.Require(queued && nullptr != centeredBoss && centeredBoss->fPositionX == centerX &&
+					centeredBoss->fPositionY == centerY && centeredBoss->fPositionZ == centerZ &&
+					centeredBoss->iPatternStartTick == centeredRoom->m_iServerTick &&
+					MECHANIC_CARD_SYMBOL::NONE != assignedSuit && MECHANIC_CARD_COLOR::NONE != assignedColor,
+					"Reset the production Dance or Roulette boss to spawn and publish its fixed pattern start clock with an encounter card");
+				SERVER_WORLD_ENTITY otherGate{};
+				otherGate.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+				centeredRoom->Apply_KoukuGateEntryCard(centeredRoom->m_Players.at(cardPlayer.iPlayerId), otherGate);
+				centeredRoom->Despawn_KoukuSaydonArenaDebugEntities();
+				centeredRoom->Update_KoukuPlayerModes(2u);
+				const auto& cleared = centeredRoom->m_Players.at(cardPlayer.iPlayerId);
+				tests.Require(MECHANIC_CARD_SYMBOL::NONE == cleared.eMechanicCardSymbol &&
+					MECHANIC_CARD_COLOR::NONE == cleared.eMechanicCardColor,
+					"Remove the assigned suit and color when the Gate 1 Saydon owner leaves");
+			}
+
+			SERVER_WORLD_ENTITY* liveBoss = raiseGateSaydon(*room);
 			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST selected{};
 			selected.iRequestSequence = 2u;
 			selected.eOperation =
@@ -1941,15 +2802,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			selected.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 			selected.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
 			selected.Scope.strBossPlacementId =
-				"boss.kakulsaydon.g1.kouku";
+				"boss.kakulsaydon.g1.saydon";
 			selected.Scope.strBossArchetypeId =
-				"BOSS_KAKULSAYDON_G1_KOUKU";
+				"BOSS_KAKULSAYDON_G1_SAYDON";
 			selected.Scope.ExpectedGameplayRevision =
 				room->m_GameplayCatalog.Get_ActiveRevision();
 			selected.Scope.iExpectedSourceRevision =
 				CKoukuSaydonBrain::Resolve_ProductSourceRevision(
 					room->m_GameplayCatalog.Active());
-			selected.strPatternId = "KAKULSAYDON_G1_PIZZA";
+			selected.strPatternId = firstProductId;
 
 			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT rejected{};
 			auto wrongScope = selected;
@@ -2033,7 +2894,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					selected.Scope.ExpectedGameplayRevision &&
 				selectedResult.iPinnedSourceRevision ==
 					selected.Scope.iExpectedSourceRevision &&
-				"KAKULSAYDON_G1_PIZZA" ==
+				firstProductId ==
 					selectedResult.strResolvedPatternId &&
 				1u == room->m_PendingKoukuSaydonPatternAuditionLifecycle.size() &&
 				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING ==
@@ -2078,7 +2939,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						lifecycle.Scope.iExpectedSourceRevision &&
 					selected.Scope.iExpectedSourceRevision ==
 						lifecycle.iPinnedSourceRevision &&
-					"KAKULSAYDON_G1_PIZZA" == lifecycle.strPatternId;
+					firstProductId == lifecycle.strPatternId;
 				if (KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
 					lifecycle.eState)
 				{
@@ -2094,7 +2955,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					++patternCompletedCount;
 					exactLifecycleIdentity = exactLifecycleIdentity &&
 						occurrenceSequence == lifecycle.iPatternSequence &&
-						5u == lifecycle.iStageIndex;
+						firstProductLastStage == lifecycle.iStageIndex;
 				}
 				else if (KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED ==
 					lifecycle.eState)
@@ -2102,11 +2963,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					++completedCount;
 					exactLifecycleIdentity = exactLifecycleIdentity &&
 						occurrenceSequence == lifecycle.iPatternSequence &&
-						5u == lifecycle.iStageIndex;
+						firstProductLastStage == lifecycle.iStageIndex;
 				}
 			}
-			const std::vector<std::uint32_t> expectedLiveStages =
-				{ 0u, 1u, 2u, 3u, 4u, 5u };
+			std::vector<std::uint32_t> expectedLiveStages;
+			for (std::uint32_t stage = 0u; stage < firstProductStageCount; ++stage)
+				expectedLiveStages.push_back(stage);
 			tests.Require(runtimeAdvanced && exactLifecycleIdentity &&
 				0u != occurrenceSequence &&
 				expectedLiveStages == liveStageIndices &&
@@ -2146,7 +3008,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				duplicateResult.iPinnedSourceRevision ==
 					selected.Scope.iExpectedSourceRevision &&
 				occurrenceSequence == duplicateResult.iPatternSequence &&
-				5u == duplicateResult.iStageIndex;
+				firstProductLastStage == duplicateResult.iStageIndex;
 
 			auto playAll = selected;
 			playAll.iRequestSequence = 3u;
@@ -2190,6 +3052,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
 			fifoSession->m_isSendRunning.store(true);
 			fifoRoom->m_Sessions.emplace(FIFO_SESSION, fifoSession);
+			(void)raiseGateSaydon(*fifoRoom);
 			auto fifoRequest = selected;
 			fifoRequest.iRequestSequence = 1u;
 			fifoRequest.Scope.ExpectedGameplayRevision =
@@ -2255,7 +3118,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE ==
 					fifoEdges[2u].Lifecycle.eState &&
 				0u == fifoEdges[2u].Lifecycle.iStageIndex &&
-				"KAKULSAYDON_G1_PIZZA" ==
+				firstProductId ==
 					fifoEdges[2u].Lifecycle.strPatternId &&
 				fifoRequest.iRequestSequence ==
 					fifoEdges[0u].Result.iRequestSequence &&
@@ -2296,6 +3159,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 #endif
 		}
 	}
+	Run_KoukuSaydonLogicRuntimeContracts(tests, catalog);
 	{
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
@@ -2331,7 +3195,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		one-second chase opportunity. Its terminal EXIT consumes only the delay
 		that FinishPattern reserved; the cursor then admits Respawn on the next
 		fixed tick. An isolated Debug audition keeps its pre-existing hold bit. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
@@ -2666,7 +3532,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Load the rear-cone grab with explicit captured/timeout branches and forward-facing 180-degree, 24m/s minimum-12m arena ejection");
 	}
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		room.m_WorldEntities.clear();
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
@@ -2886,7 +3754,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Recover a null pattern-start target as the nearest engageable player from the live boss position");
 	}
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		room.m_WorldEntities.clear();
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
@@ -2992,7 +3862,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 	}
 	{
-		CGameRoom grabRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto grabRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& grabRoom = *grabRoomStorage;
 		SERVER_WORLD_ENTITY grabBoss{};
 		grabBoss.iNetEntityId = 9100u;
 		grabBoss.iPatternSequence = 1u;
@@ -5689,6 +6561,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool admittedParent = stagedCatalog.Load_FromBootstrap(
 			bootstrapPath, bootstrapRevision, parentRevision) &&
 			parentRevision == stagedCatalog.Get_ActiveRevision();
+		if (!(rejectedWrongContent && rejectedInvalidParent &&
+			rejectedNonCanonicalPath && admittedParent))
+		{
+			std::cerr << "[StagedBootstrapDiagnostic] loaded=" << stagedLoaded
+				<< " wrongContent=" << rejectedWrongContent
+				<< " invalidParent=" << rejectedInvalidParent
+				<< " nonCanonical=" << rejectedNonCanonicalPath
+				<< " admittedParent=" << admittedParent
+				<< " pathError=" << pathError.value()
+				<< " status=" << stagedCatalog.Get_Status() << "\n";
+		}
 		tests.Require(
 			rejectedWrongContent && rejectedInvalidParent &&
 			rejectedNonCanonicalPath && admittedParent,
@@ -6458,7 +7341,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				return true;
 			};
 			const std::string koukuSourcePrefix =
-				"PATTERNSOURCE\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PIZZA\t";
+				"PATTERNSOURCE\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_1\t";
 			std::string zeroSourceText = bootstrapText;
 			const bool zeroSourceReady = zeroSourceAction(zeroSourceText, koukuSourcePrefix);
 			const auto zeroSourceCatalog = zeroSourceReady ?
@@ -6469,7 +7352,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				std::any_of(zeroSourcePatterns->begin(), zeroSourcePatterns->end(),
 					[](const BOSS_PATTERN_DEFINITION& pattern)
 					{
-						return pattern.strPatternId == "KAKULSAYDON_G1_PIZZA" &&
+						return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_1" &&
 							0u == pattern.iSourcePrimaryActionId;
 					});
 			std::string duplicateZeroText = zeroSourceText;
@@ -9073,7 +9956,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Classify protocol mismatch, malformed message, and unknown packet separately");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		auto missingSkillBindingSession = std::make_shared<CClientSession>(
 			89979u, INVALID_SOCKET,
 			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
@@ -10049,7 +10934,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Isolate a sender socket failure to its session and notify close exactly once");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		auto moveCommand = [](const SESSION_ID sessionId,
 			const std::uint32_t sequence)
 			{
@@ -10119,7 +11006,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Coalesce only same-stream movement and aim without crossing a same-session reliable barrier");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		bool admittedBestEffort = room.Is_Ready();
 		for (std::size_t index = 0u;
 			index < CGameRoom::MAX_BEST_EFFORT_COMMAND_COUNT; ++index)
@@ -10342,7 +11231,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			room.m_PlayerIdByEntityId.emplace(entityId, playerId);
 		};
 
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID RETURN_SESSION = 42000u;
 		addReturnPlayer(room, RETURN_SESSION, 42001u, 42002u);
 		const bool encounterActivated =
@@ -10378,7 +11269,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"npc.bern.beda.guide" ==
 				room.m_PendingWorldTransfers.front().strSpawnPlacementOverrideId;
 
-		CGameRoom previewRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto previewRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& previewRoom = *previewRoomStorage;
 		constexpr SESSION_ID PREVIEW_SESSION = 42100u;
 		addReturnPlayer(previewRoom, PREVIEW_SESSION, 42101u, 42102u);
 		(void)_putenv_s(RAID_CLEAR_TEST_MODE_ENV, "1");
@@ -10399,7 +11292,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Allow an explicit Release Raid Clear test mode to exercise the Return button");
 	}
 	{
-		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& room = *roomStorage;
 		const std::size_t commandCount =
 			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK + 5u;
 		bool enqueued = room.Is_Ready();
@@ -10675,7 +11570,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Retain a valid monster target, release it at hysteresis range, and lock the replacement through windup");
 	}
 	{
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		tests.Require(room.Is_Ready(),
 			"Initialize Character Select room for class changes");
 		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
@@ -10782,7 +11679,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0u != player.iCurrentHp,
 				"Change dead player class and respawn at projected original spawn");
 
-			CGameRoom bernRoom{ WORLD_ID::BERN };
+			/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+			auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+			CGameRoom& bernRoom = *bernRoomStorage;
 			const SERVER_PLAYER beforeWrongWorld = player;
 			request.iClientSequence = 3u;
 			request.eCharacterClass = CHARACTER_CLASS_ID::SLAYER;
@@ -11619,7 +12518,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require_GroundTarget(approvedTargetPreserved && duplicateRejected,
 			"Commit approved T target/cost once and reject duplicate sequence without mutation");
 
-		CGameRoom snapshotRoom{ WORLD_ID::TRAINING_GROUND };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto snapshotRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+		CGameRoom& snapshotRoom = *snapshotRoomStorage;
 		constexpr SESSION_ID SNAPSHOT_SESSION = 91001u;
 		constexpr PLAYER_ID SNAPSHOT_PLAYER = 91001u;
 		auto snapshotSession = std::make_shared<CClientSession>(
@@ -12249,7 +13150,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Clear pending explicit command on forced movement");
 	}
 	{
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
 			room.Is_Ready() ? room.Find_AvailablePlayerSpawn() : nullptr;
 		bool stagedAndCommittedMove = false;
@@ -15583,7 +16486,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The stage edge the Brain reaches still has to reach the prop runtime.
 		This is the room-side half of the raise: the same pattern and stage the
 		previous test proved reachable, handed to the entry the room tick calls. */
-		CGameRoom pillarRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto pillarRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& pillarRoom = *pillarRoomStorage;
 		SERVER_WORLD_ENTITY stageBoss{};
 		stageBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 		stageBoss.strArchetypeId = "BOSS_VALTAN";
@@ -15956,7 +16861,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		by the dedicated room fixture above. Auxiliary authored slots stay intact. */
 		bool publishedTrashCounter = false;
 		bool trashCounterReachedGroggy = false;
-		CGameRoom trashSequenceRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto trashSequenceRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& trashSequenceRoom = *trashSequenceRoomStorage;
 		automaticBoss.iNetEntityId = 19700u;
 		for (std::uint32_t tick = 0u; tick < 8000u; ++tick)
 		{
@@ -16155,7 +17062,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* HIGH_JUMP snapshots exactly one axe at each living raider's position.
 		There is no arena-random supplement and no later scheduled wave. */
-		CGameRoom volleyRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto volleyRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& volleyRoom = *volleyRoomStorage;
 		tests.Require(volleyRoom.Initialize_WorldEntities(),
 			"Initialize the Valtan room for the sky axe volley");
 		/* The arena authors Valtan as a disabled Debug spawn, so the room owns
@@ -16806,7 +17715,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		pose is shared by gameplay state and the reliable spawn message. Each
 		root emits one hit-driven presentation pulse at 5000 ms and retires at
 		6200 ms; there is no second presentation-only pulse. */
-		CGameRoom groundRoarRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto groundRoarRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& groundRoarRoom = *groundRoarRoomStorage;
 		const bool initializedGroundRoarRoom =
 			groundRoarRoom.Initialize_WorldEntities();
 		SERVER_WORLD_ENTITY groundRoarBoss{};
@@ -17054,7 +17965,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		   radial geometry through its own exact owner. A wall-contact reaction
 		   may begin at the arena edge, so its damaging roots use the same bounded
 		   navigation projection and atomic transaction. */
-		CGameRoom partBreakRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto partBreakRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& partBreakRoom = *partBreakRoomStorage;
 		const bool initializedPartBreakRoom =
 			partBreakRoom.Initialize_WorldEntities();
 		SERVER_WORLD_ENTITY partBreakBoss{};
@@ -17438,7 +18351,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Phase-three portal charges and their visible runners start together at
 		the three authored radial vertices, wait 300 ms, and traverse the
 		radius-9 m triangle without navigation projection. */
-		CGameRoom portalRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto portalRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
+		CGameRoom& portalRoom = *portalRoomStorage;
 		const bool initializedPortalRoom = portalRoom.Initialize_WorldEntities();
 		portalRoom.m_ServerNavigation = CServerNavigation{};
 		const bool portalNavigationUnloaded =
@@ -18471,6 +19386,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		move.fTargetZ = 0.f;
 		move.fDurationSeconds = 1.f;
 		move.fArcHeight = 4.f;
+		move.eKoukuHudModeOnArrival = KOUKU_HUD_MODE::MARIO;
 		trigger.TriggerActions.push_back(move);
 
 		CServerTriggerSystem triggerSystem;
@@ -18498,14 +19414,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
 		tests.Require(
 			std::abs(triggerPlayers.begin()->second.fPositionX - 6.2f) < 0.001f &&
-			std::abs(triggerPlayers.begin()->second.fPositionY - 4.f) < 0.001f,
+			std::abs(triggerPlayers.begin()->second.fPositionY - 4.f) < 0.001f &&
+			PLAYER_MADNESS_FORM::NORMAL == triggerPlayers.begin()->second.eMadnessForm,
 			"Advance movePlayer with authored parabolic arc");
 		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
 		tests.Require(
 			std::abs(triggerPlayers.begin()->second.fPositionX - 10.f) < 0.001f &&
 			std::abs(triggerPlayers.begin()->second.fPositionY) < 0.001f &&
 			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
-			!triggerPlayers.begin()->second.TriggerMove.isActive,
+			!triggerPlayers.begin()->second.TriggerMove.isActive &&
+			KOUKU_HUD_MODE::MARIO == triggerPlayers.begin()->second.eKoukuAreaHudMode &&
+			PLAYER_MADNESS_FORM::CLOWN == triggerPlayers.begin()->second.eMadnessForm,
 			"Complete movePlayer at exact authored destination");
 		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers, {}, promptEdges);
 		triggerPlayers.begin()->second.fPositionX = 0.f;
@@ -19687,7 +20606,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			2u == scheduledByGroup[0] + scheduledByGroup[1],
 			"Schedule exactly two Character Select callbacks in the first update");
 
-		CGameRoom resetRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto resetRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& resetRoom = *resetRoomStorage;
 		SERVER_PLAYER resetPlayer{};
 		resetPlayer.iSessionId = 501u;
 		resetPlayer.iPlayerId = 502u;
@@ -19734,7 +20655,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"spawn.character-select.monster"),
 			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
 
-		CGameRoom retirementRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto retirementRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& retirementRoom = *retirementRoomStorage;
 		ROOM_COMMAND queuedLeave{};
 		queuedLeave.eType = ROOM_COMMAND_TYPE::LEAVE;
 		queuedLeave.iSessionId = 601u;
@@ -19758,14 +20681,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			!retirementRoom.Enqueue(std::move(commandAfterSeal)),
 			"Retire a private Character Select arena only after queued leave work drains");
 
-		CGameRoom sharedRoom{ WORLD_ID::BERN };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto sharedRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		CGameRoom& sharedRoom = *sharedRoomStorage;
 		tests.Require(
 			!sharedRoom.Try_SealPrivateArenaForRetirement(),
 			"Never seal a shared world through the private arena retirement path");
 	}
 
 	{
-		CGameRoom raidRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto raidRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& raidRoom = *raidRoomStorage;
 		const auto& placements = raidRoom.m_WorldBootstrap.Get_Placements();
 		std::vector<const WORLD_BOOTSTRAP_PLACEMENT*> playerSpawns;
 		for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
@@ -20338,7 +21265,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7001u;
 		boss.strPatternId = "VALTAN_ARENA_BREAK_109";
@@ -20638,7 +21567,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		out of the arena floor would otherwise leave the boss standing inside a wall's own
 		navigation blocker, which nothing can then path out of without being
 		projected first. */
-		CGameRoom navigableStepRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto navigableStepRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& navigableStepRoom = *navigableStepRoomStorage;
 		constexpr float STEP_FROM_Z = -120.2f;
 		constexpr float STEP_TARGET_Z = -117.9778f;
 		float reachedX = 0.f;
@@ -20758,7 +21689,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7002u;
 		boss.strPatternId = "VALTAN_ARMOR_BREAK_OPENING";
@@ -20908,7 +21841,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			return room.m_WorldEntities.back();
 		};
 
-		CGameRoom ordinaryWallRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto ordinaryWallRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& ordinaryWallRoom = *ordinaryWallRoomStorage;
 		const BOSS_RUNTIME_PROFILE* ordinaryWallProfile =
 			ordinaryWallRoom.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
 		constexpr float FRESH_CENTER_X = 156.03f;
@@ -21007,7 +21942,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"GROGGY" == ordinaryGroggyThirdTick.strPatternStageId,
 			"Keep the same Dash occurrence in GROGGY without starting a second pattern");
 
-		CGameRoom boundRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto boundRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& boundRoom = *boundRoomStorage;
 		const BOSS_RUNTIME_PROFILE* boundProfile =
 			boundRoom.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
 		/* The 109 transition ring's impact receivers can precede the ten 159
@@ -21120,7 +22057,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Refuse a consumed dash receiver without changing the active CHARGE stage");
 
 	#ifdef _DEBUG
-		CGameRoom outerRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto outerRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& outerRoom = *outerRoomStorage;
 		const BOSS_RUNTIME_PROFILE* outerProfile =
 			outerRoom.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
 		constexpr float ARENA_CENTER_X = 156.03f;
@@ -21287,7 +22226,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		   but the intact collision surface is a real wall contact and must end the
 		   charge in RECOVERY. The same consumed group then proves the later 109 stage
 		   admits only the other twenty-nine in Release as well. */
-		CGameRoom partialOuterRoom{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto partialOuterRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& partialOuterRoom = *partialOuterRoomStorage;
 		const BOSS_RUNTIME_PROFILE* partialOuterProfile =
 			partialOuterRoom.m_GameplayCatalog.Find_Boss("BOSS_VALTAN");
 		constexpr float PARTIAL_ARENA_CENTER_X = 156.03f;
@@ -21604,7 +22545,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7003u;
 		/* Stand in front of the wall instead of inside it.  These are the exact
@@ -21675,7 +22618,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		that dropping straight onto a low bar crosses every threshold above it,
 		so this checks the single-crossing property against the real encounter
 		patterns rather than a synthetic pair. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID AUDITION_SESSION = 4242u;
 		constexpr PLAYER_ID AUDITION_PLAYER = 77u;
 		constexpr std::uint32_t TARGET_BAR = 109u;
@@ -22558,7 +23503,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		liveAuditionPlayer.PendingCommand.fX = 10.f;
 		liveAuditionPlayer.PendingCommand.fZ = 11.f;
 		liveAuditionPlayer.TriggerMove = SERVER_TRIGGER_MOVE{
-			{}, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 0.75f, 0.25f, 1.5f, true };
+			{}, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 0.75f, 0.25f, 1.5f, KOUKU_HUD_MODE::END, true };
 		const SERVER_PLAYER playerBeforeFailedRestart = liveAuditionPlayer;
 		const SERVER_WORLD_ENTITY bossBeforeFailedRestart = *auditionBoss;
 		const CGameRoom::VALTAN_PATTERN_ID_AUDITION_STATE
@@ -24278,7 +25223,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Effect Tool names the already-spawned private-room boss and pattern by
 		stable ID. The request resets only that boss, then CValtanBrain starts the
 		exact product pattern on the following fixed tick. */
-		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID TOOL_SESSION = 4343u;
 		constexpr PLAYER_ID TOOL_PLAYER = 79u;
 		constexpr NET_ENTITY_ID TOOL_PLAYER_ENTITY = 902u;
@@ -24383,7 +25330,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* A shared Valtan room can receive commands from two sessions in one
 		   command-drain tick. The first stable-ID request owns its pending/active
 		   occurrence; the second verdict is consumed but cannot reset it away. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FIRST_SESSION = 4344u;
 		constexpr SESSION_ID SECOND_SESSION = 4345u;
 		constexpr PLAYER_ID FIRST_PLAYER = 81u;
@@ -24632,7 +25581,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		constexpr SESSION_ID HANDLER_SESSION = 43460u;
 		constexpr PLAYER_ID HANDLER_PLAYER = 43461u;
 		constexpr NET_ENTITY_ID HANDLER_PLAYER_ENTITY = 43462u;
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		auto session = std::make_shared<CClientSession>(
 			HANDLER_SESSION, INVALID_SOCKET,
 			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
@@ -24874,7 +25825,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		constexpr SESSION_ID RECEIPT_SESSION = 43470u;
 		constexpr PLAYER_ID RECEIPT_PLAYER = 43471u;
 		constexpr NET_ENTITY_ID RECEIPT_PLAYER_ENTITY = 43472u;
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		auto session = std::make_shared<CClientSession>(
 			RECEIPT_SESSION, INVALID_SOCKET,
 			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
@@ -25015,7 +25968,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* Exercise the 130-bar floor wipe through the same stable-ID command and
 		   fixed room tick path the Effect Tool uses. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FLOOR_SESSION = 4346u;
 		constexpr PLAYER_ID FLOOR_PLAYER = 83u;
 		constexpr NET_ENTITY_ID FLOOR_PLAYER_ENTITY = 907u;
@@ -25317,7 +26272,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		   through the Product ordered-sequence brain. The test starts from slot two,
 		   retries its stable cursor after a targetless IDLE wait, repeats the pattern
 		   under the next stable slot ID, and verifies stop-after-current on a fresh run. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FLOW_SESSION = 4350u;
 		constexpr PLAYER_ID FLOW_PLAYER = 90u;
 		constexpr NET_ENTITY_ID FLOW_PLAYER_ENTITY = 920u;
@@ -25761,7 +26718,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 
 	{
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		const bool activated =
 			room.Activate_Encounter("boss.valtan.center");
 		SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
@@ -25798,7 +26757,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* Automatic health interrupts are suppressed by the authored sequence.
 		Stage the same explicit health-bar audition override the Debug command owns,
 		then let the real tick loop queue, select and run the stele mechanic. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4319u;
 		constexpr PLAYER_ID PLAYER = 97u;
 		constexpr std::uint32_t PILLAR_TRIGGER_BAR = 100u;
@@ -25874,7 +26835,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		/* The 100-bar cinematic is still Server movement even while the Client
 		camera looks away. Drive the product room path so clip root motion cannot
 		quietly add a second planar step after the leap arc has written its pose. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4320u;
 		constexpr PLAYER_ID PLAYER = 197u;
 		constexpr std::uint32_t MAX_CINEMATIC_TICKS = 450u;
@@ -26024,7 +26987,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		/* The wire contract remains known in Release so a Debug Client receives
 		an explicit verdict, but neither start nor control may stage room state. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START start{};
 		start.iRequestSequence = 1u;
 		start.ExpectedDefinitionRevision =
@@ -26077,7 +27042,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		is back in the raid. Drive the real room handler and tick instead of
 		setting isCombatReady by hand, because the latter used to let the Brain
 		test pass while the live room kept Valtan latched in IDLE. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID REVIVED_PLAYER = 211u;
 		constexpr SESSION_ID REVIVED_SESSION = 4411u;
 		constexpr NET_ENTITY_ID REVIVED_ENTITY = 1211u;
@@ -26172,7 +27139,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		away from a player, and it kills. Navigation owns where the hole is; the
 		room owns the descent and the death tick. This runs in both configurations
 		because a fall is product gameplay, not a Debug audition. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID FALL_PLAYER = 79u;
 		constexpr SESSION_ID FALL_SESSION = 4243u;
 		/* Exclusively inside navregion.valtan.floor30.rail.7000000000000000001:
@@ -26319,7 +27288,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		remains Server state. The authoritative subwindows must carry the body
 		from TAKEOFF through DROP to the authored placement before the joined
 		IMPACT -> WIDE_REVEAL roar sequence can begin. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID LEAP_PLAYER = 78u;
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
@@ -26700,7 +27671,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		arena through Stage_Boss_ArenaEntry instead, and the 159 wall's own
 		passage is proved inside the ring by the FRACTURED collision test above.
 		All bearings here were measured against the published navgrid. */
-		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
 		constexpr float ARENA_CENTER_X = 156.03f;
 		constexpr float ARENA_CENTER_Z = -122.06f;
 		/* 131 degrees used to be the mouth of the walk-in corridor, back when
@@ -27032,9 +28005,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		CGameRoom valtanRoom{ WORLD_ID::VALTAN_ARENA };
-		CGameRoom bernRoom{ WORLD_ID::BERN };
-		CGameRoom charSelectRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto valtanRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& valtanRoom = *valtanRoomStorage;
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		CGameRoom& bernRoom = *bernRoomStorage;
+		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		auto charSelectRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
+		CGameRoom& charSelectRoom = *charSelectRoomStorage;
 		tests.Require(
 			valtanRoom.Is_Ready() && bernRoom.Is_Ready() &&
 			charSelectRoom.Is_Ready() &&

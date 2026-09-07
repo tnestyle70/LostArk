@@ -66,6 +66,24 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugMadnessFormResult(
 	return CNetworkManager::Get().Try_Consume_DebugMadnessFormResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_InteractionSlot(
+ std::uint32_t sequence, LostArk::Shared::INTERACTION_SLOT slot)
+{
+ return CNetworkManager::Get().Send_InteractionSlot(sequence, slot);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_DebugKoukuHudMode(
+ std::uint32_t sequence, LostArk::Shared::KOUKU_HUD_MODE mode)
+{
+ return CNetworkManager::Get().Send_DebugKoukuHudMode(sequence, mode);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugKoukuHudModeResult(
+ LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result)
+{
+ return CNetworkManager::Get().Try_Consume_DebugKoukuHudModeResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

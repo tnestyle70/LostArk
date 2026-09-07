@@ -147,7 +147,8 @@ public:
 		f32_t actionFacingYawDegrees,
 		std::uint8_t comboStage = 0,
 		bool_t hasSkillTarget = false,
-		const float3_t& skillTarget = {});
+		const float3_t& skillTarget = {},
+		LostArk::Shared::KOUKU_HUD_MODE interactionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE);
 	bool_t Try_Get_NetworkActionState(
 		LostArk::Shared::PLAYER_ACTION_STATE& outAction) const
 	{
@@ -389,6 +390,10 @@ private:
 	other state resolves straight off the spec. */
 	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;
 	bool_t Load_ClipChains();
+	void Load_InteractionAnimationBindings();
+	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
+	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
+	std::uint32_t m_iInteractionIndex = UINT32_MAX;
 	void Commit_PendingClipChains();
 	/* Plays a clip from its first frame. Set_Animation alone only switches the
 	index, so a clip that already ran would resume at its end -- which chains

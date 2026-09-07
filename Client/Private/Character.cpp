@@ -1,6 +1,12 @@
 #include "Character.h"
 
 #include "AnimationSkillBindingDocument.h"
+#include "CharacterCatalog.h"
+#include "KoukuSaydonPresentationAssetService.h"
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
+#include <fstream>
+#include <iterator>
 #include "CameraShakeService.h"
 #include "Collider.h"
 #include "Effect_Catalog.h"
@@ -148,6 +154,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 	actions remain valid network state even when their optional clip mapping is
 	unavailable. */
 	Load_ClipChains();
+	Load_InteractionAnimationBindings();
 	Load_EffectCues();
 	/* Secondary motion is optional per class: a spec with no chains simply never
 	activates the solver. */
@@ -168,6 +175,52 @@ HRESULT CCharacter::Initialize(void* pArg)
 /* Extraction references may seed authoring, but runtime consumes only the
 validated authored document. Animation Tool Save is therefore the single
 presentation path used by local and remote Characters. */
+void CCharacter::Load_InteractionAnimationBindings()
+{
+ if (m_pSpec != CCharacterCatalog::Find_ClownSpec()) return;
+ const auto path = CProjectDataRoot::Resolve(L"Animation/Authored/KoukuSaydon/Clown.interactionbindings.json");
+ std::ifstream input(path, std::ios::binary);
+ const std::string text{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+ DATA_JSON_VALUE root;
+ std::string status;
+ const auto fail = [&]() { OutputDebugStringA(("[Clown] Interaction binding unavailable: " + status + "\n").c_str()); };
+ if (!CDataJson::Parse(text, root, status) || !root.Is_Object()) { fail(); return; }
+ const auto* schema = root.Find("schema");
+ const auto* version = root.Find("formatVersion");
+ const auto* modes = root.Find("modes");
+ if (!schema || !schema->Is_String() || schema->Get_String() != "lostark.clown-interaction-bindings" ||
+  !version || !version->Is_Number() || version->Get_Number() != 1.0 || !modes || !modes->Is_Array())
+ { status = "invalid header"; fail(); return; }
+ std::array<std::vector<CLIP_STEP>, 5> staged;
+ for (const auto& mode : modes->Get_Array())
+ {
+  const auto* name = mode.Find("mode");
+  const auto* skills = mode.Find("skills");
+  if (!name || !name->Is_String() || !skills || !skills->Is_Array()) { status = "invalid mode"; fail(); return; }
+  const auto& id = name->Get_String();
+  const std::size_t index = id == "POLYMORPH" ? 1u : id == "MARIO" ? 2u : id == "DANCE" ? 3u : id == "MAZE" ? 4u : 0u;
+  if (!index || !staged[index].empty() || skills->Get_Array().empty() || skills->Get_Array().size() > 4u)
+  { status = "unknown, empty or duplicate mode"; fail(); return; }
+  for (const auto& skill : skills->Get_Array())
+  {
+   const auto* clip = skill.Find("clip");
+   if (!clip || !clip->Is_String() || clip->Get_String().empty()) { status = "missing clip"; fail(); return; }
+   CLIP_STEP step{}; step.clip = clip->Get_String(); step.loop = false; step.playRate = 1.f;
+   if (const auto* rate = skill.Find("playRate"))
+   {
+    if (!rate->Is_Number() || !std::isfinite(rate->Get_Number()) || rate->Get_Number() <= 0.0 || rate->Get_Number() > 8.0)
+    { status = "invalid play rate"; fail(); return; }
+    step.playRate = static_cast<float>(rate->Get_Number());
+   }
+   std::uint32_t animation; float duration;
+   if (!Resolve_ClipTiming(step, animation, duration))
+   { status = "model has no clip " + step.clip; fail(); return; }
+   staged[index].push_back(std::move(step));
+  }
+ }
+ m_InteractionClips = std::move(staged);
+}
+
 bool_t CCharacter::Load_ClipChains()
 {
 	if (nullptr == m_pSpec->pAssetName)
@@ -1305,7 +1358,8 @@ bool_t CCharacter::Apply_NetworkAction(
 	const f32_t actionFacingYawDegrees,
 	const std::uint8_t comboStage,
 	const bool_t hasSkillTarget,
-	const float3_t& skillTarget)
+	const float3_t& skillTarget,
+	const LostArk::Shared::KOUKU_HUD_MODE interactionMode)
 {
 	using namespace LostArk::Shared;
 	if (0u == serverTick || !std::isfinite(actionFacingYawDegrees) ||
@@ -1334,6 +1388,38 @@ bool_t CCharacter::Apply_NetworkAction(
 		 std::abs(m_NetworkSkillTarget.z - skillTarget.z) > 0.001f))
 	{
 		return false;
+	}
+	if (PLAYER_ACTION_STATE::INTERACTION == action)
+	{
+		if (!Is_Valid_KoukuHudMode(interactionMode) || interactionMode == KOUKU_HUD_MODE::NONE ||
+			skillId >= 4u || actionStartTick == 0u) return false;
+		const bool_t same = m_eNetworkAction == action && m_iLastNetworkActionStartTick == actionStartTick;
+		if (same && (m_eInteractionMode != interactionMode || m_iInteractionIndex != skillId)) return false;
+		if (!same)
+		{
+			m_pChain = nullptr; m_iChainStage = 0; m_iChainStep = 0;
+			m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+			m_eInteractionMode = interactionMode; m_iInteractionIndex = skillId;
+			m_iLastNetworkActionStartTick = actionStartTick;
+			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0;
+		}
+		f32_t age = 0.f;
+		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, actionStartTick, SERVER_TICK_HZ, age)) return false;
+		const auto& clips = m_InteractionClips[static_cast<std::size_t>(interactionMode)];
+		if (skillId < clips.size())
+		{
+			const auto& step = clips[skillId];
+			std::uint32_t animation; float duration;
+			if (Resolve_ClipTiming(step, animation, duration) && (same || Start_Clip(step)))
+			{
+				const float seconds = (std::min)(age * step.playRate, (std::max)(0.f, duration - .0001f));
+				m_pBodyModel->Set_AnimTrackPosition(animation, seconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
+				m_pBodyModel->Play_Animation(0.f);
+			}
+		}
+		else if (!same) OutputDebugStringA("[Clown] Approved interaction has no admitted clip binding.\n");
+		m_eNetworkAction = action;
+		return true;
 	}
 	if (PLAYER_ACTION_STATE::SKILL == action)
 	{
@@ -1558,7 +1644,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
-	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+	else if (PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
 	{
@@ -2600,6 +2687,7 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 	before the cast must not stomp its clip; the action edge restores
 	locomotion when the Server releases ESTHER_CAST. */
 	if (Is_PlayingSkill() ||
+		LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction)
 	{
 		return;

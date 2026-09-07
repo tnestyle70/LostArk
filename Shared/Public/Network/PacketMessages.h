@@ -688,6 +688,154 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		S2C_DEBUG_SET_MADNESS_FORM_RESULT& message);
 
+	/* KoukuSaydon mechanic card shown over a player's head. The Server assigns it
+	when a roulette window opens and clears it when the window is judged. */
+	enum class MECHANIC_CARD_SYMBOL : std::uint8_t
+	{
+		NONE,
+		HEART,
+		SPADE,
+		CLUB,
+		DIAMOND,
+		END
+	};
+
+	constexpr bool Is_Valid_MechanicCardSymbol(const MECHANIC_CARD_SYMBOL symbol) noexcept
+	{
+		return symbol < MECHANIC_CARD_SYMBOL::END;
+	}
+
+	enum class MECHANIC_CARD_COLOR : std::uint8_t
+	{
+		NONE,
+		RED,
+		BLACK,
+		END
+	};
+
+	constexpr bool Is_Valid_MechanicCardColor(const MECHANIC_CARD_COLOR color) noexcept
+	{
+		return color < MECHANIC_CARD_COLOR::END;
+	}
+
+	/* Interaction HUD the Server decides for one player: the clown polymorph,
+	the Mario side-scroll, the dance time and the card maze. NONE keeps the class
+	HUD. Which icon sits in which quick slot travels with it. */
+	enum class KOUKU_HUD_MODE : std::uint8_t
+	{
+		NONE,
+		POLYMORPH,
+		MARIO,
+		DANCE,
+		MAZE,
+		END
+	};
+
+	constexpr bool Is_Valid_KoukuHudMode(const KOUKU_HUD_MODE mode) noexcept
+	{
+		return mode < KOUKU_HUD_MODE::END;
+	}
+
+	/* Q W E R A S D F, the order the HUD walks its quick-slot row. */
+	enum class INTERACTION_SLOT : std::uint8_t
+	{
+		Q,
+		W,
+		E,
+		R,
+		A,
+		S,
+		D,
+		F,
+		END
+	};
+
+	constexpr std::size_t KOUKU_HUD_SLOT_COUNT = 8u;
+	constexpr std::int8_t KOUKU_HUD_SLOT_EMPTY = -1;
+	/* Every interaction HUD skill runs on one fixed timeline today: the press
+	locks the player into INTERACTION for this long and the Client plays the
+	clip that the mode assigns to the pressed slot. */
+	constexpr std::uint32_t KOUKU_INTERACTION_ACTION_MS = 3000u;
+	constexpr std::uint32_t KOUKU_INTERACTION_COOLDOWN_MS = 3000u;
+	/* Reserved interaction cooldown identity. It is separate from the mode's
+	zero-based animation index and from product character skill IDs. */
+	constexpr SKILL_ID Kouku_InteractionCooldownSkillId(
+		const KOUKU_HUD_MODE mode, const std::uint32_t skillIndex) noexcept
+	{
+		return 0xFFFF0000u | (static_cast<std::uint32_t>(mode) << 8u) | (skillIndex + 1u);
+	}
+
+	constexpr bool Is_Valid_InteractionSlot(const INTERACTION_SLOT slot) noexcept
+	{
+		return slot < INTERACTION_SLOT::END;
+	}
+
+	/* One quick-slot press while an interaction HUD mode is active. The Server
+	resolves the slot through the player's replicated slot layout; the Client
+	never names a pose or skill here. */
+	struct C2S_INTERACTION_SLOT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		INTERACTION_SLOT eSlot = INTERACTION_SLOT::Q;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const C2S_INTERACTION_SLOT& message);
+	bool Read_Message(CPacketReader& reader, C2S_INTERACTION_SLOT& message);
+
+	/* Debug F1 "HUD Mode: MARIO / MAZE / Clear". Only the two modes whose
+	gimmick has no Server trigger yet may be forced; the Server still owns the
+	replicated mode and Release answers with a typed rejection. */
+	struct C2S_DEBUG_SET_KOUKU_HUD_MODE
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		KOUKU_HUD_MODE eMode = KOUKU_HUD_MODE::NONE;
+	};
+
+	enum class DEBUG_KOUKU_HUD_MODE_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_DISABLED,
+		REJECTED_SESSION,
+		REJECTED_WRONG_WORLD,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_UNSUPPORTED_MODE,
+		END
+	};
+
+	struct S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_KOUKU_HUD_MODE_RESULT eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_SESSION;
+		// The override the player has after this request, accepted or not.
+		KOUKU_HUD_MODE eActiveOverride = KOUKU_HUD_MODE::NONE;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_SET_KOUKU_HUD_MODE& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_SET_KOUKU_HUD_MODE& message);
+	bool Write_Message(CPacketWriter& writer,
+		const S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& message);
+	bool Read_Message(CPacketReader& reader,
+		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& message);
+
+	/* A boss pattern's authored scene-profile cue reached its Server tick. The
+	profile ID is an opaque stable presentation ID the Client resolves against
+	its own rendering profile catalog; durationMs 0 keeps the profile until the
+	next cue or the level's own profile restores it. */
+	struct S2C_SCENE_PROFILE_APPLY
+	{
+		std::string strProfileId;
+		std::uint32_t iBlendMs = 0u;
+		std::uint32_t iDurationMs = 0u;
+	};
+
+	bool Write_Message(CPacketWriter& writer, const S2C_SCENE_PROFILE_APPLY& message);
+	bool Read_Message(CPacketReader& reader, S2C_SCENE_PROFILE_APPLY& message);
+
 	struct C2S_CHANGE_CHARACTER_CLASS
 	{
 		std::uint32_t iClientSequence = 0;
@@ -746,6 +894,11 @@ namespace LostArk::Shared
 		the Client draws the body on the owner presentation's hand socket while
 		this state lasts. */
 		GRABBED,
+		/* One KoukuSaydon interaction HUD slot press. The room owns the fixed
+		length (KOUKU_INTERACTION_ACTION_MS) and iSkillId carries the mode skill
+		index the slot resolved to (0..KOUKU_HUD_SLOT_COUNT-1), never a balance
+		skill id. Appended last, same wire rule as FALLING. */
+		INTERACTION,
 		END
 	};
 
@@ -831,6 +984,15 @@ namespace LostArk::Shared
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = 0;
 		PLAYER_MADNESS_FORM eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		/* KoukuSaydon interaction state. The card is the symbol a roulette
+		window dealt this player; the mode and its slot layout are the HUD the
+		Server wants drawn (index into the mode's authored icon list per Q..F
+		slot, -1 empty). NONE carries an all-empty layout. */
+		MECHANIC_CARD_SYMBOL eMechanicCardSymbol = MECHANIC_CARD_SYMBOL::NONE;
+		MECHANIC_CARD_COLOR eMechanicCardColor = MECHANIC_CARD_COLOR::NONE;
+		KOUKU_HUD_MODE eKoukuHudMode = KOUKU_HUD_MODE::NONE;
+		std::int8_t ModeSkillIndexBySlot[KOUKU_HUD_SLOT_COUNT] =
+			{ -1, -1, -1, -1, -1, -1, -1, -1 };
 		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
 		std::uint8_t iMarioStage = 0u;
 		bool isCombatReady = true;
@@ -913,6 +1075,7 @@ namespace LostArk::Shared
 		std::string strPatternId;
 		std::string strActionId;
 		std::uint32_t iPatternSequence = 0;
+		std::uint32_t iPatternStartTick = 0;
 		std::uint32_t iPatternStageIndex = 0;
 		// Server-selected player locked by the running boss pattern. Non-boss
 		// entities must leave this invalid; Client presentation never reselects it.
@@ -2110,6 +2273,13 @@ namespace LostArk::Shared
 	struct S2C_WORLD_SEQUENCE_PLAY
 	{
 		std::string strSequenceInstanceId;
+		/* Multiplies the authored instance speed. 1 plays the sequence as
+		authored; a pattern box may slow a roulette spin or a curtain drop. */
+		float fPlaybackSpeed = 1.f;
+		float fPositionOffsetX = 0.f;
+		float fPositionOffsetY = 0.f;
+		float fPositionOffsetZ = 0.f;
+		std::uint32_t iDurationMs = 0u; // Zero uses the authored sequence lifetime.
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message);
 	bool Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message);

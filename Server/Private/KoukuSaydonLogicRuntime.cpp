@@ -1,0 +1,813 @@
+#include "KoukuSaydonLogicRuntime.h"
+
+#include "ServerCombatHitRuntime.h"
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+namespace
+{
+	constexpr std::uint64_t SERVER_TICK_HZ = 30u;
+	constexpr double DEGREES_PER_RADIAN = 57.295779513082320876;
+	constexpr float DEFAULT_CLOWN_HOLD_MS = 15000.f;
+
+	/* Stable server-owned card selection for one encounter admission. */
+	std::uint64_t Mix(std::uint64_t value) noexcept
+	{
+		value += 0x9E3779B97F4A7C15ull;
+		value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9ull;
+		value = (value ^ (value >> 27)) * 0x94D049BB133111EBull;
+		return value ^ (value >> 31);
+	}
+
+	float Wrap180(float degrees) noexcept
+	{
+		degrees = std::fmod(degrees, 360.f);
+		if (degrees > 180.f)
+			degrees -= 360.f;
+		if (degrees <= -180.f)
+			degrees += 360.f;
+		return degrees;
+	}
+
+	float Wrap360(float degrees) noexcept
+	{
+		degrees = std::fmod(degrees, 360.f);
+		if (degrees < 0.f)
+			degrees += 360.f;
+		return degrees;
+	}
+
+	std::uint32_t Percent_Of(const std::uint32_t value, const std::uint32_t percent) noexcept
+	{
+		const std::uint64_t scaled =
+			(static_cast<std::uint64_t>(value) * percent + 50u) / 100u;
+		return static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
+	}
+
+
+}
+
+std::uint32_t LostArk::Server::CKoukuSaydonLogicRuntime::Ticks_FromMs(
+	const std::uint32_t ms) noexcept
+{
+	const std::uint64_t ticks =
+		(static_cast<std::uint64_t>(ms) * SERVER_TICK_HZ + 999u) / 1000u;
+	return static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+		ticks, (std::numeric_limits<std::uint32_t>::max)() - 1u));
+}
+
+std::uint32_t LostArk::Server::CKoukuSaydonLogicRuntime::Add_Ticks(
+	const std::uint32_t tick, const std::uint32_t ticks) noexcept
+{
+	// Tick 0 is the reserved "never" value, so a wrap skips it.
+	const std::uint32_t result = tick + ticks;
+	return 0u == result ? 1u : result;
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Has_ReachedTick(
+	const std::uint32_t serverTick, const std::uint32_t targetTick) noexcept
+{
+	if (0u == targetTick || 0u == serverTick)
+		return false;
+	return static_cast<std::int32_t>(serverTick - targetTick) >= 0;
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_Judgeable(
+	const SERVER_PLAYER& player) noexcept
+{
+	using namespace LostArk::Shared;
+	return 0u != player.iCurrentHp && player.isCombatReady &&
+		PLAYER_ACTION_STATE::DEAD != player.eAction &&
+		PLAYER_ACTION_STATE::FALLING != player.eAction &&
+		PLAYER_ACTION_STATE::GRABBED != player.eAction;
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
+	const BOSS_PATTERN_DEFINITION& pattern,
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t startTick,
+	KOUKUSAYDON_LOGIC_LEDGER& outLedger)
+{
+	KOUKUSAYDON_LOGIC_LEDGER ledger{};
+	ledger.strPatternId = pattern.strPatternId;
+	ledger.iPatternSequence = boss.iPatternSequence;
+	ledger.iPatternStartTick = startTick;
+	for (std::size_t index = 0u; index < pattern.LogicWindows.size(); ++index)
+	{
+		const BOSS_PATTERN_LOGIC_WINDOW& window = pattern.LogicWindows[index];
+		KOUKUSAYDON_LOGIC_WINDOW_STATE state{};
+		state.iWindowIndex = static_cast<std::uint32_t>(index);
+		state.iStartTick = Add_Ticks(startTick, Ticks_FromMs(window.iStartMs));
+		state.iEndTick = Add_Ticks(startTick,
+			Ticks_FromMs(window.iStartMs + window.iDurationMs));
+		if (BOSS_PATTERN_LOGIC_KIND::POSE_INPUT == window.eKind)
+		{
+			ledger.bDanceActive = true;
+			ledger.eHudMode = LostArk::Shared::KOUKU_HUD_MODE::DANCE;
+		}
+		ledger.Windows.push_back(std::move(state));
+	}
+	for (std::size_t index = 0u; index < pattern.MechanicTriggers.size(); ++index)
+	{
+		KOUKUSAYDON_LOGIC_CUE_STATE cue{};
+		cue.iIndex = static_cast<std::uint32_t>(index);
+		cue.iStartTick = Add_Ticks(startTick, Ticks_FromMs(pattern.MechanicTriggers[index].iStartMs));
+		ledger.MechanicTriggers.push_back(cue);
+	}
+	for (std::size_t index = 0u; index < pattern.WorldSequences.size(); ++index)
+	{
+		KOUKUSAYDON_LOGIC_CUE_STATE cue{};
+		cue.iIndex = static_cast<std::uint32_t>(index);
+		cue.iStartTick = Add_Ticks(startTick,
+			Ticks_FromMs(pattern.WorldSequences[index].iStartMs));
+		ledger.WorldSequences.push_back(cue);
+	}
+	outLedger = std::move(ledger);
+}
+
+namespace
+{
+	bool Contains_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Server::SERVER_PLAYER& player, const std::uint32_t patternElapsedTicks = 0u) noexcept
+	{
+		using namespace LostArk::Server;
+		float centerX = region.fCenterX, centerZ = region.fCenterZ, yaw = region.fYawDegrees;
+		float halfX = region.fHalfX, halfZ = region.fHalfZ, radius = region.fRadiusM;
+		if (region.WorldTrack.bEnabled)
+		{
+			const auto& track = region.WorldTrack;
+			if (track.Keys.empty()) return false;
+			const std::uint32_t startTicks = CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs);
+			if (patternElapsedTicks < startTicks) return false;
+			const double delayed = static_cast<double>(patternElapsedTicks - startTicks) * (1000.0 / 30.0) - track.iStartDelayMs;
+			if (delayed < 0.0) return false;
+			const double timeMs = (std::min)(static_cast<double>(track.iDurationMs), delayed * track.fPlaybackSpeed);
+			const auto next = std::upper_bound(track.Keys.begin(), track.Keys.end(), timeMs,
+				[](const double time, const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) { return time < key.iTimeMs; });
+			const auto& left = next == track.Keys.begin() ? track.Keys.front() : *(next - 1);
+			const auto& right = next == track.Keys.end() ? left : *next;
+			if (!left.bVisible) return false;
+			float factor = right.iTimeMs > left.iTimeMs ?
+				static_cast<float>((timeMs - left.iTimeMs) / (right.iTimeMs - left.iTimeMs)) : 0.f;
+			factor = (std::clamp)(factor, 0.f, 1.f);
+			if (track.bSmoothStep) factor = factor * factor * (3.f - 2.f * factor);
+			const auto mix = [factor](const float a, const float b) { return a + (b - a) * factor; };
+			const float sx = track.fBaselineScaleX * mix(left.fScaleX, right.fScaleX);
+			const float sz = track.fBaselineScaleZ * mix(left.fScaleZ, right.fScaleZ);
+			if (!(sx > 0.f && sz > 0.f)) return false;
+			const float baselineRadians = track.fBaselineYawDegrees * 0.017453292519943295f;
+			const float ox = mix(left.fOffsetX, right.fOffsetX), oz = mix(left.fOffsetZ, right.fOffsetZ);
+			float qy = right.fRotationY, qw = right.fRotationW;
+			float dot = left.fRotationY * qy + left.fRotationW * qw;
+			if (dot < 0.f) { qy = -qy; qw = -qw; dot = -dot; }
+			dot = (std::clamp)(dot, -1.f, 1.f);
+			float leftWeight = 1.f - factor, rightWeight = factor;
+			if (dot < 0.9995f)
+			{
+				const float omega = std::acos(dot), sine = std::sin(omega);
+				leftWeight = std::sin((1.f - factor) * omega) / sine;
+				rightWeight = std::sin(factor * omega) / sine;
+			}
+			qy = left.fRotationY * leftWeight + qy * rightWeight;
+			qw = left.fRotationW * leftWeight + qw * rightWeight;
+			const float qLength = std::sqrt(qy * qy + qw * qw);
+			if (!(qLength > 0.f)) return false;
+			qy /= qLength; qw /= qLength;
+			const float worldYaw = track.fBaselineYawDegrees +
+				std::atan2(2.f * qw * qy, 1.f - 2.f * qy * qy) * 57.29577951308232f;
+			const float worldRadians = worldYaw * 0.017453292519943295f;
+			centerX = track.fBaselineX + std::cos(baselineRadians) * ox + std::sin(baselineRadians) * oz +
+				std::cos(worldRadians) * region.fCenterX * sx + std::sin(worldRadians) * region.fCenterZ * sz;
+			centerZ = track.fBaselineZ - std::sin(baselineRadians) * ox + std::cos(baselineRadians) * oz -
+				std::sin(worldRadians) * region.fCenterX * sx + std::cos(worldRadians) * region.fCenterZ * sz;
+			yaw += worldYaw; halfX *= sx; halfZ *= sz; radius *= sx;
+		}
+		else if (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region.eAnchor)
+		{
+			const float radians = boss.fYawDegrees * 0.017453292519943295f;
+			centerX = boss.fPositionX + std::cos(radians) * region.fCenterX + std::sin(radians) * region.fCenterZ;
+			centerZ = boss.fPositionZ - std::sin(radians) * region.fCenterX + std::cos(radians) * region.fCenterZ;
+			yaw += boss.fYawDegrees;
+		}
+		if (BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN == region.eAnchor)
+		{
+			centerX += boss.fSpawnPositionX;
+			centerZ += boss.fSpawnPositionZ;
+		}
+		const float dx = player.fPositionX - centerX, dz = player.fPositionZ - centerZ;
+		if (!std::isfinite(dx) || !std::isfinite(dz)) return false;
+		const float radians = yaw * 0.017453292519943295f;
+		const float localX = std::cos(radians) * dx - std::sin(radians) * dz;
+		const float localZ = std::sin(radians) * dx + std::cos(radians) * dz;
+		if (!region.bSector && !region.bCircle)
+			return std::fabs(localX) <= halfX && std::fabs(localZ) <= halfZ;
+		const float distanceSq = dx * dx + dz * dz;
+		if (region.bCircle) return distanceSq <= radius * radius;
+		if (distanceSq < 0.000001f || distanceSq > radius * radius) return false;
+		const float angle = std::atan2(localX, localZ) * 57.29577951308232f;
+		// A shared radial edge belongs to exactly one sector.
+		return angle >= -region.fHalfAngleDegrees && angle < region.fHalfAngleDegrees;
+	}
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
+	SERVER_PLAYER& player, const LostArk::Shared::NET_ENTITY_ID encounterOwnerId,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		INVALID_NET_ENTITY_ID == encounterOwnerId)
+		return;
+	if (MECHANIC_CARD_SYMBOL::NONE != player.eMechanicCardSymbol &&
+		MECHANIC_CARD_COLOR::NONE != player.eMechanicCardColor)
+		return;
+	const std::uint64_t roll = Mix((static_cast<std::uint64_t>(encounterOwnerId) << 32) ^
+		(static_cast<std::uint64_t>(player.iPlayerId) << 8) ^ serverTick);
+	player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(1u + (roll & 3u));
+	player.eMechanicCardColor = 0u == (roll & 4u) ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
+	KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	SERVER_WORLD_ENTITY* const pBoss)
+{
+	using namespace LostArk::Shared;
+	if (!ledger.Is_Active())
+		return;
+	(void)players;
+	if (nullptr != pBoss)
+	{
+		pBoss->bKoukuShieldActive = false;
+		pBoss->fKoukuShieldArcDegrees = 0.f;
+		pBoss->KoukuShieldRegions.clear();
+	}
+	ledger = {};
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
+	SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_LOGIC_WINDOW& window,
+	KOUKUSAYDON_LOGIC_WINDOW_STATE& state,
+	const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	using namespace LostArk::Shared;
+	(void)ledger;
+	state.bOpened = true;
+	state.Answers.clear();
+	state.iBossHpAtOpen = boss.iCurrentHp;
+	switch (window.eKind)
+	{
+	case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
+		for (auto& [playerId, player] : players)
+			if (Is_Judgeable(player))
+				state.Answers[playerId] = KOUKUSAYDON_LOGIC_ANSWER::NONE;
+		break;
+	case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
+		boss.bKoukuShieldActive = window.fShieldArcDegrees > 0.f;
+		boss.fKoukuShieldArcDegrees = window.fShieldArcDegrees;
+		boss.fKoukuShieldNormalYawOffsetDegrees = window.fNormalYawOffsetDegrees;
+		boss.KoukuShieldRegions = window.CardRegions;
+		break;
+	case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
+	case BOSS_PATTERN_LOGIC_KIND::POSE_INPUT:
+	default:
+		for (auto& [playerId, player] : players)
+		{
+			if (Is_Judgeable(player))
+				state.Answers[playerId] = KOUKUSAYDON_LOGIC_ANSWER::NONE;
+		}
+		break;
+	}
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
+	SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_LOGIC_WINDOW& window,
+	KOUKUSAYDON_LOGIC_WINDOW_STATE& state,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players)
+{
+	using namespace LostArk::Shared;
+	state.bClosed = true;
+	(void)players;
+	if (BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind)
+	{
+		boss.bKoukuShieldActive = false;
+		boss.fKoukuShieldArcDegrees = 0.f;
+		boss.KoukuShieldRegions.clear();
+	}
+}
+
+LostArk::Server::KOUKUSAYDON_LOGIC_ANSWER
+LostArk::Server::CKoukuSaydonLogicRuntime::Judge_Roulette(
+	const BOSS_PATTERN_LOGIC_WINDOW& window,
+	const SERVER_WORLD_ENTITY& boss,
+	const SERVER_PLAYER& player) noexcept
+{
+	using namespace LostArk::Shared;
+	if (!window.CardRegions.empty())
+	{
+		const BOSS_LOGIC_REGION* matched = nullptr;
+		for (const auto& region : window.CardRegions)
+			if (Contains_LogicRegion(region, boss, player))
+			{
+				if (nullptr != matched) return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+				matched = &region;
+			}
+		if (nullptr == matched) return KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
+		return matched->eCardSymbol == player.eMechanicCardSymbol &&
+			matched->eCardColor == player.eMechanicCardColor ?
+			KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	}
+	if (window.iSectorCount == 0u ||
+		window.SectorSymbols.size() != window.iSectorCount ||
+		MECHANIC_CARD_SYMBOL::NONE == player.eMechanicCardSymbol)
+		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	const float dx = player.fPositionX - window.fCenterX;
+	const float dz = player.fPositionZ - window.fCenterZ;
+	if (!std::isfinite(dx) || !std::isfinite(dz))
+		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	if (window.fOuterRadiusM > 0.f &&
+		dx * dx + dz * dz > window.fOuterRadiusM * window.fOuterRadiusM)
+		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	const float degrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+	const float relative = Wrap360(degrees - window.fStopYawDegrees);
+	const float sectorSpan = 360.f / static_cast<float>(window.iSectorCount);
+	std::size_t sector = static_cast<std::size_t>(relative / sectorSpan);
+	if (sector >= window.iSectorCount)
+		sector = window.iSectorCount - 1u;
+	return window.SectorSymbols[sector] == player.eMechanicCardSymbol ?
+		KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+}
+
+LostArk::Server::KOUKUSAYDON_LOGIC_ANSWER
+LostArk::Server::CKoukuSaydonLogicRuntime::Judge_Gaze(
+	const BOSS_PATTERN_LOGIC_WINDOW& window,
+	const SERVER_WORLD_ENTITY& boss,
+	const SERVER_PLAYER& player) noexcept
+{
+	const float dx = boss.fPositionX - player.fPositionX;
+	const float dz = boss.fPositionZ - player.fPositionZ;
+	if (!std::isfinite(dx) || !std::isfinite(dz) || !std::isfinite(player.fYawDegrees))
+		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	const float distanceSq = dx * dx + dz * dz;
+	// Standing on the boss counts as facing it: no direction to judge.
+	if (distanceSq < 0.01f)
+		return KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
+	if (window.fMaxDistanceM > 0.f &&
+		distanceSq > window.fMaxDistanceM * window.fMaxDistanceM)
+		return KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+	const float toBoss = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+	const float difference = Wrap180(toBoss - player.fYawDegrees);
+	return std::fabs(difference) <= window.fHalfAngleDegrees ?
+		KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
+	const SERVER_WORLD_ENTITY& boss,
+	const float sourceX,
+	const float sourceZ) noexcept
+{
+	if (!boss.bKoukuShieldActive || boss.fKoukuShieldArcDegrees <= 0.f)
+		return false;
+	const auto reflects = [sourceX, sourceZ](const float centerX, const float centerZ,
+		const float yaw, const float halfAngle)
+	{
+		const float dx = sourceX - centerX, dz = sourceZ - centerZ;
+		if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz < 0.0001f)
+			return false;
+		const float direction = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+		return std::fabs(Wrap180(direction - yaw)) <= halfAngle;
+	};
+	if (!boss.KoukuShieldRegions.empty())
+	{
+		const float radians = boss.fYawDegrees * 0.017453292519943295f;
+		for (const auto& region : boss.KoukuShieldRegions)
+		{
+			// A ranged attacker is reflected by direction too; the sector radius
+			// is its debug drawing extent, not an attack-distance restriction.
+			if (!region.bSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT)
+				continue;
+			const float centerX = boss.fPositionX + std::cos(radians) * region.fCenterX + std::sin(radians) * region.fCenterZ;
+			const float centerZ = boss.fPositionZ - std::sin(radians) * region.fCenterX + std::cos(radians) * region.fCenterZ;
+			if (reflects(centerX, centerZ, boss.fYawDegrees + region.fYawDegrees, region.fHalfAngleDegrees))
+				return true;
+		}
+		return false;
+	}
+	return reflects(boss.fPositionX, boss.fPositionZ,
+		boss.fYawDegrees + boss.fKoukuShieldNormalYawOffsetDegrees, boss.fKoukuShieldArcDegrees * 0.5f);
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Transform_ToClown(
+	SERVER_PLAYER& player,
+	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
+	const std::uint32_t serverTick,
+	const std::uint32_t durationMs)
+{
+	using namespace LostArk::Shared;
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction)
+		return;
+	const std::uint32_t holdMs = 0u != durationMs ? durationMs :
+		(nullptr != pMadnessPolicy && 0u != pMadnessPolicy->iClownHoldMs ?
+			pMadnessPolicy->iClownHoldMs :
+			static_cast<std::uint32_t>(DEFAULT_CLOWN_HOLD_MS));
+	player.bKoukuPatternOwnsClown = false;
+	player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+	player.iMadnessFormEndTick = Add_Ticks(serverTick, Ticks_FromMs(holdMs));
+	player.iCurrentMadness = 0u;
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
+	SERVER_PLAYER& player,
+	const BOSS_PATTERN_LOGIC_RESULT& result,
+	const SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+{
+	using namespace LostArk::Shared;
+	switch (result.eKind)
+	{
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE:
+	{
+		SERVER_WORLD_TO_PLAYER_HIT hit{};
+		hit.iRawDamage =
+			BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH == result.eKind ?
+				(std::max)(1u, player.iCurrentHp) :
+				(std::max)(1u, Percent_Of(player.iMaximumHp, result.iPercent));
+		hit.fSourceX = boss.fPositionX;
+		hit.fSourceZ = boss.fPositionZ;
+		hit.iServerTick = serverTick;
+		hit.bIgnoreDefense = true;
+		hit.bIgnoreCounter = true;
+		(void)CServerCombatHitRuntime::Apply_WorldToPlayer(
+			player, hit, catalog, outDamageEvents);
+		break;
+	}
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT:
+	{
+		if (0u == player.iMaximumMadness)
+			break;
+		const std::uint32_t gain = Percent_Of(player.iMaximumMadness, result.iPercent);
+		const std::uint64_t total =
+			static_cast<std::uint64_t>(player.iCurrentMadness) + gain;
+		player.iCurrentMadness = static_cast<std::uint32_t>(
+			(std::min<std::uint64_t>)(total, player.iMaximumMadness));
+		if (player.iCurrentMadness >= player.iMaximumMadness)
+			Transform_ToClown(player, pMadnessPolicy, serverTick, 0u);
+		break;
+	}
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::CLOWN_TRANSFORM:
+		Transform_ToClown(player, pMadnessPolicy, serverTick, result.iDurationMs);
+		break;
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::NONE:
+	default:
+		break;
+	}
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
+	const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results,
+	SERVER_PLAYER* const pPlayer,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	KOUKUSAYDON_LOGIC_OUTPUT& outOutput)
+{
+	for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
+	{
+		if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind)
+		{
+			if (!result.strPatternId.empty())
+				outOutput.FollowupPatternIds.push_back(result.strPatternId);
+			continue;
+		}
+		if (nullptr != pPlayer)
+		{
+			Apply_Result(*pPlayer, result, boss, catalog, pMadnessPolicy,
+				serverTick, outDamageEvents);
+			continue;
+		}
+		/* Boss-level windows punish or reward the whole living raid. */
+		for (auto& [playerId, player] : players)
+		{
+			(void)playerId;
+			if (Is_Judgeable(player))
+				Apply_Result(player, result, boss, catalog, pMadnessPolicy,
+					serverTick, outDamageEvents);
+		}
+	}
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
+	SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_DEFINITION& pattern,
+	KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const CGameplayCatalog& catalog,
+	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	KOUKUSAYDON_LOGIC_OUTPUT& outOutput)
+{
+	if (!ledger.Is_Active() || ledger.strPatternId != pattern.strPatternId)
+		return;
+	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.MechanicTriggers)
+	{
+		if (cue.bStarted || cue.iIndex >= pattern.MechanicTriggers.size() ||
+			!Has_ReachedTick(serverTick, cue.iStartTick))
+			continue;
+		cue.bStarted = true;
+		const auto& trigger = pattern.MechanicTriggers[cue.iIndex];
+		if (BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER == trigger.eKind)
+			ledger.eHudMode = trigger.eHudMode;
+		else
+			outOutput.MechanicTriggers.push_back(trigger);
+	}
+	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.WorldSequences)
+	{
+		if (cue.bStarted || cue.iIndex >= pattern.WorldSequences.size() ||
+			!Has_ReachedTick(serverTick, cue.iStartTick))
+			continue;
+		cue.bStarted = true;
+		const BOSS_PATTERN_WORLD_SEQUENCE& sequence = pattern.WorldSequences[cue.iIndex];
+		outOutput.WorldSequencePlays.push_back(
+			{ sequence.strInstanceId, sequence.fPlaybackSpeed,
+			  sequence.fPositionOffsetX + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionX - sequence.fAnchorPositionX : 0.f),
+			  sequence.fPositionOffsetY + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionY - sequence.fAnchorPositionY : 0.f),
+			  sequence.fPositionOffsetZ + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionZ - sequence.fAnchorPositionZ : 0.f),
+			  sequence.iDurationMs });
+	}
+	for (KOUKUSAYDON_LOGIC_WINDOW_STATE& state : ledger.Windows)
+	{
+		if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size())
+			continue;
+		const BOSS_PATTERN_LOGIC_WINDOW& window = pattern.LogicWindows[state.iWindowIndex];
+		if (!state.bOpened)
+		{
+			if (!Has_ReachedTick(serverTick, state.iStartTick))
+				continue;
+			Open_Window(boss, window, state, ledger, players);
+		}
+		const bool reachedEnd = Has_ReachedTick(serverTick, state.iEndTick);
+		switch (window.eKind)
+		{
+		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
+		{
+			const std::uint32_t lost = state.iBossHpAtOpen > boss.iCurrentHp ?
+				state.iBossHpAtOpen - boss.iCurrentHp : 0u;
+			if (window.iThreshold > 0u && lost >= window.iThreshold)
+			{
+				Close_Window(boss, window, state, players);
+				Apply_Results(window.OnSuccess, nullptr, players, boss, catalog,
+					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				if (window.bEndsPatternOnSuccess)
+					outOutput.bEndPatternEarly = true;
+				outOutput.strStatus = "stagger window succeeded";
+			}
+			else if (reachedEnd)
+			{
+				Close_Window(boss, window, state, players);
+				Apply_Results(window.OnTimeout, nullptr, players, boss, catalog,
+					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				outOutput.strStatus = "stagger window timed out";
+			}
+			break;
+		}
+		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
+		case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
+		{
+			if (!reachedEnd)
+				break;
+			/* Judge before the cards go back so the card that was dealt is the
+			card that is compared. */
+			std::vector<std::pair<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER>> verdicts;
+			for (auto& [playerId, player] : players)
+			{
+				if (!Is_Judgeable(player))
+					continue;
+				const KOUKUSAYDON_LOGIC_ANSWER answer =
+					BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH == window.eKind ?
+						Judge_Roulette(window, boss, player) : Judge_Gaze(window, boss, player);
+				state.Answers[playerId] = answer;
+				verdicts.emplace_back(playerId, answer);
+			}
+			Close_Window(boss, window, state, players);
+			for (const auto& [playerId, answer] : verdicts)
+			{
+				const auto found = players.find(playerId);
+				if (players.end() == found)
+					continue;
+				Apply_Results(
+					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == answer ? window.OnSuccess :
+					(KOUKUSAYDON_LOGIC_ANSWER::FAIL == answer ? window.OnFail : window.OnTimeout),
+					&found->second, players, boss, catalog, pMadnessPolicy, serverTick,
+					outDamageEvents, outOutput);
+			}
+			outOutput.strStatus = "end-tick window judged";
+			break;
+		}
+		case BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP:
+		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
+		{
+			const bool enter = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA == window.eKind;
+			if (!enter && !reachedEnd) break;
+			for (auto& [playerId, player] : players)
+			{
+				if (!Is_Judgeable(player) || (enter && KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
+					continue;
+				const bool inside = std::any_of(window.CardRegions.begin(), window.CardRegions.end(),
+					[&](const BOSS_LOGIC_REGION& region) { return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick); });
+				if (!inside && !reachedEnd) continue;
+				state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
+					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
+				Apply_Results(inside ? (window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout, &player, players,
+					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+			}
+			if (reachedEnd) Close_Window(boss, window, state, players);
+			break;
+		}
+		case BOSS_PATTERN_LOGIC_KIND::POSE_INPUT:
+		{
+			if (!reachedEnd)
+				break;
+			std::vector<std::pair<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER>> verdicts;
+			for (auto& [playerId, player] : players)
+			{
+				if (!Is_Judgeable(player))
+					continue;
+				const auto answer = state.Answers.find(playerId);
+				verdicts.emplace_back(playerId,
+					state.Answers.end() == answer ? KOUKUSAYDON_LOGIC_ANSWER::NONE : answer->second);
+			}
+			Close_Window(boss, window, state, players);
+			for (const auto& [playerId, answer] : verdicts)
+			{
+				const auto found = players.find(playerId);
+				if (players.end() == found)
+					continue;
+				const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results =
+					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == answer ? window.OnSuccess :
+					(KOUKUSAYDON_LOGIC_ANSWER::FAIL == answer ? window.OnFail : window.OnTimeout);
+				Apply_Results(results, &found->second, players, boss, catalog,
+					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+			}
+			outOutput.strStatus = "pose window judged";
+			break;
+		}
+		default:
+			if (reachedEnd)
+				Close_Window(boss, window, state, players);
+			break;
+		}
+	}
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Record_InteractionSlot(
+	KOUKUSAYDON_LOGIC_LEDGER& ledger,
+	const BOSS_PATTERN_DEFINITION& pattern,
+	const SERVER_PLAYER& player,
+	const LostArk::Shared::INTERACTION_SLOT slot,
+	std::string& outStatus)
+{
+	using namespace LostArk::Shared;
+	if (!ledger.Is_Active() || ledger.strPatternId != pattern.strPatternId)
+	{
+		outStatus = "no running pattern owns a dance window";
+		return false;
+	}
+	if (!Is_Valid_InteractionSlot(slot))
+	{
+		outStatus = "slot is out of range";
+		return false;
+	}
+	const std::int8_t pose = player.ModeSkillIndexBySlot[static_cast<std::size_t>(slot)];
+	if (pose < 0)
+	{
+		outStatus = "empty slot";
+		return false;
+	}
+	for (KOUKUSAYDON_LOGIC_WINDOW_STATE& state : ledger.Windows)
+	{
+		if (!state.bOpened || state.bClosed ||
+			state.iWindowIndex >= pattern.LogicWindows.size())
+			continue;
+		const BOSS_PATTERN_LOGIC_WINDOW& window = pattern.LogicWindows[state.iWindowIndex];
+		if (BOSS_PATTERN_LOGIC_KIND::POSE_INPUT != window.eKind)
+			continue;
+		auto answer = state.Answers.find(player.iPlayerId);
+		if (state.Answers.end() == answer)
+			answer = state.Answers.emplace(player.iPlayerId, KOUKUSAYDON_LOGIC_ANSWER::NONE).first;
+		if (KOUKUSAYDON_LOGIC_ANSWER::NONE != answer->second)
+		{
+			outStatus = "already answered";
+			return false;
+		}
+		answer->second = static_cast<std::uint32_t>(pose) == window.iPoseIndex ?
+			KOUKUSAYDON_LOGIC_ANSWER::SUCCESS : KOUKUSAYDON_LOGIC_ANSWER::FAIL;
+		outStatus = KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == answer->second ?
+			"pose matched" : "pose mismatched";
+		return true;
+	}
+	outStatus = "no open dance window";
+	return false;
+}
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerModes(
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const KOUKUSAYDON_LOGIC_LEDGER* const pActiveLedger,
+	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	const KOUKU_HUD_MODE ledgerMode = nullptr != pActiveLedger && pActiveLedger->Is_Active() ?
+		pActiveLedger->eHudMode : KOUKU_HUD_MODE::NONE;
+	for (auto& [playerId, player] : players)
+	{
+		(void)playerId;
+		const KOUKU_HUD_MODE patternMode = nullptr != pActiveLedger &&
+			0u != player.iKoukuSuppressedPatternSequence &&
+			player.iKoukuSuppressedPatternSequence == pActiveLedger->iPatternSequence ?
+			KOUKU_HUD_MODE::NONE : ledgerMode;
+		if (nullptr != pMadnessPolicy && 0u != pMadnessPolicy->iMaximum)
+		{
+			player.iMaximumMadness = pMadnessPolicy->iMaximum;
+			player.iCurrentMadness = (std::min)(player.iCurrentMadness, player.iMaximumMadness);
+			if (player.iCurrentMadness >= player.iMaximumMadness)
+				Transform_ToClown(player, pMadnessPolicy, serverTick, 0u);
+		}
+		if (PLAYER_MADNESS_FORM::CLOWN == player.eMadnessForm &&
+			0u != player.iMadnessFormEndTick &&
+			Has_ReachedTick(serverTick, player.iMadnessFormEndTick))
+		{
+			if (KOUKU_HUD_MODE::NONE == patternMode &&
+				KOUKU_HUD_MODE::NONE == player.eKoukuAreaHudMode &&
+				KOUKU_HUD_MODE::NONE == player.eDebugKoukuHudModeOverride)
+				player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+			player.iMadnessFormEndTick = 0u;
+		}
+		for (std::int8_t& index : player.ModeSkillIndexBySlot)
+			index = KOUKU_HUD_SLOT_EMPTY;
+		const bool alive = 0u != player.iCurrentHp && PLAYER_ACTION_STATE::DEAD != player.eAction;
+		if (!alive)
+		{
+			player.Clear_KoukuInteractionState();
+			player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+			continue;
+		}
+		KOUKU_HUD_MODE mode = KOUKU_HUD_MODE::NONE != patternMode ?
+			patternMode : (KOUKU_HUD_MODE::NONE != player.eKoukuAreaHudMode ?
+				player.eKoukuAreaHudMode : player.eDebugKoukuHudModeOverride);
+		if (KOUKU_HUD_MODE::NONE != patternMode &&
+			PLAYER_MADNESS_FORM::NORMAL == player.eMadnessForm)
+		{
+			player.bKoukuPatternOwnsClown = true;
+			player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
+		}
+		else if (KOUKU_HUD_MODE::NONE == patternMode && player.bKoukuPatternOwnsClown)
+		{
+			player.bKoukuPatternOwnsClown = false;
+			if (KOUKU_HUD_MODE::NONE == mode && 0u == player.iMadnessFormEndTick)
+				player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+		}
+		if (KOUKU_HUD_MODE::NONE == mode && PLAYER_MADNESS_FORM::CLOWN == player.eMadnessForm)
+			mode = KOUKU_HUD_MODE::POLYMORPH;
+		// A mode change cannot reinterpret an interaction animation already in flight.
+		if (player.eKoukuHudMode != mode && (PLAYER_ACTION_STATE::INTERACTION == player.eAction ||
+			PLAYER_ACTION_STATE::SKILL == player.eAction))
+		{
+			player.eAction = PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = INVALID_SKILL_ID;
+			player.Clear_SkillTarget();
+			player.iComboStage = 0u;
+			player.hasBufferedComboInput = false;
+			player.iActionStartTick = 0u;
+			player.fActionElapsedSeconds = 0.f;
+		}
+		player.eKoukuHudMode = mode;
+		std::uint32_t count = 0u;
+		switch (mode)
+		{
+		case KOUKU_HUD_MODE::DANCE: count = 4u; break;
+		case KOUKU_HUD_MODE::POLYMORPH: count = 3u; break;
+		case KOUKU_HUD_MODE::MARIO: count = 2u; break;
+		case KOUKU_HUD_MODE::MAZE: count = 1u; break;
+		case KOUKU_HUD_MODE::NONE: break;
+		default: break;
+		}
+		for (std::uint32_t index = 0u; index < count; ++index)
+			player.ModeSkillIndexBySlot[index] = static_cast<std::int8_t>(index);
+	}
+}

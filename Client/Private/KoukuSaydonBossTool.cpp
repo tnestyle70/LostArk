@@ -371,6 +371,8 @@ void Client::CKoukuSaydonBossTool::Render()
 		ImGui::TableSetupColumn("Server Playback", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
+		/* Same gate grouping the Workbench pattern list shows. */
+		ImGui::SeparatorText("1" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC");
 		for (const PRODUCT_PATTERN& pattern : m_ProductPatterns)
 		{
 			ImGui::PushID(pattern.strPatternId.c_str());

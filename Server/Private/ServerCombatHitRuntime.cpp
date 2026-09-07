@@ -207,13 +207,15 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}
-	if (CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
+	if (!hit.bIgnoreCounter &&
+		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 
 	const PLAYER_RUNTIME_PROFILE* playerProfile =
 		catalog.Find_Player(target.eCharacterClass);
-	const std::uint32_t damage = CGameplayCatalog::Apply_Defense(
-		hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
+	const std::uint32_t damage = hit.bIgnoreDefense ? hit.iRawDamage :
+		CGameplayCatalog::Apply_Defense(
+			hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
 	target.iCurrentHp = damage >= target.iCurrentHp ?
 		0u : target.iCurrentHp - damage;
 	PushDamageEvent(

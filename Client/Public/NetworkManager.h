@@ -213,6 +213,10 @@ public:
 	snapshot is the only accepted presentation result. */
 	bool Send_DebugSetMadnessForm(
 		std::uint32_t requestSequence, LostArk::Shared::PLAYER_MADNESS_FORM form);
+	bool Send_InteractionSlot(std::uint32_t sequence, LostArk::Shared::INTERACTION_SLOT slot);
+	bool Send_DebugKoukuHudMode(std::uint32_t sequence, LostArk::Shared::KOUKU_HUD_MODE mode);
+	bool Try_Consume_DebugKoukuHudModeResult(
+		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result);
 	bool Try_Consume_DebugMadnessFormResult(
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT& result);
 	bool Send_DebugTeleportToPlacement(
@@ -509,6 +513,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>

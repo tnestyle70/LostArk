@@ -4,10 +4,10 @@
   "effectId": "boss.kouku.disarm.converge_3",
   "effectType": "Mesh",
   "slots": {
-    "mesh": "Effect/KakulSaydon/Meshes/fx_sm_00/fm_a_cylinder_002.wmodel",
-    "base": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_a_atypical_002_cl.dds",
+    "mesh": "Effect/KoukuSaydon/Meshes/fx_sm_00/fm_a_cylinder_002.wmodel",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_atypical_002_cl.dds",
     "noise": "",
-    "mask": "Effect/KakulSaydon/Textures/FX_TEX_00/fx_a_atypical_002_cl.dds",
+    "mask": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_atypical_002_cl.dds",
     "emissive": "",
     "dissolve": ""
   },

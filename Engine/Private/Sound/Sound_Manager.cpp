@@ -1,4 +1,5 @@
 #include "Sound/Sound_Manager.h"
+#include <cmath>
 
 #pragma push_macro("new")
 #undef new
@@ -27,6 +28,8 @@ CSound_Manager::CSound_Manager()
 
 CSound_Manager::~CSound_Manager()
 {
+	for (const auto& [id, channel] : m_CueChannels) if (channel) channel->stop();
+	m_CueChannels.clear();
 	Stop_LoopingSound();
 	Stop_Music();
 	for (auto& SoundPair : m_Sounds)
@@ -87,6 +90,38 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
+uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs)
+{
+	if (!std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem) return 0u;
+	auto* sound = Find_Or_LoadSound(path, false);
+	if (!sound) return 0u;
+	unsigned int length = 0;
+	if (sound->getLength(&length, FMOD_TIMEUNIT_MS) != FMOD_OK || ageMs >= length) return 0u;
+	FMOD::Channel* channel = nullptr;
+	if (m_pSystem->playSound(sound, nullptr, true, &channel) != FMOD_OK || !channel) return 0u;
+	if (channel->setVolume(volume) != FMOD_OK || channel->setPosition(ageMs, FMOD_TIMEUNIT_MS) != FMOD_OK ||
+		channel->setPaused(false) != FMOD_OK)
+	{ channel->stop(); return 0u; }
+	const uint64_t handle = m_iNextCueHandle++;
+	m_CueChannels.emplace(handle, channel);
+	return handle;
+}
+void CSound_Manager::Pause_SoundCue(uint64_t handle, bool_t paused)
+{
+	const auto found = m_CueChannels.find(handle);
+	if (found != m_CueChannels.end()) found->second->setPaused(paused);
+}
+void CSound_Manager::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
+{
+	const auto found = m_CueChannels.find(handle);
+	if (found != m_CueChannels.end()) found->second->setPosition(ageMs, FMOD_TIMEUNIT_MS);
+}
+void CSound_Manager::Stop_SoundCue(uint64_t handle)
+{
+	const auto found = m_CueChannels.find(handle);
+	if (found != m_CueChannels.end()) { found->second->stop(); m_CueChannels.erase(found); }
+}
+
 HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath,
 	f32_t fVolume, const bool_t bLoop)
 {
@@ -145,6 +180,12 @@ void CSound_Manager::Update()
 	if (nullptr == m_pSystem)
 		return;
 
+	for (auto it = m_CueChannels.begin(); it != m_CueChannels.end();)
+	{
+		bool playing = false;
+		if (it->second->isPlaying(&playing) != FMOD_OK || !playing) it = m_CueChannels.erase(it);
+		else ++it;
+	}
 	const FMOD_RESULT eResult = m_pSystem->update();
 	if (FMOD_OK != eResult)
 		Write_FMOD_Error("System::update", eResult);

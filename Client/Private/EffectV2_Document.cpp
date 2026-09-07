@@ -14,7 +14,7 @@
 namespace
 {
 	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail", "ScreenPost" };
-	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration" };
+	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration", "TexturedOverlay" };
 	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque", "Multiply" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
@@ -894,7 +894,14 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_Number(*pScreenPost, "secondaryIntensity", S.fSecondaryIntensity, strOutError) ||
 			!Read_Number(*pScreenPost, "frequency", S.fFrequency, strOutError) ||
 			!Read_FloatArray(*pScreenPost, "tint", &S.vTint.x, 4u, strOutError) ||
-			!Read_Uint(*pScreenPost, "randomSeed", S.iRandomSeed, strOutError))
+			!Read_Uint(*pScreenPost, "randomSeed", S.iRandomSeed, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "overlayPositionStart", &S.vOverlayPositionStart.x, 2u, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "overlayPositionHold", &S.vOverlayPositionHold.x, 2u, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "overlayPositionEnd", &S.vOverlayPositionEnd.x, 2u, strOutError) ||
+			!Read_FloatArray(*pScreenPost, "overlayScale", &S.vOverlayScale.x, 2u, strOutError) ||
+			!Read_Number(*pScreenPost, "overlayEnterEnd", S.fOverlayEnterEnd, strOutError) ||
+			!Read_Number(*pScreenPost, "overlayExitStart", S.fOverlayExitStart, strOutError) ||
+			!Read_Number(*pScreenPost, "overlayRotationDegrees", S.fOverlayRotationDegrees, strOutError))
 		{
 			return false;
 		}
@@ -903,6 +910,20 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			S.fFrequency < 0.f || 0u == S.iRandomSeed)
 		{
 			strOutError = "params.screenPost intensities/frequency must be >= 0 and randomSeed >= 1.";
+			return false;
+		}
+		if (S.vOverlayScale.x <= 0.f || S.vOverlayScale.y <= 0.f ||
+			S.fOverlayEnterEnd < 0.f || S.fOverlayEnterEnd > S.fOverlayExitStart ||
+			S.fOverlayExitStart > 1.f)
+		{
+			strOutError = "Screen overlay requires positive scale and 0 <= enterEnd <= exitStart <= 1.";
+			return false;
+		}
+		if (CEffectV2Object::SHAPE::SCREEN_POST == Document.Desc.eShape &&
+			CEffectV2Object::SCREEN_POST_PROFILE::TEXTURED_OVERLAY == S.eProfile &&
+			Document.Desc.TextureAssetIds[static_cast<size_t>(CEffectV2Object::TEXTURE_INPUT::BASE)].empty())
+		{
+			strOutError = "TexturedOverlay requires slots.base.";
 			return false;
 		}
 	}
@@ -1386,7 +1407,14 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"secondaryIntensity\": " + Json_Number(S.fSecondaryIntensity) + ",\n";
 	Text += "      \"frequency\": " + Json_Number(S.fFrequency) + ",\n";
 	Text += "      \"tint\": " + Json_Float4(S.vTint) + ",\n";
-	Text += "      \"randomSeed\": " + std::to_string(S.iRandomSeed) + "\n";
+	Text += "      \"randomSeed\": " + std::to_string(S.iRandomSeed) + ",\n";
+	Text += "      \"overlayPositionStart\": " + Json_Float2(S.vOverlayPositionStart) + ",\n";
+	Text += "      \"overlayPositionHold\": " + Json_Float2(S.vOverlayPositionHold) + ",\n";
+	Text += "      \"overlayPositionEnd\": " + Json_Float2(S.vOverlayPositionEnd) + ",\n";
+	Text += "      \"overlayScale\": " + Json_Float2(S.vOverlayScale) + ",\n";
+	Text += "      \"overlayEnterEnd\": " + Json_Number(S.fOverlayEnterEnd) + ",\n";
+	Text += "      \"overlayExitStart\": " + Json_Number(S.fOverlayExitStart) + ",\n";
+	Text += "      \"overlayRotationDegrees\": " + Json_Number(S.fOverlayRotationDegrees) + "\n";
 	Text += "    }\n";
 	Text += "  },\n";
 	Text += "  \"parts\": [\n";
