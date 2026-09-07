@@ -2,107 +2,127 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 151,
+  "revision": 399,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
       "displayName": "월드오브젝트_카드",
       "modelAssetId": "Character/KoukuSaton/MN_RHOC_00/MN_RHOC_00.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
-      "modelPreScale": 0.01,
+      "modelPreScale": 0.00999999978,
       "animated": true,
       "scale": [2, 2, 2],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.card"
     },
     {
       "objectId": "world.object.kouku.joker_card",
       "displayName": "월드오브젝트_조커카드",
       "modelAssetId": "Character/KoukuSaton/MN_RHOC_00-1/MN_RHOC_00-1.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
-      "modelPreScale": 0.01,
+      "modelPreScale": 0.00999999978,
       "animated": true,
       "scale": [2, 2, 2],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.joker_card"
     },
     {
       "objectId": "world.object.kouku.ball",
       "displayName": "월드오브젝트_공",
-      "modelAssetId": "Effect/KoukuSaydon/Meshes/fx_sm_01/fm_k_ppct_ball_01.wmodel",
-      "diffuseTextureAssetId": "Effect/KoukuSaydon/Textures/WP_MN_PPCT_00/tex/wp_mn_ppct_00_c.dds",
+      "modelAssetId": "Effect/KoukuSaydon/Meshes/wp_mn_rhcn_00/mesh/fm_d_rhcn_00.wmodel",
+      "anchorKind": "PLAYER",
+      "diffuseTextureAssetId": "Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds",
       "modelPreScale": 0.00999999978,
       "animated": false,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.ball"
     },
     {
       "objectId": "world.object.kouku.seto",
       "displayName": "월드오브젝트_세토",
       "modelAssetId": "Character/KoukuSaton/MN_PPCT_00/MN_PPCT_00.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
-      "modelPreScale": 0.01,
+      "modelPreScale": 0.00999999978,
       "animated": true,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.seto"
     },
     {
       "objectId": "world.object.kouku.cutting_blade",
       "displayName": "월드오브젝트_칼날",
       "modelAssetId": "Effect/KoukuSaydon/WorldObjects/CuttingBlade/CuttingBlade.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
       "animated": false,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.cutting_blade"
     },
     {
       "objectId": "world.object.kouku.hook",
       "displayName": "월드오브젝트_갈고리",
       "modelAssetId": "Character/KoukuSaton/MN_UMAX_00/MN_UMAX_00.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
-      "modelPreScale": 0.01,
+      "modelPreScale": 0.00999999978,
       "animated": true,
       "scale": [1.14999998, 1.14999998, 1.14999998],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.hook"
     },
     {
       "objectId": "world.object.kouku.bingo_bomb",
       "displayName": "월드오브젝트_빙고폭탄",
       "modelAssetId": "Character/KoukuSaton/MN_RHCN_01/MN_RHCN_01.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
-      "modelPreScale": 0.01,
+      "modelPreScale": 0.00999999978,
       "animated": true,
       "scale": [2, 2, 2],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.bingo_bomb"
     },
     {
       "objectId": "world.object.kouku.bingo",
       "displayName": "월드오브젝트_빙고",
       "modelAssetId": "Map/LV_LUT_MIDNIGHTC_ED/MAP_5F1286085DD9_LV_LUT_MIDNIGHTC_FLOOR03_SM/MAP_5F1286085DD9_LV_LUT_MIDNIGHTC_FLOOR03_SM.wmodel",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
       "animated": false,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": ""
+      "sequenceInstanceId": "",
+      "defaultMotionInstanceId": "world.object.instance.kouku.bingo"
     },
     {
       "objectId": "world.object.kouku.curtain",
       "displayName": "월드오브젝트_커튼",
       "modelAssetId": "",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
       "animated": false,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": "world.sequence.instance.curtain_drop"
+      "sequenceInstanceId": "world.sequence.instance.curtain_drop",
+      "defaultMotionInstanceId": "world.sequence.instance.curtain_drop"
     },
     {
       "objectId": "world.object.kouku.roulette",
       "displayName": "월드오브젝트_룰렛",
       "modelAssetId": "",
+      "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
       "animated": false,
       "scale": [1, 1, 1],
-      "sequenceInstanceId": "world.sequence.instance.8"
+      "sequenceInstanceId": "world.sequence.instance.8",
+      "defaultMotionInstanceId": "world.sequence.instance.8"
     }
   ],
   "templates": [
@@ -115424,7 +115444,7 @@
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card",
-      "displayName": "월드오브젝트_카드",
+      "displayName": "카드_Idle",
       "category": "WorldObject",
       "durationMs": 2000,
       "interpolation": "SMOOTH_STEP",
@@ -115458,12 +115478,12 @@
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "displayName": "카드_Idle", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
       ]
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card",
-      "displayName": "월드오브젝트_조커카드",
+      "displayName": "조커카드_Idle",
       "category": "WorldObject",
       "durationMs": 2000,
       "interpolation": "SMOOTH_STEP",
@@ -115497,7 +115517,7 @@
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "displayName": "조커카드_Idle ", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
       ]
     },
     {
@@ -115740,10 +115760,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -115767,14 +115784,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -115789,10 +115799,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -115816,24 +115823,17 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.ball_bounce",
       "displayName": "공_튀기기",
       "category": "WorldObject",
-      "durationMs": 2000,
+      "durationMs": 1700,
       "interpolation": "SMOOTH_STEP",
       "objectMotion": {
-        "velocity": [0, 6, 0],
+        "velocity": [1, 5, 0],
         "acceleration": [0, -6, 0],
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
@@ -115852,7 +115852,7 @@
               "visible": true
             },
             {
-              "timeMs": 2000,
+              "timeMs": 1700,
               "positionOffset": [0, 0.470804751, 0],
               "rotationQuaternion": [0, 0, 0, 1],
               "scaleMultiplier": [1, 1, 1],
@@ -117235,10 +117235,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117262,14 +117259,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117284,10 +117274,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117311,14 +117298,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117333,10 +117313,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117360,14 +117337,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Seto_att_battle_21_02",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Seto_att_battle_21_02", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117382,10 +117352,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117409,14 +117376,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Seto_run_battle_1",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": true,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Seto_run_battle_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
       ]
     },
     {
@@ -117431,10 +117391,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117458,14 +117415,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Seto_walk_normal_1",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": true,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Seto_walk_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
       ]
     },
     {
@@ -117480,10 +117430,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117507,14 +117454,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Hook_att_battle_1_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Hook_att_battle_1_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117529,10 +117469,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117556,14 +117493,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Hook_att_battle_2_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Hook_att_battle_2_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117578,10 +117508,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117605,14 +117532,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Hook_att_battle_3_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Hook_att_battle_3_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117627,10 +117547,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117654,14 +117571,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Hook_respawn_1",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Hook_respawn_1", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117676,10 +117586,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117703,14 +117610,7 @@
         }
       ],
       "animationTracks": [
-        {
-          "slotId": "object",
-          "clipName": "Bomb_att_battle_1_01",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
-        }
+        { "slotId": "object", "clipName": "Bomb_att_battle_1_01", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     },
     {
@@ -117725,10 +117625,7 @@
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1,
-        "intervalMs": 0,
-        "spreadDegrees": 0,
-        "seed": 1
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1
       },
       "tracks": [
         {
@@ -117752,14 +117649,145 @@
         }
       ],
       "animationTracks": [
+        { "slotId": "object", "clipName": "Bomb_respawn_1", "startMs": 0, "playbackRate": 1, "loop": false, "holdLastFrame": true }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card_saved_chain",
+      "displayName": "카드_기존연속모션",
+      "category": "WorldObject",
+      "durationMs": 5135,
+      "interpolation": "SMOOTH_STEP",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
+      },
+      "tracks": [
         {
           "slotId": "object",
-          "clipName": "Bomb_respawn_1",
-          "startMs": 0,
-          "playbackRate": 1,
-          "loop": false,
-          "holdLastFrame": true
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 2000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 2667,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3001,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 4001,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 4301,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 4635,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 5135,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
         }
+      ],
+      "animationTracks": [
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "displayName": "카드_Idle", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start", "displayName": "카드_뒤집힘", "startMs": 2000, "playbackRate": 1, "loop": false, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01", "displayName": "카드_들썩임", "startMs": 4635, "playbackRate": 1, "loop": false, "holdLastFrame": true }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_saved_chain",
+      "displayName": "조커카드_기존연속모션",
+      "category": "WorldObject",
+      "durationMs": 3167,
+      "interpolation": "SMOOTH_STEP",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 2000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 2667,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3167,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "displayName": "조커카드_Idle ", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start", "displayName": "조커카드_뒤집힘", "startMs": 2000, "playbackRate": 1, "loop": false, "holdLastFrame": true },
+        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01", "displayName": "조커카드_들썩임", "startMs": 2667, "playbackRate": 1, "loop": false, "holdLastFrame": true }
       ]
     }
   ],
@@ -117772,6 +117800,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "1" }
       ]
@@ -117784,6 +117814,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "2" }
       ]
@@ -117796,6 +117828,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "2" }
       ]
@@ -117808,6 +117842,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "4" }
       ]
@@ -117820,6 +117856,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "3" }
       ]
@@ -117832,6 +117870,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "3" }
       ]
@@ -117844,6 +117884,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "MAP_PLACEMENT", "targetId": "3" }
       ]
@@ -117856,6 +117898,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "3" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "11" },
@@ -117890,6 +117934,9 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "walkableSurface": { "radiusM": 2.5, "localHeightM": 0.0263129994 },
       "bindings": [
         { "slotId": "object", "targetKind": "MAP_PLACEMENT", "targetId": "40" }
       ]
@@ -117902,6 +117949,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117914,6 +117963,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117926,6 +117977,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117938,6 +117991,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117950,6 +118005,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117962,6 +118019,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117974,6 +118033,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -117986,6 +118047,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "9498688200607011645" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "9692865147248617345" },
@@ -118029,6 +118092,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "15145886784523349922" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "15211121948664028922" },
@@ -118072,6 +118137,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "12997580355242960244" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "13096063616794814846" },
@@ -118115,6 +118182,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "9565666947754044249" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "9583857316111691670" },
@@ -118158,6 +118227,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "10884707690880099521" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "10960363140623159956" },
@@ -118201,6 +118272,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "12190070233248700642" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "12195137577733303738" },
@@ -118244,6 +118317,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "13427581535397051177" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "13481710947298826611" },
@@ -118287,6 +118362,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "14821989112749632021" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "14825047201883159544" },
@@ -118330,6 +118407,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "15944870175227473979" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "15974592968852038697" },
@@ -118373,6 +118452,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "17075346699943868221" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "17125336341090988127" },
@@ -118416,6 +118497,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "18023408640856148488" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "18069006783756530370" },
@@ -118459,6 +118542,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "10556029997411523028" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "10701752555452109052" },
@@ -118502,6 +118587,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "14048961415257194564" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "14597219464165539283" },
@@ -118545,6 +118632,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "15399535032856127796" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "15926144411365250935" },
@@ -118561,6 +118650,8 @@
       "playbackSpeed": 0.5,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "7" }
       ]
@@ -118573,6 +118664,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj00", "targetKind": "MAP_PLACEMENT", "targetId": "41" },
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "42" },
@@ -118616,6 +118709,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj00", "targetKind": "MAP_PLACEMENT", "targetId": "73" },
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "74" },
@@ -118659,6 +118754,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj00", "targetKind": "MAP_PLACEMENT", "targetId": "105" },
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "106" },
@@ -118702,6 +118799,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj00", "targetKind": "MAP_PLACEMENT", "targetId": "137" },
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "138" },
@@ -118745,6 +118844,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj00", "targetKind": "MAP_PLACEMENT", "targetId": "169" },
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "170" },
@@ -118764,6 +118865,8 @@
       "playbackSpeed": 0.699999988,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "7" }
       ]
@@ -118776,6 +118879,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "5" }
       ]
@@ -118788,6 +118893,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "367" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "369" }
@@ -118801,6 +118908,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "365" }
       ]
@@ -118813,6 +118922,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "371" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "363" },
@@ -118827,6 +118938,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "404" }
       ]
@@ -118839,6 +118952,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "366" }
       ]
@@ -118851,6 +118966,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "340" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "341" }
@@ -118864,6 +118981,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "362" },
         { "slotId": "fanB01", "targetKind": "MAP_PLACEMENT", "targetId": "353" },
@@ -118892,6 +119011,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "350" }
       ]
@@ -118904,6 +119025,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "351" }
       ]
@@ -118916,6 +119039,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "382" }
       ]
@@ -118928,6 +119053,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "401" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "402" }
@@ -118941,6 +119068,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "393" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "395" },
@@ -118957,6 +119086,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "391" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "392" }
@@ -118970,6 +119101,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "399" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "400" }
@@ -118983,6 +119116,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "405" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "406" }
@@ -118996,6 +119131,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "408" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "411" },
@@ -119012,6 +119149,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "343" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "342" },
@@ -119031,6 +119170,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "348" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "347" },
@@ -119046,6 +119187,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "15031107111951556597" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "11221629479370868532" },
@@ -119073,6 +119216,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "13264523348889279087" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "16574595236777363107" },
@@ -119088,6 +119233,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "18240966988482348122" },
         { "slotId": "obj02", "targetKind": "MAP_PLACEMENT", "targetId": "11489293906630058596" },
@@ -119110,6 +119257,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "curtain01", "targetKind": "MAP_PLACEMENT", "targetId": "15287122004384700644" },
         { "slotId": "curtain02", "targetKind": "MAP_PLACEMENT", "targetId": "9692865147248617345" },
@@ -119132,6 +119281,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.card" }
       ]
@@ -119144,6 +119295,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "LOOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.joker_card" }
       ]
@@ -119154,8 +119307,10 @@
       "enabled": true,
       "startDelayMs": 0,
       "playbackSpeed": 1,
-      "anchorKind": "WORLD",
-      "position": [3.28999996, 8.64000034, -8.68999958],
+      "anchorKind": "PLAYER",
+      "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.ball" }
       ]
@@ -119168,6 +119323,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.seto" }
       ]
@@ -119180,6 +119337,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.cutting_blade" }
       ]
@@ -119192,6 +119351,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.hook" }
       ]
@@ -119204,6 +119365,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.bingo_bomb" }
       ]
@@ -119216,6 +119379,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.bingo" }
       ]
@@ -119228,6 +119393,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "NEXT",
+      "nextMotionId": "world.object.instance.kouku.card",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.card" }
       ]
@@ -119240,6 +119407,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.card" }
       ]
@@ -119249,9 +119418,11 @@
       "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.ball_bounce",
       "enabled": true,
       "startDelayMs": 0,
-      "playbackSpeed": 1,
-      "anchorKind": "WORLD",
-      "position": [3.28999996, 8.64000034, -8.68999958],
+      "playbackSpeed": 1.5,
+      "anchorKind": "PLAYER",
+      "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.ball" }
       ]
@@ -119264,6 +119435,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "381" }
       ]
@@ -119276,6 +119449,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "385" }
       ]
@@ -119288,6 +119463,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "386" }
       ]
@@ -119300,6 +119477,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "387" }
       ]
@@ -119312,6 +119491,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "388" }
       ]
@@ -119324,6 +119505,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "389" }
       ]
@@ -119336,6 +119519,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "390" }
       ]
@@ -119348,6 +119533,8 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [0, 0, 0],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "370" }
       ]
@@ -119360,12 +119547,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.joker_card"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.joker_card" }
       ]
     },
     {
@@ -119376,12 +119561,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "NEXT",
+      "nextMotionId": "world.object.instance.kouku.joker_card",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.joker_card"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.joker_card" }
       ]
     },
     {
@@ -119392,12 +119575,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.seto"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.seto" }
       ]
     },
     {
@@ -119408,12 +119589,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.seto"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.seto" }
       ]
     },
     {
@@ -119424,12 +119603,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.seto"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.seto" }
       ]
     },
     {
@@ -119440,12 +119617,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.hook"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.hook" }
       ]
     },
     {
@@ -119456,12 +119631,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.hook"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.hook" }
       ]
     },
     {
@@ -119472,12 +119645,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.hook"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.hook" }
       ]
     },
     {
@@ -119488,12 +119659,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.hook"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.hook" }
       ]
     },
     {
@@ -119504,12 +119673,10 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.bingo_bomb"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.bingo_bomb" }
       ]
     },
     {
@@ -119520,12 +119687,38 @@
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
       "bindings": [
-        {
-          "slotId": "object",
-          "targetKind": "OBJECT_RESOURCE",
-          "targetId": "world.object.kouku.bingo_bomb"
-        }
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.bingo_bomb" }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.card_saved_chain",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card_saved_chain",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.card" }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.joker_card_saved_chain",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_saved_chain",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "motionEnd": "STOP",
+      "nextMotionId": "",
+      "bindings": [
+        { "slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "world.object.kouku.joker_card" }
       ]
     }
   ]

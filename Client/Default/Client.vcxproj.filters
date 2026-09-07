@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="00.MainApp">
@@ -570,6 +570,30 @@
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EffectCompositionWorldResource.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectCompositionModelPreview.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectCompositionWorkbench.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectEditingSession.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectAuthoringResourceTree.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectAuthoringSequencer.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectAuthoringV2Pane.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_Workspace.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\EffectV2_Object.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
@@ -1097,6 +1121,27 @@
       <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_Tool_V2.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectCompositionWorldResource.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectCompositionModelPreview.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectCompositionWorkbench.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectEditingSession.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectAuthoringResourceTree.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectAuthoringSequencer.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectAuthoringV2Pane.h">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectV2_Object.h">

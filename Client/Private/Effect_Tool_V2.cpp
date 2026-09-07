@@ -80,13 +80,7 @@ namespace
 	std::string Refresh_EffectV2AfterSave()
 	{
 		Client::CEffectV2Runtime::Invalidate_Caches();
-		std::string Status;
-		if (!Client::CEffectV2Catalog::Get().Reload_BossValtan(Status))
-		{
-			return " Saved source is available; another invalid Effect V2 item was isolated from the live catalog: " +
-				Status;
-		}
-		return " Saved source and live catalog are loaded for the next preview or Stage occurrence.";
+		return " Saved source; the next preview or occurrence reloads its selected resources.";
 	}
 
 }
@@ -1212,6 +1206,36 @@ void Client::CEffect_Tool_V2::Scan_Documents()
 	std::sort(m_Documents.begin(), m_Documents.end());
 }
 
+bool_t Client::CEffect_Tool_V2::Read_DocumentSource(
+	const std::filesystem::path& Path, std::string& strOutBytes,
+	bool_t& bOutExists, std::string& strOutError)
+{
+	strOutBytes.clear();
+	std::error_code Error;
+	bOutExists = std::filesystem::exists(Path, Error);
+	if (Error)
+	{
+		strOutError = "Cannot inspect effect source: " + Error.message();
+		return false;
+	}
+	if (!bOutExists)
+		return true;
+	std::ifstream Input(Path, std::ios::binary);
+	if (!Input.is_open())
+	{
+		strOutError = "Cannot open effect source: " + Path.string();
+		return false;
+	}
+	strOutBytes.assign(std::istreambuf_iterator<char>(Input),
+		std::istreambuf_iterator<char>());
+	if (Input.bad())
+	{
+		strOutError = "Cannot read effect source: " + Path.string();
+		return false;
+	}
+	return true;
+}
+
 bool_t Client::CEffect_Tool_V2::Save_Document()
 {
 	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
@@ -1228,6 +1252,7 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 	}
 	EFFECT_V2_DOCUMENT Document;
 	Document.strEffectId = strEffectId;
+	Document.strDisplayName = m_strLoadedDocumentDisplayName;
 	Document.eType = m_ePreviewType;
 	Document.Desc = pPreview->Creation_Desc();
 	Document.Desc.Params = pPreview->Params();
@@ -1242,13 +1267,44 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 		Document.Parts.push_back(std::move(Part));
 	}
 	std::string strError;
-	if (!CEffectV2Document::Write_AtomicFile(
-		CEffectV2Document::Document_Path(strEffectId),
-		CEffectV2Document::Serialize_Document(Document), strError))
+	const std::string strBytes = CEffectV2Document::Serialize_Document(Document);
+	EFFECT_V2_DOCUMENT Validated;
+	if (!CEffectV2Document::Parse_Document(strBytes, Validated, strError))
+	{
+		m_strDocumentStatus = "Save rejected: " + strError;
+		return false;
+	}
+	const std::filesystem::path Path = CEffectV2Document::Document_Path(strEffectId);
+	std::string strCurrentBytes;
+	bool_t bExists = false;
+	if (!Read_DocumentSource(Path, strCurrentBytes, bExists, strError))
+	{
+		m_strDocumentStatus = "Save rejected: " + strError;
+		return false;
+	}
+	if (strEffectId == m_strLoadedDocumentId)
+	{
+		if (!bExists || strCurrentBytes != m_strLoadedDocumentBytes)
+		{
+			m_strDocumentStatus = "Save rejected: the loaded effect source was changed or deleted. "
+				"Load its current version or use a new Effect ID; the saved source was preserved.";
+			return false;
+		}
+	}
+	else if (bExists)
+	{
+		m_strDocumentStatus = "Save rejected: this Effect ID already exists and was not loaded. "
+			"Load it first or use a new Effect ID; the saved source was preserved.";
+		return false;
+	}
+	if (!CEffectV2Document::Write_AtomicFile(Path, strBytes, strError))
 	{
 		m_strDocumentStatus = strError;
 		return false;
 	}
+	m_strLoadedDocumentId = strEffectId;
+	m_strLoadedDocumentDisplayName = Document.strDisplayName;
+	m_strLoadedDocumentBytes = strBytes;
 	m_bDocumentsScanned = false;
 	m_strDocumentStatus = "Saved " + strEffectId + ".effectv2.json." +
 		Refresh_EffectV2AfterSave();
@@ -1257,11 +1313,34 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 
 bool_t Client::CEffect_Tool_V2::Load_Document(const std::string& strEffectId)
 {
+	if (!CEffectV2Document::Is_ValidEffectId(strEffectId))
+	{
+		m_strDocumentStatus = "Load rejected: Effect ID must be 1-80 chars of [A-Za-z0-9._-].";
+		return false;
+	}
 	EFFECT_V2_DOCUMENT Document;
 	std::string strError;
-	if (!CEffectV2Document::Load_DocumentFile(strEffectId, Document, strError))
+	std::string strBytes;
+	bool_t bExists = false;
+	if (!Read_DocumentSource(CEffectV2Document::Document_Path(strEffectId),
+		strBytes, bExists, strError))
 	{
 		m_strDocumentStatus = "Load rejected (" + strEffectId + "): " + strError;
+		return false;
+	}
+	if (!bExists)
+	{
+		m_strDocumentStatus = "Load rejected: effect source does not exist (" + strEffectId + ").";
+		return false;
+	}
+	if (!CEffectV2Document::Parse_Document(strBytes, Document, strError))
+	{
+		m_strDocumentStatus = "Load rejected (" + strEffectId + "): " + strError;
+		return false;
+	}
+	if (Document.strEffectId != strEffectId)
+	{
+		m_strDocumentStatus = "Load rejected: effect ID does not match its source filename.";
 		return false;
 	}
 	const EFFECT_TYPE ePreviousType = m_eType;
@@ -1281,6 +1360,9 @@ bool_t Client::CEffect_Tool_V2::Load_Document(const std::string& strEffectId)
 		m_strDocumentStatus = "Load failed (" + strEffectId + "): " + m_strPreviewStatus;
 		return false;
 	}
+	m_strLoadedDocumentId = strEffectId;
+	m_strLoadedDocumentDisplayName = Document.strDisplayName;
+	m_strLoadedDocumentBytes = std::move(strBytes);
 	std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", strEffectId.c_str());
 	m_bVisibleDirty = true;
 	m_strDocumentStatus = "Loaded " + strEffectId;
@@ -3470,9 +3552,8 @@ void Client::CEffect_Tool_V2::Scan_Groups()
 		if (!CEffectV2Document::Load_GroupFile(strGroupId, Group, strError))
 		{
 			m_strGroupStatus =
-				"V2 Data Files scan preserved the previous group index: " +
-				strError;
-			return;
+				"An invalid group was isolated: " + strError;
+			continue;
 		}
 		StagedGroups.push_back(std::move(Group));
 	}
@@ -3921,58 +4002,57 @@ namespace
 
 void Client::CEffect_Tool_V2::Render_TuningPanel()
 {
-	if (!m_bTuningWindowOpen)
-		return;
-	ImGui::SetNextWindowSize(ImVec2(420.f, 720.f), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("Effect Tuning v2", &m_bTuningWindowOpen))
-	{
-		ImGui::End();
-		return;
-	}
-	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
-	if (nullptr == pPreview)
-	{
-		ImGui::TextDisabled("No live preview. Create Effect to spawn one.");
-		ImGui::End();
-		return;
-	}
-	CEffectV2Object::PARAMS& P = pPreview->Params();
-	const CEffectV2Object::SHAPE eShape = pPreview->Shape();
-	constexpr const char* SHAPE_LABELS[] = { "Mesh", "Sprite", "Particle", "Decal", "Trail", "Screen Post" };
-	static_assert(_countof(SHAPE_LABELS) == static_cast<size_t>(CEffectV2Object::SHAPE::END));
-	ImGui::Text("%s | %.2fs | life %.2f | %s",
-		SHAPE_LABELS[static_cast<size_t>(eShape)],
-		pPreview->Time(), pPreview->Life_Ratio(), pPreview->Status().c_str());
-	if (CEffectV2Object::SHAPE::PARTICLE == eShape)
-	{
-		ImGui::SameLine();
-		ImGui::TextDisabled("| %u particles", pPreview->Particle_Count());
-	}
-	else if (CEffectV2Object::SHAPE::TRAIL == eShape)
-	{
-		ImGui::SameLine();
-		ImGui::TextDisabled("| %u points", pPreview->Trail_PointCount());
-	}
-	if (ImGui::Button("Restart"))
-		pPreview->Restart();
-	ImGui::SameLine();
-	bool_t bVisible = !pPreview->Is_Hidden();
-	if (ImGui::Checkbox("Visible", &bVisible))
-		pPreview->Set_Hidden(!bVisible);
-	ImGui::SameLine();
-	if (ImGui::Button("Bring To Camera"))
-	{
-		CGameInstance& GameInstance = CGameInstance::Get();
-		const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
-		const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
-		m_ePivotMode = PIVOT_MODE::WORLD;
-		if (nullptr != pCameraPosition && nullptr != pCameraWorld)
-		{
-			const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
-			XMStoreFloat4x4(&pPreview->PivotWorld(), XMMatrixTranslationFromVector(
-				XMLoadFloat4(pCameraPosition) + Look * 3.f));
-		}
-	}
+    if (!m_bTuningWindowOpen) return;
+    ImGui::SetNextWindowSize(ImVec2(420.f, 720.f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Effect Tuning v2", &m_bTuningWindowOpen))
+    {
+        if (const auto preview = m_pPreview.lock())
+        {
+            EFFECT_V2_DOCUMENT document;
+            document.eType = m_ePreviewType;
+            document.Desc = preview->Creation_Desc();
+            document.Desc.Params = preview->Params();
+            if (ImGui::Button("Restart")) preview->Restart();
+            Render_DraftDetail(document, preview);
+            preview->Params() = document.Desc.Params;
+        }
+        else ImGui::TextDisabled("No preview. Use Effect Composition Workbench to edit a document without playback.");
+    }
+    ImGui::End();
+}
+
+void Client::CEffect_Tool_V2::Render_CompositionResources(EFFECT_V2_DOCUMENT& document)
+{
+    if (!m_bScanned) Scan_Resources();
+    const auto previousType = m_eType;
+    const auto previousSlot = m_eSelectedSlot;
+    const auto previousBindings = m_SlotBindings[static_cast<size_t>(document.eType)];
+    m_eType = document.eType;
+    m_eSelectedSlot = m_eCompositionSelectedSlot;
+    if (!Slot_VisibleForType(m_eSelectedSlot)) m_eSelectedSlot = RESOURCE_SLOT::BASE;
+    auto& slots = Current_Bindings();
+    slots[static_cast<size_t>(RESOURCE_SLOT::MESH)] = document.Desc.strMeshAssetId;
+    for (size_t i = 0; i < document.Desc.TextureAssetIds.size(); ++i)
+        slots[static_cast<size_t>(RESOURCE_SLOT::BASE) + i] = document.Desc.TextureAssetIds[i];
+    Render_SlotCards();
+    Render_ResourceBrowser();
+    document.Desc.strMeshAssetId = slots[static_cast<size_t>(RESOURCE_SLOT::MESH)];
+    for (size_t i = 0; i < document.Desc.TextureAssetIds.size(); ++i)
+        document.Desc.TextureAssetIds[i] = slots[static_cast<size_t>(RESOURCE_SLOT::BASE) + i];
+    m_eCompositionSelectedSlot = m_eSelectedSlot;
+    m_SlotBindings[static_cast<size_t>(document.eType)] = previousBindings;
+    m_eType = previousType; m_eSelectedSlot = previousSlot;
+}
+
+void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
+    const std::shared_ptr<CEffectV2Object>& pPreview)
+{
+    auto& P = document.Desc.Params;
+    const auto eShape = document.Desc.eShape;
+    const auto hasTexture = [&document](const CEffectV2Object::TEXTURE_INPUT input)
+    { return !document.Desc.TextureAssetIds[static_cast<size_t>(input)].empty(); };
+    ImGui::TextUnformatted(Type_Label(document.eType));
+    if (pPreview) ImGui::TextDisabled("%.2f s | %s", pPreview->Time(), pPreview->Status().c_str());
 	if (CEffectV2Object::SHAPE::SCREEN_POST == eShape)
 	{
 		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
@@ -3995,10 +4075,9 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 			if (S.bIntensityLerp)
 				ImGui::SliderFloat("Opacity End", &S.fIntensityEnd, 0.f, 1.f);
 			ImGui::ColorEdit4("Tint", &S.vTint.x, ImGuiColorEditFlags_Float);
-			if (!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::BASE))
+			if (!hasTexture(CEffectV2Object::TEXTURE_INPUT::BASE))
 				ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "Bind a Base texture to display this overlay.");
-			Draw_PlaybackSection(P, pPreview->Is_Finished());
-			ImGui::End();
+			Draw_PlaybackSection(P, (pPreview && pPreview->Is_Finished()));
 			return;
 		}
 		const char* pIntensityLabel = "Intensity";
@@ -4044,16 +4123,15 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		if (ImGui::InputInt("Random Seed", &iSeed))
 			S.iRandomSeed = static_cast<uint32_t>((std::max)(1, iSeed));
 		ImGui::TextDisabled("%s", pHint);
-		ImGui::TextDisabled("Now: intensity %.2f", pPreview->ScreenPost_Intensity());
-		Draw_PlaybackSection(P, pPreview->Is_Finished());
-		ImGui::End();
+		ImGui::TextDisabled("Now: intensity %.2f", (pPreview ? pPreview->ScreenPost_Intensity() : S.fIntensityStart));
+		Draw_PlaybackSection(P, (pPreview && pPreview->Is_Finished()));
 		return;
 	}
 
 	const bool_t bLifetimeKnown = P.fLifetime > 0.f;
 	const bool_t bAnyLerp =
 		P.Position.bLerp || P.Rotation.bLerp || P.Scale.bLerp || P.Velocity.bLerp;
-	if (!bLifetimeKnown && (bAnyLerp || pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE)))
+	if (!bLifetimeKnown && (bAnyLerp || hasTexture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE)))
 		ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
 			"Lifetime is 0: Lerp tracks and Dissolve Start stay at their start values.");
 
@@ -4064,7 +4142,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 			m_strPivotBone.c_str());
 	}
 	ImGui::BeginDisabled(PIVOT_MODE::TARGET_BONE == m_ePivotMode);
-	ImGui::DragFloat3("Pivot (world)", &pPreview->PivotWorld()._41, 0.05f);
+	if (pPreview) ImGui::DragFloat3("Pivot (world)", &pPreview->PivotWorld()._41, 0.05f);
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Parent pivot. Position/Rotation/Scale/Velocity below are relative to it.");
@@ -4090,7 +4168,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (bTrailCenterline)
 		ImGui::TextDisabled("Centerline trail samples the pivot position only: use Start/End Width for thickness, Point Lifetime for length.");
 	Draw_LerpTrack("Velocity (m/s)", P.Velocity, 0.05f, -1000.f, 1000.f);
-	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape())
+	if (CEffectV2Object::SHAPE::MESH == eShape)
 	{
 		ImGui::DragFloat("Mesh Pre-Scale", &P.fMeshPreScale, 0.00005f, 0.00001f, 10.f, "%.5f");
 		if (ImGui::IsItemHovered())
@@ -4169,7 +4247,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::DragFloat("Drag", &E.fDrag, 0.01f, 0.f, 20.f);
 
 		ImGui::SeparatorText("Particle Size / Rotation");
-		if (pPreview->Is_MeshParticle())
+		if (!document.Desc.strMeshAssetId.empty())
 		{
 			ImGui::TextDisabled("Mesh particles: Size Start/End X is the uniform scale (x Mesh Pre-Scale).");
 			ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
@@ -4253,14 +4331,14 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::DragFloat("Tiling Distance (m, 0 = per point)", &T.fTilingDistance, 0.01f, 0.f, 100.f);
 		ImGui::Checkbox("Fade With Age", &T.bFadeWithAge);
 		ImGui::TextDisabled("A trail only appears while the pivot moves: attach to a bone, give it a Velocity, or use Test Orbit.");
-		if (ImGui::Checkbox("Test Orbit (pivot circles in place)", &m_bTestOrbit) && m_bTestOrbit)
+		if (pPreview && ImGui::Checkbox("Test Orbit (pivot circles in place)", &m_bTestOrbit) && m_bTestOrbit)
 		{
 			m_vTestOrbitCenter = float3_t(
 				pPreview->PivotWorld()._41, pPreview->PivotWorld()._42, pPreview->PivotWorld()._43);
 			m_fTestOrbitAngle = 0.f;
 			m_ePivotMode = PIVOT_MODE::WORLD;
 		}
-		if (m_bTestOrbit)
+		if (pPreview && m_bTestOrbit)
 		{
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(80.f);
@@ -4271,7 +4349,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		}
 	}
 
-	if (pPreview->Is_Skinned())
+	if (pPreview && pPreview->Is_Skinned())
 	{
 		ImGui::SeparatorText("Animation");
 		const uint32_t iClipCount = pPreview->Animation_Count();
@@ -4315,8 +4393,11 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	Draw_ColorTracks(P, true);
 	if (ImGui::Checkbox("Base/Emissive are sRGB (gamma) textures", &P.bColorTexturesSRGB))
 	{
-		if (FAILED(pPreview->Reload_ColorTextures()))
-			m_strPreviewStatus = "Color texture reload failed.";
+		if (pPreview)
+        {
+            pPreview->Params().bColorTexturesSRGB = P.bColorTexturesSRGB;
+            if (FAILED(pPreview->Reload_ColorTextures())) m_strPreviewStatus = "Color texture reload failed.";
+        }
 	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("On (default): colour textures are decoded to linear before the HDR scene, matching the engine materials. Off: sampled raw (washed-out mid-tones for painted textures; correct for data/mask images used as Base).");
@@ -4329,7 +4410,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Pixels whose max(RGB) or A is <= this value are discarded. 0 = off.");
 
-	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape())
+	if (CEffectV2Object::SHAPE::MESH == eShape)
 	{
 		ImGui::SeparatorText("Rim (Fresnel)");
 		ImGui::ColorEdit3("Rim Color", &P.vRimColor.x, ImGuiColorEditFlags_Float);
@@ -4348,18 +4429,18 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	}
 
 	ImGui::SeparatorText("Bloom / Distortion");
-	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE));
+	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE));
 	ImGui::DragFloat("Bloom Intensity", &P.fBloomIntensity, 0.05f, 0.f, 32.f);
 	ImGui::EndDisabled();
-	if (!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE))
+	if (!hasTexture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE))
 		ImGui::TextDisabled("Bind an Emissive texture to use Bloom Intensity.");
-	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::NOISE));
+	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::NOISE));
 	ImGui::DragFloat("Distortion Intensity", &P.fDistortionIntensity, 0.001f, 0.f, 0.1f, "%.3f");
 	ImGui::DragFloat("Noise Strength", &P.fNoiseStrength, 0.005f, 0.f, 2.f);
 	ImGui::DragFloat("Noise Scale", &P.fNoiseScale, 0.01f, 0.01f, 64.f);
 	ImGui::DragFloat2("Noise Pan (uv/s)", &P.vNoisePan.x, 0.01f, -10.f, 10.f);
 	ImGui::EndDisabled();
-	if (!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::NOISE))
+	if (!hasTexture(CEffectV2Object::TEXTURE_INPUT::NOISE))
 		ImGui::TextDisabled("Bind a Noise texture to use Distortion and Noise.");
 
 	ImGui::SeparatorText("UV");
@@ -4368,7 +4449,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	ImGui::DragFloat2("UV TileCount", &P.vUVTileCount.x, 0.01f, 0.01f, 64.f);
 
 	ImGui::SeparatorText("Dissolve");
-	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE));
+	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE));
 	ImGui::SliderFloat("Dissolve In End (life 0-1, 0 = off)", &P.fDissolveInEnd, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Start (life 0-1)", &P.fDissolveStart, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
@@ -4376,14 +4457,14 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Applies the Noise warp to the dissolve edge too, so the erosion boundary wobbles instead of tracing the mask exactly. Needs a Noise texture and Noise Strength.");
 	ImGui::EndDisabled();
-	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::MASK));
+	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::MASK));
 	ImGui::Checkbox("Mask UV Warp", &P.bMaskWarp);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Applies the Noise warp to the Mask sample. Needs a Noise texture and Noise Strength.");
 	ImGui::EndDisabled();
-	if (pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
+	if (hasTexture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
 	{
-		ImGui::TextDisabled("Dissolve amount now %.2f", pPreview->Dissolve_Amount());
+		ImGui::TextDisabled("Dissolve amount now %.2f", (pPreview ? pPreview->Dissolve_Amount() : 0.f));
 		if (P.fLifetime <= 0.f)
 			ImGui::TextDisabled("Lifetime is infinite, so Dissolve stays at 0.");
 		else if (0.f < P.fDissolveInEnd && P.fDissolveStart < P.fDissolveInEnd)
@@ -4394,7 +4475,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	else
 		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve In End and Start.");
 
-	if (CEffectV2Object::SHAPE::MESH == pPreview->Shape() && 0u < pPreview->Part_Count())
+	if (pPreview && CEffectV2Object::SHAPE::MESH == eShape && 0u < pPreview->Part_Count())
 	{
 		ImGui::SeparatorText("Parts");
 		ImGui::TextDisabled("Base slot now: %s",
@@ -4436,10 +4517,19 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		}
 	}
 
-	ImGui::SeparatorText("Blend");
+	ImGui::SeparatorText("Render Pass / Blend");
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
-	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0Multiply\0"))
-		P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
+	if (ImGui::BeginCombo("Render Pass", iBlend == 0 ? "Alpha" : iBlend == 1 ? "Additive" : iBlend == 2 ? "Opaque" : "Multiply"))
+    {
+        constexpr const char* labels[] = {"Alpha", "Additive", "Opaque", "Multiply"};
+        for (int index = 0; index < 4; ++index)
+        {
+            if (eShape == CEffectV2Object::SHAPE::DECAL && index == 2) continue;
+            if (ImGui::Selectable(labels[index], index == iBlend))
+                P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(index);
+        }
+        ImGui::EndCombo();
+    }
 	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend ||
 		CEffectV2Object::SHAPE::DECAL == eShape);
 	ImGui::Checkbox("Depth Test", &P.bDepthTest);
@@ -4449,7 +4539,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SameLine();
 		ImGui::TextDisabled("(decal: Alpha/Additive/Multiply, no depth test)");
 	}
-	if (CEffectV2Object::SHAPE::SPRITE == pPreview->Shape())
+	if (CEffectV2Object::SHAPE::SPRITE == eShape)
 	{
 		ImGui::SameLine();
 		ImGui::Checkbox("Billboard", &P.bBillboard);
@@ -4471,9 +4561,8 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(120.f);
 	ImGui::DragFloat("Play Rate", &P.fPlayRate, 0.01f, 0.f, 16.f);
-	if (pPreview->Is_Finished())
+	if ((pPreview && pPreview->Is_Finished()))
 		ImGui::TextDisabled("Finished (lifetime reached). Restart to replay.");
-	ImGui::End();
 }
 
 Client::CEffect_Tool_V2::SLOT_BINDINGS& Client::CEffect_Tool_V2::Current_Bindings()

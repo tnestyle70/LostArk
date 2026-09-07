@@ -29,6 +29,23 @@ def function_tail(text: str, signature: str, next_signature: str) -> str:
 
 
 class EffectV2CatalogContractTests(unittest.TestCase):
+    def test_workbench_inventory_does_not_admit_unrelated_bindings_or_assets(self) -> None:
+        source = read(SOURCE)
+        inventory = function_tail(source, "bool_t Client::CEffectV2Catalog::Read_Inventory(",
+                                  "bool_t Client::CEffectV2Catalog::Create_ResourceSnapshot(")
+        self.assertIn("CDataJson::Parse(Text, Root, Row.strStatus)", inventory)
+        self.assertIn("Rows.push_back(std::move(Row))", inventory)
+        self.assertIn("OutRows = std::move(Rows)", inventory)
+        for forbidden in ("Stage_BossValtanBindings", "Parse_Document", "Parse_Group",
+                          "Asset_Exists", "m_pSnapshot ="):
+            self.assertNotIn(forbidden, inventory)
+        selected = function_tail(source, "bool_t Client::CEffectV2Catalog::Create_ResourceSnapshot(",
+                                 "bool_t Client::CEffectV2Catalog::Reload_BossValtan(")
+        self.assertIn("Cross_Validate(Staged->m_Documents, Staged->m_Groups, {}, strOutError)", selected)
+        self.assertIn("pOutSnapshot = std::move(Staged)", selected)
+        self.assertNotIn("m_pSnapshot =", selected)
+        self.assertNotIn("Stage_BossValtanBindings", selected)
+
     def test_valtan_pattern_view_preserves_last_good_and_separates_display_from_mutation(self) -> None:
         header = read(EFFECT_TOOL_V2_HEADER)
         source = read(EFFECT_TOOL_V2_SOURCE)

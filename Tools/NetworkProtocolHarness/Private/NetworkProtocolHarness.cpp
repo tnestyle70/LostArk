@@ -2286,6 +2286,108 @@ namespace
 			"Madness form packet identities append without renumbering peers");
 	}
 
+	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
+	{
+		using namespace LostArk::Shared;
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 67u, "World Object placement protocol is 67");
+		S2C_WORLD_SEQUENCE_PLAY play{};
+		play.strSequenceInstanceId = "world.sequence.instance.8";
+		play.fPlaybackSpeed = 0.5f;
+		play.iDurationMs = 2400u;
+		play.fPositionOffsetX = 0.249f;
+		play.fPositionOffsetZ = 204.799f;
+		CPacketWriter playWriter;
+		testRunner.Require(Write_Message(playWriter, play),
+			"World sequence play carries the pattern playback speed");
+		CPacketReader playReader{ playWriter.Get_Buffer() };
+		S2C_WORLD_SEQUENCE_PLAY decodedPlay{};
+		testRunner.Require(Read_Message(playReader, decodedPlay) &&
+			decodedPlay.strSequenceInstanceId == play.strSequenceInstanceId &&
+			decodedPlay.fPlaybackSpeed == 0.5f && decodedPlay.iDurationMs == 2400u &&
+			decodedPlay.strTargetSequenceInstanceId.empty() &&
+			decodedPlay.fPositionOffsetX == play.fPositionOffsetX &&
+			decodedPlay.fPositionOffsetZ == play.fPositionOffsetZ && 0u == playReader.Get_RemainingSize(),
+			"World sequence play round trip preserves speed, offsets and pattern lifetime");
+		{
+			S2C_WORLD_SEQUENCE_PLAY placed;
+			placed.strSequenceInstanceId = "world.object.shared.card"; placed.iRunEpoch = 7u; placed.strMemberId = "member.1";
+			placed.strCueId = "cue.1"; placed.strOccurrenceId = "world.1"; placed.iBossNetEntityId = 1u; placed.iStartTick = 10u;
+			placed.bHasPlacement = true; placed.fWorldPositionX = 12.f; placed.fWorldPositionY = -2.f; placed.fWorldPositionZ = 34.f;
+			placed.fWorldRotationXDegrees = 15.f; placed.fWorldRotationYDegrees = 45.f; placed.fWorldRotationZDegrees = -30.f;
+			placed.fWorldScaleX = .5f; placed.fWorldScaleY = 2.f; placed.fWorldScaleZ = 3.f;
+			CPacketWriter placedWriter; const bool placedWritten = Write_Message(placedWriter, placed);
+			CPacketReader placedReader(placedWriter.Get_Buffer()); S2C_WORLD_SEQUENCE_PLAY decoded;
+			testRunner.Require(placedWritten && Read_Message(placedReader, decoded) && placedReader.Get_RemainingSize() == 0u &&
+				decoded.bHasPlacement && decoded.fWorldPositionX == 12.f && decoded.fWorldPositionY == -2.f && decoded.fWorldPositionZ == 34.f &&
+				decoded.fWorldRotationXDegrees == 15.f && decoded.fWorldRotationYDegrees == 45.f && decoded.fWorldRotationZDegrees == -30.f &&
+				decoded.fWorldScaleX == .5f && decoded.fWorldScaleY == 2.f && decoded.fWorldScaleZ == 3.f,
+				"Owned WORLD placement round trip preserves independent position, full Euler rotation and scale");
+			auto second = placed; second.strCueId = "cue.2"; second.strOccurrenceId = "world.2"; second.fWorldPositionX = -25.f;
+			CPacketWriter secondWriter; const bool secondWritten = Write_Message(secondWriter, second); CPacketReader secondReader(secondWriter.Get_Buffer());
+			testRunner.Require(secondWritten && Read_Message(secondReader, decoded) && decoded.fWorldPositionX == -25.f &&
+				decoded.strSequenceInstanceId == placed.strSequenceInstanceId && placed.fWorldPositionX == 12.f,
+				"Two placements sharing a saved WORLD instance keep separate occurrence transforms");
+			for (unsigned invalid = 0u; invalid < 8u; ++invalid)
+			{
+				auto bad = placed;
+				switch (invalid)
+				{
+				case 0u: bad.fWorldPositionX = std::numeric_limits<float>::infinity(); break;
+				case 1u: bad.fWorldRotationYDegrees = 36001.f; break;
+				case 2u: bad.fWorldScaleX = 0.f; break;
+				case 3u: bad.bHasPlacement = false; break;
+				case 4u: bad.fPositionOffsetX = 1.f; break;
+				case 5u: bad.strTargetSequenceInstanceId = "world.existing.target"; break;
+				case 6u: bad.eOperation = WORLD_SEQUENCE_OPERATION::STOP_OWNER; bad.strSequenceInstanceId.clear(); break;
+				case 7u: bad.iRunEpoch = 0u; break;
+				}
+				CPacketWriter rejected;
+				testRunner.Require(!Write_Message(rejected, bad), "Invalid WORLD placement, legacy offset conflict, motion replacement and STOP transforms are rejected");
+			}
+			auto malformed = placedWriter.Get_Buffer(); malformed[malformed.size() - 37u] = 2u;
+			CPacketReader malformedReader(malformed); decoded.fWorldPositionX = 999.f;
+			testRunner.Require(!Read_Message(malformedReader, decoded) && decoded.fWorldPositionX == 999.f,
+				"Malformed WORLD placement flag preserves the existing decoded destination");
+		}
+		play.iDurationMs = 0u;
+		CPacketWriter authoredLifetimeWriter;
+		testRunner.Require(Write_Message(authoredLifetimeWriter, play),
+			"World sequence play accepts zero as the authored lifetime");
+		CPacketReader authoredLifetimeReader{ authoredLifetimeWriter.Get_Buffer() };
+		testRunner.Require(Read_Message(authoredLifetimeReader, decodedPlay) &&
+			decodedPlay.iDurationMs == 0u && authoredLifetimeReader.Get_RemainingSize() == 0u,
+			"World sequence authored lifetime round trip");
+		play.strSequenceInstanceId = "world.object.instance.kouku.card_flip";
+		play.strTargetSequenceInstanceId = "world.object.instance.kouku.card";
+		CPacketWriter motionWriter;
+		testRunner.Require(Write_Message(motionWriter, play), "World Object motion accepts two stable instance IDs");
+		CPacketReader motionReader{ motionWriter.Get_Buffer() };
+		testRunner.Require(Read_Message(motionReader, decodedPlay) &&
+			decodedPlay.strSequenceInstanceId == play.strSequenceInstanceId &&
+			decodedPlay.strTargetSequenceInstanceId == play.strTargetSequenceInstanceId && motionReader.Get_RemainingSize() == 0u,
+			"World Object motion round trip preserves existing target and saved motion IDs");
+		auto truncatedMotion = motionWriter.Get_Buffer();
+		truncatedMotion.pop_back();
+		CPacketReader truncatedMotionReader{ truncatedMotion };
+		decodedPlay.strTargetSequenceInstanceId = "previous.target";
+		testRunner.Require(!Read_Message(truncatedMotionReader, decodedPlay) &&
+			decodedPlay.strTargetSequenceInstanceId == "previous.target", "Truncated World Object motion preserves decoded state");
+		play.strTargetSequenceInstanceId = "bad target";
+		CPacketWriter badMotion;
+		testRunner.Require(!Write_Message(badMotion, play), "World Object motion rejects an invalid target identity");
+		play.strTargetSequenceInstanceId.clear();
+		play.iDurationMs = 600001u;
+		CPacketWriter invalidLifetimeWriter;
+		testRunner.Require(!Write_Message(invalidLifetimeWriter, play),
+			"World sequence play refuses lifetime beyond ten minutes");
+		play.iDurationMs = 0u;
+		play.fPlaybackSpeed = 0.f;
+		CPacketWriter zeroSpeed;
+		testRunner.Require(!Write_Message(zeroSpeed, play),
+			"World sequence play refuses a zero playback speed");
+
+	}
+
 	void Test_KoukuInteractionProtocol(TEST_RUNNER& testRunner)
 	{
 		C2S_INTERACTION_SLOT slot{};
@@ -2362,40 +2464,7 @@ namespace
 		testRunner.Require(!Write_Message(invalidScene, scene),
 			"Scene profile cue refuses a non stable profile ID");
 
-		S2C_WORLD_SEQUENCE_PLAY play{};
-		play.strSequenceInstanceId = "world.sequence.instance.8";
-		play.fPlaybackSpeed = 0.5f;
-		play.iDurationMs = 2400u;
-		play.fPositionOffsetX = 0.249f;
-		play.fPositionOffsetZ = 204.799f;
-		CPacketWriter playWriter;
-		testRunner.Require(Write_Message(playWriter, play),
-			"World sequence play carries the pattern playback speed");
-		CPacketReader playReader{ playWriter.Get_Buffer() };
-		S2C_WORLD_SEQUENCE_PLAY decodedPlay{};
-		testRunner.Require(Read_Message(playReader, decodedPlay) &&
-			decodedPlay.strSequenceInstanceId == play.strSequenceInstanceId &&
-			decodedPlay.fPlaybackSpeed == 0.5f && decodedPlay.iDurationMs == 2400u &&
-			decodedPlay.fPositionOffsetX == play.fPositionOffsetX &&
-			decodedPlay.fPositionOffsetZ == play.fPositionOffsetZ && 0u == playReader.Get_RemainingSize(),
-			"World sequence play round trip preserves speed, offsets and pattern lifetime");
-		play.iDurationMs = 0u;
-		CPacketWriter authoredLifetimeWriter;
-		testRunner.Require(Write_Message(authoredLifetimeWriter, play),
-			"World sequence play accepts zero as the authored lifetime");
-		CPacketReader authoredLifetimeReader{ authoredLifetimeWriter.Get_Buffer() };
-		testRunner.Require(Read_Message(authoredLifetimeReader, decodedPlay) &&
-			decodedPlay.iDurationMs == 0u && authoredLifetimeReader.Get_RemainingSize() == 0u,
-			"World sequence authored lifetime round trip");
-		play.iDurationMs = 600001u;
-		CPacketWriter invalidLifetimeWriter;
-		testRunner.Require(!Write_Message(invalidLifetimeWriter, play),
-			"World sequence play refuses lifetime beyond ten minutes");
-		play.iDurationMs = 0u;
-		play.fPlaybackSpeed = 0.f;
-		CPacketWriter zeroSpeed;
-		testRunner.Require(!Write_Message(zeroSpeed, play),
-			"World sequence play refuses a zero playback speed");
+		Test_WorldObjectMotionProtocol(testRunner);
 
 		S2C_INTERACT_PROMPT prompt{};
 		prompt.strTriggerPlacementId = "jump.mario.entry";
@@ -2435,8 +2504,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 64u,
-			"Protocol 64 preserves main trigger identities before Kouku HUD and World lifetime integration");
+			NETWORK_PROTOCOL_VERSION == 67u,
+			"Protocol 67 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -2552,8 +2621,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(64u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 64");
+			testRunner.Require(67u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 67");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5755,8 +5824,8 @@ namespace
 		}
 
 		testRunner.Require(
-			64u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 64");
+			67u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 67");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5783,8 +5852,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			64u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 64");
+			67u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 67");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7004,12 +7073,45 @@ namespace
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE),
 			"KoukuSaydon Audition Packet Types Are Append Only And Known");
+		auto bundle = selected; bundle.strPatternId.clear(); bundle.strBundleId = "kakulsaydon.bundle.1";
+		bundle.Scope.strGateId = "GATE2"; bundle.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
+		CPacketWriter bundleWriter; const bool bundleWritten = Write_Message(bundleWriter, bundle);
+		CPacketReader bundleReader(bundleWriter.Get_Buffer()); decltype(bundle) decodedBundle;
+		testRunner.Require(bundleWritten && Read_Message(bundleReader, decodedBundle) && decodedBundle.strBundleId == bundle.strBundleId && decodedBundle.Scope.strGateId == "GATE2", "Bundle request round trip keeps one stable ID and Gate");
+		auto stop = bundle; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
+		CPacketWriter stopInvalid; testRunner.Require(!Write_Message(stopInvalid, stop), "Bundle stop requires exact run epoch");
+		stop.iExpectedRunEpoch = 19u; CPacketWriter stopWriter; testRunner.Require(Write_Message(stopWriter, stop), "Bundle stop accepts exact run epoch");
+		S2C_KOUKUSAYDON_BUNDLE_STATE run; run.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; run.strEncounterId = selected.Scope.strEncounterId;
+		run.strBundleId = bundle.strBundleId; run.iRunEpoch = 19; run.iCommonStartTick = 100; run.iServerTick = 105;
+		run.PinnedGameplayRevision = revision; run.iPinnedSourceRevision = SOURCE_REVISION;
+		run.Members = {{"member.1", 101u, "KAKULSAYDON_G1_A", 1u, 100u, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE},
+			{"member.2", 102u, "KAKULSAYDON_G1_B", 0u, 110u, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING}};
+		CPacketWriter runWriter; const bool runWritten = Write_Message(runWriter, run); CPacketReader runReader(runWriter.Get_Buffer()); decltype(run) decodedRun;
+		testRunner.Require(runWritten && Read_Message(runReader, decodedRun) && decodedRun.Members.size() == 2u && decodedRun.Members[1].iStartTick == 110u, "Bundle replication preserves common clock and delayed member");
+		auto duplicateRun = run; duplicateRun.Members[1].iBossNetEntityId = 101u; CPacketWriter duplicateWriter;
+		testRunner.Require(!Write_Message(duplicateWriter, duplicateRun), "Bundle replication rejects duplicated actor");
+		auto malformedRun = runWriter.Get_Buffer(); malformedRun.pop_back(); CPacketReader malformedRunReader(malformedRun); decodedRun.iRunEpoch = 999u;
+		testRunner.Require(!Read_Message(malformedRunReader, decodedRun) && decodedRun.iRunEpoch == 999u, "Malformed bundle state preserves prior destination");
+		S2C_WORLD_SEQUENCE_PLAY world; world.strSequenceInstanceId = "world.object.1"; world.iRunEpoch = 19u; world.strMemberId = "member.1";
+		world.strCueId = "world.1.1"; world.strOccurrenceId = "world-box.7"; world.iStartTick = 100u; world.iServerTick = 105u; world.iBossNetEntityId = 101u;
+		CPacketWriter worldWriter; const bool worldWritten = Write_Message(worldWriter, world); CPacketReader worldReader(worldWriter.Get_Buffer()); decltype(world) decodedWorld;
+		testRunner.Require(worldWritten && Read_Message(worldReader, decodedWorld) && decodedWorld.strOccurrenceId == world.strOccurrenceId && decodedWorld.iServerTick == 105u, "Owned World cue preserves occurrence identity and catch-up clock");
+		world.eOperation = WORLD_SEQUENCE_OPERATION::STOP_OWNER; world.strSequenceInstanceId.clear(); world.strMemberId.clear(); CPacketWriter ownerStop;
+		testRunner.Require(Write_Message(ownerStop, world), "Whole-run World stop may omit member and source instance");
+
 	}
 }
 
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--kouku-bundle-only")
+	{ Test_KoukuSaydonPatternAuditionProtocol(testRunner); Test_WorldObjectMotionProtocol(testRunner); return 0u == testRunner.iFailureCount ? 0 : 1; }
+	if (argumentCount == 2 && std::string_view(arguments[1]) == "--world-motion-only")
+	{
+		Test_WorldObjectMotionProtocol(testRunner);
+		return 0u == testRunner.iFailureCount ? 0 : 1;
+	}
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--debug-teleport-only")
 	{
 		Test_DebugTeleportPositionProtocol(testRunner);

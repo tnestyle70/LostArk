@@ -16,6 +16,17 @@ namespace LostArk::Server
 		float z = 0.f;
 	};
 
+	// Room-owned temporary floor. It can support existing ground, never open a blocked cell.
+	struct SERVER_NAVIGATION_SUPPORT_SURFACE final
+	{
+		std::string strOwnerKey;
+		float fCenterX = 0.f;
+		float fCenterZ = 0.f;
+		float fRadiusM = 0.f;
+		float fHeightY = 0.f;
+		bool operator==(const SERVER_NAVIGATION_SUPPORT_SURFACE&) const = default;
+	};
+
 	struct SERVER_NAVIGATION_CONDITION_CHANGE final
 	{
 		std::string strConditionId;
@@ -84,6 +95,11 @@ namespace LostArk::Server
 			SERVER_NAVIGATION_CONDITION_STAGE&& stage) noexcept;
 		void Reset_RuntimeBlockers() noexcept;
 
+		bool Set_RuntimeSupportSurfaces(
+			const std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>& surfaces,
+			std::string& outStatus);
+		std::size_t Get_RuntimeSupportSurfaceCount() const noexcept { return m_RuntimeSupportSurfaces.size(); }
+
 		bool Has_Condition(const std::string& conditionId) const;
 		// Diagnostic counter for the Debug audition panel: how many authored
 		// blocker regions are still holding cells closed right now.
@@ -148,6 +164,9 @@ namespace LostArk::Server
 
 		bool Resolve_Cell(float x, float z, std::uint32_t& outIndex) const;
 		SERVER_NAV_POINT Cell_ToPoint(std::uint32_t index) const;
+		float Effective_Height(std::uint32_t index, float x, float z) const;
+		bool Are_SupportTransitionsAllowed(float startX, float startZ, float endX, float endZ) const;
+
 		bool Is_CellWalkable(std::uint32_t index) const;
 		bool Is_CellTraversalAllowed(
 			std::uint32_t fromIndex,
@@ -174,6 +193,7 @@ namespace LostArk::Server
 		float m_fMaximumTraversalStepHeight = 0.f;
 		std::vector<std::uint8_t> m_Walkable;
 		std::vector<float> m_Heights;
+		std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE> m_RuntimeSupportSurfaces;
 		std::vector<RUNTIME_BLOCKER_REGION> m_RuntimeBlockerRegions;
 		std::map<std::string, bool> m_ConditionValues;
 		std::vector<std::uint16_t> m_BlockCounts;

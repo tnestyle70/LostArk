@@ -9,9 +9,12 @@
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
 #include "ValtanCinematicCameraDocument.h"
+#include "ValtanCinematicCameraController.h"
 #include "WorldSequencePlayer.h"
 
 #include <array>
+#include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -53,6 +56,10 @@ public:
 	struct KAKUL_CAMERA_SHOT final
 	{
 		std::string strShotId;
+		std::string strDisplayName;
+		uint32_t iDefaultHoldMs = 3000u;
+		bool_t bPatternOnly = false;
+		VALTAN_CINEMATIC_CAMERA_EASING eTransitionEasing = VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
 		/* Empty means the box decides. When it names a sequence the
 		   shot holds for exactly as long as that sequence plays, so a
 		   trigger that starts the sequence also starts the shot. */
@@ -123,14 +130,20 @@ public:
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	struct COMPOSITION_WORLD_PREVIEW_CUE final
 	{
+		std::string occurrenceId;
 		std::string instanceId;
 		uint32_t startMs = 0u;
 		uint32_t durationMs = 0u;
 		f32_t playbackSpeed = 1.f;
 		float3_t positionOffset{};
+		std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> placement;
 	};
 	bool_t Debug_BeginCompositionWorldPreview(const std::string& patternId,
-		std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues, std::string& status);
+		std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues, std::string& status,
+		const CWorldSequenceDocument* sourceDocument = nullptr);
+	bool_t Debug_HasVisibleCompositionWorldBox(std::string_view occurrenceId) const;
+	bool_t Debug_SetCompositionWorldPlacement(const std::string& occurrenceId,
+		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement, std::string& status);
 	void Debug_SampleCompositionWorldPreview(const std::string& patternId,
 		bool_t playing, uint32_t clockMs);
 	void Debug_StopCompositionWorldPreview();
@@ -176,6 +189,8 @@ public:
 	// The level owns the replicated player anchor used by local authoring previews.
 	bool_t Try_Get_AuthoringPreviewPlacement(
 		float3_t& outPosition, std::string& outStatus) const;
+	bool_t Try_Get_AuthoringForwardPlacement(
+		float3_t& outPosition, std::string& outStatus) const;
 
 	/* The F1 stage selector submits only stable authored placement IDs through
 	   the typed Server command sink. Until an authored StageMarkers contract is
@@ -192,13 +207,24 @@ public:
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
-	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset);
-	void Stop_CompositionCamera();
-	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out) const;
+	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
+	void Stop_CompositionCamera(bool_t force = false);
+	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
+		std::string_view occurrenceId = {}) const;
+    bool_t Create_CompositionPreviewActor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        std::shared_ptr<CNpc>& outActor, std::string& status);
+    void Release_CompositionPreviewActor(const std::shared_ptr<CNpc>& actor);
+    CWorldSequencePlayer::TARGET_SET Get_CompositionWorldTargets() { return Make_WorldSequenceTargets(); }
 	// Authoring inventory reads the placed centre even before any sequence plays.
 	bool_t Try_GetWorldSequencePlacementBaseline(const WORLD_SEQUENCE_INSTANCE& instance,
 		float3_t& outPosition) const;
 	const CWorldSequenceDocument& Get_WorldSequenceDocument() const { return m_SequencePlayer.Get_Document(); }
+	const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_Replication.Get_KoukuBundleState(); }
+	std::uint32_t Get_PresentationServerTick() const { return m_Replication.Get_LastServerTick(); }
+    bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
+        const CWorldSequenceDocument* sourceDocument = nullptr) const;
+	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
+		const std::string& sequenceId, const std::string& cueId, float4x4_t& out) const;
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
@@ -207,9 +233,18 @@ public:
 	bool_t Debug_SampleWorldObjectPreview(f32_t clockMs, std::string& status);
 	void Debug_StopWorldObjectPreview();
 #endif
+	const std::vector<KAKUL_CAMERA_SHOT>& Get_PublishedCameraShots() const { return m_CameraShots; }
+	bool_t Reload_PublishedCameraShots(std::string& outStatus) { return Load_CameraShots(outStatus); }
+	bool_t Ensure_CameraShotAuthoring(std::string& outStatus);
+	bool_t Create_CameraShot(std::string_view name, std::string& outShotId, std::string& outStatus);
+	bool_t Update_CameraShot(const KAKUL_CAMERA_SHOT& shot, std::string& outStatus);
+	bool_t Capture_CameraShot(std::string_view shotId, std::string& outStatus);
+	bool_t Save_CameraShots(std::string& outStatus);
+	static bool_t Parse_CameraShots(std::string_view text, std::vector<KAKUL_CAMERA_SHOT>& outShots, std::string& outStatus);
+
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_CameraShots() const
 	{
-		return m_CameraShots;
+		return m_bCameraAuthoringLoaded ? m_AuthoringCameraShots : m_CameraShots;
 	}
 
 	/* Raises one paper stage bridge: the Deploy prop leaves DESPAWNED and its
@@ -235,10 +270,13 @@ private:
 	bool_t Start_ServerRequestedSequence(
 		const std::string& instanceId, f32_t playbackSpeed, const float3_t& positionOffset,
 		const CWorldSequencePlayer::TARGET_SET& targets,
-		std::string& outStatus, uint32_t durationMs = 0u);
+		std::string& outStatus, uint32_t durationMs = 0u,
+		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement = {});
 	bool_t Load_StageMarkers(std::string& outStatus);
 	bool_t Load_CameraShots(std::string& outStatus);
 	void Update_CameraShots(f32_t fTimeDelta);
+	void Update_CompositionCamera(f32_t fTimeDelta);
+	bool_t Resolve_CompositionFollowPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose) const;
 	/* The arena and the Mario gimmick are more than a kilometre apart, so a
 	   trigger move between them is hidden behind a black screen instead of
 	   letting the camera travel that distance on screen. Server owns the
@@ -270,13 +308,31 @@ private:
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 	CWorldSequencePlayer m_SequencePlayer;
+	bool_t m_bWorldObjectReloadPending = false;
+	struct OWNED_WORLD_CUE final
+	{
+		std::uint32_t runEpoch = 0, startTick = 0, durationMs = 0;
+		std::string memberId, cueId, occurrenceId, sequenceId;
+		float clockMs = 0.f;
+		std::shared_ptr<CWorldSequencePlayer> player;
+	};
+	std::map<std::string, OWNED_WORLD_CUE> m_OwnedWorldCues;
+	std::set<std::string> m_StoppedWorldOwners;
+	std::set<std::string> m_ConsumedWorldCueIds;
+	std::uint32_t m_iLatestWorldRunEpoch = 0u;
+	void Consume_OwnedWorldCue(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play,
+		const CWorldSequencePlayer::TARGET_SET& targets);
 #ifdef _DEBUG
 	unique_ptr<CWorldSequencePlayer> m_pWorldObjectPreview;
 	std::string m_WorldObjectPreviewInstance;
 #endif
 #ifdef _DEBUG
-	unique_ptr<CWorldSequencePlayer> m_pCompositionWorldPreview;
-	std::vector<COMPOSITION_WORLD_PREVIEW_CUE> m_CompositionWorldPreviewCues;
+	struct COMPOSITION_WORLD_PREVIEW_PLAYBACK final
+	{
+		COMPOSITION_WORLD_PREVIEW_CUE cue;
+		unique_ptr<CWorldSequencePlayer> player;
+	};
+	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> m_CompositionWorldPreviewCues;
 	std::string m_strCompositionWorldPreviewPattern;
 	bool_t m_bCompositionWorldPreviewClockBound = false;
 #endif
@@ -295,6 +351,24 @@ private:
 	std::vector<KAKUL_STAGE_MARKER> m_StageMarkers;
 	std::unordered_set<std::string> m_StageMarkerPlacementIds;
 	std::vector<KAKUL_CAMERA_SHOT> m_CameraShots;
+	std::vector<KAKUL_CAMERA_SHOT> m_AuthoringCameraShots;
+	std::string m_strCameraAuthoringBaseline;
+	std::set<std::string> m_DirtyCameraShotIds;
+	bool_t m_bCameraAuthoringLoaded = false;
+	struct COMPOSITION_CAMERA_TRANSITION final
+	{
+		std::string ownerKey;
+		std::string cancelledOwnerKey;
+		VALTAN_CINEMATIC_CAMERA_POSE fromPose;
+		VALTAN_CINEMATIC_CAMERA_POSE entryPose;
+		f32_t lastSeconds = -1.f;
+		VALTAN_CINEMATIC_CAMERA_POSE appliedPose;
+		VALTAN_CINEMATIC_CAMERA_EASING easing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+		uint32_t blendOutMs = 0u;
+		f32_t returnSeconds = 0.f;
+		bool_t returning = false;
+		bool_t followAtStart = true;
+	} m_CompositionCamera;
 	std::string m_strActiveCameraShotId;
 	/* The pose written last frame. A hand-over starts from this, so entering,
 	   swapping and leaving all begin at what the player already sees. */

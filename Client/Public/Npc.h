@@ -18,6 +18,9 @@ NS_END
 
 NS_BEGIN(Client)
 
+enum class ANIMATION_BONE_TARGET : uint8_t;
+struct ANIMATION_MODEL_TARGET_VIEW;
+
 struct NPC_NETWORK_TRANSFORM_FRAME final
 {
 	float3_t vPosition = {};
@@ -270,6 +273,8 @@ public:
 		return m_strModelTag;
 	}
 	const std::string& Get_EffectV2BindingOwner() const { return m_strEffectV2BindingOwner; }
+	bool_t Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& outView) const;
+	void Synchronize_WeaponPose();
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Restarts the selected clip even when the previous action used the same
 	clip. The network action edge owns restart timing; the model only owns how
@@ -334,9 +339,10 @@ private:
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;
-	/* Rest-pose weapon riding m_strWeaponSocketBone of the body; null when the
+	/* Socketed weapon with body-clock pose synchronization; null when the
 	desc declared none. It never starts a clip of its own. */
 	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };
+	std::vector<float4x4_t> m_WeaponRestPose;
 	std::string m_strWeaponSocketBone;
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;

@@ -136,7 +136,7 @@ bool_t CWorldSequencePlayer::Prepare_InstanceResources(const std::string& instan
                 !targets.pDeployRuntime->Find(targetId)))
         { m_Status = "World Object placement is outside the active map scope: " + binding.targetId; return false; }
     }
-    return Prepare_ObjectResources(*instance, targets);
+    return Prepare_ObjectMotionChain(*instance, targets);
 }
 
 void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
@@ -258,7 +258,7 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                     XMConvertToRadians(motion.revolutionDegreesPerSecond.y * seconds),
                     XMConvertToRadians(motion.revolutionDegreesPerSecond.z * seconds));
                 const vector_t orbit = XMLoadFloat3(&motion.revolutionOffset);
-                const vector_t position = XMLoadFloat3(&instance.position) + XMLoadFloat3(&key.positionOffset) +
+                const vector_t position = (active.placement ? XMVectorZero() : XMLoadFloat3(&instance.position)) + XMLoadFloat3(&key.positionOffset) +
                     velocity * seconds + XMLoadFloat3(&motion.acceleration) * (.5f * seconds * seconds) +
                     XMVector3TransformNormal(orbit, revolution) - orbit;
                 const vector_t scale = XMLoadFloat3(&resource->scale) * XMLoadFloat3(&key.scaleMultiplier);
@@ -275,7 +275,15 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                         XMConvertToRadians(motion.angularVelocityDegrees.y * seconds),
                         XMConvertToRadians(motion.angularVelocityDegrees.z * seconds));
                 matrix_t world = XMMatrixScalingFromVector(scale) * rotation * XMMatrixTranslationFromVector(position) * basis;
-                world.r[3] += XMVectorSet(active.positionOffset.x, active.positionOffset.y, active.positionOffset.z, 0.f);
+                if (active.placement)
+                {
+                    const auto& placement = *active.placement;
+                    world *= XMMatrixScalingFromVector(XMLoadFloat3(&placement.scale)) *
+                        XMMatrixRotationRollPitchYaw(XMConvertToRadians(placement.rotationDegrees.x),
+                            XMConvertToRadians(placement.rotationDegrees.y), XMConvertToRadians(placement.rotationDegrees.z)) *
+                        XMMatrixTranslationFromVector(XMLoadFloat3(&placement.position));
+                }
+                else world.r[3] += XMVectorSet(active.positionOffset.x, active.positionOffset.y, active.positionOffset.z, 0.f);
                 float4x4_t stored;
                 XMStoreFloat4x4(&stored, world);
                 f32_t windowEnd = 0.f;
@@ -289,4 +297,28 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
             }
     }
     return true;
+}
+
+bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out) const
+{
+ if (Try_GetObjectPivot(instanceId, out)) return true;
+ const auto* instance = Get_Document().Find_Instance(instanceId);
+ if (!instance) return false;
+ const WORLD_SEQUENCE_BINDING* binding = nullptr;
+ for (const auto& candidate : instance->bindings)
+ {
+  if (candidate.targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT) continue;
+  if (candidate.slotId == "object") { binding = &candidate; break; }
+  if (binding) return false;
+  binding = &candidate;
+ }
+ if (!binding) return false;
+ uint64_t placementId = 0;
+ MAP_PLACEMENT_RECORD record;
+ if (!CWorldSequencePlayer::Try_ParseTargetId(*binding, placementId) ||
+  !Try_GetSampledPlacementRecord(instanceId, placementId, record)) return false;
+ XMStoreFloat4x4(&out, XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
+  XMMatrixRotationQuaternion(XMLoadFloat4(&record.rotationQuaternion)) *
+  XMMatrixTranslation(record.position.x, record.position.y, record.position.z));
+ return true;
 }

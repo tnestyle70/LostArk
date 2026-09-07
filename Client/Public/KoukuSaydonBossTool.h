@@ -25,6 +25,10 @@ namespace Client
 
 		struct PRODUCT_PATTERN final
 		{
+			std::string strGateId = "GATE1";
+			std::string strFolderId;
+			std::string strTargetBossPlacementId;
+			std::string strActorProfileId;
 			std::string strPatternId;
 			std::string strDisplayName;
 			std::string strCategory;
@@ -32,6 +36,19 @@ namespace Client
 			std::vector<PRODUCT_STAGE> Stages;
 		};
 
+		struct PRODUCT_FOLDER final { std::string strFolderId, strGateId, strDisplayName; };
+		struct PRODUCT_BUNDLE_MEMBER final {
+			std::string strMemberId, strPatternId, strTargetBossPlacementId, strActorProfileId;
+			std::uint32_t iStartOffsetMs = 0;
+		};
+		struct PRODUCT_BUNDLE final {
+			std::string strBundleId, strFolderId, strGateId, strDisplayName, strLoadError;
+			std::uint32_t iDurationMs = 0;
+			std::vector<PRODUCT_BUNDLE_MEMBER> Members;
+		};
+		const std::vector<PRODUCT_FOLDER>& Get_ProductFolders() const { return m_ProductFolders; }
+		const std::vector<PRODUCT_BUNDLE>& Get_ProductBundles() const { return m_ProductBundles; }
+		bool Play_BundleById(std::string_view bundleId, std::uint32_t expectedSourceRevision, std::string& status);
 		CKoukuSaydonBossTool() = default;
 
 		void Open();
@@ -76,6 +93,8 @@ namespace Client
 			Find_SelectedPattern() const;
 
 	private:
+		std::vector<PRODUCT_FOLDER> m_ProductFolders;
+		std::vector<PRODUCT_BUNDLE> m_ProductBundles;
 		std::vector<PRODUCT_PATTERN> m_ProductPatterns;
 		std::vector<std::string> m_PlayAllPatternIds;
 		std::string m_strSelectedPatternId;

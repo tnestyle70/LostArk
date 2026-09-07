@@ -8,6 +8,8 @@
 #include "RuntimeAssetRoot.h"
 
 #include <filesystem>
+#include <algorithm>
+#include <cmath>
 #include <map>
 #include <mutex>
 #include <set>
@@ -40,6 +42,49 @@ namespace
 			return {};
 		return Engine::wstring_t(TEXT("Prototype_Component_Model_AnimSet_")) +
 			stem;
+	}
+}
+
+void Client::CNpcPresentationAssetService::Synchronize_SaydonHammerPose(
+	const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<Engine::CModel>& weapon,
+	const std::vector<float4x4_t>& restPose)
+{
+	if (!body || !weapon) return;
+	const auto bodyIndex = body->Get_CurrentAnimIndex();
+	const char* bodyName = body->Get_AnimationName(bodyIndex);
+	constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
+	std::string weaponClip;
+	if (bodyName && std::string_view(bodyName).starts_with(prefix))
+	{
+		std::string suffix(std::string_view(bodyName).substr(prefix.size()));
+		if (suffix.starts_with("att_battle_1_") || suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
+		weaponClip = "wprpct06_" + suffix;
+	}
+	uint32_t weaponIndex = 0u;
+	for (; weaponIndex < weapon->Get_NumAnimations(); ++weaponIndex)
+		if (const char* name = weapon->Get_AnimationName(weaponIndex); name && weaponClip == name) break;
+	f32_t bodyPosition = 0.f, bodyDuration = 0.f, weaponPosition = 0.f, weaponDuration = 0.f;
+	const f32_t bodyTps = body->Get_AnimationTickPerSecond(bodyIndex);
+	const f32_t weaponTps = weapon->Get_AnimationTickPerSecond(weaponIndex);
+	const bool mapped = weaponIndex < weapon->Get_NumAnimations() &&
+		body->Get_AnimationProgress(bodyIndex, bodyPosition, bodyDuration) &&
+		weapon->Get_AnimationProgress(weaponIndex, weaponPosition, weaponDuration) &&
+		std::isfinite(bodyTps) && bodyTps > 0.f && std::isfinite(weaponTps) && weaponTps > 0.f;
+	weapon->Set_AnimPaused(true);
+	if (mapped)
+	{
+		if (weapon->Get_CurrentAnimIndex() != weaponIndex || weapon->Is_AnimLoop())
+			(void)weapon->Start_Animation(weaponIndex, false);
+		(void)weapon->Set_AnimTrackPosition(weaponIndex,
+			std::clamp(bodyPosition / bodyTps * weaponTps, 0.f, weaponDuration));
+		weapon->Set_AnimPaused(true);
+		weapon->Update_Animation(0.f);
+	}
+	else
+	{
+		for (uint32_t i = 0u; i < restPose.size(); ++i)
+			(void)weapon->Set_BoneLocalMatrix(i, XMLoadFloat4x4(&restPose[i]));
+		weapon->Refresh_BoneCombinedMatrices();
 	}
 }
 

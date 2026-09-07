@@ -8,6 +8,7 @@
 
 #include <string>
 #include <functional>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -27,6 +28,19 @@ class CWorldSequenceObject;
 class CWorldSequencePlayer final
 {
 public:
+
+	struct OBJECT_PLACEMENT final
+	{
+		float3_t position{};
+		float3_t rotationDegrees{};
+		float3_t scale{1.f, 1.f, 1.f};
+		bool operator==(const OBJECT_PLACEMENT& other) const
+		{
+			return position.x == other.position.x && position.y == other.position.y && position.z == other.position.z &&
+				rotationDegrees.x == other.rotationDegrees.x && rotationDegrees.y == other.rotationDegrees.y && rotationDegrees.z == other.rotationDegrees.z &&
+				scale.x == other.scale.x && scale.y == other.scale.y && scale.z == other.scale.z;
+		}
+	};
 
 	struct PLAYER_ANCHOR
 	{
@@ -75,6 +89,7 @@ public:
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out) const;
+	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	void Clear();
 
@@ -90,7 +105,16 @@ public:
 
 	/* Starts one authored instance. Restarting an already playing instance
 	   rewinds it against the baseline captured by the first start. */
-	bool_t Play(const std::string& instanceId, const TARGET_SET& targets, f32_t playbackSpeed = 1.f, const float3_t& positionOffset = {}, uint32_t durationMs = 0u);
+	bool_t Play(const std::string& instanceId, const TARGET_SET& targets, f32_t playbackSpeed = 1.f, const float3_t& positionOffset = {}, uint32_t durationMs = 0u,
+		const std::optional<OBJECT_PLACEMENT>& placement = {});
+	bool_t Validate_ObjectPlacement(const std::string& instanceId,
+		const std::optional<OBJECT_PLACEMENT>& placement, std::string& status) const;
+	// Update the existing object at its current clock; invalid edits leave its pose and motion unchanged.
+	bool_t Set_ObjectPlacement(const std::string& instanceId,
+		const std::optional<OBJECT_PLACEMENT>& placement, const TARGET_SET& targets);
+	// A Server result changes the motion of an existing object, retaining its placement and CModel.
+	bool_t Apply_ObjectMotion(const std::string& targetInstanceId,
+		const std::string& motionInstanceId, const TARGET_SET& targets);
 	bool_t Is_Playing(const std::string& instanceId) const;
 	/* The camera cue runs on the cutscene's own clock. Only the player owns
 	   that clock, so it hands out a read-only sample instead of letting a
@@ -181,9 +205,12 @@ private:
 	struct ACTIVE_INSTANCE final
 	{
 		std::string instanceId;
+		std::string motionInstanceId;
+		f32_t motionStartMs = 0.f;
 		f32_t elapsedMs = 0.f;
 		f32_t playbackSpeed = 1.f;
 		float3_t positionOffset{};
+		std::optional<OBJECT_PLACEMENT> placement;
 		std::vector<PLACEMENT_BASELINE> placementBaselines;
 		std::unordered_map<uint64_t, MAP_PLACEMENT_RECORD> sampledPlacements;
 		std::vector<uint64_t> deployTargets;
@@ -203,6 +230,7 @@ private:
 	};
 	APPLY_RESULT Apply_Instance(ACTIVE_INSTANCE& active, const TARGET_SET& targets);
 	bool_t Prepare_ObjectResources(const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets);
+	bool_t Prepare_ObjectMotionChain(const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets);
 	bool_t Apply_Objects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const WORLD_SEQUENCE_TEMPLATE& sequence, const TARGET_SET& targets, f32_t localMs, bool_t visible);
 	void Release_Objects(ACTIVE_INSTANCE& active);

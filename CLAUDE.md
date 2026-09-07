@@ -281,6 +281,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 - `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 동등한 두 번째 런타임 모델 경로를 다시 만들지 않는다.
 - `Engine/Public/BinaryAsset/`의 `CBinaryReader`, `IModelDecoder`, `CWModelDecoder` 등 decode 기반 코드는 `CModel` 내부의 `.wmodel` 입력을 지원한다.
+- WModel 1.2는 선택적 UV1을 보존하며 기존 1.0/1.1도 읽는다. map material의 baked lighting을 선택한 모델에는 실제 UV1이 필요하다. 재질·배치별 lightmap 입력 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`의 선택적 map material 절을 따른다.
 - 신규 맵·캐릭터·보스 모델은 `CLoader -> CModel Prototype -> GameObject의 CModel Component` 계약을 사용한다.
 - `.wmodel` 머티리얼에 diffuse와 emissive가 모두 없으면 `CMaterial`이 1×1 회색 diffuse를 만들어 형상 확인을 보장한다. 이는 안전망일 뿐이며 최종 에셋은 실제 텍스처 경로를 가져야 한다.
 - 추출·스케일·텍스처 복구의 상세 주의사항은 `.md/GB/07-29/gotchas.md`를 따른다.
@@ -479,22 +480,35 @@ KoukuSaydon의 F1 Tools → `World Object Tool`은 왼쪽 `Object Resources`, �
 오른쪽 `Object Detail`을 독립 창으로 제공한다. Windows 메뉴에서 다시 열거나 배치를 초기화한다.
 Object Resources는 Map/Character 앵커별 저장 상태와 Physical Resources 폴더를 보여 준다. 모델과 DDS는
 Effect/Map/Deploy/Character 실제 Resources-relative 경로로 선택하며 파일을 상태별로 복제하지 않는다.
-원본 Animation Resources는 기존 WModel metadata에서 클립을 읽는다. 왼쪽 트리의 Create Object에서 이름을
-입력하고 항목을 선택한 뒤, 아래 원본 모델·클립 선택 → Append → Save로 필요한 모션만 저장한다. 여러 클립은 같은
+원본 Animation Resources는 기존 WModel metadata에서 클립을 읽는다. Create Object → 부모의 Assign Model →
+Create Motion → 자식 선택 → 원본 클립 선택 → Append Clip → Save로 필요한 모션만 저장한다. 부모 선택은
+공통 설정과 연결 모션 목록, 자식 선택은 해당 Detail과 Sequencer만 표시한다. 여러 클립은 같은
 Sequencer에서 순서대로 재생하며, 원본 클립 목록 전체를 저장 패턴으로 자동 복제하지 않는다.
 정본은 `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json`
-formatVersion 3이다. `Save` 후 `Publish Area`가 기존 Map publisher로 runtime을 배포한다.
+formatVersion 3이다. `Save` 하나로 source를 원자 저장하고 기존 Map publisher의 `-Scope WorldSequences`를 비동기로 실행해 runtime을 배포한다. 별도 Publish 버튼은 없다.
 기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
 `objectResources`는 CModel 모델·diffuse·기본 scale·기본 `anchorKind`(WORLD/PLAYER) 또는 기존 sequence alias를,
 template은 Transform/animation 상태·수명·속도/가속도/자전/공전·생성 개수/간격/분산을 소유한다.
 WORLD/PLAYER anchor의 표현은 기존 `CWorldSequencePlayer`가 Prototype/Clone/Layer로 샘플링한다.
 Create의 Map/Character 선택과 Resource Anchor 변경을 새 상태와 연결 상태에 반영한다.
 기존 v3에서 resource anchor가 없으면 Map으로 읽고 기존 instance anchor는 보존한다. 배치 alias는 Map 전용이다.
-`Preview at Character`는 모델 상태만 현재 캐릭터 앞에서 미리 보며 저장 Map 좌표를 바꾸지 않는다.
+`Preview at Character`는 현재 캐릭터 앞에서 미리 보며 저장 Map 좌표를 바꾸지 않는다.
 끄면 저장 위치에서 재생한다. Sequencer 상태에 생성 개수·첫 위치·실패 이유를 표시한다.
-Action Workbench World Resources에서 저장 상태를 Append하면 box `durationMs`를 Server가
-protocol 64 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리하고 placement를 복구한다.
-충돌·피해 판정은 기존 Server gameplay 경계에 남는다. Client/UI 실행과 화면 판정은 사용자가 한다.
+Action Workbench → Resources → World는 Object Tool의 부모 Object를 한 번씩 표시한다. 부모의
+`defaultMotionInstanceId`를 초기 상태로 Append하며 Box Detail에 연결 상태·clip과 개별 Transform을 표시한다.
+Map 모델 Object는 Append 때 현재 캐릭터 앞 위치를 절대 좌표로 저장하고 이후 따라가지 않는다.
+같은 Object도 WORLD occurrence ID마다 독립 위치·회전·크기를 가진다. 카드와 조커를 Append하면
+해당 Pattern의 배치된 Object들을 정지된 첫 pose로 함께 Preview하고 Transform 변경을 반영한다.
+Composition Save는 편집본을 저장한 뒤 준비된 PRODUCT 자료를 비동기로 생성한다. 기존 PRODUCT의
+유효한 Object Append·Transform·시간 변경은 상태를 유지하고, 미완성 DRAFT는 자동 승격하지 않는다.
+Server 재시작 전에는 새 revision이 전투에 적용됐다고 표시하지 않는다. box `durationMs`와 optional
+placement TRS는 protocol 67 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리한다.
+여러 카드의 접촉은 Composition `TRIGGER / OBJECT_CONTACT`와 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result로 연결한다. 대상은 저장 Motion ID가 아니라 같은 Pattern의 WORLD occurrence 목록이며 실제 맞은 카드별로 반응한다. 전체 조커찾기 제한시간은 `DURATION / EXTERNAL_SIGNAL`과 접촉 Result의 `COMPLETE_LOGIC_WINDOW`로 분리한다. Collider의 `BOSS → WEAPON → Bone`에서 실제 망치 Bone을 선택하며, Product publish가 기존 WModel에서 서버용 Bone 궤적을 계산한다. 자세한 저작 순서는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md` 17.7을 따른다.
+
+자식 Motion의 On Complete에서 반복·마지막 자세·다음 모션을 저장한다. `OBJECT_OVERLAP`과
+Result `PLAY_WORLD_OBJECT_MOTION`은 Server가 Collider와 저작 target 원의 접촉을 확정한 뒤
+같은 카드 객체에 저장 Motion ID를 적용한다. target WORLD를 먼저 배치하고 판정 창 동안 유지해야 한다.
+저장·수명 제한은 팀 Area 가이드를 따른다. Client/UI 실행과 화면 판정은 사용자가 한다.
 
 F1의 `Player Follow Camera` 위치·각도·focus·FOV·응답값은 현재 맵의 카메라에 실시간 반영된다.
 `Save camera settings`만 다음 진입을 위한 JSON을 저장하며 Reload/Reset도 현재 카메라에 바로 반영한다.

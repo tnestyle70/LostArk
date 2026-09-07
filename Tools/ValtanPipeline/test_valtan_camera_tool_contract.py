@@ -212,8 +212,9 @@ require("m_hasCameraToolOpenRequest = true" in boss_tool and
 
 require("higher-priority product cinematic inherits the original saved pose" in camera_runtime,
         "Server cinematic preemption does not preserve the original restore pose")
-require(camera_runtime.count("m_PresentationSavedWorld =") == 1 and
-        camera_runtime.count("m_fPresentationSavedFovy =") == 1,
+begin_override = camera_runtime.split("bool_t CCamera::Begin_PresentationOverride(", 1)[1].split("bool_t CCamera::Apply_PresentationPose(", 1)[0]
+require(begin_override.count("m_PresentationSavedWorld =") == 1 and
+        begin_override.count("m_fPresentationSavedFovy =") == 1,
         "camera preemption must not replace the pose/FOV captured by the first owner")
 require("XMLoadFloat4x4(&m_PresentationSavedWorld)" in camera_runtime and
         "m_fFovy = m_fPresentationSavedFovy" in camera_runtime,
@@ -481,3 +482,10 @@ for relative in (
             f"Debug reference SpaceHole asset classification drifted: {relative}")
 
 print("test_valtan_camera_tool_contract: PASS")
+
+# The explicit gameplay handoff commits the final moving-follow pose; ordinary End still restores.
+handoff = camera_runtime.split("bool_t CCamera::End_PresentationOverrideToPose(", 1)[1].split("void CCamera::Update_PipeLine()", 1)[0]
+require(handoff.index("Apply_PresentationPose") < handoff.index("m_PresentationSavedWorld =") < handoff.index("End_PresentationOverride(iOwnerId)"),
+        "explicit handoff must validate/apply before committing and releasing")
+require("easing == VALTAN_CINEMATIC_CAMERA_EASING::LINEAR" in camera_controller and "durationMs > MAX_BOUNDED_TRANSITION_MS" in camera_controller,
+        "Area Camera needs bounded linear entry/return up to 10 seconds")

@@ -16,11 +16,12 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 	std::string strClip;
 	std::uint32_t iPlayMs = 0u;
 	f32_t fPlayRate = 1.f;
+	bool_t bUnblendedBoneContact = false;
 };
 
 /* Loads the embedded-body presentation of every KoukuSaydon arena boss
 (BOSS_KAKULSAYDON_* rows whose client contract is boss.kakulsaydon.*), with an
-optional rest-pose weapon socketed on the body rig. Product animation bindings
+optional weapon following the body clip or its loaded rest pose. Product animation bindings
 are admitted for the Gate 1 Kouku only. It deliberately does not share
 Valtan's armour prototype or joined presentation graph. */
 /* The MN_RPCZ_00-1 madness doll a player wears while PLAYER_MADNESS_FORM::CLOWN.
@@ -58,7 +59,10 @@ public:
 	static bool_t Try_Resolve_Action(
 		std::string_view archetypeId,
 		std::string_view actionId,
-		KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation);
+		KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation,
+		std::uint32_t expectedSourceRevision = 0u);
+	static bool_t Reload_ProductBindings(std::uint32_t levelIndex,
+		std::uint32_t expectedSourceRevision, std::string& status);
 	static const std::string& Get_Status();
 };
 

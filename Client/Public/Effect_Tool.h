@@ -8,6 +8,7 @@
 #include "Effect_ComponentDocument.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "EffectResourceCatalog.h"
+#include "EffectCompositionWorldResource.h"
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
@@ -36,6 +37,11 @@ NS_END
 NS_BEGIN(Client)
 
 class CEffectObject;
+class CEffectAuthoringResourceTree;
+class CEffectAuthoringSequencer;
+class CEffectAuthoringV2Pane;
+class CEffect_Tool_V2;
+class CKoukuSaydonPresentationPlayer;
 class CEffectThumbnailCache;
 class CBalanceTool;
 class CValtan;
@@ -548,6 +554,12 @@ public:
 		CBalanceTool* pBalanceTool = nullptr);
     ~CEffect_Tool();
 
+    void Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuSaydonPresentationPlayer* player);
+    void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
+    void Update_AuthoringWorkspace(float dt, bool active);
+    void Deactivate_AuthoringWorkspace();
+    bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
+    bool Consume_AuthoringInteraction();
     void Update(f32_t fTimeDelta);
     void Render();
     /* Composition Save committed a new canonical revision. Queue that exact
@@ -1450,6 +1462,29 @@ private:
     string m_strPreviewStatus;
     string m_strPreviewAnimationStatus;
     string m_strAnimationClipLabelStatus;
+private:
+    void Render_AuthoringResourceTree();
+    void Render_AuthoringCommands();
+    bool Render_WorldObjectResourceGrid(bool draft);
+    bool Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const;
+    bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const float4x4_t& root,
+        std::shared_ptr<CEffectObject>& object, std::string& error);
+    void Attach_AuthoringSaved();
+    bool Resolve_AuthoringSourceAnchors(const std::shared_ptr<CEffectObject>& object,
+        const float4x4_t& root, bool useKouku,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
+    std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
+    std::unique_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
+    std::unique_ptr<CEffectAuthoringV2Pane> m_pAuthoringV2;
+    EFFECT_RESOURCE_KEY m_AuthoringV2PreviousKey;
+    std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> m_AuthoringWorldObjects;
+    std::unordered_map<CEffectObject*, uint32_t> m_AuthoringOccurrenceLevels;
+    std::unordered_map<CEffectObject*, std::shared_ptr<const EFFECT_DOCUMENT_DESC>> m_AuthoringOccurrenceDocuments;
+    std::unordered_map<std::string, std::string> m_AuthoringParents;
+    std::string m_strAuthoringParentId, m_strAuthoringWorldStatus;
+    bool m_bAuthoringV2Selected = false, m_bAuthoringWorldLoaded = false;
+    int m_iAuthoringResourceSource = 0;
+    uint64_t m_iAuthoringV2PreviewGeneration = 0u;
 };
 
 NS_END

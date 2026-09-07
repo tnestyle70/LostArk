@@ -19,6 +19,7 @@ public:
 	~CBone();
 
 public:
+	const char_t* Get_Name() const { return m_szName; }
 	matrix_t Get_CombinedTransformationMatrix() const {
 		return XMLoadFloat4x4(&m_CombinedTransformationMatrix);
 	}

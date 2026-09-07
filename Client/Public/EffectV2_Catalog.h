@@ -12,6 +12,18 @@
 
 NS_BEGIN(Client)
 
+/* Cheap authoring tree row. A nonempty status belongs only to this file;
+   loading the selected closure is the separate strict admission boundary. */
+struct EFFECT_V2_RESOURCE_SUMMARY final
+{
+	EFFECT_V2_RESOURCE_KIND eKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+	std::string strResourceId;
+	std::string strDisplayName;
+	std::string strCategory;
+	uint32_t iDurationMs = 3000u;
+	std::string strStatus;
+};
+
 /* Raw resource identity captured by the explicit catalog Reload boundary.
    A Composition draft may later reference any admitted leaf/group, so the
    snapshot retains the whole valid catalog and filters the exact candidate
@@ -93,6 +105,18 @@ class CEffectV2Catalog final
 public:
 	static CEffectV2Catalog& Get();
 
+	bool_t Read_Inventory(std::vector<EFFECT_V2_RESOURCE_SUMMARY>& OutRows,
+		std::string& strOutError) const;
+	bool_t Load_ResourceSnapshot(EFFECT_V2_RESOURCE_KIND eKind,
+		const std::string& strResourceId,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& pOutSnapshot,
+		std::string& strOutError) const;
+	/* Unsaved documents use the same runtime snapshot as saved resources.
+	   Failure does not touch the caller's last good snapshot or global bindings. */
+	bool_t Create_ResourceSnapshot(const std::vector<EFFECT_V2_DOCUMENT>& Documents,
+		const std::vector<EFFECT_V2_GROUP>& Groups,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& pOutSnapshot,
+		std::string& strOutError) const;
 	bool_t Reload_BossValtan(std::string& strOutError);
 	/* Explicit Workbench navigation boundary.  Unlike ordinary Reload, this
 	   typed command may replace an unsaved BOSS_VALTAN binding draft after the

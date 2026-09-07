@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -78,6 +79,10 @@ private:
 	struct EDITOR_CAMERA_SHOT final
 	{
 		std::string shotId;
+		std::string displayName;
+		int32_t defaultHoldMs = 3000;
+		bool_t patternOnly = false;
+		bool_t linearTransition = false;
 		/* Empty means the box decides. Naming a sequence instance makes
 		   the shot hold for exactly that sequence. */
 		std::string sequenceInstanceId;
@@ -119,6 +124,7 @@ private:
 		std::string label;
 		std::filesystem::path sourceCatalog;
 		std::filesystem::path sourcePlacements;
+		std::filesystem::path sourceMaterials;
 		std::filesystem::path sourceLights;
 		std::filesystem::path sourceDeployCatalog;
 		std::filesystem::path sourceDeployPlacements;
@@ -205,6 +211,8 @@ private:
 	};
 
 public:
+	static bool_t Save_CameraShotDocumentAtomic(const std::filesystem::path& path,
+		std::string_view expectedText, std::string_view text, std::string& outStatus);
 	CMapTool();
 	~CMapTool();
 
@@ -801,6 +809,7 @@ private:
 	/* Camera State */
 	weak_ptr<CCamera_Free> m_pAssetTestCamera;
 	std::vector<EDITOR_CAMERA_SHOT> m_CameraShots;
+	std::string m_strCameraShotBaselineText;
 	size_t m_iSelectedCameraShot = 0u;
 	std::string m_CameraShotStatus = "No camera shot document for this Area";
 	bool_t m_bCameraShotPreviewActive = false;

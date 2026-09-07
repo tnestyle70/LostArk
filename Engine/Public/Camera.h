@@ -44,6 +44,9 @@ public:
 		const float3_t& vLookAt,
 		f32_t fFovYDegrees);
 	bool_t End_PresentationOverride(uint64_t iOwnerId);
+	/* Release to an explicitly resolved gameplay pose; ordinary End still restores. */
+	bool_t End_PresentationOverrideToPose(uint64_t iOwnerId,
+		const float3_t& vEye, const float3_t& vLookAt, f32_t fFovYDegrees);
 	bool_t Is_PresentationOverrideActive() const
 	{
 		return m_bPresentationOverrideActive;

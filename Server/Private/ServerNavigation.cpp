@@ -50,6 +50,7 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_fMaximumTraversalStepHeight = 0.f;
 	m_Walkable.clear();
 	m_Heights.clear();
+	m_RuntimeSupportSurfaces.clear();
 	m_RuntimeBlockerRegions.clear();
 	m_ConditionValues.clear();
 	m_BlockCounts.clear();
@@ -438,11 +439,10 @@ bool LostArk::Server::CServerNavigation::Is_CellTraversalAllowed(
 	const std::uint32_t fromIndex,
 	const std::uint32_t toIndex) const
 {
-	return Is_CellWalkable(fromIndex) && Is_CellWalkable(toIndex) &&
-		fromIndex < m_Heights.size() && toIndex < m_Heights.size() &&
-		Is_HeightTransitionAllowed(
-			m_Heights[fromIndex],
-			m_Heights[toIndex]);
+	if (!Is_CellWalkable(fromIndex) || !Is_CellWalkable(toIndex)) return false;
+	const auto from = Cell_ToPoint(fromIndex), to = Cell_ToPoint(toIndex);
+	return Is_HeightTransitionAllowed(from.y, to.y) &&
+		Are_SupportTransitionsAllowed(from.x, from.z, to.x, to.z);
 }
 
 bool LostArk::Server::CServerNavigation::Resolve_Cell(
@@ -500,11 +500,89 @@ LostArk::Server::CServerNavigation::Cell_ToPoint(const std::uint32_t index) cons
 {
 	const std::uint32_t x = index % m_iWidth;
 	const std::uint32_t z = index / m_iWidth;
-	return {
-		m_fOriginX + (static_cast<float>(x) + 0.5f) * m_fCellSize,
-		m_Heights[index],
-		m_fOriginZ + (static_cast<float>(z) + 0.5f) * m_fCellSize
-	};
+	const float worldX = m_fOriginX + (static_cast<float>(x) + 0.5f) * m_fCellSize;
+	const float worldZ = m_fOriginZ + (static_cast<float>(z) + 0.5f) * m_fCellSize;
+	return { worldX, Effective_Height(index, worldX, worldZ), worldZ };
+}
+
+float LostArk::Server::CServerNavigation::Effective_Height(
+	const std::uint32_t index, const float x, const float z) const
+{
+	float height = m_Heights[index];
+	if (!Is_CellWalkable(index)) return height;
+	for (const auto& surface : m_RuntimeSupportSurfaces)
+	{
+		const double dx = static_cast<double>(x) - surface.fCenterX;
+		const double dz = static_cast<double>(z) - surface.fCenterZ;
+		if (dx * dx + dz * dz <= static_cast<double>(surface.fRadiusM) * surface.fRadiusM)
+			height = (std::max)(height, surface.fHeightY);
+	}
+	return height;
+}
+
+bool LostArk::Server::CServerNavigation::Are_SupportTransitionsAllowed(
+	const float startX, const float startZ, const float endX, const float endZ) const
+{
+	if (m_RuntimeSupportSurfaces.empty() || m_fMaximumTraversalStepHeight <= 0.f) return true;
+	const double dx = static_cast<double>(endX) - startX, dz = static_cast<double>(endZ) - startZ;
+	const double lengthSquared = dx * dx + dz * dz;
+	if (lengthSquared <= 1.e-16) return true;
+	// Exact circle crossings also catch a tall, narrow floor entirely inside one base cell.
+	for (const auto& surface : m_RuntimeSupportSurfaces)
+	{
+		const double x = static_cast<double>(startX) - surface.fCenterX;
+		const double z = static_cast<double>(startZ) - surface.fCenterZ;
+		const double b = 2.0 * (x * dx + z * dz);
+		const double c = x * x + z * z - static_cast<double>(surface.fRadiusM) * surface.fRadiusM;
+		const double discriminant = b * b - 4.0 * lengthSquared * c;
+		if (discriminant <= 0.0) continue;
+		const double root = std::sqrt(discriminant);
+		for (const double t : { (-b - root) / (2.0 * lengthSquared), (-b + root) / (2.0 * lengthSquared) })
+		{
+			if (t < 0.0 || t > 1.0) continue;
+			const double epsilon = (std::min)(0.0001, 0.001 / std::sqrt(lengthSquared));
+			const double before = (std::max)(0.0, t - epsilon), after = (std::min)(1.0, t + epsilon);
+			SERVER_NAV_POINT first{}, second{};
+			if (!Sample_Position(static_cast<float>(startX + dx * before), static_cast<float>(startZ + dz * before), first) ||
+				!Sample_Position(static_cast<float>(startX + dx * after), static_cast<float>(startZ + dz * after), second) ||
+				!Is_HeightTransitionAllowed(first.y, second.y)) return false;
+		}
+	}
+	return true;
+}
+
+bool LostArk::Server::CServerNavigation::Set_RuntimeSupportSurfaces(
+	const std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>& surfaces, std::string& outStatus)
+{
+	if (surfaces.size() > 64u) { outStatus = "Too many runtime support surfaces"; return false; }
+	std::set<std::string> ids;
+	for (const auto& surface : surfaces)
+	{
+		if (surface.strOwnerKey.empty() || surface.strOwnerKey.size() > 512u || !ids.insert(surface.strOwnerKey).second ||
+			!std::isfinite(surface.fCenterX) || !std::isfinite(surface.fCenterZ) ||
+			!std::isfinite(surface.fHeightY) || std::abs(surface.fCenterX) > 100000.f ||
+			std::abs(surface.fCenterZ) > 100000.f || std::abs(surface.fHeightY) > 100000.f ||
+			!std::isfinite(surface.fRadiusM) || surface.fRadiusM <= 0.f || surface.fRadiusM > 1000.f)
+		{ outStatus = "Invalid or duplicate runtime support surface"; return false; }
+	}
+	if (surfaces == m_RuntimeSupportSurfaces) return true;
+	if (m_iRevision == (std::numeric_limits<std::uint64_t>::max)())
+	{ outStatus = "Navigation revision is exhausted"; return false; }
+	// Allocate every region copy before replacing any live list.
+	auto staged = surfaces;
+	std::vector<std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>> regions;
+	for (const auto& region : m_Regions)
+	{
+		if (region.m_iRevision == (std::numeric_limits<std::uint64_t>::max)())
+		{ outStatus = "Navigation region revision is exhausted"; return false; }
+		regions.push_back(surfaces);
+	}
+	m_RuntimeSupportSurfaces.swap(staged);
+	for (std::size_t i = 0u; i < m_Regions.size(); ++i)
+	{ m_Regions[i].m_RuntimeSupportSurfaces.swap(regions[i]); ++m_Regions[i].m_iRevision; }
+	++m_iRevision;
+	outStatus = "Runtime support surfaces committed";
+	return true;
 }
 
 bool LostArk::Server::CServerNavigation::Project_Point(
@@ -551,8 +629,8 @@ bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 	{
 		return false;
 	}
-	const float referenceY = m_Heights[
-		static_cast<std::size_t>(centerZ) * m_iWidth + centerX];
+	const float referenceY = Effective_Height(
+		static_cast<std::uint32_t>(centerZ) * m_iWidth + centerX, x, z);
 	float nearestDistanceSquared = (std::numeric_limits<float>::max)();
 	bool found = false;
 	for (int radius = 0; radius <= SAME_LEVEL_PROJECTION_RADIUS; ++radius)
@@ -575,7 +653,7 @@ bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 					cellZ * static_cast<int>(m_iWidth) + cellX);
 				if (!Is_CellWalkable(index))
 					continue;
-				if (std::abs(m_Heights[index] - referenceY) >
+				if (std::abs(Cell_ToPoint(index).y - referenceY) >
 					SAME_LEVEL_HEIGHT_TOLERANCE)
 				{
 					continue;
@@ -619,7 +697,7 @@ bool LostArk::Server::CServerNavigation::Sample_Position(
 		cellZ * static_cast<int>(m_iWidth) + cellX);
 	if (0u == m_Walkable[index])
 		return false;
-	outPoint = { x, m_Heights[index], z };
+	outPoint = { x, Effective_Height(index, x, z), z };
 	return true;
 }
 
@@ -636,7 +714,8 @@ bool LostArk::Server::CServerNavigation::Resolve_TraversalStep(
 	SERVER_NAV_POINT toGround{};
 	if (!Sample_Position(fromX, fromZ, fromGround) ||
 		!Sample_Position(toX, toZ, toGround) ||
-		!Is_HeightTransitionAllowed(fromGround.y, toGround.y))
+		!Is_HeightTransitionAllowed(fromGround.y, toGround.y) ||
+		!Are_SupportTransitionsAllowed(fromX, fromZ, toX, toZ))
 	{
 		return false;
 	}
@@ -655,7 +734,8 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	constexpr double LOS_HEIGHT_TOLERANCE = 1.000001;
 	constexpr double CORNER_TOLERANCE = 0.000000000001;
 	if (!Is_PointWalkableExact(startX, startZ) ||
-		!Is_PointWalkableExact(endX, endZ))
+		!Is_PointWalkableExact(endX, endZ) ||
+		!Are_SupportTransitionsAllowed(startX, startZ, endX, endZ))
 	{
 		return false;
 	}
@@ -684,8 +764,8 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 		(static_cast<double>(cellX + (stepX > 0 ? 1 : 0)) - gridStartX) / deltaX;
 	double nextRatioZ = 0 == stepZ ? infinity :
 		(static_cast<double>(cellZ + (stepZ > 0 ? 1 : 0)) - gridStartZ) / deltaZ;
-	const double startHeight = m_Heights[cellZ * m_iWidth + cellX];
-	const double endHeight = m_Heights[endCellZ * m_iWidth + endCellX];
+	const double startHeight = Effective_Height(cellZ * m_iWidth + cellX, startX, startZ);
+	const double endHeight = Effective_Height(endCellZ * m_iWidth + endCellX, endX, endZ);
 	const bool followsXBoundary = 0 == stepX && gridStartX == std::floor(gridStartX);
 	const bool followsZBoundary = 0 == stepZ && gridStartZ == std::floor(gridStartZ);
 	const auto resolveExactCell = [&](const int x, const int z, std::uint32_t& index)
@@ -702,7 +782,9 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	const auto heightMatches = [&](const std::uint32_t index, const double ratio)
 	{
 		const double expectedHeight = startHeight + (endHeight - startHeight) * ratio;
-		return std::abs(m_Heights[index] - expectedHeight) <= LOS_HEIGHT_TOLERANCE;
+		const float sampleX = static_cast<float>(startX + (endX - startX) * ratio);
+		const float sampleZ = static_cast<float>(startZ + (endZ - startZ) * ratio);
+		return std::abs(Effective_Height(index, sampleX, sampleZ) - expectedHeight) <= LOS_HEIGHT_TOLERANCE;
 	};
 	double enteredRatio = 0.0;
 	const std::uint64_t maximumVisits =
@@ -792,7 +874,13 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	}
 	if (start == goal)
 	{
-		outPath.push_back(Cell_ToPoint(goal));
+		if (!m_RuntimeSupportSurfaces.empty())
+		{
+			SERVER_NAV_POINT exact;
+			if (!Has_LineOfSight(startX, startZ, goalX, goalZ) || !Sample_Position(goalX, goalZ, exact)) return false;
+			outPath.push_back(exact);
+		}
+		else outPath.push_back(Cell_ToPoint(goal));
 		return true;
 	}
 

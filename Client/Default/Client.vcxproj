@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -185,6 +185,13 @@
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
+    <ClInclude Include="..\Public\EffectCompositionWorldResource.h" />
+    <ClInclude Include="..\Public\EffectCompositionModelPreview.h" />
+    <ClInclude Include="..\Public\EffectCompositionWorkbench.h" />
+    <ClInclude Include="..\Public\EffectEditingSession.h" />
+    <ClInclude Include="..\Public\EffectAuthoringResourceTree.h" />
+    <ClInclude Include="..\Public\EffectAuthoringSequencer.h" />
+    <ClInclude Include="..\Public\EffectAuthoringV2Pane.h" />
     <ClInclude Include="..\Public\EffectV2_Object.h" />
     <ClInclude Include="..\Public\EffectV2_Catalog.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
@@ -384,6 +391,14 @@
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
+    <ClCompile Include="..\Private\EffectCompositionWorldResource.cpp" />
+    <ClCompile Include="..\Private\EffectCompositionModelPreview.cpp" />
+    <ClCompile Include="..\Private\EffectCompositionWorkbench.cpp" />
+    <ClCompile Include="..\Private\EffectEditingSession.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringResourceTree.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringSequencer.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringV2Pane.cpp" />
+    <ClCompile Include="..\Private\Effect_Tool_Workspace.cpp" />
     <ClCompile Include="..\Private\EffectV2_Object.cpp" />
     <ClCompile Include="..\Private\EffectV2_Catalog.cpp" />
     <ClCompile Include="..\Private\EffectV2_Document.cpp" />

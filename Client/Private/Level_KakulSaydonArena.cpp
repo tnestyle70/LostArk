@@ -1,7 +1,14 @@
 #include "Level_KakulSaydonArena.h"
 #include "WorldSequenceObject.h"
+#include "ActorCatalog.h"
+#include "KoukuSaydonPresentationAssetService.h"
+#include "Npc.h"
+#include "Model.h"
+#include "ActionPresentationTimeline.h"
 
 #include "Camera_Free.h"
+#include "CameraTool.h"
+#include "MapTool.h"
 #include "Character.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -32,11 +39,23 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <sstream>
+#include <iomanip>
 #include <limits>
 #include <unordered_set>
 
 namespace
 {
+	std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromCue(
+		const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
+	{
+		if (!play.bHasPlacement) return {};
+		return CWorldSequencePlayer::OBJECT_PLACEMENT{
+			{play.fWorldPositionX, play.fWorldPositionY, play.fWorldPositionZ},
+			{play.fWorldRotationXDegrees, play.fWorldRotationYDegrees, play.fWorldRotationZDegrees},
+			{play.fWorldScaleX, play.fWorldScaleY, play.fWorldScaleZ}};
+	}
+
 	// Each arena remembers its own chosen speed for this process session.
 	f32_t g_KakulSaydonFreeCameraSpeed = CCamera_Free::DEFAULT_ARENA_MOVE_SPEED;
 	constexpr std::string_view KAKULSAYDON_AREA_ID =
@@ -432,6 +451,7 @@ Client::CLevel_KakulSaydonArena::CLevel_KakulSaydonArena(
 
 Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 {
+	Stop_CompositionCamera(true);
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -447,6 +467,8 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	m_pPlayerCommandSink.reset();
 	m_pCameraTarget.reset();
 	m_pCamera.reset();
+	for (auto& [id, cue] : m_OwnedWorldCues) cue.player->Stop_All(Make_WorldSequenceTargets(), true);
+	m_OwnedWorldCues.clear();
 	m_SequencePlayer.Clear();
 	m_pMapLightAuthoringOverride.reset();
 	m_pMapLightPresentation.reset();
@@ -454,10 +476,61 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	m_MapRuntime.Clear();
 }
 
+
+bool_t Client::CLevel_KakulSaydonArena::Create_CompositionPreviewActor(
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::shared_ptr<CNpc>& outActor,
+    std::string& status)
+{
+    CWorldGameplayDocument world;
+    if (!world.Load(CProjectDataRoot::Resolve(std::filesystem::path("Worlds") /
+            std::string(KAKULSAYDON_AREA_ID) / "Gameplay.world.json"),
+            std::string(KAKULSAYDON_AREA_ID), status)) return false;
+    const auto* placement = world.Find(pattern.strTargetBossPlacementId);
+    if (!placement || placement->eKind != WORLD_PLACEMENT_KIND::BOSS ||
+        CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(placement->placementId) != pattern.strActorProfileId)
+    { status = "Bundle preview target/model is unavailable: " + pattern.strTargetBossPlacementId; return false; }
+    const auto* actor = CActorCatalog::Find_Boss(placement->archetypeId);
+    const auto level = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+    if (!actor || FAILED(CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
+        m_pDevice, m_pContext, level, placement->archetypeId)))
+    { status = "Bundle preview boss model admission failed: " + placement->archetypeId; return false; }
+    CNpc::NPC_DESC desc{};
+    desc.iPrototypeLevelIndex = level;
+    desc.strModelTag = CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag(placement->archetypeId);
+    desc.strShaderTag = L"Prototype_Component_Shader_VtxAnimMeshBinary";
+    desc.pIdleClip = actor->presentationClips.idle.c_str();
+    desc.vPosition = placement->position;
+    desc.fYawDegree = pattern.ResetBossYawDegrees ? float(*pattern.ResetBossYawDegrees) : placement->yawDegrees;
+    desc.bSuppressRootMotion = true;
+    desc.strWeaponModelTag = CKoukuSaydonPresentationAssetService::Get_WeaponModelPrototypeTag(placement->archetypeId);
+    if (!desc.strWeaponModelTag.empty()) desc.pWeaponSocketBone = CKoukuSaydonPresentationAssetService::Get_WeaponSocketBone();
+    std::shared_ptr<CGameObject> object;
+    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(level,
+        CKoukuSaydonPresentationAssetService::Get_GameObjectPrototypeTag(), level,
+        L"Layer_KoukuCompositionPreview", &desc, &object)))
+    { status = "Bundle preview actor clone failed: " + placement->placementId; return false; }
+    const auto npc = std::dynamic_pointer_cast<CNpc>(object);
+    if (!npc || !npc->Get_Model() || !npc->Get_Transform())
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(level, L"Layer_KoukuCompositionPreview", object);
+        status = "Bundle preview actor has no model/transform: " + placement->placementId;
+        return false;
+    }
+    npc->Get_Model()->Set_AnimPaused(true);
+    outActor = npc;
+    return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Release_CompositionPreviewActor(const std::shared_ptr<CNpc>& actor)
+{
+    if (actor) CGameInstance::Get().Remove_GameObject_from_Layer(
+        ETOUI(LEVEL::KAKULSAYDON_ARENA), L"Layer_KoukuCompositionPreview", actor);
+}
+
 #ifdef _DEBUG
 bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	const std::string& patternId, std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues,
-	std::string& status)
+	std::string& status, const CWorldSequenceDocument* sourceDocument)
 {
 	if (cues.empty())
 	{
@@ -465,40 +538,73 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 		return true;
 	}
 	auto targets = Make_WorldSequenceTargets();
-	auto staged = make_unique<CWorldSequencePlayer>();
-	if (!staged->Load_Area(std::string(KAKULSAYDON_AREA_ID), targets))
-	{
-		status = "WORLD preview: " + staged->Get_Status();
-		return false;
-	}
-	std::unordered_set<std::string> instances;
+	const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
+	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> staged;
+	std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> placementBindings;
 	for (const auto& cue : cues)
 	{
-		const auto* instance = staged->Get_Document().Find_Instance(cue.instanceId);
+		const auto* instance = document.Find_Instance(cue.instanceId);
 		if (nullptr == instance || !instance->enabled || 0u == cue.durationMs ||
 			!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f ||
-			!instances.insert(cue.instanceId).second || m_SequencePlayer.Is_Playing(cue.instanceId))
+			!Is_StableId(cue.occurrenceId) || staged.contains(cue.occurrenceId))
 		{
-			status = "WORLD preview unavailable or already owned by Server playback: " + cue.instanceId;
+			status = "WORLD preview occurrence is invalid, duplicate, or unavailable: " + cue.occurrenceId;
 			return false;
 		}
+		if (!Can_StartCompositionWorld(cue.instanceId, status, &document)) return false;
+		for (const auto& binding : instance->bindings)
+			if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+				!placementBindings.emplace(binding.targetKind, binding.targetId).second)
+			{
+				status = "WORLD preview occurrences share a mutable map/deploy target: " + cue.occurrenceId;
+				return false;
+			}
+		auto player = make_unique<CWorldSequencePlayer>();
+		if (!player->Set_Document(document, targets, status) ||
+			!player->Prepare_InstanceResources(cue.instanceId, targets))
+		{
+			status = "WORLD preview: " + player->Get_Status();
+			return false;
+		}
+		if (!player->Validate_ObjectPlacement(cue.instanceId, cue.placement, status)) return false;
+		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{cue, std::move(player)});
 	}
 	Debug_StopCompositionWorldPreview();
-	m_pCompositionWorldPreview = std::move(staged);
-	m_CompositionWorldPreviewCues = std::move(cues);
+	m_CompositionWorldPreviewCues = std::move(staged);
 	m_strCompositionWorldPreviewPattern = patternId;
 	m_bCompositionWorldPreviewClockBound = false;
 	return true;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Debug_HasVisibleCompositionWorldBox(const std::string_view occurrenceId) const
+{
+    const auto found = m_CompositionWorldPreviewCues.find(std::string(occurrenceId));
+    float4x4_t pivot;
+    return found != m_CompositionWorldPreviewCues.end() &&
+        found->second.player->Try_GetObjectPivot(found->second.cue.instanceId, pivot);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Debug_SetCompositionWorldPlacement(
+	const std::string& occurrenceId, const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement,
+	std::string& status)
+{
+	const auto found = m_CompositionWorldPreviewCues.find(occurrenceId);
+	if (found == m_CompositionWorldPreviewCues.end())
+	{ status = "WORLD preview occurrence is unavailable: " + occurrenceId; return false; }
+	auto& playback = found->second;
+	if (!playback.player->Validate_ObjectPlacement(playback.cue.instanceId, placement, status)) return false;
+	if (playback.player->Is_Playing(playback.cue.instanceId) &&
+		!playback.player->Set_ObjectPlacement(playback.cue.instanceId, placement, Make_WorldSequenceTargets()))
+	{ status = playback.player->Get_Status(); return false; }
+	playback.cue.placement = placement;
+	return true;
+}
+
 void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 {
-	if (nullptr != m_pCompositionWorldPreview)
-	{
-		auto targets = Make_WorldSequenceTargets();
-		m_pCompositionWorldPreview->Stop_All(targets, true);
-	}
-	m_pCompositionWorldPreview.reset();
+	auto targets = Make_WorldSequenceTargets();
+	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
+		playback.player->Stop_All(targets, true);
 	m_CompositionWorldPreviewCues.clear();
 	m_strCompositionWorldPreviewPattern.clear();
 	m_bCompositionWorldPreviewClockBound = false;
@@ -507,7 +613,7 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	const std::string& patternId, const bool_t playing, const uint32_t clockMs)
 {
-	if (nullptr == m_pCompositionWorldPreview) return;
+	if (m_CompositionWorldPreviewCues.empty()) return;
 	if (!playing || patternId != m_strCompositionWorldPreviewPattern)
 	{
 		// A pending Animation target admission takes one frame. Wait for that
@@ -517,24 +623,26 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 	}
 	m_bCompositionWorldPreviewClockBound = true;
 	auto targets = Make_WorldSequenceTargets();
-	for (const auto& cue : m_CompositionWorldPreviewCues)
+	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
 	{
+		const auto& cue = playback.cue;
+		auto& player = *playback.player;
 		if (clockMs < cue.startMs || clockMs - cue.startMs >= cue.durationMs)
 		{
-			m_pCompositionWorldPreview->Stop_Instance(cue.instanceId, targets, true);
+			player.Stop_All(targets, true);
 			continue;
 		}
-		if (!m_pCompositionWorldPreview->Is_Playing(cue.instanceId) &&
-			!m_pCompositionWorldPreview->Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs))
+		if (!player.Is_Playing(cue.instanceId) &&
+			!player.Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + m_pCompositionWorldPreview->Get_Status() + "\n").c_str());
+			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
 			continue;
 		}
-		if (!m_pCompositionWorldPreview->Seek_InstanceToMs(cue.instanceId,
+		if (!player.Seek_InstanceToMs(cue.instanceId,
 			static_cast<f32_t>(clockMs - cue.startMs), targets))
 		{
-			OutputDebugStringA(("[KoukuWorldPreview] " + m_pCompositionWorldPreview->Get_Status() + "\n").c_str());
-			m_pCompositionWorldPreview->Stop_Instance(cue.instanceId, targets, true);
+			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
+			player.Stop_All(targets, true);
 		}
 	}
 }
@@ -858,22 +966,76 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	   instance ID against what it loaded and plays the presentation. */
 	for (const auto& play : m_Replication.Consume_WorldSequencePlays())
 	{
+		if (play.iRunEpoch != 0u)
+		{
+			Consume_OwnedWorldCue(play, targets);
+			continue;
+		}
 		const std::string& instanceId = play.strSequenceInstanceId;
 #ifdef _DEBUG
 		Debug_StopWorldObjectPreview();
 		Debug_StopCompositionWorldPreview();
 #endif
 		std::string status;
+		if (!play.strTargetSequenceInstanceId.empty())
+		{
+			if (!m_SequencePlayer.Apply_ObjectMotion(play.strTargetSequenceInstanceId, instanceId, targets))
+				OutputDebugStringA(("[Level_KakulSaydonArena][WorldMotion] " +
+					m_SequencePlayer.Get_Status() + "\n").c_str());
+			continue;
+		}
 		if (!Start_ServerRequestedSequence(instanceId, play.fPlaybackSpeed,
-			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs))
+			float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), targets, status, play.iDurationMs,
+			WorldPlacementFromCue(play)))
 		{
 			OutputDebugStringA((
 				"[Level_KakulSaydonArena][WorldSequence] " + instanceId +
 				": " + status + "\n").c_str());
 		}
 	}
+	// Persistent terminal state also closes owners for reconnect/late packet ordering.
+	const auto& runState = m_Replication.Get_KoukuBundleState();
+	using RUN_STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
+	const auto stopOwner = [&](const std::string& memberId)
+	{
+		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY stop;
+		stop.eOperation = LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP_OWNER;
+		stop.iRunEpoch = runState.iRunEpoch; stop.strMemberId = memberId;
+		Consume_OwnedWorldCue(stop, targets);
+	};
+	if (runState.iRunEpoch)
+	{
+		if (runState.eState == RUN_STATE::COMPLETED || runState.eState == RUN_STATE::ABORTED) stopOwner({});
+		else for (const auto& member : runState.Members)
+			if (member.eState == RUN_STATE::COMPLETED || member.eState == RUN_STATE::ABORTED) stopOwner(member.strMemberId);
+	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
+	if (m_bWorldObjectReloadPending && !m_SequencePlayer.Has_ActiveInstances())
+	{
+		std::string status;
+		if (!Reload_WorldObjectRuntime(status))
+			OutputDebugStringA(("[WorldObjectReload] " + status + "\n").c_str());
+	}
+	for (auto cue = m_OwnedWorldCues.begin(); cue != m_OwnedWorldCues.end();)
+	{
+		float seconds = 0.f;
+		auto& value = cue->second;
+		if (CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+			m_Replication.Get_LastServerTick(), value.startTick, 30.f, seconds))
+			value.clockMs = (std::max)(seconds * 1000.f, value.clockMs + fTimeDelta * 1000.f);
+		else value.clockMs += fTimeDelta * 1000.f;
+		if (value.durationMs && value.clockMs >= value.durationMs)
+			value.player->Stop_All(targets, true);
+		else
+		{
+			(void)value.player->Seek_InstanceToMs(value.sequenceId, value.clockMs, targets);
+			value.player->Update(0.f, targets);
+		}
+		if (!value.player->Has_ActiveInstances()) cue = m_OwnedWorldCues.erase(cue);
+		else ++cue;
+	}
 	Update_CutsceneBossRetire(targets);
+	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
 	Update_TriggerMoveFade(fTimeDelta);
 	m_MapRuntime.Update_SelfMotions(fTimeDelta);
@@ -1002,7 +1164,8 @@ void Client::CLevel_KakulSaydonArena::Update_CutsceneBossRetire(
 bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 	const std::string& instanceId, const f32_t playbackSpeed, const float3_t& positionOffset,
 	const CWorldSequencePlayer::TARGET_SET& targets,
-	std::string& outStatus, const uint32_t durationMs)
+	std::string& outStatus, const uint32_t durationMs,
+	const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement)
 {
 	/* A bridge unfold is more than its sequence: the Deploy prop must leave
 	   DESPAWNED first. Route those through the bridge contract so the reveal
@@ -1022,7 +1185,7 @@ bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
 	if (KAKULSAYDON_CUTSCENE_SEQUENCE_ID == instanceId)
 		return Start_PopupBookCutscene(targets, outStatus);
 
-	if (!m_SequencePlayer.Play(instanceId, targets, playbackSpeed, positionOffset, durationMs))
+	if (!m_SequencePlayer.Play(instanceId, targets, playbackSpeed, positionOffset, durationMs, placement))
 	{
 		outStatus = m_SequencePlayer.Get_Status();
 		return false;
@@ -1360,6 +1523,31 @@ bool_t Client::CLevel_KakulSaydonArena::Try_Get_AuthoringPreviewPlacement(
 	return true;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Try_Get_AuthoringForwardPlacement(
+	float3_t& outPosition, std::string& outStatus) const
+{
+	const auto character = m_Replication.Get_LocalCharacter();
+	const auto transform = character ? character->Get_Transform() : nullptr;
+	if (!transform) { outStatus = "WORLD placement requires the replicated local player."; return false; }
+	const vector_t origin = transform->Get_State(STATE::POSITION);
+	vector_t forward = XMVectorSetW(XMVectorSetY(transform->Get_State(STATE::LOOK), 0.f), 0.f);
+	const float lengthSquared = XMVectorGetX(XMVector3LengthSq(forward));
+	if (!std::isfinite(lengthSquared) || lengthSquared <= .000001f)
+	{ outStatus = "The local player has no finite horizontal facing for WORLD placement."; return false; }
+	forward = XMVector3Normalize(forward);
+	float3_t candidate;
+	XMStoreFloat3(&candidate, origin + forward * 3.25f);
+	if (!std::isfinite(candidate.x) || !std::isfinite(candidate.y) || !std::isfinite(candidate.z))
+	{ outStatus = "The local player's WORLD placement is not finite."; return false; }
+	float3_t sampled;
+	if (character->Try_SampleTargetGround(candidate.x, candidate.z, sampled) &&
+		std::isfinite(sampled.x) && std::isfinite(sampled.y) && std::isfinite(sampled.z))
+		candidate = sampled;
+	outPosition = candidate;
+	outStatus = "Placed ahead of the current player; the saved world position remains fixed.";
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 	const std::uint32_t requestSequence,
 	const std::string_view placementId,
@@ -1412,7 +1600,7 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 		// 1관문 - 세이튼
 		KAKUL_DEBUG_GATE{ "1" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
 			{ { "boss.kakulsaydon.g1.saydon", nullptr } },
-			float3_t(-2.84f, 1.32f, 941.02f),
+			float3_t(-2.45f, 1.32f, 945.17f),
 			"BOSS_KAKULSAYDON_G1_SAYDON", "boss.kakulsaydon.g1.saydon", nullptr },
 		// 2관문 - 대형 세이튼, 쿠크 (HUD and audition follow Kouku)
 		KAKUL_DEBUG_GATE{ "2" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEB\x8C\x80\xED\x98\x95" " " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC" ", " "\xEC\xBF\xA0\xED\x81\xAC",
@@ -1422,7 +1610,7 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 		// 3관문 - 세이튼
 		KAKUL_DEBUG_GATE{ "3" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC",
 			{ { "boss.kakulsaydon.g3.saydon", nullptr } },
-			float3_t(-2.84f, 1.32f, 941.02f),
+			float3_t(-2.45f, 1.32f, 945.17f),
 			"BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon", nullptr },
 		// 1마리오 - player only
 		KAKUL_DEBUG_GATE{ "1" "\xEB\xA7\x88\xEB\xA6\xAC\xEC\x98\xA4" " (" "\xED\x94\x8C\xEB\xA0\x88\xEC\x9D\xB4\xEC\x96\xB4\xEB\xA7\x8C" ")",
@@ -1700,12 +1888,199 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 	return true;
 }
 
+namespace
+{
+	std::filesystem::path Camera_AuthoringPath()
+	{
+		return CProjectDataRoot::Resolve(L"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json");
+	}
+	std::string Camera_JsonText(const DATA_JSON_VALUE& value, const unsigned depth = 0u)
+	{
+		if (value.Is_String()) return "\"" + CDataJson::Escape(value.Get_String()) + "\"";
+		if (value.Is_Number()) { std::ostringstream stream; stream << std::setprecision(17) << value.Get_Number(); return stream.str(); }
+		if (value.Is_Boolean()) return value.Get_Boolean() ? "true" : "false";
+		if (value.Is_Null()) return "null";
+		const bool object = value.Is_Object();
+		std::string text = object ? "{" : "[";
+		bool first = true;
+		const auto append = [&](const std::string& item) {
+			text += first ? "\n" : ",\n"; first = false;
+			text += std::string((depth + 1u) * 2u, ' ') + item;
+		};
+		if (object)
+		{
+			std::set<std::string> written;
+			for (const auto& key : value.Get_ObjectInsertionOrder())
+				if (const auto* child = value.Find(key); child && written.insert(key).second)
+					append("\"" + CDataJson::Escape(key) + "\": " + Camera_JsonText(*child, depth + 1u));
+			for (const auto& [key, child] : value.Get_Object())
+				if (written.insert(key).second) append("\"" + CDataJson::Escape(key) + "\": " + Camera_JsonText(child, depth + 1u));
+		}
+		else for (const auto& child : value.Get_Array()) append(Camera_JsonText(child, depth + 1u));
+		if (!first) text += "\n" + std::string(depth * 2u, ' ');
+		return text + (object ? "}" : "]");
+	}
+	DATA_JSON_VALUE Camera_ShotJson(const CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT& shot,
+		const DATA_JSON_VALUE* existing)
+	{
+		using J = DATA_JSON_VALUE;
+		const auto vec = [](const float3_t& v) { return J::Array({ J::Number(v.x), J::Number(v.y), J::Number(v.z) }); };
+		J::OBJECT fields = existing ? existing->Get_Object() : J::OBJECT{};
+		fields["shotId"] = J::String(shot.strShotId);
+		fields["displayName"] = J::String(shot.strDisplayName);
+		fields["sequenceInstanceId"] = J::String(shot.strSequenceInstanceId);
+		fields["box"] = J::Object({ {"center", vec(shot.vCenter)}, {"halfExtents", vec(shot.vHalfExtents)}, {"yawDegrees", J::Number(shot.fYawDegrees)} });
+		fields["eye"] = vec(shot.vEye); fields["lookAt"] = vec(shot.vLookAt);
+		fields["fovYDegrees"] = J::Number(shot.fFovYDegrees);
+		fields["blendInMs"] = J::Number(shot.iBlendInMs); fields["blendOutMs"] = J::Number(shot.iBlendOutMs);
+		fields["defaultHoldMs"] = J::Number(shot.iDefaultHoldMs); fields["priority"] = J::Number(shot.iPriority);
+		fields["activation"] = J::String(shot.bPatternOnly ? "PATTERN_ONLY" : "AUTO");
+		fields["transitionEasing"] = J::String(shot.eTransitionEasing == VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ? "LINEAR" : "SMOOTHSTEP");
+		if (shot.followsPlayer) fields["follow"] = J::Object({ {"eyeOffset", vec(shot.vFollowEyeOffset)}, {"lookAtOffset", vec(shot.vFollowLookAtOffset)} });
+		else fields.erase("follow");
+		if (!shot.hasCameraTrack) fields.erase("cameraTrack");
+		return J::Object(std::move(fields), existing ? existing->Get_ObjectInsertionOrder() : std::vector<std::string>{});
+	}
+	std::string Camera_EmptyDocument()
+	{
+		return "{\"schema\":\"lostark.camera-shots\",\"formatVersion\":1,\"areaId\":\"LV_LUT_MIDNIGHTC_ED\",\"revision\":1,\"shots\":[]}";
+	}
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Ensure_CameraShotAuthoring(std::string& outStatus)
+{
+	if (m_bCameraAuthoringLoaded) return true;
+	const auto path = Camera_AuthoringPath();
+	std::error_code error;
+	std::string text;
+	if (std::filesystem::exists(path, error))
+	{
+		if (error || std::filesystem::file_size(path, error) > 256u * 1024u || error)
+		{ outStatus = "Camera authoring source exceeds 256 KiB or cannot be read."; return false; }
+		std::ifstream input(path, std::ios::binary);
+		if (!input) { outStatus = "Cannot open Camera authoring source."; return false; }
+		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+		if (input.bad() || text.empty()) { outStatus = "Camera authoring source is empty or unreadable."; return false; }
+	}
+	else if (error) { outStatus = "Cannot inspect Camera authoring source."; return false; }
+	std::vector<KAKUL_CAMERA_SHOT> staged;
+	if (!Parse_CameraShots(text.empty() ? Camera_EmptyDocument() : text, staged, outStatus)) return false;
+	m_AuthoringCameraShots = std::move(staged);
+	m_strCameraAuthoringBaseline = std::move(text);
+	m_bCameraAuthoringLoaded = true;
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Create_CameraShot(const std::string_view name,
+	std::string& outShotId, std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	if (m_AuthoringCameraShots.size() >= CAMERA_SHOT_MAX_COUNT)
+	{ outStatus = "Camera shot limit is 64."; return false; }
+	KAKUL_CAMERA_SHOT shot;
+	for (uint32_t ordinal = 1u; ordinal <= CAMERA_SHOT_MAX_COUNT + 1u; ++ordinal)
+	{
+		shot.strShotId = "camera.kouku.pattern." + std::to_string(ordinal);
+		if (std::none_of(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+			[&](const auto& item) { return item.strShotId == shot.strShotId; })) break;
+	}
+	shot.strDisplayName = std::string(name);
+	shot.bPatternOnly = true; shot.eTransitionEasing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+	shot.iBlendInMs = 500u; shot.iBlendOutMs = 500u; shot.vHalfExtents = float3_t(1.f, 1.f, 1.f);
+	VALTAN_CINEMATIC_CAMERA_POSE pose;
+	if (!CCameraTool::Capture_ViewPose(pose)) { outStatus = "Current Camera pose is unavailable."; return false; }
+	shot.vEye = pose.vEye; shot.vLookAt = pose.vLookAt; shot.fFovYDegrees = pose.fFovYDegrees;
+	DATA_JSON_VALUE root; std::string ignored;
+	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
+	auto fields = root.Get_Object(); fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(shot, nullptr) });
+	std::vector<KAKUL_CAMERA_SHOT> validated;
+	if (!Parse_CameraShots(Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields))), validated, outStatus)) return false;
+	outShotId = shot.strShotId;
+	m_DirtyCameraShotIds.insert(shot.strShotId);
+	m_AuthoringCameraShots.push_back(std::move(shot));
+	outStatus = "Camera created in the authoring draft. Set Camera Pos, then Save Camera.";
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Update_CameraShot(const KAKUL_CAMERA_SHOT& shot, std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	const auto found = std::find_if(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+		[&](const auto& value) { return value.strShotId == shot.strShotId; });
+	if (found == m_AuthoringCameraShots.end()) { outStatus = "Camera shot was not found."; return false; }
+	// Track rows retain their existing keys. This editor edits the static pose only after an explicit capture.
+	DATA_JSON_VALUE root; std::string ignored;
+	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
+	auto fields = root.Get_Object(); auto single = shot; single.hasCameraTrack = false;
+	fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(single, nullptr) });
+	std::vector<KAKUL_CAMERA_SHOT> validated;
+	if (!Parse_CameraShots(Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields))), validated, outStatus)) return false;
+	auto adjusted = shot;
+	if (adjusted.followsPlayer && !found->followsPlayer)
+	{
+		const auto character = m_Replication.Get_LocalCharacter();
+		if (!character || !character->Get_Transform()) { outStatus = "PLAYER anchor requires the local replicated Character."; return false; }
+		float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+		adjusted.vFollowEyeOffset = float3_t(shot.vEye.x - position.x, shot.vEye.y - position.y, shot.vEye.z - position.z);
+		adjusted.vFollowLookAtOffset = float3_t(shot.vLookAt.x - position.x, shot.vLookAt.y - position.y, shot.vLookAt.z - position.z);
+	}
+	*found = adjusted; m_DirtyCameraShotIds.insert(shot.strShotId);
+	outStatus = "Camera draft changed. Save Camera writes the Area source.";
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Capture_CameraShot(const std::string_view shotId, std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	const auto found = std::find_if(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+		[&](const auto& value) { return value.strShotId == shotId; });
+	if (found == m_AuthoringCameraShots.end()) { outStatus = "Camera shot was not found."; return false; }
+	VALTAN_CINEMATIC_CAMERA_POSE pose;
+	if (!CCameraTool::Capture_ViewPose(pose)) { outStatus = "Current Camera pose is unavailable."; return false; }
+	auto shot = *found;
+	shot.vEye = pose.vEye; shot.vLookAt = pose.vLookAt; shot.fFovYDegrees = pose.fFovYDegrees;
+	shot.hasCameraTrack = false;
+	if (shot.followsPlayer)
+	{
+		const auto character = m_Replication.Get_LocalCharacter();
+		if (!character || !character->Get_Transform()) { outStatus = "PLAYER capture requires the local replicated Character."; return false; }
+		float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+		shot.vFollowEyeOffset = float3_t(pose.vEye.x - position.x, pose.vEye.y - position.y, pose.vEye.z - position.z);
+		shot.vFollowLookAtOffset = float3_t(pose.vLookAt.x - position.x, pose.vLookAt.y - position.y, pose.vLookAt.z - position.z);
+	}
+	return Update_CameraShot(shot, outStatus);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	if (m_DirtyCameraShotIds.empty()) { outStatus = "Camera source is already saved."; return true; }
+	DATA_JSON_VALUE root;
+	if (!CDataJson::Parse(m_strCameraAuthoringBaseline.empty() ? Camera_EmptyDocument() : m_strCameraAuthoringBaseline, root, outStatus)) return false;
+	auto fields = root.Get_Object(); auto rows = root.Find("shots")->Get_Array();
+	for (const auto& shot : m_AuthoringCameraShots)
+	{
+		if (!m_DirtyCameraShotIds.contains(shot.strShotId)) continue;
+		auto found = std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return row.Find("shotId")->Get_String() == shot.strShotId; });
+		if (found == rows.end()) rows.push_back(Camera_ShotJson(shot, nullptr));
+		else *found = Camera_ShotJson(shot, &*found);
+	}
+	const double revision = root.Find("revision")->Get_Number();
+	if (revision >= 4294967295.0) { outStatus = "Camera revision is exhausted."; return false; }
+	fields["shots"] = DATA_JSON_VALUE::Array(std::move(rows));
+	fields["revision"] = DATA_JSON_VALUE::Number(revision + 1.0);
+	const auto text = Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields), root.Get_ObjectInsertionOrder())) + "\n";
+	std::vector<KAKUL_CAMERA_SHOT> staged;
+	if (!Parse_CameraShots(text, staged, outStatus) ||
+		!CMapTool::Save_CameraShotDocumentAtomic(Camera_AuthoringPath(), m_strCameraAuthoringBaseline, text, outStatus)) return false;
+	m_AuthoringCameraShots = std::move(staged); m_strCameraAuthoringBaseline = text; m_DirtyCameraShotIds.clear();
+	outStatus = "Camera saved to the Area source; Preview is ready. Publish the Area before Complete Play.";
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	std::string& outStatus)
 {
-	m_CameraShots.clear();
-	Release_CameraShot();
-
 	const std::filesystem::path path = Find_CameraShotDocument();
 	std::error_code fileError;
 	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
@@ -1734,6 +2109,16 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		return false;
 	}
 
+	std::vector<KAKUL_CAMERA_SHOT> staged;
+	if (!Parse_CameraShots(text, staged, outStatus)) return false;
+	Release_CameraShot();
+	m_CameraShots = std::move(staged);
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Parse_CameraShots(
+	const std::string_view text, std::vector<KAKUL_CAMERA_SHOT>& outShots, std::string& outStatus)
+{
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	DATA_JSON_PARSE_LIMITS limits{};
@@ -1773,7 +2158,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		if (!Has_ShotProperties(value,
 			{ "shotId", "sequenceInstanceId", "box", "eye", "lookAt",
 				"fovYDegrees", "blendInMs", "blendOutMs", "priority" },
-			{ "cameraTrack", "follow" }))
+			{ "cameraTrack", "follow", "displayName", "defaultHoldMs", "transitionEasing", "activation" }))
 		{
 			outStatus = "KoukuSaydon camera shot has unexpected properties.";
 			return false;
@@ -1822,6 +2207,32 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			outStatus = "KoukuSaydon camera shot values are out of range: " +
 				shot.strShotId;
 			return false;
+		}
+		shot.strDisplayName = shot.strShotId;
+		if (const auto* name = value.Find("displayName"))
+		{
+			if (!name->Is_String() || name->Get_String().empty() || name->Get_String().size() > 128u || name->Get_String().find('\0') != std::string::npos ||
+				MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name->Get_String().data(),
+					static_cast<int>(name->Get_String().size()), nullptr, 0) <= 0)
+			{ outStatus = "Camera displayName requires 1..128 UTF-8 bytes."; return false; }
+			shot.strDisplayName = name->Get_String();
+		}
+		if (const auto* hold = value.Find("defaultHoldMs"))
+			if (!Read_Uint(hold, 600000u, shot.iDefaultHoldMs) || shot.iBlendInMs + shot.iDefaultHoldMs > 600000u ||
+				shot.iBlendInMs + shot.iDefaultHoldMs == 0u)
+			{ outStatus = "Camera entry plus default hold must be 1..600000 ms."; return false; }
+		if (const auto* easing = value.Find("transitionEasing"))
+		{
+			if (!easing->Is_String() || (easing->Get_String() != "LINEAR" && easing->Get_String() != "SMOOTHSTEP"))
+			{ outStatus = "Camera transitionEasing must be LINEAR or SMOOTHSTEP."; return false; }
+			shot.eTransitionEasing = easing->Get_String() == "LINEAR" ?
+				VALTAN_CINEMATIC_CAMERA_EASING::LINEAR : VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
+		}
+		if (const auto* activation = value.Find("activation"))
+		{
+			if (!activation->Is_String() || (activation->Get_String() != "AUTO" && activation->Get_String() != "PATTERN_ONLY"))
+			{ outStatus = "Camera activation must be AUTO or PATTERN_ONLY."; return false; }
+			shot.bPatternOnly = activation->Get_String() == "PATTERN_ONLY";
 		}
 		shot.fYawDegrees = static_cast<f32_t>(yaw->Get_Number());
 		shot.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
@@ -1880,9 +2291,9 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		stagedShots.push_back(std::move(shot));
 	}
 
-	m_CameraShots = std::move(stagedShots);
+	outShots = std::move(stagedShots);
 	outStatus = "KoukuSaydon camera shots loaded: " +
-		std::to_string(m_CameraShots.size());
+		std::to_string(outShots.size());
 	return true;
 }
 
@@ -1893,6 +2304,7 @@ Client::CLevel_KakulSaydonArena::Find_ActiveCameraShot(
 	const KAKUL_CAMERA_SHOT* best = nullptr;
 	for (const KAKUL_CAMERA_SHOT& shot : m_CameraShots)
 	{
+		if (shot.bPatternOnly) continue;
 		const bool_t isHeldNow = shot.strShotId == m_strActiveCameraShotId;
 		bool_t isActive = false;
 		if (!shot.strSequenceInstanceId.empty())
@@ -2000,75 +2412,152 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
- const std::string_view instanceId, float4x4_t& out) const
+ const std::string_view instanceId, float4x4_t& out, const std::string_view occurrenceId) const
 {
- const CWorldSequencePlayer* player = &m_SequencePlayer;
 #ifdef _DEBUG
- if (m_pCompositionWorldPreview && m_pCompositionWorldPreview->Is_Playing(std::string(instanceId)))
-  player = m_pCompositionWorldPreview.get();
-#endif
- if (player->Try_GetObjectPivot(std::string(instanceId), out)) return true;
- const auto* instance = player->Get_Document().Find_Instance(std::string(instanceId));
- if (!instance) return false;
- const WORLD_SEQUENCE_BINDING* binding = nullptr;
- for (const auto& candidate : instance->bindings)
+ if (!m_CompositionWorldPreviewCues.empty())
  {
-  if (candidate.targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT) continue;
-  if (candidate.slotId == "object") { binding = &candidate; break; }
-  if (binding) return false;
-  binding = &candidate;
+  const CWorldSequencePlayer* selected = nullptr;
+  for (const auto& [id, playback] : m_CompositionWorldPreviewCues)
+   if ((occurrenceId.empty() || id == occurrenceId) && playback.cue.instanceId == instanceId &&
+    playback.player->Is_Playing(playback.cue.instanceId))
+   {
+    if (selected) return false;
+    selected = playback.player.get();
+   }
+  return selected && selected->Try_GetSequencePivot(std::string(instanceId), out);
  }
- if (!binding) return false;
- uint64_t placementId = 0;
- MAP_PLACEMENT_RECORD record;
- if (!CWorldSequencePlayer::Try_ParseTargetId(*binding, placementId) ||
-  !player->Try_GetSampledPlacementRecord(std::string(instanceId), placementId, record)) return false;
- XMStoreFloat4x4(&out, XMMatrixScaling(record.signedScale.x, record.signedScale.y, record.signedScale.z) *
-  XMMatrixRotationQuaternion(XMLoadFloat4(&record.rotationQuaternion)) *
-  XMMatrixTranslation(record.position.x, record.position.y, record.position.z));
- return true;
+#endif
+ return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
- const std::string_view shotId, const float seconds, const float3_t& offset)
+	const std::string_view shotId, const float seconds, const float3_t& offset,
+	const std::string_view ownerKey, const uint32_t durationMs, const bool_t preview)
 {
- if (!m_pCamera || !std::isfinite(seconds) || seconds < 0.f ||
-  !std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(offset.z)) return false;
- const auto found = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
-  [shotId](const auto& shot) { return shot.strShotId == shotId; });
- if (found == m_CameraShots.end()) return false;
- float3_t eye = found->vEye, look = found->vLookAt;
- float fov = found->fFovYDegrees;
- VALTAN_CINEMATIC_CAMERA_POSE pose{};
- if (found->hasCameraTrack)
- {
-  if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, pose)) return false;
-  eye = pose.vEye; look = pose.vLookAt; fov = pose.fFovYDegrees;
- }
- else if (found->followsPlayer)
- {
-  const auto character = m_Replication.Get_LocalCharacter();
-  if (!character || !character->Get_Transform()) return false;
-  float3_t player; XMStoreFloat3(&player, character->Get_Transform()->Get_State(STATE::POSITION));
-  eye = float3_t(player.x + found->vFollowEyeOffset.x,
-   player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
-  look = float3_t(player.x + found->vFollowLookAtOffset.x,
-   player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
- }
- eye.x += offset.x; eye.y += offset.y; eye.z += offset.z;
- look.x += offset.x; look.y += offset.y; look.z += offset.z;
- constexpr std::uint64_t owner = 0x4b4f554b55434f4dull;
- return m_pCamera->Begin_PresentationOverride(owner, Engine::CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW) &&
-  m_pCamera->Apply_PresentationPose(owner, eye, look, fov);
+	constexpr uint64_t owner = 0x4b4f554b55434f4dull;
+	if (!m_pCamera || ownerKey.empty() || !std::isfinite(seconds) || seconds < 0.f || durationMs == 0u ||
+		!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(offset.z)) return false;
+	if (preview) { std::string status; if (!Ensure_CameraShotAuthoring(status)) return false; }
+	const auto& shots = preview ? m_AuthoringCameraShots : m_CameraShots;
+	const auto found = std::find_if(shots.begin(), shots.end(), [shotId](const auto& shot) { return shot.strShotId == shotId; });
+	if (found == shots.end() || durationMs < found->iBlendInMs) return false;
+	auto& transition = m_CompositionCamera;
+	if (transition.cancelledOwnerKey == ownerKey) return false;
+	if (!preview && !m_pCamera->Is_FollowEnabled()) return false;
+	if (transition.ownerKey != ownerKey || transition.returning || seconds + 0.01f < transition.lastSeconds)
+	{
+		VALTAN_CINEMATIC_CAMERA_POSE current;
+		if (!CCameraTool::Capture_ViewPose(current)) return false;
+		if (!m_pCamera->Begin_PresentationOverride(owner, Engine::CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW)) return false;
+		// Taking over an Area shot keeps the displayed pose but drops its stale owner state.
+		Release_CameraShot();
+		transition.ownerKey = std::string(ownerKey);
+		transition.cancelledOwnerKey.clear();
+		transition.fromPose = current;
+		transition.entryPose = current;
+		transition.appliedPose = current;
+		transition.blendOutMs = found->iBlendOutMs;
+		transition.easing = found->eTransitionEasing;
+		transition.returnSeconds = 0.f;
+		transition.returning = false;
+		transition.followAtStart = m_pCamera->Is_FollowEnabled();
+	}
+	if (!m_pCamera->Is_PresentationOverrideOwnedBy(owner) ||
+		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
+	{ Stop_CompositionCamera(true); return false; }
+	VALTAN_CINEMATIC_CAMERA_POSE target{ found->vEye, found->vLookAt, found->fFovYDegrees };
+	if (found->hasCameraTrack)
+	{
+		if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, target)) return false;
+	}
+	else if (found->followsPlayer)
+	{
+		const auto character = m_Replication.Get_LocalCharacter();
+		if (!character || !character->Get_Transform()) return false;
+		float3_t player; XMStoreFloat3(&player, character->Get_Transform()->Get_State(STATE::POSITION));
+		target.vEye = float3_t(player.x + found->vFollowEyeOffset.x, player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
+		target.vLookAt = float3_t(player.x + found->vFollowLookAtOffset.x, player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
+	}
+	target.vEye.x += offset.x; target.vEye.y += offset.y; target.vEye.z += offset.z;
+	target.vLookAt.x += offset.x; target.vLookAt.y += offset.y; target.vLookAt.z += offset.z;
+	VALTAN_CINEMATIC_CAMERA_POSE applied = target;
+	if (found->iBlendInMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
+		transition.fromPose, target, found->iBlendInMs, seconds, applied, found->eTransitionEasing)) return false;
+	if (!m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees)) return false;
+	transition.appliedPose = applied;
+	transition.lastSeconds = seconds;
+	return true;
 }
 
-void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera()
+bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose) const
 {
- if (m_pCamera) (void)m_pCamera->End_PresentationOverride(0x4b4f554b55434f4dull);
+	const auto character = m_Replication.Get_LocalCharacter();
+	if (!character || !character->Get_Transform()) return false;
+	float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+	const auto eyeOffset = m_FollowCameraProfile.positionOffset;
+	const auto lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
+	outPose.vEye = float3_t(position.x + eyeOffset.x, position.y + eyeOffset.y, position.z + eyeOffset.z);
+	outPose.vLookAt = float3_t(position.x + lookOffset.x, position.y + lookOffset.y, position.z + lookOffset.z);
+	outPose.fFovYDegrees = m_FollowCameraProfile.fovYDegrees;
+	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
+{
+	auto& transition = m_CompositionCamera;
+	if (transition.ownerKey.empty()) return;
+	if (force)
+	{
+		transition.cancelledOwnerKey = transition.ownerKey;
+		if (m_pCamera)
+		{
+			auto pose = transition.appliedPose;
+			if (m_pCamera->Is_FollowEnabled()) (void)Resolve_CompositionFollowPose(pose);
+			(void)m_pCamera->End_PresentationOverrideToPose(0x4b4f554b55434f4dull, pose.vEye, pose.vLookAt, pose.fFovYDegrees);
+		}
+		transition.ownerKey.clear(); transition.returning = false;
+		return;
+	}
+	if (!transition.returning)
+	{
+		transition.fromPose = transition.appliedPose;
+		transition.returning = true; transition.returnSeconds = 0.f;
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeDelta)
+{
+	constexpr uint64_t owner = 0x4b4f554b55434f4dull;
+	auto& transition = m_CompositionCamera;
+	if (transition.ownerKey.empty()) return;
+	if (!m_pCamera || !m_pCamera->Is_PresentationOverrideOwnedBy(owner) ||
+		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
+	{ Stop_CompositionCamera(true); return; }
+	if (!transition.returning || !std::isfinite(timeDelta) || timeDelta < 0.f) return;
+	VALTAN_CINEMATIC_CAMERA_POSE target = transition.entryPose;
+	if (transition.followAtStart && !Resolve_CompositionFollowPose(target)) { Stop_CompositionCamera(true); return; }
+	transition.returnSeconds += timeDelta;
+	VALTAN_CINEMATIC_CAMERA_POSE applied = target;
+	if (transition.blendOutMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
+		transition.fromPose, target, transition.blendOutMs, transition.returnSeconds, applied, transition.easing))
+	{ Stop_CompositionCamera(true); return; }
+	if (!m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees))
+	{ Stop_CompositionCamera(true); return; }
+	transition.appliedPose = applied;
+	if (transition.returnSeconds * 1000.f >= float(transition.blendOutMs))
+	{
+		(void)m_pCamera->End_PresentationOverrideToPose(owner, target.vEye, target.vLookAt, target.fFovYDegrees);
+		if (transition.followAtStart)
+			(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset, CArenaCameraProfile::LookOffset(m_FollowCameraProfile),
+				m_FollowCameraProfile.rotationDegrees.z, m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
+		transition.ownerKey.clear(); transition.returning = false;
+	}
 }
 
 void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 {
+	if (!m_CompositionCamera.ownerKey.empty()) return;
 	if (nullptr == m_pCamera || m_CameraShots.empty())
 		return;
 	if (!m_pCamera->Is_FollowEnabled())
@@ -2367,4 +2856,137 @@ Client::CLevel_KakulSaydonArena::Create(
 	if (FAILED(instance->Initialize()))
 		return nullptr;
 	return instance;
+}
+
+
+void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
+    const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play,
+    const CWorldSequencePlayer::TARGET_SET& targets)
+{
+    using LostArk::Shared::WORLD_SEQUENCE_OPERATION;
+    if (play.iRunEpoch < m_iLatestWorldRunEpoch) return;
+    if (play.iRunEpoch > m_iLatestWorldRunEpoch)
+    {
+        for (auto& [id, cue] : m_OwnedWorldCues) cue.player->Stop_All(targets, true);
+        m_OwnedWorldCues.clear();
+        m_StoppedWorldOwners.clear();
+        m_ConsumedWorldCueIds.clear();
+        m_iLatestWorldRunEpoch = play.iRunEpoch;
+    }
+    const auto owner = std::to_string(play.iRunEpoch) + ":" + play.strMemberId;
+    const auto runOwner = std::to_string(play.iRunEpoch) + ":";
+    if (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER)
+    {
+        m_StoppedWorldOwners.insert(owner);
+        for (auto cue = m_OwnedWorldCues.begin(); cue != m_OwnedWorldCues.end();)
+            if (cue->second.runEpoch == play.iRunEpoch &&
+                (play.strMemberId.empty() || cue->second.memberId == play.strMemberId))
+            { cue->second.player->Stop_All(targets, true); cue = m_OwnedWorldCues.erase(cue); }
+            else ++cue;
+        return;
+    }
+    if (m_StoppedWorldOwners.contains(owner) || m_StoppedWorldOwners.contains(runOwner)) return;
+    const std::string key = owner + ":" + play.strCueId;
+    if (m_ConsumedWorldCueIds.contains(key)) return; // reliable resend is idempotent
+    if (m_ConsumedWorldCueIds.size() >= 65536u) { OutputDebugStringA("[KoukuWORLD] Run cue capacity exceeded.\n"); return; }
+    float seconds = 0.f;
+    const auto tick = (std::max)(play.iServerTick, m_Replication.Get_LastServerTick());
+    if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(tick, play.iStartTick, 30.f, seconds)) return;
+    const float ageMs = seconds * 1000.f;
+    if (play.iDurationMs && ageMs >= play.iDurationMs) return;
+    if (!play.strTargetSequenceInstanceId.empty())
+    {
+        OWNED_WORLD_CUE* target = nullptr;
+        for (auto& [id, cue] : m_OwnedWorldCues)
+            if (cue.runEpoch == play.iRunEpoch && cue.memberId == play.strMemberId &&
+                cue.sequenceId == play.strTargetSequenceInstanceId &&
+                (play.strTargetCueId.empty() || cue.cueId == play.strTargetCueId))
+            {
+                if (target) { OutputDebugStringA("[KoukuWORLD] Ambiguous owned motion target.\n"); return; }
+                target = &cue;
+            }
+        if (!target) { OutputDebugStringA("[KoukuWORLD] Owned motion target is unavailable.\n"); return; }
+        float motionSeconds = 0.f;
+        if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(play.iStartTick, target->startTick, 30.f, motionSeconds)) return;
+        const float present = (std::max)(target->clockMs, motionSeconds * 1000.f + ageMs);
+        if (!target->player->Seek_InstanceToMs(target->sequenceId, motionSeconds * 1000.f, targets) ||
+            !target->player->Apply_ObjectMotion(target->sequenceId, play.strSequenceInstanceId, targets))
+            OutputDebugStringA(("[KoukuWORLD] " + target->player->Get_Status() + "\n").c_str());
+        m_ConsumedWorldCueIds.insert(key);
+        target->clockMs = present;
+        (void)target->player->Seek_InstanceToMs(target->sequenceId, present, targets);
+        return;
+    }
+    for (auto old = m_OwnedWorldCues.begin(); old != m_OwnedWorldCues.end();)
+    {
+        float elapsed = 0.f;
+        if (old->second.durationMs && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+            tick, old->second.startTick, 30.f, elapsed) && elapsed * 1000.f >= old->second.durationMs)
+        { old->second.player->Stop_All(targets, true); old = m_OwnedWorldCues.erase(old); }
+        else ++old;
+    }
+    std::string status;
+    if (!Can_StartCompositionWorld(play.strSequenceInstanceId, status))
+    { OutputDebugStringA(("[KoukuWORLD] " + status + "\n").c_str()); return; }
+    auto player = std::make_shared<CWorldSequencePlayer>();
+    const auto placement = WorldPlacementFromCue(play);
+    if (!player->Set_Document(m_SequencePlayer.Get_Document(), targets, status) ||
+        !player->Prepare_InstanceResources(play.strSequenceInstanceId, targets) ||
+        !player->Play(play.strSequenceInstanceId, targets, play.fPlaybackSpeed,
+            float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), play.iDurationMs, placement) ||
+        !player->Seek_InstanceToMs(play.strSequenceInstanceId, ageMs, targets))
+    {
+        player->Stop_All(targets, true);
+        OutputDebugStringA(("[KoukuWORLD] " + (status.empty() ? player->Get_Status() : status) + "\n").c_str());
+        return;
+    }
+    OWNED_WORLD_CUE cue;
+    cue.runEpoch = play.iRunEpoch; cue.startTick = play.iStartTick; cue.durationMs = play.iDurationMs;
+    cue.memberId = play.strMemberId; cue.cueId = play.strCueId; cue.occurrenceId = play.strOccurrenceId; cue.sequenceId = play.strSequenceInstanceId;
+    cue.clockMs = ageMs; cue.player = std::move(player);
+    m_OwnedWorldCues.emplace(key, std::move(cue));
+    m_ConsumedWorldCueIds.insert(key);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
+    std::uint32_t runEpoch, const std::string& memberId, const std::string& sequenceId,
+    const std::string& cueId, float4x4_t& out) const
+{
+    const OWNED_WORLD_CUE* found = nullptr;
+    for (const auto& [id, cue] : m_OwnedWorldCues)
+        if (cue.runEpoch == runEpoch && cue.memberId == memberId && cue.sequenceId == sequenceId &&
+            (cueId.empty() || cue.occurrenceId == cueId))
+        {
+            if (found) return false;
+            found = &cue;
+        }
+    return found && found->player->Try_GetSequencePivot(sequenceId, out);
+}
+
+
+bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
+    const std::string& instanceId, std::string& status, const CWorldSequenceDocument* sourceDocument) const
+{
+    const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
+    const auto* source = document.Find_Instance(instanceId);
+    if (!source) { status = "WORLD instance is unavailable: " + instanceId; return false; }
+    std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> sharedTargets;
+    for (const auto& binding : source->bindings)
+        if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+            sharedTargets.emplace(binding.targetKind, binding.targetId);
+    if (sharedTargets.empty()) return true;
+    const auto conflicts = [&](const CWorldSequencePlayer& player)
+    {
+        for (const auto& active : player.Get_Document().Get_Instances())
+            if (player.Is_Playing(active.instanceId))
+                for (const auto& binding : active.bindings)
+                    if (sharedTargets.contains({binding.targetKind, binding.targetId})) return true;
+        return false;
+    };
+    if (conflicts(m_SequencePlayer))
+    { status = "WORLD map/deploy target is already owned by an active level cue: " + instanceId; return false; }
+    for (const auto& [id, cue] : m_OwnedWorldCues)
+        if (conflicts(*cue.player))
+        { status = "WORLD map/deploy target is already owned by another run/member cue: " + instanceId; return false; }
+    return true;
 }

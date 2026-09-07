@@ -185,7 +185,8 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests(bool, bool);
+		friend int Run_ServerGameplayContractTests(bool, bool, bool);
+		friend int Run_ServerKoukuSupportSurfaceContractTests();
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -458,25 +459,52 @@ namespace LostArk::Server
 			ACTIVE
 		};
 
-		struct KOUKUSAYDON_PATTERN_AUDITION_STATE final
+		struct KOUKUSAYDON_PATTERN_AUDITION_MEMBER final
 		{
-			KOUKUSAYDON_PATTERN_AUDITION_PHASE ePhase =
-				KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE;
-			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
-			LostArk::Shared::
-				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST Request;
-			std::uint32_t iRoomAuditionEpoch = 0u;
-			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
-				LostArk::Shared::INVALID_NET_ENTITY_ID;
-			LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
-			std::uint32_t iPinnedSourceRevision = 0u;
+			std::string strMemberId;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			KOUKUSAYDON_PATTERN_AUDITION_PHASE ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
 			std::vector<std::string> PatternIds;
 			std::vector<std::uint32_t> TransitionTicks;
 			std::size_t iPatternIndex = 0u;
 			std::uint32_t iNextStartTick = 0u;
-			/* Logic windows and presentation cues of the running occurrence. */
+			std::uint32_t iScheduledStartTick = 0u;
+			std::uint32_t iPatternSequence = 0u;
+			bool bCompleted = false;
+			bool bOwnsPlayerMode = false;
 			KOUKUSAYDON_LOGIC_LEDGER LogicLedger;
+			std::uint32_t iNextWorldCue = 1u;
+			std::unordered_map<std::string, std::string> WorldCueByInstance;
+			std::unordered_map<std::string, std::string> WorldCueByOccurrence;
 		};
+		struct KOUKU_SCHEDULED_SUPPORT_SURFACE final
+		{
+			std::string strMemberId;
+			std::uint32_t iStartTick = 0u;
+			std::uint32_t iEndTick = 0u;
+			SERVER_NAVIGATION_SUPPORT_SURFACE Surface;
+		};
+		struct KOUKUSAYDON_PATTERN_AUDITION_STATE final
+		{
+			KOUKUSAYDON_PATTERN_AUDITION_PHASE ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE;
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST Request;
+			std::uint32_t iRoomAuditionEpoch = 0u;
+			std::uint32_t iCommonStartTick = 0u;
+			LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
+			std::uint32_t iPinnedSourceRevision = 0u;
+			std::vector<KOUKUSAYDON_PATTERN_AUDITION_MEMBER> Members;
+			std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> WorldPlays;
+			std::vector<KOUKU_SCHEDULED_SUPPORT_SURFACE> SupportSchedule;
+		};
+		KOUKUSAYDON_PATTERN_AUDITION_MEMBER* Find_KoukuAuditionMember(LostArk::Shared::NET_ENTITY_ID bossId);
+		KOUKUSAYDON_LOGIC_LEDGER* Active_KoukuPlayerLedger();
+		void Prepare_KoukuAuditionTick(std::uint32_t serverTick);
+		bool Refresh_KoukuSupportSurfaces(std::uint32_t serverTick);
+		bool Build_KoukuBundleState(LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& message) const;
+		void Broadcast_KoukuBundleState(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state);
+		void Broadcast_OwnedWorldSequence(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& message);
+		void Stop_KoukuWorldOwner(const std::string& memberId = {});
 
 		struct KOUKUSAYDON_PATTERN_AUDITION_RECEIPT final
 		{
@@ -495,9 +523,9 @@ namespace LostArk::Server
 			std::uint32_t stageIndex,
 			LostArk::Shared::
 				KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state,
-			std::string reason = {});
+			std::string reason = {}, LostArk::Shared::NET_ENTITY_ID bossId = LostArk::Shared::INVALID_NET_ENTITY_ID);
 		bool Flush_KoukuSaydonPatternAuditionLifecycle();
-		void Clear_KoukuSaydonPatternAudition();
+		void Clear_KoukuSaydonPatternAudition(bool completed = false);
 #endif
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
 		SERVER_WORLD_ENTITY* Find_AuditionBoss(
@@ -871,7 +899,7 @@ namespace LostArk::Server
 		void Broadcast_WorldSequencePlay(
 			const std::string& instanceId, float playbackSpeed = 1.f,
 			float positionOffsetX = 0.f, float positionOffsetY = 0.f, float positionOffsetZ = 0.f,
-			std::uint32_t durationMs = 0u);
+			std::uint32_t durationMs = 0u, const std::string& targetSequenceInstanceId = {});
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);

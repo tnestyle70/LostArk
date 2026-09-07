@@ -11,6 +11,7 @@
 #include <limits>
 #include <new>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -381,7 +382,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -394,6 +395,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 			object.displayName = row.Find("displayName")->Get_String();
 			object.modelAssetId = row.Find("modelAssetId")->Get_String();
 			object.animated = row.Find("animated")->Get_Boolean();
+			if (const auto* motion = row.Find("defaultMotionInstanceId"))
+			{
+				if (!motion->Is_String()) { outStatus = "Default Motion instance ID must be text"; return false; }
+				object.defaultMotionInstanceId = motion->Get_String();
+			}
 			if (const auto* anchor = row.Find("anchorKind"))
 			{
 				if (!anchor->Is_String()) { outStatus = "World object resource anchor must be WORLD or PLAYER"; return false; }
@@ -528,24 +534,23 @@ bool_t Client::CWorldSequenceDocument::Load(
 			for (const DATA_JSON_VALUE& trackValue :
 				animationTracks->Get_Array())
 			{
-				if (!Is_ExactObject(trackValue,
+				if (!Is_ObjectShape(trackValue,
 						{ "slotId", "clipName", "playbackRate", "loop",
-						  "holdLastFrame" }) &&
-					!Is_ExactObject(trackValue,
-						{ "slotId", "clipName", "playbackRate", "loop",
-						  "holdLastFrame", "startMs" }))
+						  "holdLastFrame" }, { "startMs", "displayName" }))
 				{
 					outStatus = "World sequence animation track shape is invalid";
 					return false;
 				}
 				const DATA_JSON_VALUE* slotId = trackValue.Find("slotId");
 				const DATA_JSON_VALUE* clipName = trackValue.Find("clipName");
+				const DATA_JSON_VALUE* trackDisplayName = trackValue.Find("displayName");
 				const DATA_JSON_VALUE* loop = trackValue.Find("loop");
 				const DATA_JSON_VALUE* holdLastFrame =
 					trackValue.Find("holdLastFrame");
 				WORLD_SEQUENCE_ANIMATION_TRACK parsedTrack;
 				if (nullptr == slotId || !slotId->Is_String() ||
 					nullptr == clipName || !clipName->Is_String() ||
+					(nullptr != trackDisplayName && !trackDisplayName->Is_String()) ||
 					!Read_FiniteFloat(trackValue.Find("playbackRate"),
 						parsedTrack.playbackRate) ||
 					nullptr == loop || !loop->Is_Boolean() ||
@@ -563,6 +568,8 @@ bool_t Client::CWorldSequenceDocument::Load(
 				}
 				parsedTrack.slotId = slotId->Get_String();
 				parsedTrack.clipName = clipName->Get_String();
+				if (nullptr != trackDisplayName)
+					parsedTrack.displayName = trackDisplayName->Get_String();
 				parsedTrack.loop = loop->Get_Boolean();
 				parsedTrack.holdLastFrame = holdLastFrame->Get_Boolean();
 				parsedTemplate.animationTracks.push_back(std::move(parsedTrack));
@@ -575,7 +582,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	{
 		if (!Is_ObjectShape(instanceValue,
 			{ "instanceId", "templateId", "enabled", "startDelayMs",
-			  "playbackSpeed", "bindings" }, { "anchorKind", "position" }))
+			  "playbackSpeed", "bindings" }, { "anchorKind", "position", "motionEnd", "nextMotionId", "walkableSurface" }))
 		{
 			outStatus = "World sequence instance shape is invalid";
 			return false;
@@ -608,6 +615,24 @@ bool_t Client::CWorldSequenceDocument::Load(
 			(position && !Read_Float3(position, parsedInstance.position)))
 		{ outStatus = "World object instance anchor is invalid"; return false; }
 		if (anchor) parsedInstance.anchorKind = anchor->Get_String();
+		const DATA_JSON_VALUE* motionEnd = instanceValue.Find("motionEnd");
+		const DATA_JSON_VALUE* nextMotionId = instanceValue.Find("nextMotionId");
+		if ((parsedFormatVersion < 3u && (motionEnd || nextMotionId)) ||
+			(motionEnd && (!motionEnd->Is_String() ||
+				!Try_ParseMotionEnd(motionEnd->Get_String(), parsedInstance.motionEnd))) ||
+			(nextMotionId && !nextMotionId->Is_String()))
+		{ outStatus = "World object motion completion is invalid"; return false; }
+		if (nextMotionId) parsedInstance.nextMotionId = nextMotionId->Get_String();
+		if (const DATA_JSON_VALUE* surface = instanceValue.Find("walkableSurface"))
+		{
+			WORLD_SEQUENCE_WALKABLE_SURFACE parsed;
+			if (parsedFormatVersion < 3u || !Is_ExactObject(*surface, { "radiusM", "localHeightM" }) ||
+				!Read_FiniteFloat(surface->Find("radiusM"), parsed.radiusM) ||
+				!Read_FiniteFloat(surface->Find("localHeightM"), parsed.localHeightM))
+			{ outStatus = "Invalid walkable surface fields: " + parsedInstance.instanceId; return false; }
+			parsedInstance.walkableSurface = parsed;
+		}
+
 		for (const DATA_JSON_VALUE& bindingValue : bindings->Get_Array())
 		{
 			const bool_t validBindingShape =
@@ -714,7 +739,10 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"modelPreScale\": " << object.modelPreScale << ",\n"
 			<< "      \"animated\": " << (object.animated ? "true" : "false") << ",\n"
 			<< "      \"scale\": [" << object.scale.x << ", " << object.scale.y << ", " << object.scale.z << "],\n"
-			<< "      \"sequenceInstanceId\": \"" << CDataJson::Escape(object.sequenceInstanceId) << "\"\n    }";
+			<< "      \"sequenceInstanceId\": \"" << CDataJson::Escape(object.sequenceInstanceId) << "\"";
+		if (!object.defaultMotionInstanceId.empty())
+			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
+		output << "\n    }";
 	}
 	output << (m_ObjectResources.empty() ? "],\n" : "\n  ],\n")
 		<< "  \"templates\": [";
@@ -781,7 +809,10 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< CDataJson::Escape(track.slotId)
 				<< "\", \"clipName\": \""
 				<< CDataJson::Escape(track.clipName)
-				<< "\", \"startMs\": " << track.startMs
+				<< "\"";
+			if (!track.displayName.empty())
+				output << ", \"displayName\": \"" << CDataJson::Escape(track.displayName) << "\"";
+			output << ", \"startMs\": " << track.startMs
 					<< ", \"playbackRate\": " << track.playbackRate
 				<< ", \"loop\": " << (track.loop ? "true" : "false")
 				<< ", \"holdLastFrame\": "
@@ -805,7 +836,13 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"playbackSpeed\": " << value.playbackSpeed << ",\n"
 			<< "      \"anchorKind\": \"" << CDataJson::Escape(value.anchorKind) << "\",\n"
 			<< "      \"position\": [" << value.position.x << ", " << value.position.y << ", " << value.position.z << "],\n"
-			<< "      \"bindings\": [";
+			<< "      \"motionEnd\": \"" << MotionEnd_ToString(value.motionEnd) << "\",\n"
+			<< "      \"nextMotionId\": \"" << CDataJson::Escape(value.nextMotionId) << "\",\n"
+			;
+		if (value.walkableSurface)
+			output << "      \"walkableSurface\": { \"radiusM\": " << value.walkableSurface->radiusM
+				<< ", \"localHeightM\": " << value.walkableSurface->localHeightM << " },\n";
+		output << "      \"bindings\": [";
 		for (size_t bindingIndex = 0; bindingIndex < value.bindings.size();
 			++bindingIndex)
 		{
@@ -869,6 +906,18 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		{
 			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
 			return false;
+		}
+		if (!object.defaultMotionInstanceId.empty())
+		{
+			const auto* motion = Find_Instance(object.defaultMotionInstanceId);
+			if (!Is_ValidStableId(object.defaultMotionInstanceId) || nullptr == motion || !motion->enabled ||
+				(alias ? object.defaultMotionInstanceId != object.sequenceInstanceId :
+					(motion->bindings.size() != 1u || motion->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+					 motion->bindings.front().targetId != object.objectId)))
+			{
+				outStatus = "Default Motion must be an enabled instance of the same Object: " + object.objectId;
+				return false;
+			}
 		}
 	}
 	std::unordered_set<std::string> templateIds;
@@ -944,6 +993,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			if (!Is_ValidStableId(track.slotId) || track.clipName.empty() ||
 				track.clipName.size() > 128u ||
 				!Is_ValidUtf8DisplayText(track.clipName) ||
+				track.displayName.size() > 128u ||
+				!Is_ValidUtf8DisplayText(track.displayName) ||
 				!std::isfinite(track.playbackRate) || track.playbackRate < 0.05f ||
 				track.playbackRate > 8.f ||
 				track.startMs >= value.durationMs ||
@@ -986,6 +1037,28 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		{
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
 			return false;
+		}
+		if (value.walkableSurface)
+		{
+			const auto& surface = *value.walkableSurface;
+			if (!std::isfinite(surface.radiusM) || surface.radiusM < 0.001f || surface.radiusM > 1000.f ||
+				!std::isfinite(surface.localHeightM) || std::abs(surface.localHeightM) > 10000.f ||
+				value.bindings.size() != 1u || value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT ||
+				value.anchorKind != "WORLD" || value.motionEnd != WORLD_SEQUENCE_MOTION_END::STOP ||
+				targetTemplate->tracks.size() != 1u || !targetTemplate->animationTracks.empty())
+			{ outStatus = "Walkable surface requires one static Map placement: " + value.instanceId; return false; }
+			const auto& keys = targetTemplate->tracks.front().keys;
+			const auto& first = keys.front();
+			for (const auto& key : keys)
+			{
+				if (std::abs(key.rotationQuaternion.x) > 0.00001f || std::abs(key.rotationQuaternion.z) > 0.00001f ||
+					key.positionOffset.x != first.positionOffset.x || key.positionOffset.y != first.positionOffset.y ||
+					key.positionOffset.z != first.positionOffset.z || key.scaleMultiplier.x != first.scaleMultiplier.x ||
+					key.scaleMultiplier.y != first.scaleMultiplier.y || key.scaleMultiplier.z != first.scaleMultiplier.z ||
+					key.scaleMultiplier.x <= 0.f || key.scaleMultiplier.y <= 0.f ||
+					std::abs(key.scaleMultiplier.x - key.scaleMultiplier.z) > 0.00001f)
+				{ outStatus = "Walkable surface needs fixed position/scale and Y rotation only: " + value.instanceId; return false; }
+			}
 		}
 		std::unordered_set<std::string> boundSlots;
 		std::unordered_set<std::string> boundTargets;
@@ -1084,6 +1157,10 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			}
 			const float3_t& baselineScale =
 				placement->second.signedScale;
+			if (value.walkableSurface && (baselineScale.x <= 0.f || baselineScale.y <= 0.f ||
+				std::abs(baselineScale.x - baselineScale.z) > 0.00001f))
+			{ outStatus = "Walkable surface placement scale must be positive and uniform in X/Z: " + value.instanceId; return false; }
+
 			for (const WORLD_SEQUENCE_TRANSFORM_KEY& key : transformSlot->keys)
 			{
 				const double scaleX = static_cast<double>(baselineScale.x) *
@@ -1110,6 +1187,38 @@ bool_t Client::CWorldSequenceDocument::Validate(
 					return false;
 				}
 			}
+		}
+	}
+	/* Resolve completion links only after every instance and binding is valid.
+	   A motion changes the existing object, so it cannot switch resource or slot. */
+	for (const WORLD_SEQUENCE_INSTANCE& value : m_Instances)
+	{
+		const bool_t next = value.motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT;
+		if (std::string_view(MotionEnd_ToString(value.motionEnd)) == "INVALID" ||
+			(next ? !Is_ValidStableId(value.nextMotionId) : !value.nextMotionId.empty()) ||
+			(value.motionEnd != WORLD_SEQUENCE_MOTION_END::STOP &&
+				(value.bindings.size() != 1u || value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)))
+		{ outStatus = "Invalid world object motion completion: " + value.instanceId; return false; }
+		if (!next) continue;
+		const auto* target = Find_Instance(value.nextMotionId);
+		if (!target || !target->enabled || target->bindings.size() != 1u ||
+			target->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+			target->bindings.front().targetId != value.bindings.front().targetId ||
+			target->bindings.front().slotId != value.bindings.front().slotId ||
+			Find_Template(value.templateId)->objectMotion.count != 1u ||
+			Find_Template(target->templateId)->objectMotion.count != 1u)
+		{ outStatus = "NEXT motion must target an enabled single object state with the same resource and slot: " + value.instanceId; return false; }
+	}
+	for (const WORLD_SEQUENCE_INSTANCE& value : m_Instances)
+	{
+		std::unordered_set<std::string> visited;
+		const WORLD_SEQUENCE_INSTANCE* current = &value;
+		uint32_t depth = 0u;
+		while (current->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
+		{
+			if (!visited.insert(current->instanceId).second || ++depth > 32u)
+			{ outStatus = "World object NEXT motion chain contains a cycle or exceeds 32 links: " + value.instanceId; return false; }
+			current = Find_Instance(current->nextMotionId);
 		}
 	}
 	outStatus = "World sequence document is valid";
@@ -1225,7 +1334,8 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.anchorKind != right.anchorKind ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
-			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId) return false;
+			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
+			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;
 	}
 	for (size_t templateIndex = 0u; templateIndex < m_Templates.size();
 		++templateIndex)
@@ -1283,6 +1393,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			if (leftTrack.slotId != rightTrack.slotId ||
 				leftTrack.startMs != rightTrack.startMs ||
 				leftTrack.clipName != rightTrack.clipName ||
+				leftTrack.displayName != rightTrack.displayName ||
 				!sameFloat(leftTrack.playbackRate, rightTrack.playbackRate) ||
 				leftTrack.loop != rightTrack.loop ||
 				leftTrack.holdLastFrame != rightTrack.holdLastFrame)
@@ -1301,10 +1412,14 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.startDelayMs != right.startDelayMs ||
 			!sameFloat(left.playbackSpeed, right.playbackSpeed) ||
 			left.bindings.size() != right.bindings.size() || left.anchorKind != right.anchorKind ||
-			!sameFloat3(left.position, right.position))
+			!sameFloat3(left.position, right.position) ||
+			left.motionEnd != right.motionEnd || left.nextMotionId != right.nextMotionId)
 		{
 			return false;
 		}
+		if (left.walkableSurface.has_value() != right.walkableSurface.has_value() ||
+			(left.walkableSurface && (!sameFloat(left.walkableSurface->radiusM, right.walkableSurface->radiusM) ||
+				!sameFloat(left.walkableSurface->localHeightM, right.walkableSurface->localHeightM)))) return false;
 		for (size_t bindingIndex = 0u; bindingIndex < left.bindings.size();
 			++bindingIndex)
 		{
@@ -1377,6 +1492,30 @@ bool_t Client::CWorldSequenceDocument::Try_ParseTargetKind(
 		outTargetKind = WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
 	else
 		return false;
+	return true;
+}
+
+const char_t* Client::CWorldSequenceDocument::MotionEnd_ToString(
+	const WORLD_SEQUENCE_MOTION_END motionEnd)
+{
+	switch (motionEnd)
+	{
+	case WORLD_SEQUENCE_MOTION_END::STOP: return "STOP";
+	case WORLD_SEQUENCE_MOTION_END::HOLD: return "HOLD";
+	case WORLD_SEQUENCE_MOTION_END::LOOP: return "LOOP";
+	case WORLD_SEQUENCE_MOTION_END::NEXT: return "NEXT";
+	default: return "INVALID";
+	}
+}
+
+bool_t Client::CWorldSequenceDocument::Try_ParseMotionEnd(
+	const std::string& value, WORLD_SEQUENCE_MOTION_END& outMotionEnd)
+{
+	if (value == "STOP") outMotionEnd = WORLD_SEQUENCE_MOTION_END::STOP;
+	else if (value == "HOLD") outMotionEnd = WORLD_SEQUENCE_MOTION_END::HOLD;
+	else if (value == "LOOP") outMotionEnd = WORLD_SEQUENCE_MOTION_END::LOOP;
+	else if (value == "NEXT") outMotionEnd = WORLD_SEQUENCE_MOTION_END::NEXT;
+	else return false;
 	return true;
 }
 

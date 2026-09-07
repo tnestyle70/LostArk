@@ -1,6 +1,9 @@
 #include "imgui.h"
 
 #include "Effect_Tool.h"
+#include "EffectAuthoringResourceTree.h"
+#include "EffectAuthoringSequencer.h"
+#include "EffectAuthoringV2Pane.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
@@ -3110,6 +3113,8 @@ Client::CEffect_Tool::CEffect_Tool(
 
 Client::CEffect_Tool::~CEffect_Tool()
 {
+    Deactivate_AuthoringWorkspace();
+    m_pAuthoringSequencer.reset();
 	if (m_ValtanPatternProductUnlinkOperation.has_value() &&
 		nullptr != m_ValtanPatternProductUnlinkOperation->hProcess)
 	{
@@ -3384,6 +3389,16 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	Update_ValtanPatternProductEffectUnlink();
     m_pThumbnailCache->Begin_Frame(m_iFrameNumber);
 	m_pCharacterPreviewPanel->Refresh_Level();
+    if (m_pAuthoringSequencer)
+    {
+        m_pCharacterPreviewPanel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::EFFECT_TOOL, false, {});
+        if (m_pAuthoringSequencer->Is_Active())
+        {
+            m_bPreviewPlaying = false;
+            if (auto preview = m_pWorldPreviewObject.lock()) preview->Set_Visible(false);
+            return;
+        }
+    }
 	const bool_t bStandaloneValtanEffectActive =
 		m_ActiveDocument.has_value() &&
 		EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT ==
@@ -3404,7 +3419,7 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	   target lock; the exact idle-boss lifecycle must not be overwritten by a
 	   second authoring Tool mid-sample. */
 	const bool_t bEffectDraftNeedsPreviewLock =
-		(!bStaticAreaEffectActive && Has_UnsavedWork()) ||
+		(!m_pAuthoringSequencer && !bStaticAreaEffectActive && Has_UnsavedWork()) ||
 		bCombatObjectIndependentPreviewActive;
     m_pCharacterPreviewPanel->Set_SessionLock(
 		CHARACTER_PREVIEW_LOCK_OWNER::EFFECT_TOOL,
@@ -3774,13 +3789,14 @@ void Client::CEffect_Tool::Render()
         Engine::CProfilerScope WindowProfile(
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.AllEffectsWindow");
-        Render_AllEffectsWindow();
+        if (!m_pAuthoringResources) Render_AllEffectsWindow();
     }
     {
         Engine::CProfilerScope WindowProfile(
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.DataFilesWindow");
         Render_DataFilesWindow();
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Render_Sequencer();
     }
     {
         Engine::CProfilerScope TrimProfile(
@@ -3798,6 +3814,14 @@ void Client::CEffect_Tool::Render_EffectToolWindow()
     Render_PendingDocumentLoadModal();
     if (!bWindowVisible)
     {
+        ImGui::End();
+        return;
+    }
+    if (m_bAuthoringV2Selected && m_pAuthoringV2)
+    {
+        m_pAuthoringV2->Render_ToolContents();
+        Render_AuthoringCommands();
+        m_pAuthoringV2->Render_ResourceContents();
         ImGui::End();
         return;
     }
@@ -4420,6 +4444,7 @@ void Client::CEffect_Tool::Render_ResourceGrid(
 {
     Engine::CProfilerScope Profile(
         CGameInstance::Get().Get_Profiler(), "EffectTool.ResourceGrid");
+    if (Render_WorldObjectResourceGrid(bMeshAuthoringDraft)) return;
     const EFFECT_ELEMENT_DESC* pElement = bMeshAuthoringDraft ?
         &m_MeshAuthoringDraft : Find_SelectedElement();
 	const EFFECT_MATERIAL_TEXTURE_LANE_DESC* pMaterialLane =
@@ -4826,6 +4851,19 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     ImGui::SetNextWindowBgAlpha(0.f);
     if (!ImGui::Begin("Model View"))
     {
+        ImGui::End();
+        return;
+    }
+    if (m_pAuthoringSequencer)
+    {
+        m_pCharacterPreviewPanel->Render_Selector(false, {}, true);
+        m_pAuthoringSequencer->Render_ModelView();
+        if (ImGui::CollapsingHeader("Native Clip Preview"))
+        {
+            ImGui::BeginDisabled(m_pAuthoringSequencer->Owns_ModelClock());
+            Render_AnimationControls(CAnimationTargetService::Resolve_Model());
+            ImGui::EndDisabled();
+        }
         ImGui::End();
         return;
     }
@@ -6248,10 +6286,16 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 
 void Client::CEffect_Tool::Render_EffectDetailWindow()
 {
-    ImGui::SetNextWindowPos(ImVec2(1110.f, 35.f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(1545.f, 35.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(430.f, 660.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Effect Detail"))
     {
+        ImGui::End();
+        return;
+    }
+    if (m_bAuthoringV2Selected && m_pAuthoringV2)
+    {
+        m_pAuthoringV2->Render_DetailContents();
         ImGui::End();
         return;
     }
@@ -12242,6 +12286,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		if (ImGui::SmallButton("Clear Marks"))
 			m_MarkedElementIds.clear();
 	}
+    Render_AuthoringCommands();
 	ImGui::TextDisabled(
 		"Ctrl or Shift click Element rows to mark several, then Delete or Duplicate all marked. Copies stay marked and preserve timing; adjust Start Delay for later hits.");
 	ImGui::SameLine();
@@ -19768,6 +19813,7 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
 
 void Client::CEffect_Tool::Render_DataFilesWindow()
 {
+    if (m_pAuthoringResources) { Render_AuthoringResourceTree(); return; }
     ImGui::SetNextWindowPos(ImVec2(10.f, 705.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(760.f, 560.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Data Files"))
@@ -21088,7 +21134,7 @@ bool_t Client::CEffect_Tool::Try_BindMeshAuthoringResource(
                 Entry.strDomainId == m_strSelectedAuthoringDomainId &&
                 Entry.eFileKind == eExpectedKind;
         });
-    if (CatalogEntry == m_ResourceCatalog.end())
+    if (CatalogEntry == m_ResourceCatalog.end() && !Is_AuthoringWorldResource(strAssetId, eExpectedKind))
     {
         m_strResourceStatus =
             "The selected resource is outside the active domain or file kind.";
@@ -22009,6 +22055,8 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
 				ProductReloadStatus;
     }
 
+    Attach_AuthoringSaved();
+
     return true;
 }
 
@@ -22733,6 +22781,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
+    m_bAuthoringV2Selected = false;
 	m_ActiveRegistryBoundAuditionProvenance =
 		std::move(StagedAuditionProvenance);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
@@ -22836,7 +22885,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 				"Static Area placement transform was invalid after document commit.";
 		}
 	}
-	else
+	else if (!m_pAuthoringSequencer)
 	{
 		Synchronize_LoadedSkillPreview();
 	}
@@ -26037,7 +26086,7 @@ bool_t Client::CEffect_Tool::Try_BindResource(
                 Entry.strDomainId == m_strSelectedAuthoringDomainId &&
                 Entry.eFileKind == eExpectedKind;
         });
-    if (CatalogEntry == m_ResourceCatalog.end())
+    if (CatalogEntry == m_ResourceCatalog.end() && !Is_AuthoringWorldResource(strAssetId, eExpectedKind))
     {
         m_strResourceStatus =
             "Selected resource is outside the active authoring category or file kind.";
@@ -26454,6 +26503,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
 bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
     const EFFECT_PREVIEW_FILTER eFilter)
 {
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) m_pAuthoringSequencer->Stop();
     if (EFFECT_PREVIEW_FILTER::END == eFilter)
         return false;
     if (!m_ActiveDocument.has_value())
@@ -30456,6 +30506,7 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) return m_pAuthoringSequencer->Refresh_Effects();
 	if (m_ValtanCombatObjectIndependentPreview.has_value())
 	{
 		m_strPreviewStatus =
@@ -33510,4 +33561,33 @@ Client::CEffect_Tool::Find_SelectedModelCue() const
 		m_ActiveDocument->ModelCues.end(), [this](const EFFECT_MODEL_CUE_DESC& Cue)
 		{ return Cue.strCueId == m_strSelectedModelCueId; });
 	return Iterator == m_ActiveDocument->ModelCues.end() ? nullptr : &*Iterator;
+}
+
+
+bool Client::CEffect_Tool::Resolve_AuthoringSourceAnchors(
+    const std::shared_ptr<CEffectObject>& object, const float4x4_t& root, const bool useKouku,
+    std::unordered_map<std::string, float4x4_t>& anchors, std::string& error)
+{
+    anchors.clear();
+    const auto found = m_AuthoringOccurrenceDocuments.find(object.get());
+    if (found == m_AuthoringOccurrenceDocuments.end())
+    { error = "Effect occurrence has no immutable source document."; return false; }
+    const auto requests = Collect_ToolSourceAnchorRequests(*found->second);
+    if (requests.empty()) { error.clear(); return true; }
+    if (useKouku)
+    {
+        error = "This V1 Effect requires source bone attachments. Select its character in Model View; the Kouku model-reference adapter currently supplies root attachments only.";
+        return false;
+    }
+    if (!Resolve_ToolSourceAnchorWorlds(*found->second, nullptr, anchors, error)) return false;
+    float4x4_t modelRoot;
+    if (!CAnimationTargetService::Resolve_RootTransform(&modelRoot))
+    { error = "The selected model root is unavailable for source attachments."; return false; }
+    vector_t determinant;
+    const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&modelRoot));
+    if (!std::isfinite(XMVectorGetX(determinant)) || std::fabs(XMVectorGetX(determinant)) < 1e-12f)
+    { error = "The selected model root is singular."; return false; }
+    const matrix_t delta = inverse * XMLoadFloat4x4(&root);
+    for (auto& [slot, world] : anchors) XMStoreFloat4x4(&world, XMLoadFloat4x4(&world) * delta);
+    return true;
 }

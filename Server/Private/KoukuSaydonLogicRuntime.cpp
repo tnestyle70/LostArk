@@ -1,6 +1,7 @@
 #include "KoukuSaydonLogicRuntime.h"
 
 #include "ServerCombatHitRuntime.h"
+#include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -109,7 +110,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 			ledger.eHudMode = LostArk::Shared::KOUKU_HUD_MODE::DANCE;
 		}
 		ledger.Windows.push_back(std::move(state));
+		if (window.eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT)
+			ledger.ContactWindowOrder.push_back(static_cast<std::uint32_t>(index));
 	}
+	std::sort(ledger.ContactWindowOrder.begin(), ledger.ContactWindowOrder.end(), [&](const auto a, const auto b) {
+		const auto& first = pattern.LogicWindows[a]; const auto& second = pattern.LogicWindows[b];
+		return first.iContactPriority != second.iContactPriority ? first.iContactPriority > second.iContactPriority : first.strWindowId < second.strWindowId;
+	});
 	for (std::size_t index = 0u; index < pattern.MechanicTriggers.size(); ++index)
 	{
 		KOUKUSAYDON_LOGIC_CUE_STATE cue{};
@@ -130,9 +137,15 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 
 namespace
 {
-	bool Contains_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
+	struct LOGIC_REGION_TRANSFORM final
+	{
+		float centerX = 0.f, centerZ = 0.f, yaw = 0.f;
+		float halfX = 0.f, halfZ = 0.f, radius = 0.f;
+	};
+
+	bool Resolve_LogicRegionTransform(const LostArk::Server::BOSS_LOGIC_REGION& region,
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
-		const LostArk::Server::SERVER_PLAYER& player, const std::uint32_t patternElapsedTicks = 0u) noexcept
+		const std::uint32_t patternElapsedTicks, LOGIC_REGION_TRANSFORM& outTransform) noexcept
 	{
 		using namespace LostArk::Server;
 		float centerX = region.fCenterX, centerZ = region.fCenterZ, yaw = region.fYawDegrees;
@@ -143,7 +156,9 @@ namespace
 			if (track.Keys.empty()) return false;
 			const std::uint32_t startTicks = CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs);
 			if (patternElapsedTicks < startTicks) return false;
-			const double delayed = static_cast<double>(patternElapsedTicks - startTicks) * (1000.0 / 30.0) - track.iStartDelayMs;
+			const double delayed = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region.eAnchor ?
+				static_cast<double>(patternElapsedTicks) * (1000.0 / 30.0) - track.iStartMs - track.iStartDelayMs :
+				static_cast<double>(patternElapsedTicks - startTicks) * (1000.0 / 30.0) - track.iStartDelayMs;
 			if (delayed < 0.0) return false;
 			const double timeMs = (std::min)(static_cast<double>(track.iDurationMs), delayed * track.fPlaybackSpeed);
 			const auto next = std::upper_bound(track.Keys.begin(), track.Keys.end(), timeMs,
@@ -186,11 +201,14 @@ namespace
 				std::sin(worldRadians) * region.fCenterX * sx + std::cos(worldRadians) * region.fCenterZ * sz;
 			yaw += worldYaw; halfX *= sx; halfZ *= sz; radius *= sx;
 		}
-		else if (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region.eAnchor)
+		if (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region.eAnchor)
 		{
+			// A baked bone tip is boss-local. Apply the live authoritative root once,
+			// after its track and the authored TARGET_YAW offset have been combined.
 			const float radians = boss.fYawDegrees * 0.017453292519943295f;
-			centerX = boss.fPositionX + std::cos(radians) * region.fCenterX + std::sin(radians) * region.fCenterZ;
-			centerZ = boss.fPositionZ - std::sin(radians) * region.fCenterX + std::cos(radians) * region.fCenterZ;
+			const float localX = centerX, localZ = centerZ;
+			centerX = boss.fPositionX + std::cos(radians) * localX + std::sin(radians) * localZ;
+			centerZ = boss.fPositionZ - std::sin(radians) * localX + std::cos(radians) * localZ;
 			yaw += boss.fYawDegrees;
 		}
 		if (BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN == region.eAnchor)
@@ -198,6 +216,17 @@ namespace
 			centerX += boss.fSpawnPositionX;
 			centerZ += boss.fSpawnPositionZ;
 		}
+		outTransform = { centerX, centerZ, yaw, halfX, halfZ, radius };
+		return true;
+	}
+
+	bool Contains_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Server::SERVER_PLAYER& player, const std::uint32_t patternElapsedTicks = 0u) noexcept
+	{
+		LOGIC_REGION_TRANSFORM transform;
+		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
+		const auto [centerX, centerZ, yaw, halfX, halfZ, radius] = transform;
 		const float dx = player.fPositionX - centerX, dz = player.fPositionZ - centerZ;
 		if (!std::isfinite(dx) || !std::isfinite(dz)) return false;
 		const float radians = yaw * 0.017453292519943295f;
@@ -211,6 +240,26 @@ namespace
 		const float angle = std::atan2(localX, localZ) * 57.29577951308232f;
 		// A shared radial edge belongs to exactly one sector.
 		return angle >= -region.fHalfAngleDegrees && angle < region.fHalfAngleDegrees;
+	}
+
+	bool Intersects_LogicRegion(const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ& target,
+		const std::uint32_t patternElapsedTicks) noexcept
+	{
+		using namespace LostArk::Shared::CombatCollision;
+		LOGIC_REGION_TRANSFORM transform;
+		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
+		const auto [centerX, centerZ, yaw, halfX, halfZ, radius] = transform;
+		if (region.bCircle) return Circles_Overlap(CIRCLE_XZ{ centerX, centerZ, radius }, target);
+		const float radians = yaw * 0.017453292519943295f;
+		const float forwardX = std::sin(radians), forwardZ = std::cos(radians);
+		if (region.bSector)
+			return Circle_IntersectsCone(target, centerX, centerZ, forwardX, forwardZ,
+				radius, region.fHalfAngleDegrees * 2.f);
+		// The shared box starts at its rear edge and extends along local +Z.
+		return Circle_IntersectsForwardBox(target, centerX - forwardX * halfZ,
+			centerZ - forwardZ * halfZ, forwardX, forwardZ, halfZ * 2.f, halfX);
 	}
 }
 
@@ -273,6 +322,11 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 		boss.fKoukuShieldArcDegrees = window.fShieldArcDegrees;
 		boss.fKoukuShieldNormalYawOffsetDegrees = window.fNormalYawOffsetDegrees;
 		boss.KoukuShieldRegions = window.CardRegions;
+		break;
+	case BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP:
+	case BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT:
+	case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
+		// One world object is judged independently of the party roster.
 		break;
 	case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
 	case BOSS_PATTERN_LOGIC_KIND::POSE_INPUT:
@@ -469,6 +523,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		Transform_ToClown(player, pMadnessPolicy, serverTick, result.iDurationMs);
 		break;
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW:
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::NONE:
 	default:
 		break;
@@ -477,6 +534,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results,
+	KOUKUSAYDON_LOGIC_WINDOW_STATE& state,
 	SERVER_PLAYER* const pPlayer,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 	const SERVER_WORLD_ENTITY& boss,
@@ -488,6 +546,18 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 {
 	for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 	{
+		if (BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind)
+		{
+			if (state.AppliedWorldMotions.emplace(result.strTargetWorldInstanceId, result.strMotionInstanceId).second)
+			{
+				KOUKUSAYDON_LOGIC_WORLD_PLAY play;
+				play.strInstanceId = result.strMotionInstanceId;
+				play.strTargetSequenceInstanceId = result.strTargetWorldInstanceId;
+				play.iStartTick = serverTick;
+				outOutput.WorldSequencePlays.push_back(std::move(play));
+			}
+			continue;
+		}
 		if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind)
 		{
 			if (!result.strPatternId.empty())
@@ -543,12 +613,73 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			continue;
 		cue.bStarted = true;
 		const BOSS_PATTERN_WORLD_SEQUENCE& sequence = pattern.WorldSequences[cue.iIndex];
-		outOutput.WorldSequencePlays.push_back(
-			{ sequence.strInstanceId, sequence.fPlaybackSpeed,
-			  sequence.fPositionOffsetX + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionX - sequence.fAnchorPositionX : 0.f),
-			  sequence.fPositionOffsetY + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionY - sequence.fAnchorPositionY : 0.f),
-			  sequence.fPositionOffsetZ + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionZ - sequence.fAnchorPositionZ : 0.f),
-			  sequence.iDurationMs });
+		KOUKUSAYDON_LOGIC_WORLD_PLAY play;
+		play.strInstanceId = sequence.strInstanceId; play.fPlaybackSpeed = sequence.fPlaybackSpeed;
+		play.iDurationMs = sequence.iDurationMs; play.strOccurrenceId = sequence.strOccurrenceId; play.iStartTick = cue.iStartTick;
+		play.Placement = sequence.Placement;
+		if (!play.Placement)
+		{
+			play.fPositionOffsetX = sequence.fPositionOffsetX + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionX - sequence.fAnchorPositionX : 0.f);
+			play.fPositionOffsetY = sequence.fPositionOffsetY + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionY - sequence.fAnchorPositionY : 0.f);
+			play.fPositionOffsetZ = sequence.fPositionOffsetZ + (sequence.bAnchorBossSpawn ? boss.fSpawnPositionZ - sequence.fAnchorPositionZ : 0.f);
+		}
+		outOutput.WorldSequencePlays.push_back(std::move(play));
+	}
+	// Resolve all contacts before any duration timeout, including the final tick.
+	// A group's priority order is fixed at Build; one card consumes one result per strike.
+	std::set<std::string> completedWindows;
+	for (const auto index : ledger.ContactWindowOrder)
+	{
+		auto& state = ledger.Windows[index];
+		const auto& window = pattern.LogicWindows[index];
+		if (state.bClosed || !Has_ReachedTick(serverTick, state.iStartTick)) continue;
+		if (!state.bOpened) Open_Window(boss, window, state, ledger, players);
+		const bool reachedEnd = Has_ReachedTick(serverTick, state.iEndTick);
+		if (!reachedEnd || serverTick == state.iEndTick)
+			for (const auto& target : window.ContactTargets)
+			{
+				if (state.ContactedWorldOccurrences.contains(target.strWorldOccurrenceId)) continue;
+				const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ circle{ target.fWorldX, target.fWorldZ, target.fRadiusM };
+				if (!std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [&](const auto& region) {
+					return Intersects_LogicRegion(region, boss, circle, serverTick - ledger.iPatternStartTick);
+				})) continue;
+				state.ContactedWorldOccurrences.insert(target.strWorldOccurrenceId);
+				if (!window.strContactGroupId.empty() && !ledger.ConsumedContactGroups.emplace(
+					window.strContactGroupId, state.iStartTick, target.strWorldOccurrenceId).second) continue;
+				for (const auto& result : window.OnSuccess)
+				{
+					if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION)
+					{
+						const auto motion = std::find_if(result.ContactMotions.begin(), result.ContactMotions.end(),
+							[&](const auto& row) { return row.strTargetWorldOccurrenceId == target.strWorldOccurrenceId; });
+						if (motion != result.ContactMotions.end() && state.AppliedWorldMotions.emplace(
+							target.strWorldOccurrenceId, motion->strMotionInstanceId).second)
+						{
+							KOUKUSAYDON_LOGIC_WORLD_PLAY play;
+							play.strInstanceId = motion->strMotionInstanceId; play.strTargetSequenceInstanceId = target.strWorldInstanceId;
+							play.strTargetWorldOccurrenceId = target.strWorldOccurrenceId; play.iStartTick = serverTick;
+							outOutput.WorldSequencePlays.push_back(std::move(play));
+						}
+					}
+					else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW &&
+						(result.strContactTargetWorldOccurrenceId.empty() || result.strContactTargetWorldOccurrenceId == target.strWorldOccurrenceId))
+						completedWindows.insert(result.strTargetLogicOccurrenceId);
+				}
+			}
+		if (reachedEnd) Close_Window(boss, window, state, players);
+	}
+	for (auto& state : ledger.Windows)
+	{
+		const auto& window = pattern.LogicWindows[state.iWindowIndex];
+		if (state.bClosed || window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL ||
+			!completedWindows.contains(window.strWindowId) || !Has_ReachedTick(serverTick, state.iStartTick) ||
+			(Has_ReachedTick(serverTick, state.iEndTick) && serverTick != state.iEndTick)) continue;
+		if (!state.bOpened) Open_Window(boss, window, state, ledger, players);
+		Close_Window(boss, window, state, players);
+		Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog, pMadnessPolicy,
+			serverTick, outDamageEvents, outOutput);
+		outOutput.bEndPatternEarly |= window.bEndsPatternOnSuccess;
+		outOutput.strStatus = "external signal window succeeded";
 	}
 	for (KOUKUSAYDON_LOGIC_WINDOW_STATE& state : ledger.Windows)
 	{
@@ -564,6 +695,17 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		const bool reachedEnd = Has_ReachedTick(serverTick, state.iEndTick);
 		switch (window.eKind)
 		{
+		case BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT:
+			break; // Contact phase above owns the complete short window.
+		case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
+			if (reachedEnd)
+			{
+				Close_Window(boss, window, state, players);
+				Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog, pMadnessPolicy,
+					serverTick, outDamageEvents, outOutput);
+				outOutput.strStatus = "external signal window timed out";
+			}
+			break;
 		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 		{
 			const std::uint32_t lost = state.iBossHpAtOpen > boss.iCurrentHp ?
@@ -571,7 +713,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			if (window.iThreshold > 0u && lost >= window.iThreshold)
 			{
 				Close_Window(boss, window, state, players);
-				Apply_Results(window.OnSuccess, nullptr, players, boss, catalog,
+				Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
 					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
 				if (window.bEndsPatternOnSuccess)
 					outOutput.bEndPatternEarly = true;
@@ -580,7 +722,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			else if (reachedEnd)
 			{
 				Close_Window(boss, window, state, players);
-				Apply_Results(window.OnTimeout, nullptr, players, boss, catalog,
+				Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog,
 					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
 				outOutput.strStatus = "stagger window timed out";
 			}
@@ -613,10 +755,35 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				Apply_Results(
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == answer ? window.OnSuccess :
 					(KOUKUSAYDON_LOGIC_ANSWER::FAIL == answer ? window.OnFail : window.OnTimeout),
-					&found->second, players, boss, catalog, pMadnessPolicy, serverTick,
+					state, &found->second, players, boss, catalog, pMadnessPolicy, serverTick,
 					outDamageEvents, outOutput);
 			}
 			outOutput.strStatus = "end-tick window judged";
+			break;
+		}
+		case BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP:
+		{
+			const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ target{
+				window.fTargetWorldX, window.fTargetWorldZ, window.fTargetRadiusM };
+			const bool inside = !window.strTargetWorldInstanceId.empty() &&
+				std::any_of(window.CardRegions.begin(), window.CardRegions.end(),
+					[&](const BOSS_LOGIC_REGION& region) {
+						return Intersects_LogicRegion(region, boss, target, serverTick - ledger.iPatternStartTick);
+					});
+			if (inside)
+			{
+				Close_Window(boss, window, state, players);
+				Apply_Results(window.bInsideIsFail ? window.OnFail : window.OnSuccess,
+					state, nullptr, players, boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				outOutput.strStatus = "object overlap window judged";
+			}
+			else if (reachedEnd)
+			{
+				Close_Window(boss, window, state, players);
+				Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog,
+					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				outOutput.strStatus = "object overlap window timed out";
+			}
 			break;
 		}
 		case BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP:
@@ -633,7 +800,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				if (!inside && !reachedEnd) continue;
 				state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
-				Apply_Results(inside ? (window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout, &player, players,
+				Apply_Results(inside ? (window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
 			}
 			if (reachedEnd) Close_Window(boss, window, state, players);
@@ -661,7 +828,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results =
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == answer ? window.OnSuccess :
 					(KOUKUSAYDON_LOGIC_ANSWER::FAIL == answer ? window.OnFail : window.OnTimeout);
-				Apply_Results(results, &found->second, players, boss, catalog,
+				Apply_Results(results, state, &found->second, players, boss, catalog,
 					pMadnessPolicy, serverTick, outDamageEvents, outOutput);
 			}
 			outOutput.strStatus = "pose window judged";

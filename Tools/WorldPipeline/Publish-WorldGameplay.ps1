@@ -134,6 +134,14 @@ function Get-EncounterProfiles {
 			'authority','fixedTickHz','patterns')
 		if ($isKoukuSaydon) {
 			$encounterProperties += @('sourceRevision','playAllPatternIds','madnessPolicy')
+			# Gameplay publication owns the Parent/Bundle relationships; world placement
+			# admission accepts their optional Product metadata without inventing another owner.
+			foreach ($field in @('folders','bundles')) {
+				if ($null -ne $document.PSObject.Properties[$field]) {
+					$encounterProperties += $field
+					if ($document.$field -isnot [Array]) { throw "KoukuSaydon $field must be an array." }
+				}
+			}
 		}
 		else {
 			$encounterProperties += @('introPatternId','states')
@@ -226,6 +234,16 @@ function Get-EncounterProfiles {
 				$patternProperties += 'verticalOffsetM'
 			}
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
+			if ($isKoukuSaydon) {
+				foreach ($field in @('gateId','targetBossPlacementId','actorProfileId','folderId')) {
+					if ($null -ne $pattern.PSObject.Properties[$field]) {
+						$patternProperties += $field
+						Assert-JsonString $pattern.$field "KoukuSaydon pattern $field"
+						Assert-StableId $pattern.$field "KoukuSaydon pattern $field"
+					}
+				}
+			}
 			Assert-ExactProperties $pattern $patternProperties "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"
 			Assert-JsonNumber $pattern.maximumRange "$($document.encounterId) maximumRange"

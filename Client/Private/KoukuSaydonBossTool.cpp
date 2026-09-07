@@ -4,6 +4,7 @@
 
 #include "DataJson.h"
 #include "KoukuSaydonPatternAuditionService.h"
+#include "KoukuSaydonCompositionDocument.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
 
@@ -80,6 +81,8 @@ namespace
 	bool Load_ProductIndex(
 		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_PATTERN>& outPatterns,
 		std::vector<std::string>& outPlayAll,
+		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_FOLDER>& outFolders,
+		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_BUNDLE>& outBundles,
 		std::uint32_t& outSourceRevision,
 		std::string& outStatus)
 	{
@@ -119,6 +122,22 @@ namespace
 			pattern.strPatternId = id ? id->Get_String() : "";
 			pattern.strDisplayName = name ? name->Get_String() : "Invalid pattern";
 			pattern.strCategory = category ? category->Get_String() : "";
+			if (const auto* folder = value.Find("folderId"))
+			{
+				if (!folder->Is_String() || !Is_StableId(folder->Get_String()))
+					pattern.strLoadError = "Pattern parent identity is invalid.";
+				else pattern.strFolderId = folder->Get_String();
+			}
+			if (const auto* gate = value.Find("gateId"))
+			{
+				const auto* target = Required(value, "targetBossPlacementId", DATA_JSON_TYPE::STRING);
+				const auto* actor = Required(value, "actorProfileId", DATA_JSON_TYPE::STRING);
+				if (!gate->Is_String() || !CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()) || !target || !actor ||
+					CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(gate->Get_String(), actor->Get_String()) != target->Get_String() ||
+					CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(target->Get_String()) != actor->Get_String())
+					pattern.strLoadError = "Pattern Gate or target actor binding is invalid.";
+				else { pattern.strGateId=gate->Get_String(); pattern.strTargetBossPlacementId=target->Get_String(); pattern.strActorProfileId=actor->Get_String(); }
+			}
 			if (!id || !Is_StableId(pattern.strPatternId) || !ids.insert(pattern.strPatternId).second ||
 				!stages || stages->Get_Array().empty() || stages->Get_Array().size() > 64u)
 				pattern.strLoadError = "Pattern identity or stages are invalid.";
@@ -158,6 +177,56 @@ namespace
 			}
 		}
 		if (!validOrder) playOrder.clear();
+		std::vector<CKoukuSaydonBossTool::PRODUCT_FOLDER> folders;
+		std::vector<CKoukuSaydonBossTool::PRODUCT_BUNDLE> bundles;
+		const auto* folderRows = root.Find("folders"); const auto* bundleRows = root.Find("bundles");
+		if ((folderRows && !folderRows->Is_Array()) || (bundleRows && !bundleRows->Is_Array()))
+		{ outStatus="Invalid Product hierarchy; previous inventory retained."; return false; }
+		std::unordered_set<std::string> hierarchyIds;
+		if (folderRows) for (const auto& row : folderRows->Get_Array())
+		{
+			const auto* id=Required(row,"folderId",DATA_JSON_TYPE::STRING); const auto* gate=Required(row,"gateId",DATA_JSON_TYPE::STRING); const auto* name=Required(row,"displayName",DATA_JSON_TYPE::STRING);
+			if (!id || !gate || !name || !Is_StableId(id->Get_String()) || !hierarchyIds.insert(id->Get_String()).second || !CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()))
+			{ outStatus="Invalid Product parent identity; previous inventory retained."; return false; }
+			folders.push_back({id->Get_String(),gate->Get_String(),name->Get_String()});
+		}
+		for (auto& pattern : staged)
+		{
+			if (pattern.strFolderId.empty() || std::any_of(folders.begin(), folders.end(),
+				[&](const auto& folder) { return folder.strFolderId == pattern.strFolderId && folder.strGateId == pattern.strGateId; })) continue;
+			if (pattern.strLoadError.empty()) ++errors;
+			pattern.strLoadError = "Pattern parent is missing or belongs to another Gate.";
+			validOrder = false;
+			playOrder.clear();
+		}
+		if (bundleRows) for (const auto& row : bundleRows->Get_Array())
+		{
+			CKoukuSaydonBossTool::PRODUCT_BUNDLE bundle;
+			const auto* id=Required(row,"bundleId",DATA_JSON_TYPE::STRING); const auto* folder=Required(row,"folderId",DATA_JSON_TYPE::STRING);
+			const auto* gate=Required(row,"gateId",DATA_JSON_TYPE::STRING); const auto* name=Required(row,"displayName",DATA_JSON_TYPE::STRING);
+			const auto* duration=Required(row,"durationMs",DATA_JSON_TYPE::NUMBER); const auto* members=Required(row,"members",DATA_JSON_TYPE::ARRAY);
+			if (!id || !folder || !gate || !name || !duration || !members || !Is_StableId(id->Get_String()) || !hierarchyIds.insert(id->Get_String()).second)
+			{ outStatus="Invalid Product bundle identity; previous inventory retained."; return false; }
+			bundle.strBundleId=id->Get_String(); bundle.strFolderId=folder->Get_String(); bundle.strGateId=gate->Get_String(); bundle.strDisplayName=name->Get_String();
+			if (!Parse_U32(*duration,600000,bundle.iDurationMs) || !bundle.iDurationMs || members->Get_Array().empty() || members->Get_Array().size()>4 ||
+				!std::any_of(folders.begin(),folders.end(),[&](const auto& f){ return f.strFolderId==bundle.strFolderId && f.strGateId==bundle.strGateId; })) bundle.strLoadError="Bundle parent, Gate or lifetime is invalid.";
+			std::unordered_set<std::string> actors, memberIds;
+			for (const auto& member : members->Get_Array())
+			{
+				CKoukuSaydonBossTool::PRODUCT_BUNDLE_MEMBER item;
+				const auto* memberId=Required(member,"memberId",DATA_JSON_TYPE::STRING); const auto* patternId=Required(member,"patternId",DATA_JSON_TYPE::STRING);
+				const auto* target=Required(member,"targetBossPlacementId",DATA_JSON_TYPE::STRING); const auto* actor=Required(member,"actorProfileId",DATA_JSON_TYPE::STRING); const auto* offset=Required(member,"startOffsetMs",DATA_JSON_TYPE::NUMBER);
+				if (!memberId || !patternId || !target || !actor || !offset || !Parse_U32(*offset,600000,item.iStartOffsetMs)) { bundle.strLoadError="Invalid bundle member."; continue; }
+				item.strMemberId=memberId->Get_String(); item.strPatternId=patternId->Get_String(); item.strTargetBossPlacementId=target->Get_String(); item.strActorProfileId=actor->Get_String();
+				const auto p=std::find_if(staged.begin(),staged.end(),[&](const auto& x){return x.strPatternId==item.strPatternId;});
+				if (!Is_StableId(item.strMemberId) || !memberIds.insert(item.strMemberId).second || !actors.insert(item.strTargetBossPlacementId).second || p==staged.end() ||
+					(p!=staged.end() && (!p->strLoadError.empty() || p->strGateId!=bundle.strGateId || p->strTargetBossPlacementId!=item.strTargetBossPlacementId || p->strActorProfileId!=item.strActorProfileId)))
+					bundle.strLoadError="Bundle child, Gate or actor reference is invalid.";
+				bundle.Members.push_back(std::move(item));
+			}
+			bundles.push_back(std::move(bundle));
+		}
+		outFolders=std::move(folders); outBundles=std::move(bundles);
 		outPatterns = std::move(staged);
 		outPlayAll = std::move(playOrder);
 		outSourceRevision = parsedRevision;
@@ -194,13 +263,16 @@ bool Client::CKoukuSaydonBossTool::Reload(std::string& outStatus)
 	m_bLoadAttempted = true;
 	std::vector<PRODUCT_PATTERN> stagedPatterns;
 	std::vector<std::string> stagedPlayAll;
+	std::vector<PRODUCT_FOLDER> stagedFolders;
+	std::vector<PRODUCT_BUNDLE> stagedBundles;
 	std::uint32_t stagedSourceRevision = 0u;
 	if (!Load_ProductIndex(
-			stagedPatterns, stagedPlayAll, stagedSourceRevision, outStatus))
+			stagedPatterns, stagedPlayAll, stagedFolders, stagedBundles, stagedSourceRevision, outStatus))
 	{
 		m_strStatus = outStatus;
 		return false;
 	}
+	m_ProductFolders=std::move(stagedFolders); m_ProductBundles=std::move(stagedBundles);
 	m_ProductPatterns = std::move(stagedPatterns);
 	m_PlayAllPatternIds = std::move(stagedPlayAll);
 	m_iSourceRevision = stagedSourceRevision;
@@ -243,6 +315,9 @@ bool Client::CKoukuSaydonBossTool::Play_Selected(std::string& outStatus)
 	}
 	const auto& revision =
 		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
+	if (!pattern->strTargetBossPlacementId.empty())
+		CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(pattern->strTargetBossPlacementId,
+			CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(pattern->strTargetBossPlacementId));
 	return CKoukuSaydonPatternAuditionService::Get().Play_Selected(
 		pattern->strPatternId, revision, m_iSourceRevision, outStatus);
 }
@@ -293,6 +368,23 @@ bool Client::CKoukuSaydonBossTool::Play_PatternById(
 	const bool played = Play_Selected(outStatus);
 	m_strStatus = outStatus;
 	return played;
+}
+
+bool Client::CKoukuSaydonBossTool::Play_BundleById(const std::string_view bundleId,
+	const std::uint32_t expectedSourceRevision, std::string& status)
+{
+	if (!Reload(status)) return false;
+	if (!expectedSourceRevision || expectedSourceRevision!=m_iSourceRevision)
+	{ status=m_strStatus="Saved bundle and Product revisions differ. Save and Publish before Complete Play."; return false; }
+	const auto found=std::find_if(m_ProductBundles.begin(),m_ProductBundles.end(),[&](const auto& b){return b.strBundleId==bundleId;});
+	if (found==m_ProductBundles.end() || !found->strLoadError.empty() || found->Members.empty())
+	{ status=m_strStatus="Select a valid published bundle with all children ready."; return false; }
+	const auto& target=found->Members.front().strTargetBossPlacementId;
+	auto& service=CKoukuSaydonPatternAuditionService::Get();
+	service.Set_TargetBoss(target,CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
+	const auto& revision=CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
+	const bool played=service.Play_Bundle(found->strBundleId,found->strGateId,revision,m_iSourceRevision,status);
+	m_strStatus=status; return played;
 }
 
 void Client::CKoukuSaydonBossTool::Render()

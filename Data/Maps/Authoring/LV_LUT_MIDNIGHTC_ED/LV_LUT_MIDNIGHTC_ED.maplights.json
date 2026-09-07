@@ -3,6 +3,11 @@
   "formatVersion": 2,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "provenance": "PROJECT_AUTHORED",
-  "nextLightOrdinal": 1,
-  "lights": []
+  "nextLightOrdinal": 5,
+  "lights": [
+    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.1", "displayName": "월드_1관문스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": true, "position": [-0.170000002,35.4700012,943.030029], "rotationDegrees": [90,0,0], "rangeMeters": 59.7999992, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 22.2600002, "color": [1,0.458823532,0.164705887,1], "brightness": 2.95000005},
+    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.2", "displayName": "2관문_촛불1", "kind": "POINT", "groupId": "default", "enabled": true, "position": [17.8700008,21.8600006,330.869995], "rotationDegrees": [0,0,0], "rangeMeters": 22, "falloffExponent": 2, "innerConeDegrees": 0, "outerConeDegrees": 0, "color": [1,0.490196079,0.352941185,1], "brightness": 8.5},
+    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.3", "displayName": "2관문_촛불2", "kind": "POINT", "groupId": "default", "enabled": true, "position": [-7.38000011,21.8600006,306.269989], "rotationDegrees": [0,0,0], "rangeMeters": 22, "falloffExponent": 2, "innerConeDegrees": 0, "outerConeDegrees": 0, "color": [1,0.490196079,0.352941185,1], "brightness": 8.5},
+    {"lightId": "light.LV_LUT_MIDNIGHTC_ED.4", "displayName": "2관문_포커판스포트라이트", "kind": "SPOT", "groupId": "default", "enabled": true, "position": [6.57000017,28.8600006,320.220001], "rotationDegrees": [90,0,0], "rangeMeters": 63.5, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 44.2547035, "color": [1,1,1,1], "brightness": 3}
+  ]
 }

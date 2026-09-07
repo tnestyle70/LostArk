@@ -799,6 +799,369 @@ namespace
 
 namespace
 {
+	void Run_KoukuObjectOverlapContracts(
+		TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+	{
+		using namespace LostArk::Shared;
+		using namespace LostArk::Server;
+		const auto makeWindow = []()
+		{
+			BOSS_PATTERN_LOGIC_WINDOW window{};
+			window.strWindowId = "object.contact";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP;
+			window.iStartMs = 100u; window.iDurationMs = 1000u;
+			window.strTargetWorldInstanceId = "world.card.idle";
+			window.fTargetRadiusM = .5f;
+			BOSS_PATTERN_LOGIC_RESULT success{};
+			success.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION;
+			success.strTargetWorldInstanceId = window.strTargetWorldInstanceId;
+			success.strMotionInstanceId = "world.card.hop";
+			window.OnSuccess = { success, success }; // Duplicate authoring cannot replay a motion.
+			success.strMotionInstanceId = "world.card.flip";
+			window.OnFail = { success, success };
+			BOSS_PATTERN_LOGIC_RESULT timeout{};
+			timeout.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION;
+			timeout.strTargetWorldInstanceId = window.strTargetWorldInstanceId;
+			timeout.strMotionInstanceId = "world.card.timeout";
+			window.OnTimeout.push_back(timeout);
+			return window;
+		};
+		const auto judgeGeometry = [&](const BOSS_LOGIC_REGION& region, SERVER_WORLD_ENTITY& boss,
+			const float x, const float z, const float radius, const bool hit,
+			const bool insideIsFail, const char* label)
+		{
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_OBJECT_CONTACT";
+			auto window = makeWindow(); window.fTargetWorldX = x; window.fTargetWorldZ = z;
+			window.fTargetRadiusM = radius; window.bInsideIsFail = insideIsFail;
+			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			for (PLAYER_ID id = 1u; id <= 4u; ++id)
+			{
+				auto& player = players[id]; player.iPlayerId = id; player.isCombatReady = true;
+				player.iCurrentHp = player.iMaximumHp = 100u;
+				player.fPositionX = player.fPositionZ = 999.f;
+			}
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			std::vector<DAMAGE_EVENT> events;
+			CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+			const auto update = [&](const std::uint32_t tick) {
+				CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+			};
+			update(102u);
+			const bool beforeStart = !ledger.Windows.front().bOpened && output.WorldSequencePlays.empty();
+			update(103u); update(104u); update(132u);
+			const bool beforeEnd = output.FollowupPatternIds.empty() &&
+				output.WorldSequencePlays.size() == (hit ? 1u : 0u) && ledger.Windows.front().bClosed == hit;
+			update(133u); update(134u);
+			const bool results = output.WorldSequencePlays.size() == 1u && output.FollowupPatternIds.empty() &&
+				output.WorldSequencePlays.front().strTargetSequenceInstanceId == window.strTargetWorldInstanceId &&
+				output.WorldSequencePlays.front().strInstanceId == (hit ?
+					(insideIsFail ? "world.card.flip" : "world.card.hop") : "world.card.timeout");
+			tests.Require(beforeStart && beforeEnd && results && ledger.Windows.front().bClosed &&
+				ledger.Windows.front().Answers.empty() && events.empty(), label);
+		};
+		auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+		boss->iNetEntityId = 4242u; boss->iPatternSequence = 1u;
+		boss->fPositionX = 10.f; boss->fPositionZ = 20.f; boss->fYawDegrees = 90.f;
+		BOSS_LOGIC_REGION box{}; box.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+		box.fCenterZ = 3.f; box.fHalfX = 1.f; box.fHalfZ = 2.f;
+		judgeGeometry(box, *boss, 15.5f, 20.f, .5f, true, false,
+			"Object circle touches the rotated boss box outside its centre and emits one Motion for four players");
+		judgeGeometry(box, *boss, 15.4f, 21.4f, .5f, false, false,
+			"Object circle misses the rotated box corner despite axis inflation and times out once");
+		judgeGeometry(box, *boss, 15.35f, 21.35f, .5f, true, true,
+			"Object circle overlaps the rounded box corner and Inside Is Fail emits only the Fail Motion");
+		BOSS_LOGIC_REGION circle{}; circle.bCircle = true;
+		circle.fCenterX = 4.f; circle.fCenterZ = 5.f; circle.fRadiusM = 2.f;
+		judgeGeometry(circle, *boss, 6.5f, 5.f, .5f, true, false,
+			"World object circles include exact radius-sum contact");
+		judgeGeometry(circle, *boss, 6.501f, 5.f, .5f, false, false,
+			"World object circles reject a gap beyond the shared contact epsilon");
+		BOSS_LOGIC_REGION cone{}; cone.bSector = true;
+		cone.fYawDegrees = 90.f; cone.fRadiusM = 4.f; cone.fHalfAngleDegrees = 45.f;
+		judgeGeometry(cone, *boss, 2.f, 2.5f, .36f, true, false,
+			"Object circle intersects a rotated sector radial edge while its centre lies outside");
+		judgeGeometry(cone, *boss, 2.f, 2.6f, .36f, false, false,
+			"Object circle misses a rotated sector radial edge beyond its own radius");
+		judgeGeometry(cone, *boss, 4.5f, 0.f, .5f, true, false,
+			"Object circle includes tangency to the sector outer arc");
+		judgeGeometry(cone, *boss, 0.f, 0.f, .5f, true, false,
+			"An object circle overlapping the sector origin counts as physical contact");
+
+		// Same transform sampler as player regions: delayed, visible, scaled and
+		// quaternion-rotated WORLD motion, evaluated on the Server clock.
+		for (const bool testVisibility : { true, false })
+		{
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_OBJECT_WORLD_TRACK";
+			auto window = makeWindow(); window.iStartMs = 200u; window.iDurationMs = 1300u;
+			window.fTargetWorldX = testVisibility ? 102.f : 112.2f;
+			window.fTargetWorldZ = testVisibility ? 205.f : 205.12132f; window.fTargetRadiusM = .25f;
+			BOSS_LOGIC_REGION region{}; region.bCircle = true; region.fCenterZ = 1.f; region.fRadiusM = 1.f;
+			region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
+			auto& track = region.WorldTrack; track.bEnabled = true;
+			track.iStartMs = 200u; track.iStartDelayMs = 100u; track.iDurationMs = 1100u;
+			track.fPlaybackSpeed = 2.f; track.bSmoothStep = true;
+			track.fBaselineX = 2.f; track.fBaselineY = -1000.f; track.fBaselineZ = 3.f;
+			track.fBaselineScaleX = track.fBaselineScaleY = track.fBaselineScaleZ = 2.f;
+			BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.bVisible = false; track.Keys.push_back(key);
+			key.iTimeMs = 100u; key.bVisible = true; track.Keys.push_back(key);
+			key.iTimeMs = 1100u; key.fOffsetX = 10.f; key.fOffsetY = 1000.f;
+			key.fRotationY = key.fRotationW = .7071067811865475f;
+			key.fScaleX = key.fScaleY = key.fScaleZ = 2.f; track.Keys.push_back(key);
+			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+			boss->fSpawnPositionX = 100.f; boss->fSpawnPositionZ = 200.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players; // Object contact needs no player proxy.
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			std::vector<DAMAGE_EVENT> events;
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 1000u, ledger);
+			const auto update = [&](const std::uint32_t tick) {
+				CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+			};
+			update(1006u); update(testVisibility ? 1010u : 1015u);
+			const bool waited = output.WorldSequencePlays.empty() && !ledger.Windows.front().bClosed;
+			update(testVisibility ? 1011u : 1018u);
+			const bool contacted = ledger.Windows.front().bClosed && output.WorldSequencePlays.size() == 1u &&
+				output.WorldSequencePlays.front().strInstanceId == "world.card.hop";
+			update(1021u); update(1045u);
+			tests.Require(waited && contacted && output.WorldSequencePlays.size() == 1u && output.FollowupPatternIds.empty() &&
+				ledger.Windows.front().bClosed && ledger.Windows.front().Answers.empty(), testVisibility ?
+				"Object overlap waits through WORLD start delay and invisible keys before firing once" :
+				"Object overlap samples WORLD translation, quaternion, scale, smooth clock and spawn anchor in XZ with no players");
+		}
+		{
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_POINT_BOUNDARY_PRESERVED";
+			BOSS_PATTERN_LOGIC_WINDOW window{}; window.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+			window.iDurationMs = 100u;
+			cone.fYawDegrees = 0.f; window.CardRegions.push_back(cone); pattern.LogicWindows.push_back(window);
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			for (PLAYER_ID id = 1u; id <= 3u; ++id)
+			{
+				auto& player = players[id]; player.iPlayerId = id; player.isCombatReady = true; player.iCurrentHp = 100u;
+				player.fPositionX = id == 1u ? -1.f : id == 2u ? 1.f : 0.f;
+				player.fPositionZ = id == 3u ? 0.f : 1.f;
+			}
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> events;
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 2000u, ledger);
+			CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 2003u, events, output);
+			const auto& answers = ledger.Windows.front().Answers;
+			tests.Require(answers.at(1u) == KOUKUSAYDON_LOGIC_ANSWER::SUCCESS &&
+				answers.at(2u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT && answers.at(3u) == KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT,
+				"Player point sectors retain the negative-inclusive positive-exclusive radial edge and excluded origin");
+		}
+	}
+
+	void Run_KoukuObjectContactContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+	{
+		using namespace LostArk::Shared;
+		using namespace LostArk::Server;
+		const auto makeDeadline = [](const bool endsPattern)
+		{
+			BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "joker.deadline";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL; window.iDurationMs = 1000u;
+			window.bEndsPatternOnSuccess = endsPattern;
+			BOSS_PATTERN_LOGIC_RESULT result{}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+			result.strPatternId = "joker.success"; window.OnSuccess.push_back(result);
+			result.strPatternId = "joker.timeout"; window.OnTimeout.push_back(result);
+			return window;
+		};
+		const auto makeContact = [](const std::string& id, const unsigned priority, const unsigned start,
+			const std::string& motion, const bool signal)
+		{
+			BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = id;
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT; window.iStartMs = start; window.iDurationMs = 100u;
+			window.strContactGroupId = "hammer.strike"; window.iContactPriority = priority; window.bHasContactGroup = true;
+			window.ContactTargets = { { "card.normal", "card.shared.idle", -1.f, 0.f, .1f },
+				{ "card.joker", "card.shared.idle", 1.f, 0.f, .1f } };
+			BOSS_LOGIC_REGION region{}; region.bCircle = true; region.fRadiusM = 2.f;
+			region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT; window.CardRegions.push_back(region);
+			BOSS_PATTERN_LOGIC_RESULT result{}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
+			result.ContactMotions = { { "card.normal", motion }, { "card.joker", motion } }; window.OnSuccess.push_back(result);
+			if (signal)
+			{
+				result = {}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
+				result.strTargetLogicOccurrenceId = "joker.deadline"; result.strContactTargetWorldOccurrenceId = "card.joker";
+				window.OnSuccess.push_back(result);
+			}
+			return window;
+		};
+		for (const unsigned scenario : { 0u, 1u, 2u, 3u, 4u })
+		{
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "contact.contract";
+			pattern.LogicWindows = { makeDeadline(scenario != 0u),
+				makeContact("edge", 10u, 100u, "card.hop", false),
+				makeContact("centre", 100u, 100u, "card.flip", true) };
+			if (scenario == 2u)
+			{
+				pattern.LogicWindows.erase(pattern.LogicWindows.begin() + 1);
+				pattern.LogicWindows[1].CardRegions[0].fRadiusM = .2f;
+			}
+			else if (scenario == 3u)
+			{
+				pattern.LogicWindows = { makeDeadline(true), makeContact("last.strike", 100u, 900u, "card.flip", true) };
+				pattern.LogicWindows[1].OnSuccess[1].strContactTargetWorldOccurrenceId.clear();
+			}
+			else if (scenario == 4u)
+				pattern.LogicWindows = { makeContact("strike.one", 100u, 100u, "card.flip", false),
+					makeContact("strike.two", 100u, 500u, "card.hop", false) };
+			auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iNetEntityId = 1u;
+			boss->fPositionX = scenario == 2u ? -1.f : scenario == 3u ? 20.f : 0.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> events;
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+			BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "contact.stage"; stage.strActionId = "contact.action";
+			stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
+			pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
+			boss->strEncounterId = pattern.strEncounterId; boss->iCurrentHp = 100u;
+			GameplayDataRevision revision{}; revision.Bytes.front() = 1u;
+			CKoukuSaydonBrain brain; std::string admissionStatus;
+			tests.Require(brain.Begin_Pattern(*boss, pattern, revision, 100u, admissionStatus),
+				"Contact and external signal fixtures pass the actual animation-only Brain admission");
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+			for (const auto tick : { 102u, 103u, 104u, 106u, 115u, 116u, 118u, 129u })
+				CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+			const bool waitedForDeadline = output.FollowupPatternIds.empty() && !ledger.Windows.front().bClosed;
+			if (scenario == 3u) boss->fPositionX = 0.f;
+			for (const auto tick : { 130u, 131u })
+				CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+			if (scenario < 2u || scenario == 3u)
+			{
+				const bool exactCards = output.WorldSequencePlays.size() == 2u &&
+					output.WorldSequencePlays[0].strTargetWorldOccurrenceId == "card.normal" &&
+					output.WorldSequencePlays[1].strTargetWorldOccurrenceId == "card.joker" &&
+					std::all_of(output.WorldSequencePlays.begin(), output.WorldSequencePlays.end(), [](const auto& play) {
+						return play.strInstanceId == "card.flip" && play.strTargetSequenceInstanceId == "card.shared.idle";
+					});
+				tests.Require(exactCards && output.FollowupPatternIds == std::vector<std::string>{ "joker.success" } &&
+					output.bEndPatternEarly == (scenario != 0u) && events.empty() && (scenario != 3u || waitedForDeadline), scenario == 3u ?
+					"Two unfiltered final-tick contacts complete once before the deadline timeout" : scenario == 1u ?
+					"Higher-priority contact wins per occurrence and completes the whole deadline once with early end" :
+					"Cards sharing a saved Idle receive one centre Motion each and success can keep the pattern running");
+			}
+			else if (scenario == 2u)
+				tests.Require(waitedForDeadline && output.WorldSequencePlays.size() == 1u &&
+					output.WorldSequencePlays.front().strTargetWorldOccurrenceId == "card.normal" && !output.bEndPatternEarly &&
+					output.FollowupPatternIds == std::vector<std::string>{ "joker.timeout" },
+					"A normal-card hit does not complete the Joker signal and missing a short strike waits for the whole deadline");
+			else
+				tests.Require(output.WorldSequencePlays.size() == 4u && output.WorldSequencePlays[0].strInstanceId == "card.flip" &&
+					output.WorldSequencePlays[2].strInstanceId == "card.hop" && ledger.ConsumedContactGroups.size() == 4u,
+					"A later strike can reuse its contact group and hit each card once again");
+		}
+	}
+
+	void Run_KoukuWorldPlacementContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+	{
+		using namespace LostArk::Shared;
+		using namespace LostArk::Server;
+		BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "placement.contract";
+		pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+		BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "placement.stage"; stage.strActionId = "placement.action";
+		stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
+		pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
+		for (unsigned index = 0u; index < 7u; ++index)
+		{
+			BOSS_PATTERN_WORLD_SEQUENCE cue; cue.strInstanceId = index == 6u ? "world.joker.idle" : "world.card.idle";
+			cue.strOccurrenceId = "world.card." + std::to_string(index); cue.iDurationMs = 1000u;
+			BOSS_PATTERN_WORLD_PLACEMENT placement;
+			placement.fPositionX = static_cast<float>(index * 10u); placement.fPositionY = -2.f; placement.fPositionZ = 30.f;
+			placement.fRotationXDegrees = 15.f; placement.fRotationYDegrees = 30.f; placement.fRotationZDegrees = -45.f;
+			placement.fScaleX = .5f; placement.fScaleY = 2.f; placement.fScaleZ = 3.f;
+			cue.Placement = placement; pattern.WorldSequences.push_back(cue);
+		}
+		auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iNetEntityId = 1u;
+		boss->strEncounterId = pattern.strEncounterId; boss->iCurrentHp = 100u;
+		boss->fSpawnPositionX = 999.f; boss->fSpawnPositionY = 888.f; boss->fSpawnPositionZ = 777.f;
+		GameplayDataRevision revision{}; revision.Bytes.front() = 1u;
+		CKoukuSaydonBrain brain; std::string status;
+		tests.Require(brain.Begin_Pattern(*boss, pattern, revision, 100u, status), "Seven independently placed Object cues pass actual Brain admission");
+		std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> events;
+		KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+		CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+		CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 100u, events, output);
+		bool independent = output.WorldSequencePlays.size() == 7u;
+		for (std::size_t index = 0u; independent && index < output.WorldSequencePlays.size(); ++index)
+		{
+			const auto& play = output.WorldSequencePlays[index];
+			independent = play.Placement && play.strOccurrenceId == pattern.WorldSequences[index].strOccurrenceId &&
+				play.strInstanceId == pattern.WorldSequences[index].strInstanceId && play.fPositionOffsetX == 0.f &&
+				play.fPositionOffsetY == 0.f && play.fPositionOffsetZ == 0.f &&
+				play.Placement->fPositionX == static_cast<float>(index * 10u) && play.Placement->fPositionY == -2.f &&
+				play.Placement->fPositionZ == 30.f && play.Placement->fRotationXDegrees == 15.f &&
+				play.Placement->fRotationYDegrees == 30.f && play.Placement->fRotationZDegrees == -45.f &&
+				play.Placement->fScaleX == .5f && play.Placement->fScaleY == 2.f && play.Placement->fScaleZ == 3.f;
+		}
+		output = {};
+		CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 101u, events, output);
+		tests.Require(independent && output.WorldSequencePlays.empty(), "Seven Object occurrences keep full absolute TRS, ignore boss spawn and emit only once");
+		for (unsigned invalid = 0u; invalid < 6u; ++invalid)
+		{
+			auto rejected = pattern; auto& cue = rejected.WorldSequences.front();
+			switch (invalid)
+			{
+			case 0u: cue.Placement->fScaleY = 0.f; break;
+			case 1u: cue.Placement->fRotationXDegrees = 36001.f; break;
+			case 2u: cue.fPositionOffsetX = 1.f; break;
+			case 3u: cue.bAnchorBossSpawn = true; break;
+			case 4u: cue.strOccurrenceId.clear(); break;
+			case 5u: cue.Placement->fPositionZ = std::numeric_limits<float>::infinity(); break;
+			}
+			CKoukuSaydonBrain rejectedBrain;
+			tests.Require(!rejectedBrain.Begin_Pattern(*boss, rejected, revision, 100u, status), "Brain rejects malformed or conflicting absolute Object placement");
+		}
+	}
+
+	void Run_KoukuBoneContactContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+	{
+		using namespace LostArk::Shared;
+		using namespace LostArk::Server;
+		for (const unsigned scenario : { 0u, 1u, 2u })
+		{
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "bone.contact.contract";
+			BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "hammer.tip";
+			window.eKind = BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT; window.iStartMs = scenario == 2u ? 101u : 100u;
+			window.iDurationMs = 100u; window.bHasContactGroup = true;
+			const float targetX = scenario == 0u ? 12.f : scenario == 1u ? 35.5f : 4000.f / 30.f - 101.f;
+			window.ContactTargets = { { "tip.card", "card.idle", targetX, scenario == 0u ? 18.5f : scenario == 1u ? 48.f : 0.f, .01f } };
+			BOSS_PATTERN_LOGIC_RESULT result{}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
+			result.ContactMotions = { { "tip.card", "card.flip" } }; window.OnSuccess.push_back(result);
+			BOSS_LOGIC_REGION region{}; region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			region.fCenterX = scenario == 2u ? 0.f : .5f; region.fYawDegrees = 90.f;
+			region.fHalfX = .1f; region.fHalfZ = 1.2f; region.bCircle = scenario == 2u; region.fRadiusM = .01f;
+			auto& track = region.WorldTrack; track.bEnabled = true; track.iStartMs = window.iStartMs; track.iDurationMs = 100u;
+			BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.fOffsetZ = scenario == 2u ? 0.f : 2.f; track.Keys.push_back(key);
+			key.iTimeMs = 100u; key.fOffsetX = scenario == 2u ? 100.f : 3.f; track.Keys.push_back(key);
+			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
+			auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iNetEntityId = 1u;
+			boss->fPositionX = scenario == 2u ? 0.f : 10.f; boss->fPositionZ = scenario == 2u ? 0.f : 20.f;
+			boss->fYawDegrees = scenario == 2u ? 0.f : 90.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> events;
+			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+			pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+			BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "contact.stage"; stage.strActionId = "contact.action";
+			stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
+			pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
+			boss->strEncounterId = pattern.strEncounterId; boss->iCurrentHp = 100u;
+			GameplayDataRevision revision{}; revision.Bytes.front() = 1u;
+			CKoukuSaydonBrain brain; std::string admissionStatus;
+			tests.Require(brain.Begin_Pattern(*boss, pattern, revision, 100u, admissionStatus),
+				"Contact and external signal fixtures pass the actual animation-only Brain admission");
+			CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+			const auto update = [&](const unsigned tick) {
+				CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+			};
+			update(scenario == 2u ? 103u : 102u); const bool beforeStart = output.WorldSequencePlays.empty();
+			update(scenario == 2u ? 104u : 103u);
+			const bool beforeMovedRoot = scenario != 1u || output.WorldSequencePlays.empty();
+			if (scenario == 1u) { boss->fPositionX = 40.f; boss->fPositionZ = 50.f; boss->fYawDegrees = 180.f; }
+			update(106u); update(107u); update(108u);
+			tests.Require(beforeStart && beforeMovedRoot && output.WorldSequencePlays.size() == 1u &&
+				output.WorldSequencePlays.front().strTargetWorldOccurrenceId == "tip.card" && events.empty(), scenario == 2u ?
+				"Bone contact uses the exact authored millisecond clock after a fractional-tick trigger start" : scenario == 1u ?
+				"Baked bone motion composes the current Server boss position and yaw once at the final tick" :
+				"Bone tip plus authored offset follows the boss while collision shape keeps authored TARGET_YAW orientation");
+		}
+	}
+
 	/* KoukuSaydon Logic runtime: synthetic windows judged on a fixed clock so
 	the verdict rules never depend on which pattern the composition authors.
 	A function of its own keeps these rooms and players off the contract
@@ -1381,17 +1744,30 @@ namespace
 	}
 }
 
+int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
+{
+	TESTS tests;
+	const CGameplayCatalog catalog;
+	Run_KoukuObjectOverlapContracts(tests, catalog);
+	Run_KoukuObjectContactContracts(tests, catalog);
+	Run_KoukuWorldPlacementContracts(tests, catalog);
+	Run_KoukuBoneContactContracts(tests, catalog);
+	std::cout << "failures : " << tests.failures << '\n';
+	return tests.failures == 0 ? 0 : 1;
+}
+
 int LostArk::Server::Run_ServerGameplayContractTests(
-	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly)
+	const bool dimensionMasterGroundTargetOnly, const bool debugTeleportOnly, const bool koukuBundlesOnly)
 {
 	struct CONTRACT_TEST_RUN_CONTEXT final
 	{
 		bool dimensionMasterGroundTargetOnly = false;
 		bool debugTeleportOnly = false;
+		bool koukuBundlesOnly = false;
 		int result = 1;
 	};
 
-	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, 1 };
+	CONTRACT_TEST_RUN_CONTEXT context{ dimensionMasterGroundTargetOnly, debugTeleportOnly, koukuBundlesOnly, 1 };
 	const auto runContract = [](void* opaque)
 	{
 		CONTRACT_TEST_RUN_CONTEXT& context =
@@ -1527,6 +1903,230 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	tests.Require(
 		catalog.Get_ActiveRevision().Is_Valid(),
 		"Derive a nonzero gameplay data revision from admitted bootstrap bytes");
+#ifdef _DEBUG
+	{
+		// A temporary admitted generation exercises two actors without changing the user's empty entrance drafts.
+		namespace fs = std::filesystem;
+		std::vector<wchar_t> buffer(32768u); fs::path dataRoot;
+		const DWORD configured = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", buffer.data(), static_cast<DWORD>(buffer.size()));
+		if (configured && configured < buffer.size()) dataRoot = buffer.data();
+		else { GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())); dataRoot = fs::path(buffer.data()).parent_path().parent_path() / L"DataFiles"; }
+		std::ifstream input(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", std::ios::binary);
+		std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+		if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
+		const std::string encounter = "ENCOUNTER_KAKULSAYDON_G1";
+		const auto appendPattern = [&](const std::string& id, const std::string& boss, const std::string& placement, const unsigned duration)
+		{
+			bytes += "PATTERN	" + encounter + "	" + id + "	" + id + ".action	AUDITION_ONLY	0	0	0	0	0	0	0	1	1	ANY	ANY	0\n";
+			bytes += "PATTERNBOSS	" + encounter + "	" + id + "	" + boss + "\n";
+			bytes += "PATTERNPOLICY	" + encounter + "	" + id + "	NORMAL	1	1	NONE	NONE\n";
+			bytes += "PATTERNSOURCE	" + encounter + "	" + id + "	1	0	0	0	0	0	0\n";
+			bytes += "PATTERNSTAGE	" + encounter + "	" + id + "	0	STAGE_1	" + id + ".stage.1	ACTIVE	" + std::to_string(duration) + "	NONE	0	0	0	0	0	0	0	0	-	0	0	0	0\n";
+			bytes += "PATTERNSTAGEBRANCH	" + encounter + "	" + id + "	" + id + ".stage.1	TIMEOUT	-\n";
+			bytes += "PATTERNTARGET	" + id + "	GATE2	" + placement + "\n";
+			bytes += "PATTERNSPAWNRESET	" + encounter + "	" + id + "	1\n";
+		};
+		appendPattern("KAKULSAYDON_G1_BUNDLE_A", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
+		appendPattern("KAKULSAYDON_G1_BUNDLE_B", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
+		appendPattern("KAKULSAYDON_G1_BUNDLE_A_FOLLOW", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
+		const std::string contactId = "KAKULSAYDON_G1_CONTACT_CONTRACT";
+		const auto appendContactFixture = [&](const std::string& id, const bool miss, const bool lastTick)
+		{
+			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
+			const auto row = [&](const std::initializer_list<std::string> fields)
+			{
+				bool first = true;
+				for (const auto& field : fields) { if (!first) bytes += '\t'; first = false; bytes += field; }
+				bytes += '\n';
+			};
+			row({ "PATTERNWORLDSEQUENCE", encounter, id, "0", "world.contact.card", "1", "0", "0", "0", "NONE", "0", "0", "0", "1000", "contact.card" });
+			row({ "PATTERNWORLDPLACEMENT", encounter, id, "contact.card", "0", "2", "0", "15", "0", "-10", "0.5", "2", "1.5" });
+			row({ "PATTERNLOGIC", encounter, id, "0", "contact.deadline", "EXTERNAL_SIGNAL", "0", "1000", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", lastTick ? "1" : "0", "-", "0", "0" });
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "SUCCESS", "0", "FOLLOWUP_PATTERN", "0", "0", "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" });
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "TIMEOUT", "0", "FOLLOWUP_PATTERN", "0", "0", "KAKULSAYDON_G1_BUNDLE_A" });
+			row({ "PATTERNLOGIC", encounter, id, "1", "contact.hit", "OBJECT_CONTACT", lastTick ? "900" : "100", "100", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-", "0", "0" });
+			row({ "PATTERNLOGICCONTACTGROUP", encounter, id, "contact.hit", "-", "100" });
+			row({ "PATTERNLOGICCONTACTTARGET", encounter, id, "contact.hit", "contact.card", "world.contact.card", "0", "0", "0.1" });
+			row({ "PATTERNLOGICREGION", encounter, id, "contact.hit", "0", "contact.region", "WORLD", "CIRCLE", miss ? "100" : "0", "0", "0", "0", "1", "1", "1", "1", "45", "NONE", "NONE" });
+			if (lastTick)
+			{
+				row({ "PATTERNLOGICREGIONWORLD", encounter, id, "contact.hit", "contact.region", "900", "0", "100", "1", "0", "0", "0", "0", "0", "1", "1", "1" });
+				row({ "PATTERNLOGICREGIONWORLDKEY", encounter, id, "contact.hit", "contact.region", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "0" });
+				row({ "PATTERNLOGICREGIONWORLDKEY", encounter, id, "contact.hit", "contact.region", "1", "100", "0", "0", "0", "0", "1", "1", "1", "1", "1" });
+			}
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.hit", "SUCCESS", "0", "PLAY_CONTACT_WORLD_OBJECT_MOTION", "0", "0", "-" });
+			row({ "PATTERNLOGICCONTACTMOTION", encounter, id, "contact.hit", "SUCCESS", "0", "contact.card", "world.contact.flip" });
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.hit", "SUCCESS", "1", "COMPLETE_LOGIC_WINDOW", "0", "0", "-" });
+			row({ "PATTERNLOGICSIGNAL", encounter, id, "contact.hit", "SUCCESS", "1", "contact.deadline", "contact.card" });
+		};
+		appendContactFixture(contactId, false, false);
+		appendContactFixture(contactId + "_MISS", true, false);
+		appendContactFixture(contactId + "_FINAL", false, true);
+		for (const unsigned offset : {0u, 67u})
+		{
+			const std::string id = "kakulsaydon.bundle.contract." + std::to_string(offset);
+			bytes += "PATTERNBUNDLE	" + id + "	" + encounter + "	GATE2\n";
+			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.a	KAKULSAYDON_G1_BUNDLE_A	boss.kakulsaydon.g2.kouku	0\n";
+			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.b	KAKULSAYDON_G1_BUNDLE_B	boss.kakulsaydon.g2.big-saydon	" + std::to_string(offset) + "\n";
+		}
+		const auto headerEnd = bytes.find('\n');
+		const auto headerCount = bytes.rfind('\t', headerEnd);
+		bytes.replace(headerCount + 1u, headerEnd - headerCount - 1u,
+			std::to_string(std::count(bytes.begin(), bytes.end(), '\n') - 1u));
+		const fs::path directory = fs::temp_directory_path() / (L"LostArkKoukuBundleContract-" + std::to_wstring(GetCurrentProcessId()));
+		std::error_code error; fs::create_directories(directory, error); const fs::path path = directory / L"Gameplay.bootstrap";
+		{ std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
+		GameplayDataRevision revision; std::string status; auto generation = std::make_shared<CGameplayCatalog>();
+		const bool loaded = !error && CServerApp::Hash_GameplayFileForAdmission(path, revision, status) && generation->Load_FromBootstrap(fs::canonical(path), revision, revision);
+		if (!loaded) std::cout << "[STATUS] Bundle fixture: " << generation->Get_Status() << " / " << status << '\n';
+		tests.Require(loaded, "Bundle loads typed target/member rows through normal catalog admission");
+		if (loaded)
+		{
+			const auto makeRoom = [&]()
+			{
+				auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
+				for (const char* id : {"boss.kakulsaydon.g2.kouku", "boss.kakulsaydon.g2.big-saydon"})
+				{
+					const auto* placement = room->Find_Placement(id); SERVER_WORLD_ENTITY entity;
+					if (placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity)) { ++room->m_iNextNetEntityId; room->m_WorldEntities.push_back(std::move(entity)); }
+				}
+				return room;
+			};
+			const auto getBoss = [](CGameRoom& room, const bool second) { return room.Find_KoukuSaydonArenaBoss(second ? "boss.kakulsaydon.g2.big-saydon" : "boss.kakulsaydon.g2.kouku", second ? "BOSS_KAKULSAYDON_G2_BIG_SAYDON" : "BOSS_KAKULSAYDON_G2_KOUKU"); };
+			const auto requestFor = [&](CGameRoom& room, const unsigned offset)
+			{
+				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request; request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
+				request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.Scope.strEncounterId = encounter; request.Scope.strGateId = "GATE2";
+				request.Scope.ExpectedGameplayRevision = room.m_GameplayCatalog.Get_ActiveRevision(); request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room.m_GameplayCatalog.Active());
+				request.strBundleId = "kakulsaydon.bundle.contract." + std::to_string(offset); return request;
+			};
+			const auto tick = [](CGameRoom& room) { room.Update_WorldEntities(1.f / 30.f); ++room.m_iServerTick; };
+			{
+				auto contactRoom = makeRoom(); auto contactRequest = requestFor(*contactRoom, 0u);
+				contactRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				contactRequest.strBundleId.clear(); contactRequest.strPatternId = contactId;
+				contactRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+				contactRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT contactResult;
+				const bool contactQueued = contactRoom->Evaluate_KoukuSaydonPatternAudition(908u, contactRequest, contactResult) ==
+					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+				for (unsigned i = 0u; i < 5u; ++i) tick(*contactRoom);
+				const auto* contactBoss = getBoss(*contactRoom, false);
+				const auto& contactRun = contactRoom->m_KoukuSaydonPatternAudition;
+				tests.Require(contactQueued && contactBoss && contactBoss->strPatternId == contactId &&
+					contactRun.Members.size() == 1u && contactRun.Members.front().PatternIds.size() == 2u &&
+					contactRun.WorldPlays.size() == 2u && contactRun.WorldPlays.back().strTargetCueId == contactRun.WorldPlays.front().strCueId &&
+					contactRun.WorldPlays.front().bHasPlacement && contactRun.WorldPlays.front().fWorldPositionY == 2.f &&
+					contactRun.WorldPlays.front().fWorldRotationXDegrees == 15.f && contactRun.WorldPlays.front().fWorldRotationZDegrees == -10.f &&
+					contactRun.WorldPlays.front().fWorldScaleX == .5f && contactRun.WorldPlays.front().fWorldScaleY == 2.f &&
+					contactRun.WorldPlays.front().fWorldScaleZ == 1.5f && !contactRun.WorldPlays.back().bHasPlacement,
+					"Placed Contact bootstrap passes Room and Brain admission, preserves full TRS and signals the exact owned card without replacing its placement");
+			}
+			for (const bool finalTickSuccess : { false, true })
+			{
+				auto deadlineRoom = makeRoom(); auto deadlineRequest = requestFor(*deadlineRoom, 0u);
+				deadlineRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				deadlineRequest.strBundleId.clear(); deadlineRequest.strPatternId = contactId + (finalTickSuccess ? "_FINAL" : "_MISS");
+				deadlineRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+				deadlineRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT deadlineResult;
+				const bool queuedDeadline = deadlineRoom->Evaluate_KoukuSaydonPatternAudition(909u, deadlineRequest, deadlineResult) ==
+					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+				for (unsigned i = 0u; i < 30u; ++i) tick(*deadlineRoom);
+				const auto* beforeBoss = getBoss(*deadlineRoom, false);
+				const bool heldLastPose = beforeBoss && beforeBoss->strPatternId == deadlineRequest.strPatternId &&
+					deadlineRoom->m_KoukuSaydonPatternAudition.Members.size() == 1u &&
+					deadlineRoom->m_KoukuSaydonPatternAudition.Members.front().PatternIds.size() == 1u;
+				tick(*deadlineRoom);
+				const auto& deadlineRun = deadlineRoom->m_KoukuSaydonPatternAudition;
+				tests.Require(queuedDeadline && heldLastPose && deadlineRun.Members.size() == 1u &&
+					deadlineRun.Members.front().PatternIds.size() == 2u &&
+					deadlineRun.Members.front().PatternIds.back() == (finalTickSuccess ? "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" : "KAKULSAYDON_G1_BUNDLE_A") &&
+					deadlineRun.WorldPlays.size() == (finalTickSuccess ? 2u : 1u), finalTickSuccess ?
+					"Actual Room holds the final pose and resolves last-tick contact success before timeout and early completion" :
+					"Actual Room preserves a missed strike until the external deadline and emits its timeout exactly once");
+			}
+			auto room = makeRoom(); auto request = requestFor(*room, 0u); S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+			const bool queued = room->Evaluate_KoukuSaydonPatternAudition(901u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+			tick(*room); auto* first = getBoss(*room, false); auto* second = getBoss(*room, true);
+			tests.Require(queued && first && second && first->iPatternStartTick == 1u && second->iPatternStartTick == 1u, "Bundle actors start on the same exact first Server tick");
+			S2C_KOUKUSAYDON_BUNDLE_STATE replicated;
+			tests.Require(room->Build_KoukuBundleState(replicated) && replicated.Members.size() == 2u && replicated.iCommonStartTick == 1u, "Bundle room replication includes both actors and the shared clock");
+			if (first)
+			{
+				KOUKUSAYDON_LOGIC_OUTPUT followup; followup.FollowupPatternIds = {"KAKULSAYDON_G1_BUNDLE_A_FOLLOW"}; room->Apply_KoukuLogicOutput(followup, *first, 1u);
+				tests.Require(room->m_KoukuSaydonPatternAudition.Members[0].PatternIds.size() == 2u && room->m_KoukuSaydonPatternAudition.Members[1].PatternIds.size() == 1u, "Bundle follow-up remains in the requesting member chain");
+			}
+			for (unsigned i=0;i<18u;++i) tick(*room);
+			tests.Require(room->Build_KoukuBundleState(replicated) && replicated.Members[0].eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED && replicated.Members[1].eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE, "Early member completion preserves the running sibling and parent");
+			for (unsigned i=0;i<20u;++i) tick(*room);
+			tests.Require(room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE, "Bundle finishes only when all member chains complete");
+			auto isolated = makeRoom(); auto one = requestFor(*isolated,0u);
+			one.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED; one.strBundleId.clear();
+			one.strPatternId = "KAKULSAYDON_G1_BUNDLE_A"; one.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku"; one.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+			const bool singleQueued = isolated->Evaluate_KoukuSaydonPatternAudition(905u,one,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED; tick(*isolated);
+			tests.Require(singleQueued && getBoss(*isolated,false)->iPatternStartTick == 1u && getBoss(*isolated,true)->strPatternId.empty(), "Single child audition starts only its exact actor");
+			auto ordered = makeRoom();
+			const auto* orderedPlacement = ordered->Find_Placement("boss.kakulsaydon.g1.saydon"); SERVER_WORLD_ENTITY orderedBoss;
+			const bool orderedReady = orderedPlacement && ordered->Build_WorldEntity(*orderedPlacement, ordered->m_iNextNetEntityId, orderedBoss);
+			if (orderedReady) { ++ordered->m_iNextNetEntityId; ordered->m_WorldEntities.push_back(std::move(orderedBoss)); }
+			auto all = requestFor(*ordered,0u); all.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL; all.strBundleId.clear(); all.Scope.strGateId = "GATE1";
+			all.Scope.strBossPlacementId = "boss.kakulsaydon.g1.saydon"; all.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+			const bool orderedQueued = ordered->Evaluate_KoukuSaydonPatternAudition(906u,all,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+			tests.Require(orderedReady && orderedQueued && ordered->m_KoukuSaydonPatternAudition.Members.size() == 1u && ordered->m_KoukuSaydonPatternAudition.Members.front().PatternIds.size() > 1u, "Existing Play All remains one actor with a sequential Product queue");
+			auto worldRoom = makeRoom(); auto worldRequest = requestFor(*worldRoom,0u); worldRoom->Evaluate_KoukuSaydonPatternAudition(907u,worldRequest,result); tick(*worldRoom);
+			for (const bool b : {false,true})
+			{
+				KOUKUSAYDON_LOGIC_OUTPUT worldOutput; KOUKUSAYDON_LOGIC_WORLD_PLAY play; play.strInstanceId = b ? "world.second" : "world.first"; play.strOccurrenceId = b ? "occurrence.second" : "occurrence.first"; play.iStartTick = 1u; play.iDurationMs = 1000u;
+				BOSS_PATTERN_WORLD_PLACEMENT placement; placement.fPositionX = b ? 20.f : 10.f;
+				placement.fRotationYDegrees = 45.f; placement.fScaleY = 2.f; play.Placement = placement;
+				worldOutput.WorldSequencePlays.push_back(play); worldRoom->Apply_KoukuLogicOutput(worldOutput,*getBoss(*worldRoom,b),1u);
+			}
+			KOUKUSAYDON_LOGIC_OUTPUT motionOutput; KOUKUSAYDON_LOGIC_WORLD_PLAY motion; motion.strInstanceId = "world.motion"; motion.strTargetSequenceInstanceId = "world.first"; motion.iStartTick = 2u; motionOutput.WorldSequencePlays.push_back(motion);
+			worldRoom->Apply_KoukuLogicOutput(motionOutput,*getBoss(*worldRoom,false),2u);
+			tests.Require(worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.size() == 3u && worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.back().strTargetCueId == worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.front().strCueId, "World motion targets the exact owned activation while preserving authored occurrence ID");
+			// Two placements deliberately reuse the same saved instance; occurrence identity chooses the first card.
+			const auto firstCueId = worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.front().strCueId;
+			KOUKUSAYDON_LOGIC_OUTPUT duplicateIdle; KOUKUSAYDON_LOGIC_WORLD_PLAY duplicatePlay;
+			duplicatePlay.strInstanceId = "world.first"; duplicatePlay.strOccurrenceId = "occurrence.first.again";
+			duplicatePlay.iStartTick = 2u; duplicatePlay.iDurationMs = 1000u;
+			BOSS_PATTERN_WORLD_PLACEMENT duplicatePlacement; duplicatePlacement.fPositionX = 99.f; duplicatePlacement.fScaleX = 3.f;
+			duplicatePlay.Placement = duplicatePlacement; duplicateIdle.WorldSequencePlays.push_back(duplicatePlay);
+			worldRoom->Apply_KoukuLogicOutput(duplicateIdle, *getBoss(*worldRoom, false), 2u);
+			motionOutput.WorldSequencePlays.front().strTargetWorldOccurrenceId = "occurrence.first";
+			worldRoom->Apply_KoukuLogicOutput(motionOutput, *getBoss(*worldRoom, false), 3u);
+			tests.Require(worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.size() == 5u &&
+				worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.back().strTargetCueId == firstCueId &&
+				worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.front().fWorldPositionX == 10.f &&
+				worldRoom->m_KoukuSaydonPatternAudition.WorldPlays[3u].fWorldPositionX == 99.f &&
+				worldRoom->m_KoukuSaydonPatternAudition.WorldPlays[3u].fWorldScaleX == 3.f &&
+				!worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.back().bHasPlacement,
+				"Contact motion selects the exact card while both independent absolute placements remain available for replay");
+			worldRoom->Stop_KoukuWorldOwner("member.a");
+			tests.Require(worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.size() == 1u && worldRoom->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "member.b" &&
+				worldRoom->m_KoukuSaydonPatternAudition.Members.front().WorldCueByOccurrence.empty(), "Stopping one World owner preserves its sibling's activation and clears occurrence bindings");
+			auto delayed = makeRoom(); auto delayRequest = requestFor(*delayed, 67u); delayed->Evaluate_KoukuSaydonPatternAudition(902u, delayRequest, result); tick(*delayed);
+			tests.Require(getBoss(*delayed,false)->iPatternStartTick == 1u && getBoss(*delayed,true)->strPatternId.empty(), "Delayed member stays reserved before its offset");
+			for(unsigned i=0;i<3u;++i) tick(*delayed);
+			tests.Require(getBoss(*delayed,true)->iPatternStartTick == 4u, "Bundle rounds 67ms offset up to three fixed ticks");
+			auto restart = delayRequest; restart.iRequestSequence = 2u; restart.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE; restart.iExpectedRunEpoch = result.iRoomAuditionEpoch;
+			const auto oldEpoch = result.iRoomAuditionEpoch;
+			tests.Require(delayed->Evaluate_KoukuSaydonPatternAudition(902u,restart,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED && result.iRoomAuditionEpoch != oldEpoch && result.iCommonStartTick == 5u, "Restart creates a new run epoch and common clock after cleanup");
+			auto stop = restart; stop.iRequestSequence = 3u; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP; stop.iExpectedRunEpoch = oldEpoch;
+			tests.Require(delayed->Evaluate_KoukuSaydonPatternAudition(902u,stop,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_STALE_REQUEST, "Old run stop cannot terminate a restarted bundle");
+			stop.iRequestSequence = 4u; stop.iExpectedRunEpoch = delayed->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
+			tests.Require(delayed->Evaluate_KoukuSaydonPatternAudition(902u,stop,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::STOPPED && delayed->m_KoukuSaydonPatternAudition.Members.empty() && getBoss(*delayed,false)->strPatternId.empty() && getBoss(*delayed,true)->strPatternId.empty(), "Exact Stop clears active and scheduled bundle participants");
+			auto failed = makeRoom(); auto failRequest = requestFor(*failed,0u); auto* failFirst = getBoss(*failed,false); auto* failSecond = getBoss(*failed,true);
+			failFirst->fPositionX += 3.f; const float before = failFirst->fPositionX; failSecond->iCurrentHp = 0u;
+			tests.Require(failed->Evaluate_KoukuSaydonPatternAudition(903u,failRequest,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BOSS_DEAD && failFirst->fPositionX == before && failFirst->strPatternId.empty() && failed->m_KoukuSaydonPatternAudition.Members.empty(), "Second actor failure does not reset or start the first actor");
+			auto lost = makeRoom(); auto lostRequest = requestFor(*lost,67u); lost->Evaluate_KoukuSaydonPatternAudition(904u,lostRequest,result); tick(*lost); getBoss(*lost,true)->iCurrentHp = 0u; tick(*lost);
+			tests.Require(lost->m_KoukuSaydonPatternAudition.Members.empty() && getBoss(*lost,false)->strPatternId.empty(), "Delayed participant death aborts and cleans the entire bundle");
+		}
+		fs::remove(path,error); fs::remove(directory,error);
+	}
+#endif
+	if (context.koukuBundlesOnly) { std::cout << "failures : " << tests.failures << '\n'; return tests.failures == 0 ? 0 : 1; }
+
 	{
 		const auto* koukuParts =
 			catalog.Find_BossParts("BOSS_KAKULSAYDON_G1_KOUKU");
@@ -2081,7 +2681,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				{
 					gazeRoom->Update_WorldEntities(1.f / 30.f);
 					++gazeRoom->m_iServerTick;
-					const auto& cues = gazeRoom->m_KoukuSaydonPatternAudition.LogicLedger.MechanicTriggers;
+					const auto& cues = gazeRoom->m_KoukuSaydonPatternAudition.Members.front().LogicLedger.MechanicTriggers;
 					triggerFired = std::any_of(cues.begin(), cues.end(),
 						[](const auto& cue) { return cue.bStarted; });
 				}
@@ -2460,9 +3060,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					room->Evaluate_KoukuSaydonPatternAudition(
 						8101u, playAll, playAllResult) &&
 				sequence->PatternIds ==
-					room->m_KoukuSaydonPatternAudition.PatternIds &&
+					room->m_KoukuSaydonPatternAudition.Members.front().PatternIds &&
 				sequence->TransitionPursuitTicks ==
-					room->m_KoukuSaydonPatternAudition.TransitionTicks &&
+					room->m_KoukuSaydonPatternAudition.Members.front().TransitionTicks &&
 				playAllResult.Scope.ExpectedGameplayRevision ==
 					playAll.Scope.ExpectedGameplayRevision &&
 				playAllResult.Scope.iExpectedSourceRevision ==
@@ -2599,6 +3199,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 	}
 	Run_KoukuSaydonLogicRuntimeContracts(tests, catalog);
+	Run_KoukuObjectOverlapContracts(tests, catalog);
+	Run_KoukuObjectContactContracts(tests, catalog);
+	Run_KoukuWorldPlacementContracts(tests, catalog);
+	Run_KoukuBoneContactContracts(tests, catalog);
 	{
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
@@ -27710,6 +28314,102 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		return 1;
 	}
 	return context.result;
+}
+
+int LostArk::Server::Run_ServerKoukuSupportSurfaceContractTests()
+{
+	using namespace LostArk::Shared;
+	TESTS tests;
+	namespace fs = std::filesystem;
+	const auto fixture = fs::temp_directory_path() / (L"LostArkKoukuSupport-" + std::to_wstring(_getpid()));
+	fs::create_directories(fixture / L"Navigation");
+	{
+		std::ofstream grid(fixture / L"Navigation/NAV_SUPPORT.navgrid", std::ios::binary);
+		const std::uint32_t size = 4u;
+		const float cell = 4.f, origin = 0.f;
+		std::array<std::uint8_t, 16u> walkable; walkable.fill(1u); walkable[1] = 0u;
+		std::array<float, 16u> heights; heights.fill(1.f);
+		for (const auto value : { size, size }) grid.write(reinterpret_cast<const char*>(&value), sizeof(value));
+		for (const auto value : { cell, origin, origin }) grid.write(reinterpret_cast<const char*>(&value), sizeof(value));
+		grid.write(reinterpret_cast<const char*>(walkable.data()), walkable.size());
+		grid.write(reinterpret_cast<const char*>(heights.data()), heights.size() * sizeof(float));
+		std::ofstream(fixture / L"Navigation/NAV_SUPPORT.navpolicy") << R"(LOSTARK_NAVIGATION_POLICY 1 "NAV_SUPPORT" 1
+)";
+		std::ofstream(fixture / L"Navigation/NAV_SUPPORT.navblockers") << R"(LOSTARK_NAVGRID_BLOCKERS 1 "NAV_SUPPORT" 4 4 4 0 0 1
+REGION "blocked" "closed" 0 1
+2 0
+)";
+	}
+	std::vector<wchar_t> previous(32768u);
+	const DWORD previousLength = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previous.data(), static_cast<DWORD>(previous.size()));
+	SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", fixture.c_str());
+	CServerNavigation nav;
+	const bool loaded = nav.Load("NAV_SUPPORT");
+	SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previousLength ? previous.data() : nullptr);
+	tests.Require(loaded, "Load isolated four-metre navigation with blocked and missing ground");
+	std::string status;
+	SERVER_NAVIGATION_SUPPORT_SURFACE floor{ "test.floor", 6.f, 6.f, 2.f, 1.6f };
+	SERVER_NAV_POINT point;
+	bool applied = loaded && nav.Set_RuntimeSupportSurfaces({ floor }, status);
+	tests.Require(applied && nav.Sample_Position(6.f, 6.f, point) && std::abs(point.y - 1.6f) < .00001f,
+		"Circular support raises the existing ground");
+	tests.Require(nav.Sample_Position(8.f, 6.f, point) && std::abs(point.y - 1.6f) < .00001f &&
+		nav.Sample_Position(8.01f, 6.f, point) && point.y == 1.f,
+		"Exact circle edge does not expand to the four-metre cell");
+	std::vector<SERVER_NAV_POINT> path;
+	tests.Require(nav.Find_Path(2.f, 6.f, 10.f, 6.f, path) && path.size() >= 2u &&
+		std::abs(path.front().y - 1.6f) < .00001f && nav.Has_LineOfSight(2.f, 6.f, 10.f, 6.f) &&
+		nav.Resolve_TraversalStep(3.9f, 6.f, 4.1f, 6.f, point) && std::abs(point.y - 1.6f) < .00001f,
+		"A-star, line of sight and live movement use the same supported height");
+	floor.fRadiusM = .25f; floor.fHeightY = 3.f;
+	nav.Set_RuntimeSupportSurfaces({ floor }, status);
+	tests.Require(!nav.Resolve_TraversalStep(5.f, 6.f, 7.f, 6.f, point) &&
+		!nav.Has_LineOfSight(5.f, 6.f, 7.f, 6.f) && !nav.Find_Path(5.f, 6.f, 7.f, 6.f, path),
+		"A tall sub-cell disk cannot bypass step policy when both endpoints lie outside it");
+	floor.fCenterX = 6.f; floor.fCenterZ = 2.f; floor.fRadiusM = 1.f;
+	SERVER_NAVIGATION_SUPPORT_SURFACE blockerFloor{ "blocked.floor", 10.f, 2.f, 1.f, 1.6f };
+	nav.Set_RuntimeSupportSurfaces({ floor, blockerFloor }, status);
+	tests.Require(!nav.Sample_Position(6.f, 2.f, point) && !nav.Is_PointWalkableExact(6.f, 2.f) &&
+		!nav.Is_PointWalkableExact(10.f, 2.f) && !nav.Has_LineOfSight(10.f, 2.f, 10.f, 2.f),
+		"Supports do not open missing ground or runtime blockers");
+	const auto revision = nav.Get_Revision();
+	floor.fRadiusM = -1.f;
+	tests.Require(!nav.Set_RuntimeSupportSurfaces({ floor }, status) && nav.Get_Revision() == revision &&
+		nav.Get_RuntimeSupportSurfaceCount() == 2u, "Invalid surface replacement preserves the previous committed list");
+	nav.Set_RuntimeSupportSurfaces({}, status);
+#ifdef _DEBUG
+	// The same owned schedule methods used before walking also cover stationary players and cleanup.
+	auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	room->m_ServerNavigation = nav;
+	SERVER_PLAYER player; player.iPlayerId = 1u; player.iCurrentHp = 100u;
+	player.fPositionX = 6.f; player.fPositionY = 1.f; player.fPositionZ = 6.f;
+	room->m_Players[1u] = player;
+	room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 1u;
+	CGameRoom::KOUKU_SCHEDULED_SUPPORT_SURFACE scheduled;
+	scheduled.strMemberId = "member.one"; scheduled.iStartTick = 100u; scheduled.iEndTick = 102u;
+	scheduled.Surface = { "1/member.one/pattern/world", 6.f, 6.f, 2.f, 1.6f };
+	room->m_KoukuSaydonPatternAudition.SupportSchedule = { scheduled };
+	tests.Require(room->Refresh_KoukuSupportSurfaces(99u) && room->m_Players[1u].fPositionY == 1.f &&
+		room->Refresh_KoukuSupportSurfaces(100u) && std::abs(room->m_Players[1u].fPositionY - 1.6f) < .00001f &&
+		!room->m_Players[1u].hasMoveGoal, "WORLD start tick supports a stationary player without a movement command");
+	tests.Require(room->Refresh_KoukuSupportSurfaces(102u) && room->m_Players[1u].fPositionY == 1.f &&
+		room->m_ServerNavigation.Get_RuntimeSupportSurfaceCount() == 0u,
+		"WORLD end tick removes the support and restores stationary ground height");
+	scheduled.iEndTick = 200u;
+	auto other = scheduled; other.strMemberId = "member.two"; other.Surface.strOwnerKey = "other.floor";
+	other.Surface.fHeightY = 1.8f;
+	room->m_KoukuSaydonPatternAudition.SupportSchedule = { scheduled, other };
+	room->Refresh_KoukuSupportSurfaces(110u);
+	room->Stop_KoukuWorldOwner("member.two");
+	tests.Require(room->Refresh_KoukuSupportSurfaces(110u) && room->m_ServerNavigation.Get_RuntimeSupportSurfaceCount() == 1u &&
+		std::abs(room->m_Players[1u].fPositionY - 1.6f) < .00001f, "Stopping one WORLD owner preserves another owner's support");
+	room->Stop_KoukuWorldOwner();
+	tests.Require(room->Refresh_KoukuSupportSurfaces(110u) && room->m_Players[1u].fPositionY == 1.f,
+		"Stopping the complete run returns players to the original floor");
+#endif
+	std::error_code cleanupError; fs::remove_all(fixture, cleanupError);
+	std::cout << "failures : " << tests.failures << std::endl;
+	return tests.failures ? 1 : 0;
 }
 
 int LostArk::Server::Run_ServerNavigationContractTests()

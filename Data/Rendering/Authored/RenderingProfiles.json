@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 17,
+  "revision": 18,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -151,6 +151,7 @@
     },
     {
       "profileId": "scene.kakulsaydon.find-true-dark.v1",
+      "mapLightIntensityMultiplier": 0.05,
       "displayName": "씬프로필_암전",
       "exposureMultiplier": 0.550000012,
       "bloomIntensityMultiplier": 0.800000012,

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -592,7 +593,10 @@ namespace LostArk::Server
 		POSE_INPUT,
 		STAGGER_WINDOW,
 		AREA_OVERLAP,
-		ENTER_AREA
+		ENTER_AREA,
+		OBJECT_OVERLAP,
+		OBJECT_CONTACT,
+		EXTERNAL_SIGNAL
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -602,7 +606,16 @@ namespace LostArk::Server
 		MAX_HP_PERCENT_DAMAGE,
 		MADNESS_GAUGE_ADD_PERCENT,
 		CLOWN_TRANSFORM,
-		FOLLOWUP_PATTERN
+		FOLLOWUP_PATTERN,
+		PLAY_WORLD_OBJECT_MOTION,
+		PLAY_CONTACT_WORLD_OBJECT_MOTION,
+		COMPLETE_LOGIC_WINDOW
+	};
+
+	struct BOSS_LOGIC_CONTACT_MOTION final
+	{
+		std::string strTargetWorldOccurrenceId;
+		std::string strMotionInstanceId;
 	};
 
 	struct BOSS_PATTERN_LOGIC_RESULT final
@@ -611,6 +624,11 @@ namespace LostArk::Server
 		std::uint32_t iPercent = 0u;
 		std::uint32_t iDurationMs = 0u;
 		std::string strPatternId;
+		std::string strTargetWorldInstanceId;
+		std::string strMotionInstanceId;
+		std::vector<BOSS_LOGIC_CONTACT_MOTION> ContactMotions;
+		std::string strTargetLogicOccurrenceId;
+		std::string strContactTargetWorldOccurrenceId;
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -651,6 +669,13 @@ namespace LostArk::Server
 		LostArk::Shared::MECHANIC_CARD_COLOR eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
 	};
 
+	struct BOSS_LOGIC_CONTACT_TARGET final
+	{
+		std::string strWorldOccurrenceId;
+		std::string strWorldInstanceId;
+		float fWorldX = 0.f, fWorldZ = 0.f, fRadiusM = 0.f;
+	};
+
 	struct BOSS_PATTERN_LOGIC_WINDOW final
 	{
 		std::string strWindowId;
@@ -675,6 +700,13 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnSuccess;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnFail;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnTimeout;
+		std::string strTargetWorldInstanceId;
+		float fTargetWorldX = 0.f, fTargetWorldZ = 0.f;
+		float fTargetRadiusM = 0.f;
+		std::vector<BOSS_LOGIC_CONTACT_TARGET> ContactTargets;
+		std::string strContactGroupId;
+		std::uint32_t iContactPriority = 0u;
+		bool bHasContactGroup = false;
 	};
 
 	enum class BOSS_PATTERN_MECHANIC_TRIGGER_KIND : std::uint8_t
@@ -700,10 +732,28 @@ namespace LostArk::Server
 
 	/* Presentation cues the pattern clock fires. The Server only knows the
 	stable IDs it broadcasts; the Client resolves them. */
+	struct BOSS_PATTERN_WORLD_SUPPORT_WINDOW final
+	{
+		std::uint32_t iStartOffsetTicks = 0u;
+		std::uint32_t iEndOffsetTicks = 0u;
+		float fCenterX = 0.f;
+		float fCenterZ = 0.f;
+		float fHeightY = 0.f;
+		float fRadiusM = 0.f;
+	};
+
+	struct BOSS_PATTERN_WORLD_PLACEMENT final
+	{
+		float fPositionX = 0.f, fPositionY = 0.f, fPositionZ = 0.f;
+		float fRotationXDegrees = 0.f, fRotationYDegrees = 0.f, fRotationZDegrees = 0.f;
+		float fScaleX = 1.f, fScaleY = 1.f, fScaleZ = 1.f;
+	};
+
 	struct BOSS_PATTERN_WORLD_SEQUENCE final
 	{
 		std::uint32_t iDurationMs = 0u;
 		std::string strInstanceId;
+		std::string strOccurrenceId;
 		std::uint32_t iStartMs = 0u;
 		float fPlaybackSpeed = 1.f;
 		float fPositionOffsetX = 0.f;
@@ -713,6 +763,8 @@ namespace LostArk::Server
 		float fAnchorPositionX = 0.f;
 		float fAnchorPositionY = 0.f;
 		float fAnchorPositionZ = 0.f;
+		std::vector<BOSS_PATTERN_WORLD_SUPPORT_WINDOW> SupportWindows;
+		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
 
 	struct BOSS_PATTERN_SCENE_PROFILE final
@@ -946,10 +998,27 @@ namespace LostArk::Server
 		std::uint32_t iMaximumActiveGhosts = 0u;
 	};
 
+	struct BOSS_PATTERN_BUNDLE_MEMBER final
+	{
+		std::string strMemberId;
+		std::string strPatternId;
+		std::string strTargetBossPlacementId;
+		std::uint32_t iStartOffsetMs = 0u;
+	};
+	struct BOSS_PATTERN_BUNDLE_DEFINITION final
+	{
+		std::string strBundleId;
+		std::string strEncounterId;
+		std::string strGateId;
+		std::vector<BOSS_PATTERN_BUNDLE_MEMBER> Members;
+	};
+
 	struct BOSS_PATTERN_DEFINITION
 	{
 		std::string strEncounterId;
 		std::string strPatternId;
+		std::string strGateId;
+		std::string strTargetBossPlacementId;
 		std::string strActionId;
 		bool bAuthoringMasterManaged = false;
 		BOSS_PATTERN_MOTION Motion;
@@ -1001,6 +1070,7 @@ namespace LostArk::Server
 		patterns never carry them. */
 		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
 		bool bResetBossToSpawn = false;
+		std::optional<float> ResetBossYawDegrees;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;
 		std::vector<BOSS_PATTERN_WORLD_SEQUENCE> WorldSequences;
 		std::vector<BOSS_PATTERN_SCENE_PROFILE> SceneProfiles;
@@ -1152,6 +1222,7 @@ namespace LostArk::Server
 		consumes it instead of intro/health-bar/rotation selection. */
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* Find_BossPatternSequence(
 			const std::string& encounterId) const;
+		const BOSS_PATTERN_BUNDLE_DEFINITION* Find_BossPatternBundle(const std::string& bundleId) const;
 		/* The authored composition counter is intentionally separate from the
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
 		[[nodiscard]] std::uint32_t Find_KoukuSaydonProductSourceRevision(
@@ -1241,6 +1312,7 @@ namespace LostArk::Server
 			m_BossPatternRotations;
 		std::unordered_map<std::string, BOSS_PATTERN_SEQUENCE_DEFINITION>
 			m_BossPatternSequences;
+		std::unordered_map<std::string, BOSS_PATTERN_BUNDLE_DEFINITION> m_BossPatternBundles;
 		std::uint32_t m_iKoukuSaydonProductSourceRevision = 0u;
 		std::unordered_map<std::string, BOSS_ENCOUNTER_MADNESS_POLICY>
 			m_KoukuMadnessPolicies;

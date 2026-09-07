@@ -6,6 +6,9 @@
 
 #include <cstdint>
 #include <map>
+#include <set>
+#include <tuple>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -31,6 +34,8 @@ namespace LostArk::Server
 		std::uint32_t iEndTick = 0u;
 		bool bOpened = false;
 		bool bClosed = false;
+		std::set<std::pair<std::string, std::string>> AppliedWorldMotions;
+		std::set<std::string> ContactedWorldOccurrences;
 		/* STAGGER_WINDOW measures the health the boss lost since it opened. */
 		std::uint32_t iBossHpAtOpen = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
@@ -55,6 +60,8 @@ namespace LostArk::Server
 		bool bDanceActive = false;
 		LostArk::Shared::KOUKU_HUD_MODE eHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::vector<KOUKUSAYDON_LOGIC_WINDOW_STATE> Windows;
+		std::vector<std::uint32_t> ContactWindowOrder;
+		std::set<std::tuple<std::string, std::uint32_t, std::string>> ConsumedContactGroups;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
 
@@ -69,6 +76,11 @@ namespace LostArk::Server
 		float fPositionOffsetY = 0.f;
 		float fPositionOffsetZ = 0.f;
 		std::uint32_t iDurationMs = 0u;
+		std::string strTargetSequenceInstanceId;
+		std::string strOccurrenceId;
+		std::uint32_t iStartTick = 0u;
+		std::string strTargetWorldOccurrenceId;
+		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
 
 	/* What one Update tick asks the room to do. The runtime touches players and
@@ -173,6 +185,7 @@ namespace LostArk::Server
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
 		static void Apply_Results(
 			const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results,
+			KOUKUSAYDON_LOGIC_WINDOW_STATE& state,
 			SERVER_PLAYER* pPlayer,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			const SERVER_WORLD_ENTITY& boss,

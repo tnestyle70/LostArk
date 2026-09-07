@@ -21,6 +21,8 @@ struct SCENE_RENDERING_PROFILE final
 	LIGHT_DESC Light{};
 	f32_t fExposureMultiplier = 1.f;
 	f32_t fBloomIntensityMultiplier = 1.f;
+	/* Persistent Area lights only; PLAYER/BOSS pattern lights retain their authored intensity. */
+	f32_t fMapLightIntensityMultiplier = 1.f;
 	float3_t vShadowFocus{};
 	f32_t fShadowDistance = 40.f;
 	SHADOW_SETTINGS ShadowSettings{};

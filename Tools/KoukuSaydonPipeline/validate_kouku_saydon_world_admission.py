@@ -441,6 +441,72 @@ def _require_same_bytes(
         )
 
 
+def _require_published_map_catalog(root: Path, area: dict | None, stage: _Stage) -> None:
+    """Mirror the publisher's optional material-reference header projection."""
+    source_material = area.get("sourceMaterials") if area else None
+    runtime_material = area.get("materials") if area else None
+    if source_material is None and runtime_material is None:
+        _require_same_bytes(root, SOURCE_CATALOG_PATH, RUNTIME_CATALOG_PATH,
+                            stage, "map-runtime.catalog.stale")
+        return
+    expected_source = f"Data/Maps/Authoring/{AREA_ID}/{AREA_ID}.mapmaterials.json"
+    expected_runtime = f"Client/Bin/DataFiles/Map/{AREA_ID}.mapmaterials.json"
+    if source_material != expected_source or runtime_material != expected_runtime:
+        stage.issue("map-catalog.materials.invalid", MAP_CATALOG_PATH,
+                    "material source/runtime paths must be a complete canonical pair")
+        return
+    source = _read_text(root, SOURCE_CATALOG_PATH, stage)
+    if source is None:
+        return
+    lines = source.splitlines()
+    try:
+        header = shlex.split(lines[0], posix=True) if lines else []
+        valid = (len(header) == 4 and header[0] == "LOSTARK_MAP_ASSET_CATALOG"
+                 and header[1] == "4" and header[2] == AREA_ID
+                 and int(header[3]) == len(lines) - 1)
+    except ValueError:
+        valid = False
+    if not valid:
+        stage.issue("map-runtime.catalog.stale", SOURCE_CATALOG_PATH,
+                    "material-reference projection requires a valid imported v4 catalog")
+        return
+    lines[0] = (f'LOSTARK_MAP_ASSET_CATALOG 5 "{AREA_ID}" {header[3]} '
+                f'"{AREA_ID}.mapmaterials.json"')
+    expected = ("\n".join(lines) + "\n").encode("utf-8")
+    try:
+        actual = (root / RUNTIME_CATALOG_PATH).read_bytes()
+    except OSError as error:
+        stage.issue("file.missing", RUNTIME_CATALOG_PATH, str(error))
+    else:
+        if actual != expected:
+            stage.issue("map-runtime.catalog.stale", RUNTIME_CATALOG_PATH,
+                        "runtime catalog differs from the declared material-reference projection")
+    material_text = _read_text(root, Path(expected_source), stage)
+    if material_text is None:
+        return
+    try:
+        material = json.loads(material_text)
+    except (ValueError, TypeError) as error:
+        stage.issue("map-runtime.materials.invalid", expected_source, str(error))
+        return
+    if (not isinstance(material, dict) or material.get("schema") != "lostark.map-materials"
+            or type(material.get("formatVersion")) is not int
+            or material["formatVersion"] != 1 or material.get("areaId") != AREA_ID
+            or not isinstance(material.get("materials"), list) or not material["materials"]):
+        stage.issue("map-runtime.materials.invalid", expected_source,
+                    "material document header is invalid")
+        return
+    try:
+        actual_material = (root / expected_runtime).read_bytes()
+    except OSError as error:
+        stage.issue("file.missing", expected_runtime, str(error))
+        return
+    expected_material = ("\n".join(material_text.splitlines()) + "\n").encode("utf-8")
+    if actual_material != expected_material:
+        stage.issue("map-runtime.materials.stale", expected_runtime,
+                    "runtime material document differs from authoring")
+
+
 def _random_contract_violations(value: Any, location: str = "$.") -> Iterable[str]:
     if isinstance(value, dict):
         for key, child in value.items():
@@ -866,13 +932,7 @@ def _validate_product(
     for key, expected in product_fields.items():
         _expect_catalog_field(stage, area, key, expected)
 
-    _require_same_bytes(
-        root,
-        SOURCE_CATALOG_PATH,
-        RUNTIME_CATALOG_PATH,
-        stage,
-        "map-runtime.catalog.stale",
-    )
+    _require_published_map_catalog(root, area, stage)
     _require_same_bytes(
         root,
         SOURCE_PLACEMENTS_PATH,

@@ -1,62 +1,11 @@
 {
   "schema": "lostark.light-resources",
   "formatVersion": 1,
-  "revision": 2,
-  "nextLightResourceOrdinal": 3,
+  "revision": 8,
+  "nextLightResourceOrdinal": 4,
   "lights": [
-    {
-      "lightResourceId": "light.runtime.1",
-      "displayName": "스포트라이트_캐릭터",
-      "kind": "SPOT",
-      "defaultAnchorKind": "PLAYER",
-      "localOffset": [
-        0,
-        8,
-        0
-      ],
-      "localRotationDegrees": [
-        90,
-        0,
-        0
-      ],
-      "rangeMeters": 16,
-      "falloffExponent": 2,
-      "innerConeDegrees": 8,
-      "outerConeDegrees": 18,
-      "color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "brightness": 4
-    },
-    {
-      "lightResourceId": "light.runtime.2",
-      "displayName": "스포트라이트_세이튼",
-      "kind": "SPOT",
-      "defaultAnchorKind": "BOSS",
-      "localOffset": [
-        0,
-        10,
-        0
-      ],
-      "localRotationDegrees": [
-        90,
-        0,
-        0
-      ],
-      "rangeMeters": 16,
-      "falloffExponent": 2,
-      "innerConeDegrees": 10,
-      "outerConeDegrees": 24,
-      "color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "brightness": 4
-    }
+    {"lightResourceId": "light.runtime.1", "displayName": "스포트라이트_캐릭터", "kind": "SPOT", "defaultAnchorKind": "PLAYER", "localOffset": [0,8,0], "localRotationDegrees": [90,0,0], "rangeMeters": 18.6000004, "falloffExponent": 2, "innerConeDegrees": 8, "outerConeDegrees": 18, "color": [1,1,1,1], "brightness": 6},
+    {"lightResourceId": "light.runtime.2", "displayName": "스포트라이트_세이튼", "kind": "SPOT", "defaultAnchorKind": "BOSS", "localOffset": [0,8,0], "localRotationDegrees": [90,0,0], "rangeMeters": 23.7999992, "falloffExponent": 2, "innerConeDegrees": 8, "outerConeDegrees": 26, "color": [1,1,1,1], "brightness": 10},
+    {"lightResourceId": "light.runtime.3", "displayName": "스포트라이트_세이튼댄스", "kind": "SPOT", "defaultAnchorKind": "BOSS", "localOffset": [0,9.14999962,0], "localRotationDegrees": [90,0,0], "rangeMeters": 40.7999992, "falloffExponent": 2, "innerConeDegrees": 12, "outerConeDegrees": 48.4199982, "color": [1,1,1,1], "brightness": 7.75}
   ]
 }

@@ -1849,6 +1849,7 @@ void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 		m_iSelectedCameraShot < m_CameraShots.size();
 	for (const EDITOR_CAMERA_SHOT& shot : m_CameraShots)
 	{
+		if (shot.patternOnly && !editingOneShot) continue;
 		if (editingOneShot &&
 			&shot != &m_CameraShots[m_iSelectedCameraShot])
 		{
@@ -2062,7 +2063,7 @@ bool_t Client::CMapTool::Play_MarioWalkthrough(
 		m_iMarioWalkShot >= m_CameraShots.size(); ++index)
 	{
 		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[index];
-		if (!shot.followsPlayer)
+		if (shot.patternOnly || !shot.followsPlayer)
 			continue;
 		for (const MARIO_WALK_STOP& stop : m_MarioWalkStops)
 		{
@@ -6733,11 +6734,15 @@ bool_t Client::CMapTool::Admit_AuthoringPrototype(
 		return false;
 	}
 
+	Engine::MODEL_ASSET_LOAD_DESC loadDesc;
+	loadDesc.assetRoot = CRuntimeAssetRoot::Get();
+	loadDesc.meshPath = asset.resolvedModelPath;
+	loadDesc.materialOverrides = asset.materialOverrides;
 	auto model = CModel::Create(
 		m_pDevice,
 		m_pContext,
 		MODEL::NONANIM,
-		asset.resolvedModelPath.string().c_str(),
+		loadDesc,
 		XMMatrixScaling(0.01f, 0.01f, 0.01f));
 	if (nullptr == model ||
 		FAILED(CGameInstance::Get().Add_Prototype(
@@ -7116,6 +7121,36 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		descriptor.sourceCatalog = ResolveDataCatalogPath(sourceCatalog);
 		descriptor.sourcePlacements =
 			ResolveDataCatalogPath(sourcePlacements);
+		const DATA_JSON_VALUE* sourceMaterials = selected->Find("sourceMaterials");
+		const DATA_JSON_VALUE* runtimeMaterials = selected->Find("materials");
+		if ((nullptr == sourceMaterials) != (nullptr == runtimeMaterials))
+		{
+			m_Status = "MapCatalog material source/runtime pair is incomplete: " +
+				descriptor.areaId;
+			return false;
+		}
+		if (nullptr != sourceMaterials)
+		{
+			const std::string expectedSource = "Data/Maps/Authoring/" +
+				descriptor.areaId + "/" + descriptor.areaId + ".mapmaterials.json";
+			const std::string expectedRuntime = "Client/Bin/DataFiles/Map/" +
+				descriptor.areaId + ".mapmaterials.json";
+			if (!sourceMaterials->Is_String() || !runtimeMaterials->Is_String() ||
+				sourceMaterials->Get_String() != expectedSource ||
+				runtimeMaterials->Get_String() != expectedRuntime)
+			{
+				m_Status = "MapCatalog material paths are not canonical: " +
+					descriptor.areaId;
+				return false;
+			}
+			descriptor.sourceMaterials = ResolveDataCatalogPath(expectedSource);
+			if (descriptor.sourceMaterials.empty())
+			{
+				m_Status = "MapCatalog material path escapes Data root: " +
+					descriptor.areaId;
+				return false;
+			}
+		}
 		const DATA_JSON_VALUE* sourceLights = selected->Find("sourceLights");
 		if (nullptr != sourceLights)
 		{
@@ -7346,7 +7381,8 @@ bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 	if (!stagedCatalog.Load_Source(
 		descriptor.sourceCatalog,
 		descriptor.sourcePlacements,
-		descriptor.areaId))
+		descriptor.areaId,
+		descriptor.sourceMaterials))
 	{
 		m_Status = stagedCatalog.Get_Status();
 		return false;
@@ -7456,7 +7492,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	if (!stagedCatalog.Load_Source(
 		descriptor.sourceCatalog,
 		descriptor.sourcePlacements,
-		descriptor.areaId))
+		descriptor.areaId,
+		descriptor.sourceMaterials))
 	{
 		m_Status = stagedCatalog.Get_Status();
 		return false;
@@ -13924,11 +13961,51 @@ void Client::CMapTool::Render_CameraPanel()
 	Render_CameraShotSection();
 }
 
+bool_t Client::CMapTool::Save_CameraShotDocumentAtomic(const std::filesystem::path& path,
+	const std::string_view expectedText, const std::string_view text, std::string& outStatus)
+{
+	std::error_code error;
+	std::filesystem::create_directories(path.parent_path(), error);
+	if (error) { outStatus = "Cannot create camera authoring directory."; return false; }
+	auto lockPath = path; lockPath += L".lock";
+	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (lock == INVALID_HANDLE_VALUE)
+	{ outStatus = "Camera authoring is being saved by another editor."; return false; }
+	const auto sourceMatches = [&]() {
+		std::error_code inspectError;
+		if (!std::filesystem::exists(path, inspectError)) return !inspectError && expectedText.empty();
+		std::ifstream input(path, std::ios::binary);
+		if (!input) return false;
+		const std::string current(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>{});
+		return !input.bad() && current == expectedText;
+	};
+	if (!sourceMatches())
+	{
+		CloseHandle(lock);
+		outStatus = "Camera source changed on disk. Re-enter the Area before saving; existing source was preserved.";
+		return false;
+	}
+	auto temporary = path; temporary += L".tmp." + std::to_wstring(GetCurrentProcessId());
+	bool written = false;
+	{
+		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+		if (output) { output.write(text.data(), static_cast<std::streamsize>(text.size())); output.flush(); written = output.good(); output.close(); written = written && !output.fail(); }
+	}
+	const bool committed = written && sourceMatches() &&
+		MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+	if (!committed) std::filesystem::remove(temporary, error);
+	CloseHandle(lock);
+	if (!committed) outStatus = "Camera atomic save failed; source preserved.";
+	return committed;
+}
+
 bool_t Client::CMapTool::Load_CameraShots(
 	const EDITOR_AREA_DESCRIPTOR& descriptor)
 {
 	End_CameraShotPreview();
 	m_CameraShots.clear();
+	m_strCameraShotBaselineText.clear();
 	m_iSelectedCameraShot = 0u;
 	if (descriptor.cameraShotDocument.empty())
 	{
@@ -14012,6 +14089,32 @@ bool_t Client::CMapTool::Load_CameraShots(
 		}
 		shot.shotId = shotId->Get_String();
 		shot.sequenceInstanceId = sequenceId->Get_String();
+		shot.displayName = shot.shotId;
+		if (const auto* name = value.Find("displayName"))
+		{
+			if (!name->Is_String() || name->Get_String().empty() || name->Get_String().size() > 128u)
+			{ m_CameraShotStatus = "Camera displayName is invalid"; return false; }
+			shot.displayName = name->Get_String();
+		}
+		if (const auto* hold = value.Find("defaultHoldMs"))
+		{
+			if (!hold->Is_Number() || !std::isfinite(hold->Get_Number()) || hold->Get_Number() < 0.0 ||
+				hold->Get_Number() > 600000.0 || std::floor(hold->Get_Number()) != hold->Get_Number())
+			{ m_CameraShotStatus = "Camera defaultHoldMs is invalid"; return false; }
+			shot.defaultHoldMs = static_cast<int32_t>(hold->Get_Number());
+		}
+		if (const auto* activation = value.Find("activation"))
+		{
+			if (!activation->Is_String() || (activation->Get_String() != "AUTO" && activation->Get_String() != "PATTERN_ONLY"))
+			{ m_CameraShotStatus = "Camera activation is invalid"; return false; }
+			shot.patternOnly = activation->Get_String() == "PATTERN_ONLY";
+		}
+		if (const auto* easing = value.Find("transitionEasing"))
+		{
+			if (!easing->Is_String() || (easing->Get_String() != "LINEAR" && easing->Get_String() != "SMOOTHSTEP"))
+			{ m_CameraShotStatus = "Camera transitionEasing is invalid"; return false; }
+			shot.linearTransition = easing->Get_String() == "LINEAR";
+		}
 		const DATA_JSON_VALUE* yaw = box->Find("yawDegrees");
 		const DATA_JSON_VALUE* fov = value.Find("fovYDegrees");
 		const DATA_JSON_VALUE* blendIn = value.Find("blendInMs");
@@ -14091,6 +14194,7 @@ bool_t Client::CMapTool::Load_CameraShots(
 	}
 
 	m_CameraShots = std::move(staged);
+	m_strCameraShotBaselineText = text;
 	m_CameraShotStatus =
 		"Loaded " + std::to_string(m_CameraShots.size()) + " shot(s)";
 	return true;
@@ -14165,6 +14269,10 @@ bool_t Client::CMapTool::Save_CameraShots()
 		text += 0u == index ? "\n" : ",\n";
 		text += "    {\n";
 		text += "      \"shotId\": \"" + shot.shotId + "\",\n";
+		text += "      \"displayName\": \"" + CDataJson::Escape(shot.displayName.empty() ? shot.shotId : shot.displayName) + "\",\n";
+		text += "      \"defaultHoldMs\": " + std::to_string(shot.defaultHoldMs) + ",\n";
+		text += "      \"transitionEasing\": \"" + std::string(shot.linearTransition ? "LINEAR" : "SMOOTHSTEP") + "\",\n";
+		text += "      \"activation\": \"" + std::string(shot.patternOnly ? "PATTERN_ONLY" : "AUTO") + "\",\n";
 		text += "      \"sequenceInstanceId\": \"" +
 			shot.sequenceInstanceId + "\",\n";
 		text += "      \"box\": { \"center\": " + vector3(shot.center) +
@@ -14210,34 +14318,9 @@ bool_t Client::CMapTool::Save_CameraShots()
 	}
 	text += m_CameraShots.empty() ? "]\n}\n" : "\n  ]\n}\n";
 
-	std::error_code error;
-	std::filesystem::create_directories(
-		descriptor->cameraShotDocument.parent_path(), error);
-	std::filesystem::path temporary = descriptor->cameraShotDocument;
-	temporary += L".tmp";
-	{
-		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-		if (!output)
-		{
-			m_CameraShotStatus = "Could not create the temporary shot document";
-			return false;
-		}
-		output << text;
-		output.flush();
-		if (!output.good())
-		{
-			m_CameraShotStatus = "Could not write the temporary shot document";
-			return false;
-		}
-	}
-	if (!MoveFileExW(temporary.c_str(),
-		descriptor->cameraShotDocument.c_str(),
-		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-	{
-		std::filesystem::remove(temporary, error);
-		m_CameraShotStatus = "Could not commit the shot document";
-		return false;
-	}
+	if (!Save_CameraShotDocumentAtomic(descriptor->cameraShotDocument,
+		m_strCameraShotBaselineText, text, m_CameraShotStatus)) return false;
+	m_strCameraShotBaselineText = text;
 	m_CameraShotStatus = "Saved " + std::to_string(m_CameraShots.size()) +
 		" shot(s) as revision " + std::to_string(revision) +
 		". Publish the Area to ship it.";

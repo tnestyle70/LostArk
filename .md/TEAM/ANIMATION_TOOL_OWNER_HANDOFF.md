@@ -929,7 +929,10 @@ Resources의 기획 Action을 Sequence에 붙이면 원본 slot의 clip, source 
 복사한다. 모델에 Pattern이 없으면 첫 Append가 같은 모델의 DRAFT Pattern을 만든다.
 Stage/animation box는 클릭, Ctrl+클릭, 빈 공간 드래그로 선택하고 Selected Box의 `Delete` 또는
 Delete 키로 제거한다. `Duplicate`는 새 stable ID를 발급하여 선택한 Stage/box를 복제한다.
-Stage와 그 자식을 동시에 선택해도 자식은 한 번만 복제한다. 단독 box 복제는 같은 time window에 놓인다.
+Stage와 그 자식을 동시에 선택해도 자식은 한 번만 복제한다. 사본은 원본 Stage 순서대로 가장 오른쪽
+선택 owner Stage 뒤에 연속 삽입된다. Animation만 선택하면 해당 owner별 선택 구간을 새 Stage로
+복제하므로 기존 Stage의 미선택 tail과 원본을 보존한다. Earlier/Later와 좌우 방향키는 선택 Stage와
+Animation owner를 중복 없이 한 칸 이동하고 전체 선택을 유지한다. 이동 방향의 경계에 닿으면 전체를 거절한다.
 Sequencer의 `Save`는 삭제를 포함한 현재 Composition 문서를 저장한다. `Play/Stop`은 로컬
 Animation preview를 제어한다. Zoom 아래 Full lifetime ms/Apply는 마지막 Stage clock을 조절하며
 기존 box가 끝나는 시간보다 짧은 값과 전체 600초 초과는 거절한다.
@@ -1001,15 +1004,38 @@ Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 �
 원본 모델·Animation 목록에서 클립을 골라 Append하면 선택한 Object의 모델과 animation track에 연결된다.
 아래 Sequencer에서 재생하고 오른쪽 Detail에서 편집한 뒤 Save한다. 원본 클립 전체를 저장 상태로
 자동 복제하지 않으며, 목록은 기존 WModel decoder로 물리 모델에서 직접 읽는다.
+Animation Clips의 `Clip display name`은 한글 별명을 저장한다. 실제 `Native clip` ID는 읽기 전용이며
+별명을 바꿔도 모델 lookup을 유지한다. `Physics / Motion / Emission`에서 Lifetime과 Arc Height를
+정한 뒤 `Apply Vertical Arc`를 누르면 시작 높이로 돌아오는 상하 운동을 기존 속도·가속도에 저장한다.
+Physics Y Timeline을 드래그해 같은 Seek로 확인한다. Lifetime을 바꾼 뒤 같은 높이/복귀 시간을
+원하면 프리셋을 다시 적용한다. 생성 개수와 간격은 유지되며 곡선은 첫 생성 기준이다.
 Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
 마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어
 살아 있는 복제 플레이어마다 적용되고 Map은 저작 위치에 고정된다. Object Tool의 Preview at Character는
-모델 상태의 Map preview만 현재 캐릭터 위치로 옮기고 저장 위치와 커튼/룰렛 배치는 유지한다.
+현재 캐릭터 앞을 초기 Preview 기준으로 삼으며 저장 위치는 바꾸지 않는다. 기존 Map group의 Preview 종료 시 배치도 복구한다.
 
-`Save` → `Publish Area` 후 Action Workbench → Resources → World에서 상태를 선택해
-Append한다. Save는 source와 연결 placement의 외부 변경을 검사하고, Publish 성공 뒤 runtime을
-다시 읽는다. 문서 정본은 Area `.worldsequences.json` v3이며 기존 World sequence와 sampler를 확장한다.
+Action Workbench → Resources → World는 Object Tool의 부모 Object만 한 번씩 표시한다.
+부모 Detail의 `Default Motion`으로 초기 상태를 지정하고 Save하면 다음 frame에 목록이 갱신된다.
+World에서 카드 또는 조커카드를 선택해 `Append Object`를 누른다. Box Detail에 초기 상태와 연결된
+animation clip이 나오며, 실제 상태 편집은 Object Tool에서 한다. 기본 상태가 없거나 disabled이면 이유를 표시한다.
+Map 모델 Object는 현재 캐릭터 앞을 최초 좌표로 삼고 WORLD 박스의 절대 Transform으로 저장한다.
+캐릭터가 움직여도 따라가지 않으며 여러 장은 같은 Object 정의를 공유하되 독립 occurrence ID를 가진다.
+Append하면 같은 Pattern에 배치된 Object들이 정지된 첫 pose로 함께 나타난다. Box Detail의 Position,
+Rotation, Scale을 조절하면 해당 occurrence의 보이는 Object에 즉시 반영하며 Save는 절대 월드 좌표를 저장한다.
+다른 Preview가 실행 중이거나 해당 카드가 사라진 경우에는 선택 Pattern의 배치 Preview를 연다.
+`Preview placements`로 저장한 배치를 다시 확인할 수 있다.
+새 Object 박스의 기본 수명은 커서부터 Pattern 끝까지다. 시간은 Box Detail에서 조절한다.
+커튼·룰렛은 기존 Map group/sequence를 사용하며 독립 모델 카드용 placement로 자동 바꾸지 않는다.
+동반 Effect 연결은 해당 WORLD Box Detail의 `Attached Effect`에 있다.
+
+Object Tool Save는 source와 연결 placement의 외부 변경을 검사하고 원자 저장한 뒤, 기존 publisher의
+WorldSequences 전용 scope로 runtime을 비동기 반영한다. 별도 Publish 단계는 없다. 적용 실패는 저장본과
+기존 runtime을 보존하고 같은 Save로 재시도한다. 진행 중 재생은 시작한 revision을 유지한다.
+Composition Save도 준비된 PRODUCT의 runtime 생성까지 연결하며, 정상 Object 배치 편집 때문에
+기존 PRODUCT를 DRAFT로 내리지 않는다. 새 DRAFT는 편집·저장·Preview 가능하고 자동 승격하지 않는다.
+새 Server 실행 자료는 Server 재시작 뒤 적용한다. Physical Resources 검색은 여러 frame에 나누므로
+Save 위젯은 검색 완료를 기다리지 않는다. 정본은 Area `.worldsequences.json` v3이다.
 커튼/룰렛은 기존 sequence ID를 가리키므로 Object Detail의 편집이 원래 상태를 갱신한다.
 Effect의 기존 WORLD anchor는 살아 있는 단일 object의 pose를 조회할 수 있다. 복수 object의
 각 입자에 자동으로 effect를 붙이는 별도 이벤트 저작은 아직 제공하지 않는다.
@@ -1048,6 +1074,9 @@ Action Workbench → Resources → Light에서 선택 → Append selected Light�
 Append한 조명은 box 수명을 따르므로 중첩 배치가 필요하지 않으면 맵 원본의 enabled를 끈다.
 Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이나 Server gameplay 판정을 추가하지 않는다.
 패턴의 Scene Profile은 Level base qualityOverride를 상속하므로 쿠크 전용 품질 튜닝이 패턴 전환으로 사라지지 않는다.
+RenderingProfiles의 optional `mapLightIntensityMultiplier`는 0~4(누락 시 1)이며 Light Resources → Scene Profile →
+Light Detail에서 편집·Save Light·Publish Light한다. 맵 배치 광량에만 곱하고 PLAYER/BOSS 패턴 LIGHT는 유지한다.
+암전 profile은 0.05로 맵 조명을 줄이며 종료·Level 전환은 활성 profile의 배율을 다시 적용한다. Exposure는 화면 전체 배율이다.
 씬프로필_암전은 기존 scene.kakulsaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
 이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
@@ -1098,3 +1127,29 @@ pass로 Base DDS를 합성하고 normalized 위치 start/hold/end와 enterEnd/ex
 구분하고 사용자 육안 승인 전 원작 동일 재현으로 표기하지 않는다. 전달/검증 상태는 대응 RESULT를 따른다.
 사용자가 Collider와 바닥 UV의 일치, 카드 표시, 포즈 및 효과 방향·타이밍을 직접 확인해야 하며
 agent의 데이터 parse/컴파일 성공을 visual PASS로 사용하지 않는다.
+
+
+Create Pattern의 Parent는 Gate 안의 분류 위치이며 Bundle은 선택한 Parent 아래의 선택적 재생 묶음이다. `Parent = 조커찾기`, `Bundle = None`이면 해당 Parent 직속 독립 Pattern으로 생성한다. Parent와 Bundle이 모두 None이면 Gate 직속이다. 기존 Pattern은 상세 편집의 Parent에서 같은 Gate의 다른 Parent로 옮기거나 None으로 돌리고 Composition Save한다. 이 변경은 클립·시퀀스·기존 Bundle 참조를 유지한다. Parent에 직접 분류한 Pattern을 Bundle에서 추가 참조해도 직접 분류 위치는 유지한다. Save/Reload와 Product Publish는 optional `patterns[].folderId`를 보존하며, Parent가 없거나 다른 Gate이면 해당 항목의 오류를 표시하고 정상 항목은 유지한다.
+
+### 17.7 조커찾기 카드 접촉 Trigger와 뿅망치 Bone Anchor
+
+Create Logic에서 TRIGGER만 선택하면 이름만 있는 정의다. Collider의 Logic definition에는
+`(set Trigger kind)`로 표시된다. Use as Card Contact Trigger를 누르고 대상 카드들을 체크한 뒤
+Apply Values하면 OBJECT_CONTACT로 저장되어 기존 Shared Logic window 목록에 나온다.
+이 목록은 현재 draft를 사용하므로 Publish를 기다리지 않는다. 대상 없이 Apply하면 기존 정의를
+보존하고 이유를 표시한다. 모든 박스 트랙은 Collider와 같은 겹침 배치를 사용한다. 트랙 이름은 한 번만 표시하고,
+같은 시점에 겹친 World/Logic 등을 해당 트랙 내부에서 아래로 쌓아 각각 선택할 수 있다.
+
+Logic Definition은 재사용 규칙이고 Shared Logic Window는 해당 규칙을 Pattern 시간에 배치한 판정 창이다. 여러 카드를 맞히는 입력은 `TRIGGER / OBJECT_CONTACT`를 사용한다. 같은 Pattern에 Append한 WORLD occurrence들을 대상으로 선택하고, 각 대상의 반경을 지정한다. 같은 저장 카드 Motion을 여러 번 배치해도 각 occurrence ID로 구별하며, 한 Trigger 창에서 닿은 카드마다 한 번 반응한다. 타격 없이 창이 끝나면 카드 반응도 없으며 검색 전체의 Timeout을 발생시키지 않는다.
+
+중앙 Collider는 `로직트리거_카드뒤집기`의 Shared Logic Window에, 가장자리 Collider는 `로직트리거_카드들썩임`의 별도 창에 연결한다. 두 창의 시간과 Contact Group을 같게 하고 중앙 Priority를 더 높게 두면, 같은 카드에 중앙과 가장자리가 동시에 닿을 때 중앙 결과를 우선한다. 다른 타격 시점에서는 같은 Group을 재사용할 수 있다. 연결된 Collider의 시간 수정은 Shared Logic Window와 같은 창을 사용하는 다른 Collider에도 적용된다.
+
+각 Trigger의 Success에는 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result를 연결한다. Result의 `Copy targets from Trigger`로 대상을 채운 뒤 카드별로 해당 Object의 저장된 뒤집기 또는 들썩임 Motion을 선택한다. 실제 접촉한 occurrence의 실행 cue로만 전달하므로, 같은 Motion으로 생성한 다른 카드의 위치나 애니메이션을 바꾸지 않는다.
+
+조커찾기 전체 제한시간은 `DURATION / EXTERNAL_SIGNAL`의 별도 창이 소유한다. 그 창의 Success에는 성공 Pattern으로 가는 기존 Result, Timeout에는 전원 전멸 Result를 연결한다. 중앙 Trigger Success에 `COMPLETE_LOGIC_WINDOW` Result도 추가하고, 대상 창을 전체 제한시간 창으로 지정한다. 성공을 발생시킬 카드 조건에는 조커 카드 occurrence를 선택한다. End Pattern on success를 켜면 성공 분기로 즉시 넘어가며 이후 Timeout은 실행하지 않는다. 마지막 판정 tick에서 접촉 성공을 먼저 처리하고, 접촉하지 못하면 최종 애니메이션 자세를 마감 tick까지 유지하여 Timeout을 처리한다.
+
+뿅망치에 붙일 Collider는 상세 편집에서 `Anchor = BOSS`, `Bone target = WEAPON`, `Bone = 실제 무기 모델의 끝부분 Bone`을 선택한다. BODY는 보스 몸의 Bone이고 WEAPON은 별도 망치 모델의 Bone이다. 목록은 현재 Pattern 모델의 실제 로드된 Bone 이름을 사용한다. 망치 부위는 사용자가 Preview로 확인하여 선택하고 필요하면 Position Offset을 조정한다. 존재하지 않는 Bone을 보스 원점으로 조용히 대체하지 않는다. Follow Boss를 켜고 Trigger Start/Lifetime을 내려치는 짧은 구간에 맞춘다.
+
+Collider 중심은 실제 Bone의 XZ 위치를 따라가고 offset과 수평 형상 방향은 보스 yaw 및 저작 Rotation을 사용한다. 내려치는 높이 자체는 접촉 활성화 조건이 아니다. Publish는 기존 WModel pose sampler로 실제 body/weapon clip과 attachment에서 boss-local Bone 궤적을 만들어 Server fixed tick 판정에 연결한다. 해당 Bone CONTACT Pattern의 제품 애니메이션은 궤적과 맞도록 전환 blend를 사용하지 않는다. Server는 모델 파일이나 Client Transform을 받아 판정하지 않는다.
+
+Object Tool Save/Publish로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Product Publish한다. Server를 재시작한 뒤 Complete Play로 실제 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.

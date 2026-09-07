@@ -47,6 +47,8 @@ public:
 	CCameraTool() = default;
 	~CCameraTool();
 
+	/* Shared view capture for Area shots and cinematic cue authoring. */
+	static bool_t Capture_ViewPose(VALTAN_CINEMATIC_CAMERA_POSE& outPose);
 	void Open();
 	bool_t Open_Cue(const CAMERA_TOOL_OPEN_REQUEST& request);
 	void Update(f32_t timeDelta, bool_t toolVisible);

@@ -22,11 +22,20 @@ int main(const int argumentCount, char** arguments)
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-bundle-contract-test")
+		return LostArk::Server::Run_ServerGameplayContractTests(false, false, true);
 	if (2 == argumentCount &&
 		std::string_view(arguments[1]) == "--debug-teleport-contract-test")
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests(false, true);
 	}
+	if (2 == argumentCount &&
+		std::string_view(arguments[1]) == "--kouku-object-overlap-contract-test")
+	{
+		return LostArk::Server::Run_ServerKoukuObjectOverlapContractTests();
+	}
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-support-surface-contract-test")
+		return LostArk::Server::Run_ServerKoukuSupportSurfaceContractTests();
 	if (2 == argumentCount &&
 		std::string_view(arguments[1]) == "--navigation-contract-test")
 	{
@@ -124,6 +133,8 @@ int main(const int argumentCount, char** arguments)
 		}
 
 		std::cerr << "Usage: Server [--contract-test | "
+			"--kouku-object-overlap-contract-test | --kouku-support-surface-contract-test | "
+			"--kouku-bundle-contract-test | "
 			"--navigation-contract-test | --debug-teleport-contract-test | "
 			"--dimensionmaster-ground-target-contract | "
 			"--reset-valtan-runtime-to-packaged | "

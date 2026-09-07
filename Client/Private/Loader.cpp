@@ -955,13 +955,15 @@ HRESULT CLoader::Ready_MapArea(
 		Set_DeterminateStatus(
 			progress, loadedModelCount, requiredModelCount);
 
-		const std::string modelPath =
-			entry.resolvedModelPath.string();
+		Engine::MODEL_ASSET_LOAD_DESC loadDesc;
+		loadDesc.assetRoot = CRuntimeAssetRoot::Get();
+		loadDesc.meshPath = entry.resolvedModelPath;
+		loadDesc.materialOverrides = entry.materialOverrides;
 		auto pModel = CModel::Create(
 			m_pDevice,
 			m_pContext,
 			MODEL::NONANIM,
-			modelPath.c_str(),
+			loadDesc,
 			mapAssetTransform);
 		if (nullptr == pModel ||
 			FAILED(CGameInstance::Get().Add_Prototype(

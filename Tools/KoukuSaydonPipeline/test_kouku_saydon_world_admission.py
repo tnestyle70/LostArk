@@ -325,6 +325,31 @@ class KoukuSaydonWorldAdmissionTests(unittest.TestCase):
         self.assertEqual(COLLECTION_NAME, payload["collectionName"])
         self.assertEqual("forbidden", payload["spawnContract"]["arbitraryRandomWorldPosition"])
 
+    def test_material_reference_projection_admits_and_requires_its_document(self) -> None:
+        self.fixture.install_product()
+        registry_path = "Data/Maps/MapCatalog.json"
+        registry = self.fixture.read_json(registry_path)
+        source_material = f"Data/Maps/Authoring/{AREA_ID}/{AREA_ID}.mapmaterials.json"
+        runtime_material = f"Client/Bin/DataFiles/Map/{AREA_ID}.mapmaterials.json"
+        registry["areas"][0].update(sourceMaterials=source_material, materials=runtime_material)
+        self.fixture.write_json(registry_path, registry)
+        material = {"schema": "lostark.map-materials", "formatVersion": 1,
+                    "areaId": AREA_ID, "materials": [{"assetId": "FIXTURE"}]}
+        self.fixture.write_json(source_material, material)
+        self.fixture.write_json(runtime_material, material)
+        source_path = f"Data/Maps/Imported/{AREA_ID}/{AREA_ID}.mapassets"
+        runtime_path = f"Client/Bin/DataFiles/Map/{AREA_ID}.mapassets"
+        lines = (self.fixture.root / source_path).read_text(encoding="utf-8").splitlines()
+        lines[0] = f'LOSTARK_MAP_ASSET_CATALOG 5 "{AREA_ID}" 1 "{AREA_ID}.mapmaterials.json"'
+        self.fixture.write_text(runtime_path, "\n".join(lines) + "\n")
+        report = validate_repository(self.fixture.root)
+        self.assertTrue(report.result(PRODUCT_MODE).permitted, report.as_json(PRODUCT_MODE))
+        (self.fixture.root / runtime_material).unlink()
+        report = validate_repository(self.fixture.root)
+        self.assertFalse(report.result(PRODUCT_MODE).permitted)
+        self.assertTrue(any(finding.code == "file.missing" and finding.path == runtime_material
+                            for finding in report.result(PRODUCT_MODE).own_findings))
+
     def test_detail_region_owns_the_spawn_cell_it_covers(self) -> None:
         """A spawn inside a region footprint is judged on the region grid."""
         self.fixture.install_product()

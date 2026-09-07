@@ -782,3 +782,46 @@ Server 회귀에서는 Pattern ID branch가 `Reset_ValtanBossOnlyAuditionState`�
   missing/duplicate stage, action+pattern dual branch target, follow-up depth 32 경계를 같은 변경 단위의 native
   contract와 structural oracle로 닫는다. registry/helper만 먼저 만들면 Tool 목록은 생겨도 Save/Restart가 별도 정본을
   참조하는 두 번째 경로가 다시 만들어진다.
+
+### Kouku Scene Profile의 blendMs에 Effect 페이드 길이 검증을 적용하지 않는다
+
+- Composition의 Scene Profile `blendMs` 저장 범위는 `0..600000`이고 해당 box의 `durationMs`와 독립적이다.
+  기존 Product는 이 예약 메타데이터를 `SCENE_PROFILE.fadeInMs`로 투영한다. Scene Profile은 현재
+  profile의 exposure, bloom, map-light multiplier를 즉시 적용하며 blendMs는 어두움의 강도가 아니다.
+- 진짜 세이튼 찾기의 `durationMs=24127`, `blendMs=600000` 저장본에 일반 Effect의
+  `fadeInMs <= durationMs` 검사를 적용하면 Client Product 전체 staging이 실패한다. 그 결과 무력화의
+  정상 Effect 연결까지 함께 재생되지 않는다. Effect 파일이나 occurrence가 삭제된 현상과 구분한다.
+- Client reader는 `SCENE_PROFILE`의 blend 메타데이터만 canonical과 같은 `0..600000` 범위를 허용한다.
+  일반 Effect는 occurrence 길이와 fade-in/out 합계 검사를 유지한다. 손상된 Scene Profile row는
+  해당 pattern/occurrence와 오류를 표시하고 그 row만 격리해 정상 Effect를 계속 로드한다.
+- 검증에는 현재 저장본의 600000 투영 보존, 600001 거부, 일반 Effect의 duration 초과 fade 거부를 함께
+  확인한다. Scene Profile의 어두움은 multiplier로 조절하며 큰 blendMs를 삭제하거나 임의 축소해 우회하지 않는다.
+
+### 독립 Effect 편집에 전체 보스 graph admission과 live preview를 요구하지 않는다
+
+- 새 Workbench의 Tree/목록은 metadata만 읽고 손상 항목을 따로 표시한다. 선택 문서 parse, 선택 closure의 Play stage, CPU Save와 domain Product publish의 검증 경계를 구분한다. 목록·Save 성공을 Valtan 전체 Reload_BossValtan으로 가로막지 않는다.
+- 새 문서 Create는 clock·Solo/Mute·모델 참고·anchor history를 초기화한다. 공용 Resource UI를 재사용할 때 기존 Effect Tool의 type/slot/bindings를 저장·복구해야 미저장 슬롯을 바꾸지 않는다.
+- 기존 V2 leaf editor도 Load 때 표시 이름과 실제 source bytes를 보관한다. 새 Workbench에서 저장한 leaf를 예전 preview로 Save하면 이름을 지우거나 최신 파일을 덮을 수 있으므로 파일 기준본이 바뀌면 거부한다. 이름이 같은 것과 bytes가 같은 것은 별개다.
+- Revert는 재로드를 임시 session에서 성공한 뒤 교체한다. saved leaf가 삭제되거나 손상됐다는 이유로 현재 dirty draft부터 Reset하지 않는다. view에서 world anchor를 capture한 경우도 Dirty로 표시한다.
+- 모델 참고 actor는 root motion이 꺼진 고정 root이므로 첫 비영 시점 Play를 위해 알려진 0초 root를 기록할 수 있다. 실제 Product에서 과거 Server 위치를 같은 방식으로 만들어 넣으면 안 된다. Product는 실제로 기록한 root history를 사용하고 누락·불연속 구간은 해당 Effect 실패로 격리한다.
+- 외부 Sequencer clock의 group은 일반 Runtime Advance에서 중복 증가하지 않는다. 1ms emitter와 1.7초 입자 수명은 별개다. Deactivate 시 고정 step 잔여 구간의 마지막 방출을 처리하고, timeline 끝의 잔여 수명 만료도 요청한 age로 반영한다. group/box 끝을 늘려 방출 횟수를 임의로 늘리지 않는다.
+
+### 패턴 Camera 복귀는 저장한 플레이어 시작 좌표로 돌아가지 않는다
+
+- Camera shot은 목표 eye/lookAt/FOV와 진입·유지·복귀 시간을 저장한다. 시작 pose는 재생 시 취득하고 복귀 목표는 이동 중인 player follow pose를 매 프레임 계산한다. 복귀 끝에서 예전 override 이전 pose를 복원하면 마지막 프레임에 튄다.
+- Authoring Preview가 저장한 shot을 바로 읽는 것과 Complete Play가 published shot을 읽는 것을 구분한다. Map publish 후 새 run은 runtime shot snapshot을 갱신해야 한다. Camera overlap 검사는 visible box뿐 아니라 복귀 tail을 포함한다.
+- 진짜 세이튼과 같은 Spot Light를 가짜에 적용할 때 Server owner boss ID와 같은 archetype으로 대상을 제한한다. 이미 같은 asset을 직접 재생 중인 가짜에 중복 light를 만들지 않으며 despawn/row 종료 때 follower handle을 정리한다.
+
+### ImGui root 위젯 ID에 빈 draft의 표시 이름을 그대로 쓰지 않는다
+
+- Effect Composition Workbench를 처음 열면 group name과 stable ID가 모두 비어 있다. 이 값으로 `Selectable("")`를 그리면 Timeline child window의 root ID와 충돌해 `Cannot have an empty ID at the root of a window` assertion이 발생한다.
+- 빈 draft는 생성/열기 안내를 그리고 반환한다. 정상 부모 row에는 `###EffectCompositionGroup`처럼 표시 이름과 독립된 위젯 ID를 사용한다. 손상·삭제된 Pattern을 참조하는 Character anchor도 표시 이름이 비어 있을 수 있으므로 member ID scope와 `###AnchorMember`를 사용한다.
+- 컴파일과 문서 parse만으로 첫 창 렌더의 ImGui assertion을 검증했다고 기록하지 않는다. Client 창 재열기 확인은 사용자가 직접 한다.
+
+### Effect panel 재사용 시 저장·미리보기 owner를 구분한다
+
+- Parent/tree 저장과 Effect body 저장은 다른 owner다. native V2 leaf Open을 항상 group으로 감싸 Save하면 뜻하지 않은 group 원본이 생긴다. native leaf 저장은 같은 ID/파일을 유지하고 group 확장은 명시적인 생성 명령으로만 한다.
+- 현재 draft의 preview 검증이 실패했을 때 saved 문서로 fallback하면 잘못된 편집 내용 대신 이전 Effect가 재생된다. 현재 draft가 소유한 key의 실패는 그대로 표시하고 snapshot 교체를 취소한다.
+- Play All/Family/Element는 preview이고 Append만 저장 sequence occurrence를 만든다. Preview 버튼 처리에 Append를 재사용하면 Play할 때마다 저장 행이 쌓인다.
+- Patterns by Gate의 Create Parent/Bundle은 메모리 변경이다. 전체 Composition Save 이전에는 EXE 종료 후 보존을 보장하지 않으며 트리 옆에 Saved/Unsaved와 Save를 표시한다.
+- World Object model/texture는 기존 Effect domain scan 밖에 있을 수 있다. 저장 Object resource에서 확인한 상대 ID와 file kind를 동일 resource binder에 전달해야 목록만 보이고 Bind가 거부되는 상태를 피할 수 있다.

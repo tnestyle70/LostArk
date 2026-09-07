@@ -1,5 +1,8 @@
 import copy
 import json
+import math
+import re
+import subprocess
 from pathlib import Path
 import shutil
 import tempfile
@@ -31,7 +34,11 @@ def copy_repository_inputs(root: Path) -> None:
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.document = subject.load_json(ROOT / subject.SOURCE_PATH)
+        cls.hierarchy_document = subject.load_json(ROOT / subject.SOURCE_PATH)
+        cls.document = copy.deepcopy(cls.hierarchy_document)
+        # Existing lane tests own independent patterns, not the new saved bundle references.
+        cls.document["folders"] = []
+        cls.document["bundles"] = []
 
     def validate(self, document):
         subject.validate_document(document, ROOT)
@@ -75,9 +82,814 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             pattern[key] = 1
         return pattern
 
+    def surface_fixture(self):
+        sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+        instance = next(row for row in sequences["instances"] if row["instanceId"] == "world.sequence.instance.8")
+        instance["walkableSurface"] = {"radiusM": 2.5, "localHeightM": .026313}
+        world = next(row for row in self.document["worlds"] if row["sequenceInstanceId"] == instance["instanceId"])
+        pattern = self.find(self.document, ROULETTE_ID)
+        box = copy.deepcopy(next(row for row in pattern["worldOccurrences"] if row["worldId"] == world["worldId"]))
+        template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+        return sequences, instance, template, world, box
+
+    def test_walkable_surface_projects_placement_plane_and_last_hide(self):
+        sequences, instance, template, world, box = self.surface_fixture()
+        result = subject._project_walkable_surface(ROOT, subject.AREA_ID, sequences, world, box)["walkableSurface"]
+        self.assertAlmostEqual(result["radiusM"], 10.0)
+        self.assertAlmostEqual(result["heightY"], 1.89999998 + .026313 * 4)
+        self.assertEqual(result["windows"][0]["startTick"], 0)
+        expected_end = min(math.ceil(box["durationMs"] * .03),
+            math.ceil(template["durationMs"] / box["playbackSpeed"] * .03))
+        self.assertEqual(result["windows"][-1]["endTick"], expected_end)
+
+    def test_walkable_surface_visibility_uses_delay_speed_and_tick_ceiling(self):
+        sequences, instance, template, world, box = self.surface_fixture()
+        first = template["tracks"][0]["keys"][0]
+        template["tracks"][0]["keys"] = [dict(copy.deepcopy(first), timeMs=time, visible=visible)
+            for time, visible in [(0, True), (100, False), (200, True), (300, False)]]
+        template["durationMs"] = 300
+        instance["startDelayMs"] = 50
+        instance["playbackSpeed"] = 2
+        box["playbackSpeed"] = 1
+        box["durationMs"] = 1000
+        result = subject._project_walkable_surface(ROOT, subject.AREA_ID, sequences, world, box)["walkableSurface"]
+        self.assertEqual(result["windows"], [{"startTick": 2, "endTick": 3}, {"startTick": 5, "endTick": 6}])
+
+    def test_walkable_surface_rejects_moving_tilted_or_invalid_circle(self):
+        for field in ("position", "tilt", "radius"):
+            sequences, instance, template, world, box = self.surface_fixture()
+            if field == "position": template["tracks"][0]["keys"][-1]["positionOffset"][1] += .1
+            elif field == "tilt": template["tracks"][0]["keys"][-1]["rotationQuaternion"][0] = .1
+            else: instance["walkableSurface"]["radiusM"] = 0
+            with self.subTest(field=field), self.assertRaises(subject.CompositionError):
+                subject._project_walkable_surface(ROOT, subject.AREA_ID, sequences, world, box)
+
+    def test_walkable_surface_bootstrap_uses_world_owner_and_rejects_invalid_windows(self):
+        sequences, instance, template, world, box = self.surface_fixture()
+        cue = dict(sequenceInstanceId=instance["instanceId"], occurrenceId=box["occurrenceId"],
+                   startMs=box["startMs"], durationMs=box["durationMs"], playbackSpeed=box["playbackSpeed"],
+                   positionOffset=world["positionOffset"], anchorKind=world["anchorKind"],
+                   anchorPosition=world["anchorPosition"])
+        cue.update(subject._project_walkable_surface(ROOT, subject.AREA_ID, sequences, world, box))
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        functions = []
+        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                     "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat"):
+            functions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
+        start = publisher.index("\tforeach ($worldSequence in @($koukuPattern.worldSequences))")
+        end = publisher.index("\tforeach ($sceneProfile in @($koukuPattern.sceneProfiles))", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            path = folder / "cue.json"
+            path.write_text(json.dumps(cue), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(functions)
+            script += "\n$cue=Get-Content -Raw (Join-Path $PSScriptRoot 'cue.json') | ConvertFrom-Json\n"
+            script += "$koukuEncounterDocument=@{encounterId='test.encounter'}; $koukuPattern=@{patternId='test.pattern';worldSequences=@($cue)}\n"
+            script += "$koukuPatternDurationMs=600000; $patternRows=[Collections.Generic.List[string]]::new()\n"
+            script += publisher[start:end] + "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            check = folder / "check.ps1"; check.write_text(script, encoding="utf-8-sig")
+            run = lambda: subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(check)], capture_output=True, text=True)
+            result = run()
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = [line.split("\t") for line in json.loads(result.stdout)]
+            self.assertEqual(["PATTERNWORLDSEQUENCE", "PATTERNWORLDSUPPORT"], [row[0] for row in rows])
+            self.assertEqual(10, len(rows[1]))
+            self.assertEqual(box["occurrenceId"], rows[1][3])
+            self.assertEqual(10.0, float(rows[1][9]))
+            cue["walkableSurface"]["windows"][0]["endTick"] = math.ceil(cue["durationMs"] * .03) + 1
+            path.write_text(json.dumps(cue), encoding="utf-8")
+            self.assertNotEqual(0, run().returncode)
+
+    def object_overlap_document(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        box = pattern["logicOccurrences"][0]
+        target = "world.object.instance.kouku.card"
+        logic = next(row for row in document["logics"] if row["logicId"] == box["logicId"])
+        logic_id = logic["logicId"]
+        logic.clear()
+        logic.update(logicId=logic_id, displayName="Object overlap", logicType="DURATION",
+                     judgementKind="OBJECT_OVERLAP", targetWorldInstanceId=target, targetRadiusM=1.25)
+        result_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        document["nextLogicOrdinal"] += 1
+        document["logics"].append(dict(logicId=result_id, displayName="Flip the same card", logicType="RESULT",
+            outcomeKind="PLAY_WORLD_OBJECT_MOTION", targetWorldInstanceId=target,
+            motionInstanceId="world.object.instance.kouku.card_flip"))
+        box["onSuccessLogicIds"] = [result_id]
+        box["onFailLogicIds"] = []
+        box["onTimeoutLogicIds"] = []
+        world_id = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+        document["nextWorldOrdinal"] += 1
+        document["worlds"].append(dict(worldId=world_id, displayName="Target card", sequenceInstanceId=target,
+                                       positionOffset=[100, 0, 900]))
+        ordinal = pattern["nextWorldOccurrenceOrdinal"]
+        pattern["nextWorldOccurrenceOrdinal"] += 1
+        pattern["worldOccurrences"].append(dict(occurrenceId=f"{pattern['patternId']}.world.{ordinal}",
+            worldId=world_id, startMs=box["startMs"], durationMs=box["durationMs"], playbackSpeed=1))
+        return document
+
+    def object_contact_document(self):
+        document = self.object_overlap_document()
+        pattern = self.first_product(document)
+        box = pattern["logicOccurrences"][0]
+        first = pattern["worldOccurrences"][-1]
+        world = copy.deepcopy(next(row for row in document["worlds"] if row["worldId"] == first["worldId"]))
+        world["worldId"] = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+        document["nextWorldOrdinal"] += 1
+        world["positionOffset"][0] += 10
+        document["worlds"].append(world)
+        second = dict(first, occurrenceId=f"{pattern['patternId']}.world.{pattern['nextWorldOccurrenceOrdinal']}", worldId=world["worldId"])
+        pattern["nextWorldOccurrenceOrdinal"] += 1
+        pattern["worldOccurrences"].append(second)
+        candidates = [first["occurrenceId"], second["occurrenceId"]]
+        logic = next(row for row in document["logics"] if row["logicId"] == box["logicId"])
+        logic_id = logic["logicId"]
+        logic.clear()
+        logic.update(logicId=logic_id, displayName="Contact each card", logicType="TRIGGER", triggerKind="OBJECT_CONTACT",
+                     targetWorldOccurrenceIds=candidates, targetRadiusM=1.25, contactGroupId="hammer.impact", contactPriority=100)
+        result = next(row for row in document["logics"] if row["logicId"] == box["onSuccessLogicIds"][0])
+        result_id = result["logicId"]
+        result.clear()
+        result.update(logicId=result_id, displayName="Flip contacted card", logicType="RESULT", outcomeKind="PLAY_CONTACT_WORLD_OBJECT_MOTION",
+                      contactMotions=[dict(targetWorldOccurrenceId=target, motionInstanceId="world.object.instance.kouku.card_flip") for target in candidates])
+        signal_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        complete_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']+1}"
+        followup_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']+2}"
+        document["nextLogicOrdinal"] += 3
+        signal_box = dict(occurrenceId=f"{pattern['patternId']}.logic.{pattern['nextLogicOccurrenceOrdinal']}",
+                          logicId=signal_id, startMs=box["startMs"], durationMs=box["durationMs"],
+                          onSuccessLogicIds=[followup_id], onFailLogicIds=[], onTimeoutLogicIds=["kakulsaydon.g1.logic.2"])
+        pattern["nextLogicOccurrenceOrdinal"] += 1
+        document["logics"].extend([
+            dict(logicId=signal_id, displayName="Full deadline", logicType="DURATION", judgementKind="EXTERNAL_SIGNAL", endsPatternOnSuccess=True),
+            dict(logicId=complete_id, displayName="Joker completes deadline", logicType="RESULT", outcomeKind="COMPLETE_LOGIC_WINDOW",
+                 targetLogicOccurrenceId=signal_box["occurrenceId"], contactTargetWorldOccurrenceId=candidates[0]),
+            dict(logicId=followup_id, displayName="Success followup", logicType="RESULT", outcomeKind="FOLLOWUP_PATTERN", followupPatternId=GAZE_ID),
+        ])
+        box["onSuccessLogicIds"].append(complete_id)
+        box["durationMs"] = 100
+        for collider in pattern["presentationOccurrences"]:
+            if collider.get("logicOccurrenceId") == box["occurrenceId"]:
+                collider["durationMs"] = box["durationMs"]
+        pattern["logicOccurrences"].append(signal_box)
+        return document
+
+    def test_object_contact_projects_distinct_card_occurrences_and_full_deadline_signal(self):
+        document = self.object_contact_document()
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        contact, signal = projected["logicWindows"]
+        self.assertEqual("OBJECT_CONTACT", contact["kind"])
+        self.assertEqual(2, len(contact["contactTargets"]))
+        self.assertEqual(1, len({target["targetWorldInstanceId"] for target in contact["contactTargets"]}))
+        self.assertEqual(2, len({target["targetWorldOccurrenceId"] for target in contact["contactTargets"]}))
+        self.assertAlmostEqual(10, contact["contactTargets"][1]["targetWorldX"] - contact["contactTargets"][0]["targetWorldX"])
+        self.assertEqual("PLAY_CONTACT_WORLD_OBJECT_MOTION", contact["onSuccess"][0]["kind"])
+        self.assertEqual(signal["windowId"], contact["onSuccess"][1]["targetLogicOccurrenceId"])
+        self.assertEqual("EXTERNAL_SIGNAL", signal["kind"])
+        self.assertTrue(signal["endsPatternOnSuccess"])
+        self.assertGreater(signal["durationMs"], contact["durationMs"])
+        self.assertEqual("FOLLOWUP_PATTERN", signal["onSuccess"][0]["kind"])
+        self.assertEqual([], contact["onTimeout"])
+        self.assertEqual("INSTANT_DEATH", signal["onTimeout"][0]["kind"])
+
+    def test_object_contact_rejects_missing_mapping_signal_and_short_target(self):
+        for invalid in ("candidate", "mapping", "signal", "signal_kind", "signal_disabled", "filter", "lifetime", "timeout", "motion_twice"):
+            document = self.object_contact_document()
+            pattern = self.first_product(document)
+            box, signal = pattern["logicOccurrences"]
+            definitions = {row["logicId"]: row for row in document["logics"]}
+            logic = definitions[box["logicId"]]
+            motion, complete = [definitions[row] for row in box["onSuccessLogicIds"]]
+            if invalid == "candidate": logic["targetWorldOccurrenceIds"][0] = "missing.world"
+            elif invalid == "mapping": motion["contactMotions"].pop()
+            elif invalid == "signal": complete["targetLogicOccurrenceId"] = "missing.logic"
+            elif invalid == "signal_kind": complete["targetLogicOccurrenceId"] = box["occurrenceId"]
+            elif invalid == "signal_disabled": signal["enabled"] = False
+            elif invalid == "filter": complete["contactTargetWorldOccurrenceId"] = "missing.world"
+            elif invalid == "lifetime": pattern["worldOccurrences"][0]["durationMs"] = 1
+            elif invalid == "timeout": box["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.2"]
+            else: box["onSuccessLogicIds"].append(box["onSuccessLogicIds"][0])
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_object_contact_group_priority_and_repeated_strikes(self):
+        document = self.object_contact_document()
+        pattern = self.first_product(document)
+        box = pattern["logicOccurrences"][0]
+        sibling = dict(copy.deepcopy(box), occurrenceId=f"{pattern['patternId']}.logic.{pattern['nextLogicOccurrenceOrdinal']}")
+        pattern["nextLogicOccurrenceOrdinal"] += 1
+        definition = copy.deepcopy(next(row for row in document["logics"] if row["logicId"] == box["logicId"]))
+        definition["logicId"] = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        document["nextLogicOrdinal"] += 1
+        document["logics"].append(definition)
+        sibling["logicId"] = definition["logicId"]
+        pattern["logicOccurrences"].append(sibling)
+        with self.assertRaisesRegex(subject.CompositionError, "distinct priorities"):
+            self.validate(document)
+        definition["contactPriority"] = 50
+        self.validate(document)
+        sibling["startMs"] += 1
+        with self.assertRaisesRegex(subject.CompositionError, "identical timing"):
+            self.validate(document)
+        sibling["startMs"] += 100
+        definition["contactPriority"] = 100
+        self.validate(document)
+
+    def test_object_contact_requires_static_target_and_same_object_motion(self):
+        for invalid in ("moving_target", "wrong_object", "wrong_slot", "disabled_motion"):
+            document = self.object_contact_document()
+            sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+            target = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+            motion = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card_flip")
+            if invalid == "moving_target":
+                template = next(row for row in sequences["templates"] if row["sequenceId"] == target["templateId"])
+                template["tracks"][0]["keys"][-1]["positionOffset"][0] += 1
+            elif invalid == "wrong_object": motion["bindings"][0]["targetId"] = "missing.object"
+            elif invalid == "wrong_slot": motion["bindings"][0]["slotId"] = "other.slot"
+            else: motion["enabled"] = False
+            with self.subTest(invalid=invalid), mock.patch.object(subject, "load_world_sequences", return_value=sequences), self.assertRaises(subject.CompositionError):
+                subject.project_encounter(document)
+
+    def bone_contact_document(self):
+        document = self.object_contact_document()
+        pattern = self.first_product(document)
+        pattern.update(actorProfileId="MN_RPCT_06", gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.big-saydon")
+        pattern.pop("folderId", None)
+        stages = pattern["stages"][:2]
+        for stage, suffix in zip(stages, ("8_01", "8_02")):
+            stage["durationMs"] = 1001
+            animation = stage["animationOccurrences"][0]
+            animation.update(profileId="MN_RPCT_06", sourceActionId=0, sourceStageId="RAW", sourceSlotId="RAW",
+                referenceRevision="", runtimeClip=f"mn_rpct_06_sk.ao_att_battle_{suffix}", startOffsetMs=0,
+                sourceStartMs=0, playMs=1001, playRate=1, endPolicy="EXACT")
+        pattern["stages"] = stages
+        for box in pattern["logicOccurrences"] + pattern["worldOccurrences"]:
+            box.update(startMs=0, durationMs=2002)
+        pattern["logicOccurrences"][1]["onSuccessLogicIds"] = []
+        contact = pattern["logicOccurrences"][0]
+        colliders = [row for row in pattern["presentationOccurrences"] if row.get("logicOccurrenceId") == contact["occurrenceId"]]
+        pattern["presentationOccurrences"] = colliders[:1]
+        collider = pattern["presentationOccurrences"][0]
+        collider.update(startMs=0, durationMs=2002, anchorKind="BOSS", followBoss=True, bone="b_rpct_01", boneTarget="WEAPON",
+                        positionOffset=[1, 2, 3], rotationDegrees=[0, 27, 0], scale=[2, 2, 2])
+        return document
+
+    def placed_contact_document(self):
+        document = self.object_contact_document()
+        pattern = self.first_product(document)
+        first, second = pattern["worldOccurrences"]
+        second["worldId"] = first["worldId"]
+        first["placement"] = dict(position=[10, 20, 30], rotationDegrees=[0, 90, 0], scale=[2, 3, 2])
+        second["placement"] = dict(position=[30, 40, 50], rotationDegrees=[90, 0, 0], scale=[1, 2, 3])
+        return document
+
+    def object_placement_fixture(self):
+        document = self.placed_contact_document()
+        sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+        world_id = self.first_product(document)["worldOccurrences"][0]["worldId"]
+        world = next(row for row in document["worlds"] if row["worldId"] == world_id)
+        world["objectResourceId"] = "world.object.kouku.card"
+        resource = next(row for row in sequences["objectResources"] if row["objectId"] == world["objectResourceId"])
+        resource["defaultMotionInstanceId"] = "world.object.instance.kouku.card_flip"
+        return document, sequences, world, resource
+
+    def test_object_world_preserves_saved_initial_state_after_default_changes(self):
+        document, sequences, world, resource = self.object_placement_fixture()
+        before = copy.deepcopy(document)
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            self.validate(document)
+            projected = self.first_product(subject.project_encounter(document))
+            self.assertTrue(all(cue["sequenceInstanceId"] == world["sequenceInstanceId"] for cue in projected["worldSequences"]))
+            self.assertNotEqual(resource["defaultMotionInstanceId"], world["sequenceInstanceId"])
+            self.assertEqual(before, document)
+
+    def test_object_world_rejects_missing_disabled_or_other_object_states(self):
+        for invalid in ("object", "state", "disabled", "binding", "template", "default", "default_type", "default_other", "default_disabled"):
+            document, sequences, world, resource = self.object_placement_fixture()
+            selected = next(row for row in sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"])
+            if invalid == "object": world["objectResourceId"] = "missing.object"
+            elif invalid == "state": world["sequenceInstanceId"] = "missing.state"
+            elif invalid == "disabled": selected["enabled"] = False
+            elif invalid == "binding": selected["bindings"][0]["targetId"] = "world.object.kouku.joker_card"
+            elif invalid == "template": selected["templateId"] = "missing.template"
+            elif invalid == "default": resource["defaultMotionInstanceId"] = "missing.default"
+            elif invalid == "default_type": resource["defaultMotionInstanceId"] = None
+            elif invalid == "default_other": resource["defaultMotionInstanceId"] = "world.object.instance.kouku.joker_card"
+            else: next(row for row in sequences["instances"] if row["instanceId"] == resource["defaultMotionInstanceId"])["enabled"] = False
+            with self.subTest(invalid=invalid), mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+                with self.assertRaises(subject.CompositionError): self.validate(document)
+                with self.assertRaises(subject.CompositionError): subject.project_encounter(document)
+
+    def test_seven_object_occurrences_preserve_placements_and_exact_contact_targets(self):
+        document, sequences, world, resource = self.object_placement_fixture()
+        pattern = self.first_product(document)
+        original = copy.deepcopy(pattern["worldOccurrences"][0])
+        joker_world = copy.deepcopy(world)
+        joker_world.update(worldId=f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}",
+                           objectResourceId="world.object.kouku.joker_card", sequenceInstanceId="world.object.instance.kouku.joker_card")
+        document["nextWorldOrdinal"] += 1
+        document["worlds"].append(joker_world)
+        pattern["worldOccurrences"] = []
+        for index in range(7):
+            cue = copy.deepcopy(original)
+            cue.update(occurrenceId=f"{pattern['patternId']}.world.{pattern['nextWorldOccurrenceOrdinal']}",
+                       worldId=(joker_world if index == 6 else world)["worldId"],
+                       placement=dict(position=[10 * index, index, 100 + index], rotationDegrees=[0, index * 10, 0], scale=[1, 1 + index * .1, 1]))
+            pattern["nextWorldOccurrenceOrdinal"] += 1
+            pattern["worldOccurrences"].append(cue)
+        contact = next(row for row in document["logics"] if row["logicId"] == pattern["logicOccurrences"][0]["logicId"])
+        contact["targetWorldOccurrenceIds"] = [cue["occurrenceId"] for cue in pattern["worldOccurrences"]]
+        motion = next(row for row in document["logics"] if row["logicId"] == pattern["logicOccurrences"][0]["onSuccessLogicIds"][0])
+        motion["contactMotions"] = [dict(targetWorldOccurrenceId=cue["occurrenceId"], motionInstanceId=
+            "world.object.instance.kouku.joker_card_flip" if index == 6 else "world.object.instance.kouku.card_flip")
+            for index, cue in enumerate(pattern["worldOccurrences"])]
+        signal = next(row for row in document["logics"] if row.get("outcomeKind") == "COMPLETE_LOGIC_WINDOW")
+        signal["contactTargetWorldOccurrenceId"] = pattern["worldOccurrences"][-1]["occurrenceId"]
+        for instance in sequences["instances"]:
+            if instance["instanceId"] in {world["sequenceInstanceId"], joker_world["sequenceInstanceId"]}:
+                instance["position"] = [9000, 9000, 9000]
+                template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+                for key in template["tracks"][0]["keys"]: key["positionOffset"] = [0, 0, 0]
+        before = copy.deepcopy(document)
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            self.validate(document)
+            product = self.first_product(subject.project_encounter(document))
+        self.assertEqual(before, document)
+        self.assertEqual(7, len(product["worldSequences"]))
+        for cue, output, target in zip(pattern["worldOccurrences"], product["worldSequences"], product["logicWindows"][0]["contactTargets"]):
+            self.assertEqual(cue["occurrenceId"], output["occurrenceId"])
+            self.assertEqual(cue["placement"], output["placement"])
+            self.assertEqual(cue["occurrenceId"], target["targetWorldOccurrenceId"])
+            self.assertEqual(cue["placement"]["position"][0], target["targetWorldX"])
+            self.assertEqual(cue["placement"]["position"][2], target["targetWorldZ"])
+        self.assertEqual(motion["contactMotions"], product["logicWindows"][0]["onSuccess"][0]["contactMotions"])
+
+    def test_world_placement_projects_independent_contact_centers_and_legacy_defaults(self):
+        document = self.placed_contact_document()
+        sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+        instance = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+        instance["position"] = [1000, 1000, 1000]
+        template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+        for key in template["tracks"][0]["keys"]:
+            key["positionOffset"] = [1, 2, 3]
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            self.validate(document)
+            projected = self.first_product(subject.project_encounter(document))
+            first, second = projected["logicWindows"][0]["contactTargets"]
+            self.assertAlmostEqual(16, first["targetWorldX"])
+            self.assertAlmostEqual(28, first["targetWorldZ"])
+            self.assertAlmostEqual(31, second["targetWorldX"])
+            self.assertAlmostEqual(54, second["targetWorldZ"])
+            self.assertEqual([1.25, 1.25], [first["targetRadiusM"], second["targetRadiusM"]])
+            for cue in projected["worldSequences"]:
+                self.assertEqual([0, 0, 0], cue["positionOffset"])
+                self.assertEqual([0, 0, 0], cue["anchorPosition"])
+                self.assertEqual("NONE", cue["anchorKind"])
+            for cue in self.first_product(document)["worldOccurrences"]:
+                cue.pop("placement")
+            legacy = self.first_product(subject.project_encounter(document))
+            self.assertTrue(all("placement" not in cue for cue in legacy["worldSequences"]))
+            self.assertAlmostEqual(1101, legacy["logicWindows"][0]["contactTargets"][0]["targetWorldX"])
+
+    def test_world_placement_rejects_invalid_transform_and_non_object_anchor(self):
+        for invalid in ("null", "field", "position", "rotation", "scale", "boolean", "binding", "anchor", "disabled"):
+            document = self.placed_contact_document()
+            cue = self.first_product(document)["worldOccurrences"][0]
+            sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+            instance = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+            if invalid == "null": cue["placement"] = None
+            elif invalid == "field": cue["placement"]["unexpected"] = 1
+            elif invalid == "position": cue["placement"]["position"][0] = 100001
+            elif invalid == "rotation": cue["placement"]["rotationDegrees"][0] = 36001
+            elif invalid == "scale": cue["placement"]["scale"][0] = 0
+            elif invalid == "boolean": cue["placement"]["position"][0] = True
+            elif invalid == "binding": instance["bindings"][0]["targetKind"] = "MAP_PLACEMENT"
+            elif invalid == "disabled": instance["enabled"] = False
+            else: instance["anchorKind"] = "PLAYER"
+            with self.subTest(invalid=invalid), mock.patch.object(subject, "load_world_sequences", return_value=sequences), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_world_placement_collider_resolves_exact_owner_and_same_track_transform(self):
+        document = self.placed_contact_document()
+        pattern = self.first_product(document)
+        first, second = pattern["worldOccurrences"]
+        second["placement"] = copy.deepcopy(first["placement"])
+        second["placement"]["position"] = [40, 50, 60]
+        contact = pattern["logicOccurrences"][0]
+        collider = next(row for row in pattern["presentationOccurrences"] if row.get("logicOccurrenceId") == contact["occurrenceId"])
+        pattern["presentationOccurrences"] = [collider]
+        collider.update(anchorKind="WORLD", worldId=second["worldId"], worldOccurrenceId=second["occurrenceId"])
+        sequences = copy.deepcopy(subject.load_json(ROOT / WORLD_SEQUENCES))
+        instance = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+        resource = next(row for row in sequences["objectResources"] if row["objectId"] == instance["bindings"][0]["targetId"])
+        template = next(row for row in sequences["templates"] if row["sequenceId"] == instance["templateId"])
+        for key in template["tracks"][0]["keys"]:
+            key["positionOffset"] = [1, 2, 3]
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            self.validate(document)
+            track = self.first_product(subject.project_encounter(document))["logicWindows"][0]["cardRegions"][0]["worldTrack"]
+            self.assertEqual([40, 50, 60], track["baselinePosition"])
+            self.assertEqual(90, track["baselineYawDegrees"])
+            self.assertEqual([a*b for a,b in zip(resource["scale"], [2, 3, 2])], track["baselineScale"])
+            self.assertEqual([2, 6, 6], track["keys"][0]["positionOffset"])
+            collider["worldOccurrenceId"] = ""
+            with self.assertRaisesRegex(subject.CompositionError, "exact same-pattern"):
+                self.validate(document)
+            pattern["worldOccurrences"].remove(first)
+            # Resolve the legacy single-owner field to its stable occurrence in Product presentation.
+            self.assertEqual(second["occurrenceId"], self.first_product(subject.project_presentation(document))["presentationOccurrences"][0]["worldOccurrenceId"])
+            second["placement"]["rotationDegrees"][0] = 10
+            with self.assertRaisesRegex(subject.CompositionError, "yaw-only"):
+                subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, next(row for row in document["worlds"] if row["worldId"] == second["worldId"]), second)
+
+    def test_world_placement_bootstrap_sidecar_and_canonical_legacy_fields(self):
+        projected = self.first_product(subject.project_encounter(self.placed_contact_document()))
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                     for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger", "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
+        start = publisher.index("\tforeach ($worldSequence in @($koukuPattern.worldSequences))")
+        end = publisher.index("\tforeach ($sceneProfile in @($koukuPattern.sceneProfiles))", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(functions)
+            script += "\n$koukuPattern=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$koukuPatternDurationMs=600000; $koukuEncounterDocument=@{encounterId='encounter.test'}; $patternRows=[Collections.Generic.List[string]]::new()\n"
+            script += publisher[start:end] + "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            check = folder / "check.ps1"; check.write_text(script, encoding="utf-8-sig")
+            def run(value):
+                (folder / "pattern.json").write_text(json.dumps(value), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(check)], capture_output=True, text=True, timeout=30)
+            result = run(projected)
+            self.assertEqual(0, result.returncode, result.stderr)
+            sidecars = [row.split("\t") for row in json.loads(result.stdout) if row.startswith("PATTERNWORLDPLACEMENT\t")]
+            self.assertEqual([13, 13], [len(row) for row in sidecars])
+            self.assertEqual([row["occurrenceId"] for row in projected["worldSequences"]], [row[3] for row in sidecars])
+            for invalid in ("offset", "anchor", "scale", "rotation", "shape", "null", "surface"):
+                value = copy.deepcopy(projected); cue = value["worldSequences"][0]
+                if invalid == "offset": cue["positionOffset"][0] = 1
+                elif invalid == "anchor": cue["anchorKind"] = "BOSS_SPAWN"
+                elif invalid == "scale": cue["placement"]["scale"][0] = 1001
+                elif invalid == "rotation": cue["placement"]["rotationDegrees"][0] = 36001
+                elif invalid == "shape": cue["placement"]["position"].pop()
+                elif invalid == "null": cue["placement"] = None
+                else: cue["walkableSurface"] = {}
+                with self.subTest(invalid=invalid):
+                    self.assertNotEqual(0, run(value).returncode)
+
+    def test_object_contact_rejects_invalid_collider_anchors(self):
+        for invalid in ("world_bone", "followBoss", "boneTarget"):
+            document = self.object_contact_document()
+            pattern = self.first_product(document)
+            contact = pattern["logicOccurrences"][0]
+            collider = next(row for row in pattern["presentationOccurrences"] if row.get("logicOccurrenceId") == contact["occurrenceId"])
+            if invalid == "world_bone": collider.update(anchorKind="WORLD", bone="hammer.bone")
+            elif invalid == "followBoss": collider["followBoss"] = False
+            else: collider["boneTarget"] = ["BODY"]
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_bone_contact_bakes_real_hammer_and_body_with_target_yaw(self):
+        document = self.bone_contact_document()
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        region = projected["logicWindows"][0]["cardRegions"][0]
+        self.assertEqual("BOSS_CURRENT", region["anchorKind"])
+        self.assertEqual([1, 2, 3], region["center"])
+        self.assertEqual(27, region["yawDegrees"])
+        track = region["worldTrack"]
+        self.assertEqual([0, 2002], [track["keys"][0]["timeMs"], track["keys"][-1]["timeMs"]])
+        self.assertGreater(len(track["keys"]), 60)
+        positions = [key["positionOffset"] for key in track["keys"]]
+        self.assertGreater(max(math.dist(positions[0], value) for value in positions), 1)
+        self.assertTrue(all(key["rotationY"] == 0 and key["rotationW"] == 1 and key["scaleMultiplier"] == [1, 1, 1] for key in track["keys"]))
+        collider = self.first_product(document)["presentationOccurrences"][0]
+        collider.update(boneTarget="BODY", bone="b_wp_1")
+        body = self.first_product(subject.project_encounter(document))["logicWindows"][0]["cardRegions"][0]["worldTrack"]
+        self.assertNotEqual(track["keys"][0]["positionOffset"], body["keys"][0]["positionOffset"])
+        bindings = subject.project_presentation(document)["bindings"]
+        action_ids = {row["actionId"] for row in self.first_product(document)["stages"]}
+        self.assertTrue(all(row.get("unblendedBoneContact", False) for row in bindings if row["actionId"] in action_ids))
+        self.assertTrue(all("unblendedBoneContact" not in row for row in bindings if row["actionId"] not in action_ids))
+        self.first_product(document)["logicOccurrences"][0]["enabled"] = False
+        self.assertTrue(all("unblendedBoneContact" not in row for row in subject.project_presentation(document)["bindings"]))
+
+    def test_bone_contact_uses_quantized_stage_origin_and_tick_brackets(self):
+        document = self.bone_contact_document()
+        pattern = self.first_product(document)
+        # 1001 ms rounds up to 31 ticks; the second action starts at tick 30.
+        before, seconds = subject._bone_bake_clip_sample(pattern, 999)
+        after, zero = subject._bone_bake_clip_sample(pattern, 1000)
+        self.assertTrue(before["runtimeClip"].endswith("8_01"))
+        self.assertTrue(after["runtimeClip"].endswith("8_02"))
+        self.assertEqual(0, zero)
+        track = self.first_product(subject.project_encounter(document))["logicWindows"][0]["cardRegions"][0]["worldTrack"]
+        keys = {key["timeMs"]: key["positionOffset"] for key in track["keys"]}
+        self.assertEqual(keys[33], keys[34])
+        self.assertEqual(keys[1066], keys[1067])
+        self.assertNotEqual(keys[999], keys[1000])
+        pattern["stages"][0]["durationMs"] = 1000
+        pattern["stages"][0]["animationOccurrences"][0]["playMs"] = 1000
+        shifted = self.first_product(subject.project_encounter(document))["logicWindows"][0]["cardRegions"][0]["worldTrack"]
+        shifted_keys = {key["timeMs"]: key["positionOffset"] for key in shifted["keys"]}
+        self.assertEqual(shifted_keys[966], shifted_keys[967])
+        last, held_seconds = subject._bone_bake_clip_sample(pattern, 2000)
+        self.assertTrue(last["runtimeClip"].endswith("8_02"))
+        self.assertGreater(held_seconds, last["playMs"] / 1000)
+
+    def test_bone_contact_rejects_missing_bone_clip_asset_and_sample_gap(self):
+        for invalid in ("bone", "clip", "asset", "gap", "actor", "limit"):
+            document = self.bone_contact_document()
+            pattern = self.first_product(document)
+            collider = pattern["presentationOccurrences"][0]
+            animation = pattern["stages"][0]["animationOccurrences"][0]
+            if invalid == "bone": collider["bone"] = "missing.hammer.tip"
+            elif invalid == "clip": animation["runtimeClip"] = "missing.clip"
+            elif invalid == "gap": animation["startOffsetMs"] = 10
+            elif invalid == "actor": animation["profileId"] = "MN_RPCZ_00"
+            elif invalid == "limit":
+                for box in pattern["logicOccurrences"] + pattern["worldOccurrences"] + pattern["presentationOccurrences"]:
+                    box["durationMs"] = 120000
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                if invalid == "asset":
+                    with mock.patch.object(subject.wmodel_pose, "read_wmodel", side_effect=OSError("missing asset")):
+                        subject.project_encounter(document)
+                else:
+                    subject.project_encounter(document)
+
+    def test_object_contact_bootstrap_owns_targets_motions_and_signal(self):
+        projected = self.first_product(subject.project_encounter(self.object_contact_document()))
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                       for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                                    "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
+        start = publisher.index("\tif ($koukuPattern.logicWindows -isnot [Array]")
+        end = publisher.index("\tif ($koukuPattern.mechanicTriggers", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            source = folder / "pattern.json"
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(definitions)
+            script += "\n$koukuPattern=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$koukuPatternDurationMs=600000; $koukuEncounterDocument=[pscustomobject]@{encounterId='encounter.test'}\n"
+            script += "$patternRows=[Collections.Generic.List[string]]::new(); $koukuFollowupTargets=[Collections.Generic.List[string]]::new()\n"
+            script += publisher[start:end] + "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            def run(value):
+                source.write_text(json.dumps(value), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                      capture_output=True, text=True, timeout=45)
+            result = run(projected)
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = [row.split("\t") for row in json.loads(result.stdout)]
+            targets = [row for row in rows if row[0] == "PATTERNLOGICCONTACTTARGET"]
+            motions = [row for row in rows if row[0] == "PATTERNLOGICCONTACTMOTION"]
+            signal = next(row for row in rows if row[0] == "PATTERNLOGICSIGNAL")
+            self.assertEqual([9, 9], [len(row) for row in targets])
+            self.assertEqual([8, 8], [len(row) for row in motions])
+            self.assertEqual(8, len(signal))
+            self.assertEqual({row[4] for row in targets}, {row[6] for row in motions})
+            self.assertEqual(projected["logicWindows"][1]["windowId"], signal[6])
+            self.assertEqual(targets[0][4], signal[7])
+            self.assertEqual(["hammer.impact", "100"], next(row for row in rows if row[0] == "PATTERNLOGICCONTACTGROUP")[-2:])
+            for invalid in ("target_owner", "target_lifetime", "mapping", "signal", "signal_lifetime", "timeout", "motion_twice", "priority", "group"):
+                value = copy.deepcopy(projected)
+                contact, deadline = value["logicWindows"]
+                if invalid == "target_owner": contact["contactTargets"][0]["targetWorldInstanceId"] = "wrong.instance"
+                elif invalid == "target_lifetime": value["worldSequences"][0]["durationMs"] = 1
+                elif invalid == "mapping": contact["onSuccess"][0]["contactMotions"].pop()
+                elif invalid == "signal": contact["onSuccess"][1]["targetLogicOccurrenceId"] = "missing.window"
+                elif invalid == "signal_lifetime": deadline["durationMs"] = 1
+                elif invalid == "timeout": contact["onTimeout"] = deadline["onTimeout"]
+                elif invalid == "motion_twice": contact["onSuccess"].append(contact["onSuccess"][0])
+                elif invalid == "priority": contact["contactPriority"] = True
+                else:
+                    sibling = copy.deepcopy(contact)
+                    sibling["windowId"] += ".duplicate"
+                    value["logicWindows"].append(sibling)
+                with self.subTest(invalid=invalid):
+                    self.assertNotEqual(0, run(value).returncode)
+            ungrouped = copy.deepcopy(projected)
+            ungrouped["logicWindows"][0]["contactGroupId"] = ""
+            ungrouped["logicWindows"][0]["onSuccess"][1]["contactTargetWorldOccurrenceId"] = ""
+            result = run(ungrouped)
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = [row.split("\t") for row in json.loads(result.stdout)]
+            self.assertEqual("-", next(row for row in rows if row[0] == "PATTERNLOGICCONTACTGROUP")[-2])
+            self.assertEqual("-", next(row for row in rows if row[0] == "PATTERNLOGICSIGNAL")[-1])
+            capacity = copy.deepcopy(projected)
+            while len(capacity["worldSequences"]) < 128:
+                capacity["worldSequences"].append(dict(capacity["worldSequences"][-1], occurrenceId=f"world.capacity.{len(capacity['worldSequences'])}"))
+            result = run(capacity)
+            self.assertEqual(0, result.returncode, result.stderr)
+            capacity["worldSequences"].append(dict(capacity["worldSequences"][-1], occurrenceId="world.capacity.129"))
+            self.assertNotEqual(0, run(capacity).returncode)
+            bone = self.first_product(subject.project_encounter(self.bone_contact_document()))
+            result = run(bone)
+            self.assertEqual(0, result.returncode, result.stderr)
+            bone_rows = [row.split("\t") for row in json.loads(result.stdout)]
+            self.assertTrue(any(row[0] == "PATTERNLOGICREGIONWORLDKEY" for row in bone_rows))
+            for invalid in ("baseline", "clock", "rotation", "scale", "hidden", "endpoint"):
+                value = copy.deepcopy(bone)
+                track = value["logicWindows"][0]["cardRegions"][0]["worldTrack"]
+                if invalid == "baseline": track["baselinePosition"][0] = 1
+                elif invalid == "clock": track["startDelayMs"] = 1
+                elif invalid == "rotation": track["keys"][0]["rotationY"] = .1
+                elif invalid == "scale": track["keys"][0]["scaleMultiplier"] = [2, 2, 2]
+                elif invalid == "hidden": track["keys"][0]["visible"] = False
+                else: track["keys"].pop()
+                with self.subTest(invalid=invalid):
+                    self.assertNotEqual(0, run(value).returncode)
+
+    def test_object_contact_world_capacity_allows_128_and_rejects_129(self):
+        document = self.object_contact_document()
+        pattern = self.first_product(document)
+        while len(pattern["worldOccurrences"]) < 128:
+            pattern["worldOccurrences"].append(dict(pattern["worldOccurrences"][-1],
+                occurrenceId=f"{pattern['patternId']}.world.{pattern['nextWorldOccurrenceOrdinal']}"))
+            pattern["nextWorldOccurrenceOrdinal"] += 1
+        self.validate(document)
+        self.assertEqual(128, len(self.first_product(subject.project_encounter(document))["worldSequences"]))
+        pattern["worldOccurrences"].append(dict(pattern["worldOccurrences"][-1],
+            occurrenceId=f"{pattern['patternId']}.world.{pattern['nextWorldOccurrenceOrdinal']}"))
+        pattern["nextWorldOccurrenceOrdinal"] += 1
+        with self.assertRaises(subject.CompositionError):
+            self.validate(document)
+
+    def test_object_contact_rejects_invalid_definition_values(self):
+        for invalid in ("targets_type", "targets_empty", "target_type", "radius", "priority", "empty_group", "mapping_type", "signal_target_type"):
+            document = self.object_contact_document()
+            box = self.first_product(document)["logicOccurrences"][0]
+            definitions = {row["logicId"]: row for row in document["logics"]}
+            logic = definitions[box["logicId"]]
+            motion, signal = [definitions[row] for row in box["onSuccessLogicIds"]]
+            if invalid == "targets_type": logic["targetWorldOccurrenceIds"] = "card"
+            elif invalid == "targets_empty": logic["targetWorldOccurrenceIds"] = []
+            elif invalid == "target_type": logic["targetWorldOccurrenceIds"][0] = []
+            elif invalid == "radius": logic["targetRadiusM"] = 0
+            elif invalid == "priority": logic["contactPriority"] = True
+            elif invalid == "empty_group": logic["contactGroupId"] = ""
+            elif invalid == "mapping_type": motion["contactMotions"][0] = []
+            else: signal["contactTargetWorldOccurrenceId"] = []
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_repeated_card_placements_reject_legacy_instance_motion_binding(self):
+        document = self.object_overlap_document()
+        pattern = self.first_product(document)
+        cue = dict(pattern["worldOccurrences"][-1], occurrenceId=f"{pattern['patternId']}.world.{pattern['nextWorldOccurrenceOrdinal']}")
+        pattern["nextWorldOccurrenceOrdinal"] += 1
+        pattern["worldOccurrences"].append(cue)
+        with self.assertRaisesRegex(subject.CompositionError, "ambiguous"):
+            self.validate(document)
+        with self.assertRaisesRegex(subject.CompositionError, "exactly one target"):
+            subject.project_encounter(document)
+
+    def test_object_overlap_projects_same_card_motion_and_absolute_target_circle(self):
+        document = self.object_overlap_document()
+        self.validate(document)
+        window = self.first_product(subject.project_encounter(document))["logicWindows"][0]
+        self.assertEqual("OBJECT_OVERLAP", window["kind"])
+        self.assertAlmostEqual(103.28999996, window["targetWorldX"])
+        self.assertAlmostEqual(891.31000042, window["targetWorldZ"])
+        self.assertEqual(1.25, window["targetRadiusM"])
+        self.assertEqual("world.object.instance.kouku.card", window["onSuccess"][0]["targetWorldInstanceId"])
+        self.assertEqual("world.object.instance.kouku.card_flip", window["onSuccess"][0]["motionInstanceId"])
+
+    def test_object_overlap_fail_motion_emits_valid_publisher_rows(self):
+        document = self.object_overlap_document()
+        pattern = self.first_product(document)
+        box = pattern["logicOccurrences"][0]
+        logic = next(row for row in document["logics"] if row["logicId"] == box["logicId"])
+        logic["insideOutcome"] = "FAIL"
+        box["onFailLogicIds"] = box["onSuccessLogicIds"]
+        box["onSuccessLogicIds"] = []
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        window = projected["logicWindows"][0]
+        self.assertEqual("FAIL", window["insideOutcome"])
+        self.assertEqual("PLAY_WORLD_OBJECT_MOTION", window["onFail"][0]["kind"])
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = []
+        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger", "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat"):
+            definitions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
+        start = publisher.index("\t$koukuWindowIds =")
+        end = publisher.index("\tif ($koukuPattern.mechanicTriggers", start)
+        validate_windows = publisher[start:end]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            (folder / "pattern.json").write_text(json.dumps(projected), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(definitions)
+            script += "\n$koukuPattern=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$koukuPatternDurationMs=600000; $koukuEncounterDocument=[pscustomobject]@{encounterId='encounter.test'}\n"
+            script += "$patternRows=[Collections.Generic.List[string]]::new(); $koukuFollowupTargets=[Collections.Generic.List[string]]::new()\n"
+            script += validate_windows
+            script += "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                    capture_output=True, text=True, timeout=45)
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = [row.split("\t") for row in json.loads(result.stdout)]
+            logic_row = next(row for row in rows if row[0] == "PATTERNLOGIC")
+            outcome_row = next(row for row in rows if row[0] == "PATTERNLOGICOUTCOME")
+            self.assertEqual(26, len(logic_row))
+            self.assertEqual(["world.object.instance.kouku.card", "103.28999996", "891.31000042", "1.25"], logic_row[-4:])
+            self.assertEqual(12, len(outcome_row))
+            self.assertEqual("FAIL", outcome_row[4])
+            self.assertEqual(["world.object.instance.kouku.card", "world.object.instance.kouku.card_flip"], outcome_row[-2:])
+
+    def test_object_overlap_rejects_missing_target_lifetime_and_different_object_motion(self):
+        document = self.object_overlap_document()
+        self.first_product(document)["worldOccurrences"][-1]["durationMs"] -= 1
+        with self.assertRaisesRegex(subject.CompositionError, "lifetime"):
+            subject.project_encounter(document)
+        document = self.object_overlap_document()
+        document["logics"][-1]["motionInstanceId"] = "world.object.instance.kouku.joker_card_flip"
+        with self.assertRaisesRegex(subject.CompositionError, "same World Object"):
+            self.validate(document)
+
+        for case in ("disabled_target", "disabled_motion", "different_binding_slot"):
+            with self.subTest(case=case):
+                document = self.object_overlap_document()
+                sequences = subject.load_world_sequences(ROOT, subject.AREA_ID)
+                target = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card")
+                motion = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card_flip")
+                reason = "disabled"
+                if case == "disabled_target":
+                    target["enabled"] = False
+                elif case == "disabled_motion":
+                    motion["enabled"] = False
+                else:
+                    reason = "same slotId"
+                    motion["bindings"][0]["slotId"] = "different_slot"
+                    template = next(row for row in sequences["templates"] if row["sequenceId"] == motion["templateId"])
+                    for track in template.get("tracks", []) + template.get("animationTracks", []):
+                        track["slotId"] = "different_slot"
+                with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+                    with self.assertRaisesRegex(subject.CompositionError, reason):
+                        self.validate(document)
+                    with self.assertRaisesRegex(subject.CompositionError, reason):
+                        subject.project_encounter(document)
+
+    def test_object_overlap_rejects_moving_target_and_projects_object_source_world_track(self):
+        document = self.object_overlap_document()
+        sequences = subject.load_world_sequences(ROOT, subject.AREA_ID)
+        instance = next(r for r in sequences["instances"] if r["instanceId"] == "world.object.instance.kouku.card")
+        template = next(r for r in sequences["templates"] if r["sequenceId"] == instance["templateId"])
+        template["objectMotion"]["velocity"][0] = 1
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            with self.assertRaisesRegex(subject.CompositionError, "zero physical Object Motion"):
+                subject.project_encounter(document)
+        template["objectMotion"]["velocity"][0] = 0
+        for motion_end in ("STOP", "NEXT"):
+            with self.subTest(motion_end=motion_end):
+                invalid = copy.deepcopy(sequences)
+                target = next(row for row in invalid["instances"] if row["instanceId"] == instance["instanceId"])
+                target["motionEnd"] = motion_end
+                with mock.patch.object(subject, "load_world_sequences", return_value=invalid):
+                    with self.assertRaisesRegex(subject.CompositionError, "LOOP or HOLD"):
+                        subject.project_encounter(document)
+        for successor_case in ("valid_idle", "moving_successor", "disabled_successor"):
+            with self.subTest(successor_case=successor_case):
+                chain = copy.deepcopy(sequences)
+                flip = next(row for row in chain["instances"] if row["instanceId"] == "world.object.instance.kouku.card_flip")
+                hop = next(row for row in chain["instances"] if row["instanceId"] == "world.object.instance.kouku.card_hop")
+                flip.update(motionEnd="NEXT", nextMotionId=hop["instanceId"])
+                hop.update(motionEnd="NEXT", nextMotionId=instance["instanceId"])
+                if successor_case == "moving_successor":
+                    hop_template = next(row for row in chain["templates"] if row["sequenceId"] == hop["templateId"])
+                    hop_template["tracks"][0]["keys"][-1]["positionOffset"][0] = 1
+                elif successor_case == "disabled_successor":
+                    hop["enabled"] = False
+                with mock.patch.object(subject, "load_world_sequences", return_value=chain):
+                    if successor_case == "valid_idle":
+                        subject.project_encounter(document)
+                    else:
+                        with self.assertRaisesRegex(subject.CompositionError, "preserve fixed target geometry|disabled"):
+                            subject.project_encounter(document)
+        motion = next(row for row in sequences["instances"] if row["instanceId"] == "world.object.instance.kouku.card_flip")
+        motion_template = next(row for row in sequences["templates"] if row["sequenceId"] == motion["templateId"])
+        motion_template["tracks"][0]["keys"][-1]["positionOffset"][0] = 1
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences):
+            with self.assertRaisesRegex(subject.CompositionError, "preserve fixed target geometry"):
+                subject.project_encounter(document)
+        world = dict(sequenceInstanceId=instance["instanceId"], positionOffset=[100,0,900])
+        track = subject._project_region_world_track(ROOT, subject.AREA_ID, sequences, world,
+                                                    dict(startMs=0, playbackSpeed=1))
+        self.assertEqual([103.28999996, 8.64000034, 891.31000042], track["baselinePosition"])
+
     def test_stagger_effects_expand_every_authored_disarm_child_without_a_duplicate_group(self):
-        pattern = self.first_product(self.document)
-        resources = {row["resourceId"]: row for row in self.document["presentationResources"]}
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        resources = {row["resourceId"]: row for row in document["presentationResources"]}
+        # Reusable group defaults do not override a saved occurrence's transform.
+        override = next(row for row in pattern["presentationOccurrences"]
+                        if resources[row["resourceId"]]["kind"] == "EFFECT")
+        override.update(positionOffset=[1.25, .75, -2], rotationDegrees=[5, 90, -15], scale=[1.5, 2, .5])
+        presentation = self.find(subject.project_presentation(document), FIRST_PRODUCT_ID)
+        projected_effects = {row["occurrenceId"]: row for row in presentation["presentationOccurrences"]
+                             if row["kind"] == "EFFECT"}
         effects = {row["occurrenceId"]: row for row in pattern["presentationOccurrences"]
                    if resources[row["resourceId"]]["kind"] == "EFFECT"}
         group = subject.load_json(ROOT / "Data/Effects/V2/Groups/boss.kouku.disarm.effectv2group.json")
@@ -88,9 +900,9 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             row = effects[f"{FIRST_PRODUCT_ID}.presentation.{ordinal}"]
             resource = resources[row["resourceId"]]
             self.assertEqual(("LEAF", child["resource"]["id"]), (resource["resourceKind"], resource["assetId"]))
-            self.assertEqual(child["localTransform"]["translation"], row["positionOffset"])
-            self.assertEqual(child["localTransform"]["rotation"], row["rotationDegrees"])
-            self.assertEqual(child["localTransform"]["scale"], row["scale"])
+            projected_effect = projected_effects[row["occurrenceId"]]
+            for field in ("positionOffset", "rotationDegrees", "scale"):
+                self.assertEqual(row[field], projected_effect[field], (row["occurrenceId"], field))
             self.assertEqual(window["startMs"] + child["startMs"], row["startMs"])
             self.assertLessEqual(row["startMs"] + row["durationMs"], window["startMs"] + window["durationMs"])
             self.assertEqual(("BOSS", "", 0, 0), (row["anchorKind"], row["bone"], row["fadeInMs"], row["fadeOutMs"]))
@@ -104,7 +916,11 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         encounter = subject.project_encounter(copy.deepcopy(self.document))
         projected = self.find(encounter, FIRST_PRODUCT_ID)
         shield = next(row for row in projected["logicWindows"] if row["windowId"] == window["occurrenceId"])
-        self.assertEqual([([0, .5, 0], 0), ([0, .5, .5], 180)],
+        authored_shields = [row for row in pattern["presentationOccurrences"]
+                            if row.get("logicOccurrenceId") == window["occurrenceId"]
+                            and resources[row["resourceId"]]["kind"] == "COLLIDER"]
+        self.assertEqual(2, len(authored_shields))
+        self.assertEqual([(row["positionOffset"], row["rotationDegrees"][1]) for row in authored_shields],
                          [(row["center"], row["yawDegrees"]) for row in shield["cardRegions"]])
         self.assertTrue(all(row["anchorKind"] == "BOSS_CURRENT" and row["shape"] == "SECTOR"
                             for row in shield["cardRegions"]))
@@ -133,7 +949,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_live_document_pins_the_gate1_saydon_products(self):
         self.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(self.document["revision"], 51)
-        self.assertEqual(2, self.document["formatVersion"])
+        self.assertEqual(3, self.document["formatVersion"])
         self.assertEqual(
             ["KAKULSAYDON_G1_PATTERN_1", "KAKULSAYDON_G1_PATTERN_2", "KAKULSAYDON_G1_PATTERN_4",
              "KAKULSAYDON_G1_PATTERN_5", "KAKULSAYDON_G1_PATTERN_6", "KAKULSAYDON_G1_PATTERN_7"],
@@ -183,7 +999,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         extra["futureFamilies"] = []
         mutations.append(extra)
         wrong_version = copy.deepcopy(self.document)
-        wrong_version["formatVersion"] = 3
+        wrong_version["formatVersion"] = subject.FORMAT_VERSION + 1
         mutations.append(wrong_version)
         wrong_id = copy.deepcopy(self.document)
         wrong_id["bossPlacementId"] = "boss.kakulsaydon.g1.other"
@@ -404,6 +1220,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 pattern = self.draft(document)
                 owner = subject.resolve_actor_profile_id(profile_id)
                 pattern["actorProfileId"] = owner
+                pattern["gateId"] = "GATE2" if owner == "MN_RPCT_06" else "GATE1"
+                pattern["targetBossPlacementId"] = subject.GATE_TARGETS[(pattern["gateId"], owner)][0]
                 stage = self.append_reference_sequence(pattern, profile_id, action_id)
                 self.validate(document)
                 reopened = json.loads(json.dumps(document, ensure_ascii=False))
@@ -614,7 +1432,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 "sourceRevision",
                 "madnessPolicy",
                 "playAllPatternIds",
-                "patterns",
+                "patterns", "folders", "bundles",
             },
             set(encounter),
         )
@@ -637,7 +1455,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 "bossArchetypeId",
                 "sourceRevision",
                 "lightResourceRevision",
-                "bindings", "patterns",
+                "bindings", "patterns", "folders", "bundles",
             },
             set(presentation),
         )
@@ -1041,7 +1859,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         encounter = subject.project_encounter(document)
         projected = next(p for p in encounter["patterns"] if p["patternId"] == ROULETTE_ID)
         self.assertEqual(
-            [{"sequenceInstanceId": "world.sequence.instance.8", "startMs": world_box["startMs"],
+            [{"sequenceInstanceId": "world.sequence.instance.8", "occurrenceId": world_box["occurrenceId"], "startMs": world_box["startMs"],
               "durationMs": world_box["durationMs"],
               "playbackSpeed": world_box["playbackSpeed"], "positionOffset": world_definition.get("positionOffset", [0, 0, 0]),
               "anchorKind": world_definition.get("anchorKind", "NONE"),
@@ -1112,6 +1930,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_generic_presentation_resources_project_timed_instances(self):
         document = copy.deepcopy(self.document)
+        # The user's saved transition value may vary; this fixture checks 500 ms propagation.
+        self.find(document, GAZE_ID)["sceneProfileOccurrences"][0]["blendMs"] = 500
         document["presentationResources"] = []
         for world in document.get("worlds", []):
             world.pop("companionEffectResourceId", None)
@@ -1256,16 +2076,40 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document = copy.deepcopy(self.document)
         pattern = self.find(document, ROULETTE_ID)
         pattern["resetBossToSpawn"] = True
+        pattern["resetBossYawDegrees"] = 147.0
         world = next(w for w in document["worlds"] if w["worldId"] == pattern["worldOccurrences"][0]["worldId"])
         world.update(anchorKind="BOSS_SPAWN", anchorPosition=[-.319, 1.9, 737.531], positionOffset=[0, .58, 0])
         self.validate(copy.deepcopy(document))
         projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == ROULETTE_ID)
         self.assertTrue(projected["resetBossToSpawn"])
+        self.assertEqual(147.0, projected["resetBossYawDegrees"])
         self.assertEqual("BOSS_SPAWN", projected["worldSequences"][0]["anchorKind"])
         self.assertEqual([-.319, 1.9, 737.531], projected["worldSequences"][0]["anchorPosition"])
         pattern["resetBossToSpawn"] = 1
         with self.assertRaisesRegex(subject.CompositionError, "resetBossToSpawn must be a boolean"):
             self.validate(document)
+
+    def test_boss_spawn_reset_yaw_validates_and_absence_preserves_facing(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.find(document, ROULETTE_ID)
+        pattern["resetBossToSpawn"] = True
+        for yaw in (0, -360, 360):
+            pattern["resetBossYawDegrees"] = yaw
+            self.validate(copy.deepcopy(document))
+            projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == ROULETTE_ID)
+            self.assertEqual(yaw, projected["resetBossYawDegrees"])
+        for yaw in (None, True, "147", float("nan"), float("inf"), -361, 361):
+            pattern["resetBossYawDegrees"] = yaw
+            with self.subTest(yaw=yaw), self.assertRaisesRegex(subject.CompositionError, "resetBossYawDegrees"):
+                self.validate(copy.deepcopy(document))
+        pattern["resetBossYawDegrees"] = 147
+        pattern["resetBossToSpawn"] = False
+        with self.assertRaisesRegex(subject.CompositionError, "requires resetBossToSpawn"):
+            self.validate(copy.deepcopy(document))
+        pattern.pop("resetBossYawDegrees")
+        self.validate(copy.deepcopy(document))
+        projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == ROULETTE_ID)
+        self.assertNotIn("resetBossYawDegrees", projected)
 
     def test_publish_is_deterministic_and_validate_detects_stale_product(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1523,6 +2367,309 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         row = next(p for p in subject.project_encounter(document)["patterns"]
                    if p["patternId"] == GAZE_ID)["mechanicTriggers"][0]
         self.assertEqual(("HUD_ENTER", "MAZE", 1333), (row["kind"], row["hudMode"], row["startMs"]))
+
+    def test_scene_profile_reserved_blend_accepts_timeline_range_without_effect_envelope_bounds(self):
+        document = copy.deepcopy(self.document)
+        scene = self.find(document, GAZE_ID)["sceneProfileOccurrences"][0]
+        scene["blendMs"] = 600000
+        self.assertLess(scene["durationMs"], scene["blendMs"])
+        self.validate(document)
+        projected = next(row for row in subject.project_presentation(document)["patterns"]
+                         if row["patternId"] == GAZE_ID)
+        saved = next(row for row in projected["presentationOccurrences"]
+                     if row["occurrenceId"] == scene["occurrenceId"])
+        self.assertEqual(("SCENE_PROFILE", 600000, scene["durationMs"]),
+                         (saved["kind"], saved["fadeInMs"], saved["durationMs"]))
+        scene["blendMs"] = 600001
+        with self.assertRaisesRegex(subject.CompositionError, "blendMs"):
+            self.validate(document)
+        scene["blendMs"] = 600000
+        effect = next(row for row in self.first_product(document)["presentationOccurrences"]
+                      if next(resource for resource in document["presentationResources"]
+                              if resource["resourceId"] == row["resourceId"])["kind"] == "EFFECT")
+        effect["fadeInMs"] = effect["durationMs"] + 1
+        with self.assertRaisesRegex(subject.CompositionError, "fadeInMs"):
+            self.validate(document)
+
+
+    def direct_parent_document(self):
+        document = copy.deepcopy(self.document)
+        folder = {"folderId": f"kakulsaydon.folder.{document['nextFolderOrdinal']}",
+                  "gateId": "GATE1", "displayName": "Independent outcomes"}
+        document["nextFolderOrdinal"] += 1
+        document["folders"].append(folder)
+        self.first_product(document)["folderId"] = folder["folderId"]
+        return document
+
+    def test_direct_parent_pattern_projects_parent_without_creating_bundle_or_changing_playback(self):
+        document = self.direct_parent_document()
+        self.validate(document)
+        before = subject.project_encounter(self.document)
+        after = subject.project_encounter(document)
+        expected = copy.deepcopy(before)
+        expected["patterns"][0]["folderId"] = document["folders"][0]["folderId"]
+        expected["folders"] = document["folders"]
+        self.assertEqual(expected, after)
+        self.assertEqual([], after["bundles"])
+        self.assertEqual(before["playAllPatternIds"], after["playAllPatternIds"])
+        self.assertTrue(all("folderId" not in row for row in before["patterns"]))
+
+    def test_direct_parent_product_filter_keeps_referenced_folder_without_product_bundle(self):
+        document = self.direct_parent_document()
+        read_json = subject.load_json
+        with mock.patch.object(subject, "load_json", side_effect=lambda path:
+                               document if path == ROOT / subject.SOURCE_PATH else read_json(path)):
+            product = subject.load_and_validate(ROOT)
+        self.assertEqual(document["folders"], product["folders"])
+        self.assertEqual(document["folders"][0]["folderId"], self.first_product(product)["folderId"])
+        self.assertEqual([], product["bundles"])
+        self.assertTrue(all(row["authoringStatus"] == "PRODUCT" for row in product["patterns"]))
+
+    def test_direct_parent_rejects_invalid_missing_or_cross_gate_folder(self):
+        for value in (None, [], True, "", "missing.parent"):
+            with self.subTest(folderId=value):
+                document = self.direct_parent_document()
+                self.first_product(document)["folderId"] = value
+                with self.assertRaises(subject.CompositionError):
+                    self.validate(document)
+        document = self.direct_parent_document()
+        document["folders"][0]["gateId"] = "GATE2"
+        with self.assertRaisesRegex(subject.CompositionError, "same-Gate Parent"):
+            self.validate(document)
+
+    def test_direct_parent_classification_survives_pattern_reuse_in_a_bundle(self):
+        document = self.bundle_product_document()
+        bundle = document["bundles"][0]
+        pattern = self.find(document, bundle["members"][0]["patternId"])
+        pattern["folderId"] = bundle["folderId"]
+        self.validate(document)
+        product = subject.project_encounter(document)
+        projected = next(row for row in product["patterns"] if row["patternId"] == pattern["patternId"])
+        self.assertEqual(bundle["folderId"], projected["folderId"])
+        self.assertNotIn("folderId", product["bundles"][0]["members"][0])
+
+    def bundle_product_document(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        bundle = document["bundles"][0]
+        for member in bundle["members"]:
+            pattern = self.find(document, member["patternId"])
+            pattern["stages"] = []
+            stage = self.append_reference_sequence(pattern, pattern["actorProfileId"])
+            clip = stage["animationOccurrences"][0]
+            clip.update(startOffsetMs=0, endPolicy="EXACT")
+            stage["animationOccurrences"] = [clip]
+            stage["durationMs"] = clip["playMs"]
+            pattern["authoringStatus"] = "PRODUCT"
+        bundle["authoringStatus"] = "PRODUCT"
+        document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
+        return document
+
+    def test_v3_seed_preserves_two_empty_gate2_drafts_and_has_no_published_bundle(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        self.validate(document)
+        self.assertEqual(3, document["formatVersion"])
+        self.assertEqual(2, len(document["bundles"][0]["members"]))
+        for member in document["bundles"][0]["members"]:
+            pattern = self.find(document, member["patternId"])
+            self.assertEqual(("GATE2", "DRAFT", []), (pattern["gateId"], pattern["authoringStatus"], pattern["stages"]))
+        self.assertEqual([], subject.project_encounter(document)["bundles"])
+        self.assertEqual([], subject.project_presentation(document)["folders"])
+        self.assertEqual(document, json.loads(subject.serialize_json(document)))
+
+    def test_v3_bundle_offsets_and_product_references_do_not_copy_child_timeline(self):
+        document = self.bundle_product_document()
+        document["bundles"][0]["members"][1]["startOffsetMs"] = 34
+        before = copy.deepcopy(document["patterns"])
+        self.validate(document)
+        for product in (subject.project_encounter(document), subject.project_presentation(document)):
+            bundle = product["bundles"][0]
+            self.assertEqual(34, bundle["members"][1]["startOffsetMs"])
+            self.assertEqual("boss.kakulsaydon.g2.big-saydon", bundle["members"][1]["targetBossPlacementId"])
+            self.assertNotIn("stages", bundle["members"][0])
+            self.assertEqual(subject._bundle_duration(document, document["bundles"][0]), bundle["durationMs"])
+        self.assertEqual(before, document["patterns"])
+        document["bundles"][0]["members"].clear()
+        document["bundles"][0]["authoringStatus"] = "DRAFT"
+        self.validate(document)
+        self.assertEqual(before, document["patterns"])
+
+    def test_v3_rejects_unknown_gate_target_cross_gate_and_duplicate_actor(self):
+        for mutate in (
+            lambda d: d["patterns"][0].update(gateId="GATE_UNKNOWN"),
+            lambda d: d["patterns"][0].update(gateId=[]),
+            lambda d: d["bundles"][0].update(authoringStatus=[]),
+            lambda d: d["bundles"][0].update(folderId=[]),
+            lambda d: d["bundles"][0]["members"][0].update(patternId=[]),
+            lambda d: d["patterns"][0].update(targetBossPlacementId="boss.kakulsaydon.g3.saydon"),
+            lambda d: d["bundles"][0].update(gateId="GATE1"),
+            lambda d: d["bundles"][0]["members"][1].update(patternId=d["bundles"][0]["members"][0]["patternId"]),
+            lambda d: d["bundles"][0]["members"][0].update(startOffsetMs=-1),
+            lambda d: d["bundles"][0]["members"][0].update(startOffsetMs=True),
+            lambda d: d["bundles"][0]["members"][0].update(patternId="missing.pattern"),
+        ):
+            document = copy.deepcopy(self.hierarchy_document)
+            mutate(document)
+            with self.assertRaises(subject.CompositionError): self.validate(document)
+
+    def test_v3_empty_draft_and_shared_pattern_references_roundtrip(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        duplicate = copy.deepcopy(document["bundles"][0])
+        duplicate["bundleId"] = "kakulsaydon.bundle.2"
+        for ordinal, member in enumerate(duplicate["members"], 1): member["memberId"] = f"kakulsaydon.bundle.2.member.{ordinal}"
+        document["bundles"].append(duplicate); document["nextBundleOrdinal"] = 3
+        self.validate(document)
+        self.assertEqual(document, json.loads(subject.serialize_json(document)))
+        document["bundles"].pop()
+        document["bundles"][0]["members"] = []
+        self.validate(document)
+        document["bundles"][0]["authoringStatus"] = "PRODUCT"
+        with self.assertRaisesRegex(subject.CompositionError, "at least one member"): self.validate(document)
+
+    def test_v3_product_bundle_rejects_draft_child_and_dangling_delete(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        document["bundles"][0]["authoringStatus"] = "PRODUCT"
+        with self.assertRaisesRegex(subject.CompositionError, "DRAFT child"): self.validate(document)
+        document["bundles"][0]["authoringStatus"] = "DRAFT"
+        document["patterns"] = [p for p in document["patterns"] if p["patternId"] != "KAKULSAYDON_G1_PATTERN_8"]
+        with self.assertRaisesRegex(subject.CompositionError, "missing pattern"): self.validate(document)
+
+    def test_v3_common_scene_uses_reserved_blend_and_detects_child_conflict(self):
+        document = self.bundle_product_document()
+        bundle = document["bundles"][0]
+        profile = document["sceneProfiles"][0]["sceneProfileId"]
+        bundle["nextSceneProfileOccurrenceOrdinal"] = 2
+        bundle["sceneProfileOccurrences"] = [dict(occurrenceId=bundle["bundleId"] + ".sceneprofile.1", sceneProfileId=profile,
+                                                  startMs=0, durationMs=100, blendMs=600000)]
+        self.validate(document)
+        projected = subject.project_presentation(document)["bundles"][0]["presentationOccurrences"][0]
+        self.assertEqual(("SCENE_PROFILE", 600000), (projected["kind"], projected["fadeInMs"]))
+        child = self.find(document, bundle["members"][0]["patternId"])
+        child["nextSceneProfileOccurrenceOrdinal"] = 2
+        child["sceneProfileOccurrences"] = [dict(occurrenceId=child["patternId"] + ".sceneprofile.1", sceneProfileId=profile,
+                                                 startMs=0, durationMs=100, blendMs=0)]
+        with self.assertRaisesRegex(subject.CompositionError, "overlaps global SCENE_PROFILE"): self.validate(document)
+        # 67 ms schedules at tick 3 (100 ms), so touching 100 ms boundaries do not overlap.
+        bundle["members"][0]["startOffsetMs"] = 67
+        self.validate(document)
+        # Raw child [101, 201) misses common [202, 203), but quantized child [133 1/3, 233 1/3) overlaps.
+        bundle["members"][0]["startOffsetMs"] = 1
+        child["sceneProfileOccurrences"][0].update(startMs=100)
+        bundle["sceneProfileOccurrences"][0].update(startMs=202, durationMs=1)
+        with self.assertRaisesRegex(subject.CompositionError, "overlaps global SCENE_PROFILE"): self.validate(document)
+
+    def test_v3_camera_common_rejects_unsupported_effect_and_malformed_duration(self):
+        document = self.bundle_product_document()
+        bundle = document["bundles"][0]
+        effect = next(r["resourceId"] for r in document["presentationResources"] if r["kind"] == "EFFECT")
+        bundle["nextPresentationOccurrenceOrdinal"] = 2
+        bundle["presentationOccurrences"] = [dict(occurrenceId=bundle["bundleId"] + ".presentation.1", resourceId=effect,
+                                                  startMs=0, durationMs=100)]
+        with self.assertRaisesRegex(subject.CompositionError, "Camera only"): self.validate(document)
+        bundle["presentationOccurrences"][0]["durationMs"] = "invalid"
+        with self.assertRaises(subject.CompositionError): self.validate(document)
+        for field in ("presentationOccurrences", "sceneProfileOccurrences"):
+            for malformed in ([None], ["invalid"], [17], "invalid"):
+                invalid = self.bundle_product_document()
+                invalid["bundles"][0][field] = malformed
+                with self.subTest(field=field, malformed=malformed), self.assertRaises(subject.CompositionError):
+                    self.validate(invalid)
+
+    def test_camera_bundle_conflict_includes_return_tail(self):
+        document = self.bundle_product_document()
+        bundle = document["bundles"][0]
+        ordinal = document["nextPresentationResourceOrdinal"]
+        document["nextPresentationResourceOrdinal"] += 1
+        resource = dict(resourceId=f"kakulsaydon.g1.presentation.{ordinal}", displayName="Camera", kind="CAMERA", assetId="camera.test", resourceKind="")
+        document["presentationResources"].append(resource)
+        bundle["nextPresentationOccurrenceOrdinal"] = 2
+        bundle["presentationOccurrences"] = [dict(occurrenceId=bundle["bundleId"] + ".presentation.1", resourceId=resource["resourceId"], startMs=0, durationMs=100)]
+        child = self.find(document, bundle["members"][0]["patternId"])
+        child["nextPresentationOccurrenceOrdinal"] = 2
+        child["presentationOccurrences"] = [dict(occurrenceId=child["patternId"] + ".presentation.1", resourceId=resource["resourceId"], startMs=0, durationMs=100)]
+        bundle["members"][0]["startOffsetMs"] = 100
+        with mock.patch.object(subject, "load_camera_shots", return_value={"camera.test": {"blendInMs": 0, "blendOutMs": 50}}):
+            with self.assertRaisesRegex(subject.CompositionError, "overlaps global CAMERA"): self.validate(document)
+            # Offset 134 is quantized to 166 2/3 ms, safely past the [100,150) return tail.
+            bundle["members"][0]["startOffsetMs"] = 134
+            self.validate(document)
+        with mock.patch.object(subject, "load_camera_shots", return_value={"camera.test": {"blendInMs": 101, "blendOutMs": 0}}):
+            with self.assertRaisesRegex(subject.CompositionError, "shorter than.*blend-in"):
+                subject.validate_publishable(document, ROOT)
+
+    def test_v3_legacy_v2_has_no_hierarchy_dependency(self):
+        document = copy.deepcopy(self.document)
+        document["formatVersion"] = 2
+        for key in ("folders", "bundles", "nextFolderOrdinal", "nextBundleOrdinal"): document.pop(key)
+        for pattern in document["patterns"]:
+            pattern.pop("gateId"); pattern.pop("targetBossPlacementId")
+        self.validate(document)
+        projected = subject.project_encounter(document)
+        self.assertTrue(all(p["gateId"] == "GATE1" for p in projected["patterns"]))
+        self.assertEqual([], projected["bundles"])
+
+
+    def test_v3_multiple_shared_player_mode_owners_are_rejected(self):
+        document = self.bundle_product_document()
+        for member in document["bundles"][0]["members"]:
+            child = self.find(document, member["patternId"])
+            child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="kakulsaydon.g1.logic.10",
+                                               startMs=0, durationMs=1)]
+            child["nextLogicOccurrenceOrdinal"] = 2
+        with self.assertRaisesRegex(subject.CompositionError, "multiple owners of shared player mode"):
+            self.validate(document)
+        self.find(document, document["bundles"][0]["members"][1]["patternId"])["logicOccurrences"] = []
+        self.validate(document)
+
+    def test_v3_followup_must_stay_on_the_same_gate_and_boss(self):
+        document = self.bundle_product_document()
+        child = self.find(document, document["bundles"][0]["members"][0]["patternId"])
+        child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="kakulsaydon.g1.logic.1",
+                                          startMs=0, durationMs=1, onSuccessLogicIds=["kakulsaydon.g1.logic.7"])]
+        child["nextLogicOccurrenceOrdinal"] = 2
+        with self.assertRaisesRegex(subject.CompositionError, "retain Gate and target boss"):
+            self.validate(document)
+
+    def test_v3_bundle_bootstrap_rows_match_server_contract_and_reject_wrong_target(self):
+        document = self.bundle_product_document()
+        parent_pattern = self.find(document, document["bundles"][0]["members"][0]["patternId"])
+        parent_pattern["folderId"] = document["bundles"][0]["folderId"]
+        encounter = subject.project_encounter(document)
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = []
+        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger"):
+            definitions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
+        start = publisher.index("# Bundle members resolve")
+        end = publisher.index("if (@($koukuEncounterDocument.playAllPatternIds).Count -ne", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            product_path = folder / "product.json"
+            product_path.write_text(json.dumps(encounter), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(definitions)
+            script += "\n$koukuEncounterDocument=Get-Content -Raw (Join-Path $PSScriptRoot 'product.json') | ConvertFrom-Json\n"
+            script += "$koukuPatternById=@{}; foreach($p in $koukuEncounterDocument.patterns){$koukuPatternById[[string]$p.patternId]=$p}\n"
+            script += "$patternRows=[Collections.Generic.List[string]]::new()\n" + publisher[start:end]
+            script += "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            path = folder / "check.ps1"; path.write_text(script, encoding="utf-8-sig")
+            run = lambda: subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)], capture_output=True, text=True)
+            result = run()
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = json.loads(result.stdout)
+            self.assertEqual(1, sum(row.startswith("PATTERNBUNDLE\t") for row in rows))
+            self.assertEqual(2, sum(row.startswith("PATTERNBUNDLEMEMBER\t") for row in rows))
+            self.assertEqual([4, 6, 6], [len(row.split("\t")) for row in rows])
+            projected_parent = next(row for row in encounter["patterns"] if row["patternId"] == parent_pattern["patternId"])
+            for invalid_parent in (None, [], "", "missing.parent"):
+                projected_parent["folderId"] = invalid_parent
+                product_path.write_text(json.dumps(encounter), encoding="utf-8")
+                self.assertNotEqual(0, run().returncode)
+            projected_parent["folderId"] = parent_pattern["folderId"]
+            encounter["folders"][0]["gateId"] = "GATE1"
+            product_path.write_text(json.dumps(encounter), encoding="utf-8")
+            self.assertNotEqual(0, run().returncode)
+            encounter["folders"][0]["gateId"] = "GATE2"
+            encounter["bundles"][0]["members"][1]["targetBossPlacementId"] = "boss.kakulsaydon.g1.saydon"
+            product_path.write_text(json.dumps(encounter), encoding="utf-8")
+            self.assertNotEqual(0, run().returncode)
 
 if __name__ == "__main__":
     unittest.main()

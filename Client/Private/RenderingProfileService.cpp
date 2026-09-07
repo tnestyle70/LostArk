@@ -2,6 +2,7 @@
 
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "MapLightPresentationRuntime.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
@@ -52,9 +53,12 @@ namespace
 
 	bool_t Has_ExactFields(
 		const DATA_JSON_VALUE& object,
-		initializer_list<const char_t*> fields)
+		initializer_list<const char_t*> fields,
+		initializer_list<const char_t*> optionalFields = {})
 	{
-		if (!object.Is_Object() || object.Get_Object().size() != fields.size())
+		const size_t expectedCount = fields.size() + count_if(optionalFields.begin(),
+			optionalFields.end(), [&object](const char_t* name) { return nullptr != object.Find(name); });
+		if (!object.Is_Object() || object.Get_Object().size() != expectedCount)
 			return false;
 		return all_of(fields.begin(), fields.end(),
 			[&object](const char_t* pField)
@@ -533,17 +537,9 @@ bool_t CRenderingProfileService::Parse_Catalog(
 	for (const DATA_JSON_VALUE& value : pProfiles->Get_Array())
 	{
 		if (!Has_ExactFields(value,
-			{ "profileId", "exposureMultiplier",
-			  "bloomIntensityMultiplier", "light", "shadow", "fog" }) &&
-			!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier", "bloomIntensityMultiplier",
-			  "light", "shadow", "fog", "qualityOverride" }) &&
-			!Has_ExactFields(value,
-			{ "profileId", "displayName", "exposureMultiplier", "bloomIntensityMultiplier",
-			  "light", "shadow", "fog" }) &&
-			!Has_ExactFields(value,
-			{ "profileId", "displayName", "exposureMultiplier", "bloomIntensityMultiplier",
-			  "light", "shadow", "fog", "qualityOverride" }))
+			  "light", "shadow", "fog" },
+			{ "displayName", "qualityOverride", "mapLightIntensityMultiplier" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
 			return false;
@@ -557,6 +553,13 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		const DATA_JSON_VALUE* pFog = Required(
 			value, "fog", DATA_JSON_TYPE::OBJECT);
 		SCENE_RENDERING_PROFILE profile;
+		if (value.Find("mapLightIntensityMultiplier") &&
+			!Read_Float(value, "mapLightIntensityMultiplier", 0.f, 4.f,
+				profile.fMapLightIntensityMultiplier))
+		{
+			strOutStatus = "Scene profile mapLightIntensityMultiplier must be a finite number in [0, 4].";
+			return false;
+		}
 		if (const DATA_JSON_VALUE* pQuality = value.Find("qualityOverride"))
 		{
 			if (!Parse_Quality(*pQuality, profile.QualityOverride, strOutStatus))
@@ -789,6 +792,7 @@ bool_t CRenderingProfileService::Validate_Profile(
 		Is_ValidColor(Profile.Light.vSpecular) &&
 		Is_FiniteRange(Profile.fExposureMultiplier, 0.1f, 4.f) &&
 		Is_FiniteRange(Profile.fBloomIntensityMultiplier, 0.f, 4.f) &&
+		Is_FiniteRange(Profile.fMapLightIntensityMultiplier, 0.f, 4.f) &&
 		Is_FiniteRange(Profile.vShadowFocus.x, -100000.f, 100000.f) &&
 		Is_FiniteRange(Profile.vShadowFocus.y, -100000.f, 100000.f) &&
 		Is_FiniteRange(Profile.vShadowFocus.z, -100000.f, 100000.f) &&
@@ -876,6 +880,8 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		strOutStatus = "Light manager rejected the staged scene light; active state preserved.";
 		return false;
 	}
+	CMapLightPresentationRuntime::Commit_SceneIntensityMultiplier(
+		Profile.fMapLightIntensityMultiplier);
 	return true;
 }
 
@@ -929,6 +935,7 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			"      \"exposureMultiplier\": " << profile.fExposureMultiplier << ",\n"
 			"      \"bloomIntensityMultiplier\": " <<
 			profile.fBloomIntensityMultiplier << ",\n"
+			"      \"mapLightIntensityMultiplier\": " << profile.fMapLightIntensityMultiplier << ",\n"
 			"      \"light\": {\n"
 			"        \"type\": \"directional\",\n"
 			"        \"direction\": ";
