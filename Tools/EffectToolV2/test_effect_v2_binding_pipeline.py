@@ -1028,6 +1028,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             }
         self.assertEqual(
             {
+                "boss.kouku.ball.smoke": 7,
                 "boss.kouku.card.clober.black": 2,
                 "boss.kouku.card.clober.red": 2,
                 "boss.kouku.card.dia.black": 2,
@@ -1037,9 +1038,13 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.kouku.card.spade.black": 2,
                 "boss.kouku.card.spade.red": 2,
                 "boss.kouku.dance": 8,
+                "boss.kouku.dance.clap": 2,
                 "boss.kouku.disarm": 21,
+                "boss.kouku.find.core": 4,
                 "boss.kouku.find.heart": 2,
                 "boss.kouku.find.star": 6,
+                "boss.kouku.medusa.blue": 2,
+                "boss.kouku.medusa.red": 2,
                 "boss.valtan.axe": 9,
                 "boss.valtan.blackhole": 1,
                 "boss.valtan.breathe": 5,
@@ -1062,6 +1067,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         )
         self.assertEqual(
             {
+                "boss.kouku.ball.smoke": 2000,
                 "boss.kouku.card.clober.black": 10000,
                 "boss.kouku.card.clober.red": 10000,
                 "boss.kouku.card.dia.black": 10000,
@@ -1071,9 +1077,13 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.kouku.card.spade.black": 10000,
                 "boss.kouku.card.spade.red": 10000,
                 "boss.kouku.dance": 40000,
+                "boss.kouku.dance.clap": 2000,
                 "boss.kouku.disarm": 10000,
+                "boss.kouku.find.core": 22000,
                 "boss.kouku.find.heart": 3500,
                 "boss.kouku.find.star": 2000,
+                "boss.kouku.medusa.blue": 10000,
+                "boss.kouku.medusa.red": 10000,
                 "boss.valtan.axe": 5600,
                 "boss.valtan.blackhole": 10000,
                 "boss.valtan.breathe": 1500,

@@ -17,6 +17,7 @@ namespace
 	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise", "ChromaticAberration", "TexturedOverlay" };
 	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque", "Multiply" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
+	const char* UV_MODE_KEYS[] = { "Planar", "PolarRays", "PolarRings" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
 	const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
 	const char* SPAWN_SHAPE_KEYS[] = { "Point", "Sphere", "Ring", "Box" };
@@ -694,10 +695,14 @@ bool_t Client::CEffectV2Document::Parse_Document(
 	CEffectV2Object::PARAMS& P = Document.Desc.Params;
 	int32_t iClipChannel = static_cast<int32_t>(P.eColorClipChannel);
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
+	int32_t iUVMode = static_cast<int32_t>(P.eUVMode);
 	if (!Read_Lerp(*pParams, "position", P.Position, strOutError) ||
 		!Read_Lerp(*pParams, "rotation", P.Rotation, strOutError) ||
 		!Read_Lerp(*pParams, "scale", P.Scale, strOutError) ||
 		!Read_Lerp(*pParams, "velocity", P.Velocity, strOutError) ||
+		!Read_Number(*pParams, "orbitRadius", P.fOrbitRadius, strOutError) ||
+		!Read_Number(*pParams, "orbitDegreesPerSecond", P.fOrbitDegreesPerSecond, strOutError) ||
+		!Read_Number(*pParams, "orbitStartDegrees", P.fOrbitStartDegrees, strOutError) ||
 		!Read_FloatArray(*pParams, "colorOffset", &P.vColorOffset.x, 4u, strOutError) ||
 		!Read_FloatArray(*pParams, "colorOffsetEnd", &P.vColorOffsetEnd.x, 4u, strOutError) ||
 		!Read_Bool(*pParams, "colorOffsetLerp", P.bColorOffsetLerp, strOutError) ||
@@ -718,6 +723,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_FloatArray(*pParams, "uvStart", &P.vUVStart.x, 2u, strOutError) ||
 		!Read_FloatArray(*pParams, "uvSpeed", &P.vUVSpeed.x, 2u, strOutError) ||
 		!Read_FloatArray(*pParams, "uvTileCount", &P.vUVTileCount.x, 2u, strOutError) ||
+		!Read_Enum(*pParams, "uvMode", UV_MODE_KEYS, _countof(UV_MODE_KEYS), iUVMode, strOutError) ||
 		!Read_Number(*pParams, "noiseStrength", P.fNoiseStrength, strOutError) ||
 		!Read_Number(*pParams, "noiseScale", P.fNoiseScale, strOutError) ||
 		!Read_FloatArray(*pParams, "noisePan", &P.vNoisePan.x, 2u, strOutError) ||
@@ -745,6 +751,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 	}
 	P.eColorClipChannel = static_cast<CEffectV2Object::COLOR_CLIP_CHANNEL>(iClipChannel);
 	P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
+	P.eUVMode = static_cast<CEffectV2Object::UV_MODE>(iUVMode);
 	if (P.fMeshPreScale <= 0.f || P.fLifetime < 0.f || P.fPlayRate < 0.f)
 	{
 		strOutError = "params.meshPreScale/lifetime/playRate out of range.";
@@ -1294,6 +1301,9 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"rotation\": " + Json_Lerp(P.Rotation) + ",\n";
 	Text += "    \"scale\": " + Json_Lerp(P.Scale) + ",\n";
 	Text += "    \"velocity\": " + Json_Lerp(P.Velocity) + ",\n";
+	Text += "    \"orbitRadius\": " + Json_Number(P.fOrbitRadius) + ",\n";
+	Text += "    \"orbitDegreesPerSecond\": " + Json_Number(P.fOrbitDegreesPerSecond) + ",\n";
+	Text += "    \"orbitStartDegrees\": " + Json_Number(P.fOrbitStartDegrees) + ",\n";
 	Text += "    \"colorOffset\": " + Json_Float4(P.vColorOffset) + ",\n";
 	Text += "    \"colorOffsetEnd\": " + Json_Float4(P.vColorOffsetEnd) + ",\n";
 	Text += std::string("    \"colorOffsetLerp\": ") + Json_Bool(P.bColorOffsetLerp) + ",\n";
@@ -1314,6 +1324,7 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"uvStart\": " + Json_Float2(P.vUVStart) + ",\n";
 	Text += "    \"uvSpeed\": " + Json_Float2(P.vUVSpeed) + ",\n";
 	Text += "    \"uvTileCount\": " + Json_Float2(P.vUVTileCount) + ",\n";
+	Text += "    \"uvMode\": " + Json_String(UV_MODE_KEYS[static_cast<size_t>(P.eUVMode)]) + ",\n";
 	Text += "    \"noiseStrength\": " + Json_Number(P.fNoiseStrength) + ",\n";
 	Text += "    \"noiseScale\": " + Json_Number(P.fNoiseScale) + ",\n";
 	Text += "    \"noisePan\": " + Json_Float2(P.vNoisePan) + ",\n";
