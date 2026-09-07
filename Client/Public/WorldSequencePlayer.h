@@ -75,6 +75,7 @@ public:
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out) const;
+	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	void Clear();
 
 	bool_t Is_Ready() const noexcept
@@ -187,6 +188,7 @@ private:
 		std::unordered_map<uint64_t, MAP_PLACEMENT_RECORD> sampledPlacements;
 		std::vector<uint64_t> deployTargets;
 		uint32_t durationMs = 0;
+		std::string objectSampleStatus;
 		std::vector<OBJECT_INSTANCE> objects;
 	};
 

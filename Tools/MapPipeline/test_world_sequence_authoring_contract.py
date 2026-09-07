@@ -59,6 +59,10 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             "bindings": [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "test.world.object"}],
         })
         cases = [("valid", source, True)]
+        for anchor in ("WORLD", "PLAYER"):
+            anchored = copy.deepcopy(source)
+            anchored["objectResources"][-1]["anchorKind"] = anchor
+            cases.append(("resource_anchor_" + anchor, anchored, True))
         for name, mutate in (
             ("bad_count", lambda d: d["templates"][-1]["objectMotion"].update(count=0)),
             ("spawn_after_lifetime", lambda d: d["templates"][-1]["objectMotion"].update(intervalMs=1000)),
@@ -67,6 +71,9 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             ("unknown_property", lambda d: d["objectResources"][-1].update(velocty=1)),
             ("unknown_alias", lambda d: d["objectResources"][-1].update(modelAssetId="", sequenceInstanceId="missing.instance")),
             ("invalid_anchor", lambda d: d["instances"][-1].update(anchorKind="BOSS")),
+            ("invalid_resource_anchor", lambda d: d["objectResources"][-1].update(anchorKind="BOSS")),
+            ("invalid_resource_anchor_type", lambda d: d["objectResources"][-1].update(anchorKind=0)),
+            ("placed_alias_character_anchor", lambda d: d["objectResources"][0].update(anchorKind="PLAYER")),
         ):
             invalid = copy.deepcopy(source)
             mutate(invalid)

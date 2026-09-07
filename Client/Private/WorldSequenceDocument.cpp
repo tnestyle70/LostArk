@@ -381,7 +381,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -394,6 +394,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 			object.displayName = row.Find("displayName")->Get_String();
 			object.modelAssetId = row.Find("modelAssetId")->Get_String();
 			object.animated = row.Find("animated")->Get_Boolean();
+			if (const auto* anchor = row.Find("anchorKind"))
+			{
+				if (!anchor->Is_String()) { outStatus = "World object resource anchor must be WORLD or PLAYER"; return false; }
+				object.anchorKind = anchor->Get_String();
+			}
 			for (const char_t* key : { "diffuseTextureAssetId", "sequenceInstanceId" })
 			{
 				const auto* field = row.Find(key);
@@ -704,6 +709,7 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"objectId\": \"" << CDataJson::Escape(object.objectId) << "\",\n"
 			<< "      \"displayName\": \"" << CDataJson::Escape(object.displayName) << "\",\n"
 			<< "      \"modelAssetId\": \"" << CDataJson::Escape(object.modelAssetId) << "\",\n"
+			<< "      \"anchorKind\": \"" << CDataJson::Escape(object.anchorKind) << "\",\n"
 			<< "      \"diffuseTextureAssetId\": \"" << CDataJson::Escape(object.diffuseTextureAssetId) << "\",\n"
 			<< "      \"modelPreScale\": " << object.modelPreScale << ",\n"
 			<< "      \"animated\": " << (object.animated ? "true" : "false") << ",\n"
@@ -851,6 +857,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		if (!Is_ValidStableId(object.objectId) || !objectIds.insert(object.objectId).second ||
 			object.displayName.empty() || object.displayName.size() > 128u ||
 			!Is_ValidUtf8DisplayText(object.displayName) ||
+			(object.anchorKind != "WORLD" && object.anchorKind != "PLAYER") ||
+			(alias && object.anchorKind != "WORLD") ||
 			!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE ||
 			object.modelPreScale > MAX_COMPONENT || !Is_BoundedFloat3(object.scale) ||
 			object.scale.x < MIN_SCALE || object.scale.y < MIN_SCALE || object.scale.z < MIN_SCALE ||
@@ -1214,6 +1222,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		const auto& left = m_ObjectResources[index];
 		const auto& right = other.m_ObjectResources[index];
 		if (left.objectId != right.objectId || left.displayName != right.displayName ||
+			left.anchorKind != right.anchorKind ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId) return false;

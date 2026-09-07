@@ -361,7 +361,7 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
             };
             if (row.lightBox.strAnchorKind == "PLAYER")
             {
-                // No alive character is a temporary empty target set, never a sticky row failure.
+                // No present character is a temporary empty target set, never a sticky row failure.
                 for (const auto& root : m_LightPlayerPivots)
                 {
                     float4x4_t pivot;
@@ -793,7 +793,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     for (const auto& view : players)
     {
         const auto character = view.pCharacter.lock();
-        if (view.Snapshot.iCurrentHp && character && character->Get_Transform())
+        if (character && character->Get_Transform())
             m_LightPlayerPivots.push_back(*character->Get_Transform()->Get_WorldMatrixPtr());
     }
     if (!m_bProductAttempted) { std::string status; (void)Reload_Product(status); }

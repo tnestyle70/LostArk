@@ -1,12 +1,12 @@
 {
   "schema": "lostark.light-resources",
   "formatVersion": 1,
-  "revision": 1,
+  "revision": 2,
   "nextLightResourceOrdinal": 3,
   "lights": [
     {
       "lightResourceId": "light.runtime.1",
-      "displayName": "스포트라이트조명_캐릭터",
+      "displayName": "스포트라이트_캐릭터",
       "kind": "SPOT",
       "defaultAnchorKind": "PLAYER",
       "localOffset": [
@@ -33,7 +33,7 @@
     },
     {
       "lightResourceId": "light.runtime.2",
-      "displayName": "스포트라이트조명_세이튼",
+      "displayName": "스포트라이트_세이튼",
       "kind": "SPOT",
       "defaultAnchorKind": "BOSS",
       "localOffset": [

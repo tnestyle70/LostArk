@@ -3,6 +3,7 @@
 #include "KoukuSaydonPresentationPlayer.h"
 #include "Transform.h"
 #include <cmath>
+#include <algorithm>
 
 using namespace Client;
 
@@ -81,7 +82,8 @@ bool_t CLevel_KakulSaydonArena::Reload_WorldObjectRuntime(std::string& status)
 
 #ifdef _DEBUG
 bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
-    const CWorldSequenceDocument& document, const std::string& instanceId, std::string& status)
+    const CWorldSequenceDocument& document, const std::string& instanceId, std::string& status,
+    const bool_t previewAtCharacter)
 {
     if (m_SequencePlayer.Has_ActiveInstances() || m_pCompositionWorldPreview)
     { status = "Stop the active pattern/world preview before previewing this object."; return false; }
@@ -89,9 +91,21 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     auto staged = std::make_unique<CWorldSequencePlayer>();
     if (!staged->Set_Document(document, targets, status) || !staged->Prepare_InstanceResources(instanceId, targets))
     { status = staged->Get_Status(); return false; }
-    // All resources are admitted before the previous presentation is released.
+    float3_t previewOffset{};
+    const auto* instance = document.Find_Instance(instanceId);
+    const bool hasModels = instance && std::any_of(instance->bindings.begin(), instance->bindings.end(),
+        [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
+    if (previewAtCharacter && hasModels && instance->anchorKind == "WORLD")
+    {
+        float3_t previewPosition{};
+        if (!Try_Get_AuthoringPreviewPlacement(previewPosition, status)) return false;
+        previewOffset = {previewPosition.x - instance->position.x,
+            previewPosition.y - instance->position.y, previewPosition.z - instance->position.z};
+    }
+    // The preview offset never edits the saved map anchor or placed curtain/roulette.
+    // All resources and the preview placement are admitted before releasing the old presentation.
     Debug_StopWorldObjectPreview();
-    if (!staged->Play(instanceId, targets)) { status = staged->Get_Status(); return false; }
+    if (!staged->Play(instanceId, targets, 1.f, previewOffset)) { status = staged->Get_Status(); return false; }
     m_pWorldObjectPreview = std::move(staged);
     m_WorldObjectPreviewInstance = instanceId;
     return Debug_SampleWorldObjectPreview(0.f, status);
@@ -107,7 +121,7 @@ bool_t CLevel_KakulSaydonArena::Debug_SampleWorldObjectPreview(const f32_t clock
         Debug_StopWorldObjectPreview();
         return false;
     }
-    status = "World Object preview sampled.";
+    status = m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstance);
     return true;
 }
 

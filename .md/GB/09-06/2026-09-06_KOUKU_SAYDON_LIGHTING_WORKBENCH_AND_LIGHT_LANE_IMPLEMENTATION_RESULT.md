@@ -97,3 +97,49 @@ Visual Studio의 `Server + Client` profile을 선택하고 사용자가 `Ctrl+F5
 
 화면의 밝기·색·Spot 폭, UI 저장 왕복과 실제 패턴 lifetime은 아직 사용자 수동 검증 전이다.
 modifier catalog, light group blend, Scene Profile 보간과 고급 조명 기법은 이번 범위에 추가하지 않았다.
+
+
+## G05. 09-07 독립 창·Light Sequencer·세 패턴 조명
+
+이 절이 사용자 검증 이후의 현재 상태다. Light Resources(왼쪽), Light Sequencer(아래),
+Light Detail과 Rendering Workbench(오른쪽)는 독립 창이다. Windows 메뉴로 창 재열기/배치 초기화를 지원한다.
+Create Light와 All Lights는 Resources에 모았으며 용도는 Map Profile / Scene Profile / Anchor Light다.
+Anchor Light 하위는 Map/Character/Boss이고 Directional/Point/Spot은 별도 광원 종류다.
+Map 기본 Directional은 Level base profile의 기존 광원만 편집한다. Scene 분위기와 조명은 Light Detail,
+Level별 FXAA/SSAO/Bloom 품질은 Rendering Workbench에서 저장한다.
+
+Light Sequencer는 선택 조명·Scene의 lifetime과 Play/Pause/Seek/Stop을 지원한다.
+Scene preview는 이전 profile을 기억하고 Stop/종료 시 복구한다. Map preview는 복사 문서에서만 enabled를 켜며
+저장 원본을 수정하지 않는다. 선택·Level 변경/도구 종료·published reload 시 임시 preview를 정리한다.
+단일 Character 리소스 audition은 로컬 캐릭터를 사용한다. Composition preview와 Server Product는
+같은 방 Server snapshot의 캐릭터 전원을 수집하며 사망 HP 조건으로 제외하지 않는다.
+
+기존 ID는 보존했고 이름만 씬프로필_암전 / 스포트라이트_캐릭터 / 스포트라이트_세이튼으로 저장했다.
+RenderingProfiles의 optional displayName은 strict type/UTF-8 길이를 검사하고, 기존 이름 없는 문서는 ID를 표시한다.
+기존 두 Spot의 offset/rotation/range/cone/RGB/brightness와 사용자가 저장한 Rendering 품질·방향광 값은 보존했다.
+
+| 패턴 | Scene Profile 및 PLAYER/BOSS Spot 적용 창 |
+|---|---|
+| 진짜 세이튼 찾기 KAKULSAYDON_G1_PATTERN_2 | 2007~26134ms, 기존 암전 시작·종료 유지 |
+| 댄스타임 KAKULSAYDON_G1_PATTERN_6 | 0~31467ms |
+| 룰렛 KAKULSAYDON_G1_PATTERN_7 | 0~33669ms |
+
+PLAYER/BOSS row를 각각 하나씩 배치했다. 실제 PLAYER row는 방 캐릭터 수만큼 기존 transient light를 제출한다.
+Server patternId/startTick/sequence와 같은 방 snapshot broadcast를 그대로 사용하므로 새 light packet은 없다.
+기존 애니메이션·로직·소환·World 배치는 보존했다. Scene blendMs의 기존 즉시 전환 정책은 바꾸지 않았다.
+
+| 실행한 자동 검증 | 결과 |
+|---|---|
+| 최종 Debug Product | PASS, out/BuildPipeline/runs/20260907T030125810Z-debug-product.json |
+| Rendering publisher tests | 15/15 PASS; optional 한글 이름 왕복/legacy 및 invalid 이름의 이전 runtime 보존 포함 |
+| Composition projector tests | 49/49 PASS; 3패턴 Scene/Spot 창 일치와 tracked Product 최신성 포함 |
+| domain Publish | RenderingProfiles revision17, LightResources revision2(2개), Composition revision77(6 patterns/66 stages/2 outputs), Gameplay bootstrap 성공 |
+| 변경 JSON parse | 9개 PASS; 사용자 baseline 대비 RenderingProfiles는 revision과 dark displayName만 변경 |
+| 최종 구조·공백 | RenderingProfiles source/runtime semantic equality 및 git diff --check PASS; 변경 XML 없음 |
+| 빌드·검증 로그 | out/ObjectLightWorkspace/product-debug-final.log, rendering-tests-final.log, composition-tests-final.log, *-publish.log |
+
+사용자가 앞서 확인한 Character/Boss Spot preview 결과는 이전 버전 확인이며, 이번 독립 창과 3패턴 화면 PASS로
+승격하지 않는다. Client/UI는 실행·조작·캡처하지 않았다. Server + Client profile의 Ctrl+F5로 다시 시작한 뒤
+F1 Tools → Rendering Workbench → Light Resources의 세 카테고리와 Light Sequencer를 확인한다.
+F1 Tools → Action Workbench에서 세 패턴을 선택하고 Play Published Product (Server)로 암전·세이튼·전원 Spot을 확인한다.
+밝기·크기·저장 버튼 왕복·다인 화면 결과는 사용자 확인 대기다. 자동 stage/commit/push는 하지 않았다.

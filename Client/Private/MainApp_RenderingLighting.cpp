@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "MainApp.h"
+#include "CompositionTimeline.h"
 
 #ifdef _DEBUG
 #include "Character.h"
@@ -181,22 +182,36 @@ namespace
 
 void Client::CMainApp::UpdateLightingPreview()
 {
-    const bool toolVisible = m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING) && m_bRenderingLightsTabActive;
+    const bool toolVisible = m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING);
+    if (!toolVisible || (!m_strLightPreviewSelectionId.empty() &&
+        m_iLightPreviewLevel != CGameInstance::Get().Get_CurrentLevelID()))
+        StopLightingPreview();
+    if (!m_strLightPreviewSelectionId.empty())
+    {
+        const auto now = std::chrono::steady_clock::now();
+        if (!m_bLightPreviewPaused)
+            m_fLightPreviewCursorMs += std::chrono::duration<double, std::milli>(now - m_LightPreviewLastUpdate).count();
+        m_LightPreviewLastUpdate = now;
+        if (m_fLightPreviewCursorMs >= static_cast<double>(m_iLightPreviewLifetimeMs))
+        {
+            StopLightingPreview();
+            m_fLightPreviewCursorMs = static_cast<double>(m_iLightPreviewLifetimeMs);
+        }
+        else if (m_strLightPreviewSelectionId.rfind("map:", 0u) == 0u)
+            StageMapLightPreview();
+    }
     if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
     {
-        const bool previewMap = toolVisible && m_bPreviewMapLightDraft &&
-            m_eRenderingSelectedLevel == LEVEL::KAKULSAYDON_ARENA &&
+        const bool selectedMap = toolVisible && m_eRenderingSelectedLevel == LEVEL::KAKULSAYDON_ARENA &&
             ETOUI(m_eRenderingSelectedLevel) == CGameInstance::Get().Get_CurrentLevelID() &&
             m_AreaLightSession.Is_Open() && m_AreaLightSession.Get_AreaId() == "LV_LUT_MIDNIGHTC_ED";
-        arena->Set_MapLightAuthoringOverride(previewMap ? m_AreaLightSession.Get_Preview() : nullptr);
+        arena->Set_MapLightAuthoringOverride(selectedMap ?
+            (m_pLightSequencerMapPreview ? m_pLightSequencerMapPreview :
+                m_bPreviewMapLightDraft ? m_AreaLightSession.Get_Preview() : nullptr) : nullptr);
     }
-    if (!toolVisible) { m_strLightPreviewResourceId.clear(); return; }
-    if (m_strLightPreviewResourceId.empty()) return;
-    if (std::chrono::steady_clock::now() >= m_LightPreviewEnd ||
-        m_iLightPreviewLevel != CGameInstance::Get().Get_CurrentLevelID())
-    { m_strLightPreviewResourceId.clear(); return; }
+    if (!toolVisible || m_strLightPreviewResourceId.empty()) return;
     const auto* resource = m_LightResources.Find_Resource(m_strLightPreviewResourceId);
-    if (!resource) { m_strLightPreviewResourceId.clear(); return; }
+    if (!resource) { StopLightingPreview(); return; }
     float4x4_t pivot = m_LightPreviewMapPivot;
     if (resource->eType != LIGHT::DIRECTIONAL &&
         ((resource->strDefaultAnchorKind == "PLAYER" && !Lighting_PlayerPivot(pivot)) ||
@@ -208,6 +223,20 @@ void Client::CMainApp::UpdateLightingPreview()
     CPresentation_Manager::Get().Add_FrameProvider(provider);
 }
 
+void Client::CMainApp::SelectRenderingLight(const string& id)
+{
+        if (m_strSelectedRenderingLightId != id) StopLightingPreview();
+        m_strSelectedRenderingLightId = id;
+        if (id == "@default-directional")
+            m_strRenderingSelectedProfileId = m_strRenderingQualityProfileId;
+        else if (id.rfind("scene:", 0u) == 0u)
+            m_strRenderingSelectedProfileId = id.substr(6u);
+        if (id == "@default-directional" || id.rfind("scene:", 0u) == 0u)
+            if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
+            { m_SceneRenderingDraft = *profile; m_strRenderingDraftProfileId = profile->strProfileId; }
+        m_bLightDetailWindowVisible = true;
+}
+
 void Client::CMainApp::RenderLightingWorkbench()
 {
     const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel);
@@ -215,7 +244,7 @@ void Client::CMainApp::RenderLightingWorkbench()
     if (m_strRenderingLightAreaAttempt != areaId)
     {
         m_strRenderingLightAreaAttempt = areaId;
-        m_strSelectedRenderingLightId = "@default-directional";
+        SelectRenderingLight("@default-directional");
         if (!areaId.empty()) m_AreaLightSession.Open(areaId, m_strLightingStatus);
     }
     const bool areaReady = !areaId.empty() && m_AreaLightSession.Is_Open() && m_AreaLightSession.Get_AreaId() == areaId;
@@ -224,75 +253,44 @@ void Client::CMainApp::RenderLightingWorkbench()
     {
         if (m_AreaLightSession.Open(areaId, m_strLightingStatus)) m_bPreviewMapLightDraft = true;
     }
-    const auto reloadPublishedMap = [&]()
-    {
-        if (!m_LightResources.Refresh_MapResources(areaId, m_strLightingStatus)) return false;
-        if (currentMap && m_eRenderingSelectedLevel == LEVEL::KAKULSAYDON_ARENA)
-        {
-            auto* arena = CLevel_KakulSaydonArena::Get_Active();
-            if (!arena || !arena->Reload_MapLights())
-            { m_strLightingStatus = "Published map lights could not be reloaded; previous runtime preserved. See Output log."; return false; }
-            arena->Set_MapLightAuthoringOverride(nullptr);
-        }
-        m_bPreviewMapLightDraft = false;
-        m_strLightingStatus = "Published map lights reloaded; authoring preview disabled.";
-        return true;
-    };
     if (!areaId.empty())
     {
         ImGui::SameLine();
-        if (ImGui::Button("Reload Published Map Lights")) reloadPublishedMap();
+        if (ImGui::Button("Reload Published Map Lights")) ReloadPublishedMapLights();
         ImGui::Checkbox("Preview authored map lights", &m_bPreviewMapLightDraft);
     }
-    ImGui::SeparatorText("All Lights");
-    const char* categories[] = { "All", "Map", "Character", "Boss" };
-    ImGui::Combo("Category##Lights", &m_iRenderingLightCategory, categories, 4);
-    ImGui::TextDisabled("Map placements persist in the Area. Reusable resources are appended in Action Workbench > Light.");
-    if (ImGui::BeginChild("LightResourceList", ImVec2(560.f, 170.f), true))
-    {
-        if (m_iRenderingLightCategory == 0 || m_iRenderingLightCategory == 1)
-        {
-            if (ImGui::Selectable("[Map] Default Directional Light", m_strSelectedRenderingLightId == "@default-directional"))
-                m_strSelectedRenderingLightId = "@default-directional";
-            if (areaReady)
-                for (const auto& light : m_AreaLightSession.Get_Document().Get_Lights())
-                {
-                    const string id = "map:" + light.lightId;
-                    const string label = "[Map placement] " + (light.displayName.empty() ? light.lightId : light.displayName) + "##" + id;
-                    if (ImGui::Selectable(label.c_str(), m_strSelectedRenderingLightId == id)) m_strSelectedRenderingLightId = id;
-                }
-        }
-        for (const auto& resource : m_LightResources.Get_Resources())
-        {
-            if (m_LightResources.Is_MapResource(resource.strLightResourceId)) continue;
-            const int category = resource.strDefaultAnchorKind == "MAP" ? 1 : resource.strDefaultAnchorKind == "PLAYER" ? 2 : 3;
-            if (m_iRenderingLightCategory != 0 && category != m_iRenderingLightCategory) continue;
-            const string id = "resource:" + resource.strLightResourceId;
-            const string label = "[" + string(categories[category]) + " resource] " + resource.strDisplayName + "##" + id;
-            if (ImGui::Selectable(label.c_str(), m_strSelectedRenderingLightId == id)) m_strSelectedRenderingLightId = id;
-        }
-    }
-    ImGui::EndChild();
-
     ImGui::SeparatorText("Create Light");
-    ImGui::InputText("Name##CreateLight", m_szRenderingLightName, sizeof(m_szRenderingLightName));
+    const char* usages[] = { "Map Profile", "Scene Profile", "Anchor Light" };
     const char* anchors[] = { "Map", "Character", "Boss" };
     const char* types[] = { "Directional", "Point", "Spot" };
-    ImGui::Combo("Anchor type##CreateLight", &m_iRenderingLightCreateAnchor, anchors, 3);
-    ImGui::Combo("Light type##CreateLight", &m_iRenderingLightCreateType, types, 3);
-    if (m_iRenderingLightCreateAnchor == 0)
-        ImGui::Checkbox("Reusable Map resource (pattern lifetime)", &m_bRenderingCreateReusableMapLight);
+    ImGui::Combo("Usage type##CreateLight", &m_iRenderingLightCreateUsage, usages, 3);
+    if (m_iRenderingLightCreateUsage == 1)
+    {
+        ImGui::TextWrapped("Create a pattern scene mood from the selected scene profile.");
+        ImGui::TextWrapped("Source: %s", m_SceneRenderingDraft.Get_DisplayName().c_str());
+        ImGui::InputText("Display name (optional)", m_szRenderingNewProfileName, sizeof(m_szRenderingNewProfileName));
+        ImGui::InputText("New profile ID", m_szRenderingNewProfileId, sizeof(m_szRenderingNewProfileId));
+        ImGui::TextDisabled("Light type: Directional (scene profile)");
+    }
+    else
+    {
+        ImGui::InputText("Name##CreateLight", m_szRenderingLightName, sizeof(m_szRenderingLightName));
+        if (m_iRenderingLightCreateUsage == 2)
+            ImGui::Combo("Anchor type##CreateLight", &m_iRenderingLightCreateAnchor, anchors, 3);
+        else ImGui::TextDisabled("Anchor type: Map (persistent placement)");
+        ImGui::Combo("Light type##CreateLight", &m_iRenderingLightCreateType, types, 3);
+    }
     if (ImGui::Button("Create Light"))
     {
         const LIGHT type = m_iRenderingLightCreateType == 0 ? LIGHT::DIRECTIONAL : m_iRenderingLightCreateType == 1 ? LIGHT::POINT : LIGHT::SPOT;
         string id;
-        if (m_iRenderingLightCreateAnchor == 0 && !m_bRenderingCreateReusableMapLight)
+        if (m_iRenderingLightCreateUsage == 0)
         {
             float4x4_t pivot{};
             if (type == LIGHT::DIRECTIONAL)
             {
-                m_strSelectedRenderingLightId = "@default-directional";
-                m_strLightingStatus = "Selected the existing Default Directional Light for this profile.";
+                SelectRenderingLight("@default-directional");
+                m_strLightingStatus = "Selected the existing Default Directional Light for this map profile.";
             }
             else if (!currentMap || !areaReady)
                 m_strLightingStatus = "Enter the selected Level with an authored map light layer before creating a placement.";
@@ -300,24 +298,121 @@ void Client::CMainApp::RenderLightingWorkbench()
                 m_strLightingStatus = "A current player is required to seed the map light position.";
             else if (m_AreaLightSession.Create(m_szRenderingLightName, type,
                 float3_t(pivot._41, pivot._42 + 8.f, pivot._43), id, m_strLightingStatus))
-                { m_strSelectedRenderingLightId = "map:" + id; m_bPreviewMapLightDraft = true; }
+                { SelectRenderingLight("map:" + id); m_bPreviewMapLightDraft = true; }
+        }
+        else if (m_iRenderingLightCreateUsage == 1)
+        {
+            if (m_RenderingProfiles.Duplicate_Profile(m_strRenderingSelectedProfileId, m_szRenderingNewProfileId, m_strLightingStatus, m_szRenderingNewProfileName))
+                SelectRenderingLight("scene:" + string(m_szRenderingNewProfileId));
         }
         else
         {
             const char* anchor = m_iRenderingLightCreateAnchor == 0 ? "MAP" : m_iRenderingLightCreateAnchor == 1 ? "PLAYER" : "BOSS";
             if (m_LightResources.Create(m_szRenderingLightName, anchor, type, id, m_strLightingStatus))
-                m_strSelectedRenderingLightId = "resource:" + id;
+            { SelectRenderingLight("resource:" + id); m_iRenderingLightCategory = m_iRenderingLightCreateAnchor + 1; }
+        }
+        m_iRenderingLightUsageCategory = m_iRenderingLightCreateUsage + 1;
+    }
+    ImGui::SeparatorText("All Lights");
+    const char* usageFilters[] = { "All", "Map Profile", "Scene Profile", "Anchor Light" };
+    ImGui::Combo("Category##LightUsage", &m_iRenderingLightUsageCategory, usageFilters, 4);
+    ImGui::TextWrapped("Select an item for Light Detail and Light Sequencer.");
+    const float listHeight = (std::max)(140.f, ImGui::GetContentRegionAvail().y - ImGui::GetTextLineHeightWithSpacing() * 3.f);
+    if (ImGui::BeginChild("LightResourceList", ImVec2(0.f, listHeight), true))
+    {
+        if ((m_iRenderingLightUsageCategory == 0 || m_iRenderingLightUsageCategory == 1) &&
+            ImGui::TreeNodeEx("Map Profile", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (ImGui::Selectable("Default Directional Light", m_strSelectedRenderingLightId == "@default-directional"))
+                SelectRenderingLight("@default-directional");
+            if (areaReady)
+                for (const auto& light : m_AreaLightSession.Get_Document().Get_Lights())
+                {
+                    const string id = "map:" + light.lightId;
+                    const string label = (light.displayName.empty() ? light.lightId : light.displayName) + "##" + id;
+                    if (ImGui::Selectable(label.c_str(), m_strSelectedRenderingLightId == id)) SelectRenderingLight(id);
+                }
+            ImGui::TreePop();
+        }
+        if ((m_iRenderingLightUsageCategory == 0 || m_iRenderingLightUsageCategory == 2) &&
+            ImGui::TreeNodeEx("Scene Profile", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            for (const auto& profileId : m_RenderingProfiles.Collect_ProfileIds())
+            {
+                const string id = "scene:" + profileId;
+                const auto* profile = m_RenderingProfiles.Find_Profile(profileId);
+                const string label = (profile ? profile->Get_DisplayName() : profileId) + "##" + id;
+                if (ImGui::Selectable(label.c_str(), m_strSelectedRenderingLightId == id)) SelectRenderingLight(id);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", profileId.c_str());
+            }
+            ImGui::TreePop();
+        }
+        if ((m_iRenderingLightUsageCategory == 0 || m_iRenderingLightUsageCategory == 3) &&
+            ImGui::TreeNodeEx("Anchor Light", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            const char* categories[] = { "All", "Map", "Character", "Boss" };
+            ImGui::Combo("Anchor category", &m_iRenderingLightCategory, categories, 4);
+            for (int category = 1; category <= 3; ++category)
+            {
+                if (m_iRenderingLightCategory != 0 && m_iRenderingLightCategory != category) continue;
+                if (!ImGui::TreeNodeEx(categories[category], ImGuiTreeNodeFlags_DefaultOpen)) continue;
+                for (const auto& resource : m_LightResources.Get_Resources())
+                {
+                    if (m_LightResources.Is_MapResource(resource.strLightResourceId)) continue;
+                    const int resourceCategory = resource.strDefaultAnchorKind == "MAP" ? 1 : resource.strDefaultAnchorKind == "PLAYER" ? 2 : 3;
+                    if (category != resourceCategory) continue;
+                    const string id = "resource:" + resource.strLightResourceId;
+                    const string label = resource.strDisplayName + " [" + CLightResourceCatalog::Kind_Name(resource.eType) + "]##" + id;
+                    if (ImGui::Selectable(label.c_str(), m_strSelectedRenderingLightId == id)) SelectRenderingLight(id);
+                }
+                ImGui::TreePop();
+            }
+            ImGui::TreePop();
         }
     }
+    ImGui::EndChild();
+    ImGui::TextWrapped("%s", m_strLightingStatus.c_str());
+}
 
-    ImGui::SeparatorText("Light Detail");
-    if (m_strSelectedRenderingLightId == "@default-directional")
+bool Client::CMainApp::ReloadPublishedMapLights()
+{
+    StopLightingPreview();
+    const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel);
+    const string areaId = descriptor && descriptor->pMapAreaId ? descriptor->pMapAreaId : "";
+    const bool currentMap = ETOUI(m_eRenderingSelectedLevel) == CGameInstance::Get().Get_CurrentLevelID();
+    if (areaId.empty() || !m_LightResources.Refresh_MapResources(areaId, m_strLightingStatus)) return false;
+    if (currentMap && m_eRenderingSelectedLevel == LEVEL::KAKULSAYDON_ARENA)
     {
-        ImGui::Text("Default Directional Light | Map | %s", m_strRenderingDraftProfileId.c_str());
-        bool changed = ImGui::DragFloat3("Direction##DefaultLight", &m_SceneRenderingDraft.Light.vDirection.x, .01f, -64.f, 64.f);
-        changed |= ImGui::ColorEdit3("RGB##DefaultLight", &m_SceneRenderingDraft.Light.vDiffuse.x);
-        changed |= ImGui::ColorEdit3("Ambient RGB##DefaultLight", &m_SceneRenderingDraft.Light.vAmbient.x);
-        changed |= ImGui::ColorEdit3("Specular RGB##DefaultLight", &m_SceneRenderingDraft.Light.vSpecular.x);
+        auto* arena = CLevel_KakulSaydonArena::Get_Active();
+        if (!arena || !arena->Reload_MapLights())
+        { m_strLightingStatus = "Published map lights could not be reloaded; previous runtime preserved. See Output log."; return false; }
+        arena->Set_MapLightAuthoringOverride(nullptr);
+    }
+    m_bPreviewMapLightDraft = false;
+    m_strLightingStatus = "Published map lights reloaded; authoring preview disabled.";
+    return true;
+}
+
+void Client::CMainApp::RenderLightDetail()
+{
+    const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel);
+    const string areaId = descriptor && descriptor->pMapAreaId ? descriptor->pMapAreaId : "";
+    const bool areaReady = !areaId.empty() && m_AreaLightSession.Is_Open() && m_AreaLightSession.Get_AreaId() == areaId;
+    const bool currentMap = ETOUI(m_eRenderingSelectedLevel) == CGameInstance::Get().Get_CurrentLevelID();
+    ImGui::SeparatorText("Light Detail");
+    if (m_strSelectedRenderingLightId == "@default-directional" || m_strSelectedRenderingLightId.rfind("scene:", 0u) == 0u)
+    {
+        const bool sceneProfile = m_strSelectedRenderingLightId.rfind("scene:", 0u) == 0u;
+        ImGui::TextWrapped("%s | %s", sceneProfile ? "Scene Profile" : "Default Directional Light | Map Profile", m_SceneRenderingDraft.Get_DisplayName().c_str());
+        ImGui::TextDisabled("ID: %s", m_strRenderingDraftProfileId.c_str());
+        char displayName[257]{};
+        strncpy_s(displayName, m_SceneRenderingDraft.strDisplayName.c_str(), _TRUNCATE);
+        bool changed = ImGui::InputText("Display name", displayName, sizeof(displayName));
+        if (changed) m_SceneRenderingDraft.strDisplayName = displayName;
+        changed |= ImGui::DragFloat3("Direction##DefaultLight", &m_SceneRenderingDraft.Light.vDirection.x, .01f, -64.f, 64.f);
+        changed |= ImGui::DragFloat3("RGB##DefaultLight", &m_SceneRenderingDraft.Light.vDiffuse.x, .005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat3("Ambient RGB##DefaultLight", &m_SceneRenderingDraft.Light.vAmbient.x, .005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat3("Specular RGB##DefaultLight", &m_SceneRenderingDraft.Light.vSpecular.x, .005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         if (changed)
         {
             m_SceneRenderingDraft.Light.vDirection.w = 0.f;
@@ -332,7 +427,19 @@ void Client::CMainApp::RenderLightingWorkbench()
         if (ImGui::Button("Reload Light"))
             if (m_RenderingProfiles.Reload_Runtime(m_strLightingStatus))
                 if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingDraftProfileId)) m_SceneRenderingDraft = *profile;
-        ImGui::TextDisabled("Saved in RenderingProfiles.json with the selected scene. This row edits the existing map directional light.");
+        ImGui::TextWrapped("Saved in RenderingProfiles.json. Scene lighting uses this existing profile.");
+        if (ImGui::Button("Activate Selected Scene"))
+            m_RenderingProfiles.Activate_Profile(m_strRenderingSelectedProfileId, m_strLightingStatus);
+        ImGui::SameLine();
+        if (ImGui::Button("Delete Selected Profile"))
+            if (m_RenderingProfiles.Delete_Profile(m_strRenderingSelectedProfileId, m_strLightingStatus))
+            {
+                SelectRenderingLight("@default-directional");
+                m_strRenderingSelectedProfileId = m_strRenderingQualityProfileId;
+                if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
+                { m_SceneRenderingDraft = *profile; m_strRenderingDraftProfileId = profile->strProfileId; }
+            }
+        RenderSceneProfileDetail();
     }
     else if (m_strSelectedRenderingLightId.rfind("map:", 0u) == 0u && areaReady)
     {
@@ -365,10 +472,10 @@ void Client::CMainApp::RenderLightingWorkbench()
                 }
             ImGui::SameLine();
             if (ImGui::Button("Publish Light"))
-                if (m_AreaLightSession.Publish_Runtime(m_strLightingStatus)) reloadPublishedMap();
+                if (m_AreaLightSession.Publish_Runtime(m_strLightingStatus)) ReloadPublishedMapLights();
             ImGui::SameLine();
             if (ImGui::Button("Delete Light"))
-                if (m_AreaLightSession.Delete(id, m_strLightingStatus)) m_strSelectedRenderingLightId = "@default-directional";
+                if (m_AreaLightSession.Delete(id, m_strLightingStatus)) SelectRenderingLight("@default-directional");
             ImGui::EndDisabled();
             if (ImGui::Button("Reload Authored Light"))
                 if (m_AreaLightSession.Reload(m_strLightingStatus)) m_bPreviewMapLightDraft = true;
@@ -398,27 +505,15 @@ void Client::CMainApp::RenderLightingWorkbench()
             if (ImGui::Button("Reload Light")) m_LightResources.Load_Authored(m_strLightingStatus);
             ImGui::SameLine();
             if (ImGui::Button("Delete Light"))
-                if (m_LightResources.Delete(id, m_strLightingStatus)) m_strSelectedRenderingLightId = "@default-directional";
-            if (ImGui::Button("Preview 3 seconds"))
-            {
-                float4x4_t pivot{};
-                const bool ready = resource.eType == LIGHT::DIRECTIONAL || (resource.strDefaultAnchorKind == "BOSS" ? Lighting_BossPivot(pivot) : Lighting_PlayerPivot(pivot));
-                if (ready)
-                {
-                    if (resource.eType == LIGHT::DIRECTIONAL) XMStoreFloat4x4(&pivot, XMMatrixIdentity());
-                    m_LightPreviewMapPivot = pivot; m_strLightPreviewResourceId = id;
-                    m_LightPreviewEnd = std::chrono::steady_clock::now() + std::chrono::seconds(3);
-                    m_iLightPreviewLevel = CGameInstance::Get().Get_CurrentLevelID();
-                    m_strLightingStatus = "Preview started. Append this resource in Action Workbench > Light to set pattern lifetime.";
-                }
-                else m_strLightingStatus = "Preview needs the selected anchor: a current player or active Kouku gate boss.";
-            }
+                if (m_LightResources.Delete(id, m_strLightingStatus)) SelectRenderingLight("@default-directional");
+            if (ImGui::Button("Play Preview")) StartLightingPreview();
             ImGui::SameLine();
-            if (ImGui::Button("Stop Preview")) m_strLightPreviewResourceId.clear();
+            if (ImGui::Button("Stop Preview")) StopLightingPreview();
+            ImGui::Text("Preview lifetime: %d ms (Light Sequencer)", m_iLightPreviewLifetimeMs);
         }
     }
     ImGui::Checkbox("Debug light wire", &m_bLightingDebugWire);
-    if (m_bLightingDebugWire && !m_strLightPreviewResourceId.empty() && std::chrono::steady_clock::now() < m_LightPreviewEnd)
+    if (m_bLightingDebugWire && !m_strLightPreviewResourceId.empty() && m_fLightPreviewCursorMs < static_cast<double>(m_iLightPreviewLifetimeMs))
     {
         if (const auto* resource = m_LightResources.Find_Resource(m_strLightPreviewResourceId))
         {
@@ -433,4 +528,286 @@ void Client::CMainApp::RenderLightingWorkbench()
         CPresentation_Manager::Get().Get_LastTransientLightCount(), *m_pLightPreviewSkipped);
     ImGui::TextWrapped("%s", m_strLightingStatus.c_str());
 }
+bool Client::CMainApp::StageMapLightPreview()
+{
+    if (m_strLightPreviewSelectionId.rfind("map:", 0u) != 0u || !m_AreaLightSession.Is_Open()) return false;
+    CMapLightDocument document = m_AreaLightSession.Get_Document();
+    if (document.Get_FormatVersion() != 2u)
+    { m_strLightingStatus = "Imported map profiles remain continuous and read-only."; return false; }
+    auto lights = document.Get_Lights();
+    const string id = m_strLightPreviewSelectionId.substr(4u);
+    const auto found = std::find_if(lights.begin(), lights.end(), [&](const auto& row) { return row.lightId == id; });
+    if (found == lights.end()) { m_strLightingStatus = "Selected map light is unavailable."; return false; }
+    found->enabled = true;
+    if (!document.Replace_Authored(lights, document.Get_NextLightOrdinal(), m_strLightingStatus)) return false;
+    if (!m_pLightSequencerMapPreview) m_pLightSequencerMapPreview = make_shared<CMapLightPresentationRuntime>();
+    return m_pLightSequencerMapPreview->Replace_Document(document);
+}
+
+bool Client::CMainApp::StartLightingPreview()
+{
+    StopLightingPreview();
+    if (m_strSelectedRenderingLightId.rfind("resource:", 0u) == 0u)
+    {
+        const string id = m_strSelectedRenderingLightId.substr(9u);
+        const auto* resource = m_LightResources.Find_Resource(id);
+        if (!resource) { m_strLightingStatus = "Selected light resource is unavailable."; return false; }
+        float4x4_t pivot{};
+        const bool ready = resource->eType == LIGHT::DIRECTIONAL ||
+            (resource->strDefaultAnchorKind == "BOSS" ? Lighting_BossPivot(pivot) : Lighting_PlayerPivot(pivot));
+        if (!ready)
+        { m_strLightingStatus = "Preview needs the selected anchor: a current player or active Kouku gate boss."; return false; }
+        if (resource->eType == LIGHT::DIRECTIONAL) XMStoreFloat4x4(&pivot, XMMatrixIdentity());
+        m_LightPreviewMapPivot = pivot;
+        m_strLightPreviewResourceId = id;
+    }
+    else if (m_strSelectedRenderingLightId.rfind("map:", 0u) == 0u)
+    {
+        if (m_eRenderingSelectedLevel != LEVEL::KAKULSAYDON_ARENA || !CLevel_KakulSaydonArena::Get_Active())
+        { m_strLightingStatus = "Enter KoukuSaydon to preview this authored map light."; return false; }
+        m_strLightPreviewSelectionId = m_strSelectedRenderingLightId;
+        if (!StageMapLightPreview()) { StopLightingPreview(); return false; }
+    }
+    else if (m_strSelectedRenderingLightId == "@default-directional" || m_strSelectedRenderingLightId.rfind("scene:", 0u) == 0u)
+    {
+        m_strLightPreviewPreviousProfileId = m_RenderingProfiles.Get_ActiveProfileId();
+        m_strLightPreviewSceneProfileId = m_strRenderingSelectedProfileId;
+        if (!m_RenderingProfiles.Activate_Profile(m_strLightPreviewSceneProfileId, m_strLightingStatus))
+        { m_strLightPreviewPreviousProfileId.clear(); m_strLightPreviewSceneProfileId.clear(); return false; }
+    }
+    else { m_strLightingStatus = "Select a light or scene profile first."; return false; }
+    m_strLightPreviewSelectionId = m_strSelectedRenderingLightId;
+    m_LightPreviewLastUpdate = std::chrono::steady_clock::now();
+    m_fLightPreviewCursorMs = 0.0;
+    m_bLightPreviewPaused = false;
+    m_iLightPreviewLevel = CGameInstance::Get().Get_CurrentLevelID();
+    m_bLightSequencerWindowVisible = true;
+    m_strLightingStatus = "Preview started. Stop or lifetime end restores the previous preview state. Source values are unchanged.";
+    return true;
+}
+
+void Client::CMainApp::StopLightingPreview()
+{
+    if (!m_strLightPreviewPreviousProfileId.empty() &&
+        m_iLightPreviewLevel == CGameInstance::Get().Get_CurrentLevelID() &&
+        m_RenderingProfiles.Get_ActiveProfileId() == m_strLightPreviewSceneProfileId)
+    {
+        string status;
+        if (!m_RenderingProfiles.Activate_Profile(m_strLightPreviewPreviousProfileId, status)) m_strLightingStatus = status;
+    }
+    m_strLightPreviewPreviousProfileId.clear();
+    m_strLightPreviewSceneProfileId.clear();
+    m_strLightPreviewSelectionId.clear();
+    m_strLightPreviewResourceId.clear();
+    m_pLightSequencerMapPreview.reset();
+    m_fLightPreviewCursorMs = 0.0;
+    m_bLightPreviewPaused = false;
+}
+
+void Client::CMainApp::RenderSceneProfileDetail()
+{
+	const auto applyScene = [this]()
+	{
+		m_RenderingProfiles.Update_Profile(
+			m_SceneRenderingDraft, m_strRenderingStatus);
+		if (const SCENE_RENDERING_PROFILE* pProfile =
+			m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
+		{
+			m_SceneRenderingDraft = *pProfile;
+		}
+	};
+
+	bool_t sceneChanged = false;
+	ImGui::SeparatorText("Active Scene Artistic Profile");
+	sceneChanged |= ImGui::DragFloat(
+		"Exposure Multiplier", &m_SceneRenderingDraft.fExposureMultiplier,
+		0.005f, 0.1f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Bloom Intensity Multiplier",
+		&m_SceneRenderingDraft.fBloomIntensityMultiplier,
+		0.005f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::Checkbox(
+		"Directional Shadow Enabled",
+		&m_SceneRenderingDraft.ShadowSettings.bEnabled);
+	ImGui::BeginDisabled(!m_SceneRenderingDraft.ShadowSettings.bEnabled);
+	sceneChanged |= ImGui::DragFloat3(
+		"Shadow Focus", &m_SceneRenderingDraft.vShadowFocus.x,
+		0.1f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Light Distance", &m_SceneRenderingDraft.fShadowDistance,
+		0.1f, 0.1f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Coverage Width",
+		&m_SceneRenderingDraft.ShadowSettings.fOrthographicWidth,
+		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Coverage Height",
+		&m_SceneRenderingDraft.ShadowSettings.fOrthographicHeight,
+		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Near", &m_SceneRenderingDraft.ShadowSettings.fNear,
+		0.01f, 0.0001f, 100000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Far", &m_SceneRenderingDraft.ShadowSettings.fFar,
+		0.1f, 0.0001f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Depth Bias", &m_SceneRenderingDraft.ShadowSettings.fDepthBias,
+		0.00005f, 0.f, 0.05f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Normal Bias", &m_SceneRenderingDraft.ShadowSettings.fNormalBias,
+		0.001f, 0.f, 10.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Strength", &m_SceneRenderingDraft.ShadowSettings.fStrength,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Shadow uses a fixed 2048 depth map with 3x3 PCF; light eye is derived from focus and scene direction.");
+
+	ImGui::SeparatorText("Height Fog");
+	sceneChanged |= ImGui::Checkbox(
+		"Height Fog Enabled", &m_SceneRenderingDraft.Fog.bEnabled);
+	ImGui::BeginDisabled(!m_SceneRenderingDraft.Fog.bEnabled);
+	sceneChanged |= ImGui::ColorEdit3(
+		"Fog Color", &m_SceneRenderingDraft.Fog.vColor.x);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Top Height", &m_SceneRenderingDraft.Fog.fTopHeight,
+		0.25f, -10000.f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Height Falloff", &m_SceneRenderingDraft.Fog.fHeightFalloff,
+		0.002f, 0.0001f, 4.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Density", &m_SceneRenderingDraft.Fog.fDensity,
+		0.01f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Start Distance", &m_SceneRenderingDraft.Fog.fStartDistance,
+		0.25f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Maximum Opacity", &m_SceneRenderingDraft.Fog.fMaximumOpacity,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Speed", &m_SceneRenderingDraft.Fog.fDriftSpeed,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Height", &m_SceneRenderingDraft.Fog.fDriftHeightAmplitude,
+		0.05f, 0.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Fog Drift Density", &m_SceneRenderingDraft.Fog.fDriftDensityAmplitude,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+	ImGui::SeparatorText("Cloud Banks");
+	/* The authored value is a fraction; the slider speaks percent because that
+	   is how the map coverage is judged by eye. */
+	f32_t fFogCoveragePercent =
+		m_SceneRenderingDraft.Fog.fCoveragePercent * 100.f;
+	if (ImGui::DragFloat("Map Coverage", &fFogCoveragePercent,
+		0.5f, 0.f, 100.f, "%.0f%%", ImGuiSliderFlags_AlwaysClamp))
+	{
+		m_SceneRenderingDraft.Fog.fCoveragePercent =
+			fFogCoveragePercent * 0.01f;
+		sceneChanged = true;
+	}
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Direction X", &m_SceneRenderingDraft.Fog.fWindDirectionX,
+		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Direction Z", &m_SceneRenderingDraft.Fog.fWindDirectionZ,
+		0.01f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Wind Speed", &m_SceneRenderingDraft.Fog.fWindSpeed,
+		0.05f, 0.f, 200.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Patch Scale", &m_SceneRenderingDraft.Fog.fPatchScale,
+		0.0005f, 0.0001f, 1.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Patch Softness", &m_SceneRenderingDraft.Fog.fPatchSoftness,
+		0.005f, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::TextDisabled(
+		"Coverage 100%% is one blanket. Lower it and the fog breaks into banks that the wind walks across world XZ; Patch Scale sets their size.");
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Fog fills below Top Height and is applied in the deferred combine, so effects and the blend group stay clear of it.");
+	if (sceneChanged)
+	{
+		m_SceneRenderingDraft.Light.vDirection.w = 0.f;
+		m_SceneRenderingDraft.Light.vDiffuse.w = 1.f;
+		m_SceneRenderingDraft.Light.vAmbient.w = 1.f;
+		m_SceneRenderingDraft.Light.vSpecular.w = 1.f;
+		m_SceneRenderingDraft.ShadowSettings.fFar = (std::max)(
+			m_SceneRenderingDraft.ShadowSettings.fFar,
+			m_SceneRenderingDraft.ShadowSettings.fNear + 0.0001f);
+		applyScene();
+	}
+	ImGui::TextDisabled(
+		"Effective Exposure/Bloom = selected quality base x scene multiplier.");
+
+}
+
+void Client::CMainApp::RenderLightSequencer()
+{
+    const bool reusable = m_strSelectedRenderingLightId.rfind("resource:", 0u) == 0u;
+    const auto* selected = reusable ? m_LightResources.Find_Resource(m_strSelectedRenderingLightId.substr(9u)) : nullptr;
+    string selectedName = selected ? selected->strDisplayName : m_strSelectedRenderingLightId == "@default-directional" ? "Default Directional Light" : m_SceneRenderingDraft.Get_DisplayName();
+    bool hasSelection = selected != nullptr || m_strSelectedRenderingLightId == "@default-directional" || m_strSelectedRenderingLightId.rfind("scene:", 0u) == 0u;
+    if (m_strSelectedRenderingLightId.rfind("map:", 0u) == 0u && m_AreaLightSession.Is_Open())
+        for (const auto& light : m_AreaLightSession.Get_Document().Get_Lights())
+            if ("map:" + light.lightId == m_strSelectedRenderingLightId)
+            { selectedName = light.displayName.empty() ? light.lightId : light.displayName; hasSelection = true; break; }
+    ImGui::BeginDisabled(!hasSelection);
+    if (ImGui::Button(m_bLightPreviewPaused ? "Resume" : "Play"))
+    {
+        if (m_bLightPreviewPaused && !m_strLightPreviewSelectionId.empty())
+        { m_bLightPreviewPaused = false; m_LightPreviewLastUpdate = std::chrono::steady_clock::now(); }
+        else StartLightingPreview();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(m_strLightPreviewSelectionId.empty());
+    if (ImGui::Button("Pause")) m_bLightPreviewPaused = true;
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Stop")) StopLightingPreview();
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(130.f);
+    if (ImGui::DragInt("Lifetime (ms)", &m_iLightPreviewLifetimeMs, 10.f, 1, 600000, "%d", ImGuiSliderFlags_AlwaysClamp))
+        m_fLightPreviewCursorMs = (std::min)(m_fLightPreviewCursorMs, static_cast<double>(m_iLightPreviewLifetimeMs));
+    const auto seek = [this](const double cursor)
+    {
+        if (m_strLightPreviewSelectionId.empty() && !StartLightingPreview()) return;
+        m_fLightPreviewCursorMs = (std::clamp)(cursor, 0.0, static_cast<double>(m_iLightPreviewLifetimeMs));
+        m_bLightPreviewPaused = true;
+        m_LightPreviewLastUpdate = std::chrono::steady_clock::now();
+    };
+    int cursor = static_cast<int>(m_fLightPreviewCursorMs);
+    ImGui::SetNextItemWidth((std::max)(120.f, ImGui::GetContentRegionAvail().x - 80.f));
+    if (ImGui::SliderInt("Seek (ms)", &cursor, 0, m_iLightPreviewLifetimeMs)) seek(cursor);
+    ImGui::Text("%s | %d / %d ms", m_strLightPreviewSelectionId.empty() ? "Stopped" : m_bLightPreviewPaused ? "Paused" : "Playing", cursor, m_iLightPreviewLifetimeMs);
+    ImGui::EndDisabled();
+    if (!hasSelection) ImGui::TextWrapped("Select a light or scene profile in Light Resources.");
+    else if (selected)
+        ImGui::TextWrapped("%s | Anchor: %s | Preview lifetime is local; the Action Workbench Light box stores pattern timing.",
+            selectedName.c_str(), selected->strDefaultAnchorKind == "PLAYER" ? "Character" : selected->strDefaultAnchorKind.c_str());
+    else
+        ImGui::TextWrapped("%s | Scene / map preview. The original profile or map enabled state returns on Stop; no duplicate directional light is added.", selectedName.c_str());
+
+    if (ImGui::BeginChild("LightTimelineCanvas", ImVec2(0.f, 0.f), true, ImGuiWindowFlags_HorizontalScrollbar))
+    {
+        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        const float labelWidth = 76.f;
+        const float width = (std::max)(180.f, ImGui::GetContentRegionAvail().x - labelWidth);
+        const float scale = width * 1000.f / static_cast<float>(m_iLightPreviewLifetimeMs);
+        auto* draw = ImGui::GetWindowDrawList();
+        const ImVec2 rulerMin(origin.x + labelWidth, origin.y);
+        const ImVec2 rulerMax(rulerMin.x + width, origin.y + 24.f);
+        CompositionTimeline::DrawRuler(draw, rulerMin, rulerMax, static_cast<uint32_t>(m_iLightPreviewLifetimeMs), scale);
+        draw->AddText(ImVec2(origin.x + 4.f, origin.y + 31.f), IM_COL32(221, 195, 110, 255), "Light");
+        CompositionTimeline::DrawBox(draw, ImVec2(rulerMin.x, rulerMax.y + 4.f), ImVec2(rulerMax.x, rulerMax.y + 28.f),
+            IM_COL32(160, 136, 57, 255), hasSelection, hasSelection ? selectedName.c_str() : "Select a light", false, false);
+        const float cursorX = rulerMin.x + static_cast<float>(m_fLightPreviewCursorMs) * scale * .001f;
+        draw->AddLine(ImVec2(cursorX, rulerMin.y), ImVec2(cursorX, rulerMax.y + 34.f), IM_COL32(255, 96, 96, 255), 2.f);
+        ImGui::InvisibleButton("LightTimelineSeek", ImVec2(labelWidth + width, 62.f));
+        if (hasSelection && ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::GetIO().MousePos.x >= rulerMin.x)
+            seek((ImGui::GetIO().MousePos.x - rulerMin.x) * 1000.0 / scale);
+    }
+    ImGui::EndChild();
+}
+
 #endif
