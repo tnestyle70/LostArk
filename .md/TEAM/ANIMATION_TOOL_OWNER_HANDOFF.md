@@ -997,6 +997,10 @@ Resources의 Map/Character 분류와 Create의 anchor는 resource.anchorKind(WOR
 Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
 상대 경로만 저장한다. 카드의 들썩임·뒤집힘은 별도 named state로 두되 같은 모델을 공유한다.
+왼쪽 저장 트리에서 Create Object로 이름을 입력하고 생성한 항목을 선택한다. 같은 Resources 창 아래의
+원본 모델·Animation 목록에서 클립을 골라 Append하면 선택한 Object의 모델과 animation track에 연결된다.
+아래 Sequencer에서 재생하고 오른쪽 Detail에서 편집한 뒤 Save한다. 원본 클립 전체를 저장 상태로
+자동 복제하지 않으며, 목록은 기존 WModel decoder로 물리 모델에서 직접 읽는다.
 Object Sequencer의 Transform/animation timeline과 Object Detail의 velocity/acceleration/self spin/revolution,
 count/interval/spread/seed는 같은 WorldSequence template에 저장한다. Lifetime은 전체 생성 창이며,
 마지막 생성 시각은 그 창보다 작아야 한다. Anchor UI의 Character는 문서의 PLAYER로 저장되어

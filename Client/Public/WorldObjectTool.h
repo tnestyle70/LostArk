@@ -48,6 +48,11 @@ private:
     void Render_WindowMenu();
     void Render_Toolbar();
     void Render_Resources();
+    void Refresh_AnimationResources();
+    void Render_AnimationResources();
+    bool Append_SelectedAnimation();
+    bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
+    bool Assign_SelectedModel();
     void Render_Detail();
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
@@ -91,6 +96,21 @@ private:
     int m_NewObjectAnchor = 0;
     bool m_CreateObjectFailed = false;
     std::array<char, 128> m_NewStateName{};
+    std::string m_PristinePatternId;
+    struct ANIMATION_RESOURCE
+    {
+        std::string clipName;
+        double durationMs = 0.;
+    };
+    std::vector<ANIMATION_RESOURCE> m_AnimationResources;
+    std::string m_AnimationObjectId;
+    std::string m_AnimationModelAssetId;
+    std::string m_AnimationCandidateModelAssetId;
+    std::string m_AnimationCandidateObjectId;
+    bool m_AnimationCatalogReady = false;
+    std::string m_AnimationResourceStatus;
+    std::string m_SelectedAnimationClip;
+    std::array<char, 256> m_AnimationSearch{};
     std::array<char, 256> m_ObjectSearch{};
     std::array<char, 256> m_PhysicalSearch{};
     std::vector<PHYSICAL_RESOURCE_ASSET> m_PhysicalAssets;

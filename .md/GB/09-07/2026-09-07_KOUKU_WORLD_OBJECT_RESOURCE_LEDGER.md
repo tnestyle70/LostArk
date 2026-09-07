@@ -134,3 +134,48 @@ UModel CLI의 `-export`, 저장소 `Cook-ActorXWModel.ps1`, `ModelAssetConverter
 - `out/WorldObjectWork/seed-verification.json`, `resource-closure-verification.json`, `installed-resources.json`은 이번 실행의 로컬 증거다. 별도 제품 하네스나 Resource manifest 완료 조건을 추가하지 않았다.
 - root 보고 기준 Map source v3 Validate/Publish, Gameplay Publish, 최종 Debug Product 빌드가 PASS다. 상세 빌드 receipt는 root 담당 결과 문서에 기록한다. Client/UI는 실행·조작·캡처하지 않았으며 화면 방향, 재질 표현, 연출 만족도는 사용자 확인 전이다.
 - 칼날은 위 source join으로 Cutting projectile 본체임을 확인했다. 사용자가 말한 칼날 축제와 동일 연출인지에 대한 사용자 육안 확인은 아직 받지 않았다.
+
+## 09-07 native 모션 전수 조사와 상태 연결
+
+설치된 10종의 모델 및 배치 sequence를 다시 읽었다. 새로운 추출이나 Resources 수정은 하지 않았다.
+카드/조커 14개씩, 세토 68개, 갈고리 9개, 빙고폭탄 5개로 총 110개 clip이 실제 WModel에 들어 있다.
+원본 110개는 선택 모델의 Animation Resources에서 읽는 재료 목록이다. Create Object → 원본 모델·클립 선택 → Append → Save로
+사용할 모션만 저장한다. 기존 5개 idle 상태를 재사용하고 카드 합성 상태 2개를 원본으로 교체했으며,
+조커 카드 2개·세토 3개·갈고리 4개·폭탄 2개, 총 11개 대표 상태를 추가했다. 저장된 native 패턴은
+18개이며 모델 resource는 기존 10개다. 원본 클립마다 모델이나 저장 패턴을 자동 복제하지 않는다.
+
+| 요청 또는 대표 상태 | 원본 clip | 저장 길이 | 이동 방식 |
+|---|---|---:|---|
+| 월드오브젝트_빈카드들썩임 | mn_rhoc_00_sk.ao_att_battle_2_01 | 500ms | body bone |
+| 월드오브젝트_빈카드뒤집힘 | mn_rhoc_00_sk.ao_att_battle_1_start | 667ms | body bone |
+| 월드오브젝트_조커카드들썩임 | mn_rhoc_00_sk.ao_att_battle_2_01 | 500ms | body bone |
+| 월드_오브젝트_조커카드뒤집힘 | mn_rhoc_00_sk.ao_att_battle_1_start | 667ms | body bone |
+| 월드오브젝트_세토걷기_제자리 | Seto_walk_normal_1 | 1334ms | 실제 경로는 Motion/Transform |
+| 월드오브젝트_세토달리기_제자리 | Seto_run_battle_1 | 600ms | 실제 경로는 Motion/Transform |
+| 월드오브젝트_세토돌진 | Seto_att_battle_21_02 | 3000ms | root bone +X 23.5853m |
+| 월드오브젝트_갈고리전방이동 | Hook_att_battle_1_01 | 7000ms | root bone +X 21.25m |
+| 월드오브젝트_빙고폭탄낙하 | Bomb_respawn_1 | 2000ms | body bone -Y 23.4997m |
+| 월드오브젝트_빙고폭탄흔들림 | Bomb_att_battle_1_01 | 1000ms | body bone; 폭발 Effect는 별도 |
+
+카드 네 상태는 MN_RHOC_00.loa의 빈카드/조커카드 들썩이기·뒤집어지기 Action을 직접 대조했다.
+뒤집힘은 Start의 666.6667ms를 667ms로 올림하고 마지막 pose를 유지한다. 뒤따르는 Loop/End는
+뒤집힌 pose가 정지한 clip이므로 이 상태에 반복해서 붙이지 않았다. 기존 card_hop/card_flip ID와
+모든 배치는 유지하고 합성 위치/회전 키는 identity로 교체해 bone 움직임이 중복되지 않게 했다.
+기존 objectScale 2는 보존되므로 카드 움직임 크기에도 그 배수가 적용된다.
+
+세토 Npc 480708/480709는 카드미로 로밍형/돌진형이며, 돌진형 Action 4193890이 Att_Battle_21_02를
+참조한다. Walk/Run은 root 이동이 0인 제자리 모션이다. 사용자 지정 이동 경로는 별도로 저작해야 한다.
+돌진·갈고리 전방 이동은 native root가 움직이므로 기본 Velocity를 더하지 않는다. 이 bone 이동은
+World Transform에 누적되지 않으므로 개별 이동 clip은 one-shot으로 저장한다. 원본 분기와
+MoveNext 타이밍을 무시한 여러 clip의 단순 연결을 원작 돌진 패턴으로 저장하지 않았다.
+
+공·칼날·빙고 타일에는 native animation이 없다. 공은 기존 공_튀기기의 Velocity [0,6,0],
+Acceleration [0,-6,0], 2000ms 상태를 유지하며, 수평 방향과 거리는 해당 Motion에서 조절한다.
+커튼 44개·룰렛 183개의 기존 Transform key도 보존했다. 폭탄은 원본에서도 Effect와 HidePawn이
+별도 동작이므로 bone clip만으로 폭발 이펙트까지 연결됐다고 보지 않는다.
+
+저장한 패턴의 clip 대응은 authoring worldsequences의 animationTracks에 있다. 나머지 원본 클립은
+기존 WModel decoder가 설치된 모델에서 직접 읽으며 별도 catalog JSON에 중복 저장하지 않는다.
+로컬 수치 근거는 out/WorldObjectMotionAudit의 selected-pattern-save-verification.json, all-models-inventory.json,
+card-native-animation-audit.json,
+props-complete-inventory.json, props-native-motion.json이다. 실제 화면의 방향·크기·만족도는 사용자 확인 전이다.

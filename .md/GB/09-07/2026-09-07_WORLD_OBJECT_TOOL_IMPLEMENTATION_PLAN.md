@@ -108,3 +108,23 @@ Resources 분류가 같은 값을 사용한다. 필드가 없던 v3 리소스는
 Player Follow Camera의 위치·각도·FOV·응답값 편집은 기존 Level setter로 즉시 반영하고
 Save만 영구 JSON 저장을 수행한다. 다른 맵이나 카메라 연출 중에는 해당 카메라를 덮어쓰지 않는다.
 사용자가 이미 저장한 WorldSequence·RenderingProfiles dirty 원본을 보존한다.
+
+## G07. 설치된 World Object 원본 모션 조사와 상태 저장
+
+10종의 실제 WModel과 기존 배치 sequence를 조사하고, 원본 Action과 연결되는 카드 들썩임·뒤집힘을
+기존 animationTracks로 저장한다. 빈 카드의 기존 card_hop/card_flip stable ID를 유지하되 합성 Transform을
+제거하고 원본 bone clip을 적용한다. 조커 카드에는 별도 상태를 추가하고 사용자가 요청한 표시명을 사용한다.
+
+세토·갈고리·빙고폭탄을 포함해 설치된 native clip은 선택 모델의 Animation Resources 목록으로 표시한다.
+기존 CWModelDecoder::Read_AnimationCatalog를 사용하고 클립별 상태를 자동 생성하지 않는다.
+왼쪽 Create Object에서 이름과 빈 패턴을 만들고, 아래 원본 모델·Animation 선택 → Append → Save로
+필요한 모션만 저장한다. 요청된 카드 4개와 대표 이동·등장
+모션은 미리 저장하며, 원본 clip 이름·재생률·길이를 보존하고 제자리 보행과 root bone 이동 돌진을 구분한다.
+native root 이동에 임의 Velocity를 더하지 않는다. 클립이 없는 공·칼날·빙고는 기존 Motion/Transform 경로를
+사용하며 커튼·룰렛의 배치 track도 유지한다. 새 물리 리소스나 별도 애니메이션 런타임은 만들지 않는다.
+
+기존 World Object Tool과 Action Workbench의 상태 목록·World Append가 소비하는 authoring JSON을 수정하고
+기존 Map publisher로 runtime 문서에 반영한다. 원본 리소스·기존 배치·무관한 상태의 동등성, 실제 clip 존재,
+duration/track 계약과 저장·재로드를 확인한다. 원본 클립 목록과 Append의 WorldObjectTool H/CPP는
+기존 프로젝트 등록을 사용한다. 최소 Product 컴파일 후 Client 실행과 실제 애니메이션 방향·크기
+확인은 사용자가 수행한다.

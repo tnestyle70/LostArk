@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 149,
+  "revision": 151,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -115730,17 +115730,20 @@
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card_hop",
-      "displayName": "카드_들썩임",
+      "displayName": "월드오브젝트_빈카드들썩임",
       "category": "WorldObject",
-      "durationMs": 1200,
-      "interpolation": "SMOOTH_STEP",
+      "durationMs": 500,
+      "interpolation": "LINEAR",
       "objectMotion": {
         "velocity": [0, 0, 0],
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
       },
       "tracks": [
         {
@@ -115754,28 +115757,7 @@
               "visible": true
             },
             {
-              "timeMs": 300,
-              "positionOffset": [0, 0.119999997, 0],
-              "rotationQuaternion": [0, 0, -0.0348994955, 0.999390841],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 600,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0.0348994955, 0.999390841],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 900,
-              "positionOffset": [0, 0.0799999982, 0],
-              "rotationQuaternion": [0, 0, -0.0261769481, 0.999657333],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 1200,
+              "timeMs": 500,
               "positionOffset": [0, 0, 0],
               "rotationQuaternion": [0, 0, 0, 1],
               "scaleMultiplier": [1, 1, 1],
@@ -115785,22 +115767,32 @@
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        {
+          "slotId": "object",
+          "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
       ]
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.card_flip",
-      "displayName": "카드_뒤집힘",
+      "displayName": "월드오브젝트_빈카드뒤집힘",
       "category": "WorldObject",
-      "durationMs": 1000,
-      "interpolation": "SMOOTH_STEP",
+      "durationMs": 667,
+      "interpolation": "LINEAR",
       "objectMotion": {
         "velocity": [0, 0, 0],
         "acceleration": [0, 0, 0],
         "angularVelocityDegrees": [0, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
       },
       "tracks": [
         {
@@ -115814,16 +115806,9 @@
               "visible": true
             },
             {
-              "timeMs": 400,
-              "positionOffset": [0, 0.180000007, 0],
-              "rotationQuaternion": [0, 0.587785244, 0, 0.809017003],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 1000,
+              "timeMs": 667,
               "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 1, 0, 6.12323426e-17],
+              "rotationQuaternion": [0, 0, 0, 1],
               "scaleMultiplier": [1, 1, 1],
               "visible": true
             }
@@ -115831,7 +115816,14 @@
         }
       ],
       "animationTracks": [
-        { "slotId": "object", "clipName": "mn_rhoc_00_sk.ao_idle_normal_1", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
+        {
+          "slotId": "object",
+          "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
       ]
     },
     {
@@ -117230,6 +117222,545 @@
         }
       ],
       "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_flip",
+      "displayName": "월드_오브젝트_조커카드뒤집힘",
+      "category": "WorldObject",
+      "durationMs": 667,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 667,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "mn_rhoc_00_sk.ao_att_battle_1_start",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_hop",
+      "displayName": "월드오브젝트_조커카드들썩임",
+      "category": "WorldObject",
+      "durationMs": 500,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 500,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "mn_rhoc_00_sk.ao_att_battle_2_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_att_battle_21_02",
+      "displayName": "월드오브젝트_세토돌진",
+      "category": "WorldObject",
+      "durationMs": 3000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 3000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Seto_att_battle_21_02",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_run_battle_1",
+      "displayName": "월드오브젝트_세토달리기_제자리",
+      "category": "WorldObject",
+      "durationMs": 601,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 601,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Seto_run_battle_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_walk_normal_1",
+      "displayName": "월드오브젝트_세토걷기_제자리",
+      "category": "WorldObject",
+      "durationMs": 1334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1334,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Seto_walk_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_1_01",
+      "displayName": "월드오브젝트_갈고리전방이동",
+      "category": "WorldObject",
+      "durationMs": 7000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 7000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_1_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_2_01",
+      "displayName": "월드오브젝트_갈고리내려치기",
+      "category": "WorldObject",
+      "durationMs": 1500,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1500,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_2_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_3_01",
+      "displayName": "월드오브젝트_갈고리올라가기",
+      "category": "WorldObject",
+      "durationMs": 1500,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1500,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Hook_att_battle_3_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_respawn_1",
+      "displayName": "월드오브젝트_갈고리내려오기",
+      "category": "WorldObject",
+      "durationMs": 1334,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1334,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Hook_respawn_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_att_battle_1_01",
+      "displayName": "월드오브젝트_빙고폭탄흔들림",
+      "category": "WorldObject",
+      "durationMs": 1000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Bomb_att_battle_1_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_respawn_1",
+      "displayName": "월드오브젝트_빙고폭탄낙하",
+      "category": "WorldObject",
+      "durationMs": 2000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [0, 0, 0],
+        "acceleration": [0, 0, 0],
+        "angularVelocityDegrees": [0, 0, 0],
+        "revolutionDegreesPerSecond": [0, 0, 0],
+        "revolutionOffset": [0, 0, 0],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 2000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "object",
+          "clipName": "Bomb_respawn_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ]
     }
   ],
   "instances": [
@@ -118819,6 +119350,182 @@
       "position": [0, 0, 0],
       "bindings": [
         { "slotId": "obj01", "targetKind": "MAP_PLACEMENT", "targetId": "370" }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.joker_card_flip",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_flip",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.joker_card"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.joker_card_hop",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.joker_card_hop",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.joker_card"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.seto.native.seto_att_battle_21_02",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_att_battle_21_02",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.seto"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.seto.native.seto_run_battle_1",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_run_battle_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.seto"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.seto.native.seto_walk_normal_1",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.seto.native.seto_walk_normal_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.seto"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.hook.native.hook_att_battle_1_01",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_1_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.hook"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.hook.native.hook_att_battle_2_01",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_2_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.hook"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.hook.native.hook_att_battle_3_01",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_att_battle_3_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.hook"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.hook.native.hook_respawn_1",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.hook.native.hook_respawn_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.hook"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.bingo_bomb.native.bomb_att_battle_1_01",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_att_battle_1_01",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.bingo_bomb"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.object.instance.kouku.bingo_bomb.native.bomb_respawn_1",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.world_object.bingo_bomb.native.bomb_respawn_1",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [3.28999996, 8.64000034, -8.68999958],
+      "bindings": [
+        {
+          "slotId": "object",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.kouku.bingo_bomb"
+        }
       ]
     }
   ]

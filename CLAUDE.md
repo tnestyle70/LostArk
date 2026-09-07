@@ -479,6 +479,9 @@ KoukuSaydon의 F1 Tools → `World Object Tool`은 왼쪽 `Object Resources`, �
 오른쪽 `Object Detail`을 독립 창으로 제공한다. Windows 메뉴에서 다시 열거나 배치를 초기화한다.
 Object Resources는 Map/Character 앵커별 저장 상태와 Physical Resources 폴더를 보여 준다. 모델과 DDS는
 Effect/Map/Deploy/Character 실제 Resources-relative 경로로 선택하며 파일을 상태별로 복제하지 않는다.
+원본 Animation Resources는 기존 WModel metadata에서 클립을 읽는다. 왼쪽 트리의 Create Object에서 이름을
+입력하고 항목을 선택한 뒤, 아래 원본 모델·클립 선택 → Append → Save로 필요한 모션만 저장한다. 여러 클립은 같은
+Sequencer에서 순서대로 재생하며, 원본 클립 목록 전체를 저장 패턴으로 자동 복제하지 않는다.
 정본은 `Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json`
 formatVersion 3이다. `Save` 후 `Publish Area`가 기존 Map publisher로 runtime을 배포한다.
 기존 v1/v2 읽기와 커튼·룰렛의 placement/sequence ID를 유지한다.
