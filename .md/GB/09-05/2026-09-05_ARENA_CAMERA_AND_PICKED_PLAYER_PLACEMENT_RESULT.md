@@ -124,3 +124,31 @@ roll은 0이어서 추가 회전 분기를 타지 않는다. Valtan Level H/CPP�
 확인 경로다. 발탄의 실제 화면 회귀 여부도 사용자 확인 전이며 바이트 불변을 visual PASS로
 올리지 않는다. 기존 Client/Server는 사용자가 종료했고 새 빌드와 데이터 배포를 완료했다.
 이 PC는 LAN server-host이며 `Server + Client` profile에서 `Ctrl+F5`로 직접 실행한다.
+
+
+## G04. 2026-09-07 Character Select와 KoukuSaydon 시점 통일
+
+사용자 커밋 bf43ea52의 KoukuSaydon 저장값을 Character Select 정본에 적용했다.
+이 변경은 codex/world-object-light-workspaces의 Object/Light UI 변경과 함께 PR로 전달한다.
+
+| 설정 | 두 맵에 적용한 값 |
+|---|---|
+| positionOffset (m) | [-3.1500001, 7.75, 3.29999995] |
+| rotationDegrees (Pitch/Yaw/Roll) | [53.1100006, 128.75, -1.75] |
+| focusDistance (m) | 7.75241899 |
+| fovYDegrees | 60 |
+| followResponse | 0 |
+
+Character Select의 areaId LV_LOBBY_CLASSSELECT_SL00과 schema/version을 유지했고,
+KoukuSaydon 원본은 변경하지 않았다. 두 맵의 5개 설정 값 일치와 JSON parse/런타임 유효 범위를
+확인했다. 기존 CProjectDataRoot → CArenaCameraProfile::Load → 각 Level의 Camera_Free 경로가
+프로젝트 Data JSON을 직접 읽으므로 별도 publish와 이번 데이터 변경을 위한 재컴파일은 없다.
+앞선 Object/Light 코드의 Debug Product 및 관련 90개 검증 결과는 09-07 World Object/09-06 Lighting RESULT에 있다.
+
+팀원은 main pull 후 Character Select에 재진입하면 같은 시점을 사용한다. 이미 맵에 진입했다면
+F1 → Arena Camera / Player → Player Follow Camera → Camera map: Character Select → Reload saved로
+적용한다. 이후 Save는 선택한 맵 파일만 변경하며 두 파일의 영구 자동 동기화 기능은 추가하지 않았다.
+Client/Server와 UI는 자율 실행·조작하지 않았다. 실제 Character Select 화면은 사용자 확인 대상이다.
+
+카메라 변경과 PR 전체 차이에 대한 git diff --check PASS, unmerged path 0개다.
+작업 중 Client(61292)/Server(64560)는 실행 중이었고 기존 실행 상태를 유지했다.

@@ -496,6 +496,10 @@ protocol 64 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 �
 F1의 `Player Follow Camera` 위치·각도·focus·FOV·응답값은 현재 맵의 카메라에 실시간 반영된다.
 `Save camera settings`만 다음 진입을 위한 JSON을 저장하며 Reload/Reset도 현재 카메라에 바로 반영한다.
 선택한 맵이 현재 맵과 다르거나 카메라 연출이 진행 중이면 live preview는 적용하지 않는다.
+팀 공유 follow 시점은 `Data/Camera/KoukuSaydon.camera.json`과 `Data/Camera/CharacterSelect.camera.json`에 저장한다.
+두 맵은 같은 플레이어 상대 위치·회전·FOV·응답값으로 시작하며, 이후 각 맵의 Save는 해당 파일만 변경한다.
+팀원은 pull 후 맵에 재진입하면 저장값을 읽는다. 이미 진입한 맵은 F1 → Player Follow Camera → 해당 Camera map →
+Reload saved로 반영한다. 카메라 JSON은 별도 publish 없이 프로젝트 Data 정본을 직접 읽는다.
 
 MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
 source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은

@@ -475,3 +475,15 @@ bool_t CArenaCameraProfile::Save(const ARENA_CAMERA_MAP map, const ARENA_CAMERA_
   "followResponse": 0
 }
 ```
+
+
+## G03. 2026-09-07 팀 공유 Character Select 시점
+
+사용자가 저장한 KoukuSaydon.camera.json의 positionOffset, rotationDegrees, focusDistance,
+fovYDegrees, followResponse를 CharacterSelect.camera.json에 동일하게 적용한다. Character Select의
+schema/version/areaId는 유지한다. 두 Level은 같은 플레이어 상대 follow pose를 사용하므로 맵의
+절대 spawn 위치를 복사하지 않는다. 기존 Camera_Free와 Level의 JSON Load 경로를 그대로 사용한다.
+
+변경 파일은 기존 카메라 JSON과 사용법 문서뿐이며 새 H/CPP/project/filter 등록은 없다.
+두 JSON의 parse·지원 필드·finite 범위·5개 설정 일치와 git diff --check를 확인한다. 기존
+World Object/Light 기능 브랜치에 포함해 PR로 merge한다. 별도 publisher와 카메라 코드 재빌드는 필요 없다.
