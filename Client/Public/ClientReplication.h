@@ -346,6 +346,7 @@ namespace Client
 			Commit_DeferredLocalCharacterClassReplacement();
 		void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 			std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const;
+		void Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const;
 		void Collect_PlayerViews(
 			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
 		/* Minimap read model (CMinimapView): the local character's ground position and facing,

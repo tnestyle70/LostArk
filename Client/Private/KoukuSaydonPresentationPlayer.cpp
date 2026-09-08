@@ -395,8 +395,11 @@ void Draw_LightWire(const LIGHT_DESC& light)
 std::string Card_Asset(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
 {
     using namespace LostArk::Shared;
+    // Roulette retains its overhead card; maze assignment now lives on the floor.
+    const MECHANIC_CARD_SYMBOL cardSymbol = snapshot.eMechanicCardSymbol;
+    const MECHANIC_CARD_COLOR cardColor = snapshot.eMechanicCardColor;
     const char* symbol = nullptr;
-    switch (snapshot.eMechanicCardSymbol)
+    switch (cardSymbol)
     {
     case MECHANIC_CARD_SYMBOL::HEART: symbol = "heart"; break;
     case MECHANIC_CARD_SYMBOL::SPADE: symbol = "spade"; break;
@@ -405,7 +408,7 @@ std::string Card_Asset(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
     default: return {};
     }
     const char* color = nullptr;
-    switch (snapshot.eMechanicCardColor)
+    switch (cardColor)
     {
     case MECHANIC_CARD_COLOR::RED: color = "red"; break;
     case MECHANIC_CARD_COLOR::BLACK: color = "black"; break;
@@ -1396,6 +1399,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (card->second.handle) CEffectV2Runtime::Stop_Group(card->second.handle);
         card = m_Cards.erase(card);
     }
+    Update_MazeMarks(players);
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
     {
         if (!m_bPreviewPaused && !m_bModelReferencePreview) m_fPreviewClockMs += double(dt) * 1000.0;
@@ -1902,6 +1906,117 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     Refresh_SharedPresentation();
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Sync_MazeMark(
+    CARD& mark, const std::string& asset, const float4x4_t& pivot)
+{
+    if (mark.assetId != asset)
+    {
+        if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+        mark = {}; mark.assetId = asset;
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
+        if (Ensure_EffectResource("GROUP", asset, effects))
+            if (const auto* group = effects->Find_Group(asset))
+            {
+                EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+                playback.PivotWorld = pivot;
+                playback.fDurationSeconds = 0.f;
+                playback.bProductOwned = true;
+                mark.handle = CEffectV2Runtime::Play_Group(*group, effects, playback, m_Device, m_Context);
+            }
+        if (!mark.handle) m_strStatus = "Maze floor mark unavailable: " + asset;
+    }
+    if (mark.handle)
+    {
+        CEffectV2Runtime::Set_GroupPivot(mark.handle, pivot);
+        std::string failure;
+        if (CEffectV2Runtime::Consume_GroupFailure(mark.handle, failure))
+        {
+            CEffectV2Runtime::Stop_Group(mark.handle); mark.handle = 0u;
+            m_strStatus = "Maze floor mark failed: " + asset + ": " + failure;
+        }
+    }
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
+    const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
+{
+    using namespace LostArk::Shared;
+    const auto suitName = [](MECHANIC_CARD_SYMBOL suit) -> const char*
+    {
+        switch (suit)
+        {
+        case MECHANIC_CARD_SYMBOL::HEART: return "heart";
+        case MECHANIC_CARD_SYMBOL::SPADE: return "spade";
+        case MECHANIC_CARD_SYMBOL::CLUB: return "club";
+        case MECHANIC_CARD_SYMBOL::DIAMOND: return "diamond";
+        default: return nullptr;
+        }
+    };
+    const auto groundPivot = [](const float4x4_t& world)
+    {
+        // Translation only: character scale/yaw must not resize or rotate the symbol.
+        float4x4_t pivot;
+        XMStoreFloat4x4(&pivot, XMMatrixTranslation(world._41, world._42 + .02f, world._43));
+        return pivot;
+    };
+    std::set<std::uint32_t> livePlayers, liveTargets, liveExits;
+    bool mazeActive = false;
+    for (const auto& view : players)
+    {
+        const auto& s = view.Snapshot;
+        if (!s.iCurrentHp || s.eCardMazeRole == CARD_MAZE_ROLE::NONE || (s.CardMaze.flags & 8u)) continue;
+        mazeActive = true;
+        // The telescope owner never carries a suit marker, even with an old Debug snapshot.
+        if (s.eCardMazeRole != CARD_MAZE_ROLE::HUNTER) continue;
+        const char* suit = suitName(s.eCardMazeSuit);
+        if (!suit) continue;
+        if (!(s.CardMaze.flags & 2u) && !s.CardMaze.transferStartTick)
+            if (auto character = view.pCharacter.lock(); character && character->Get_Transform())
+            {
+                livePlayers.insert(s.iNetEntityId);
+                Sync_MazeMark(m_MazePlayerMarks[s.iNetEntityId], std::string("cardmaze.mark.") + suit,
+                    groundPivot(*character->Get_Transform()->Get_WorldMatrixPtr()));
+            }
+        if ((s.CardMaze.flags & 4u) && !s.CardMaze.transferStartTick)
+        {
+            liveExits.insert(s.iNetEntityId);
+            float4x4_t pivot;
+            XMStoreFloat4x4(&pivot, XMMatrixTranslation(s.CardMaze.exitX, s.CardMaze.exitY + .02f, s.CardMaze.exitZ));
+            Sync_MazeMark(m_MazeExits[s.iNetEntityId], std::string("cardmaze.exit.") + suit, pivot);
+        }
+    }
+    if (const auto* arena = CLevel_KakulSaydonArena::Get_Active(); mazeActive && arena)
+    {
+        std::vector<KOUKU_MAZE_TARGET_VIEW> targets;
+        arena->Collect_KoukuMazeTargets(targets);
+        for (const auto& target : targets)
+        {
+            const char* suit = nullptr;
+            if (target.archetypeId == "MONSTER_KOUKU_CARD_HEART") suit = "heart";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_SPADE") suit = "spade";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_CLUB") suit = "club";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_DIAMOND") suit = "diamond";
+            const auto npc = target.npc.lock();
+            if (!suit || !npc || !npc->Get_Transform()) continue;
+            liveTargets.insert(target.entityId);
+            Sync_MazeMark(m_MazeTargetMarks[target.entityId], std::string("cardmaze.mark.") + suit,
+                groundPivot(*npc->Get_Transform()->Get_WorldMatrixPtr()));
+        }
+    }
+    const auto removeStale = [](auto& marks, const auto& live)
+    {
+        for (auto i = marks.begin(); i != marks.end();)
+        {
+            if (live.contains(i->first)) { ++i; continue; }
+            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
+            i = marks.erase(i);
+        }
+    };
+    removeStale(m_MazePlayerMarks, livePlayers);
+    removeStale(m_MazeTargetMarks, liveTargets);
+    removeStale(m_MazeExits, liveExits);
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Reset()
 {
     m_LightPlayerPivots.clear();
@@ -1913,6 +2028,15 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
     m_Cards.clear();
+    for (const auto& [id, exit] : m_MazeExits)
+        if (exit.handle) CEffectV2Runtime::Stop_Group(exit.handle);
+    m_MazeExits.clear();
+    for (auto* marks : { &m_MazePlayerMarks, &m_MazeTargetMarks })
+    {
+        for (const auto& [id, mark] : *marks)
+            if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+        marks->clear();
+    }
     m_ColliderDebugOverrides.clear();
     Stop_Preview();
     Restore_Scene();

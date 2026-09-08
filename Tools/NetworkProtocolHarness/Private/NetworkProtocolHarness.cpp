@@ -2282,7 +2282,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 69u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 66");
@@ -2337,6 +2337,163 @@ namespace
 			testRunner.Require(!Read_Message(malformed, unchanged) && unchanged.iServerTick == 99u &&
 				unchanged.Players.size() == 1u && unchanged.Players[0].iMarioStage == 3u,
 				"Unknown Mario stage preserves the previous snapshot");
+		}
+	}
+
+	void Test_CardMazeSnapshotProtocol(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_SNAPSHOT snapshot{};
+		snapshot.iServerTick = 11u;
+		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		PLAYER_SNAPSHOT player{};
+		player.iNetEntityId = 101u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		snapshot.Players.push_back(player);
+		std::vector<std::uint8_t> baseline;
+		testRunner.Require(Build_WorldSnapshotPayload(snapshot, baseline), "Card maze snapshot baseline is valid");
+		{
+			snapshot.Players[0].eCardMazeRole = CARD_MAZE_ROLE::HUNTER;
+			snapshot.Players[0].eCardMazeSuit = MECHANIC_CARD_SYMBOL::CLUB;
+			snapshot.Players[0].iCardMazeKills = 2u;
+			snapshot.Players[0].iCardMazeKillTarget = 3u;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, snapshot), "Card maze hunter snapshot writes");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+				decoded.Players.size() == 1u &&
+				decoded.Players[0].eCardMazeRole == CARD_MAZE_ROLE::HUNTER &&
+				decoded.Players[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::CLUB &&
+				decoded.Players[0].iCardMazeKills == 2u && decoded.Players[0].iCardMazeKillTarget == 3u &&
+				decoded.Players[0].eMechanicCardSymbol == MECHANIC_CARD_SYMBOL::NONE,
+				"Card maze role, suit and kill count round trip apart from the roulette card");
+			testRunner.Require(writer.Get_Buffer().size() == baseline.size(),
+				"Card maze fields own fixed wire bytes");
+		}
+		{
+			snapshot.Players[0].eCardMazeRole = CARD_MAZE_ROLE::TELESCOPE;
+			snapshot.Players[0].eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
+			snapshot.Players[0].iCardMazeKills = 0u;
+			snapshot.Players[0].iCardMazeKillTarget = 0u;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, snapshot), "Card maze telescope snapshot writes");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && decoded.Players.size() == 1u &&
+				decoded.Players[0].eCardMazeRole == CARD_MAZE_ROLE::TELESCOPE &&
+				decoded.Players[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::NONE,
+				"Card maze telescope owner carries no suit");
+		}
+		{
+			/* A shard rides the damage event for the position it already carries:
+			the suit names the hunter it belongs to and iAmount is the count. */
+			S2C_WORLD_SNAPSHOT shardSnapshot = snapshot;
+			DAMAGE_EVENT shard{};
+			shard.iTargetNetEntityId = 900u;
+			shard.iAmount = 2u;
+			shard.isOutgoing = true;
+			shard.eCardMazeSuit = MECHANIC_CARD_SYMBOL::DIAMOND;
+			shardSnapshot.DamageEvents.push_back(shard);
+			CPacketWriter shardWriter;
+			testRunner.Require(Write_Message(shardWriter, shardSnapshot), "Card maze shard event writes");
+			CPacketReader shardReader{ shardWriter.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT shardDecoded{};
+			testRunner.Require(Read_Message(shardReader, shardDecoded) &&
+				shardReader.Get_RemainingSize() == 0u &&
+				shardDecoded.DamageEvents.size() == 1u &&
+				shardDecoded.DamageEvents[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::DIAMOND &&
+				shardDecoded.DamageEvents[0].iAmount == 2u,
+				"Card maze shard suit and count round trip on the damage event");
+			shardSnapshot.DamageEvents[0].isOutgoing = false;
+			CPacketWriter incomingShard;
+			testRunner.Require(!Write_Message(incomingShard, shardSnapshot) && incomingShard.Get_Buffer().empty(),
+				"An incoming card maze shard refuses the entire snapshot before writing");
+		}
+		{
+			/* The Debug solo run: the owner keeps the telescope and hunts a suit. */
+			snapshot.Players[0].eCardMazeRole = CARD_MAZE_ROLE::TELESCOPE;
+			snapshot.Players[0].eCardMazeSuit = MECHANIC_CARD_SYMBOL::HEART;
+			snapshot.Players[0].iCardMazeKills = 1u;
+			snapshot.Players[0].iCardMazeKillTarget = 3u;
+			CPacketWriter writer;
+			testRunner.Require(Write_Message(writer, snapshot), "Card maze hunting telescope owner writes");
+			CPacketReader reader{ writer.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && decoded.Players.size() == 1u &&
+				decoded.Players[0].eCardMazeRole == CARD_MAZE_ROLE::TELESCOPE &&
+				decoded.Players[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::HEART &&
+				decoded.Players[0].iCardMazeKills == 1u && decoded.Players[0].iCardMazeKillTarget == 3u,
+				"Card maze telescope owner may hunt a suit as well");
+			snapshot.Players[0].eCardMazeRole = CARD_MAZE_ROLE::NONE;
+			CPacketWriter roleless;
+			testRunner.Require(!Write_Message(roleless, snapshot) && roleless.Get_Buffer().empty(),
+				"A suit without a card maze role refuses the entire snapshot before writing");
+			snapshot.Players[0].iCardMazeKills = 0u;
+		}
+		snapshot.Players[0].eCardMazeRole = CARD_MAZE_ROLE::HUNTER;
+		snapshot.Players[0].eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
+		snapshot.Players[0].iCardMazeKillTarget = 3u;
+		CPacketWriter suitlessWriter;
+		testRunner.Require(!Write_Message(suitlessWriter, snapshot) && suitlessWriter.Get_Buffer().empty(),
+			"A hunter without a suit refuses the entire snapshot before writing");
+		snapshot.Players[0].eCardMazeSuit = MECHANIC_CARD_SYMBOL::HEART;
+		snapshot.Players[0].iCardMazeKills = 4u;
+		CPacketWriter overWriter;
+		testRunner.Require(!Write_Message(overWriter, snapshot) && overWriter.Get_Buffer().empty(),
+			"Kills above the target refuse the entire snapshot before writing");
+		snapshot.Players[0].iCardMazeKills = 1u;
+		CPacketWriter validWriter;
+		testRunner.Require(Write_Message(validWriter, snapshot), "Card maze bounded snapshot writes");
+		{
+			auto extended = snapshot;
+			auto& state = extended.Players[0].CardMaze;
+			state.flags = 4u;
+			state.exitX = 12.5f; state.exitY = -.01f; state.exitZ = 1340.f;
+			state.marchStartTick = 100u; state.marchCycleMs = 51722u;
+			state.transferStartTick = 210u;
+			CPacketWriter wire;
+			testRunner.Require(Write_Message(wire, extended), "Maze exit and clocks write");
+			CPacketReader reader{ wire.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT decoded{};
+			testRunner.Require(Read_Message(reader, decoded) && decoded.Players.size() == 1u &&
+				decoded.Players[0].CardMaze.flags == 4u && decoded.Players[0].CardMaze.exitX == 12.5f &&
+				decoded.Players[0].CardMaze.exitY == -.01f && decoded.Players[0].CardMaze.exitZ == 1340.f &&
+				decoded.Players[0].CardMaze.marchStartTick == 100u && decoded.Players[0].CardMaze.marchCycleMs == 51722u &&
+				decoded.Players[0].CardMaze.transferStartTick == 210u,
+				"Maze personal exit and authoritative march/transfer clocks round trip");
+			state.flags = 16u;
+			CPacketWriter invalidFlags;
+			testRunner.Require(!Write_Message(invalidFlags, extended) && invalidFlags.Get_Buffer().empty(),
+				"Unknown maze flag refuses snapshot transactionally");
+			state.flags = 1u; state.marchCycleMs = 0u;
+			CPacketWriter invalidClock;
+			testRunner.Require(!Write_Message(invalidClock, extended) && invalidClock.Get_Buffer().empty(),
+				"Maze march start without cycle refuses snapshot transactionally");
+			auto truncated = wire.Get_Buffer(); truncated.pop_back();
+			CPacketReader shortReader{ truncated };
+			S2C_WORLD_SNAPSHOT preserved{}; preserved.iServerTick = 999u;
+			testRunner.Require(!Read_Message(shortReader, preserved) && preserved.iServerTick == 999u,
+				"Truncated maze snapshot preserves previous state");
+		}
+		std::vector<std::uint8_t> malformed = validWriter.Get_Buffer();
+		/* The baseline carries role NONE where this buffer carries HUNTER, and
+		nothing before that byte differs, so the first difference is the role. */
+		std::size_t roleByte = malformed.size();
+		for (std::size_t byte = 0u; byte < malformed.size() && byte < baseline.size(); ++byte)
+			if (baseline[byte] != malformed[byte]) { roleByte = byte; break; }
+		testRunner.Require(roleByte < malformed.size(), "Card maze role wire byte was identified");
+		if (roleByte < malformed.size())
+		{
+			malformed[roleByte] = static_cast<std::uint8_t>(CARD_MAZE_ROLE::END);
+			CPacketReader reader{ malformed };
+			S2C_WORLD_SNAPSHOT unchanged{};
+			unchanged.iServerTick = 77u;
+			unchanged.Players.push_back(player);
+			unchanged.Players[0].iCardMazeKills = 9u;
+			testRunner.Require(!Read_Message(reader, unchanged) && unchanged.iServerTick == 77u &&
+				unchanged.Players.size() == 1u && unchanged.Players[0].iCardMazeKills == 9u,
+				"Unknown card maze role preserves the previous snapshot");
 		}
 	}
 
@@ -2454,7 +2611,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 69u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2522,7 +2679,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 69u, "World Object owner lifecycle protocol is 69");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u, "World Object owner lifecycle protocol is 69");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2530,7 +2687,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK) == 75u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT) == 76u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE) == 77u,
-			"Protocol 69 preserves main identities and bundle state");
+			"Protocol 72 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -2870,8 +3027,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 69u,
-			"Protocol 69 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 72u,
+			"Protocol 72 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -7493,6 +7650,7 @@ int main(const int argumentCount, char* arguments[])
 	{
 		Test_MarioMoveProtocol(testRunner);
 		Test_MarioStageSnapshotProtocol(testRunner);
+		Test_CardMazeSnapshotProtocol(testRunner);
 		Test_DebugMarioJumpProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
@@ -7538,6 +7696,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_MarioMoveProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
+	Test_CardMazeSnapshotProtocol(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 	Test_WorldDestructionProtocol(testRunner);

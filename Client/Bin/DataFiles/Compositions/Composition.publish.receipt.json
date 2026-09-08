@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "c3c3c5bacc6be7664f3d88b7260f1eaa2c364e3db3e267bebbbf06830649755a",
+    "sourceManifestId": "e39c16cfde5be4d27f1a5895495bb0d0e91d27f63fc0d78d622800a6fdeeeb9a",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -108,8 +108,8 @@
       },
       {
         "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
-        "sha256": "83382577e289bb295bd80747d9f5ade84c13ca94de4449cd9bc392c71c58dc4a",
-        "bytes": 1325
+        "sha256": "f9223d2eceb142eaf93a039602fdf3306e7597f5747e5270a1bb355fe12b5286",
+        "bytes": 1332
       },
       {
         "path": "Data/Compositions/Sequences/ValtanArena.sequencer.json",
@@ -448,8 +448,263 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "2f3ee7218a681cee8b5d54948b895b644809a329603567bd8ce4f2d2e24c5cd4",
-        "bytes": 42506
+        "sha256": "c397612efc84bbcef8a57841b6646ade0887c5f0bd9771d3fbd5fed60fbba234",
+        "bytes": 42746
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.blue_1.effectv2.json",
+        "sha256": "35e75557c220d473efb29b1e7d705ded2e7a80e223836f8c3e4408dc137e4343",
+        "bytes": 4301
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.green_1.effectv2.json",
+        "sha256": "785105935812f524d7c3f64e9b68cb718310c102b55f9d71ffa4b3404166536b",
+        "bytes": 4310
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.orange_1.effectv2.json",
+        "sha256": "6efd914c3fce14f13503c2940bb071825e34428956370e1074c4219f1c708e90",
+        "bytes": 4306
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.purple_1.effectv2.json",
+        "sha256": "a89aa31b21f181a902031e7514de9c1914b83891944500ce479e938be1afbe34",
+        "bytes": 4310
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.red_1.effectv2.json",
+        "sha256": "d6fac8d9f1821905f02da1f8bd707b8ac1c91ec646eac3ae78557d134e4dec19",
+        "bytes": 4310
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.spread_1.effectv2.json",
+        "sha256": "c2959e7430b118b8d19768ca2784722bc8a014487f5470dd20d461971bfc2091",
+        "bytes": 4251
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.yellow_1.effectv2.json",
+        "sha256": "c04d514b3b9b3606be16705322056ebe05dff88b51162f2ca3f1f0d78e704b05",
+        "bytes": 4312
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.blur_1.effectv2.json",
+        "sha256": "2fc89195c21fbc19762fe56b2b32cc582191d343c1df99adfb37e315dae07e3a",
+        "bytes": 3588
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.clober.black_1.effectv2.json",
+        "sha256": "857324e031c65ad1f4fc3eae1bf2d030b12e06dd7a7ec353b0e60b83d972e506",
+        "bytes": 3702
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.clober.red_1.effectv2.json",
+        "sha256": "72496e8673c2d78edff2c97e05569aa0ba4cb9bf06aa4b4594ea9e5b4ba3ffcd",
+        "bytes": 3702
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.dia.black_1.effectv2.json",
+        "sha256": "fe1565438902ceac08b2ba0faa238a8073c5a1f3e9f0e172153720b6ec5cb53b",
+        "bytes": 3701
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.dia.red_1.effectv2.json",
+        "sha256": "dd6f6ffc6231e13fefb48dcfb4e1615dbe9578a0a6db0ac9523c766f0e0e41ef",
+        "bytes": 3697
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.heart.black_1.effectv2.json",
+        "sha256": "4ea3f70302093dd40e3693be2d4a837638031533856703b84c273b52cd8a8c7f",
+        "bytes": 3703
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.heart.red_1.effectv2.json",
+        "sha256": "072aa91efae88f310839601c19ad934c492fa996bc4a01bdf8b9d0c9118a5c7c",
+        "bytes": 3699
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.spade.black_1.effectv2.json",
+        "sha256": "57274bcf8b043fdec29fdb48be254798cfaab90c46bbb419d942135aaec65180",
+        "bytes": 3701
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.spade.red_1.effectv2.json",
+        "sha256": "8b1d84d3288c597dc5649acdbc83fa1e3cb55b11cf5b99e583366da3bdbfdad2",
+        "bytes": 3701
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.card.white_1.effectv2.json",
+        "sha256": "13e0a001e609e0cb458d3dc8f88a4e9b054cea9c39519ce86f195952726f30d5",
+        "bytes": 3755
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.curtain_1.effectv2.json",
+        "sha256": "7b3f2c8b0b714a9675862d940beff7325ec4a31ebaf20cbeff565b1bcb8dad39",
+        "bytes": 5353
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.clap.smoke.l_1.effectv2.json",
+        "sha256": "2dc168eeca2419c092942cb059333cda6da60e3204b416f7fd8bb4cea076a384",
+        "bytes": 4273
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.clap.star_1.effectv2.json",
+        "sha256": "82ebb994554c86b169e5f1464756671fc7ccde0a0bce15dbc443c1f47e4cf94d",
+        "bytes": 4229
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.clover_1.effectv2.json",
+        "sha256": "7fa1292415393977c91e6ffbdc922d03729fce093719f58fb9dcdcfb28b5f3a1",
+        "bytes": 3781
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.dia_1.effectv2.json",
+        "sha256": "02b3943529578fd8abff139156c6f20ebb013391553f2e4d0079475635ef0e4c",
+        "bytes": 3778
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.heart_1.effectv2.json",
+        "sha256": "841f0a57a75ee870a73a87bddf4d062cec42528757f6c307648425c140df6941",
+        "bytes": 3776
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.light.glow_1.effectv2.json",
+        "sha256": "f50afdc022aea7a10c7d405ef6c01ad5bf166c8b330b993d0d1c8dd970c700e8",
+        "bytes": 4178
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.light_1.effectv2.json",
+        "sha256": "8738c06a0f98856a6a873a53a91f7734cbf33de356d983e4cd6ad2b6dc9bfb9a",
+        "bytes": 4210
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.radial.blue_1.effectv2.json",
+        "sha256": "64462828a705fbdc2d56e87d9494bebeff69c0432f8d2c74b70218ccd05bd706",
+        "bytes": 3822
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.radial.green_1.effectv2.json",
+        "sha256": "2a5db980ad142f62e0b5037713c1d566f0a26cce047ec9cc4e53a2cc1ae5a30a",
+        "bytes": 3823
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.radial.orange_1.effectv2.json",
+        "sha256": "572b4edf84685dfd515401f34375e1697538c3372871d8f8c2c67139560c36e0",
+        "bytes": 3824
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.radial.red_1.effectv2.json",
+        "sha256": "cce00f903711d0b1663cbe02ab2d0010883fee99977770f8aa0375b1472ebd47",
+        "bytes": 3821
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.dance.spade_1.effectv2.json",
+        "sha256": "3208b9a5d7f1e99192c5b7d7f8052bc529af11dcf7598468afcb62b298f711df",
+        "bytes": 3780
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.converge_1.effectv2.json",
+        "sha256": "0e444d20854d1d3a980ced5ee1e9efdee3f35aab9fbca15a29938b75f8e31854",
+        "bytes": 3888
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.converge_2.effectv2.json",
+        "sha256": "71f45e386e5c3fd7f6f13468590b72e2d5870595861601b3e04fe42b9bc97fa1",
+        "bytes": 3879
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.converge_3.effectv2.json",
+        "sha256": "70424b3d5e421b708e967112beca91978ac1174d3577dd177a75592637c01697",
+        "bytes": 3882
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.shield_1.effectv2.json",
+        "sha256": "e135b0b0fa3f55a2a2f6f637ebd32c5bb371032a98848a7dcb96d3496e556edd",
+        "bytes": 3967
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.star.decal_1.effectv2.json",
+        "sha256": "af75dbd1e9185fac1b315f7ce4cce711746b2bb951322f147668182f0013b45c",
+        "bytes": 3806
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.star.smoke_1.effectv2.json",
+        "sha256": "bfbc1a34cfd96cd2d88c0db6678c8546b4672c405cf39562712707fbe822d09b",
+        "bytes": 3814
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.disarm.star_1.effectv2.json",
+        "sha256": "0219da96e4a9ecf05c6f7ca056bb2ea62b51e6fa3ab79e00ff2608850b9921ef",
+        "bytes": 3996
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.core.big_1.effectv2.json",
+        "sha256": "831dfc7439e4f15a9892c51263e9e7cbe82d3ebae791d817468fc523591556a1",
+        "bytes": 4320
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.core.big_2.effectv2.json",
+        "sha256": "fcb17b5fac90303497daa89e76d912f86fd3e0be98df4c3c084bbf42d5f4b1a2",
+        "bytes": 4321
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.core.small_1.effectv2.json",
+        "sha256": "75362b1ac3bb29a4bbe2e33fb65dd84c277b14783c0bc0f37b90bcf8732fd764",
+        "bytes": 4329
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.core.small_2.effectv2.json",
+        "sha256": "42ad96ba2255ebb87bfa9e06582607e749d8d4dfaf69916f859077fa231ef140",
+        "bytes": 4330
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.heart.big_1.effectv2.json",
+        "sha256": "8e03ec37cdc6a50861503e506047a1c0002a35d14807fd33e03fafd2e6465dc8",
+        "bytes": 3765
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.heart.small_1.effectv2.json",
+        "sha256": "ba541d5cd270106de7ec4eb4297a129b284fbb15aaac117254ce04c326824a7f",
+        "bytes": 3705
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.star.bang_1.effectv2.json",
+        "sha256": "27cb9b931811f15a64524c0cb9a15b7eef0ca0a1bc4afc097a899e3401821d50",
+        "bytes": 3827
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.star.black_1.effectv2.json",
+        "sha256": "180ec5ad8a75c85428f19d2a613efd1df780166bb4dff891ae91c9603f799f7c",
+        "bytes": 3718
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.star.radial_1.effectv2.json",
+        "sha256": "5a70738f21909e5f02374d33f03ead2987f81950b9eefabd1a4d1c7e48dbdf6e",
+        "bytes": 3765
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.find.star.red_1.effectv2.json",
+        "sha256": "cacfeff4e06a734f053f4233ac4a7a6e5984418c954acb4f40205549aa3a79a5",
+        "bytes": 3719
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.medusa.ball.blue_1.effectv2.json",
+        "sha256": "63f1cf352e3b9b0cf4f203567e9334b6d1b86115ed0d9eb24e3f92622842bc81",
+        "bytes": 4350
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.medusa.ball.red_1.effectv2.json",
+        "sha256": "ee53e95383386bf5929268b350dedf5fc5216e699a73031d546c5ee74d444423",
+        "bytes": 4349
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.medusa.blue_1.effectv2.json",
+        "sha256": "97be8318e055785a3f355a4059adbe43d01a89076117717342048a51928fe4d3",
+        "bytes": 4305
+      },
+      {
+        "path": "Data/Effects/V2/Authored/boss.kouku.medusa.red_1.effectv2.json",
+        "sha256": "2d87e51cde51598129fa2a0cc4933f388e3e9d6897972a85cec791b8f75a7e94",
+        "bytes": 4304
       },
       {
         "path": "Data/Effects/V2/Authored/boss.valtan.axe.decal_1.effectv2.json",
@@ -802,6 +1057,26 @@
         "bytes": 3590
       },
       {
+        "path": "Data/Effects/V2/Authored/cardmaze.symbol.club.effectv2.json",
+        "sha256": "d48534981540112b1c8df7b5a572f6e4238162a55892a6b3fc1dbd81a94e4f8a",
+        "bytes": 4843
+      },
+      {
+        "path": "Data/Effects/V2/Authored/cardmaze.symbol.diamond.effectv2.json",
+        "sha256": "c41423a810507c0f5d9429602f448a2915aaeefb7862be3c261ce8e16082bea8",
+        "bytes": 4846
+      },
+      {
+        "path": "Data/Effects/V2/Authored/cardmaze.symbol.heart.effectv2.json",
+        "sha256": "61e93d22f76604d24813d39afbd7569a862a46630d6682cd53dd4326a439de3f",
+        "bytes": 4840
+      },
+      {
+        "path": "Data/Effects/V2/Authored/cardmaze.symbol.spade.effectv2.json",
+        "sha256": "53bf502f848790a47db3fa90e8114c5d8e336a14ae0faa7a365930c5772214ed",
+        "bytes": 4844
+      },
+      {
         "path": "Data/Effects/V2/Authored/esther.balthorr.appear_1.effectv2.json",
         "sha256": "0b08b61ea7b4f8cb5a4cd66783b2b69abec5f7177c88147db88767b9daa3dbc4",
         "bytes": 3544
@@ -1152,6 +1427,91 @@
         "bytes": 88972
       },
       {
+        "path": "Data/Effects/V2/Groups/boss.kouku.ball.smoke.effectv2group.json",
+        "sha256": "2e8ce816de25a3d634752cbabf4cd99f991b4328a772a293eda7741af04fb619",
+        "bytes": 2089
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.clober.black.effectv2group.json",
+        "sha256": "c869f164db7cff965b9ceb06a1e68b7a289b63ffe0db1230a645d923c27ff3df",
+        "bytes": 709
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.clober.red.effectv2group.json",
+        "sha256": "9ea0cba49ab6991180a5ecab5e2640c7ee57f14dc36f9b7001bea884d86ce3cb",
+        "bytes": 705
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.dia.black.effectv2group.json",
+        "sha256": "7e9bd6d03e672621914736f40459be5b168819e85abd03c9585cb887126d7580",
+        "bytes": 703
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.dia.red.effectv2group.json",
+        "sha256": "1e2bda2b3141738050bc39bd246563d532840d60630aefd08db447d9e250e1e0",
+        "bytes": 699
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.heart.black.effectv2group.json",
+        "sha256": "bfa5678ef1a8b9c0e30adf86d5011822f519db1d625b333e2f2b2197b015dad6",
+        "bytes": 707
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.heart.red.effectv2group.json",
+        "sha256": "78cf2a755a7ce8ab4c60092fe8fc29473affe8e7f2f2e5e96b8e696a8078db6b",
+        "bytes": 703
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.spade.black.effectv2group.json",
+        "sha256": "687d534c3779dcb02724f40435ab134fccd4f5648d967891e132c91fdd67f1a7",
+        "bytes": 707
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.card.spade.red.effectv2group.json",
+        "sha256": "a96b58c3f8a1fcb8fc54ee172514375ccc9d9b2b047cc837981f95f60e9eb462",
+        "bytes": 703
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.dance.clap.effectv2group.json",
+        "sha256": "005df15b3639141ecac2daec2ee7495d9f13ddd46e10fb9953aab7837a157c1e",
+        "bytes": 704
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.dance.effectv2group.json",
+        "sha256": "bcdf876398d10ba195675498a86180d44af9c95db8bebe88158ba969bf55a0fa",
+        "bytes": 2353
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.disarm.effectv2group.json",
+        "sha256": "270b0d5be9f643329dabfa6ada644284b278db6dce596a6f3505a057751332cf",
+        "bytes": 6056
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.find.core.effectv2group.json",
+        "sha256": "3e91a1e07f3ffc594ed2cbf25305807c2b791c68b4feb18d92e0486ae4f006f1",
+        "bytes": 1254
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.find.heart.effectv2group.json",
+        "sha256": "9e619f3d572e80937d7b2fe520ada9767da1dcefad6953e133d03227b397a5a3",
+        "bytes": 707
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.find.star.effectv2group.json",
+        "sha256": "7d8099d9c124281dcb18a99152c6b26a70921f25d98ed1b10d64483fc8e4e621",
+        "bytes": 1806
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.medusa.blue.effectv2group.json",
+        "sha256": "164a17b08abd4607550876cc961d895648094f05fbd9dd31e62e4cfba5c10f88",
+        "bytes": 700
+      },
+      {
+        "path": "Data/Effects/V2/Groups/boss.kouku.medusa.red.effectv2group.json",
+        "sha256": "7c1913eab2cdcc7a0a42ca56c559f6746e52860313645d49e8d0a8af78443a67",
+        "bytes": 697
+      },
+      {
         "path": "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json",
         "sha256": "3f19401261cefccd744d382ed6cf412d77bb132d11ff75db45165e66d7c7d0e3",
         "bytes": 4871
@@ -1237,6 +1597,46 @@
         "bytes": 4861
       },
       {
+        "path": "Data/Effects/V2/Groups/cardmaze.exit.club.effectv2group.json",
+        "sha256": "a072039053f46e76048e9cb4c4e3ab024b5d0af24d173c500aca6c107168e708",
+        "bytes": 623
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.exit.diamond.effectv2group.json",
+        "sha256": "e9bc56ce7d229d1da3744d68c718ae36674e237d69e06ecc4007868474b36934",
+        "bytes": 629
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.exit.heart.effectv2group.json",
+        "sha256": "58580c49f47a41b6b82fead40de69dfdb4f701d0f3d4d29ba45811bde55e8c54",
+        "bytes": 625
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.exit.spade.effectv2group.json",
+        "sha256": "84ce034725d6ccfaf1a1cbc56a704d49ce0baebc07271ce7127fd3b5de877b9a",
+        "bytes": 625
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.mark.club.effectv2group.json",
+        "sha256": "46f066480e8d04458438a3955d72a8e498fa86d14051553c6fceed5ec013924b",
+        "bytes": 623
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.mark.diamond.effectv2group.json",
+        "sha256": "1637ea349b2cedddb263cc8fdfc2bb13e218f96bebd61b75f9fdc0bce686505a",
+        "bytes": 629
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.mark.heart.effectv2group.json",
+        "sha256": "b1398794e86391051a8b26ddf673ee4056adca1b3fd3d7ae25fab778e94a5555",
+        "bytes": 625
+      },
+      {
+        "path": "Data/Effects/V2/Groups/cardmaze.mark.spade.effectv2group.json",
+        "sha256": "5cb293201ddd381b962147b0d8d9ee390dfe56d1aea549d02ddc11648fff8ca7",
+        "bytes": 625
+      },
+      {
         "path": "Data/Encounters/Valtan/ValtanCinematicCamera.json",
         "sha256": "28bd078dcaa63718dbd21abb3b56119b52912a042054e110771e4cfdd978beed",
         "bytes": 36455
@@ -1258,18 +1658,18 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "4dedb6a15067fed43dbdba1e21e41cebc8eae887d9e4d0c330a9a45ca2992448",
-        "bytes": 11385
+        "sha256": "68bf50e844342b37ed2826d83ded6cb1796b98fddf79b213479b79ddd1017006",
+        "bytes": 87255
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "65b850392ea0356131a3a065906eb0768dd963a01fda832cdcd5d85f959ad98a",
-        "bytes": 5621100
+        "sha256": "939ba2d60933ac6eda877d49d250aa9502c5841c530ece544cba023d601a713b",
+        "bytes": 8393602
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "9cd6bb32a3cdcc99e7d5cc9d90566320aa713514addbbfa1d2a10b4414d53932",
-        "bytes": 8130
+        "sha256": "21c58c40409b1c32965fa3b94b99d01b18950a770504a87735dbdc3e1b51904c",
+        "bytes": 13815
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -1311,13 +1711,13 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "547ad85d54b4312686182ef339cb99c3d48c1b35b6e09a2b25dd224074f65797",
-      "bytes": 3758992
+      "sha256": "95926707e8de33d0f75cdf89be83d4a74e23add5fdee2488fcad869a19f36300",
+      "bytes": 3775778
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "2f0b6afbb63df350579ea6c03ec87116c764484d5d869e5b0fc0aae6d34f363a",
-      "bytes": 2140
+      "sha256": "58770b353021ee1bb90f9934462364569d070d5fc0510dfa8180fa45d7ca8f21",
+      "bytes": 2148
     },
     {
       "path": "Sequences/ValtanArena.sequencer.json",

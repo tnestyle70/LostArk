@@ -3,6 +3,7 @@
 #include "GameplayCatalog.h"
 #include "ServerPlayer.h"
 #include "ServerWorldEntity.h"
+#include "ServerNavigation.h"
 
 #include <cstdint>
 #include <map>
@@ -205,5 +206,125 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			const SERVER_PLAYER& player) noexcept;
 		static bool Is_Judgeable(const SERVER_PLAYER& player) noexcept;
+	};
+
+	/* One card maze run: who claimed the telescope, the suit each hunter was
+	dealt and how many of that suit they have felled. It owns no entity and no
+	socket -- the room spawns, hits and despawns on its verdicts -- and it is
+	reset with the run, never by the roulette that shares the suit enum. */
+	class CKoukuCardMazeRuntime final
+	{
+	public:
+		enum class PHASE : std::uint8_t
+		{
+			INACTIVE,
+			HUNTING,
+			COMPLETE
+		};
+
+		struct SPAWN_REQUEST final
+		{
+			LostArk::Shared::MECHANIC_CARD_SYMBOL eSuit = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+			float fPositionX = 0.f;
+			float fPositionY = 0.f;
+			float fPositionZ = 0.f;
+			float fYawDegrees = 0.f;
+		};
+
+		/* What one landed hammer hit changed. */
+		struct HIT_OUTCOME final
+		{
+			bool bStartMarch = false;
+			bool bKillCounted = false;
+			bool bHunterComplete = false;
+			bool bAllComplete = false;
+		};
+
+		static constexpr std::uint8_t KILL_TARGET = 3u;
+		static constexpr std::uint32_t TARGETS_PER_SUIT = 1u;
+		/* Where in the 3000 ms hammer press the head lands, in 30 Hz ticks. */
+		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 12u;
+		static constexpr float HAMMER_RANGE_M = 2.4f;
+		/* cos(60 degrees): the swing covers a 120 degree arc in front. */
+		static constexpr float HAMMER_HALF_ANGLE_COS = 0.5f;
+		/* Generic hammer input amount; the maze target hit adapter consumes all remaining HP. */
+		static constexpr std::uint32_t HAMMER_RAW_DAMAGE = 100u;
+		/* The MAZE HUD's authored hammer id; maze targets reject other skill ids. */
+		static constexpr LostArk::Shared::SKILL_ID HAMMER_SKILL_ID = 56411u;
+		static constexpr const char* SPAWN_GROUP_TAG = "cardmaze.targets";
+		/* The box a hammer swing must reach to take the telescope. */
+		static constexpr const char* TELESCOPE_PLACEMENT_ID = "cardmaze.telescope";
+		/* The CardMiro navigation region: 116 x 114 cells of 0.5 m, and the
+		centre cell the telescope stands on. */
+		static constexpr float MAZE_MIN_X = -24.97f;
+		static constexpr float MAZE_MAX_X = 33.03f;
+		static constexpr float MAZE_MIN_Z = 1323.35f;
+		static constexpr float MAZE_MAX_Z = 1380.35f;
+		static constexpr float CENTER_X = 0.28f;
+		static constexpr float CENTER_Z = 1351.65f;
+		static constexpr float CENTER_KEEPOUT_M = 5.f;
+		static constexpr float SPAWN_SPACING_M = 3.f;
+		static constexpr float PLAYER_KEEPOUT_M = 4.f;
+		static constexpr std::uint32_t SAMPLE_ATTEMPTS = 256u;
+
+		static const char* Archetype_ForSuit(LostArk::Shared::MECHANIC_CARD_SYMBOL suit) noexcept;
+
+		/* Chooses roles, suits and target positions for one claim. Nothing is
+		applied to players until Commit; a failed spawn calls Abort instead. */
+		bool Plan(
+			LostArk::Shared::PLAYER_ID claimantId,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const CServerNavigation& navigation,
+			std::uint32_t serverTick,
+			std::vector<SPAWN_REQUEST>& outSpawns,
+			std::string& outStatus);
+		void Register_Target(LostArk::Shared::NET_ENTITY_ID entityId,
+			LostArk::Shared::MECHANIC_CARD_SYMBOL suit);
+		void Commit(std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		void Abort();
+		[[nodiscard]] bool Is_Target(LostArk::Shared::NET_ENTITY_ID entityId) const noexcept;
+		/* A hammer hit the room already landed on a registered target. */
+		HIT_OUTCOME On_TargetHit(SERVER_PLAYER& hunter, const SERVER_WORLD_ENTITY& target, bool killed);
+		/* True when no hunter is left and the room must tear the run down. */
+		bool Remove_Player(LostArk::Shared::PLAYER_ID playerId);
+		void Reset(std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		bool Can_Hit(const SERVER_PLAYER& player, LostArk::Shared::NET_ENTITY_ID targetId) const;
+		void Retire_Target(LostArk::Shared::NET_ENTITY_ID targetId);
+		bool Sample_Corridor(LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
+			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const std::vector<SERVER_WORLD_ENTITY>& entities, const CServerNavigation& navigation,
+			std::uint32_t seed, SPAWN_REQUEST& out) const;
+		void Reset_Progress(SERVER_PLAYER& player);
+		bool Toggle_Telescope(SERVER_PLAYER& player);
+		[[nodiscard]] bool Is_SoloHunter(LostArk::Shared::PLAYER_ID playerId) const noexcept;
+		void Mark_Escaped(SERVER_PLAYER& player);
+		bool All_LivingCentral(const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players) const;
+		static bool In_SafeZone(float x, float z) noexcept;
+		void Complete() { m_ePhase = PHASE::COMPLETE; }
+		[[nodiscard]] PHASE Get_Phase() const noexcept { return m_ePhase; }
+		[[nodiscard]] LostArk::Shared::PLAYER_ID Get_TelescopeOwner() const noexcept { return m_iTelescopeOwner; }
+		[[nodiscard]] const std::map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::MECHANIC_CARD_SYMBOL>&
+			Get_Targets() const noexcept { return m_Targets; }
+
+	private:
+		struct PARTICIPANT final
+		{
+			LostArk::Shared::CARD_MAZE_ROLE eRole = LostArk::Shared::CARD_MAZE_ROLE::NONE;
+			LostArk::Shared::MECHANIC_CARD_SYMBOL eSuit = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+			std::uint8_t iKills = 0u;
+			bool escaped = false;
+		};
+		static void Apply_ToPlayer(const PARTICIPANT& participant, SERVER_PLAYER& player) noexcept;
+
+		PHASE m_ePhase = PHASE::INACTIVE;
+		LostArk::Shared::PLAYER_ID m_iTelescopeOwner = LostArk::Shared::INVALID_PLAYER_ID;
+		std::map<LostArk::Shared::PLAYER_ID, PARTICIPANT> m_Participants;
+		LostArk::Shared::PLAYER_ID m_iPendingTelescopeOwner = LostArk::Shared::INVALID_PLAYER_ID;
+		std::map<LostArk::Shared::PLAYER_ID, PARTICIPANT> m_PendingParticipants;
+		/* Raised targets by entity id and the suit they show. */
+		std::map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::MECHANIC_CARD_SYMBOL> m_Targets;
+		/* Each felled target counts once, however long its body stays. */
+		std::set<LostArk::Shared::NET_ENTITY_ID> m_CountedKills;
+		bool m_bMarchStarted = false;
 	};
 }

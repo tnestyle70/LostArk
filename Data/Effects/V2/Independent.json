@@ -6,6 +6,14 @@
     "boss.valtan.egg.black_2"
   ],
   "groups": [
+    "cardmaze.mark.heart",
+    "cardmaze.mark.spade",
+    "cardmaze.mark.club",
+    "cardmaze.mark.diamond",
+    "cardmaze.exit.heart",
+    "cardmaze.exit.spade",
+    "cardmaze.exit.club",
+    "cardmaze.exit.diamond",
     "boss.valtan.blackhole",
     "boss.valtan.breathe",
     "boss.valtan.breathe.red",

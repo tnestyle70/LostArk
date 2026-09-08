@@ -5658,6 +5658,17 @@ void CMainApp::RenderDamageNumbers()
 	{
 		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
+		m_iLastRenderedDamageServerTick =
+			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
+		/* A shard belongs to the one hunter who was dealt that suit, so the
+		other hunters' shards are not drawn on this screen. */
+		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE !=
+				damageEvent.Event.eCardMazeSuit &&
+			damageEvent.Event.eCardMazeSuit !=
+				CCombatHUDViewModel::Get().Get_KoukuGimmick().eCardMazeSuit)
+		{
+			continue;
+		}
 		FLOATING_DAMAGE_NUMBER number{};
 		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
@@ -5666,9 +5677,8 @@ void CMainApp::RenderDamageNumbers()
 			damageEvent.Event.fPositionZ);
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
+		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
 		m_FloatingDamageNumbers.push_back(number);
-		m_iLastRenderedDamageServerTick =
-			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
 	}
 	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
@@ -5696,6 +5706,28 @@ void CMainApp::RenderDamageNumbers()
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
 	const f32_t stageScale = viewportSize.y / 1080.f;
 
+	/* A card maze shard rises where the damage number would: "<suit> jogak x N".
+	   Korean is written with universal character names so this file keeps its
+	   existing bytes; Font_EventDamage is the same YoonGasiIIM sprite font that
+	   carries every Hangul syllable used here. */
+	const auto shardText = [](const LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
+		const uint32_t count) -> wstring
+	{
+		const wchar_t* name = L"\uBB38\uC591";
+		switch (suit)
+		{
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::HEART:
+			name = L"\uD558\uD2B8"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::SPADE:
+			name = L"\uC2A4\uD398\uC774\uB4DC"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::CLUB:
+			name = L"\uD074\uB85C\uBC84"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::DIAMOND:
+			name = L"\uB2E4\uC774\uC544"; break;
+		default: break;
+		}
+		return wstring(name) + L" \uC870\uAC01 x " + std::to_wstring(count);
+	};
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
@@ -5726,15 +5758,23 @@ void CMainApp::RenderDamageNumbers()
 			projection, view, XMMatrixIdentity());
 		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
 			continue;
-		const wstring strAmount = Format_ThousandsSeparated(number.iAmount);
+		const bool_t isShard =
+			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
+		const wstring strAmount = isShard ?
+			shardText(number.eCardMazeSuit, number.iAmount) :
+			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
 		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
 		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
 		hit by project decision, incoming hits the enemy red (0xFF0000). */
-		const fvector_t vColor = number.isOutgoing ?
-			XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
-			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
+		/* A shard is a pickup, not a hit, so it reads white instead of the
+		outgoing yellow or the incoming red. */
+		const fvector_t vColor = isShard ?
+			XMVectorSet(1.f, 1.f, 1.f, fAlpha) :
+			(number.isOutgoing ?
+				XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
+				XMVectorSet(1.f, 0.f, 0.f, fAlpha));
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
 			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);

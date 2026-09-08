@@ -1189,3 +1189,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 
 
 WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }`는 단일 MAP_PLACEMENT의 고정 수평 원판과 WORLD/STOP에 한정한다. Kouku WORLD cue의 활성 구간이 Server effective support height를 소유하며 기본 blocked/NO_SURFACE와 step policy는 유지한다. Motion Detail에서 설정을 저장한 뒤 Map 및 Kouku Product publisher를 소비한다. DRAFT pattern은 Product에 포함되지 않으며 클라이언트의 로컬 Transform으로 서버 보행면을 대신하지 않는다.
+
+### 카드미로 진행·관전 계약
+
+MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 70의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+
+카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
+
+문양 플레이어·병사 발밑은 `cardmaze.mark.heart/spade/club/diamond`, 개인 출구는 `cardmaze.exit.heart/spade/club/diamond` Effect GROUP을 사용한다. 두 그룹은 같은 `cardmaze.symbol.*` Decal leaf와 기존 `Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47{,_1,_2,_3}.dds`를 사용한다(하트/스페이드/클럽/다이아몬드 순서). 기존 춤 연출은 수정하지 않는다. 플레이어/병사 표시는 해당 객체의 이동 위치만 따라가고 출구는 서버 출구 좌표에 고정한다. Client는 이동·처치 판정 없이 snapshot과 복제 객체로 표시·정리만 한다. 다인 플레이와 Release의 망원경 담당은 문양과 목표를 받지 않는다. Debug Server에서 방에 정확히 한 명이면 최초 상자 타격자가 HUNTER 문양과 망원경 owner identity를 함께 받는다. 이 1인 테스트만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 세토 접촉·처치·출구는 기존 규칙을 사용한다. 다른 참가자가 죽어 혼자 생존한 상황은 이 예외를 켜지 않는다. Protocol 70 Client/Server를 함께 사용한다. 화면 크기·색상·실제 4인 입력·접촉·암전은 사용자 런타임 확인 대상이다.
