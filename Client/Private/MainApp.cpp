@@ -5962,6 +5962,7 @@ HRESULT CMainApp::Start_Level(
 			E_FAIL);
 		return E_FAIL;
 	}
+	CPresentation_Manager::Get().Clear_Frame();
 	const HRESULT hChange = CGameInstance::Get().Change_Level(
 		ETOUI(LEVEL::LOADING),
 		move(loading));
@@ -6075,6 +6076,8 @@ void CMainApp::Apply_LevelRequest()
 	if (profileActivated && nullptr != m_pEffectToolV2)
 		m_pEffectToolV2->On_LevelChanged();
 #endif
+	if (profileActivated)
+		CPresentation_Manager::Get().Clear_Frame();
 	const bool_t levelChanged = profileActivated &&
 		SUCCEEDED(CGameInstance::Get().Change_Level(
 			ETOUI(request.eTargetLevel), move(nextLevel)));
