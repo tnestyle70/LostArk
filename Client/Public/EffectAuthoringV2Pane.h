@@ -9,7 +9,7 @@ namespace Client
 {
 class CEffect_Tool_V2;
 
-// Bodies for the existing Effect Tool / Effect Detail / resource windows.
+// CPU document panels owned by the independent Effect Tool V2.
 // The pane owns CPU drafts; the shared resource editor owns slot thumbnails.
 class CEffectAuthoringV2Pane final
 {

@@ -20379,7 +20379,7 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 			XMConvertToRadians(Rotation.y),
 			XMConvertToRadians(Rotation.z)) *
 		XMMatrixTranslation(Position.x, Position.y, Position.z);
-	
+
 	XMStoreFloat4x4(&OutWorld, Local * XMLoadFloat4x4(&RootWorld));
 	strOutError.clear();
 	return true;

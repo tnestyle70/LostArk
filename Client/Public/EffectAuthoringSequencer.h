@@ -35,7 +35,8 @@ public:
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>&, std::string&)>;
 
     CEffectAuthoringSequencer(ComPtr<ID3D11Device> device,
-        ComPtr<ID3D11DeviceContext> context, std::shared_ptr<CCharacterPreviewPanel> panel);
+        ComPtr<ID3D11DeviceContext> context, std::shared_ptr<CCharacterPreviewPanel> panel,
+        const char* sequenceId = "effect.sequence.default");
     ~CEffectAuthoringSequencer();
     void Set_Player(CKoukuSaydonPresentationPlayer* player);
     void Set_Camera(const std::shared_ptr<Engine::CCamera>& camera);
@@ -43,7 +44,7 @@ public:
     void Set_V1AnchorProvider(V1_ANCHOR_PROVIDER provider);
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
     void Render_ModelView(); // Contents inside the existing Model View window.
-    void Render_Sequencer(); // The existing Effect Tool calls this panel.
+    void Render_Sequencer(const char* title = "Sequencer##EffectAuthoring"); // The existing Effect Tool calls this panel.
     void Update(float dt, bool active);
     bool Select_CharacterSkill(const std::string& asset, std::uint32_t skillId,
         std::optional<std::uint32_t> stageIndex = std::nullopt);

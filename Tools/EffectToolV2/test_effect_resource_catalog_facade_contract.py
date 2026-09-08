@@ -215,6 +215,43 @@ class EffectResourceCatalogFacadeContractTests(unittest.TestCase):
             self.assertIn(token, typed_header + typed_source)
         self.assertIn(
             "m_pEffectToolV2->Open_Resource(ResourceKey)", main_app)
+        self.assertRegex(main_app, r"ResourceKey\.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT\s*\?"
+                         r"\s*m_pEffectTool->Open_AuthoringResource\(ResourceKey\)\s*:"
+                         r"\s*SUCCEEDED\(EnsureDebugTool\(DEBUG_TOOL::EFFECT_V2\)\)\s*&&"
+                         r"\s*m_pEffectToolV2->Open_Resource\(ResourceKey\)")
+        authoring_open = function_tail(
+            typed_source, "bool_t Client::CEffect_Tool_V2::Open_Resource(",
+            "void Client::CEffect_Tool_V2::Render_AuthoringWorkspace(",
+        )
+        self.assertIn("m_pAuthoringPane->Open(Key)", authoring_open)
+        self.assertIn("m_strDocumentStatus = m_pAuthoringPane->Status()", authoring_open)
+        for forbidden in ("Load_Document(", "Load_Group(", "Spawn_Preview(",
+                          "Open_PreviewResource(", "CEffectResourceCatalog::Get()"):
+            self.assertNotIn(forbidden, authoring_open)
+        preview_open = function_tail(
+            typed_source, "bool_t Client::CEffect_Tool_V2::Open_PreviewResource(",
+            "bool_t Client::CEffect_Tool_V2::Open_Attach(",
+        )
+        self.assertIn("Load_Document(Key.strStableId)", preview_open)
+        self.assertIn("Load_Group(Key.strStableId)", preview_open)
+        attach = function_tail(
+            typed_source, "bool_t Client::CEffect_Tool_V2::Open_Attach(",
+            "bool_t Client::CEffect_Tool_V2::Schedule_ValtanTreeReloadRetry(",
+        )
+        self.assertIn("if (!Open_PreviewResource(Key))", attach)
+        self.assertNotIn("Open_Resource(Key)", attach)
+
+    def test_each_resource_tree_shows_its_owner_without_rewriting_shared_metadata(self) -> None:
+        workspace = read(ROOT / "Client/Private/Effect_Tool_Workspace.cpp")
+        typed_source = read(EFFECT_V2_SOURCE)
+        tree = read(ROOT / "Client/Private/EffectAuthoringResourceTree.cpp")
+        self.assertIn("make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)", workspace)
+        self.assertIn("make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V2_LEAF)", typed_source)
+        render = tree[tree.index("void Client::CEffectAuthoringResourceTree::Render()") :]
+        self.assertRegex(render, r"if \(m_eOwnerFilter == OWNER::END \|\| m_eOwnerFilter == OWNER::V1_DOCUMENT\)\s*Render_Branch\(\"root.v1\"")
+        self.assertRegex(render, r"if \(m_eOwnerFilter != OWNER::V1_DOCUMENT\)\s*Render_Branch\(\"root.v2\"")
+        for forbidden in ("m_Document.Nodes.clear", "m_Document.References.clear", "Save_Staged("):
+            self.assertNotIn(forbidden, render)
 
     def test_snapshot_queries_are_immutable_and_io_free(self) -> None:
         header = read(HEADER)

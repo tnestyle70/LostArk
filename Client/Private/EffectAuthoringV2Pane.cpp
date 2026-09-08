@@ -141,7 +141,7 @@ void CEffectAuthoringV2Pane::Render_ToolContents()
 {
     ImGui::SeparatorText("Current Effect");
     if (m_Edit.Empty())
-    { ImGui::TextWrapped("Choose Open or Create Effect in Data Files > Effect Resource > Saved Effects."); return; }
+    { ImGui::TextWrapped("Choose Open or Create Effect in the Saved Effects tab."); return; }
     const bool leaf = m_Edit.Resource_Kind() == EFFECT_V2_RESOURCE_KIND::LEAF;
     ImGui::TextDisabled("%s | %s", leaf ? "V2 Effect" : "V2 Group", m_Edit.Resource_Id().c_str());
     const auto requestPlay = [&](bool selectedOnly)
@@ -178,6 +178,14 @@ void CEffectAuthoringV2Pane::Render_ToolContents()
     ImGui::SameLine();
     if (ImGui::Button("Revert##V2CurrentEffect")) m_Edit.Revert(m_Status);
     if (m_Edit.Dirty()) { ImGui::SameLine(); ImGui::TextUnformatted("Unsaved"); }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(m_Edit.Dirty());
+    if (ImGui::Button("Attach / Spawn Target##V2CurrentEffect"))
+        m_Status = m_Editor.Open_Attach(Current_Key()) ?
+            "Attach window opened for the saved Effect." : m_Editor.Document_Status();
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Spawn an NPC / boss / preview body target, follow a bone and save bindings. Save the Effect first.");
     if (m_Edit.Empty()) return;
     if (leaf)
     {

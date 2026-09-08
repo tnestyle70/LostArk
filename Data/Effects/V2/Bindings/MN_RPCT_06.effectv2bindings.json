@@ -1,0 +1,9 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "MN_RPCT_06",
+  "bindings": [
+    { "group": "boss.kouku.medusa.laser", "clip": "mn_rpct_06_sk.ao_att_battle_7_01", "startMs": 1333, "bone": "bip001-l_eye", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.3], "yawDegrees": -45.0 },
+    { "group": "boss.kouku.joker.hammer", "clip": "mn_rpct_06_sk.ao_att_battle_1_02", "startMs": 100, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 3.0], "yawDegrees": 0.0 }
+  ]
+}

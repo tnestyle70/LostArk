@@ -326,6 +326,12 @@ bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE
     return true;
 }
 
+Client::CEffectAuthoringResourceTree::CEffectAuthoringResourceTree(EFFECT_RESOURCE_OWNER_KIND owner)
+    : m_eOwnerFilter(owner)
+{
+    if (owner == OWNER::V2_LEAF || owner == OWNER::V2_GROUP) m_strSelectedParentId = "root.v2";
+}
+
 bool Client::CEffectAuthoringResourceTree::Reload(std::string& Status)
 {
     m_bReloadAttempted = true;
@@ -340,14 +346,17 @@ bool Client::CEffectAuthoringResourceTree::Reload(std::string& Status)
         m_strBaselineBytes = std::move(Bytes);
         m_bBaselineExists = Exists;
         m_bMetadataReady = true;
-        if (Root_For(m_Document, m_strSelectedParentId).empty()) m_strSelectedParentId = "root.v1";
+        if (Root_For(m_Document, m_strSelectedParentId).empty())
+            m_strSelectedParentId = m_eOwnerFilter == OWNER::V2_LEAF || m_eOwnerFilter == OWNER::V2_GROUP ? "root.v2" : "root.v1";
     }
     Status = MetadataReady ? "Saved Effects metadata ready." : "Previous tree preserved: " + Error;
     std::string InventoryError;
-    const bool V1Ready = Read_V1Inventory(m_V1Resources, InventoryError);
+    const bool V1Ready = (m_eOwnerFilter == OWNER::V2_LEAF || m_eOwnerFilter == OWNER::V2_GROUP) ||
+        Read_V1Inventory(m_V1Resources, InventoryError);
     if (!V1Ready) Status += " V1 previous list preserved: " + InventoryError;
     std::vector<EFFECT_V2_RESOURCE_SUMMARY> V2;
-    const bool V2Ready = CEffectV2Catalog::Get().Read_Inventory(V2, InventoryError);
+    const bool V2Ready = m_eOwnerFilter == OWNER::V1_DOCUMENT ||
+        CEffectV2Catalog::Get().Read_Inventory(V2, InventoryError);
     if (V2Ready)
     {
         std::vector<RESOURCE> Rows;
@@ -568,12 +577,16 @@ void Client::CEffectAuthoringResourceTree::Render()
     ImGui::SeparatorText("Saved Effects");
     if (ImGui::Button("Reload##SavedEffectTree")) Reload(m_strStatus);
     ImGui::SameLine();
-    ImGui::TextDisabled("V1 %zu | V2 %zu", m_V1Resources.size(), m_V2Resources.size());
+    if (m_eOwnerFilter == OWNER::V1_DOCUMENT) ImGui::TextDisabled("V1 %zu", m_V1Resources.size());
+    else if (m_eOwnerFilter != OWNER::END) ImGui::TextDisabled("V2 %zu", m_V2Resources.size());
+    else ImGui::TextDisabled("V1 %zu | V2 %zu", m_V1Resources.size(), m_V2Resources.size());
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##SavedEffectSearch", "Search saved name or ID", m_szSearch, sizeof(m_szSearch));
     ImGui::BeginChild("##SavedEffectTree", ImVec2(0.f, 280.f), ImGuiChildFlags_Borders);
-    Render_Branch("root.v1", "V1", true);
-    Render_Branch("root.v2", "V2", true);
+    if (m_eOwnerFilter == OWNER::END || m_eOwnerFilter == OWNER::V1_DOCUMENT)
+        Render_Branch("root.v1", "V1", true);
+    if (m_eOwnerFilter != OWNER::V1_DOCUMENT)
+        Render_Branch("root.v2", "V2", true);
     ImGui::EndChild();
     ImGui::BeginDisabled(!m_SelectedResource.Is_Valid());
     if (ImGui::Button("Preview##SavedEffect")) Queue_Selected(COMMAND_KIND::PREVIEW);
@@ -605,6 +618,8 @@ void Client::CEffectAuthoringResourceTree::Render()
         m_Commands.push_back({ COMMAND_KIND::CREATE_EFFECT, Selected_Kind(), New_Id("effect.user."),
             m_szName, m_strSelectedParentId });
     ImGui::EndDisabled();
+    if (m_eOwnerFilter == OWNER::END || m_eOwnerFilter == OWNER::V1_DOCUMENT)
+    {
     ImGui::SeparatorText("V1 Recovery Copy");
     ImGui::TextWrapped("Current V1 Effect: %s", m_strV1CopySource.empty() ? "Open a V1 Effect first" : m_strV1CopySource.c_str());
     ImGui::InputText("New Effect ID", m_szCopyId, sizeof(m_szCopyId));
@@ -618,5 +633,6 @@ void Client::CEffectAuthoringResourceTree::Render()
             m_szCopyId, m_szCopyName, m_strSelectedParentId, m_strV1CopySource });
     ImGui::EndDisabled();
     ImGui::TextWrapped("Copies every Element and its source recipe into a new saved Effect. Catalog admission and Animation Tool cue selection are separate steps.");
+    }
     if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 }

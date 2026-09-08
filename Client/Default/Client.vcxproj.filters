@@ -2568,4 +2568,64 @@
       <Filter>96.DataFiles</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.appear.card_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.appear.smoke_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.blur_2.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.burst_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_2.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_3.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.medusa.laser_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Bindings\MN_RPCT_06.effectv2bindings.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.appear.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.joker.hammer.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.medusa.laser.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
 </Project>

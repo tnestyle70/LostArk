@@ -720,8 +720,8 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 |---|---|
 | Valtan Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
 | Action Workbench | Boss 선택과 공용 Sequencer/Resources/Patterns/Box Detail; Valtan split owner 또는 Kouku Composition의 편집·Preview·Save |
-| Effect Tool | V1 Effect asset과 V2 leaf/group body 편집 |
-| Effect Tool | 기존 Current Effect·Effect Detail, V1/V2 Parent→Effect Resource 트리, World Object 리소스와 Model Animation/Effect Sequencer |
+| Effect Tool V1 | 복원 Effect asset·Current Effect·Effect Detail·V1 Resource·World Object·Model View·Effect Sequencer |
+| Effect Tool V2 | V2 leaf/group CPU draft·독립 Resource/Sequencer·target attachment 편집 |
 | Server | branch, motion, hit, combat object, phase의 gameplay 권위 |
 
 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은 `REFERENCE_ONLY`,
@@ -794,7 +794,7 @@ Play Bundle과 실제 보스 actor를 소유한 단일 Pattern Play는 같은 ac
 BOSS_SPAWN World Object는 Product의 `worldEmissionAnchors`와 bossMotion을 사용해 각 emission 시각의 생성점을
 고정한 뒤 개별 objectMotion을 재생한다. 객체가 이동하는 보스를 매 프레임 따라가는 정책은 아니다.
 
-F1 `Effect Tool`은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를 같은 owner로 연다. 이전 Effect Composition Workbench enum은 호환 진입점이며 별도 편집기나 재생 owner를 생성하지 않는다. Effect Resources의 V1/V2 root 아래에서 Parent를 생성하고 그 Parent 아래의 Effect를 선택하면 원래 owner의 Current Effect에 열린다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
+F1 `Effect Tool V1`과 `Effect Tool V2`는 별도 버튼·창·입력 focus·visibility로 연다. V1은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를, V2는 자기 CPU draft·Resources·Sequencer와 기존 target attachment 도구를 소유한다. 한 도구를 닫아도 다른 도구의 창과 draft를 닫지 않으며 각 Sequencer의 창 ID와 기본 저장 ID를 구분한다. 이전 Effect Composition Workbench enum은 V1 호환 진입점이다. 각 Resource 트리는 자기 V1 또는 V2 root만 표시하고 typed resource open은 해당 도구로 전달한다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
 
 Current Effect의 Play All/Family/Element는 미리보기이며 Append만 별도 Effect Sequencer에 occurrence를 추가한다. 캐릭터 skillbinding·Valtan Product·Kouku Pattern/Bundle의 실제 clip sequence는 읽기 전용 모델 참고이며 저장 단위는 `Data/Effects/Sequences/<id>.effectsequence.json`의 stable source reference와 occurrence 시간이다. 해당 Save는 boss Composition이나 skillbinding을 변경하지 않는다. Native V2 leaf Open/Save는 원래 leaf ID/파일을 유지하며 group으로 확장하는 것은 명시적 생성 명령이다. Effect CPU draft 저장에 GPU preview나 타 보스 전체 admission을 선행조건으로 붙이지 않는다.
 

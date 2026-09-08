@@ -1,9 +1,14 @@
 #include "imgui.h"
 
 #include "Effect_Tool_V2.h"
+#include "EffectAuthoringV2Pane.h"
+#include "EffectAuthoringResourceTree.h"
+#include "EffectAuthoringSequencer.h"
 #include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
+#include "Level_KakulSaydonArena.h"
+#include "Level_ValtanArena.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Character.h"
@@ -100,6 +105,14 @@ Client::CEffect_Tool_V2::~CEffect_Tool_V2()
 
 void Client::CEffect_Tool_V2::Deactivate()
 {
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
+    EFFECT_V2_DOCUMENT nativeDraft;
+    if (Capture_PreviewDocument(nativeDraft))
+    {
+        m_PreservedNativeDraft = std::move(nativeDraft);
+        if (auto preview = m_pPreview.lock()) m_bPreservedNativeHidden = preview->Is_Hidden();
+    }
+    m_bNativeRestorePending = false;
 	Stop_GroupPreview();
 	Stop_ValtanTimeline();
 	Stop_KoukuTimeline();
@@ -131,24 +144,34 @@ void Client::CEffect_Tool_V2::On_LevelChanged()
 
 void Client::CEffect_Tool_V2::Render()
 {
+	m_iLoadsThisFrame = 0u;
+    Render_AuthoringWorkspace();
+    if (m_bNativeRestorePending)
+    {
+        m_bNativeRestorePending = false;
+        if (m_PreservedNativeDraft && m_pPreview.expired()) (void)Restore_NativeDraft();
+    }
+    if (!m_bNativeWindows)
+    {
+        Update_Attach(ImGui::GetIO().DeltaTime);
+        Render_AttachWindow();
+        return;
+    }
 	if (m_bValtanTreeReloadRetryPending &&
 		ImGui::GetTime() >= m_dNextValtanTreeReloadRetrySeconds)
 	{
 		(void)Reload_ValtanTree(false);
 	}
 	Update_ValtanServerPatternStatus();
-	m_iLoadsThisFrame = 0u;
 	if (!m_bScanned)
 		Scan_Resources();
 	if (!Slot_VisibleForType(m_eSelectedSlot))
 		m_eSelectedSlot = RESOURCE_SLOT::BASE;
 
-	if (!ImGui::Begin("Effect Resource Library"))
-	{
-		ImGui::End();
-		return;
-	}
-
+    const bool libraryVisible = ImGui::Begin("Effect Resource Library");
+    Claim_AuthoringInteraction();
+    if (libraryVisible)
+    {
 	Render_TypeSelector();
 	ImGui::Separator();
 	Render_SlotCards();
@@ -175,12 +198,211 @@ void Client::CEffect_Tool_V2::Render()
 
 	if (!m_strStatus.empty())
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
+    }
 	ImGui::End();
 
 	Update_Attach(ImGui::GetIO().DeltaTime);
 	Render_TuningPanel();
 	Render_AttachWindow();
 	Render_GroupWindow();
+}
+
+
+void Client::CEffect_Tool_V2::Configure_AuthoringWorkspace(
+    std::shared_ptr<CCharacterPreviewPanel> panel, CKoukuSaydonPresentationPlayer* player)
+{
+    m_pAuthoringPanel = std::move(panel);
+    if (!m_pAuthoringPane) m_pAuthoringPane = std::make_unique<CEffectAuthoringV2Pane>(*this);
+    if (!m_pAuthoringResources)
+        m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V2_LEAF);
+    if (!m_pAuthoringSequencer)
+    {
+        m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(
+            m_pDevice, m_pContext, m_pAuthoringPanel, "effect.sequence.v2.default");
+        m_pAuthoringSequencer->Set_V2SnapshotProvider(
+            [this](const EFFECT_RESOURCE_KEY& key, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot, std::string& error)
+            {
+                if (m_pAuthoringPane->Owns_Resource(key))
+                {
+                    EFFECT_RESOURCE_KEY selected;
+                    return m_pAuthoringPane->Snapshot(selected, snapshot, error);
+                }
+                if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF && key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_GROUP)
+                { error = "Open V1 Effects in Effect Tool V1."; return false; }
+                return CEffectV2Catalog::Get().Load_ResourceSnapshot(
+                    key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_GROUP ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
+                    key.strStableId, snapshot, error);
+            });
+    }
+    m_pAuthoringSequencer->Set_Player(player);
+}
+
+void Client::CEffect_Tool_V2::Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Player(player);
+}
+void Client::CEffect_Tool_V2::Set_AuthoringCamera(const std::shared_ptr<Engine::CCamera>& camera)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Camera(camera);
+}
+bool Client::CEffect_Tool_V2::Consume_AuthoringInteraction()
+{
+    const bool interaction = m_bAuthoringInteraction;
+    m_bAuthoringInteraction = false;
+    const bool sequenceInteraction = m_pAuthoringSequencer && m_pAuthoringSequencer->Consume_InteractionRequest();
+    return interaction || sequenceInteraction;
+}
+void Client::CEffect_Tool_V2::Update_AuthoringWorkspace(float dt, bool active)
+{
+    if (!m_pAuthoringSequencer || !m_pAuthoringPane) return;
+    m_pAuthoringSequencer->Update(dt, active);
+    if (active && m_pAuthoringSequencer->Is_Active() &&
+        m_iAuthoringPreviewGeneration != m_pAuthoringPane->Edit_Generation() && !ImGui::IsAnyItemActive())
+    {
+        m_iAuthoringPreviewGeneration = m_pAuthoringPane->Edit_Generation();
+        (void)m_pAuthoringSequencer->Refresh_Effects();
+    }
+    const auto parentKey = [](const EFFECT_RESOURCE_KEY& key)
+    { return std::to_string(static_cast<int>(key.eOwnerKind)) + ":" + key.strStableId; };
+    const auto current = m_pAuthoringPane->Current_Key();
+    if (current.Is_Valid() && !(current == m_AuthoringPreviousKey))
+    {
+        const auto previous = m_AuthoringParents.find(parentKey(m_AuthoringPreviousKey));
+        if (!m_AuthoringParents.contains(parentKey(current)) && previous != m_AuthoringParents.end())
+            m_AuthoringParents.emplace(parentKey(current), previous->second);
+        m_AuthoringPreviousKey = current;
+    }
+    EFFECT_RESOURCE_KEY play; std::string child;
+    if (active && m_pAuthoringPane->Consume_Play(play, child))
+        (void)m_pAuthoringSequencer->Preview(play, m_pAuthoringPane->DurationMs());
+    EFFECT_RESOURCE_KEY saved; std::string name;
+    if (m_pAuthoringPane->Consume_Saved(saved, name))
+    {
+        std::string status;
+        (void)m_pAuthoringResources->Attach_Saved(saved.eOwnerKind, saved.strStableId, name,
+            m_AuthoringParents[parentKey(saved)], status);
+        m_pAuthoringResources->Set_Status(status);
+        if (m_pAuthoringSequencer->Is_Active() && m_pAuthoringSequencer->Uses_Resource(saved))
+            (void)m_pAuthoringSequencer->Refresh_Effects(&saved);
+    }
+}
+
+bool_t Client::CEffect_Tool_V2::Open_Resource(const EFFECT_RESOURCE_KEY& Key)
+{
+    if (!m_pAuthoringPane)
+    { m_strDocumentStatus = "Open Effect Tool V2 before selecting its document."; return false; }
+    const bool opened = m_pAuthoringPane->Open(Key);
+    m_strDocumentStatus = m_pAuthoringPane->Status();
+    return opened;
+}
+
+void Client::CEffect_Tool_V2::Claim_AuthoringInteraction()
+{
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) ||
+        (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)))
+        m_bAuthoringInteraction = true;
+}
+
+void Client::CEffect_Tool_V2::Render_AuthoringWorkspace()
+{
+    if (!m_pAuthoringPane || !m_pAuthoringResources || !m_pAuthoringSequencer) return;
+    ImGui::SetNextWindowSize({620.f, 760.f}, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Effect Tool V2###EffectToolV2"))
+    {
+        Claim_AuthoringInteraction();
+        ImGui::Checkbox("Native preview windows", &m_bNativeWindows);
+        m_pAuthoringPane->Render_ToolContents();
+        const auto key = m_pAuthoringPane->Current_Key();
+        ImGui::BeginDisabled(!key.Is_Valid());
+        if (ImGui::Button("Append to V2 Sequencer"))
+            (void)m_pAuthoringSequencer->Append(key, m_pAuthoringPane->DurationMs());
+        ImGui::EndDisabled();
+        if (ImGui::BeginTabBar("##V2DocumentPanels"))
+        {
+            if (ImGui::BeginTabItem("Saved Effects"))
+            {
+                m_pAuthoringResources->Render();
+                CEffectAuthoringResourceTree::COMMAND command;
+                while (m_pAuthoringResources->Take_Command(command))
+                {
+                    EFFECT_RESOURCE_KEY selected{command.eKind, command.strAssetId};
+                    const auto parentKey = [](const EFFECT_RESOURCE_KEY& value)
+                    { return std::to_string(static_cast<int>(value.eOwnerKind)) + ":" + value.strStableId; };
+                    if (command.eKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF && command.eKind != EFFECT_RESOURCE_OWNER_KIND::V2_GROUP)
+                        continue;
+                    if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::OPEN)
+                    {
+                        if (Open_Resource(selected)) m_AuthoringParents[parentKey(selected)] = command.strParentId;
+                        m_pAuthoringResources->Set_Status(m_strDocumentStatus);
+                    }
+                    else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::CREATE_EFFECT)
+                    {
+                        if (m_pAuthoringPane->Create(command.strDisplayName, EFFECT_V2_TYPE::PARTICLE, command.eKind))
+                            m_AuthoringParents[parentKey(m_pAuthoringPane->Current_Key())] = command.strParentId;
+                        m_pAuthoringResources->Set_Status(m_pAuthoringPane->Status());
+                    }
+                    else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::PREVIEW ||
+                        command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::APPEND)
+                    {
+                        const uint32_t duration = m_pAuthoringPane->Current_Key() == selected ? m_pAuthoringPane->DurationMs() : 3000u;
+                        if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::APPEND)
+                            (void)m_pAuthoringSequencer->Append(selected, duration);
+                        else (void)m_pAuthoringSequencer->Preview(selected, duration);
+                        m_pAuthoringResources->Set_Status(m_pAuthoringSequencer->Status());
+                    }
+                }
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Detail")) { m_pAuthoringPane->Render_DetailContents(); ImGui::EndTabItem(); }
+            if (ImGui::BeginTabItem("Resources")) { m_pAuthoringPane->Render_ResourceContents(); ImGui::EndTabItem(); }
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+    if (ImGui::Begin("Model View V2###EffectModelViewV2"))
+    {
+        Claim_AuthoringInteraction();
+        m_pAuthoringPanel->Render_Selector(false, {}, true);
+        m_pAuthoringSequencer->Render_ModelView();
+    }
+    ImGui::End();
+    m_pAuthoringSequencer->Render_Sequencer("Sequencer V2###EffectAuthoringV2");
+}
+
+bool Client::CEffect_Tool_V2::Capture_PreviewDocument(EFFECT_V2_DOCUMENT& document) const
+{
+    const auto preview = m_pPreview.lock();
+    if (!preview) return false;
+    document = {};
+    document.strEffectId = m_szEffectId;
+    document.strDisplayName = m_strLoadedDocumentDisplayName;
+    document.eType = m_ePreviewType;
+    document.Desc = preview->Creation_Desc();
+    document.Desc.Params = preview->Params();
+    document.Desc.PivotWorld = preview->PivotWorld();
+    document.Desc.bParamsAuthored = true;
+    const char* clip = preview->Animation_Name(preview->Params().iAnimationIndex);
+    document.strAnimationClip = clip ? clip : "";
+    for (uint32_t part = 0u; part < preview->Part_Count(); ++part)
+        document.Parts.push_back({preview->Part_Visible(part), preview->Part_BaseAssetId(part)});
+    return true;
+}
+
+bool Client::CEffect_Tool_V2::Restore_NativeDraft()
+{
+    if (!m_PreservedNativeDraft) return false;
+    const EFFECT_V2_DOCUMENT draft = *m_PreservedNativeDraft;
+    const EFFECT_TYPE previousType = m_eType;
+    m_eType = draft.eType;
+    if (!Spawn_Preview(draft.Desc, draft.Parts, draft.strAnimationClip))
+    { m_eType = previousType; return false; }
+    if (const auto preview = m_pPreview.lock())
+    {
+        preview->PivotWorld() = draft.Desc.PivotWorld;
+        preview->Set_Hidden(m_bPreservedNativeHidden);
+    }
+    m_PreservedNativeDraft.reset();
+    return true;
 }
 
 void Client::CEffect_Tool_V2::Scan_Resources()
@@ -1175,6 +1397,7 @@ bool_t Client::CEffect_Tool_V2::Spawn_Preview(
 			m_strPreviewStatus = "Animation clip not found in model: " + strAnimationClip;
 	}
 	m_pPreview = pPreview;
+    m_PreservedNativeDraft.reset();
 	m_ePreviewType = m_eType;
 	m_bTuningWindowOpen = true;
 	if (m_strPreviewStatus.empty() || 0 == m_strPreviewStatus.rfind("Pivot", 0))
@@ -1251,21 +1474,7 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 		return false;
 	}
 	EFFECT_V2_DOCUMENT Document;
-	Document.strEffectId = strEffectId;
-	Document.strDisplayName = m_strLoadedDocumentDisplayName;
-	Document.eType = m_ePreviewType;
-	Document.Desc = pPreview->Creation_Desc();
-	Document.Desc.Params = pPreview->Params();
-	Document.Desc.bParamsAuthored = true;
-	const char_t* pClip = pPreview->Animation_Name(pPreview->Params().iAnimationIndex);
-	Document.strAnimationClip = nullptr != pClip ? pClip : "";
-	for (uint32_t iPart = 0u; iPart < pPreview->Part_Count(); ++iPart)
-	{
-		EFFECT_V2_PART_OVERRIDE Part;
-		Part.bVisible = pPreview->Part_Visible(iPart);
-		Part.strBaseAssetId = pPreview->Part_BaseAssetId(iPart);
-		Document.Parts.push_back(std::move(Part));
-	}
+    (void)Capture_PreviewDocument(Document);
 	std::string strError;
 	const std::string strBytes = CEffectV2Document::Serialize_Document(Document);
 	EFFECT_V2_DOCUMENT Validated;
@@ -1483,6 +1692,16 @@ namespace
 		KAKUL_PREVIEW_TARGET{ "MN_RPCT_06", "Large Saydon, own rig, 34 clips", "MN_RPCT_06" },
 	};
 
+	constexpr const char* ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KAKULSAYDON_";
+	constexpr std::array<const char*, 6u> ARENA_BOSS_ARCHETYPES = {
+		"BOSS_KAKULSAYDON_G1_SAYDON",
+		"BOSS_KAKULSAYDON_G1_KOUKU",
+		"BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+		"BOSS_KAKULSAYDON_G2_KOUKU",
+		"BOSS_KAKULSAYDON_G3_SAYDON",
+		"BOSS_KAKULSAYDON_BINGO_SAYDON",
+	};
+
 	const KAKUL_PREVIEW_TARGET* Find_KakulPreviewTarget(const std::string_view strAssetName)
 	{
 		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
@@ -1604,21 +1823,51 @@ bool_t Client::CEffect_Tool_V2::Collect_BoneNames(
 	return !OutNames.empty();
 }
 
+namespace
+{
+	std::shared_ptr<Client::CCharacter> Resolve_SpawnAnchorCharacter()
+	{
+		if (const auto pCharacter = Client::CAnimationTargetService::Resolve_SceneCharacter())
+			return pCharacter;
+		if (const auto* pArena = Client::CLevel_KakulSaydonArena::Get_Active())
+			return pArena->Get_LocalCharacter();
+		if (const auto* pArena = Client::CLevel_ValtanArena::Get_Active())
+			return pArena->Get_LocalCharacter();
+		return nullptr;
+	}
+
+	float3_t Resolve_SpawnAnchorPosition()
+	{
+		float3_t vPosition{ 0.f, 0.f, 0.f };
+		if (const auto pCharacter = Resolve_SpawnAnchorCharacter();
+			nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+		{
+			XMStoreFloat3(&vPosition,
+				pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
+				XMVectorSet(2.5f, 0.f, 0.f, 0.f));
+			return vPosition;
+		}
+		CGameInstance& GameInstance = CGameInstance::Get();
+		const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+		const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+		if (nullptr != pCameraPosition && nullptr != pCameraWorld)
+		{
+			const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+			XMStoreFloat3(&vPosition, XMLoadFloat4(pCameraPosition) + Look * 5.f);
+		}
+		return vPosition;
+	}
+}
+
 bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 {
 	Despawn_Target();
-	float3_t vPosition{ 0.f, 0.f, 0.f };
-	if (const std::shared_ptr<CCharacter> pCharacter =
-		CAnimationTargetService::Resolve_SceneCharacter();
-		nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
-	{
-		XMStoreFloat3(&vPosition,
-			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
-			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
-	}
+	float3_t vPosition = Resolve_SpawnAnchorPosition();
 	bool_t bSpawned = false;
 	if (VALTAN_TARGET_ARCHETYPE_ID == strArchetypeId)
 		bSpawned = Spawn_ValtanTarget(vPosition);
+	else if (0u == strArchetypeId.rfind(ARENA_BOSS_ARCHETYPE_PREFIX, 0u))
+		bSpawned = Attach_ArenaBossTarget(strArchetypeId, vPosition);
 	else if (const KAKUL_PREVIEW_TARGET* pKakul = Find_KakulPreviewTarget(strArchetypeId))
 		bSpawned = Spawn_PreviewBodyTarget(pKakul->pAssetName, pKakul->pBindingArchetypeId, vPosition);
 	else
@@ -1633,7 +1882,7 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		m_strAttachStatus = "Target spawn returned an unexpected object.";
 		return false;
 	}
-	CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
+	if (!m_bTargetBorrowed) CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
 	m_strTargetArchetypeId = m_Target.strArchetypeId.empty() ?
 		strArchetypeId : m_Target.strArchetypeId;
 	m_vTargetPosition = vPosition;
@@ -1645,10 +1894,52 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
 	}
 	Load_Bindings(m_strTargetArchetypeId);
-	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character." +
+	m_strAttachStatus = (m_bTargetBorrowed ?
+		"Attached to the live arena boss " + strArchetypeId + "." :
+		"Target " + strArchetypeId + " spawned beside the scene character.") +
 		(m_strTargetArchetypeId != strArchetypeId ?
 			" Bindings owner: " + m_strTargetArchetypeId + "." : std::string());
 	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Attach_ArenaBossTarget(
+	const std::string& strArchetypeId,
+	float3_t& OutPosition)
+{
+#ifdef _DEBUG
+	const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	const std::shared_ptr<CNpc> pNpc =
+		nullptr == pArena ? nullptr : pArena->Debug_FindArenaBossNpc(strArchetypeId);
+	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+	{
+		m_strAttachStatus = nullptr == pArena ?
+			"Live arena bosses are only available inside the KoukuSaydon Arena." :
+			"Live arena boss is not spawned: " + strArchetypeId +
+			". Raise its gate in F1 KoukuSaydon Arena first.";
+		return false;
+	}
+	m_Target = EFFECT_V2_TARGET::From_Npc(pNpc);
+	m_bTargetBorrowed = true;
+	m_TargetBoneNames.clear();
+	if (const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(strArchetypeId))
+	{
+		std::vector<std::string> BoneNames;
+		Collect_BoneNames(pBoss->bodyModel, BoneNames);
+		for (const std::string& strBone : BoneNames)
+		{
+			if (pNpc->Get_Model()->Has_Bone(strBone.c_str()))
+				m_TargetBoneNames.push_back(strBone);
+		}
+	}
+	if (const std::shared_ptr<Engine::CTransform> pTransform = pNpc->Get_Transform())
+		XMStoreFloat3(&OutPosition, pTransform->Get_State(STATE::POSITION));
+	return true;
+#else
+	UNREFERENCED_PARAMETER(strArchetypeId);
+	UNREFERENCED_PARAMETER(OutPosition);
+	m_strAttachStatus = "Live arena boss attach is a Debug tool feature.";
+	return false;
+#endif
 }
 
 bool_t Client::CEffect_Tool_V2::Spawn_NpcTarget(
@@ -1848,6 +2139,11 @@ bool_t Client::CEffect_Tool_V2::Resolve_TargetView(EFFECT_V2_TARGET_VIEW& OutVie
 
 void Client::CEffect_Tool_V2::Play_TargetClip(const char_t* pClipName, const bool_t bLoop)
 {
+    if (m_bTargetBorrowed)
+    {
+        m_strAttachStatus = "Live boss animation is controlled by the Server.";
+        return;
+    }
 	EFFECT_V2_TARGET_VIEW View;
 	if (nullptr == pClipName || !Resolve_TargetView(View))
 		return;
@@ -1876,10 +2172,14 @@ void Client::CEffect_Tool_V2::Despawn_Target()
 	m_ePivotMode = PIVOT_MODE::WORLD;
 	if (const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock())
 	{
-		CEffectV2Runtime::Set_Ignored(m_Target, false);
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pOwner);
+		if (!m_bTargetBorrowed) CEffectV2Runtime::Set_Ignored(m_Target, false);
+		if (!m_bTargetBorrowed)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pOwner);
+		}
 	}
+	m_bTargetBorrowed = false;
 	m_Target.Reset();
 	m_TargetBoneNames.clear();
 }
@@ -1889,6 +2189,11 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
 	if (nullptr == pOwner)
 		return;
+	if (m_bTargetBorrowed)
+	{
+		m_strAttachStatus = "Live arena bosses are moved by the Server, not by this tool.";
+		return;
+	}
 	if (EFFECT_V2_TARGET_KIND::NPC == m_Target.eKind)
 	{
 		if (!std::static_pointer_cast<CNpc>(pOwner)->Apply_NetworkState(vPosition, fYawDegrees))
@@ -2024,7 +2329,7 @@ bool_t Client::CEffect_Tool_V2::Ensure_ValtanTree()
 		!m_ValtanPatterns.empty();
 }
 
-bool_t Client::CEffect_Tool_V2::Open_Resource(
+bool_t Client::CEffect_Tool_V2::Open_PreviewResource(
 	const EFFECT_RESOURCE_KEY& Key)
 {
 	if (!Key.Is_Valid())
@@ -2063,6 +2368,18 @@ bool_t Client::CEffect_Tool_V2::Open_Resource(
 		"Typed Effect owner cannot open a V1 document; dispatch it to the "
 		"direct-authored Effect editor.";
 	return false;
+}
+
+bool_t Client::CEffect_Tool_V2::Open_Attach(const EFFECT_RESOURCE_KEY& Key)
+{
+	if (!Open_PreviewResource(Key))
+		return false;
+	if (EFFECT_RESOURCE_OWNER_KIND::V2_GROUP == Key.eOwnerKind)
+		m_strBindingGroupId = Key.strStableId;
+	else
+		m_strBindingGroupId.clear();
+	m_bAttachWindowOpen = true;
+	return true;
 }
 
 bool_t Client::CEffect_Tool_V2::Schedule_ValtanTreeReloadRetry()
@@ -3148,6 +3465,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		ImGui::End();
 		return;
 	}
+    Claim_AuthoringInteraction();
 	EFFECT_V2_TARGET_VIEW View;
 	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<Engine::CModel> pModel = bHasTarget ? View.pModel : nullptr;
@@ -3163,6 +3481,28 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			m_strSelectedArchetypeId = VALTAN_TARGET_ARCHETYPE_ID;
 		}
 		ImGui::Separator();
+#ifdef _DEBUG
+		if (const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active())
+		{
+			ImGui::TextDisabled("Live arena bosses (Server-spawned, real body/scale)");
+			for (const char* pArchetypeId : ARENA_BOSS_ARCHETYPES)
+			{
+				const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(pArchetypeId);
+				if (nullptr == pBoss)
+					continue;
+				const bool_t bLive = nullptr != pArena->Debug_FindArenaBossNpc(pArchetypeId);
+				const std::string strLabel = std::string(pArchetypeId) + "  (" +
+					std::filesystem::path(pBoss->bodyModel).stem().string() +
+					(bLive ? ", live)" : ", not spawned)");
+				ImGui::BeginDisabled(!bLive);
+				if (ImGui::Selectable(strLabel.c_str(), pArchetypeId == m_strSelectedArchetypeId))
+					m_strSelectedArchetypeId = pArchetypeId;
+				ImGui::EndDisabled();
+			}
+			ImGui::Separator();
+		}
+#endif
+		ImGui::TextDisabled("Preview bodies (tool-spawned, admission scale)");
 		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
 		{
 			const std::string strLabel = std::string(Entry.pAssetName) + "  (" + Entry.pLabel + ")";
@@ -3193,9 +3533,12 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	if (bHasTarget)
 	{
 		ImGui::Text("Live: %s", m_strTargetArchetypeId.c_str());
-		if (ImGui::Checkbox("Runtime spawns on target", &m_bRuntimeOnTarget))
+        ImGui::BeginDisabled(m_bTargetBorrowed);
+        bool runtimeOnTarget = m_bTargetBorrowed || m_bRuntimeOnTarget;
+		if (ImGui::Checkbox("Runtime spawns on target", &runtimeOnTarget))
 		{
-			CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
+			m_bRuntimeOnTarget = runtimeOnTarget;
+			if (!m_bTargetBorrowed) CEffectV2Runtime::Set_Ignored(m_Target, !m_bRuntimeOnTarget);
 			if (m_bRuntimeOnTarget && nullptr != pModel)
 			{
 				const char_t* pClip = pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
@@ -3203,29 +3546,27 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 					CEffectV2Runtime::Notify_Clip(m_Target, pClip);
 			}
 		}
+		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Let CEffectV2Runtime apply the saved bindings to this tool target (in-game behaviour check). Hide the preview to avoid doubles.");
 		float3_t vPosition = m_vTargetPosition;
 		f32_t fYaw = m_fTargetYawDegrees;
+		ImGui::BeginDisabled(m_bTargetBorrowed);
 		if (ImGui::DragFloat3("Target Position", &vPosition.x, 0.05f))
 			Move_Target(vPosition, fYaw);
 		if (ImGui::DragFloat("Target Yaw (deg)", &fYaw, 1.f, -360.f, 360.f))
 			Move_Target(vPosition, fYaw);
 		if (ImGui::Button("Beside Character"))
 		{
-			if (const std::shared_ptr<CCharacter> pCharacter =
-				CAnimationTargetService::Resolve_SceneCharacter();
-				nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
-			{
-				XMStoreFloat3(&vPosition,
-					pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
-					XMVectorSet(2.5f, 0.f, 0.f, 0.f));
-				Move_Target(vPosition, fYaw);
-			}
+			vPosition = Resolve_SpawnAnchorPosition();
+			Move_Target(vPosition, fYaw);
 		}
+		ImGui::EndDisabled();
+		if (m_bTargetBorrowed)
+			ImGui::TextDisabled("Live boss: position and clip are Server-driven.");
 	}
 
-	if (nullptr != pModel && 0u < pModel->Get_NumAnimations())
+	if (!m_bTargetBorrowed && nullptr != pModel && 0u < pModel->Get_NumAnimations())
 	{
 		ImGui::SeparatorText("Target Playback");
 		const uint32_t iCurrent = pModel->Get_CurrentAnimIndex();
@@ -3764,6 +4105,7 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 		ImGui::End();
 		return;
 	}
+    Claim_AuthoringInteraction();
 
 	ImGui::SeparatorText("Group (Data/Effects/V2/Groups)");
 	ImGui::SetNextItemWidth(-1.f);
@@ -4015,6 +4357,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
     ImGui::SetNextWindowSize(ImVec2(420.f, 720.f), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Effect Tuning v2", &m_bTuningWindowOpen))
     {
+        Claim_AuthoringInteraction();
         if (const auto preview = m_pPreview.lock())
         {
             EFFECT_V2_DOCUMENT document;
@@ -4022,10 +4365,42 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
             document.Desc = preview->Creation_Desc();
             document.Desc.Params = preview->Params();
             if (ImGui::Button("Restart")) preview->Restart();
+            ImGui::SameLine();
+            bool_t bVisible = !preview->Is_Hidden();
+            if (ImGui::Checkbox("Visible", &bVisible))
+                preview->Set_Hidden(!bVisible);
+            ImGui::SameLine();
+            if (ImGui::Button("Bring To Camera"))
+            {
+                CGameInstance& GameInstance = CGameInstance::Get();
+                const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+                const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+                m_ePivotMode = PIVOT_MODE::WORLD;
+                if (nullptr != pCameraPosition && nullptr != pCameraWorld)
+                {
+                    const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+                    XMStoreFloat4x4(&preview->PivotWorld(), XMMatrixTranslationFromVector(
+                        XMLoadFloat4(pCameraPosition) + Look * 3.f));
+                }
+            }
+            if (CEffectV2Object::SHAPE::PARTICLE == preview->Shape())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("| %u particles", preview->Particle_Count());
+            }
+            else if (CEffectV2Object::SHAPE::TRAIL == preview->Shape())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("| %u points", preview->Trail_PointCount());
+            }
             Render_DraftDetail(document, preview);
             preview->Params() = document.Desc.Params;
         }
-        else ImGui::TextDisabled("No preview. Use Effect Composition Workbench to edit a document without playback.");
+        else
+        {
+            ImGui::TextDisabled("Use Effect Tool V2 to edit the CPU document without playback.");
+            if (m_PreservedNativeDraft && ImGui::Button("Resume preserved native draft")) (void)Restore_NativeDraft();
+        }
     }
     ImGui::End();
 }

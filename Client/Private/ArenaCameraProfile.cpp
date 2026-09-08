@@ -50,7 +50,7 @@ namespace
 		return ReadFloat(&values[0], out.x) && ReadFloat(&values[1], out.y) &&
 			ReadFloat(&values[2], out.z);
 	}
-	
+
 	bool_t Parse(const std::string& text, const ARENA_CAMERA_MAP map,
 		ARENA_CAMERA_PROFILE& out, std::string& status)
 	{

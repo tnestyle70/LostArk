@@ -427,8 +427,9 @@ runtime 적용은 exact Pattern revision이 Server-active가 된 뒤 명시적 `
 Complete Play, Restart, Next를 runtime-ready로 표시하지 않는다. consumer reload 전·후 revision을
 비교하고 성공 receipt도 exact Server revision에 고정한다.
 
-Debug F1의 `Effect Tool`과 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를
-같은 unified Effect 저작 tree로 연다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
+Debug F1의 `Effect Tool V1`과 `Effect Tool V2`는 각각 독립 창·입력 focus·닫기 상태를 갖는다.
+V1의 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를 같은 저작 tree로 연다.
+V2는 기존 leaf/group·target attachment 편집을 소유하며 CPU draft와 저장 경로를 유지한다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
 Valtan pattern을 열면 master가 가리키는 Product cue와 stage-authored reference를 중복 없이 나열하고,
 combat-object/도넛 같은 재사용 asset은 최상위 `INDEPENDENT EFFECT` tree에 한 번만 노출한다. 그 아래에는
 semantic stage와 ordered clip occurrence를 표시한다. Open은 Valtan 모델과 해당 animation을 함께

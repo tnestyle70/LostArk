@@ -61,89 +61,66 @@ def function_body(source: str, signature: str) -> str:
     raise AssertionError(f"unterminated function: {signature}")
 
 
-class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
+class MainAppSplitEffectToolEntryContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.header = read(MAIN_HEADER)
         cls.source = read(MAIN_SOURCE)
 
-    def test_compatibility_enum_routes_to_the_single_effect_entry(self) -> None:
+    def test_effect_versions_have_independent_lazy_entries(self) -> None:
         self.assertIn("EFFECT_V2,", self.header)
-        self.assertIn("Compatibility-only route", self.header)
         ensure = function_body(
             self.source, "HRESULT CMainApp::EnsureDebugTool("
         )
-        alias = "if (DEBUG_TOOL::EFFECT_V2 == eTool)"
-        self.assertIn(alias, ensure)
-        self.assertIn("return EnsureDebugTool(DEBUG_TOOL::EFFECT);", ensure)
-        self.assertLess(ensure.index(alias), ensure.index("switch (eTool)"))
-        self.assertNotIn("case DEBUG_TOOL::EFFECT_V2:", ensure)
+        aliases = ensure[:ensure.index("switch (eTool)")]
+        self.assertNotIn("DEBUG_TOOL::EFFECT_V2 == eTool", aliases)
+        self.assertIn("case DEBUG_TOOL::EFFECT:", ensure)
+        self.assertIn("case DEBUG_TOOL::EFFECT_V2:", ensure)
 
-    def test_single_effect_open_prepares_both_existing_backends(self) -> None:
+    def test_opening_each_version_constructs_only_its_own_effect_backend(self) -> None:
         ensure = function_body(
             self.source, "HRESULT CMainApp::EnsureDebugTool("
         )
-        effect_case = ensure[
-            ensure.index("case DEBUG_TOOL::EFFECT:") :
-            ensure.index("case DEBUG_TOOL::RENDERING:")
-        ]
-        for token in (
-            "make_unique<CEffect_Tool>(",
-            "make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext)",
-            "Open_ValtanAllEffectsWorkspace()",
-        ):
-            self.assertIn(token, effect_case)
-        self.assertLess(
-            effect_case.index("make_unique<CEffect_Tool>("),
-            effect_case.index("make_unique<CEffect_Tool_V2>"),
-        )
-        self.assertLess(
-            effect_case.index("make_unique<CEffect_Tool_V2>"),
-            ensure.index("SetDebugToolVisible(eTool, true)"),
-        )
+        effect_case = ensure.split("case DEBUG_TOOL::EFFECT:", 1)[1].split("case DEBUG_TOOL::", 1)[0]
+        v2_case = ensure.split("case DEBUG_TOOL::EFFECT_V2:", 1)[1].split("case DEBUG_TOOL::", 1)[0]
+        self.assertIn("make_unique<CEffect_Tool>(", effect_case)
+        self.assertIn("m_pEffectTool->Configure_AuthoringWorkspace(", effect_case)
+        self.assertNotIn("m_pEffectToolV2", effect_case)
+        self.assertIn("make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext)", v2_case)
+        self.assertNotIn("make_unique<CEffect_Tool>(", v2_case)
+        self.assertNotIn("m_pEffectTool->", v2_case)
+        self.assertIn("SetDebugToolVisible(eTool, true)", ensure)
 
-    def test_one_visibility_edge_renders_and_deactivates_the_pair(self) -> None:
+    def test_visibility_render_and_close_edges_are_independent(self) -> None:
         render = function_body(self.source, "HRESULT CMainApp::Render()")
-        self.assertIn("IsDebugToolVisible(DEBUG_TOOL::EFFECT)", render)
-        self.assertNotIn("IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2)", render)
-        effect_render = render[
-            render.index("if (IsDebugToolVisible(DEBUG_TOOL::EFFECT))") :
-            render.index("if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))")
-        ]
+        effect_render = function_body(render, "if (IsDebugToolVisible(DEBUG_TOOL::EFFECT)")
+        v2_render = function_body(render, "if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2)")
         self.assertIn("m_pEffectTool->Render();", effect_render)
-        self.assertIn("m_pEffectToolV2->Render();", effect_render)
+        self.assertNotIn("m_pEffectToolV2->Render();", effect_render)
+        self.assertIn("m_pEffectToolV2->Render();", v2_render)
+        self.assertNotIn("m_pEffectTool->Render();", v2_render)
 
         visibility = function_body(
             self.source, "void CMainApp::SetDebugToolVisible("
         )
-        # Other compatibility aliases may share this canonicalizer too. The
-        # retired Effect enum must still resolve to EFFECT, never its own slot.
         for canonicalizer in (visibility, function_body(
             self.source, "bool_t CMainApp::IsDebugToolVisible(")):
-            self.assertRegex(canonicalizer,
-                             r"DEBUG_TOOL::EFFECT_V2\s*==\s*eTool\s*\?\s*DEBUG_TOOL::EFFECT\s*:")
-        self.assertIn("m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_V2)] = false", visibility)
-        self.assertIn("DEBUG_TOOL::EFFECT == eCanonicalTool", visibility)
-        self.assertIn("m_pEffectToolV2->Deactivate();", visibility)
+            self.assertNotIn("DEBUG_TOOL::EFFECT_V2 == eTool", canonicalizer)
+        self.assertNotIn("m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_V2)] = false", visibility)
+        self.assertRegex(visibility, r"DEBUG_TOOL::EFFECT\s*==\s*eCanonicalTool[^;]*m_pEffectTool->Deactivate_AuthoringWorkspace\(\)")
+        self.assertRegex(visibility, r"DEBUG_TOOL::EFFECT_V2\s*==\s*eCanonicalTool[^;]*m_pEffectToolV2->Deactivate\(\)")
+        close_all = function_body(self.source, "void CMainApp::CloseAllDebugTools()")
+        self.assertIn("SetDebugToolVisible(eTool, false)", close_all)
+        self.assertNotIn("DEBUG_TOOL::EFFECT_V2 != eTool", close_all)
 
-    def test_f1_has_one_effect_button_and_one_focus_option(self) -> None:
+    def test_f1_has_separate_versioned_buttons_and_focus_options(self) -> None:
         developer_tools = function_body(
             self.source, "void CMainApp::RenderDeveloperTools()"
         )
-        self.assertEqual(
-            developer_tools.count(
-                'toolCell("Effect Tool", DEBUG_TOOL::EFFECT);'
-            ),
-            1,
-        )
-        self.assertEqual(
-            developer_tools.count(
-                '{ DEBUG_TOOL::EFFECT, "Effect Tool" }'
-            ),
-            1,
-        )
-        self.assertNotIn("DEBUG_TOOL::EFFECT_V2", developer_tools)
-        self.assertNotIn("Effect Tool v2", developer_tools)
+        for tool, label in (("EFFECT", "Effect Tool V1"), ("EFFECT_V2", "Effect Tool V2")):
+            self.assertEqual(1, developer_tools.count(f'toolCell("{label}", DEBUG_TOOL::{tool});'))
+            self.assertEqual(1, developer_tools.count(f'{{ DEBUG_TOOL::{tool}, "{label}" }}'))
+        self.assertNotIn('toolCell("Effect Tool",', developer_tools)
         options = re.search(
             r"std::array<std::pair<DEBUG_TOOL,\s*const char_t\*>,\s*(\d+)>"
             r"\s*TOOL_FOCUS_OPTIONS\s*=\s*\{\{(.*?)\}\};",
@@ -154,19 +131,16 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
         self.assertEqual(int(options.group(1)), len(entries))
         self.assertEqual(len(entries), len({tool for tool, _label in entries}))
         self.assertEqual(len(entries), len({label for _tool, label in entries}))
-        self.assertEqual([("EFFECT", "Effect Tool")], [row for row in entries if row[0] == "EFFECT"])
-        self.assertNotIn("EFFECT_V2", {tool for tool, _label in entries})
+        self.assertEqual([("EFFECT", "Effect Tool V1"), ("EFFECT_V2", "Effect Tool V2")],
+                         [row for row in entries if row[0] in ("EFFECT", "EFFECT_V2")])
 
-    def test_resource_inventory_and_file_open_preserve_one_effect_authoring_owner(self) -> None:
-        # The old source summary panel was removed. Its current consumer is the
-        # Resources/Data file inventory, which carries the same typed owner all
-        # the way from each canonical path to EnsureDebugTool.
+    def test_resource_inventory_preserves_each_effect_authoring_owner(self) -> None:
         refresh = function_body(self.source, "void CMainApp::RefreshDebugResourceFiles()")
         roots = re.findall(
             r'\{\s*"Effect Resource",\s*"(Resources|Data)",\s*(.*?),'
             r'\s*"([^"]+)",\s*DEBUG_TOOL::(\w+)\s*\}', refresh, re.DOTALL)
         self.assertEqual(4, len(roots))
-        self.assertEqual({"EFFECT"}, {row[3] for row in roots})
+        self.assertEqual({"EFFECT", "EFFECT_V2"}, {row[3] for row in roots})
         self.assertEqual({"Resources/Effect", "Data/Effects/Authored",
                           "Data/Effects/Assemblies", "Data/Effects/V2"}, {row[2] for row in roots})
         self.assertIn("CRuntimeAssetRoot::Get_ResourceRoot()", refresh)
@@ -176,10 +150,8 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
         open_file = function_body(self.source, "void CMainApp::OpenDebugResourceFile(")
         self.assertIn("const DEBUG_RESOURCE_FILE& file = m_DebugResourceFiles[iFile]", open_file)
         self.assertIn("EnsureDebugTool(file.eTool)", open_file)
-        for forbidden in ('"Effect V1"', '"Effect V2"', "DEBUG_TOOL::EFFECT_V2"):
-            self.assertNotIn(forbidden, refresh + open_file)
 
-    def test_data_files_use_one_effect_resource_category_and_owner(self) -> None:
+    def test_v2_data_files_route_to_v2_while_v1_roots_keep_v1(self) -> None:
         refresh = function_body(
             self.source, "void CMainApp::RefreshDebugResourceFiles()"
         )
@@ -188,24 +160,19 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
             '"Resources/Effect", DEBUG_TOOL::EFFECT',
             '"Data/Effects/Authored", DEBUG_TOOL::EFFECT',
             '"Data/Effects/Assemblies", DEBUG_TOOL::EFFECT',
-            '"Data/Effects/V2", DEBUG_TOOL::EFFECT',
+            '"Data/Effects/V2", DEBUG_TOOL::EFFECT_V2',
         ):
             self.assertIn(prefix, refresh)
-        self.assertNotIn('"Effect V1"', refresh)
-        self.assertNotIn('"Effect V2"', refresh)
-        self.assertNotIn("DEBUG_TOOL::EFFECT_V2", refresh)
 
-    def test_effect_composition_is_an_independent_lazy_entry_using_the_existing_resource_editor(self) -> None:
+    def test_retired_composition_alias_does_not_collapse_the_v2_entry(self) -> None:
         ensure = function_body(self.source, "HRESULT CMainApp::EnsureDebugTool(")
-        composition = ensure.split("case DEBUG_TOOL::EFFECT_COMPOSITION:", 1)[1].split(
-            "case DEBUG_TOOL::WORLD_OBJECT:", 1)[0]
-        for token in ("if (!m_pEffectToolV2)", "make_unique<CEffect_Tool_V2>",
-                      "if (!m_pEffectCompositionWorkbench)", "*m_pEffectToolV2)",
-                      "m_pEffectCompositionWorkbench->Open()"):
-            self.assertIn(token, composition)
-        for forbidden in ("EnsureAnimationPreviewBackend", "make_unique<CEffect_Tool>",
-                          "Reload_BossValtan", "Open_ValtanAllEffectsWorkspace"):
-            self.assertNotIn(forbidden, composition)
+        self.assertRegex(ensure, r"if \(DEBUG_TOOL::EFFECT_COMPOSITION == eTool\)\s*return EnsureDebugTool\(DEBUG_TOOL::EFFECT\);")
+        self.assertIn("case DEBUG_TOOL::EFFECT_V2:", ensure)
+        self.assertNotIn("m_pEffectCompositionWorkbench", self.header + self.source)
+        developer_tools = function_body(self.source, "void CMainApp::RenderDeveloperTools()")
+        self.assertNotIn('toolCell("Effect Composition Workbench"', developer_tools)
+
+    def test_cpu_v2_pane_reuses_existing_resource_and_detail_editors(self) -> None:
         tool = read(ROOT / "Client/Private/Effect_Tool_V2.cpp")
         constructor = function_body(tool, "Client::CEffect_Tool_V2::CEffect_Tool_V2(")
         for forbidden in ("Scan_Resources", "Request_Preview", "Prewarm", "Add_GameObject"):
@@ -216,41 +183,69 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
                       "document.Desc.TextureAssetIds[i] = slots", "= previousBindings",
                       "m_eType = previousType", "m_eSelectedSlot = previousSlot"):
             self.assertIn(token, picker)
-        workbench = read(ROOT / "Client/Private/EffectCompositionWorkbench.cpp")
-        self.assertIn("m_ResourceEditor.Render_CompositionResources(*document)", workbench)
-        self.assertIn("m_ResourceEditor.Render_DraftDetail(*document)", workbench)
-        inventory = function_body(workbench, "void CEffectCompositionWorkbench::Refresh_Inventory()")
-        self.assertIn("Read_Inventory(staged, status)", inventory)
-        self.assertNotIn("Reload_BossValtan", inventory)
-        developer_tools = function_body(self.source, "void CMainApp::RenderDeveloperTools()")
-        self.assertEqual(1, developer_tools.count(
-            'toolCell("Effect Composition Workbench", DEBUG_TOOL::EFFECT_COMPOSITION);'))
-        self.assertEqual(1, developer_tools.count(
-            '{ DEBUG_TOOL::EFFECT_COMPOSITION, "Effect Composition Workbench" }'))
+        pane = read(ROOT / "Client/Private/EffectAuthoringV2Pane.cpp")
+        self.assertIn("m_Editor.Render_CompositionResources(*document)", pane)
+        self.assertIn("m_Editor.Render_DraftDetail(*document)", pane)
+        pane_open = function_body(pane, "bool CEffectAuthoringV2Pane::Open(")
+        self.assertIn("m_Edit.Load(", pane_open)
+        for forbidden in ("Spawn_Preview", "Prewarm", "Add_GameObject", "Reload_BossValtan"):
+            self.assertNotIn(forbidden, pane_open)
 
-    def test_effect_composition_preview_releases_before_shared_editor_or_level_owner(self) -> None:
-        update = function_body(self.source, "void CMainApp::Update(")
-        self.assertRegex(update, r"m_pEffectCompositionWorkbench->Update\(fTimeDelta,\s*m_bDeveloperToolsVisible\s*&&"
-                         r"\s*IsDebugToolVisible\(DEBUG_TOOL::EFFECT_COMPOSITION\)\s*&&"
-                         r"\s*DEBUG_TOOL::EFFECT_COMPOSITION\s*==\s*m_eDebugInputOwner")
-        render = function_body(self.source, "HRESULT CMainApp::Render()")
-        self.assertIn("IsDebugToolVisible(DEBUG_TOOL::EFFECT_COMPOSITION) && m_pEffectCompositionWorkbench", render)
-        self.assertIn("m_pEffectCompositionWorkbench->Render()", render)
-        visibility = function_body(self.source, "void CMainApp::SetDebugToolVisible(")
-        self.assertRegex(visibility, r"DEBUG_TOOL::EFFECT_COMPOSITION\s*==\s*eCanonicalTool"
-                         r"[^;]*m_pEffectCompositionWorkbench->Deactivate\(\)")
+    def test_both_effect_previews_release_before_level_transition_and_shutdown(self) -> None:
         transition = function_body(self.source, "void CMainApp::Apply_LevelRequest()")
-        self.assertLess(transition.index("m_pEffectCompositionWorkbench->Deactivate()"), transition.index("Start_Level("))
+        self.assertLess(transition.index("m_pEffectTool->Deactivate_AuthoringWorkspace()"), transition.index("Start_Level("))
+        self.assertLess(transition.index("m_pEffectToolV2->Deactivate()"), transition.index("Start_Level("))
         shutdown = function_body(self.source, "void CMainApp::Free()")
-        self.assertLess(shutdown.index("m_pEffectCompositionWorkbench->Deactivate()"), shutdown.index("m_pKoukuPresentationPlayer.reset()"))
-        self.assertLess(shutdown.index("m_pEffectCompositionWorkbench.reset()"), shutdown.index("m_pEffectToolV2.reset()"))
-        workbench = read(ROOT / "Client/Private/EffectCompositionWorkbench.cpp")
-        stop = function_body(workbench, "void CEffectCompositionWorkbench::Stop()")
-        self.assertIn("CEffectV2Runtime::Stop_Group(m_Handle)", stop)
-        self.assertIn("m_Model.Stop()", stop)
-        self.assertIn("m_PlaySnapshot.reset()", stop)
-        self.assertNotIn("m_Edit =", stop)
-        self.assertNotIn("m_Edit.Clear", stop)
+        self.assertLess(shutdown.index("m_pEffectTool->Deactivate_AuthoringWorkspace()"), shutdown.index("m_pKoukuPresentationPlayer.reset()"))
+        self.assertLess(shutdown.index("m_pEffectToolV2->Deactivate()"), shutdown.index("m_pKoukuPresentationPlayer.reset()"))
+
+    def test_v2_keeps_cpu_and_native_drafts_across_its_own_visibility_edge(self) -> None:
+        source = read(ROOT / "Client/Private/Effect_Tool_V2.cpp")
+        header = read(ROOT / "Client/Public/Effect_Tool_V2.h")
+        deactivate = function_body(source, "void Client::CEffect_Tool_V2::Deactivate()")
+        self.assertIn("m_pAuthoringSequencer->Stop()", deactivate)
+        self.assertLess(deactivate.index("Capture_PreviewDocument(nativeDraft)"),
+                        deactivate.index("pPreview->Finish()"))
+        self.assertLess(deactivate.index("m_PreservedNativeDraft = std::move(nativeDraft)"),
+                        deactivate.index("m_pPreview.reset()"))
+        for forbidden in ("m_pAuthoringPane.reset", "m_PreservedNativeDraft.reset", "m_Group ="):
+            self.assertNotIn(forbidden, deactivate)
+        capture = function_body(source, "bool Client::CEffect_Tool_V2::Capture_PreviewDocument(")
+        for token in ("preview->Params()", "preview->PivotWorld()", "preview->Part_Visible(part)",
+                      "preview->Part_BaseAssetId(part)", "document.strAnimationClip"):
+            self.assertIn(token, capture)
+        restore = function_body(source, "bool Client::CEffect_Tool_V2::Restore_NativeDraft()")
+        self.assertIn("if (!Spawn_Preview(draft.Desc, draft.Parts, draft.strAnimationClip))", restore)
+        self.assertLess(restore.index("m_eType = draft.eType"), restore.index("Spawn_Preview("))
+        failed_restore = function_body(restore, "if (!Spawn_Preview(")
+        self.assertIn("m_eType = previousType", failed_restore)
+        self.assertIn("return false;", failed_restore)
+        self.assertNotIn("m_PreservedNativeDraft.reset()", failed_restore)
+        self.assertLess(restore.index("Spawn_Preview("), restore.index("m_PreservedNativeDraft.reset()"))
+        self.assertIn("void Activate() { m_bNativeRestorePending = true; }", header)
+        ensure = function_body(self.source, "HRESULT CMainApp::EnsureDebugTool(")
+        v2_case = ensure.split("case DEBUG_TOOL::EFFECT_V2:", 1)[1].split("case DEBUG_TOOL::", 1)[0]
+        self.assertIn("m_pEffectToolV2->Activate()", v2_case)
+        render = function_body(source, "void Client::CEffect_Tool_V2::Render()")
+        self.assertIn("Restore_NativeDraft()", render)
+
+    def test_v2_renders_its_cpu_editor_sequencer_and_native_controls(self) -> None:
+        source = read(ROOT / "Client/Private/Effect_Tool_V2.cpp")
+        configure = function_body(source, "void Client::CEffect_Tool_V2::Configure_AuthoringWorkspace(")
+        self.assertIn("make_unique<CEffectAuthoringV2Pane>(*this)", configure)
+        self.assertIn('"effect.sequence.v2.default"', configure)
+        self.assertIn("Set_V2SnapshotProvider(", configure)
+        self.assertIn("m_pAuthoringPane->Snapshot(selected, snapshot, error)", configure)
+        workspace = function_body(source, "void Client::CEffect_Tool_V2::Render_AuthoringWorkspace()")
+        for token in ('"Effect Tool V2###EffectToolV2"', "m_pAuthoringPane->Render_ToolContents()",
+                      "m_pAuthoringPane->Render_DetailContents()", "m_pAuthoringPane->Render_ResourceContents()",
+                      "m_pAuthoringSequencer->Render_ModelView()",
+                      'Render_Sequencer("Sequencer V2###EffectAuthoringV2")'):
+            self.assertIn(token, workspace)
+        render = function_body(source, "void Client::CEffect_Tool_V2::Render()")
+        for token in ("Render_AuthoringWorkspace()", '"Effect Resource Library"',
+                      "Render_TuningPanel()", "Render_AttachWindow()", "Render_GroupWindow()"):
+            self.assertIn(token, render)
 
     def test_effect_composition_save_validates_cpu_drafts_without_gpu_or_animation_admission(self) -> None:
         session = read(ROOT / "Client/Private/EffectEditingSession.cpp")
@@ -272,8 +267,10 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
         legacy = read(ROOT / "Client/Private/Effect_Tool_V2.cpp")
         legacy_save = function_body(legacy, "bool_t Client::CEffect_Tool_V2::Save_Document()")
         legacy_write = legacy_save.index("CEffectV2Document::Write_AtomicFile(")
-        self.assertIn("Document.strDisplayName = m_strLoadedDocumentDisplayName", legacy_save)
-        for token in ("CEffectV2Document::Parse_Document(strBytes, Validated, strError)",
+        capture = function_body(legacy, "bool Client::CEffect_Tool_V2::Capture_PreviewDocument(")
+        self.assertIn("document.strDisplayName = m_strLoadedDocumentDisplayName", capture)
+        for token in ("Capture_PreviewDocument(Document)",
+                      "CEffectV2Document::Parse_Document(strBytes, Validated, strError)",
                       "Read_DocumentSource(Path, strCurrentBytes, bExists, strError)"):
             self.assertLess(legacy_save.index(token), legacy_write)
         loaded = function_body(legacy_save, "if (strEffectId == m_strLoadedDocumentId)")
@@ -302,13 +299,17 @@ class MainAppUnifiedEffectToolEntryContractTests(unittest.TestCase):
         self.assertIn("strOutBytes.assign(std::istreambuf_iterator<char>(Input)", reader)
         self.assertIn("return false;", function_body(reader, "if (Input.bad())"))
 
-    def test_mainapp_has_no_user_facing_versioned_effect_label(self) -> None:
-        versioned_labels = re.findall(
-            r'"[^"\n]*(?:Effect V1|Effect V2|Effect Tool v2)[^"\n]*"',
-            self.source,
-            flags=re.IGNORECASE,
-        )
-        self.assertEqual(versioned_labels, [])
+    def test_v1_workspace_does_not_own_or_switch_to_a_v2_editor(self) -> None:
+        v1_header = read(ROOT / "Client/Public/Effect_Tool.h")
+        v1_source = read(ROOT / "Client/Private/Effect_Tool.cpp")
+        workspace = read(ROOT / "Client/Private/Effect_Tool_Workspace.cpp")
+        for forbidden in ("m_pAuthoringV2", "m_pLegacyV2", "m_bLegacyV2Window",
+                          "m_bAuthoringV2Selected", "Render_AuthoringOwnerSelector"):
+            self.assertNotIn(forbidden, v1_header + v1_source + workspace)
+        configure = function_body(workspace, "void CEffect_Tool::Configure_AuthoringWorkspace(")
+        self.assertNotIn("CEffect_Tool_V2", configure)
+        self.assertIn("Set_V1Callbacks(", configure)
+        self.assertIn("Set_V1AnchorProvider(", configure)
 
 
 if __name__ == "__main__":

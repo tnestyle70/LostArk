@@ -1149,12 +1149,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			sourceRevision, patternId, occurrenceId, anchor); });
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
+        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
 #endif
 	}
 	else if (m_pKoukuPresentationPlayer)
 	{
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
+        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
 #endif
 		m_pKoukuPresentationPlayer->Reset();
 		m_pKoukuPresentationPlayer.reset();
@@ -1238,7 +1240,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				ExpectedValtanSourceRevision);
 		}
 	}
-	if (nullptr != m_pEffectTool)
+	if (m_pEffectTool || m_pEffectToolV2)
 	{
         shared_ptr<CCamera_Free> effectCamera;
         const LEVEL effectLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
@@ -1248,19 +1250,30 @@ void CMainApp::Update(const f32_t fTimeDelta)
         { if (auto* arena = CLevel_ValtanArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
         else if (effectLevel == LEVEL::KAKULSAYDON_ARENA)
         { if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
-        m_pEffectTool->Set_AuthoringCamera(effectCamera);
-		m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
-            IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
-        m_pEffectTool->Update(fTimeDelta);
-		EFFECT_RESOURCE_KEY ResourceKey;
-		if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
-		{
-			const bool_t bOpened = m_pEffectTool->Open_AuthoringResource(ResourceKey);
-			m_strToolStatus = bOpened ?
-				"Opened the selected resource in its typed Effect owner." :
-				"The typed Effect owner preserved its current draft; inspect the owner status.";
-		}
-	}
+        if (m_pEffectToolV2)
+        {
+            m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
+            m_pEffectToolV2->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+                IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2);
+        }
+        if (m_pEffectTool)
+        {
+            m_pEffectTool->Set_AuthoringCamera(effectCamera);
+            m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+                IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
+            m_pEffectTool->Update(fTimeDelta);
+            EFFECT_RESOURCE_KEY ResourceKey;
+            if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
+            {
+                const bool_t bOpened = ResourceKey.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ?
+                    m_pEffectTool->Open_AuthoringResource(ResourceKey) :
+                    SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT_V2)) && m_pEffectToolV2->Open_Resource(ResourceKey);
+                m_strToolStatus = bOpened ?
+                    "Opened the selected resource in its typed Effect owner." :
+                    "The typed Effect owner preserved its current draft; inspect the owner status.";
+            }
+        }
+    }
 	if (nullptr != m_pValtanBossTool)
 	{
 		m_pValtanBossTool->Update(
@@ -2031,6 +2044,13 @@ HRESULT CMainApp::Render()
                 if (m_pEffectTool && m_pEffectTool->Consume_AuthoringInteraction())
                     m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
 			}
+            if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_pEffectToolV2)
+            {
+                focusNextWindow(DEBUG_TOOL::EFFECT_V2);
+                m_pEffectToolV2->Render();
+                if (m_pEffectToolV2->Consume_AuthoringInteraction())
+                    m_eDebugInputOwner = DEBUG_TOOL::EFFECT_V2;
+            }
 			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
 			{
 				focusNextWindow(DEBUG_TOOL::RENDERING);
@@ -6057,6 +6077,7 @@ HRESULT CMainApp::Start_Level(
 			E_FAIL);
 		return E_FAIL;
 	}
+	CPresentation_Manager::Get().Clear_Frame();
 	const HRESULT hChange = CGameInstance::Get().Change_Level(
 		ETOUI(LEVEL::LOADING),
 		move(loading));
@@ -6091,6 +6112,7 @@ void CMainApp::Apply_LevelRequest()
 		return;
 #ifdef _DEBUG
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
+    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
 	m_pWorldObjectCatalogSource = nullptr;
 #endif
@@ -6170,6 +6192,8 @@ void CMainApp::Apply_LevelRequest()
 	if (profileActivated && nullptr != m_pEffectToolV2)
 		m_pEffectToolV2->On_LevelChanged();
 #endif
+	if (profileActivated)
+		CPresentation_Manager::Get().Clear_Frame();
 	const bool_t levelChanged = profileActivated &&
 		SUCCEEDED(CGameInstance::Get().Change_Level(
 			ETOUI(request.eTargetLevel), move(nextLevel)));
@@ -6308,7 +6332,7 @@ HRESULT CMainApp::ReadyDebugTools()
 
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
-	const DEBUG_TOOL eCanonicalTool = (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool) ?
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_COMPOSITION == eTool ?
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
@@ -6322,7 +6346,7 @@ void CMainApp::SetDebugToolVisible(
 	const DEBUG_TOOL eTool,
 	const bool_t bVisible)
 {
-	const DEBUG_TOOL eCanonicalTool = (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool) ?
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_COMPOSITION == eTool ?
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
@@ -6342,19 +6366,13 @@ void CMainApp::SetDebugToolVisible(
 	}
 	if (DEBUG_TOOL::EFFECT == eCanonicalTool)
 	{
-		/* The retired compatibility slot never owns independent visibility. */
-		m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_V2)] = false;
         m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_COMPOSITION)] = false;
 	}
 	if (!bVisible)
 	{
-		if (m_eDebugInputOwner == eCanonicalTool ||
-			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			 DEBUG_TOOL::EFFECT_V2 == m_eDebugInputOwner))
+		if (m_eDebugInputOwner == eCanonicalTool)
 			m_eDebugInputOwner = DEBUG_TOOL::NONE;
-		if (m_eDebugWindowFocusPending == eCanonicalTool ||
-			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			 DEBUG_TOOL::EFFECT_V2 == m_eDebugWindowFocusPending))
+		if (m_eDebugWindowFocusPending == eCanonicalTool)
 			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
 		if (DEBUG_TOOL::MAP == eCanonicalTool && nullptr != m_pMapTool)
 			m_pMapTool->SetOpen(false);
@@ -6362,15 +6380,10 @@ void CMainApp::SetDebugToolVisible(
 			m_pWorldObjectTool->Deactivate();
 		else if (DEBUG_TOOL::CAMERA == eCanonicalTool && nullptr != m_pCameraTool)
 			m_pCameraTool->Deactivate();
-		else if (DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			nullptr != m_pEffectToolV2)
-		{
-			/* Both codecs stop rendering on this shared visibility edge. The
-			   typed backend additionally owns standalone preview actors, so it
-			   explicitly releases them while preserving its authored draft. */
-			m_pEffectToolV2->Deactivate();
-            if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
-		}
+        else if (DEBUG_TOOL::EFFECT == eCanonicalTool && m_pEffectTool)
+            m_pEffectTool->Deactivate_AuthoringWorkspace();
+        else if (DEBUG_TOOL::EFFECT_V2 == eCanonicalTool && m_pEffectToolV2)
+            m_pEffectToolV2->Deactivate();
 	}
 }
 
@@ -6380,8 +6393,7 @@ void CMainApp::CloseAllDebugTools()
 		iTool < static_cast<size_t>(DEBUG_TOOL::COUNT); ++iTool)
 	{
 		const DEBUG_TOOL eTool = static_cast<DEBUG_TOOL>(iTool);
-		if (DEBUG_TOOL::EFFECT_V2 != eTool)
-			SetDebugToolVisible(eTool, false);
+		SetDebugToolVisible(eTool, false);
 	}
 	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
 }
@@ -6408,7 +6420,7 @@ HRESULT CMainApp::EnsureAnimationPreviewBackend()
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
 	/* Keep the old enum value as an internal compatibility route only. */
-	if (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
+	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
 	if (DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool)
@@ -6461,13 +6473,18 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 					ExpectedValtanSourceRevision);
 			}
 		}
-		if (nullptr == m_pEffectToolV2)
-			m_pEffectToolV2 =
-				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
-        m_pEffectTool->Configure_AuthoringWorkspace(*m_pEffectToolV2, m_pKoukuPresentationPlayer.get());
+        m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
 
 		break;
 	}
+    case DEBUG_TOOL::EFFECT_V2:
+        if (!m_pCharacterPreviewPanel)
+            m_pCharacterPreviewPanel = make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+        if (!m_pEffectToolV2)
+            m_pEffectToolV2 = make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
+        m_pEffectToolV2->Configure_AuthoringWorkspace(m_pCharacterPreviewPanel, m_pKoukuPresentationPlayer.get());
+        m_pEffectToolV2->Activate();
+        break;
 	case DEBUG_TOOL::RENDERING:
 		if (nullptr == m_RenderingProfiles.Get_ActiveProfile()) return E_FAIL;
 		m_bLightResourcesWindowVisible = true;
@@ -7118,7 +7135,7 @@ void CMainApp::RefreshDebugResourceFiles()
 		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"Assemblies",
 			"Data/Effects/Assemblies", DEBUG_TOOL::EFFECT },
 		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"V2",
-			"Data/Effects/V2", DEBUG_TOOL::EFFECT },
+			"Data/Effects/V2", DEBUG_TOOL::EFFECT_V2 },
 		{ "Sound", "Resources", resourceRoot / L"Sound",
 			"Resources/Sound", DEBUG_TOOL::ANIMATION },
 		{ "Sound", "Data", dataRoot / L"Sound",
@@ -8808,7 +8825,8 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
-		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
@@ -8820,13 +8838,14 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 13>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 14>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "World Object Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
-			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
+			{ DEBUG_TOOL::EFFECT, "Effect Tool V1" },
+            { DEBUG_TOOL::EFFECT_V2, "Effect Tool V2" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
 			{ DEBUG_TOOL::PROFILER, "Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
@@ -9586,11 +9605,13 @@ void CMainApp::Free()
 {
 #ifdef _DEBUG
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
+    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG
     if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
+    if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
 #endif
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();

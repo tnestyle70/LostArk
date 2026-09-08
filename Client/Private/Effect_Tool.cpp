@@ -3,7 +3,6 @@
 #include "Effect_Tool.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
-#include "EffectAuthoringV2Pane.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
@@ -3832,7 +3831,7 @@ void Client::CEffect_Tool::Render()
         Engine::CProfilerScope WindowProfile(
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.AllEffectsWindow");
-        if (!m_bAuthoringV2Selected) Render_AllEffectsWindow();
+        Render_AllEffectsWindow();
     }
     {
         Engine::CProfilerScope WindowProfile(
@@ -3853,19 +3852,10 @@ void Client::CEffect_Tool::Render_EffectToolWindow()
 {
     ImGui::SetNextWindowPos(ImVec2(10.f, 35.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(620.f, 760.f), ImGuiCond_FirstUseEver);
-    const bool_t bWindowVisible = ImGui::Begin("Effect Tool");
+    const bool_t bWindowVisible = ImGui::Begin("Effect Tool V1###EffectToolV1");
     Render_PendingDocumentLoadModal();
     if (!bWindowVisible)
     {
-        ImGui::End();
-        return;
-    }
-    Render_AuthoringOwnerSelector();
-    if (m_bAuthoringV2Selected && m_pAuthoringV2)
-    {
-        Render_AuthoringCommands();
-        m_pAuthoringV2->Render_ToolContents();
-        m_pAuthoringV2->Render_ResourceContents();
         ImGui::End();
         return;
     }
@@ -6334,12 +6324,6 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     ImGui::SetNextWindowSize(ImVec2(430.f, 660.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Effect Detail"))
     {
-        ImGui::End();
-        return;
-    }
-    if (m_bAuthoringV2Selected && m_pAuthoringV2)
-    {
-        m_pAuthoringV2->Render_DetailContents();
         ImGui::End();
         return;
     }
@@ -11854,7 +11838,6 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     Reset_SynchronizedAnimationSequence();
     m_bPreviewPlaying = false;
     m_bPreviewVisibleRequested = false;
-    m_bAuthoringV2Selected = false;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_fPreviewTimeSeconds = 0.f;
     m_fPreviewDurationSeconds = durationSeconds;
@@ -22379,7 +22362,6 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
 	m_strSelectedDataFileElementId.clear();
     Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(), strAssetId);
     Copy_Buffer(m_NewDisplayName.data(), m_NewDisplayName.size(), m_ActiveDocument->strDisplayName);
-    m_bAuthoringV2Selected = false;
     if (m_pAuthoringResources)
     {
         m_strAuthoringParentId = m_pAuthoringResources->Selected_ParentId();
@@ -23018,7 +23000,6 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
-    m_bAuthoringV2Selected = false;
 	m_ActiveRegistryBoundAuditionProvenance =
 		std::move(StagedAuditionProvenance);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);

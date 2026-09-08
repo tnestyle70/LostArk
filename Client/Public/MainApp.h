@@ -63,8 +63,7 @@ private:
 		KOUKU_SAYDON_ACTION_WORKBENCH,
 		ANIMATION,
 		EFFECT,
-		/* Compatibility-only route. MainApp canonicalizes it to EFFECT so old
-		   callers cannot reopen a second user-facing tool entry. */
+		/* Independent V2 document and preview windows. */
 		EFFECT_V2,
 		RENDERING,
 		UI,

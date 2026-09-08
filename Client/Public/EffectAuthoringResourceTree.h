@@ -25,6 +25,7 @@ public:
         std::string strSourceAssetId;
     };
 
+    explicit CEffectAuthoringResourceTree(EFFECT_RESOURCE_OWNER_KIND owner = EFFECT_RESOURCE_OWNER_KIND::END);
     void Render();
     void Set_V1CopySource(const std::string& strAssetId, const std::string& strDisplayName);
     bool Take_Command(COMMAND& OutCommand);
@@ -73,6 +74,7 @@ private:
     void Render_Resources(const std::string& strParentId);
     const REFERENCE* Find_Reference(EFFECT_RESOURCE_OWNER_KIND eKind, const std::string& strId) const;
 
+    EFFECT_RESOURCE_OWNER_KIND m_eOwnerFilter = EFFECT_RESOURCE_OWNER_KIND::END;
     DOCUMENT m_Document;
     std::vector<RESOURCE> m_V1Resources, m_V2Resources;
     std::deque<COMMAND> m_Commands;

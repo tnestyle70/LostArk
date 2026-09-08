@@ -42,6 +42,9 @@
     "boss.kouku.find.core",
     "boss.kouku.ball.smoke",
     "boss.kouku.medusa.blue",
-    "boss.kouku.medusa.red"
+    "boss.kouku.medusa.red",
+    "boss.kouku.medusa.laser",
+    "boss.kouku.appear",
+    "boss.kouku.joker.hammer"
   ]
 }

@@ -28,6 +28,8 @@ namespace Client
 {
 namespace
 {
+// V1 and V2 retain independent documents, but only one may sample the shared model.
+CEffectAuthoringSequencer* g_ModelClockOwner = nullptr;
 constexpr std::uint32_t MAX_MS = 600000u;
 constexpr std::size_t MAX_EFFECTS = 256u;
 const char* Label(const std::string& name, const std::string& id) { return name.empty() ? id.c_str() : name.c_str(); }
@@ -92,9 +94,10 @@ const char* Owner_Key(const EFFECT_RESOURCE_OWNER_KIND kind)
 }
 
 CEffectAuthoringSequencer::CEffectAuthoringSequencer(ComPtr<ID3D11Device> device,
-    ComPtr<ID3D11DeviceContext> context, std::shared_ptr<CCharacterPreviewPanel> panel)
+    ComPtr<ID3D11DeviceContext> context, std::shared_ptr<CCharacterPreviewPanel> panel, const char* sequenceId)
     : m_Device(std::move(device)), m_Context(std::move(context)), m_Panel(std::move(panel))
 {
+    std::snprintf(m_SequenceId, sizeof(m_SequenceId), "%s", sequenceId);
     XMStoreFloat4x4(&m_WorldRoot, XMMatrixIdentity());
     if (const auto* world = CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW))
     { const auto matrix = XMLoadFloat4x4(world); XMStoreFloat4x4(&m_WorldRoot, XMMatrixTranslationFromVector(matrix.r[3] + XMVector3Normalize(matrix.r[2]) * 5.f)); }
@@ -279,6 +282,8 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
 }
 bool CEffectAuthoringSequencer::Begin_Model()
 {
+    if (g_ModelClockOwner && g_ModelClockOwner != this) g_ModelClockOwner->Stop();
+    g_ModelClockOwner = this;
     if (m_UseKouku)
     {
         if (m_Kouku.Is_Active()) return Sample_Model(ClockMs());
@@ -723,6 +728,7 @@ void CEffectAuthoringSequencer::Pause(const bool paused)
 }
 void CEffectAuthoringSequencer::Stop()
 {
+    if (g_ModelClockOwner == this) g_ModelClockOwner = nullptr;
     Release_Camera(); m_TransientCameraRows.clear();
     for (auto& row : m_Effects) Release_Row(row);
     if (m_Transient) { Release_Row(*m_Transient); m_Transient.reset(); }
@@ -935,10 +941,10 @@ void CEffectAuthoringSequencer::Render_ModelView()
     ImGui::PopID();
 }
 
-void CEffectAuthoringSequencer::Render_Sequencer()
+void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
 {
     ImGui::SetNextWindowSize({1080.f, 430.f}, ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Sequencer##EffectAuthoring")) { ImGui::End(); return; }
+    if (!ImGui::Begin(title)) { ImGui::End(); return; }
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) ||
         (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))) m_Interaction = true;
     if (ImGui::Button("Play")) { if (m_ClockMs >= DurationMs()) m_ClockMs = 0; Play(); }
