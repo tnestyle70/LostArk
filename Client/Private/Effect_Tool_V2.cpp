@@ -4,6 +4,8 @@
 #include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
+#include "Level_KakulSaydonArena.h"
+#include "Level_ValtanArena.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Character.h"
@@ -1483,6 +1485,16 @@ namespace
 		KAKUL_PREVIEW_TARGET{ "MN_RPCT_06", "Large Saydon, own rig, 34 clips", "MN_RPCT_06" },
 	};
 
+	constexpr const char* ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KAKULSAYDON_";
+	constexpr std::array<const char*, 6u> ARENA_BOSS_ARCHETYPES = {
+		"BOSS_KAKULSAYDON_G1_SAYDON",
+		"BOSS_KAKULSAYDON_G1_KOUKU",
+		"BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+		"BOSS_KAKULSAYDON_G2_KOUKU",
+		"BOSS_KAKULSAYDON_G3_SAYDON",
+		"BOSS_KAKULSAYDON_BINGO_SAYDON",
+	};
+
 	const KAKUL_PREVIEW_TARGET* Find_KakulPreviewTarget(const std::string_view strAssetName)
 	{
 		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
@@ -1595,21 +1607,51 @@ bool_t Client::CEffect_Tool_V2::Collect_BoneNames(
 	return !OutNames.empty();
 }
 
+namespace
+{
+	std::shared_ptr<Client::CCharacter> Resolve_SpawnAnchorCharacter()
+	{
+		if (const auto pCharacter = Client::CAnimationTargetService::Resolve_SceneCharacter())
+			return pCharacter;
+		if (const auto* pArena = Client::CLevel_KakulSaydonArena::Get_Active())
+			return pArena->Get_LocalCharacter();
+		if (const auto* pArena = Client::CLevel_ValtanArena::Get_Active())
+			return pArena->Get_LocalCharacter();
+		return nullptr;
+	}
+
+	float3_t Resolve_SpawnAnchorPosition()
+	{
+		float3_t vPosition{ 0.f, 0.f, 0.f };
+		if (const auto pCharacter = Resolve_SpawnAnchorCharacter();
+			nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+		{
+			XMStoreFloat3(&vPosition,
+				pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
+				XMVectorSet(2.5f, 0.f, 0.f, 0.f));
+			return vPosition;
+		}
+		CGameInstance& GameInstance = CGameInstance::Get();
+		const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+		const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+		if (nullptr != pCameraPosition && nullptr != pCameraWorld)
+		{
+			const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+			XMStoreFloat3(&vPosition, XMLoadFloat4(pCameraPosition) + Look * 5.f);
+		}
+		return vPosition;
+	}
+}
+
 bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 {
 	Despawn_Target();
-	float3_t vPosition{ 0.f, 0.f, 0.f };
-	if (const std::shared_ptr<CCharacter> pCharacter =
-		CAnimationTargetService::Resolve_SceneCharacter();
-		nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
-	{
-		XMStoreFloat3(&vPosition,
-			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
-			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
-	}
+	float3_t vPosition = Resolve_SpawnAnchorPosition();
 	bool_t bSpawned = false;
 	if (VALTAN_TARGET_ARCHETYPE_ID == strArchetypeId)
 		bSpawned = Spawn_ValtanTarget(vPosition);
+	else if (0u == strArchetypeId.rfind(ARENA_BOSS_ARCHETYPE_PREFIX, 0u))
+		bSpawned = Attach_ArenaBossTarget(strArchetypeId, vPosition);
 	else if (const KAKUL_PREVIEW_TARGET* pKakul = Find_KakulPreviewTarget(strArchetypeId))
 		bSpawned = Spawn_PreviewBodyTarget(pKakul->pAssetName, pKakul->pBindingArchetypeId, vPosition);
 	else
@@ -1636,10 +1678,52 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
 	}
 	Load_Bindings(m_strTargetArchetypeId);
-	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character." +
+	m_strAttachStatus = (m_bTargetBorrowed ?
+		"Attached to the live arena boss " + strArchetypeId + "." :
+		"Target " + strArchetypeId + " spawned beside the scene character.") +
 		(m_strTargetArchetypeId != strArchetypeId ?
 			" Bindings owner: " + m_strTargetArchetypeId + "." : std::string());
 	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Attach_ArenaBossTarget(
+	const std::string& strArchetypeId,
+	float3_t& OutPosition)
+{
+#ifdef _DEBUG
+	const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	const std::shared_ptr<CNpc> pNpc =
+		nullptr == pArena ? nullptr : pArena->Debug_FindArenaBossNpc(strArchetypeId);
+	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+	{
+		m_strAttachStatus = nullptr == pArena ?
+			"Live arena bosses are only available inside the KoukuSaydon Arena." :
+			"Live arena boss is not spawned: " + strArchetypeId +
+			". Raise its gate in F1 KoukuSaydon Arena first.";
+		return false;
+	}
+	m_Target = EFFECT_V2_TARGET::From_Npc(pNpc);
+	m_bTargetBorrowed = true;
+	m_TargetBoneNames.clear();
+	if (const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(strArchetypeId))
+	{
+		std::vector<std::string> BoneNames;
+		Collect_BoneNames(pBoss->bodyModel, BoneNames);
+		for (const std::string& strBone : BoneNames)
+		{
+			if (pNpc->Get_Model()->Has_Bone(strBone.c_str()))
+				m_TargetBoneNames.push_back(strBone);
+		}
+	}
+	if (const std::shared_ptr<Engine::CTransform> pTransform = pNpc->Get_Transform())
+		XMStoreFloat3(&OutPosition, pTransform->Get_State(STATE::POSITION));
+	return true;
+#else
+	UNREFERENCED_PARAMETER(strArchetypeId);
+	UNREFERENCED_PARAMETER(OutPosition);
+	m_strAttachStatus = "Live arena boss attach is a Debug tool feature.";
+	return false;
+#endif
 }
 
 bool_t Client::CEffect_Tool_V2::Spawn_NpcTarget(
@@ -1868,9 +1952,13 @@ void Client::CEffect_Tool_V2::Despawn_Target()
 	if (const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock())
 	{
 		CEffectV2Runtime::Set_Ignored(m_Target, false);
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pOwner);
+		if (!m_bTargetBorrowed)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pOwner);
+		}
 	}
+	m_bTargetBorrowed = false;
 	m_Target.Reset();
 	m_TargetBoneNames.clear();
 }
@@ -1880,6 +1968,11 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
 	if (nullptr == pOwner)
 		return;
+	if (m_bTargetBorrowed)
+	{
+		m_strAttachStatus = "Live arena bosses are moved by the Server, not by this tool.";
+		return;
+	}
 	if (EFFECT_V2_TARGET_KIND::NPC == m_Target.eKind)
 	{
 		if (!std::static_pointer_cast<CNpc>(pOwner)->Apply_NetworkState(vPosition, fYawDegrees))
@@ -3172,6 +3265,28 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			m_strSelectedArchetypeId = VALTAN_TARGET_ARCHETYPE_ID;
 		}
 		ImGui::Separator();
+#ifdef _DEBUG
+		if (const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active())
+		{
+			ImGui::TextDisabled("Live arena bosses (Server-spawned, real body/scale)");
+			for (const char* pArchetypeId : ARENA_BOSS_ARCHETYPES)
+			{
+				const BOSS_ACTOR_ENTRY* pBoss = CActorCatalog::Find_Boss(pArchetypeId);
+				if (nullptr == pBoss)
+					continue;
+				const bool_t bLive = nullptr != pArena->Debug_FindArenaBossNpc(pArchetypeId);
+				const std::string strLabel = std::string(pArchetypeId) + "  (" +
+					std::filesystem::path(pBoss->bodyModel).stem().string() +
+					(bLive ? ", live)" : ", not spawned)");
+				ImGui::BeginDisabled(!bLive);
+				if (ImGui::Selectable(strLabel.c_str(), pArchetypeId == m_strSelectedArchetypeId))
+					m_strSelectedArchetypeId = pArchetypeId;
+				ImGui::EndDisabled();
+			}
+			ImGui::Separator();
+		}
+#endif
+		ImGui::TextDisabled("Preview bodies (tool-spawned, admission scale)");
 		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
 		{
 			const std::string strLabel = std::string(Entry.pAssetName) + "  (" + Entry.pLabel + ")";
@@ -3216,22 +3331,19 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			ImGui::SetTooltip("Let CEffectV2Runtime apply the saved bindings to this tool target (in-game behaviour check). Hide the preview to avoid doubles.");
 		float3_t vPosition = m_vTargetPosition;
 		f32_t fYaw = m_fTargetYawDegrees;
+		ImGui::BeginDisabled(m_bTargetBorrowed);
 		if (ImGui::DragFloat3("Target Position", &vPosition.x, 0.05f))
 			Move_Target(vPosition, fYaw);
 		if (ImGui::DragFloat("Target Yaw (deg)", &fYaw, 1.f, -360.f, 360.f))
 			Move_Target(vPosition, fYaw);
 		if (ImGui::Button("Beside Character"))
 		{
-			if (const std::shared_ptr<CCharacter> pCharacter =
-				CAnimationTargetService::Resolve_SceneCharacter();
-				nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
-			{
-				XMStoreFloat3(&vPosition,
-					pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
-					XMVectorSet(2.5f, 0.f, 0.f, 0.f));
-				Move_Target(vPosition, fYaw);
-			}
+			vPosition = Resolve_SpawnAnchorPosition();
+			Move_Target(vPosition, fYaw);
 		}
+		ImGui::EndDisabled();
+		if (m_bTargetBorrowed)
+			ImGui::TextDisabled("Live boss: position and clip are Server-driven.");
 	}
 
 	if (nullptr != pModel && 0u < pModel->Get_NumAnimations())
@@ -4031,6 +4143,34 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
             document.Desc = preview->Creation_Desc();
             document.Desc.Params = preview->Params();
             if (ImGui::Button("Restart")) preview->Restart();
+            ImGui::SameLine();
+            bool_t bVisible = !preview->Is_Hidden();
+            if (ImGui::Checkbox("Visible", &bVisible))
+                preview->Set_Hidden(!bVisible);
+            ImGui::SameLine();
+            if (ImGui::Button("Bring To Camera"))
+            {
+                CGameInstance& GameInstance = CGameInstance::Get();
+                const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+                const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+                m_ePivotMode = PIVOT_MODE::WORLD;
+                if (nullptr != pCameraPosition && nullptr != pCameraWorld)
+                {
+                    const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+                    XMStoreFloat4x4(&preview->PivotWorld(), XMMatrixTranslationFromVector(
+                        XMLoadFloat4(pCameraPosition) + Look * 3.f));
+                }
+            }
+            if (CEffectV2Object::SHAPE::PARTICLE == preview->Shape())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("| %u particles", preview->Particle_Count());
+            }
+            else if (CEffectV2Object::SHAPE::TRAIL == preview->Shape())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("| %u points", preview->Trail_PointCount());
+            }
             Render_DraftDetail(document, preview);
             preview->Params() = document.Desc.Params;
         }

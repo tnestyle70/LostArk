@@ -179,6 +179,7 @@ private:
 	bool_t Spawn_Target(const std::string& strArchetypeId);
 	bool_t Spawn_NpcTarget(const std::string& strArchetypeId, const float3_t& vPosition);
 	bool_t Spawn_ValtanTarget(const float3_t& vPosition);
+	bool_t Attach_ArenaBossTarget(const std::string& strArchetypeId, float3_t& OutPosition);
 	bool_t Spawn_PreviewBodyTarget(
 		const std::string& strAssetName,
 		const std::string& strBindingArchetypeId,
@@ -290,6 +291,7 @@ private:
 	std::vector<std::string> m_TargetBoneNames;
 	bool_t m_bTargetClipLoop = true;
 	bool_t m_bRuntimeOnTarget = false;
+	bool_t m_bTargetBorrowed = false;
 	f32_t m_fTargetLastClipSeconds = -1.f;
 	PIVOT_MODE m_ePivotMode = PIVOT_MODE::WORLD;
 	PIVOT_ROTATION m_ePivotRotation = PIVOT_ROTATION::TARGET_YAW;
