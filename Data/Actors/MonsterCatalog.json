@@ -99,6 +99,82 @@
         "dead": "mn_sjfc_00_sk.ao_dead_1"
       },
       "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CARD_HEART",
+      "clientPresentationId": "monster.kouku.card.heart.client.v1",
+      "modelAssetId": "Character/KoukuSaton/CardMiro_Monster_Heart/CardMiro_Monster_Heart.wmodel",
+      "modelScale": 0.015,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
+        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "mn_ppch_00_sk.ao_idle_battle_1",
+        "chase": "mn_ppch_00_sk.ao_run_battle_1",
+        "hit": "mn_ppch_00_sk.ao_dmg_idle_1",
+        "dead": "mn_ppch_00_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CARD_DIAMOND",
+      "clientPresentationId": "monster.kouku.card.diamond.client.v1",
+      "modelAssetId": "Character/KoukuSaton/CardMiro_Monster_Diamond/CardMiro_Monster_Diamond.wmodel",
+      "modelScale": 0.015,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
+        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "mn_ppch_00_sk.ao_idle_battle_1",
+        "chase": "mn_ppch_00_sk.ao_run_battle_1",
+        "hit": "mn_ppch_00_sk.ao_dmg_idle_1",
+        "dead": "mn_ppch_00_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CARD_CLUB",
+      "clientPresentationId": "monster.kouku.card.club.client.v1",
+      "modelAssetId": "Character/KoukuSaton/CardMiro_Monster_Clover/CardMiro_Monster_Clover.wmodel",
+      "modelScale": 0.015,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
+        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "mn_ppch_00_sk.ao_idle_battle_1",
+        "chase": "mn_ppch_00_sk.ao_run_battle_1",
+        "hit": "mn_ppch_00_sk.ao_dmg_idle_1",
+        "dead": "mn_ppch_00_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CARD_SPADE",
+      "clientPresentationId": "monster.kouku.card.spade.client.v1",
+      "modelAssetId": "Character/KoukuSaton/CardMiro_Monster_Spade/CardMiro_Monster_Spade.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        { "clip": "mn_ppch_01_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
+        { "clip": "mn_ppch_01_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "mn_ppch_01_sk.ao_idle_battle_1",
+        "chase": "mn_ppch_01_sk.ao_run_battle_1",
+        "hit": "mn_ppch_01_sk.ao_dmg_idle_1",
+        "dead": "mn_ppch_01_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
     }
   ]
 }

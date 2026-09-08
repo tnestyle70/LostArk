@@ -20,6 +20,26 @@ class CompositionPipelineTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.validated = pipeline.load_and_validate_all(ROOT)
 
+    def test_camera_display_name_accepts_korean_and_rejects_invalid_text(self) -> None:
+        area_id = "LV_LUT_MIDNIGHTC_ED"
+        folder = ROOT / "Data/Maps/Authoring" / area_id
+        camera = pipeline.read_json(folder / f"{area_id}.camerashots.json")
+        sequences = pipeline.read_json(folder / f"{area_id}.worldsequences.json")
+        instance_ids = {row["instanceId"] for row in sequences["instances"]}
+        camera["shots"][0]["displayName"] = "카드미로 기본 카메라"
+        self.assertIn(
+            camera["shots"][0]["shotId"],
+            pipeline._validate_camera_shot_source(camera, area_id, instance_ids),
+        )
+        for invalid in (None, 7, "", "가" * 43, "줄\n바꿈"):
+            with self.subTest(display_name=invalid):
+                malformed = copy.deepcopy(camera)
+                malformed["shots"][0]["displayName"] = invalid
+                with self.assertRaises(pipeline.CompositionError):
+                    pipeline._validate_camera_shot_source(
+                        malformed, area_id, instance_ids
+                    )
+
     def test_repository_closes_valtan_and_kouku_saydon_coverage(self) -> None:
         valtan_product = self.validated[pipeline.BOSS_AUTHORING[0]]["resolved"]
         self.assertEqual(42, len(valtan_product["joinedPatternMaster"]["patterns"]))

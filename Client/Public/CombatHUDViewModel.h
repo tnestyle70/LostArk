@@ -211,6 +211,13 @@ namespace Client
 		semantics as HUD_SKILL_STATE (end <= server tick means ready). */
 		std::uint32_t CooldownEndTicks[HUD_KOUKU_SLOT_COUNT] = {};
 		std::uint32_t CooldownDurationTicks[HUD_KOUKU_SLOT_COUNT] = {};
+		/* Card maze: the suit this player hunts and the kills toward the
+		target (0/0 with role NONE). The TELESCOPE role hunts nothing. */
+		LostArk::Shared::CARD_MAZE_ROLE eCardMazeRole = LostArk::Shared::CARD_MAZE_ROLE::NONE;
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		std::uint8_t iCardMazeKills = 0u;
+		std::uint8_t iCardMazeKillTarget = 0u;
+		LostArk::Shared::CARD_MAZE_PRESENTATION CardMaze;
 	};
 
 	class CCombatHUDViewModel final

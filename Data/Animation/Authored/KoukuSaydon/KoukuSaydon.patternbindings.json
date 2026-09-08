@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 116,
+  "sourceRevision": 125,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",

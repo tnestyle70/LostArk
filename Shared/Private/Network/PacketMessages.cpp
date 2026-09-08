@@ -157,6 +157,21 @@ namespace
 			LostArk::Shared::Is_Valid_KoukuHudMode(snapshot.eKoukuHudMode) &&
 			Is_Valid_KoukuHudSlots(snapshot) &&
 			snapshot.iMarioStage <= 4u &&
+			snapshot.CardMaze.flags <= 15u &&
+			std::isfinite(snapshot.CardMaze.exitX) && std::isfinite(snapshot.CardMaze.exitY) &&
+			std::isfinite(snapshot.CardMaze.exitZ) &&
+			((snapshot.CardMaze.marchStartTick == 0u) == (snapshot.CardMaze.marchCycleMs == 0u)) &&
+			LostArk::Shared::Is_Valid_CardMazeRole(snapshot.eCardMazeRole) &&
+			LostArk::Shared::Is_Valid_MechanicCardSymbol(snapshot.eCardMazeSuit) &&
+			(LostArk::Shared::CARD_MAZE_ROLE::NONE != snapshot.eCardMazeRole ||
+			 LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == snapshot.eCardMazeSuit) &&
+			(LostArk::Shared::CARD_MAZE_ROLE::HUNTER != snapshot.eCardMazeRole ||
+			 LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != snapshot.eCardMazeSuit) &&
+			(LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != snapshot.eCardMazeSuit ?
+				(0u != snapshot.iCardMazeKillTarget &&
+				 snapshot.iCardMazeKills <= snapshot.iCardMazeKillTarget) :
+				(0u == snapshot.iCardMazeKills &&
+				 0u == snapshot.iCardMazeKillTarget)) &&
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
@@ -2682,6 +2697,17 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
 		}
 		writer.Write_U8(player.iMarioStage);
+		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeRole));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeSuit));
+		writer.Write_U8(player.iCardMazeKills);
+		writer.Write_U8(player.iCardMazeKillTarget);
+		writer.Write_U8(player.CardMaze.flags);
+		writer.Write_F32(player.CardMaze.exitX);
+		writer.Write_F32(player.CardMaze.exitY);
+		writer.Write_F32(player.CardMaze.exitZ);
+		writer.Write_U32(player.CardMaze.marchStartTick);
+		writer.Write_U32(player.CardMaze.marchCycleMs);
+		writer.Write_U32(player.CardMaze.transferStartTick);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
@@ -2855,6 +2881,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawCardSymbol = 0;
 		std::uint8_t rawCardColor = 0;
 		std::uint8_t rawHudMode = 0;
+		std::uint8_t rawCardMazeRole = 0;
+		std::uint8_t rawCardMazeSuit = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -2897,6 +2925,28 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
 			!Read_KoukuHudSlots(reader, player) ||
 			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
+			!reader.Read_U8(rawCardMazeRole) ||
+			rawCardMazeRole >= static_cast<std::uint8_t>(CARD_MAZE_ROLE::END) ||
+			!reader.Read_U8(rawCardMazeSuit) ||
+			rawCardMazeSuit >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END) ||
+			!reader.Read_U8(player.iCardMazeKills) ||
+			!reader.Read_U8(player.iCardMazeKillTarget) ||
+			!reader.Read_U8(player.CardMaze.flags) || player.CardMaze.flags > 15u ||
+			!reader.Read_F32(player.CardMaze.exitX) || !std::isfinite(player.CardMaze.exitX) ||
+			!reader.Read_F32(player.CardMaze.exitY) || !std::isfinite(player.CardMaze.exitY) ||
+			!reader.Read_F32(player.CardMaze.exitZ) || !std::isfinite(player.CardMaze.exitZ) ||
+			!reader.Read_U32(player.CardMaze.marchStartTick) ||
+			!reader.Read_U32(player.CardMaze.marchCycleMs) ||
+			((player.CardMaze.marchStartTick == 0u) != (player.CardMaze.marchCycleMs == 0u)) ||
+			!reader.Read_U32(player.CardMaze.transferStartTick) ||
+			(0u == rawCardMazeRole && 0u != rawCardMazeSuit) ||
+			(static_cast<std::uint8_t>(CARD_MAZE_ROLE::HUNTER) == rawCardMazeRole &&
+			 0u == rawCardMazeSuit) ||
+			(0u != rawCardMazeSuit ?
+				(0u == player.iCardMazeKillTarget ||
+				 player.iCardMazeKills > player.iCardMazeKillTarget) :
+				(0u != player.iCardMazeKills ||
+				 0u != player.iCardMazeKillTarget)) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(rawPatternBound) ||
@@ -2927,6 +2977,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(rawCardSymbol);
 		player.eMechanicCardColor = static_cast<MECHANIC_CARD_COLOR>(rawCardColor);
 		player.eKoukuHudMode = static_cast<KOUKU_HUD_MODE>(rawHudMode);
+		player.eCardMazeRole = static_cast<CARD_MAZE_ROLE>(rawCardMazeRole);
+		player.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawCardMazeSuit);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;

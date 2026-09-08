@@ -187,6 +187,7 @@ namespace LostArk::Server
 	{
 		friend int Run_ServerGameplayContractTests(bool, bool, bool, bool);
 		friend int Run_ServerKoukuSupportSurfaceContractTests();
+		friend int Run_ServerCardMazeContractTests();
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -1181,6 +1182,18 @@ namespace LostArk::Server
 			const SPAWN_GROUP_ANCHOR& anchor,
 			const MONSTER_RUNTIME_PROFILE& profile,
 			std::uint32_t ordinal);
+		/* Card maze. The telescope claim deals the suits and raises the
+		targets; the MAZE hammer press judges its swing once, at the runtime's
+		hit tick, against those targets. */
+		bool Begin_CardMaze(LostArk::Shared::PLAYER_ID claimantId);
+		void Reset_CardMaze();
+		void Despawn_CardMazeTargets();
+		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
+		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
+		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
+		void Update_CardMaze(std::uint32_t tick);
+		bool Begin_CardMazeTransfer(SERVER_PLAYER& player, float x, float y, float z,
+			std::uint32_t tick, bool leaving);
 		std::uint32_t Count_SpawnGroupEntities(
 			const std::string& spawnGroupId) const;
 		/* 1 unless the player is standing in the stance its identity gauge pays
@@ -1329,6 +1342,11 @@ namespace LostArk::Server
 		CServerTriggerSystem m_ServerTriggerSystem;
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
+		CKoukuCardMazeRuntime m_KoukuCardMaze;
+		std::uint32_t m_iCardMazeMarchStartTick = 0u;
+		std::uint32_t m_iCardMazeCycleMs = 0u;
+		std::map<LostArk::Shared::PLAYER_ID, std::pair<float, float>> m_CardMazePreviousPositions;
+		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> m_CardMazeContactTicks;
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CCombatObjectRuntime m_CombatObjectRuntime;
 		CMonsterBrain m_MonsterBrain;

@@ -2503,24 +2503,34 @@ def _require_bounded_display_text(value: Any, context: str, maximum_bytes: int) 
 def _validate_world_sequence_source(
     document: Mapping[str, Any], expected_area_id: str
 ) -> set[str]:
-    """Validate the complete format-v2 Map owner without publishing the Map domain."""
+    """Validate the complete Map owner without publishing the Map domain.
+
+    Format v3 adds objectResources, which the Map owner validates and publishes.
+    A composition only resolves template and instance references, so the field
+    is accepted here and left to its owner rather than inspected twice.
+    """
     context = "World Sequence source"
     _require_exact_fields(
         document,
         ("schema", "formatVersion", "areaId", "revision", "templates", "instances"),
-        (),
+        ("objectResources",),
         context,
     )
     if (
         document["schema"] != "lostark.world-sequences"
         or isinstance(document["formatVersion"], bool)
-        or document["formatVersion"] != 2
+        or document["formatVersion"] not in (2, 3)
         or document["areaId"] != expected_area_id
     ):
         raise CompositionError(f"{context} header/area is invalid")
     _require_positive_int(document["revision"], f"{context}.revision")
     templates = document["templates"]
     instances = document["instances"]
+    object_resource_ids = {
+        resource["objectId"]
+        for resource in document.get("objectResources", ())
+        if isinstance(resource, dict) and isinstance(resource.get("objectId"), str)
+    }
     if (
         not isinstance(templates, list)
         or len(templates) > WORLD_SEQUENCE_MAX_TEMPLATES
@@ -2545,7 +2555,7 @@ def _validate_world_sequence_source(
                 "tracks",
                 "animationTracks",
             ),
-            (),
+            ("objectMotion",),
             template_context,
         )
         sequence_id = _require_owner_stable_id(
@@ -2697,7 +2707,7 @@ def _validate_world_sequence_source(
             _require_exact_fields(
                 track,
                 ("slotId", "clipName", "playbackRate", "loop", "holdLastFrame"),
-                ("startMs",),
+                ("startMs", "displayName"),
                 track_context,
             )
             slot_id = _require_owner_stable_id(
@@ -2758,7 +2768,13 @@ def _validate_world_sequence_source(
                 "playbackSpeed",
                 "bindings",
             ),
-            (),
+            (
+                "anchorKind",
+                "position",
+                "motionEnd",
+                "nextMotionId",
+                "walkableSurface",
+            ),
             instance_context,
         )
         instance_id = _require_owner_stable_id(
@@ -2816,26 +2832,41 @@ def _validate_world_sequence_source(
                 )
             bound_slots.add(slot_id)
             target_kind = binding["targetKind"]
-            if target_kind not in ("MAP_PLACEMENT", "DEPLOY_PLACEMENT"):
-                raise CompositionError(f"{binding_context}.targetKind is invalid")
-            if target_kind != slots[slot_id]:
-                raise CompositionError(
-                    f"{binding_context}.targetKind does not match slot kind"
-                )
-            target_id = _require_string(
-                binding["targetId"], f"{binding_context}.targetId"
-            )
-            if (
-                len(target_id) > 20
-                or not target_id.isascii()
-                or not target_id.isdecimal()
+            if target_kind not in (
+                "MAP_PLACEMENT",
+                "DEPLOY_PLACEMENT",
+                "OBJECT_RESOURCE",
             ):
-                raise CompositionError(
-                    f"{binding_context}.targetId must be an unsigned integer string"
+                raise CompositionError(f"{binding_context}.targetKind is invalid")
+            if target_kind == "OBJECT_RESOURCE":
+                target_id = _require_owner_stable_id(
+                    binding["targetId"], f"{binding_context}.targetId", 128
                 )
-            numeric_target_id = int(target_id)
-            if numeric_target_id == 0 or numeric_target_id > (1 << 64) - 1:
-                raise CompositionError(f"{binding_context}.targetId is out of range")
+                if target_id not in object_resource_ids:
+                    raise CompositionError(
+                        f"{binding_context}.targetId is an unknown object resource"
+                    )
+            else:
+                if target_kind != slots[slot_id]:
+                    raise CompositionError(
+                        f"{binding_context}.targetKind does not match slot kind"
+                    )
+                target_id = _require_string(
+                    binding["targetId"], f"{binding_context}.targetId"
+                )
+                if (
+                    len(target_id) > 20
+                    or not target_id.isascii()
+                    or not target_id.isdecimal()
+                ):
+                    raise CompositionError(
+                        f"{binding_context}.targetId must be an unsigned integer string"
+                    )
+                numeric_target_id = int(target_id)
+                if numeric_target_id == 0 or numeric_target_id > (1 << 64) - 1:
+                    raise CompositionError(
+                        f"{binding_context}.targetId is out of range"
+                    )
             target_key = (target_kind, target_id)
             if target_key in bound_targets:
                 raise CompositionError(
@@ -2889,9 +2920,13 @@ def _validate_camera_shot_source(
                 "blendOutMs",
                 "priority",
             ),
-            ("cameraTrack", "follow"),
+            ("cameraTrack", "follow", "displayName"),
             shot_context,
         )
+        if "displayName" in shot:
+            _require_bounded_display_text(
+                shot["displayName"], f"{shot_context}.displayName", 128
+            )
         shot_id = _require_owner_stable_id(
             shot["shotId"], f"{shot_context}.shotId", 128
         )

@@ -705,6 +705,32 @@ namespace LostArk::Shared
 		return symbol < MECHANIC_CARD_SYMBOL::END;
 	}
 
+	/* KoukuSaydon card maze. The first player to claim the telescope owns it
+	and hunts nothing; every other living player is dealt one distinct suit to
+	hunt. The Server owns both; the Client only draws them. */
+	enum class CARD_MAZE_ROLE : std::uint8_t
+	{
+		NONE,
+		TELESCOPE,
+		HUNTER,
+		END
+	};
+
+	/* Server-owned maze state. Flags: observing=1, escaped=2, exit=4,
+	   leaving maze=8. Effect assets and camera poses stay Client-side. */
+	struct CARD_MAZE_PRESENTATION final
+	{
+		std::uint8_t flags = 0u;
+		float exitX = 0.f, exitY = 0.f, exitZ = 0.f;
+		std::uint32_t marchStartTick = 0u, marchCycleMs = 0u;
+		std::uint32_t transferStartTick = 0u;
+	};
+
+	constexpr bool Is_Valid_CardMazeRole(const CARD_MAZE_ROLE role) noexcept
+	{
+		return role < CARD_MAZE_ROLE::END;
+	}
+
 	enum class MECHANIC_CARD_COLOR : std::uint8_t
 	{
 		NONE,
@@ -995,6 +1021,13 @@ namespace LostArk::Shared
 			{ -1, -1, -1, -1, -1, -1, -1, -1 };
 		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
 		std::uint8_t iMarioStage = 0u;
+		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
+		carries the suit it was dealt and kills <= the kill target. */
+		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;
+		MECHANIC_CARD_SYMBOL eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
+		std::uint8_t iCardMazeKills = 0u;
+		std::uint8_t iCardMazeKillTarget = 0u;
+		CARD_MAZE_PRESENTATION CardMaze;
 		bool isCombatReady = true;
 		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
 		late Client present the remaining window without deciding its lifetime. */

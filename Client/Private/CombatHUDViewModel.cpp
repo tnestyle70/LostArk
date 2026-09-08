@@ -217,6 +217,11 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_KoukuGimmick.iMadnessGauge = snapshot.iCurrentMadness;
 	m_KoukuGimmick.iMadnessMaximum = snapshot.iMaximumMadness;
 	m_KoukuGimmick.eHudMode = static_cast<HUD_KOUKU_HUD_MODE>(snapshot.eKoukuHudMode);
+	m_KoukuGimmick.eCardMazeRole = snapshot.eCardMazeRole;
+	m_KoukuGimmick.eCardMazeSuit = snapshot.eCardMazeSuit;
+	m_KoukuGimmick.iCardMazeKills = snapshot.iCardMazeKills;
+	m_KoukuGimmick.iCardMazeKillTarget = snapshot.iCardMazeKillTarget;
+	m_KoukuGimmick.CardMaze = snapshot.CardMaze;
 	for (std::size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 	{
 		const auto index = snapshot.ModeSkillIndexBySlot[i];

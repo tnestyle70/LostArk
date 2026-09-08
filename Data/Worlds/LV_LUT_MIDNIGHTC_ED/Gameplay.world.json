@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 8449,
+  "revision": 8470,
   "placements": [
     {
       "placementId": "1Stage_Final",
@@ -47,6 +47,29 @@
         {
           "type": "playSequence",
           "sequenceInstanceId": "world.sequence.instance.original_kouku"
+        }
+      ]
+    },
+    {
+      "placementId": "Mario1_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1148.703,
+        -11.5246,
+        -910.572998
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": true,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m1_intro"
         }
       ]
     },
@@ -215,6 +238,29 @@
       ]
     },
     {
+      "placementId": "Mario2_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1434.48999,
+        -9.02000999,
+        -1175.96997
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m2_intro"
+        }
+      ]
+    },
+    {
       "placementId": "Mario2_Trigger_1",
       "kind": "triggerBox",
       "position": [
@@ -314,357 +360,6 @@
       ]
     },
     {
-      "placementId": "jump.1",
-      "kind": "triggerBox",
-      "position": [
-        3.13100004,
-        8.64000034,
-        -17.3759995
-      ],
-      "yawDegrees": -23,
-      "enabled": true,
-      "halfExtents": [
-        1,
-        0.300000012,
-        1
-      ],
-      "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            -0.148000002,
-            6.11000013,
-            -14.566
-          ],
-          "durationSeconds": 0.800000012,
-          "arcHeight": 1
-        }
-      ]
-    },
-    {
-      "placementId": "jump.2",
-      "kind": "triggerBox",
-      "position": [
-        -0.547999978,
-        6.10984421,
-        -14.6660004
-      ],
-      "yawDegrees": 68.5,
-      "enabled": true,
-      "halfExtents": [
-        0.5,
-        0.200000003,
-        1
-      ],
-      "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            -1.20000005,
-            3.55999994,
-            -16.6000004
-          ],
-          "durationSeconds": 0.800000012,
-          "arcHeight": 1
-        }
-      ]
-    },
-    {
-      "placementId": "jump.3",
-      "kind": "triggerBox",
-      "position": [
-        -0.407999992,
-        3.55999923,
-        -19.4060001
-      ],
-      "yawDegrees": 68.5,
-      "enabled": true,
-      "halfExtents": [
-        0.5,
-        0.100000001,
-        1.10000002
-      ],
-      "triggerOnce": false,
-      "events": [
-        {
-          "type": "movePlayer",
-          "targetPosition": [
-            2.58599997,
-            1.023,
-            -24.7789993
-          ],
-          "durationSeconds": 0.800000012,
-          "arcHeight": 1
-        }
-      ]
-    },
-    {
-      "placementId": "paper.1",
-      "kind": "triggerBox",
-      "position": [
-        0.414999992,
-        0.547999978,
-        -46.1549988
-      ],
-      "yawDegrees": 11,
-      "enabled": true,
-      "halfExtents": [
-        0.5,
-        0.5,
-        0.5
-      ],
-      "triggerOnce": true,
-      "events": [
-        {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.1"
-        }
-      ]
-    },
-    {
-      "placementId": "paper.2",
-      "kind": "triggerBox",
-      "position": [
-        15.0349998,
-        0.247999996,
-        -61.7910004
-      ],
-      "yawDegrees": 17,
-      "enabled": true,
-      "halfExtents": [
-        0.5,
-        0.5,
-        0.5
-      ],
-      "triggerOnce": true,
-      "events": [
-        {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.5"
-        }
-      ]
-    },
-    {
-      "placementId": "player.spawn.kakul.party01",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        3.28999996,
-        8.64000034,
-        -10.6899996
-      ],
-      "yawDegrees": 0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.kakul.party02",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        3.4000001,
-        8.64000034,
-        -10.6899996
-      ],
-      "yawDegrees": 0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.kakul.party03",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        3.45000005,
-        8.64000034,
-        -10.6899996
-      ],
-      "yawDegrees": 0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.kakul.party04",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        3.0999999,
-        8.64000034,
-        -10.6899996
-      ],
-      "yawDegrees": 0,
-      "enabled": true
-    },
-    {
-      "placementId": "stage.kakul.sl01",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        66,
-        0.0199999996,
-        -102
-      ],
-      "yawDegrees": 0,
-      "enabled": false
-    },
-    {
-      "placementId": "stage.kakul.sl02",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        -1148.703,
-        -11.524601,
-        -910.572998
-      ],
-      "yawDegrees": 0,
-      "enabled": false
-    },
-    {
-      "placementId": "stage.kakul.sl03",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        2,
-        3.54000497,
-        330
-      ],
-      "yawDegrees": 0,
-      "enabled": false
-    },
-    {
-      "placementId": "stage.kakul.sl04",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        -2,
-        1.29900503,
-        730
-      ],
-      "yawDegrees": 0,
-      "enabled": false
-    },
-    {
-      "placementId": "stage.kakul.sl05",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [
-        -2,
-        1.317626,
-        942
-      ],
-      "yawDegrees": 0,
-      "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.g1.kouku",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        22,
-        -0.0500000007,
-        -62
-      ],
-      "yawDegrees": 0,
-      "enabled": true
-    },
-    {
-      "placementId": "boss.kakulsaydon.g1.saydon",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        -0.0700000003,
-        1.32000005,
-        942.330017
-      ],
-      "yawDegrees": 237,
-      "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.g2.big-saydon",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        10.2399998,
-        8.63000011,
-        317.75
-      ],
-      "yawDegrees": 226.5,
-      "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.g2.kouku",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        6.36000013,
-        10.5600004,
-        321.290009
-      ],
-      "yawDegrees": 216.5,
-      "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.g3.saydon",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        -0.0700000003,
-        1.32000005,
-        942.330017
-      ],
-      "yawDegrees": 223.0,
-      "enabled": false
-    },
-    {
-      "placementId": "boss.kakulsaydon.bingo.saydon",
-      "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
-      "position": [
-        -0.600000024,
-        0,
-        1147.43994
-      ],
-      "yawDegrees": 151.0,
-      "enabled": false
-    },
-    {
-      "placementId": "Mario1_Intro",
-      "kind": "triggerBox",
-      "position": [
-        -1148.703,
-        -11.5246,
-        -910.572998
-      ],
-      "yawDegrees": 0,
-      "enabled": true,
-      "halfExtents": [
-        3,
-        2,
-        3
-      ],
-      "triggerOnce": true,
-      "events": [
-        {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.mario_m1_intro"
-        }
-      ]
-    },
-    {
       "placementId": "Mario2_Trigger_5",
       "kind": "triggerBox",
       "position": [
@@ -760,6 +455,29 @@
           ],
           "durationSeconds": 1.5,
           "arcHeight": 0
+        }
+      ]
+    },
+    {
+      "placementId": "Mario3_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1889.68994,
+        -11.5299997,
+        -1646.20996
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m3_intro"
         }
       ]
     },
@@ -1105,6 +823,29 @@
       ]
     },
     {
+      "placementId": "Mario4_Intro",
+      "kind": "triggerBox",
+      "position": [
+        -1632.56995,
+        -20.4899998,
+        -1400.92004
+      ],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [
+        3,
+        2,
+        3
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.mario_m4_intro"
+        }
+      ]
+    },
+    {
       "placementId": "Mario4_Tigger_1",
       "kind": "triggerBox",
       "position": [
@@ -1246,9 +987,9 @@
         {
           "type": "movePlayer",
           "targetPosition": [
-            -1643.85,
-            -17.93,
-            -1418.61
+            -1643.84998,
+            -17.9300003,
+            -1418.60999
           ],
           "durationSeconds": 0.699999988,
           "arcHeight": 1.5
@@ -1471,71 +1212,1018 @@
       ]
     },
     {
-      "placementId": "Mario2_Intro",
+      "placementId": "Miro_1",
       "kind": "triggerBox",
       "position": [
-        -1434.48999,
-        -9.02000999,
-        -1175.96997
+        -20.4904499,
+        -0.00999999978,
+        1328.98901
       ],
       "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1,
+        0.5,
+        1.39999998
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_10",
+      "kind": "triggerBox",
+      "position": [
+        22.4409199,
+        -0.00999999978,
+        1331.18958
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_11",
+      "kind": "triggerBox",
+      "position": [
+        22.4409199,
+        -0.00999999978,
+        1336.30981
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_12",
+      "kind": "triggerBox",
+      "position": [
+        22.4408798,
+        -0.00999999978,
+        1341.42969
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_13",
+      "kind": "triggerBox",
+      "position": [
+        22.4407501,
+        -0.00999999978,
+        1346.54956
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_14",
+      "kind": "triggerBox",
+      "position": [
+        22.4410992,
+        -0.00999999978,
+        1351.66968
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_15",
+      "kind": "triggerBox",
+      "position": [
+        22.4411793,
+        -0.00999999978,
+        1356.78967
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_16",
+      "kind": "triggerBox",
+      "position": [
+        22.4405594,
+        -0.00999999978,
+        1361.90918
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_17",
+      "kind": "triggerBox",
+      "position": [
+        22.4408302,
+        -0.00999999978,
+        1367.02942
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_18",
+      "kind": "triggerBox",
+      "position": [
+        22.4408894,
+        -0.00999999978,
+        1372.14954
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_19",
+      "kind": "triggerBox",
+      "position": [
+        20.4695492,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_2",
+      "kind": "triggerBox",
+      "position": [
+        -15.37045,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_20",
+      "kind": "triggerBox",
+      "position": [
+        15.3495502,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_21",
+      "kind": "triggerBox",
+      "position": [
+        10.2295504,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_22",
+      "kind": "triggerBox",
+      "position": [
+        5.10955,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_23",
+      "kind": "triggerBox",
+      "position": [
+        -0.01045,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_24",
+      "kind": "triggerBox",
+      "position": [
+        -5.1304498,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_25",
+      "kind": "triggerBox",
+      "position": [
+        -10.2504501,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_26",
+      "kind": "triggerBox",
+      "position": [
+        -15.37045,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_27",
+      "kind": "triggerBox",
+      "position": [
+        -20.4904499,
+        -0.00999999978,
+        1374.12085
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_28",
+      "kind": "triggerBox",
+      "position": [
+        -22.9408894,
+        -0.00999999978,
+        1372.14954
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_29",
+      "kind": "triggerBox",
+      "position": [
+        -22.9408302,
+        -0.00999999978,
+        1367.02942
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_3",
+      "kind": "triggerBox",
+      "position": [
+        -10.2504501,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_30",
+      "kind": "triggerBox",
+      "position": [
+        -22.9405594,
+        -0.00999999978,
+        1361.90918
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_31",
+      "kind": "triggerBox",
+      "position": [
+        -22.9411793,
+        -0.00999999978,
+        1356.78967
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_32",
+      "kind": "triggerBox",
+      "position": [
+        -22.9410992,
+        -0.00999999978,
+        1351.66968
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_33",
+      "kind": "triggerBox",
+      "position": [
+        -22.9407501,
+        -0.00999999978,
+        1346.54956
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_34",
+      "kind": "triggerBox",
+      "position": [
+        -22.9408798,
+        -0.00999999978,
+        1341.42969
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_35",
+      "kind": "triggerBox",
+      "position": [
+        -22.9409199,
+        -0.00999999978,
+        1336.30981
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_36",
+      "kind": "triggerBox",
+      "position": [
+        -22.9409199,
+        -0.00999999978,
+        1331.18958
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.4,
+        0.5,
+        1.0
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_4",
+      "kind": "triggerBox",
+      "position": [
+        -5.1304498,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_5",
+      "kind": "triggerBox",
+      "position": [
+        -0.01045,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_6",
+      "kind": "triggerBox",
+      "position": [
+        5.10955,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_7",
+      "kind": "triggerBox",
+      "position": [
+        10.2295504,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_8",
+      "kind": "triggerBox",
+      "position": [
+        15.3495502,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "Miro_9",
+      "kind": "triggerBox",
+      "position": [
+        20.4695492,
+        -0.00999999978,
+        1328.98901
+      ],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [
+        1.0,
+        0.5,
+        1.4
+      ],
+      "triggerOnce": false,
+      "events": []
+    },
+    {
+      "placementId": "boss.kakulsaydon.bingo.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.600000024,
+        0,
+        1147.43994
+      ],
+      "yawDegrees": 151,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g1.kouku",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        22,
+        -0.0500000007,
+        -62
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "boss.kakulsaydon.g1.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.0700000003,
+        1.32000005,
+        942.330017
+      ],
+      "yawDegrees": 237,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g2.big-saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        10.2399998,
+        8.63000011,
+        317.75
+      ],
+      "yawDegrees": 226.5,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g2.kouku",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        6.36000013,
+        10.5600004,
+        321.290009
+      ],
+      "yawDegrees": 216.5,
+      "enabled": false
+    },
+    {
+      "placementId": "boss.kakulsaydon.g3.saydon",
+      "kind": "boss",
+      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "position": [
+        -0.0700000003,
+        1.32000005,
+        942.330017
+      ],
+      "yawDegrees": 223,
+      "enabled": false
+    },
+    {
+      "placementId": "jump.1",
+      "kind": "triggerBox",
+      "position": [
+        3.13100004,
+        8.64000034,
+        -17.3759995
+      ],
+      "yawDegrees": -23,
       "enabled": true,
       "halfExtents": [
-        3,
-        2,
-        3
+        1,
+        0.300000012,
+        1
       ],
       "triggerOnce": false,
       "events": [
         {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.mario_m2_intro"
+          "type": "movePlayer",
+          "targetPosition": [
+            -0.148000002,
+            6.11000013,
+            -14.566
+          ],
+          "durationSeconds": 0.800000012,
+          "arcHeight": 1
         }
       ]
     },
     {
-      "placementId": "Mario3_Intro",
+      "placementId": "jump.2",
       "kind": "triggerBox",
       "position": [
-        -1889.68994,
-        -11.5299997,
-        -1646.20996
+        -0.547999978,
+        6.10984421,
+        -14.6660004
       ],
-      "yawDegrees": 0,
+      "yawDegrees": 68.5,
       "enabled": true,
       "halfExtents": [
-        3,
-        2,
-        3
+        0.5,
+        0.200000003,
+        1
       ],
       "triggerOnce": false,
       "events": [
         {
-          "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.mario_m3_intro"
+          "type": "movePlayer",
+          "targetPosition": [
+            -1.20000005,
+            3.55999994,
+            -16.6000004
+          ],
+          "durationSeconds": 0.800000012,
+          "arcHeight": 1
         }
       ]
     },
     {
-      "placementId": "Mario4_Intro",
+      "placementId": "jump.3",
       "kind": "triggerBox",
       "position": [
-        -1632.56995,
-        -20.4899998,
-        -1400.92004
+        -0.407999992,
+        3.55999923,
+        -19.4060001
       ],
-      "yawDegrees": 0,
+      "yawDegrees": 68.5,
       "enabled": true,
       "halfExtents": [
-        3,
-        2,
-        3
+        0.5,
+        0.100000001,
+        1.10000002
       ],
       "triggerOnce": false,
       "events": [
         {
+          "type": "movePlayer",
+          "targetPosition": [
+            2.58599997,
+            1.023,
+            -24.7789993
+          ],
+          "durationSeconds": 0.800000012,
+          "arcHeight": 1
+        }
+      ]
+    },
+    {
+      "placementId": "paper.1",
+      "kind": "triggerBox",
+      "position": [
+        0.414999992,
+        0.547999978,
+        -46.1549988
+      ],
+      "yawDegrees": 11,
+      "enabled": true,
+      "halfExtents": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "triggerOnce": true,
+      "events": [
+        {
           "type": "playSequence",
-          "sequenceInstanceId": "world.sequence.instance.mario_m4_intro"
+          "sequenceInstanceId": "world.sequence.instance.1"
+        }
+      ]
+    },
+    {
+      "placementId": "paper.2",
+      "kind": "triggerBox",
+      "position": [
+        15.0349998,
+        0.247999996,
+        -61.7910004
+      ],
+      "yawDegrees": 17,
+      "enabled": true,
+      "halfExtents": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "triggerOnce": true,
+      "events": [
+        {
+          "type": "playSequence",
+          "sequenceInstanceId": "world.sequence.instance.5"
+        }
+      ]
+    },
+    {
+      "placementId": "player.spawn.kakul.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        3.28999996,
+        8.64000034,
+        -10.6899996
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        3.4000001,
+        8.64000034,
+        -10.6899996
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        3.45000005,
+        8.64000034,
+        -10.6899996
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        3.0999999,
+        8.64000034,
+        -10.6899996
+      ],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "stage.kakul.sl01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        66,
+        0.0199999996,
+        -102
+      ],
+      "yawDegrees": 0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -1148.703,
+        -11.524601,
+        -910.572998
+      ],
+      "yawDegrees": 0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        2,
+        3.54000497,
+        330
+      ],
+      "yawDegrees": 0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -2,
+        1.29900503,
+        730
+      ],
+      "yawDegrees": 0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl05",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -2,
+        1.317626,
+        942
+      ],
+      "yawDegrees": 0,
+      "enabled": false
+    },
+    {
+      "placementId": "cardmaze.telescope",
+      "kind": "triggerBox",
+      "position": [
+        0.28,
+        -0.01,
+        1351.65
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true,
+      "halfExtents": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "claimCardMazeTelescope",
+          "targetId": "cardmaze.telescope"
+        }
+      ]
+    },
+    {
+      "placementId": "cardmaze.return",
+      "kind": "triggerBox",
+      "position": [0.28, -0.01, 1351.65],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": false,
+      "events": [
+        {
+          "type": "movePlayer",
+          "targetPosition": [3.38, 10.56, 323.92],
+          "durationSeconds": 1.2,
+          "arcHeight": 0
         }
       ]
     }

@@ -2,7 +2,7 @@
   "schema": "lostark.camera-shots",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 68,
+  "revision": 70,
   "shots": [
     {
       "shotId": "1Stage.finale",
@@ -496,6 +496,30 @@
       "blendOutMs": 900,
       "priority": 20,
       "follow": { "eyeOffset": [-6.87568, 1.60657, -5.59961], "lookAtOffset": [-5.68296, 1.67361, -4.82886] }
+    },
+    {
+      "shotId": "cardmaze.telescope",
+      "sequenceInstanceId": "",
+      "box": { "center": [4.03, 0, 1351.85], "halfExtents": [29, 6, 28.5], "yawDegrees": 0 },
+      "eye": [0.28, 62, 1315.65],
+      "lookAt": [0.28, -0.01, 1351.65],
+      "fovYDegrees": 50,
+      "blendInMs": 1500,
+      "blendOutMs": 1000,
+      "priority": 1000,
+      "displayName": "Card maze telescope (top-down)"
+    },
+    {
+      "shotId": "cardmaze.follow",
+      "sequenceInstanceId": "",
+      "box": { "center": [4.03, 0, 1351.85], "halfExtents": [29, 3, 28.5], "yawDegrees": 0 },
+      "eye": [0.28, 8.39, 1345.65],
+      "lookAt": [0.28, -0.01, 1351.65],
+      "fovYDegrees": 50,
+      "blendInMs": 500,
+      "blendOutMs": 600,
+      "priority": 90,
+      "follow": { "eyeOffset": [0, 8.4, -6], "lookAtOffset": [0, 0, 0] }
     }
   ]
 }

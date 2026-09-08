@@ -95,6 +95,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
 	if (!IsDamageableWorldTarget(target) ||
+		(target.strSpawnGroupId == "cardmaze.targets" && hit.iSkillId != 56411u) ||
 		LostArk::Shared::INVALID_SKILL_ID == hit.iSkillId)
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
@@ -149,7 +150,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	}
 	else
 	{
-		damage = CGameplayCatalog::Apply_Defense(hit.iRawDamage, target.iDefense);
+		damage = target.strSpawnGroupId == "cardmaze.targets" ? target.iCurrentHp :
+			CGameplayCatalog::Apply_Defense(hit.iRawDamage, target.iDefense);
 		target.iCurrentHp = damage >= target.iCurrentHp ?
 			0u : target.iCurrentHp - damage;
 	}

@@ -370,6 +370,27 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.
 키 해제 또는 300ms 입력 만료 시 서버 이동이 정지한다. 기존 퇴장·다른 F1 이동·책 컷신 배치는 전용 상태를
 해제하고 입장 전 외형을 복원한다. 조작·패킷·착지 조건은 팀 인터페이스 사용서 4.2절이 정본이다.
+카드미로 문양 몬스터는 Server 권위다. 미로 중앙의 `cardmaze.telescope` 상자(`claimCardMazeTelescope` trigger action,
+Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모드 뿅망치로 먼저 가격한 플레이어가 망원경 담당이 되고, 그 순간
+`CKoukuCardMazeRuntime`이 나머지 살아 있는 플레이어(최대 3명)에게 4문양 중 3개를 서로 다르게 랜덤 배정한 뒤
+문양당 `MONSTER_KOUKU_CARD_*` 1마리를 CardMiro 네비 격자의 중앙과 연결된 통로 칸(중앙 5m·플레이어 4m·서로 3m 이상)에
+`Spawn_Monster`로 생성한다. MAZE 모드 뿅망치는 누른 지 12tick에 전방 120°·2.4m를 한 번 판정하며 자기 문양 목표만
+한 방 처치·즉시 despawn한다. 3스택 전에는 다음 목표 1마리가 랜덤 보충된다. 첫 유효 타격은
+`cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개를 서버 시계로 반복 시작한다. worldbootstrap v10의
+출발/도착/지연/기간은 저작 WorldSequence에서 publisher가 투영하며 접촉도 이 경로로 판정한다.
+중앙 반경 5m는 안전하고 바깥 세토 접촉은 본인 스택과 출구를 취소하고 목표를 다시 배치한다.
+`PLAYER_SNAPSHOT`의 기존 문양 4필드와 `CardMaze`의 관전/탈출/개인 출구/행진·암전 시계를 protocol 70으로 복제한다.
+네 프로파일은 트리거가 참조하지 않는 잠자는 group `spawn.kouku.cardmaze.profiles`가 Kouku bootstrap에 싣는다. Client는
+표시만 하며(`[ TELESCOPE ]`/`HEART 1 / 3` 텍스트와 문양 플레이어·병사 발밑 Decal), 망원경 담당의 카메라는
+`camerashots.json`의 `cardmaze.telescope` shot(priority 1000)을 관전 flag가 켜진 동안 잡는다. 기본 미로 시점은
+`cardmaze.follow`다. 다인 플레이와 Release의 망원경 담당은 문양을 받지 않는다. Debug Server의 방에 정확히 한 명일 때는 상자 타격자가 HUNTER 문양과 망원경 시점을 함께 받아 혼자 테스트한다. 이때만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 첫 유효 병사 타격부터 세토 행진·접촉 초기화·출구 규칙을 그대로 적용한다. 상자 재가격은 재시작이 아니라 관전 토글이다.
+3스택 개인 출구 진입은 1.2초 암전의 18tick째 중앙 이동을 commit한다. 탈출자도 중앙 상자를 가격해 관전을 독립 토글한다.
+살아 있는 참가자 전원이 탈출·중앙 집결하면 동일 암전으로 disabled 설정 행 `cardmaze.return`의 movePlayer 목적지로 이동한다
+(기본 기존 2관문 위치, MapTool World Gameplay에서 조정). `cardmaze.mark.heart/spade/club/diamond`는 플레이어와 병사 발밑,
+`cardmaze.exit.heart/spade/club/diamond`는 서버 개인 출구 위치에 같은 네 문양 Decal을 표시한다. 기존 춤 연출의 문양 DDS를 재사용하되
+전용 `cardmaze.symbol.*` leaf를 쓰며 기존 춤 group은 변경하지 않는다. 런타임 표시는 상태 수명 동안 유지하고 탈출·사망·despawn·초기화 때 제거한다.
+
+F1 카드미로 MAZE 진입은 선택한 일반 플레이어 몸체를 유지한다. 기본 `cardmaze.follow` eyeOffset은 [0,8.4,-6]이며 망원경 전체 시점과 별도다. `cardmaze.telescope`는 아직 시각 모델 없는 triggerBox다. 중앙 OBB 내부에서는 방향과 무관하게 Q의 망치 판정을 받고, 외부는 높이·거리·전방 조건을 검사한다. G는 이 획득 경로에 사용하지 않는다. 시작 전 Q 안내를 HUD에 표시한다. 일반 플레이어의 망치 애니메이션 바인딩은 광대 전용 binding을 임의 재사용하지 않는다.
 
 `Data/Compositions/Bosses/*.bosscomposition.json`은 Effect, Sound, collider 값을 다시 소유하는 거대
 JSON이 아니다. 기존 typed owner의 경로와 coverage, stable Pattern index를 묶는 source manifest다.

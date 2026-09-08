@@ -116,6 +116,9 @@ namespace
 	/* Distinct from the Bern and Valtan cinematic owners so the engine's
 	   single-owner override never confuses this arena with theirs. */
 	constexpr uint64_t KAKULSAYDON_CAMERA_SHOT_OWNER_ID = 0x4B414B554C534854ull;
+	/* The framing the telescope owner holds while the card maze runs; it
+	   follows the Server role rather than a box or a sequence. */
+	constexpr const char* CARD_MAZE_TELESCOPE_SHOT_ID = "cardmaze.telescope";
 	/* The pop-up book cutscene and the boss prop it stages. The boss is
 	   presentation only, so it leaves the arena when this sequence ends. */
 	constexpr const char* KAKULSAYDON_CUTSCENE_SEQUENCE_ID =
@@ -1037,6 +1040,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			if (member.eState == RUN_STATE::COMPLETED || member.eState == RUN_STATE::ABORTED) stopOwner(member.strMemberId);
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
+	Update_CardMazePresentation(fTimeDelta);
 	if (m_bWorldObjectReloadPending && !m_SequencePlayer.Has_ActiveInstances())
 	{
 		std::string status;
@@ -1396,6 +1400,43 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			TEXT("Font_YoonGasiIIM"), PROMPT,
 			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.62f),
 			Colors::White, 0.f, float2_t(size.x * 0.5f, size.y * 0.5f), 1.f);
+	}
+	/* Card maze: the suit this player hunts and the count, or the telescope
+	   role. ASCII for the same codepage reason as the prompt above. */
+	const HUD_KOUKU_GIMMICK_STATE& maze = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	if (LostArk::Shared::CARD_MAZE_ROLE::NONE != maze.eCardMazeRole ||
+		CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE)
+	{
+		std::wstring text;
+		if (LostArk::Shared::CARD_MAZE_ROLE::NONE == maze.eCardMazeRole)
+			text = L"[ Q ] Strike the telescope at the maze center (G is not used)";
+		if (maze.CardMaze.flags & 1u) text = L"[ TELESCOPE ON ]";
+		else if (maze.CardMaze.flags & 2u) text = L"[ ESCAPED / HAMMER TELESCOPE TO VIEW ]";
+		/* The Debug solo owner hunts as well, so both parts can show at once. */
+		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != maze.eCardMazeSuit)
+		{
+			if (!text.empty())
+				text += L" ";
+			switch (maze.eCardMazeSuit)
+			{
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::HEART: text += L"HEART"; break;
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::SPADE: text += L"SPADE"; break;
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::CLUB: text += L"CLUB"; break;
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::DIAMOND: text += L"DIAMOND"; break;
+			default: text += L"SUIT"; break;
+			}
+			text += L" " + std::to_wstring(maze.iCardMazeKills) + L" / " +
+				std::to_wstring(maze.iCardMazeKillTarget);
+		}
+		if (maze.CardMaze.flags & 4u)
+			text += L" EXIT (" + std::to_wstring(static_cast<int>(maze.CardMaze.exitX)) + L", " +
+				std::to_wstring(static_cast<int>(maze.CardMaze.exitZ)) + L")";
+		const float2_t mazeSize = CGameInstance::Get().Measure_Text(
+			TEXT("Font_YoonGasiIIM"), text.c_str());
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), text.c_str(),
+			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.68f),
+			Colors::White, 0.f, float2_t(mazeSize.x * 0.5f, mazeSize.y * 0.5f), 1.f);
 	}
 	return drawn;
 }
@@ -2355,7 +2396,11 @@ Client::CLevel_KakulSaydonArena::Find_ActiveCameraShot(
 		if (shot.bPatternOnly) continue;
 		const bool_t isHeldNow = shot.strShotId == m_strActiveCameraShotId;
 		bool_t isActive = false;
-		if (!shot.strSequenceInstanceId.empty())
+		if (shot.strShotId == CARD_MAZE_TELESCOPE_SHOT_ID)
+		{
+			isActive = (CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze.flags & 1u) != 0u;
+		}
+		else if (!shot.strSequenceInstanceId.empty())
 		{
 			/* The sequence starts the shot on the frame its trigger fires, even
 			   though the party is still far from the box. Once the sequence
@@ -2394,6 +2439,32 @@ void Client::CLevel_KakulSaydonArena::Release_CameraShot()
 	m_fCameraBlendElapsed = 0.f;
 }
 
+void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
+{
+	const auto tick = m_Replication.Get_LastServerTick();
+	if (m_iCardMazeLastSnapshotTick != tick)
+	{ m_iCardMazeLastSnapshotTick = tick; m_fCardMazeSnapshotSeconds = 0.f; }
+	else m_fCardMazeSnapshotSeconds = (std::min)(.1f, m_fCardMazeSnapshotSeconds + dt);
+	const auto& state = CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze;
+	const bool playing = state.marchStartTick && state.marchCycleMs;
+	if (!playing && !m_bCardMazeMarchPlaying) return;
+	const auto targets = Make_WorldSequenceTargets();
+	const float elapsed = playing ? std::fmod(
+		float(tick - state.marchStartTick) * (1000.f / 30.f) + m_fCardMazeSnapshotSeconds * 1000.f,
+		float(state.marchCycleMs)) : 0.f;
+	for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
+	{
+		if (!instance.instanceId.starts_with("cardmiro.march.instance.")) continue;
+		const auto* sequence = m_SequencePlayer.Get_Document().Find_Template(instance.templateId);
+		const bool active = playing && instance.enabled && sequence &&
+			elapsed >= float(instance.startDelayMs) && elapsed < float(instance.startDelayMs + sequence->durationMs);
+		if (!active) { m_SequencePlayer.Stop_Instance(instance.instanceId, targets, true); continue; }
+		if (!m_SequencePlayer.Is_Playing(instance.instanceId) && !m_SequencePlayer.Play(instance.instanceId, targets)) continue;
+		(void)m_SequencePlayer.Seek_InstanceToMs(instance.instanceId, elapsed, targets);
+	}
+	m_bCardMazeMarchPlaying = playing;
+}
+
 void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 	const f32_t fTimeDelta)
 {
@@ -2401,6 +2472,16 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 		return;
 
 	using LostArk::Shared::PLAYER_ACTION_STATE;
+	const auto& maze = CCombatHUDViewModel::Get().Get_KoukuGimmick().CardMaze;
+	if (maze.transferStartTick)
+	{
+		const float ticks = float(m_Replication.Get_LastServerTick() - maze.transferStartTick) + m_fCardMazeSnapshotSeconds * 30.f;
+		m_fTriggerMoveFadeAlpha = ticks < 12.f ? std::clamp(ticks / 12.f, 0.f, 1.f) :
+			ticks < 24.f ? 1.f : std::clamp((36.f - ticks) / 12.f, 0.f, 1.f);
+		m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", m_fTriggerMoveFadeAlpha > 0.f);
+		m_pTriggerMoveFadeView->Set_SlotTint("KakulFade_Screen", float4_t(0.f, 0.f, 0.f, m_fTriggerMoveFadeAlpha));
+		return;
+	}
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const bool_t isMoving = player.isValid &&
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction;

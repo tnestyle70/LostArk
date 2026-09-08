@@ -55,8 +55,9 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
-	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 68;
+	51 adds Server-owned Pattern bind and silence deadlines to player snapshots.
+	69 adds the card maze role, hunting suit and kill counts to player snapshots. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 70;
 
 	enum class WORLD_ID : std::uint16_t
 	{

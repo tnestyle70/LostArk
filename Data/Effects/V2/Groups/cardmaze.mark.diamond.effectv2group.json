@@ -1,0 +1,35 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "cardmaze.mark.diamond",
+  "durationMs": 1000,
+  "children": [
+    {
+      "childId": "symbol",
+      "resource": {
+        "kind": "LEAF",
+        "id": "cardmaze.symbol.diamond"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ]
+}

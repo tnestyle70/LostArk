@@ -207,6 +207,8 @@ public:
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
+	void Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const
+	{ m_Replication.Collect_KoukuMazeTargets(targets); }
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
@@ -283,6 +285,10 @@ private:
 	   letting the camera travel that distance on screen. Server owns the
 	   move; this only reads the action state it already replicates. */
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
+	void Update_CardMazePresentation(f32_t fTimeDelta);
+	std::uint32_t m_iCardMazeLastSnapshotTick = 0u;
+	f32_t m_fCardMazeSnapshotSeconds = 0.f;
+	bool m_bCardMazeMarchPlaying = false;
 	void Update_DeadScene(f32_t fTimeDelta);
 	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
 		const float3_t& vPosition) const;

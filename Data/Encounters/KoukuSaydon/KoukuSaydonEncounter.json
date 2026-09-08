@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 116,
+  "sourceRevision": 125,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
