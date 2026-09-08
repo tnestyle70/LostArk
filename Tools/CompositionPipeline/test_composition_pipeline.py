@@ -890,5 +890,48 @@ class CompositionPipelineTests(unittest.TestCase):
             self.assertFalse((output_root / pipeline.PUBLISH_JOURNAL_NAME).exists())
 
 
+class CameraTrackContractTests(unittest.TestCase):
+    def make_track(self) -> dict:
+        return {
+            "durationMs": 7400,
+            "interpolation": "LINEAR",
+            "easing": "SMOOTHSTEP",
+            "keyframes": [{
+                "sceneId": "camera.scene.auto.1",
+                "timeMs": 0,
+                "eye": [-11.0, 25.3, 339.0],
+                "lookAt": [6.0, 15.0, 321.0],
+                "fovYDegrees": 60,
+            }],
+        }
+
+    def test_one_pose_preserves_authored_frame_and_duration(self) -> None:
+        track = self.make_track()
+        before = copy.deepcopy(track)
+        pipeline._validate_camera_track(track, "single pose")
+        self.assertEqual(before, track)
+
+    def test_single_pose_still_rejects_empty_nonzero_and_invalid_view(self) -> None:
+        empty = self.make_track()
+        empty["keyframes"] = []
+        nonzero = self.make_track()
+        nonzero["keyframes"][0]["timeMs"] = 7400
+        invalid_view = self.make_track()
+        invalid_view["keyframes"][0]["lookAt"] = invalid_view["keyframes"][0]["eye"][:]
+        for track in (empty, nonzero, invalid_view):
+            with self.subTest(track=track), self.assertRaises(pipeline.CompositionError):
+                pipeline._validate_camera_track(track, "invalid single pose")
+
+    def test_multiple_poses_keep_the_authored_duration_endpoint(self) -> None:
+        track = self.make_track()
+        last = copy.deepcopy(track["keyframes"][0])
+        last.update(sceneId="camera.scene.auto.2", timeMs=7400)
+        track["keyframes"].append(last)
+        pipeline._validate_camera_track(track, "two poses")
+        last["timeMs"] = 7399
+        with self.assertRaisesRegex(pipeline.CompositionError, "end at its duration"):
+            pipeline._validate_camera_track(track, "bad endpoint")
+
+
 if __name__ == "__main__":
     unittest.main()

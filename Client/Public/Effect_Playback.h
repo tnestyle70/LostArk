@@ -147,6 +147,11 @@ struct EFFECT_EVALUATED_SCREEN_POST final
 	f32_t fSecondaryIntensity = 0.f;
 	f32_t fFrequency = 1.f;
 	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+	// Raw source lanes stay independent from the legacy post intensity controls.
+	float4_t vSourceColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vSourceDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
+	float4x4_t SourceWorld{};
+	f32_t fSourceCameraOffset = 0.f;
 	f32_t fNormalizedLife = 0.f;
 };
 
@@ -175,6 +180,11 @@ struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE final
 	float4x4_t RootWorld{};
 	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
 };
+
+// The existing renderer-owned animated model supplies these at the fixed-step time.
+using EFFECT_MODEL_CUE_ANCHOR_PROVIDER = std::function<bool_t(
+	f32_t, const float4x4_t&, std::unordered_map<std::string, float4x4_t>&,
+	std::string&)>;
 
 using EFFECT_FIXED_STEP_TRANSFORM_PROVIDER = std::function<bool_t(
 	f32_t,
@@ -369,6 +379,7 @@ public:
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
 	void Set_SourceAnchorWorlds(
 		std::unordered_map<std::string, float4x4_t>&& SourceAnchorWorlds);
+	void Set_ModelCueAnchorProvider(EFFECT_MODEL_CUE_ANCHOR_PROVIDER Provider);
 	const EFFECT_EVALUATED_FRAME& Get_Frame() const { return m_Frame; }
 	bool_t Query_ParticleRuntimeProbe(
 		std::string_view strElementId,
@@ -449,6 +460,7 @@ private:
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 		std::string& strOutError) const;
+	bool_t Refresh_ModelCueAnchors(f32_t fSampleTimeSeconds, const float4x4_t& RootWorld);
 	bool_t Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
 	void Rebuild_Frame(const float4x4_t& RootWorld);
 	void Spawn_Particles(
@@ -591,6 +603,7 @@ private:
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
+	EFFECT_MODEL_CUE_ANCHOR_PROVIDER m_ModelCueAnchorProvider;
 	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;
 	float3_t m_vPreviousRootPosition{};
 	float3_t m_vParentVelocity{};

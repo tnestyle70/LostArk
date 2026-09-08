@@ -5515,10 +5515,11 @@ bool LostArk::Shared::Read_Message(
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
-	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER;
+	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
+		message.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER;
 	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
-	// Viewer transport owns saved instances; bundle cues and exact motion remain PLAY/STOP_OWNER.
+	// Viewer transport owns saved instances; bundle cues use PLAY and owner lifecycle operations.
 	if ((transportControl && (message.iRunEpoch != 0u || !message.strTargetSequenceInstanceId.empty() ||
 		!message.strTargetCueId.empty())) ||
 		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY &&

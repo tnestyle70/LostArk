@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 400,
+  "revision": 402,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -323769,9 +323769,9 @@
           0,
           0
         ],
-        "count": 1,
-        "intervalMs": 200,
-        "spreadDegrees": 0,
+        "count": 10,
+        "intervalMs": 300,
+        "spreadDegrees": 360,
         "seed": 1
       },
       "tracks": [
@@ -323792,9 +323792,9 @@
                 1
               ],
               "scaleMultiplier": [
-                1,
-                1,
-                1
+                1.5,
+                1.5,
+                1.5
               ],
               "visible": true
             },
@@ -323812,16 +323812,42 @@
                 1
               ],
               "scaleMultiplier": [
-                1,
-                1,
-                1
+                1.5,
+                1.5,
+                1.5
               ],
               "visible": true
             }
           ]
         }
       ],
-      "animationTracks": []
+      "animationTracks": [],
+      "effectTracks": [
+        {
+          "effectTrackId": "effect.ball_bounce.smoke",
+          "slotId": "object",
+          "resourceKind": "GROUP",
+          "resourceId": "boss.kouku.ball.smoke",
+          "timing": "MOTION_END",
+          "startMs": 0,
+          "durationMs": 2000,
+          "positionOffset": [
+            0,
+            -2.3,
+            -1.35
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ]
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.mario_m3_swing",

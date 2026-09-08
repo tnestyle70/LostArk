@@ -360,7 +360,9 @@ HRESULT CPresentation_Manager::Add_ScreenPost(
 	{
 		hResult = S_FALSE;
 	}
-	else if (ScreenPostDesc.eProfile >= PRESENTATION_SCREEN_POST_PROFILE::END ||
+	else if ((ScreenPostDesc.eProfile == PRESENTATION_SCREEN_POST_PROFILE::PREPARED_MATERIAL) !=
+		static_cast<bool>(ScreenPostDesc.pMaterial) ||
+		ScreenPostDesc.eProfile >= PRESENTATION_SCREEN_POST_PROFILE::END ||
 		0u == ScreenPostDesc.iRandomSeed ||
 		!std::isfinite(ScreenPostDesc.fSampleTimeSeconds) ||
 		ScreenPostDesc.fSampleTimeSeconds < 0.f ||

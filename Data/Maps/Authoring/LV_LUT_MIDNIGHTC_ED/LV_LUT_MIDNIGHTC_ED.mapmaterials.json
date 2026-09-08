@@ -76,6 +76,30 @@
         "reflection": "srgb"
       },
       "diffuseSaturation": 1
+    },
+    {
+      "assetId": "MAP_6CAA005B80DF_BG_RAD_KOUKUSATON_FLOOR15_SM_HHT_OVR_10E1C8701F8A",
+      "materialName": "SLOT_000_bg_rad_koukusaton_floor15_mi_hht",
+      "sourceMaterial": "bg_rad_koukusaton_g.mat.bg_rad_koukusaton_floor15_mi_hht",
+      "family": "diffuse-sampler",
+      "sourceTexture": "bg_rad_koukusaton_g.tex.bg_rad_koukusaton_floor15_d_hht",
+      "addressU": "MIRROR"
+    },
+    {
+      "assetId": "MAP_6CAA005B80DF_BG_RAD_KOUKUSATON_FLOOR15_SM_HHT_OVR_10E1C8701F8A",
+      "materialName": "SLOT_001_bg_rad_koukusaton_floor15a_mi_hht",
+      "sourceMaterial": "lv_lut_midnightc.mat.bg_rad_koukusaton_floor15a_mi_hht",
+      "family": "diffuse-sampler",
+      "sourceTexture": "bg_rad_koukusaton_g.tex.bg_rad_koukusaton_floor15a_d_hht_loc_int",
+      "addressU": "MIRROR"
+    },
+    {
+      "assetId": "MAP_6CAA005B80DF_BG_RAD_KOUKUSATON_FLOOR15_SM_HHT_OVR_10E1C8701F8A",
+      "materialName": "SLOT_002_bg_rad_koukusaton_floor15b_mi_hht",
+      "sourceMaterial": "lv_lut_midnightc.mat.bg_rad_koukusaton_floor15b_mi_hht",
+      "family": "diffuse-sampler",
+      "sourceTexture": "bg_rad_koukusaton_g.tex.bg_rad_koukusaton_floor15b_d_hht_loc_int",
+      "addressU": "MIRROR"
     }
   ]
 }

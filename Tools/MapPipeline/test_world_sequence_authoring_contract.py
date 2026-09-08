@@ -96,6 +96,33 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         with_default = copy.deepcopy(source)
         with_default["objectResources"][-1]["defaultMotionInstanceId"] = "test.world.instance"
         cases.append(("default_motion_valid", with_default, True))
+        with_effect = copy.deepcopy(source)
+        with_effect["templates"][-1]["effectTracks"] = [{
+            "effectTrackId": "effect.smoke", "slotId": "object", "resourceKind": "GROUP",
+            "resourceId": "boss.kouku.ball.smoke", "timing": "MOTION_END", "startMs": 0,
+            "durationMs": 2000, "positionOffset": [0, -2.3, -1.35],
+            "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1],
+        }]
+        cases.append(("effect_motion_end", with_effect, True))
+        ten_balls = copy.deepcopy(with_effect)
+        ten_balls["templates"][-1]["objectMotion"].update(count=10, intervalMs=300, spreadDegrees=360)
+        cases.append(("effect_ten_complete_emissions", ten_balls, True))
+        at_time = copy.deepcopy(with_effect)
+        at_time["templates"][-1]["effectTracks"][0].update(timing="TIME", startMs=1000)
+        cases.append(("effect_time_includes_model_end", at_time, True))
+        for name, fields in (
+            ("unknown_timing", {"timing": "FINISH"}), ("end_offset", {"startMs": 1}),
+            ("missing_slot", {"slotId": "absent"}), ("unknown_kind", {"resourceKind": "WORLD"}),
+            ("path_identity", {"resourceId": "../smoke"}), ("zero_window", {"durationMs": 0}),
+            ("boolean_time", {"startMs": True}), ("time_past_end", {"timing": "TIME", "startMs": 1001}),
+            ("negative_scale", {"scale": [-1, 1, 1]}), ("excessive_tail", {"durationMs": 600000}),
+        ):
+            invalid = copy.deepcopy(with_effect)
+            invalid["templates"][-1]["effectTracks"][0].update(fields)
+            cases.append(("effect_invalid_" + name, invalid, False))
+        duplicate_effect = copy.deepcopy(with_effect)
+        duplicate_effect["templates"][-1]["effectTracks"] *= 2
+        cases.append(("effect_duplicate_track_id", duplicate_effect, False))
         for name, default_id in (("missing", "missing.instance"), ("foreign", curtain["instanceId"]),
                                  ("number", 4), ("null", None), ("empty", "")):
             candidate = copy.deepcopy(source)

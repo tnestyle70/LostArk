@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.effect-resource-tree",
+  "formatVersion": 1,
+  "nodes": [
+  ],
+  "references": [
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.tuning.restore", "displayName": "이펙트_차원술사W_튜닝", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050120.clip2.full.restore", "displayName": "이펙트_차원술사W_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050160.clip4.full.restore", "displayName": "이펙트_차원술사E_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050180.full.restore", "displayName": "이펙트_차원술사R_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050210.a1.full.restore", "displayName": "이펙트_차원술사A_전체", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.dimensionmaster.skill.2050540.full.restore", "displayName": "이펙트_차원술사AltV_전체", "parentId": "root.v1"}
+  ]
+}

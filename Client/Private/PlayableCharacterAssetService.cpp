@@ -1,6 +1,7 @@
 #include "PlayableCharacterAssetService.h"
 
 #include "ActorCatalog.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -207,6 +208,14 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			characterScale) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
 
+    const auto loadDescription = [pActor](const std::string& assetId,
+        MODEL_ASSET_LOAD_DESC& description) {
+        std::string status;
+        if (CActorCatalog::Build_ModelLoadDescription(assetId, description, status, pActor->assetId))
+            return true;
+        OutputDebugStringA(("[PlayableCharacterAssetService] " + status + "\n").c_str());
+        return false;
+    };
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	const size_t totalModelCount =
 		1u + pTags->iEquipmentCount + pTags->iWeaponCount;
@@ -216,6 +225,7 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		&pDevice,
 		&pContext,
 		&progress,
+        &loadDescription,
 		totalModelCount](
 		const tchar_t* pTag,
 		const std::string& assetId,
@@ -228,11 +238,13 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			CRuntimeAssetRoot::Resolve(assetId);
 		if (nullptr == pTag || path.empty())
 			return false;
+		MODEL_ASSET_LOAD_DESC description;
+		if (!loadDescription(assetId, description)) return false;
 		unique_ptr<CPrototype> pModel = CModel::Create(
 			pDevice,
 			pContext,
 			modelType,
-			path.string().c_str(),
+			description,
 			transform);
 		if (nullptr == pModel)
 			return false;
@@ -249,11 +261,13 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			CRuntimeAssetRoot::Resolve(pActor->bodyModel);
 		if (nullptr == pTags->pBody || bodyPath.empty())
 			return E_FAIL;
+		MODEL_ASSET_LOAD_DESC description;
+		if (!loadDescription(pActor->bodyModel, description)) return E_FAIL;
 		unique_ptr<CModel> pBodyModel = CModel::Create(
 			pDevice,
 			pContext,
 			MODEL::ANIM,
-			bodyPath.string().c_str(),
+			description,
 			characterTransform);
 		if (nullptr == pBodyModel)
 			return E_FAIL;

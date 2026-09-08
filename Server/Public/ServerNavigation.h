@@ -99,6 +99,7 @@ namespace LostArk::Server
 			const std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>& surfaces,
 			std::string& outStatus);
 		std::size_t Get_RuntimeSupportSurfaceCount() const noexcept { return m_RuntimeSupportSurfaces.size(); }
+		const std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>& Get_RuntimeSupportSurfaces() const noexcept { return m_RuntimeSupportSurfaces; }
 
 		bool Has_Condition(const std::string& conditionId) const;
 		// Diagnostic counter for the Debug audition panel: how many authored

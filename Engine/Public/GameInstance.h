@@ -91,6 +91,7 @@ public: /* For.Object_Manager */
 
 public: /* Renderer */
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<class CGameObject> pRenderObject);
+	void Request_SceneColorSnapshot();
 	RENDER_QUALITY_SETTINGS Get_RenderQualitySettings() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	MATERIAL_RENDER_SETTINGS Get_MaterialRenderSettings() const;

@@ -94,6 +94,10 @@ private:
 		ComPtr<ID3D11DeviceContext> pContext);
 
 public:
+	using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
+	using WORLD_EMISSION_RESOLVER = std::function<bool_t(std::uint32_t, std::string_view, std::string_view, WORLD_EMISSION_ANCHOR&)>;
+	void Set_CompositionWorldEmissionResolver(WORLD_EMISSION_RESOLVER resolver)
+	{ m_WorldEmissionResolver = std::move(resolver); }
 	virtual ~CLevel_KakulSaydonArena();
 
 	virtual HRESULT Initialize() override;
@@ -137,6 +141,7 @@ public:
 		f32_t playbackSpeed = 1.f;
 		float3_t positionOffset{};
 		std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> placement;
+		WORLD_EMISSION_ANCHOR emissionAnchor;
 	};
 	bool_t Debug_BeginCompositionWorldPreview(const std::string& patternId,
 		std::vector<COMPOSITION_WORLD_PREVIEW_CUE> cues, std::string& status,
@@ -242,6 +247,11 @@ public:
 	bool_t Capture_CameraShot(std::string_view shotId, std::string& outStatus);
 	bool_t Save_CameraShots(std::string& outStatus);
 	static bool_t Parse_CameraShots(std::string_view text, std::vector<KAKUL_CAMERA_SHOT>& outShots, std::string& outStatus);
+	static VALTAN_CINEMATIC_CAMERA_CUE CameraShot_ToCue(const KAKUL_CAMERA_SHOT& shot);
+	static bool_t Stage_PatternCameraTracks(std::string_view baseline,
+		const std::vector<VALTAN_CINEMATIC_CAMERA_CUE>& cues, const std::map<std::string, std::string>& names,
+		std::string& outText, std::string& outStatus);
+	bool_t Save_CameraShotSource(std::string_view expectedSource, const std::string& text, std::string& outStatus);
 
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_CameraShots() const
 	{
@@ -315,8 +325,11 @@ private:
 		std::uint32_t runEpoch = 0, startTick = 0, durationMs = 0;
 		std::string memberId, cueId, occurrenceId, sequenceId;
 		float clockMs = 0.f;
+		WORLD_EMISSION_ANCHOR emissionAnchor;
 		std::shared_ptr<CWorldSequencePlayer> player;
 	};
+	WORLD_EMISSION_RESOLVER m_WorldEmissionResolver;
+	std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingOwnedWorldCues;
 	std::map<std::string, OWNED_WORLD_CUE> m_OwnedWorldCues;
 	std::set<std::string> m_StoppedWorldOwners;
 	std::set<std::string> m_ConsumedWorldCueIds;

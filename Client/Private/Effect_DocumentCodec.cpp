@@ -105,7 +105,7 @@ namespace
 	};
 	constexpr const char_t* ATTACHMENT_ORIENTATION_TOKENS[] =
 	{
-		"bone", "owner_yaw"
+		"bone", "owner_yaw", "camera_view"
 	};
 	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_KIND_TOKENS[] =
 	{
@@ -3118,6 +3118,8 @@ namespace
 				nullptr == pCompilerEvidence || nullptr == pExecutionAdmission ||
 				nullptr == pMaterialAdmission || nullptr == pGeometryBinding)) ||
 			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError) ||
+			!Read_OptionalBool(Value, "authoredModuleOverrides",
+				Out.bAuthoredModuleOverrides, strOutError) ||
 			!Read_String(Value, "rendererShape", Out.strRendererShape,
 				strOutError) ||
 			!Read_Float(Value, "emitterDelaySeconds",
@@ -3575,6 +3577,8 @@ namespace
 			<< (Recipe.bEnabled ? "true" : "false")
 			<< ", \"rendererShape\": \""
 			<< Client::CDataJson::Escape(Recipe.strRendererShape) << '"';
+		if (Recipe.bAuthoredModuleOverrides && !bSourceContract)
+			Output << ", \"authoredModuleOverrides\": true";
 		if (bSourceContract)
 		{
 			Output << ", \"sourceContractProfileId\": \""
@@ -4745,10 +4749,13 @@ namespace
 				!Parse_Token(pOrientation->Get_String(), ATTACHMENT_ORIENTATION_TOKENS,
 					std::size(ATTACHMENT_ORIENTATION_TOKENS), Out.eOrientation))
 			{
-				strOutError = "Effect Action cue attachment orientation must be bone or owner_yaw.";
+				strOutError = "Effect Action cue attachment orientation must be bone, owner_yaw, or camera_view.";
 				return false;
 			}
 		}
+		if (Value.Find("modelCueId") &&
+			!Read_String(Value, "modelCueId", Out.strModelCueId, strOutError))
+			return false;
 		const Client::DATA_JSON_VALUE* pSocketLocal = Find_Field(
 			Value, "socketLocalTransform", Client::DATA_JSON_TYPE::OBJECT,
 			strOutError);
@@ -5617,6 +5624,48 @@ namespace
 				});
 		const std::string_view strProfile =
 			SourceMaterial.strRuntimeShaderProfileId;
+		if (nullptr != Find_DimensionMasterSDProgram(strProfile) &&
+			!Has_DimensionMasterSDMaterialContract(Element))
+		{
+			strOutError = "Native S material requires its recovered source carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_DimensionMasterWRProgram(strProfile) &&
+			!Has_DimensionMasterWRMaterialContract(Element))
+		{
+			strOutError = "Native W/R material requires its recovered source variant, carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_DimensionMasterALTVProgram(strProfile) &&
+			!Has_DimensionMasterALTVMaterialContract(Element))
+		{
+			strOutError = "Native ALT_V material requires its recovered source variant, carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_DimensionMasterVProgram(strProfile) &&
+			!Has_DimensionMasterVMaterialContract(Element))
+		{
+			strOutError = "Native V material requires its recovered source variant, carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_DimensionMasterQProgram(strProfile) &&
+			!Has_DimensionMasterQMaterialContract(Element))
+		{
+			strOutError = "Native Q material requires its recovered source variant, carrier and named inputs.";
+			return false;
+		}
+		if (strProfile == EFFECT_SLICE_SCENE_DEPTH_RUNTIME_PROFILE_ID &&
+			!Has_EffectSliceSceneDepthContract(Element))
+		{
+			strOutError = "Slice scene-depth material requires its sprite, flow texture and exact four dynamic lanes.";
+			return false;
+		}
+		if (strProfile == EFFECT_CUBESAMPLE_SCENE_RUNTIME_PROFILE_ID &&
+			!Has_EffectCubeSampleSceneContract(Element))
+		{
+			strOutError = "CubeSample scene material requires its mesh, named spec texture and unclamped source variant.";
+			return false;
+		}
 		if (strProfile == "effect.ue3.grouped-translucent.v1" &&
 			!Is_EffectGroupedTranslucentResourceContractSatisfied(
 				SourceMaterial, bSafeBase, bHasMask, bHasEmissive, bHasDissolve))
@@ -6518,10 +6567,24 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Attachment.SocketLocalTransform.vScale.x > 0.f &&
 			Attachment.SocketLocalTransform.vScale.y > 0.f &&
 			Attachment.SocketLocalTransform.vScale.z > 0.f;
+		const bool_t bCameraViewAttachment = Attachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW;
 		const bool_t bOwnerYawAttachment = Attachment.eOrientation ==
 			EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW;
+		if (!Attachment.strModelCueId.empty() &&
+			(!Is_StableId(Attachment.strModelCueId) ||
+			 !ModelCueIds.contains(Attachment.strModelCueId) ||
+			 !Attachment.bEnabled || !Attachment.bFollow ||
+			 Attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::BONE))
+		{
+			strOutError = "Effect model-cue attachment owner is invalid: " +
+				Attachment.strModelCueId;
+			return false;
+		}
 		if (!bAttachmentTransformValid ||
 			Attachment.eOrientation >= EFFECT_ATTACHMENT_ORIENTATION::END ||
+			(bCameraViewAttachment && (!Attachment.bEnabled || !Attachment.bFollow ||
+				!Attachment.strRuntimeBoneName.empty())) ||
 			(bOwnerYawAttachment &&
 				(!Attachment.bEnabled || !Attachment.bFollow ||
 				 Document.bSourceContract || Element.SourceRecipe.bEnabled ||
@@ -6537,7 +6600,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					Attachment.strRuntimeAnchorSlotId.size() > 128u ||
 					!Has_VisibleCharacter(
 						Attachment.strRuntimeAnchorSlotId) ||
-					(Attachment.bFollow &&
+					(Attachment.bFollow && !bCameraViewAttachment &&
 						(Attachment.strRuntimeBoneName.empty() ||
 							Attachment.strRuntimeBoneName.size() > 128u ||
 							!Has_VisibleCharacter(
@@ -7457,6 +7520,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			Left.strModelCueId == Right.strModelCueId &&
 			Left.fSnapshotRootSourceBasisYawDegrees ==
 				Right.fSnapshotRootSourceBasisYawDegrees &&
 			SameTransform(Left.SocketLocalTransform,
@@ -7475,6 +7539,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		if (!bInserted &&
 			(Iterator->second->strRuntimeBoneName != Attachment.strRuntimeBoneName ||
 			 Iterator->second->eOrientation != Attachment.eOrientation ||
+			 Iterator->second->strModelCueId != Attachment.strModelCueId ||
 			 !SameTransform(Iterator->second->SocketLocalTransform,
 				Attachment.SocketLocalTransform)))
 		{
@@ -9893,6 +9958,7 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			Left.strModelCueId == Right.strModelCueId &&
 			Left.fSnapshotRootSourceBasisYawDegrees ==
 				Right.fSnapshotRootSourceBasisYawDegrees &&
 			SameTransform(Left.SocketLocalTransform,
@@ -13834,6 +13900,14 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		{
 			Output << ", \"orientation\": \"owner_yaw\"";
 		}
+		else if (Element.ActionCueAttachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW)
+		{
+			Output << ", \"orientation\": \"camera_view\"";
+		}
+		if (!Element.ActionCueAttachment.strModelCueId.empty())
+			Output << ", \"modelCueId\": \""
+				<< CDataJson::Escape(Element.ActionCueAttachment.strModelCueId) << "\"";
 		Output << ", \"sourceAnchorSlotId\": \""
 			<< CDataJson::Escape(
 				Element.ActionCueAttachment.strSourceAnchorSlotId)

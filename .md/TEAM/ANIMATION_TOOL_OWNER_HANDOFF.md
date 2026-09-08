@@ -74,6 +74,22 @@ Git은 authored source와 stable asset ID만 전달하며 Resource binary는 추
 Animation Tool은 이 경로가 존재해도 Effect element를 직접 편집하지 않고 ordered clip과 cue timing/anchor를
 소유한다. Valtan Server stage와 damage도 계속 Encounter/Server 권위이며 Effect Tool이 바꾸지 않는다.
 
+### 2.2 V1 복구본과 Effect Sequencer
+
+V1 All Effects는 기존 Product `.unified`와 이름이 대응하는 `.restore`와 `.full.restore`를 Product 아래
+독립 Recovery Effect로 표시한다. 처음 창을 펼칠 때 Authored 파일 목록을 자동으로 읽으며,
+이후 외부 파일 변경은 `Refresh`로 다시 읽는다. 실제 문서는 Open/Play에서 선택한 항목만 로드한다.
+복구본은 정상 Player Product source의 class/skill을 참조하는 편집기 문서이며,
+EffectCatalog나 `.animevents`를 자동 변경하지 않는다. 경로·ID 불일치와 원본 누락은
+해당 항목에 표시하고 제품 스킬의 기존 문서를 유지한다.
+
+복구본의 Play/Play All은 CharacterPreviewPanel의 실제 모델과 저장된 skillbindings의
+클립 순서를 EffectAuthoringSequencer로 재생한다. Model View에서 root/bone anchor를
+선택하고, Sequencer는 occurrence 시간·offset·anchor를 소유한다. SourceRecipe 내부의
+socket 부착과 바깥 occurrence bone을 이중 적용하지 않는다. Effect sequence v2는
+anchor를 저장하며 기존 v1은 root로 읽는다. Save Sequence는 `.animevents`를 저장하지 않는다.
+V1 Save As의 새 ID·표시명·Parent와 V2 편집은 각 문서 owner가 처리한다.
+
 ## 3. Animation Tool이 소유하는 것
 
 Animation 담당자는 다음을 계속 소유한다.
@@ -753,7 +769,8 @@ Animation Tool은 위 미완료 기능을 로컬 clip 재생이나 임의 part t
     {
       "skillId": 2050010,
       "clips": [
-        [ { "clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 3000, "playRate": 2.0 } ],
+        [ { "clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1400 } ],
+        [ "pc_sp_m_00_sk_att_battle_1_02" ],
         [ "pc_sp_m_00_sk_att_battle_1_03" ],
         [ "pc_sp_m_00_sk_att_battle_1_04" ]
       ]
@@ -775,7 +792,7 @@ skillId, 다른 owner class, 현재 model에 없는 clip, COMBO의 `comboStages`
 5. ACTIVE 스킬은 `Assign Current Clip`으로 현재 clip을 step에 넣는다. 필요한 경우 step을 추가하고 순서를
    바꾸거나 제거해 하나 이상의 ordered clip chain을 만든다.
 6. LMB COMBO는 Server `comboStages` 수만큼 고정된 row에 현재 clip group을 각각 지정한다.
-   차원술사 `2050010`은 `_01(3000ms source/2x)`, `_03`, `_04`의 automatic 3-stage다. BA 단계 수와
+   차원술사 `2050010`은 `_01`, `_02`, `_03`, `_04`의 manual 4-stage다. BA 단계 수와
    automatic/manual timing 자체는 Animation Tool에서 추가·삭제하거나 변경하지 않는다.
 7. Save를 누른다. Tool은 sibling temporary file에 쓴 뒤 flush, strict reparse/validate, destination replace를
    수행한다. 실패하면 기존 destination 문서를 유지한다.
@@ -810,14 +827,14 @@ Lance Master    Q W E R A S T V ALT_V + LMB(4단)
 Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
 Slayer          Q W E R A S D F V ALT_V + LMB(4단)
 Artist          Q W E R A S T V Z ALT_V + LMB(4단)
-DimensionMaster Q W E R A S D F T V ALT_V + LMB(3단 automatic)
+DimensionMaster Q W E R A S D F T V ALT_V + LMB(4단 manual)
 ```
 
-DimensionMaster의 LMB `2050010`은 한 번의 command로 세 Server stage가 자동 진행되고 Animation Tool은
-snapshot `iComboStage`에 따라 위 세 clip group을 재생한다. Product Effect suffix는 stage ordinal이
-아니다. 고정 cue는 `_01 -> ba2`, `_03 -> ba3`, `_04 -> ba1`이며 세 cue 모두
-`root/follow/action_facing/natural`을 사용한다. 기존 `ba4` authored payload는 삭제·이름 변경하지 않지만
-현재 3-stage 제품 chain에는 연결하지 않는다. `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding의
+DimensionMaster의 LMB `2050010`은 추가 클릭 또는 hold 입력으로 네 Server stage가 진행되고 Animation Tool은
+snapshot `iComboStage`에 따라 위 네 clip group을 재생한다. 실제 Product cue는
+`_01 -> ba0.restore`, `_02 -> ba1.restore`, `_03 -> ba2.restore`, `_04 -> ba3.restore`이며 모두
+`root/follow/action_facing/natural`을 사용한다. 단계는 파일명 추측이 아닌 실제 clip 소유권으로 찾는다.
+기존 `.unified` payload는 비교 자료로 보존한다. `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding의
 `pc_sp_m_00_sk_sk_super_timewave`를 사용한다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
 그리므로 이후 합법적으로 추가되는 `Z`, `SPACE`, `RMB` 등의 slot도 숨기지 않는다.
 
@@ -984,7 +1001,11 @@ Clown body admission scale은 `0.017 × 0.709`다. 프라이팬으로 확인된 
 장착 part는 ClownSpec에서 제외했다. 본체 mesh와 망치 몸동작 clip은 보존하며 본체의 단일 submesh를
 숨기지 않는다. 전달 대상 본체 폴더는 `Client/Bin/Resources/Character/KoukuSaton/MN_RPCZ_00-1`이다.
 
-Kouku Composition Play/seek/Stop은 기존 `CWorldSequencePlayer`의 로컬 clock을 공유한다.
+Kouku Composition Preview의 Stop은 현재 시각과 포즈를 유지하는 Pause다. 정지 상태에서도
+Pattern/Bundle 타임라인을 드래그하면 해당 시각을 샘플하고, 끝시각의 포즈도 유지한다.
+Reset은 preview를 해제하고0ms로 돌아간다. 같은 Pattern을 정지한 뒤 Collider Detail의
+Preview를 누르면 현재 시각과 미저장 박스 값을 함께 사용한다. 실제 Collider 활성 창은 유지한다.
+Play/seek/Pause/Reset은 기존 `CWorldSequencePlayer`의 로컬 clock을 공유한다.
 WORLD box의 `Lifetime ms`는 실제 표시 수명이다. sequence의 동작 속도는 Playback speed가 정하고,
 box 종료 시 동적 object를 제거하고 원래 placement를 복구한다. Server WORLD cue의 `durationMs`도
 같은 값을 전달하며 0인 기존 호출은 sequence 자체의 길이를 사용한다.
@@ -1148,7 +1169,13 @@ Logic Definition은 재사용 규칙이고 Shared Logic Window는 해당 규칙�
 
 조커찾기 전체 제한시간은 `DURATION / EXTERNAL_SIGNAL`의 별도 창이 소유한다. 그 창의 Success에는 성공 Pattern으로 가는 기존 Result, Timeout에는 전원 전멸 Result를 연결한다. 중앙 Trigger Success에 `COMPLETE_LOGIC_WINDOW` Result도 추가하고, 대상 창을 전체 제한시간 창으로 지정한다. 성공을 발생시킬 카드 조건에는 조커 카드 occurrence를 선택한다. End Pattern on success를 켜면 성공 분기로 즉시 넘어가며 이후 Timeout은 실행하지 않는다. 마지막 판정 tick에서 접촉 성공을 먼저 처리하고, 접촉하지 못하면 최종 애니메이션 자세를 마감 tick까지 유지하여 Timeout을 처리한다.
 
-뿅망치에 붙일 Collider는 상세 편집에서 `Anchor = BOSS`, `Bone target = WEAPON`, `Bone = 실제 무기 모델의 끝부분 Bone`을 선택한다. BODY는 보스 몸의 Bone이고 WEAPON은 별도 망치 모델의 Bone이다. 목록은 현재 Pattern 모델의 실제 로드된 Bone 이름을 사용한다. 망치 부위는 사용자가 Preview로 확인하여 선택하고 필요하면 Position Offset을 조정한다. 존재하지 않는 Bone을 보스 원점으로 조용히 대체하지 않는다. Follow Boss를 켜고 Trigger Start/Lifetime을 내려치는 짧은 구간에 맞춘다.
+뿅망치에 붙일 Collider는 상세 편집에서 `Anchor = BOSS`, `Bone target = WEAPON`, `Bone = 실제 무기 모델의 끝부분 Bone`을 선택한다. BODY는 보스 몸의 Bone이고 WEAPON은 별도 망치 모델의 Bone이다. 목록은 현재 Pattern 모델의 실제 로드된 Bone 이름을 사용한다. MN_RPCT_06 망치의 `b_root`는 무기 원점이고 `b_rpct_01`과 `b_rpct_03`은 양쪽 말단이다. `ao_att_battle_1_03`에서 내려치는 말단의 기본 연결은 `b_rpct_01`을 사용하며, 정밀 부위는 사용자가 Preview로 확인하여 Position Offset을 조정한다. 존재하지 않는 Bone을 보스 원점으로 조용히 대체하지 않는다. Follow Boss를 켜고 Trigger Start/Lifetime을 내려치는 짧은 구간에 맞춘다.
+
+Bone에 연결된 Collider Box 상세의 `Preview`는 편집 중인 그 Box를 임시 Pattern 사본에 적용하고,
+그 Collider의 Start에서 원래 보스·몸·무기 애니메이션과 함께 재생한다. 원래 occurrence ID와
+패턴 시각을 유지하므로 다른 Collider도 각자의 활성 구간에서 같은 망치를 따라간다. 미저장 Detail은
+Preview에만 반영되며 `Apply → Save`로 저장한다. Resource 목록의 형상 단독 Preview는 별도 보스
+애니메이션을 재생하지 않는다. 타임라인 `Play`는 Apply한 전체 Pattern을 현재 커서에서 재생한다.
 
 Collider 중심은 실제 Bone의 XZ 위치를 따라가고 offset과 수평 형상 방향은 보스 yaw 및 저작 Rotation을 사용한다. 내려치는 높이 자체는 접촉 활성화 조건이 아니다. Publish는 기존 WModel pose sampler로 실제 body/weapon clip과 attachment에서 boss-local Bone 궤적을 만들어 Server fixed tick 판정에 연결한다. 해당 Bone CONTACT Pattern의 제품 애니메이션은 궤적과 맞도록 전환 blend를 사용하지 않는다. Server는 모델 파일이나 Client Transform을 받아 판정하지 않는다.
 

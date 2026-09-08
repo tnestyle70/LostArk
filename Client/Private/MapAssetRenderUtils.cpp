@@ -564,6 +564,14 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		return E_INVALIDARG;
 	}
 
+	// Shared shader state is reset even for legacy and diffuse-override draws.
+	const uint32_t noSurfaceEmissive = 0u;
+	if (FAILED(shader->Bind_RawValue("g_HasSurfaceEmissive",
+		&noSurfaceEmissive, sizeof(noSurfaceEmissive))) ||
+		FAILED(shader->Bind_RawValue("g_DiffuseMirrorU",
+			&noSurfaceEmissive, sizeof(noSurfaceEmissive))))
+		return E_FAIL;
+
 	const uint32_t hasNormalTexture =
 		model->Has_MaterialTexture(
 			meshIndex, aiTextureType_NORMALS) ? 1u : 0u;
@@ -700,7 +708,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||
 		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
 		return E_FAIL;
-    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u) && surface->hasBakedLighting ? 1u : 0u;
+    const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u) && surface->hasBakedLighting ? 1u : 0u;
     const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube ? 1u : 0u;
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
     const auto& lighting = bakedLighting ? *bakedLighting : emptyLighting;
@@ -727,10 +735,27 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		recordBinding();
 		return S_OK;
 	}
+	if ((program == 3u || program == 4u) && surface->hasEmissive)
+	{
+		if (!std::isfinite(elapsedTime))
+			return E_INVALIDARG;
+		if (FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceEmissiveTexture", meshIndex, aiTextureType_EMISSIVE)) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveColor", &surface->emissiveColor, sizeof(surface->emissiveColor))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveIntensity", &surface->emissiveIntensity, sizeof(surface->emissiveIntensity))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveUVTiling", &surface->emissiveUVTiling, sizeof(surface->emissiveUVTiling))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveFlickerMinimum", &surface->emissiveFlickerMinimum, sizeof(surface->emissiveFlickerMinimum))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveFlickerSpeed", &surface->emissiveFlickerSpeed, sizeof(surface->emissiveFlickerSpeed))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissivePhaseOffset", &surface->emissivePhaseOffset, sizeof(surface->emissivePhaseOffset))) ||
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime))))
+			return E_FAIL;
+		const uint32_t hasSurfaceEmissive = 1u;
+		if (FAILED(shader->Bind_RawValue("g_HasSurfaceEmissive", &hasSurfaceEmissive, sizeof(hasSurfaceEmissive))))
+			return E_FAIL;
+	}
 	const auto* camera = CGameInstance::Get().Get_CamPosition();
 	if (!camera || FAILED(shader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)) ||
-		FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION)) ||
+        (program != 7u && FAILED(model->Bind_SurfaceTexture(shader, "g_ReflectionTexture", meshIndex, aiTextureType_REFLECTION))) ||
 		((program == 1u || program == 5u) && FAILED(model->Bind_SurfaceTexture(shader, "g_SpecularTexture", meshIndex, aiTextureType_SPECULAR))))
 		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_SurfaceDiffuseBrightness", &surface->diffuseBrightness, sizeof(surface->diffuseBrightness))))
@@ -761,6 +786,19 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
             FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling))) ||
             FAILED(shader->Bind_RawValue("g_SurfaceReflectionOriginOffset", &surface->reflectionOriginOffset, sizeof(surface->reflectionOriginOffset))))
             return E_FAIL;
+    }
+    if (program == 7u)
+    {
+        if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
+            FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceOverlayDiffuseTexture", meshIndex, aiTextureType_BASE_COLOR)) ||
+            FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceOverlayNormalTexture", meshIndex, aiTextureType_NORMAL_CAMERA)) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlayColor", &surface->overlayColor, sizeof(surface->overlayColor))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlayTiling", &surface->overlayTiling, sizeof(surface->overlayTiling))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlayNormalIntensity", &surface->overlayNormalIntensity, sizeof(surface->overlayNormalIntensity))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlaySharpness", &surface->overlaySharpness, sizeof(surface->overlaySharpness))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlayBrightness", &surface->overlayBrightness, sizeof(surface->overlayBrightness))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlaySaturation", &surface->overlaySaturation, sizeof(surface->overlaySaturation))) ||
+            FAILED(shader->Bind_RawValue("g_SurfaceOverlaySpecularIntensity", &surface->overlaySpecularIntensity, sizeof(surface->overlaySpecularIntensity)))) return E_FAIL;
     }
 	if (program == 3u || program == 4u)
 	{

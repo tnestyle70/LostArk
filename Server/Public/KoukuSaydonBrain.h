@@ -33,8 +33,8 @@ namespace LostArk::Server
 		ABORTED_BOSS_DEAD
 	};
 
-	// Animation-only Gate 1 runtime. It consumes the generic pattern/stage
-	// schema but owns no Valtan selection, combat, movement, or arena state.
+	// Kouku audition runtime, including authored base movement. It consumes
+	// generic stages without Valtan selection, combat, or portal movement.
 	class CKoukuSaydonBrain final
 	{
 	public:
@@ -85,6 +85,9 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t serverTick,
 			std::string& status) const;
+		// Idempotent absolute sampling also runs before room Logic observes position.
+		static void Apply_BossMotion(SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick) noexcept;
 		void Abort_Pattern(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick) const;
 		/* A Logic window ended the pattern early on success: the remaining

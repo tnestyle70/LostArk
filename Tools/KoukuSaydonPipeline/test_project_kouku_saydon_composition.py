@@ -39,6 +39,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         # Existing lane tests own independent patterns, not the new saved bundle references.
         cls.document["folders"] = []
         cls.document["bundles"] = []
+        for pattern in cls.document["patterns"]:
+            pattern.pop("folderId", None)
 
     def validate(self, document):
         subject.validate_document(document, ROOT)
@@ -2072,6 +2074,113 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.assertRaisesRegex(subject.CompositionError, "missing Light Resources"):
                 subject.project_presentation(document, root)
 
+    def test_retarget_on_enter_projects_existing_stage_action_and_rejects_yaw_conflict(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        stage = pattern["stages"][0]
+        self.assertNotIn("actions", subject._project_stage(stage))
+        stage["retargetOnEnter"] = True
+        self.validate(document)
+        self.assertEqual([{"trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
+                          "targetId": "boss.target.pattern", "value": 1, "durationMs": 0}],
+                         subject._project_stage(stage)["actions"])
+        for value in (None, 0, 1, "true", [], {}):
+            rejected = copy.deepcopy(document)
+            self.first_product(rejected)["stages"][0]["retargetOnEnter"] = value
+            with self.subTest(value=value), self.assertRaisesRegex(subject.CompositionError, "retargetOnEnter"):
+                self.validate(rejected)
+        rejected = copy.deepcopy(document)
+        self.first_product(rejected)["bossMotion"] = copy.deepcopy(
+            self.find(document, "KAKULSAYDON_G1_PATTERN_8")["bossMotion"])
+        with self.assertRaisesRegex(subject.CompositionError, "retargetOnEnter.*bossMotion"):
+            self.validate(rejected)
+        stage["retargetOnEnter"] = False
+        self.validate(document)
+        self.assertNotIn("actions", subject._project_stage(stage))
+
+    def test_animation_root_vertical_scale_projects_only_its_actions(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern["authoringStatus"] = "PRODUCT"
+        pattern["animationRootVerticalScale"] = .8
+        document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
+        self.validate(document)
+        actions = {stage["actionId"] for stage in pattern["stages"]}
+        product = subject.project_presentation(document)
+        self.assertTrue(all(row["animationRootVerticalScale"] == .8 for row in product["bindings"] if row["actionId"] in actions))
+        self.assertTrue(all("animationRootVerticalScale" not in row for row in product["bindings"] if row["actionId"] not in actions))
+        self.assertEqual(.8, self.find(product, pattern["patternId"])["animationRootVerticalScale"])
+        for scale in (None, True, "0.8", -.1, 1.1, float("nan"), float("inf")):
+            pattern["animationRootVerticalScale"] = scale
+            with self.subTest(scale=scale), self.assertRaisesRegex(subject.CompositionError, "animationRootVerticalScale"):
+                self.validate(document)
+        pattern.pop("animationRootVerticalScale")
+        self.assertTrue(all("animationRootVerticalScale" not in row for row in subject.project_presentation(document)["bindings"]))
+
+    def test_animation_root_vertical_scale_matches_original_rise_and_cache_isolation(self):
+        pattern = self.find(self.document, "KAKULSAYDON_G1_PATTERN_8")
+        actor = subject._load_bone_bake_actor(pattern, ROOT, {})
+        root_index = next(i for i, bone in enumerate(actor["body"].skeleton_bones) if bone.name == "b_root")
+        clip = "rpcz00_att_battle_7_01"
+        def pose(seconds, scale):
+            return subject._sample_bone_bake_pose(actor, "body", clip, seconds, scale)[root_index]
+        original = pose(163 / 30, 1.0)
+        lower = pose(163 / 30, .8)
+        self.assertAlmostEqual(17.846225335, original[13], places=5)
+        self.assertAlmostEqual(14.276980268, lower[13], places=5)
+        self.assertEqual(original, pose(163 / 30, 1.0))
+        self.assertEqual(lower, pose(163 / 30, .8))
+        for before, after in zip(original[:13] + original[14:], lower[:13] + lower[14:]):
+            self.assertAlmostEqual(before, after, places=5)  # Imported axis basis has sub-micrometre Z leakage.
+        self.assertAlmostEqual(0.0, pose(6.1, .8)[13], places=5)
+        self.assertAlmostEqual(0.0, pose(163 / 30, 0.0)[13], places=5)
+
+    def test_boss_motion_projects_authoritative_and_presentation_origins(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern["authoringStatus"] = "PRODUCT"
+        pattern["resetBossToSpawn"] = False
+        pattern.pop("resetBossYawDegrees", None)
+        motion = {"startMs": 1870, "endMs": 5780, "startPosition": [2.04, 10.56, 316.95],
+                  "endPosition": [11.79, 10.56, 326.79], "yawDegrees": 314.7368}
+        pattern["bossMotion"] = motion
+        document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
+        self.validate(copy.deepcopy(document))
+        projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == "KAKULSAYDON_G1_PATTERN_8")
+        self.assertEqual(motion, projected["bossMotion"])
+        presentation = subject._project_pattern_presentation(document, pattern)
+        self.assertEqual(motion, presentation["bossMotion"])
+        box = pattern["worldOccurrences"][0]
+        world = next(w for w in document["worlds"] if w["worldId"] == box["worldId"])
+        world.update(anchorKind="BOSS_SPAWN", objectResourceId="test.object", anchorPosition=[1, 2, 3], positionOffset=[0, .5, 0])
+        box.pop("placement", None)
+        anchors = subject._project_pattern_presentation(document, pattern)["worldEmissionAnchors"]
+        self.assertIn({"occurrenceId": box["occurrenceId"], "startMs": box["startMs"],
+                       "anchorPosition": [1, 2, 3], "positionOffset": [0, .5, 0]}, anchors)
+        projected["bossMotion"]["startPosition"][0] = 999
+        self.assertEqual(2.04, pattern["bossMotion"]["startPosition"][0])
+
+    def test_boss_motion_rejects_bad_intervals_height_and_two_position_writers(self):
+        for field, value in (("startMs", True), ("startMs", 5780), ("endMs", 600000),
+                             ("yawDegrees", float("nan")), ("yawDegrees", 361),
+                             ("startPosition", [0, False, 0]), ("endPosition", [0, 11, 0])):
+            document = copy.deepcopy(self.document)
+            pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+            pattern["resetBossToSpawn"] = False
+            pattern.pop("resetBossYawDegrees", None)
+            pattern["bossMotion"] = {"startMs": 1870, "endMs": 5780, "startPosition": [2.04, 10.56, 316.95],
+                                     "endPosition": [11.79, 10.56, 326.79], "yawDegrees": 314.7368}
+            pattern["bossMotion"][field] = value
+            with self.subTest(field=field, value=value), self.assertRaisesRegex(subject.CompositionError, "bossMotion"):
+                self.validate(document)
+        document = copy.deepcopy(self.document)
+        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern["resetBossToSpawn"] = True
+        pattern["bossMotion"] = {"startMs": 0, "endMs": 100, "startPosition": [0, 0, 0],
+                                 "endPosition": [1, 0, 1], "yawDegrees": 0}
+        with self.assertRaisesRegex(subject.CompositionError, "bossMotion cannot also reset"):
+            self.validate(document)
+
     def test_boss_spawn_reset_and_world_anchor_project(self):
         document = copy.deepcopy(self.document)
         pattern = self.find(document, ROULETTE_ID)
@@ -2451,8 +2560,16 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def bundle_product_document(self):
         document = copy.deepcopy(self.hierarchy_document)
         bundle = document["bundles"][0]
+        # This fixture replaces the live clips, so their authored timing and
+        # common camera lanes cannot be carried into the synthetic sequence.
+        bundle["sceneProfileOccurrences"] = []
+        bundle["presentationOccurrences"] = []
+        bundle["nextSceneProfileOccurrenceOrdinal"] = 1
+        bundle["nextPresentationOccurrenceOrdinal"] = 1
         for member in bundle["members"]:
             pattern = self.find(document, member["patternId"])
+            self.strip_lanes(pattern)
+            pattern.pop("bossMotion", None)
             pattern["stages"] = []
             stage = self.append_reference_sequence(pattern, pattern["actorProfileId"])
             clip = stage["animationOccurrences"][0]

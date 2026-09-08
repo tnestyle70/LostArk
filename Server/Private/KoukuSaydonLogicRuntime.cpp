@@ -639,6 +639,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			for (const auto& target : window.ContactTargets)
 			{
 				if (state.ContactedWorldOccurrences.contains(target.strWorldOccurrenceId)) continue;
+				const auto motionPriority = ledger.AppliedContactMotionPriorities.find({window.strContactGroupId, target.strWorldOccurrenceId});
+				if (!window.strContactGroupId.empty() && motionPriority != ledger.AppliedContactMotionPriorities.end() &&
+					motionPriority->second > window.iContactPriority) continue;
 				const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ circle{ target.fWorldX, target.fWorldZ, target.fRadiusM };
 				if (!std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [&](const auto& region) {
 					return Intersects_LogicRegion(region, boss, circle, serverTick - ledger.iPatternStartTick);
@@ -659,6 +662,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 							play.strInstanceId = motion->strMotionInstanceId; play.strTargetSequenceInstanceId = target.strWorldInstanceId;
 							play.strTargetWorldOccurrenceId = target.strWorldOccurrenceId; play.iStartTick = serverTick;
 							outOutput.WorldSequencePlays.push_back(std::move(play));
+							if (!window.strContactGroupId.empty())
+								ledger.AppliedContactMotionPriorities[{window.strContactGroupId, target.strWorldOccurrenceId}] = window.iContactPriority;
 						}
 					}
 					else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW &&

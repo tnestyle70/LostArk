@@ -3027,3 +3027,12 @@ FOVAngle은 기존 1마리오와 동일하게 fovYDegrees에 옮긴다. 원본�
   }
 ]
 ```
+
+## G5. 2026-09-08 3관문 마리오 입구 네 곳 비활성화
+
+사용자 요청으로 Gameplay.world.json의 Mario1_go, Mario2_go, Mario3_go, Mario4_go 네
+triggerBox의 enabled만 false로 변경한다. 원래 위치·목적지·movePlayer 시간·arcHeight,
+각 마리오 내부 소품/점프/인트로 Trigger와 F1 Debug 진입은 유지한다.
+정본 World publisher의 Validate/Publish로 Server bootstrap에 반영하고 disabled 네 행과
+그 외 모든 JSON 의미 보존을 확인한다. C++/프로젝트 등록 변경은 없다.
+현재 실행 중 Server에는 자동 적용하지 않으며 새 bootstrap을 읽는 Server 재시작이 필요하다.

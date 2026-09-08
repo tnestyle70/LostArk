@@ -62,6 +62,8 @@ namespace LostArk::Server
 		std::vector<KOUKUSAYDON_LOGIC_WINDOW_STATE> Windows;
 		std::vector<std::uint32_t> ContactWindowOrder;
 		std::set<std::tuple<std::string, std::uint32_t, std::string>> ConsumedContactGroups;
+		// A lower-priority reaction cannot replace a card state already won in this pattern.
+		std::map<std::pair<std::string, std::string>, std::uint32_t> AppliedContactMotionPriorities;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
 

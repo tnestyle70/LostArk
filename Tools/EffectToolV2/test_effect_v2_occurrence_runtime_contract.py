@@ -67,7 +67,7 @@ class EffectV2OccurrenceRuntimeContractTests(unittest.TestCase):
         self.assertNotIn("Reload_BossValtan", source)
         self.assertIn("playback.bExternalClock = true", source)
         self.assertIn("Sample_Group(row.effectHandle, age, paused", source)
-        self.assertIn("history->Sample(box.iStartMs / 1000.f + seconds", source)
+        self.assertIn("history->Sample(resolved ? seconds : box.iStartMs / 1000.f + seconds", source)
         self.assertIn("leaf.eType == EFFECT_V2_TYPE::PARTICLE", source)
         self.assertIn("++g_iCacheGeneration", self.runtime_cpp)
 

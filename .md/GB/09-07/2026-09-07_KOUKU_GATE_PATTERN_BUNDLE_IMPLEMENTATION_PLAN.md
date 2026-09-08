@@ -371,3 +371,127 @@ Stages는 누적 clock으로 이어지는 순차 구간이므로 기존 순서�
 새 파일이나 project/filter 등록은 없다. 실제 현재 카드 목록으로 interval 배치의 비겹침을 확인하고
 최소 Client 컴파일/Debug Product 배포, 인코딩 보존 및 diff check를 수행한다. 사용자가 EXE를 종료했으며
 화면/선택 결과는 배포 후 사용자가 확인한다. G13의 Logic만 위로 쌓는 규칙과 숫자 행 이름은 폐기한다.
+
+
+## G16 — 쿠크 본체의 구간 이동과 원본 수직 pose 유지 (2026-09-08)
+
+PATTERN_8의 `bossMotion`은 월드 시작점 `(2.04, 10.56, 316.95)`, 도착점 `(11.79, 10.56, 326.79)`, 패턴 시각 `1870~5780ms`, 고정 yaw `314.7368`을 저작한다. 시작 전에는 시작점, 종료 후에는 도착점을 유지한다. Server brain은 절대 패턴 시각에서 XZ를 선형 보간하고 기존 entity snapshot에 결과를 싣는다. 30Hz fixed tick에서는 경계가 최대 한 tick 늦게 관측된다. Client의 기존 b_root 수평 억제를 유지하고 원본 local Z(변환 후 월드 Y) pose를 그대로 재생하므로 별도 포물선이나 높이 곡선을 더하지 않는다. Server body의 기준 Y는 10.56이다.
+
+기존 Valtan stage motion은 상대 전진/portal 이동 계약이므로 이 절대 위치 구간을 억지로 변환하지 않는다. optional pattern `bossMotion` 하나를 Composition parse/validate/save, Pattern Detail, projector, Gameplay publisher/reader, Kouku brain까지 연결한다. 새 Shared packet이나 두 번째 모델 런타임은 추가하지 않는다. resetBossToSpawn과 동시 사용 및 Y가 다른 양 끝점은 거부한다. 구간은 패턴 전체 시간 안에 있어야 하며 모든 수치는 유한해야 한다. 시작/도착의 navigation 유효성은 audition의 stage 전 검사로 기존 상태를 보존한다.
+
+Play Bundle은 같은 Composition 공용 sampler를 써서 동일한 구간을 재생한다. 각 공의 생성점도 occurrence 시작 시각과 emission 시각을 합쳐 이 sampler로 고정하고, 생성 후에는 개별 공 궤적이 책임진다. 이동 종료 후 model의 원본 수평 왕복을 다시 더하지 않는다. Animation Model Reference의 제자리 비교 용도는 유지한다.
+
+변경 대상은 기존 Composition H/CPP, ActionWorkbench Pattern Detail, PresentationPlayer의 boss 이동 구간, Level의 preview actor 초기화, GameplayCatalog H/CPP, KoukuSaydonBrain H/CPP, GameRoom admission/update, 기존 projector와 두 publisher다. 새 C++ 파일이나 project/filter 등록은 없다. 검증은 기존 projector unit test와 Kouku focused Server contract test에 정상 보간·끝점 유지·잘못된 구간 거부를 추가하고, root가 최소 컴파일과 해당 domain publish를 실행한다. Client 실행과 화면의 9시 방향·원본 점프 높이는 사용자가 확인한다.
+
+## G17. 조커찾기 망치 Collider의 선택 Preview와 기본 앵커 연결
+
+2026-09-08 사용자가 망치 앵커로 Play하면 중앙·주변 Collider가 함께 움직이도록 구현을 요청했다.
+정밀 위치·크기 튜닝은 사용자가 맡는다. 현재 source revision133의 PATTERN_13 Collider 네 개는
+BOSS/BODY, 빈 bone, offset0이며, 별도 망치 모델의 끝부분 본은 저장되지 않았다.
+실제 WP_MN_RPCT_06 모델에서 내려치는 말단 b_rpct_01과 반대 말단 b_rpct_03을 확인했다.
+기존 네 occurrence에 WEAPON/b_rpct_01을 연결하고 ID·시간·크기·offset·Logic은 보존한다.
+
+선택 Box의 Preview는 MainApp의 animation 없는 resource preview로 전달되고, 이 경로는
+플레이어 body/pivot를 사용하므로 세이튼 WEAPON view가 빠져 wire를 격리한다. named Bone Collider의
+선택 Preview를 기존 Pattern Preview 경로로 보내 원래 actor·body/weapon animation과 패턴 시각을
+보존한다. 미저장 Detail 값은 임시 Preview copy에만 적용하고 저장된 draft를 바꾸지 않는다.
+일반 resource 형상 preview와 World/Effect 경로는 유지한다. 별도 모델 또는 앵커 runtime은 만들지 않는다.
+
+수정 대상은 기존 KoukuSaydonActionWorkbench H/CPP, MainApp의 기존 Preview 소비 함수와
+BossCompositionDocumentContractTests, source Composition이다. 새 C++ 파일/project 등록은 없다.
+기존 native editor 검사에 source actor/clip/시각과 WEAPON/edit 보존, 잘못된 참조 실패 시 기존 상태
+보존을 확인한다. 최소 Client 컴파일·Debug 링크/배포, 변경 JSON parse·diff check를 수행한다.
+Client/UI 실행·캡처는 하지 않으며 중앙/주변 배치와 최종 말단 위치는 사용자 확인으로 남긴다.
+
+
+## G18. 패턴별 root 수직 높이 조절 (2026-09-08)
+
+현재 G2 쿠크는 bodyModelPreScale0.012053/presentationScale1에서 rpcz00_att_battle_7_01의 b_root가 5433.333ms에17.846225m 상승한다. PATTERN_8의 optional animationRootVerticalScale을0.8로 저장해 최고14.276980m로 낮춘다. 누락은1이며0..1의 유한 수만 허용한다. 모델 크기·animation 시각·수평 bossMotion은 보존한다. 수평 도착5780ms와 원본 pose 착지 약6100ms는 서로 다른 시점이다.
+
+Engine CModel은 기존 root suppression의 보존축에 rest+(sample-rest)*scale을 적용한다. 실제 Play_Animation과 비파괴 bone sampler는 같은 helper를 소비한다. 미처리 root translation을 보관해 다음 프레임의 unkeyed fallback과 Begin_AnimBlend 원본을 복구하고 배율 중복을 막는다. Setter는 유효하지 않은 값에서 기존 상태를 유지한다.
+
+Composition H/CPP와 Pattern Detail은 배율의 parse/validate/save/edit를 소유한다. 기존 projector가 각 Product action binding으로 배율을 보내고 body Bone Collider sample/cache도 같은 배율을 사용한다. Kouku action presentation reader가 stage한 값을 CNpc Play_NetworkAction의 기본값1인 인자로 넘긴다. Server snapshot의 새 action edge와 late-join seek 전에 적용하며 idle/death/다른 action은 기본값1로 복구한다. Preview는 같은 model setter를 animation 평가 전에 적용하고 actor 해제 시1로 복구한다. Model Reference는1을 유지한다.
+
+새 Server 이동·Shared packet·모델 runtime·C++ 파일/project 등록은 없다. 기존 문서 native 테스트에 저장/재로드/잘못된 값 보존을 추가하고, 기존 WModel/projector 검사에는 실제 b_root 최고높이·원본 및 배율별 cache 격리·착지·0배율·Product action별 투영을 확인할 최소 케이스를 추가한다. live/비파괴 pose의 같은 helper 사용과 blend 반복 방지·clone 값 복사·복구는 현재 호출 경로를 검토한다. 실제 CModel을 평가하는 기존 자동 검사 경로가 없으므로 새 하네스를 만들거나 이 항목을 실행 PASS로 기록하지 않는다. 기본1에서는 기존 외부 BoneLocal 편집을 보존하도록 원본 cache 복구와 배율 산술을 생략한다. 빌드와 publish는 root가 수행하고 Client 조작과 최종 시각 판정은 사용자에게 남긴다.
+
+
+## G19. Stop 포즈 유지와 정지 상태 타임라인 Scrub
+
+Workbench Stop 버튼은 현재 clock을 보존한 PAUSE로 연결하고 기존 완전 해제는 Reset으로 제공한다.
+내부 선택 변경/Reload의 Stop cleanup은 그대로 유지한다. Pattern과 Bundle ruler는 실행 여부와
+관계없이 현재 cursor를 실제 preview에 전달하며, inactive 상태에는 기존 preview를 paused로 stage한다.
+정확한 끝시각은 scrub에서 유지하고 Play에서는 기존0초 재시작 정책을 사용한다. Bundle consumer도
+paused 끝시각에서 자동 해제하지 않는다. Collider Detail Preview는 같은 Pattern의 paused clock을
+유지하면서 임시 편집값과 원본 BODY/WEAPON clip을 다시 샘플한다. Collider의 실제 활성 구간은 바꾸지 않는다.
+
+실제 UI와 연결된 public transport API를 기존 native editor harness의 짧은 transport 모드에서 검사한다.
+기존 전체 editor 검사는 반복하지 않는다. 신규 C++ 파일/project 등록이나 runtime 경로는 없으며
+최소 Client 컴파일·필요 데이터 publish·scoped diff 검증 후 사용자에게 뿅망치 정지/드래그/Preview를 안내한다.
+
+## G20. 조커찾기 대형 세이튼의 Bundle 중복 표시 정리 (2026-09-08)
+
+source revision135의 GATE2 조커찾기 Bundle kakulsaydon.bundle.3은 이미 PATTERN_12 쿠크와 PATTERN_13 대형 세이튼을 멤버로 가진다. PATTERN_13에 folderId kakulsaydon.folder.3도 저장되어 Workbench의 Parent 직속 목록과 Bundle 멤버 목록에 같은 패턴이 두 번 표시된다. PATTERN_13의 folderId만 제거하고 revision136으로 갱신한다. 기존 Bundle 멤버 ID/offset, Pattern/clip/Collider/Logic/World/WEAPON Bone과 다른 원본 값은 보존한다. 별도 PATTERN_14 성공 표현은 동일 boss placement의 다른 패턴이며 현재 Bundle의 중복 actor 검증과 맞지 않으므로 자동으로 합치거나 삭제하지 않는다.
+
+원본 JSON byte 기준 CAS를 확인하고 기존 Composition validator, JSON parse, 변경 전후 semantic 비교 및 diff check로 revision과 한 필드만 달라졌음을 검증한다. 코드나 저장 ID, Bundle 실행 순서를 바꾸지 않는다. publisher와 최종 빌드는 root 통합 작업에서 실행하며 Client/UI는 사용자가 확인한다. G19의 끝시각 정지 흐름에 맞춰 PresentationPlayer Resume은 기존 Seek_Preview(0)를 재사용하여 끝 clock에서 처음으로 돌아가고, paused 상태에서의 끝 pose 유지와 정상 재생의 자동 종료는 보존한다.
+
+## G21. 조커찾기 Collider 실행 연결과 Stage 방향 통합 (2026-09-08)
+
+G21 구현 시작 때 source revision144 이후 사용자 저장값에는 카드7개 배치와 망치 Collider6개, 이름만 있는
+Trigger22/23 및 검색기한 Logic20/성공21이 있다. Collider Logic definition 선택과 Apply Values는
+정의 편집만 수행하고 실제 logicOccurrenceId는 별도 Append에서 만들어져 연결이 빠진다.
+기존 Apply 경로를 정의값·해당 시각 Logic occurrence·Collider 참조의 한 candidate commit으로
+합친다. 같은 정의의 첫 시간창으로 이동하지 않고 정확한 시간창 또는 명시 Shared를 재사용한다.
+손상/미완성 정의는 오류를 보존하고 기존 draft와 파일을 유지한다. 공개 Set_ColliderLogicValues는
+정의값·정확한 Logic 시간창·Collider link를 한 candidate에서 검증한다. Apply Values와 Apply가
+같은 저장 경로를 사용하며 명시 Shared 선택의 시간, 다음 타격의 별도 시간과 기존 결과 연결을 보존한다.
+
+개별 P13은 Model Reference의 숨겨진 model yaw -90도, Bundle은 catalog pre-yaw0과 실제
+placement yaw226.5도를 사용했다. MainApp은 actorProfileId가 있는 Pattern을 기존 임시 Bundle
+Preview로 전달해 같은 actor/weapon/offset 기준을 사용한다. 명시 Model Reference는 유지한다.
+Stage의 optional retargetOnEnter는 strict bool/기본false이며 bRetargetOnEnter, 기본 equality,
+Composition parse/validate/save 및 Set_StageRetargetOnEnter/Stage Detail checkbox에 연결한다.
+잘못된 타입은 원문을 보존해 격리하고 fixed-yaw bossMotion과의 동시 사용은 거부한다.
+projector는 기존 RETARGET_RANDOM_ALIVE ENTER action만 생성한다. Brain은 해당 action만 허용하고
+Gameplay publisher의 Kouku stage strict-field 검사도 optional `actions`를 같은 계약으로 받는다.
+정확히 한 개의 ENTER/RETARGET_RANDOM_ALIVE/boss.target.pattern/value=1/durationMs=0만 허용하며,
+BossMotion과 함께 쓰는 행은 Brain과 동일하게 거절한다. 기존 10-field PATTERNSTAGEACTION 행과
+stage action ordinal 0으로 직렬화하여 Server의 기존 parser/action 소비자에 전달한다.
+bootstrap 정렬은 같은 Logic window/slot의 OUTCOME 전체를 CONTACTMOTION/SIGNAL보다 먼저 기록한다.
+World occurrence의 SEQUENCE 행도 PLACEMENT/SUPPORT보다 먼저 기록하며 각 종류 내부 원래 순서는 보존한다.
+기존 숫자 자연 정렬과 공용 stage action/volley 순서는 유지하고 실제 생성물에서 의존 순서를 검사한다.
+GameRoom은 Begin/Stage 변경 시 기존 action 소비자를 한 번 호출한다. Server가 선택한 alive player의
+lastXYZ/yaw를 고정하며 Preview도 Stage 진입에서 현재 player 표본을 저장하고 다음 표본까지 유지한다.
+STAGE_3/8/16만 활성화하고 원래 clip, 시간, 사용자 Collider offset/size와 카드 배치는 유지한다.
+실제 대형세이튼 얼굴·눈·망치의 전방은 actor-local +X다. BIG_SAYDON의 retarget에만 일반 +Z 기준
+atan2 결과의 -90도 보정을 Server/Preview에 적용한다. 다른 archetype과 모델 pre-yaw·geometry는
+변경하지 않는다. 타깃 선택·yaw 유지 검사와 실제 망치축 정렬의 사용자 확인을 구분한다.
+
+사용자가 확정한 중앙 뒤집기/HOLD, 양옆 들썩임/NEXT Idle, 조커 중앙 성공→P14를 기존
+OBJECT_CONTACT→PLAY_CONTACT_WORLD_OBJECT_MOTION/COMPLETE_LOGIC_WINDOW→EXTERNAL_SIGNAL
+→FOLLOWUP_PATTERN으로 연결한다. 기존 전체기한의 Timeout 결과는 유지하며 짧은 접촉 창에는
+실패/Timeout을 넣지 않는다. 같은 카드가 뒤집힌 후 낮은 우선순위 들썩임으로 되돌아가지 않도록
+동일 contactGroup의 적용된 motion priority를 Pattern ledger에서 보존한다. 같은 우선순위 반복은
+유지하고 새 Pattern/Reset에서 ledger가 초기화된다. 세번째8_03의 실제 b_rpct_01 최저시각20191ms를
+포함하고 Server 누적 tick의 최저시각20300ms도 포함하는20134~20484ms(350ms) 창에 기존 중앙/양옆 geometry를 복제한다. P12/P13/P14와 Bundle3을 PRODUCT로
+연결하고 playAll 목록을 기존 authored 순서로 갱신한다. 최신 source bytes CAS를 거쳐 다른 저장을 보존한다.
+
+수정은 기존 Workbench/Composition H·CPP, MainApp, PresentationPlayer/Level Preview, Brain,
+GameRoom/LogicRuntime, projector 및 기존 native/Python/Server focused 검사다. 새 C++ 파일과
+project/filter 등록은 없다. 최소 Product 컴파일, 해당domain publish, JSON/XML parse/diff check,
+Apply/Save/Reload 실패보존과 retarget·contact·followup 검사를 실행한다. Client/UI 화면은 사용자가 확인한다.
+
+Patterns 목록의 선택 Pattern에는 기존 Set_PatternAuthoringStatus를 호출하는 Set Pattern to PRODUCT
+버튼을 둔다. 검증 실패는 기존 draft를 유지하고 성공은 저장 전 상태만 변경한다. 기존 Save가
+CAS 저장과 ready PRODUCT publish를 수행하며 실제 Server 적용에는 재시작이 필요함을 표시한다.
+G21의 데이터 연결은 최신 사용자 저장본을 보존한 revision149 기준이고, 검증 결과는 RESULT G21에 둔다.
+
+## G22. 세이튼 룰렛 PRODUCT와 서버 보행면 (2026-09-08)
+
+구현 시작 때 P7 세이튼_룰렛은 DRAFT였고 world.sequence.instance.8에는 walkableSurface(radiusM2.5,
+localHeightM0.0263129994)가 저장돼 있다. 기존 투영은 반경10m의 정적 보행면과WORLD 창을 만든다.
+P7을 PRODUCT로 활성화하고 같은 Server navigation 표면으로 플레이어와 정지한 Kouku 보스의
+Y를 함께 샘플한다. CServerNavigation의 현재 support 목록 읽기 accessor를 Refresh의 실제 소비자로
+연결해 표면 생성/제거 시 해당 원판에 있는 보스만 보정한다. scripted BossMotion·사망·다른위치보스는
+유지하며 제거/Stop 뒤에는 기존 지면을 다시 샘플한다. 카드 instance에는 보행면을 추가하지 않는다.
+기존 support-surface contract에 정지보스 상승·종료·Stop·대상밖높이보존을 추가하고 publisher와
+Server 검사를 실행한다. 필요없는 navigation bake나 Map binary 변경은 없다.

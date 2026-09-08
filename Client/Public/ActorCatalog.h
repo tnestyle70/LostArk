@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Network/PacketType.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -25,6 +26,7 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::string bodyModel;
 	std::vector<std::string> equipmentModels;
 	std::vector<std::string> weaponModels;
+	std::map<std::string, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>, std::less<>> modelMaterialOverrides;
 	/* Shared-clip animation sets (.wmodel carriers) attached onto the body model
 	at admission, in declaration order. A class ships one per clip family it
 	borrows -- the Esther call, the customizing idle -- and the list is empty
@@ -198,6 +200,12 @@ class CActorCatalog final
 {
 public:
 	static bool_t Initialize();
+	// Exact catalog model ownership supplies the same overrides to product and
+	// preview. Empty characterAssetId allows registered non-player model inputs;
+	// an explicit player identity must own the model. Failure preserves outDesc.
+	static bool_t Build_ModelLoadDescription(std::string_view modelAssetId,
+		Engine::MODEL_ASSET_LOAD_DESC& outDesc, std::string& outStatus,
+		std::string_view characterAssetId = {});
 	static const CHARACTER_ACTOR_ENTRY* Find_Character(
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);

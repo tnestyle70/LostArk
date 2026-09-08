@@ -1,6 +1,7 @@
 #include "Effect_Object.h"
 
 #include "Effect_DocumentRenderer.h"
+#include "Effect_MaterialTemplate.h"
 #include "Effect_LightPresentation.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
@@ -177,6 +178,7 @@ bool_t Client::CEffectObject::Stage_Document(
 	if (!m_pRenderer->Stage_Document(Document, strOutError))
 		return false;
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -214,6 +216,7 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 		return false;
 	}
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -263,6 +266,7 @@ bool_t Client::CEffectObject::Stage_PrevalidatedVisualProgramDocument(
 		StagedPlayback.Is_SourceVisualProgramActive();
 
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -326,6 +330,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
 		return false;
 	}
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -390,6 +395,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 		return false;
 	}
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -464,6 +470,7 @@ bool_t Client::CEffectObject::
 	}
 
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
@@ -547,6 +554,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedDiagnostic(
 	}
 
 	m_Playback = std::move(StagedPlayback);
+	Bind_ModelCueAnchorProvider();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedDiagnosticFrame = std::move(pFrame);
 	m_eReconstructedDiagnosticSolo = eSolo;
@@ -646,6 +654,21 @@ bool_t Client::CEffectObject::Should_SubmitPreviewElement(
 			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET ||
 		(nullptr != pElement && std::binary_search(Isolation.ElementIds.begin(),
 			Isolation.ElementIds.end(), pElement->strElementId));
+}
+
+void Client::CEffectObject::Bind_ModelCueAnchorProvider()
+{
+	m_Playback.Set_ModelCueAnchorProvider([this](const f32_t Time,
+		const float4x4_t& Root, std::unordered_map<std::string, float4x4_t>& Anchors,
+		std::string& Error) -> bool_t
+	{
+		if (nullptr == m_pRenderer)
+		{
+			Error = "Model Cue renderer is unavailable.";
+			return false;
+		}
+		return m_pRenderer->Collect_ModelCueAnchorWorlds(Time, Root, Anchors, Error);
+	});
 }
 
 void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
@@ -751,6 +774,12 @@ bool_t Client::CEffectObject::Advance_PreviewWithTransformHistory(
 	return true;
 }
 
+void Client::CEffectObject::Preserve_StartingSceneCapture(const CEffectObject& Previous)
+{
+	if (m_pRenderer && Previous.m_pRenderer)
+		m_pRenderer->Preserve_StartingSceneCapture(*Previous.m_pRenderer);
+}
+
 void Client::CEffectObject::Set_Visible(const bool_t bVisible)
 {
 	if (m_bRenderFailureIsolated && bVisible)
@@ -828,6 +857,27 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 		return;
 	const shared_ptr<CEffectObject> Self =
 		static_pointer_cast<CEffectObject>(shared_from_this());
+	const auto& Particles = m_Playback.Get_Frame().Particles;
+	const bool_t bNeedsSceneColor = std::ranges::any_of(Particles,
+		[this](const EFFECT_EVALUATED_PARTICLE& Particle)
+		{
+			if (nullptr == Particle.pElement || !Should_SubmitPreviewElement(Particle.pElement) ||
+				Particle.Color.w <= 0.f) return false;
+			const auto* pNativeV = Find_DimensionMasterVProgram(
+				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
+			const auto* pNativeALTV = Find_DimensionMasterALTVProgram(
+				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
+			const auto* pNativeWR = Find_DimensionMasterWRProgram(
+				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
+			return (nullptr != pNativeWR && pNativeWR->bNeedsSceneColor &&
+				Has_DimensionMasterWRMaterialContract(*Particle.pElement)) ||
+				(nullptr != pNativeALTV && pNativeALTV->strRendererShape != "screenPost" &&
+				pNativeALTV->bNeedsSceneColor && Has_DimensionMasterALTVMaterialContract(*Particle.pElement)) ||
+				Has_EffectCubeSampleSceneContract(*Particle.pElement) ||
+				(nullptr != pNativeV && !pNativeV->bScreenPost && pNativeV->bRequiresSceneColor);
+		});
+	if (bNeedsSceneColor)
+		CGameInstance::Get().Request_SceneColorSnapshot();
 	const HRESULT hProviderResult =
 		CPresentation_Manager::Get().Add_FrameProvider(
 			static_pointer_cast<IPresentationProvider>(Self));

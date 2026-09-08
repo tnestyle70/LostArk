@@ -283,7 +283,8 @@ public:
 		const char_t* pClipName,
 		bool_t isLoop,
 		f32_t fPlaybackRate,
-		f32_t fBlendSeconds);
+		f32_t fBlendSeconds,
+		f32_t fRootVerticalScale = 1.f);
 	bool_t Play_TransientNetworkAction(
 		const char_t* pClipName,
 		f32_t fPlaybackRate,

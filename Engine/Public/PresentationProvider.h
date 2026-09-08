@@ -10,6 +10,7 @@ enum class PRESENTATION_SCREEN_POST_PROFILE : uint8_t
 	ZOOM_BLUR_RECONSTRUCTED,
 	FILM_NOISE_RECONSTRUCTED,
 	CHROMATIC_ABERRATION_RECONSTRUCTED,
+	PREPARED_MATERIAL,
 	END
 };
 
@@ -52,6 +53,24 @@ enum class PRESENTATION_SCREEN_OVERLAY_ADDRESS : uint8_t
 
 inline constexpr uint32_t PRESENTATION_TEXTURED_OVERLAY_PASS_INDEX = 14u;
 
+struct PRESENTATION_SCREEN_POST_MATERIAL_INPUT final
+{
+	ComPtr<ID3D11ShaderResourceView> pSceneColor;
+	ComPtr<ID3D11ShaderResourceView> pSceneDepth;
+	float4x4_t World{};
+	float4x4_t View{};
+	float4x4_t Projection{};
+};
+
+class IPresentationScreenPostMaterial
+{
+public:
+	virtual ~IPresentationScreenPostMaterial() = default;
+	// Own all program inputs until the queued frame is consumed. Bind only;
+	// the renderer retains target selection, ping-pong order and the quad draw.
+	virtual HRESULT Bind(const PRESENTATION_SCREEN_POST_MATERIAL_INPUT& Input) const = 0;
+};
+
 struct PRESENTATION_SCREEN_POST_DESC final
 {
 	PRESENTATION_SCREEN_POST_PROFILE eProfile =
@@ -63,6 +82,7 @@ struct PRESENTATION_SCREEN_POST_DESC final
 	f32_t fSecondaryIntensity = 0.f;
 	f32_t fFrequency = 1.f;
 	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+	std::shared_ptr<const IPresentationScreenPostMaterial> pMaterial;
 };
 
 struct PRESENTATION_SCREEN_OVERLAY_DESC final

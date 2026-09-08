@@ -4,6 +4,8 @@
 #include "KoukuSaydonCompositionDocument.h"
 #include "Network/PacketMessages.h"
 #include "HitAreaWire.h"
+#include <array>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -47,6 +49,13 @@ public:
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status);
+    using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
+    static WORLD_EMISSION_ANCHOR Make_WorldEmissionAnchor(
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world,
+        const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE& occurrence);
+    bool Resolve_ProductWorldEmissionAnchor(std::uint32_t sourceRevision, std::string_view patternId,
+        std::string_view occurrenceId, WORLD_EMISSION_ANCHOR& out) const;
     void Set_LightResources(const CLightResourceCatalog* catalog) { m_pLightResources = catalog; }
     std::size_t Light_SkippedByBudget() const;
     void Update(float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
@@ -78,6 +87,9 @@ public:
     // Called after ImGui NewFrame; sampling never draws from a loader/update thread.
     void Render_Debug() const;
     void Refresh_ColliderAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::uint64_t generation);
+    // Only the selected Collider/Effect placement changes; clocks and unrelated cues remain live.
+    bool Preview_PresentationGeometry(const std::string& patternId,
+        const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
     bool Preview_OwnsClock() const { return m_bOwnPreviewClock; }
     bool Preview_IsColliderResource() const { return m_bColliderResourcePreview; }
     bool Preview_Playing() const { return m_bPreviewPlaying; }
@@ -94,6 +106,7 @@ private:
         std::uint32_t effectHandle = 0;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> effectPivotHistory;
         float4x4_t effectLastPivot{};
+        float effectRecordedSeconds = -1.f;
         std::uint64_t soundHandle = 0;
         float lastAge = -1.f;
         float startMs = 0.f;
@@ -102,6 +115,9 @@ private:
         std::string assetId;
         float3_t cameraOffset{};
         HIT_AREA_SHAPE wire{};
+        float4x4_t placementAnchor{};
+        std::array<double, 3u> placementAnchorScale{1.0, 1.0, 1.0};
+        bool hasPlacementAnchor = false;
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE lightBox;
         float lightWeight = 1.f;
         bool failed = false;
@@ -125,6 +141,7 @@ private:
         KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
         KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
         std::uint32_t durationMs = 0;
+        std::map<std::string, WORLD_EMISSION_ANCHOR> worldEmissionAnchors;
     };
     struct PRODUCT_BUNDLE final
     {
@@ -142,8 +159,11 @@ private:
         std::map<std::string, float3_t> worldOffsets;
         std::uint32_t initialAnimation = 0;
         float initialTicks = 0.f;
+        float initialYawDegrees = 0.f;
+        std::map<std::string, float> stageFacingYawDegrees;
     };
     void Sample_BundlePreview();
+    void Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
     struct CARD final { std::string assetId; std::uint32_t handle = 0; };

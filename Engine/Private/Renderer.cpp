@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Material.h"
 #include "Render_OutputContract.h"
 #include "Profiler.h"
 
@@ -156,6 +157,13 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
+    // Source character direct lighting needs UV and its full tangent basis.
+    if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_CharacterSurface"), vViewportSize.x, vViewportSize.y,
+        DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))) ||
+        FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_CharacterGeometry"), vViewportSize.x, vViewportSize.y,
+        DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+        return E_FAIL;
+
 	/* For.Target_PickPos */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_PickPos"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
@@ -169,6 +177,11 @@ HRESULT CRenderer::Initialize()
 	/* For.Target_SceneHDR */
 	/* Scene colour before tone mapping. FP16 so values above 1 survive. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SceneHDR"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	/* Refractive effects read this snapshot while SceneHDR remains the output. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_EffectSceneColor"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
@@ -224,6 +237,10 @@ HRESULT CRenderer::Initialize()
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_MaterialSpecular"))))
 		return E_FAIL;
+    if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_CharacterSurface"))))
+        return E_FAIL;
+    if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_GameObject"), TEXT("Target_CharacterGeometry"))))
+        return E_FAIL;
 
 	/* MRT_LightAcc */
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_LightAcc"), TEXT("Target_Shade"))))
@@ -368,6 +385,8 @@ HRESULT CRenderer::Draw()
 		const char* stage, const HRESULT hResult) -> HRESULT
 	{
 		WriteRendererFailure(stage, hResult);
+        CMaterial::Reset_SourceCharacterFrame();
+		m_bSceneColorSnapshotRequested = false;
 		Presentation.Clear_Frame();
 		for (auto& RenderGroup : m_RenderObjects)
 			RenderGroup.clear();
@@ -437,6 +456,11 @@ HRESULT CRenderer::Draw()
 			hSceneResult = Render_Combined();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_NonLight();
+		if (SUCCEEDED(hSceneResult) && m_bSceneColorSnapshotRequested)
+		{
+			CProfilerScope snapshotScope(pProfiler, "Render.SceneColorSnapshot");
+			hSceneResult = Capture_SceneColorSnapshot();
+		}
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Blend();
 
@@ -488,6 +512,7 @@ HRESULT CRenderer::Draw()
 		return FailFrame("Render_Debug", hResult);
 #endif
 
+	m_bSceneColorSnapshotRequested = false;
 	Presentation.Clear_Frame();
 	return S_OK;
 }
@@ -569,6 +594,7 @@ HRESULT CRenderer::Render_Shadow()
 
 HRESULT CRenderer::Render_NonBlend()
 {
+    CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	/* Diffuse + Normal */
 	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"))))
 		return E_FAIL;
@@ -648,6 +674,8 @@ HRESULT CRenderer::Render_SSAOPass(
 			TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(
 			TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(
+            TEXT("Target_CharacterGeometry"), m_pShader, "g_CharacterGeometryTexture")) ||
 		FAILED(m_pShader->Bind_RawValue(
 			"g_vSSAOTexelSize", &m_vSSAOTexelSize,
 			sizeof(m_vSSAOTexelSize))) ||
@@ -699,6 +727,7 @@ HRESULT CRenderer::Render_Lights()
 		return E_FAIL;
 
 	HRESULT hResult = S_OK;
+    const uint32_t noSourceCharacter = 0u;
 	const bool_t bShadowEnabled =
 		CGameInstance::Get().Is_ShadowLightEnabled();
 	const uint32_t iSSAOEnabled =
@@ -709,7 +738,13 @@ HRESULT CRenderer::Render_Lights()
 		hBindAO = CGameInstance::Get().Bind_RT_SRV(
 			TEXT("Target_SSAOBlur"), m_pShader, "g_SSAOTexture");
 	}
-	if (FAILED(hBindAO) ||
+    if (FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
+        FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))) ||
+        FAILED(m_pShader->Bind_Matrix("g_SourceCharacterViewMatrix", CGameInstance::Get().Get_Transform(D3DTS::VIEW))) ||
+        FAILED(m_pShader->Bind_Matrix("g_SourceCharacterProjMatrix", CGameInstance::Get().Get_Transform(D3DTS::PROJ))) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterSurface"), m_pShader, "g_CharacterSurfaceTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterGeometry"), m_pShader, "g_CharacterGeometryTexture")) ||
+        FAILED(hBindAO) ||
 		FAILED(m_pShader->Bind_Texture(
 			"g_LightDepthTexture", m_pShadowSRV)) ||
 		FAILED(CGameInstance::Get().
@@ -735,6 +770,20 @@ HRESULT CRenderer::Render_Lights()
 	{
 		hResult = E_FAIL;
 	}
+
+    // The ordinary pass skips marker-5 pixels. Only materials submitted by
+    // visible mesh draws get a source light pass; prototypes never enter here.
+    const uint32_t sourceCount = CMaterial::Get_SourceCharacterFrameCount();
+    for (uint32_t index = 0u; SUCCEEDED(hResult) && index < sourceCount; ++index)
+    {
+        if (FAILED(CMaterial::Bind_SourceCharacterLight(m_pShader, index)) ||
+            FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer, bShadowEnabled)))
+            hResult = E_FAIL;
+    }
+    if (FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
+        FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))))
+        hResult = E_FAIL;
+    CMaterial::Reset_SourceCharacterFrame();
 
 	/* Always restore the back buffer even when a light bind or draw fails. */
 	if (FAILED(CGameInstance::Get().End_MRT()))
@@ -845,6 +894,47 @@ HRESULT CRenderer::Render_NonLight()
 	m_RenderObjects[ETOUI(RENDERGROUP::NONLIGHT)].clear();
 
 	return hFirstFailure;
+}
+
+HRESULT CRenderer::Capture_SceneColorSnapshot()
+{
+	const auto sourceSRV = CGameInstance::Get().Get_RT_SRV(TEXT("Target_SceneHDR"));
+	const auto snapshotSRV = CGameInstance::Get().Get_RT_SRV(TEXT("Target_EffectSceneColor"));
+	if (!sourceSRV || !snapshotSRV)
+		return E_FAIL;
+	ComPtr<ID3D11Resource> sourceResource, snapshotResource;
+	sourceSRV->GetResource(sourceResource.GetAddressOf());
+	snapshotSRV->GetResource(snapshotResource.GetAddressOf());
+	ComPtr<ID3D11Texture2D> sourceTexture, snapshotTexture;
+	if (!sourceResource || !snapshotResource || sourceResource.Get() == snapshotResource.Get() ||
+		FAILED(sourceResource.As(&sourceTexture)) || FAILED(snapshotResource.As(&snapshotTexture)))
+		return E_FAIL;
+	D3D11_TEXTURE2D_DESC sourceDesc{}, snapshotDesc{};
+	sourceTexture->GetDesc(&sourceDesc);
+	snapshotTexture->GetDesc(&snapshotDesc);
+	if (sourceDesc.Width != snapshotDesc.Width || sourceDesc.Height != snapshotDesc.Height ||
+		sourceDesc.Format != snapshotDesc.Format || sourceDesc.MipLevels != snapshotDesc.MipLevels ||
+		sourceDesc.ArraySize != snapshotDesc.ArraySize ||
+		sourceDesc.SampleDesc.Count != snapshotDesc.SampleDesc.Count ||
+		sourceDesc.SampleDesc.Quality != snapshotDesc.SampleDesc.Quality)
+		return E_INVALIDARG;
+
+	// Copy outside the output binding, then restore all MRTs and the same DSV.
+	// Begin_MRT would clear the accumulated scene, so it must not be used here.
+	ID3D11RenderTargetView* outputs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+	ComPtr<ID3D11DepthStencilView> depth;
+	m_pContext->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+		outputs, depth.GetAddressOf());
+	m_pContext->OMSetRenderTargets(0, nullptr, nullptr);
+	ID3D11ShaderResourceView* emptySRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+	m_pContext->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, emptySRVs);
+	const HRESULT result = CGameInstance::Get().Copy_RT_Resource(
+		TEXT("Target_SceneHDR"), snapshotTexture);
+	m_pContext->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+		outputs, depth.Get());
+	for (auto* output : outputs)
+		if (output) output->Release();
+	return result;
 }
 
 HRESULT CRenderer::Render_Blend()
@@ -965,6 +1055,20 @@ HRESULT CRenderer::Render_ScreenPostPass(
 	const float4_t vClear{};
 	m_pContext->ClearRenderTargetView(pDestination, &vClear.x);
 
+	if (nullptr != pPostDesc && nullptr != pPostDesc->pMaterial)
+	{
+		PRESENTATION_SCREEN_POST_MATERIAL_INPUT Input;
+		Input.pSceneColor = pSourceSRV;
+		Input.pSceneDepth = CGameInstance::Get().Get_RT_SRV(TEXT("Target_Depth"));
+		Input.World = m_WorldMatrix;
+		Input.View = m_ViewMatrix;
+		Input.Projection = m_ProjMatrix;
+		if (nullptr == Input.pSceneColor || nullptr == Input.pSceneDepth ||
+			FAILED(pPostDesc->pMaterial->Bind(Input)) ||
+			FAILED(m_pVIBuffer->Bind_Resources()) || FAILED(m_pVIBuffer->Render()))
+			return E_FAIL;
+		return S_OK;
+	}
 	if (nullptr == pPostDesc)
 	{
 		if (FAILED(CGameInstance::Get().Bind_RT_SRV(
@@ -1055,6 +1159,9 @@ HRESULT CRenderer::Render_ScreenPosts()
 			break;
 		case PRESENTATION_SCREEN_POST_PROFILE::CHROMATIC_ABERRATION_RECONSTRUCTED:
 			iPassIndex = DEFERRED_PASS_CHROMATIC_ABERRATION;
+			break;
+		case PRESENTATION_SCREEN_POST_PROFILE::PREPARED_MATERIAL:
+			iPassIndex = 0u;
 			break;
 		default:
 			hResult = E_FAIL;
@@ -1279,6 +1386,8 @@ HRESULT CRenderer::Render_Final()
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterSurface"), m_pShader, "g_CharacterSurfaceTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterGeometry"), m_pShader, "g_CharacterGeometryTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Specular"), m_pShader, "g_SpecularTexture")))
 		return E_FAIL;
 	const uint32_t iBloomEnabled =

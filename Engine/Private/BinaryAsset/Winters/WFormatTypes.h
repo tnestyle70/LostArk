@@ -18,6 +18,7 @@ namespace Engine::WintersFormat
 	constexpr uint16_t WINT_LEGACY_VERSION_MINOR = 0;
 	constexpr uint16_t WINT_GEOMETRY_VERSION_MINOR = 1;
 	constexpr uint16_t WINT_UV1_VERSION_MINOR = 2;
+	constexpr uint16_t WINT_SKINNED_UV_VERSION_MINOR = 3;
 	constexpr uint32_t VF_POSITION = 1u << 0;
 	constexpr uint32_t VF_NORMAL = 1u << 1;
 	constexpr uint32_t VF_TEXCOORD0 = 1u << 2;
@@ -26,6 +27,7 @@ namespace Engine::WintersFormat
 	constexpr uint32_t VF_TANGENT_HANDEDNESS = 1u << 5;
 	constexpr uint32_t VF_COLOR0 = 1u << 6;
 	constexpr uint32_t VF_TEXCOORD1 = 1u << 7;
+	constexpr uint32_t VF_TEXCOORD2 = 1u << 8;
 	constexpr uint32_t VF_STATIC_BASE =
 		VF_POSITION | VF_NORMAL | VF_TEXCOORD0 | VF_TANGENT;
 	constexpr uint32_t STRIDE_STATIC = 48;
@@ -183,6 +185,17 @@ namespace Engine::WintersFormat
 		uint8_t sourceExportReceiptSha256[SHA256_SIZE];
 		uint8_t legacyCookReceiptSha256[SHA256_SIZE];
 		uint8_t metadataSha256[SHA256_SIZE];
+	};
+
+	// WMSH 1.3 preserves the original 76-byte skinned stream. Its final
+	// UV payload stores {vertexCount, channelMask, UV1[], UV2[]} per submesh.
+	struct MESH_SKINNED_UV_HEADER
+	{
+		char magic[4];
+		uint32_t version;
+		uint32_t submeshCount;
+		uint32_t payloadSize;
+		uint8_t payloadSha256[SHA256_SIZE];
 	};
 
 	struct MATERIAL_META_HEADER

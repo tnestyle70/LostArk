@@ -36,6 +36,12 @@ WINT_VERSION_MAJOR = 1
 WINT_LEGACY_VERSION_MINOR = 0
 WINT_GEOMETRY_VERSION_MINOR = 1
 WINT_UV1_VERSION_MINOR = 2
+WINT_SKINNED_UV_VERSION_MINOR = 3
+SKINNED_UV_HEADER = struct.Struct("<4sIII32s")
+STRIDE_SKINNED = 76
+MESH_BONE_SIZE = 128
+VF_BONE_WEIGHT = 1 << 4
+VF_TEXCOORD2 = 1 << 8
 VF_POSITION = 1 << 0
 VF_NORMAL = 1 << 1
 VF_TEXCOORD0 = 1 << 2
@@ -1790,6 +1796,160 @@ def rebuild_wmodel(
         0,
         len(content),
     ) + content
+
+
+def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
+    """Read the existing 76-byte skinned stream and optional WMSH 1.3 UV tail.
+
+    This validates payload shape, not the original-source identity of UV values.
+    Callers must establish the source-to-runtime vertex join before cooking.
+    """
+    require(len(data) >= FILE_HEADER.size + MODEL_HEADER.size, "skinned WModel is truncated")
+    magic, major, minor, flags, size = FILE_HEADER.unpack_from(data)
+    require(magic == b"WINT" and major == 1 and minor in (0, 3)
+            and flags == 0 and size == len(data) - FILE_HEADER.size,
+            "skinned WModel WINT header is invalid")
+    model = MODEL_HEADER.unpack_from(data, FILE_HEADER.size)
+    require(model[0] == b"WMOD" and 3 <= model[1] <= 4096 and model[3] == 1
+            and not any(model[4:]), "skinned WMOD metadata is invalid")
+    offset = MODEL_HEADER.size + model[1] * SECTION_DESC.size
+    require(offset <= size, "skinned WMOD section table is truncated")
+    sections: list[Section] = []
+    keys: set[tuple[int, int]] = set()
+    for row in range(model[1]):
+        kind, index, start, count, name = SECTION_DESC.unpack_from(
+            data, FILE_HEADER.size + MODEL_HEADER.size + row * SECTION_DESC.size)
+        require(kind in (1, 2, 3, 4) and (kind, index) not in keys
+                and start == offset and count > 0 and count <= size - start,
+                "skinned WMOD sections are invalid, duplicated, or non-contiguous")
+        keys.add((kind, index))
+        sections.append(Section(kind, index, name, data[16 + start:16 + start + count]))
+        offset += count
+    require(offset == size and all(sum(s.type_id == k for s in sections) == 1 for k in (1, 2, 3))
+            and sum(s.type_id == 4 for s in sections) == model[2],
+            "skinned WMOD required sections or animation count are invalid")
+    mesh = next(s.payload for s in sections if s.type_id == 1)
+    require(len(mesh) >= FILE_HEADER.size + MESH_HEADER.size, "skinned WMSH is truncated")
+    mh = FILE_HEADER.unpack_from(mesh)
+    require(mh == (b"WINT", 1, minor, 0, len(mesh) - FILE_HEADER.size),
+            "WMOD and WMSH versions or sizes disagree")
+    header = MESH_HEADER.unpack_from(mesh, FILE_HEADER.size)
+    _, subcount, bones, vertex_flags, stride, vcount, icount, istride, bounds, reserved = header
+    base_flags = VF_STATIC_BASE | VF_BONE_WEIGHT
+    allowed = base_flags | ((VF_TEXCOORD1 | VF_TEXCOORD2) if minor == 3 else 0)
+    require(header[0] == b"WMSH" and 0 < subcount <= 2048 and 0 < bones <= 512
+            and vcount <= 10_000_000
+            and stride == STRIDE_SKINNED and istride in (2, 4) and bounds in (0, 1)
+            and reserved == b"\0\0\0" and vertex_flags & base_flags == base_flags
+            and vertex_flags & ~allowed == 0
+            and (minor != 3 or vertex_flags & VF_TEXCOORD1),
+            "skinned WMSH metadata or vertex format is invalid")
+    vertex_start = FILE_HEADER.size + MESH_HEADER.size + subcount * SUBMESH_DESC.size
+    index_start = vertex_start + vcount * stride
+    legacy_end = index_start + icount * istride + bones * MESH_BONE_SIZE + bounds * subcount * BOUNDS_V1.size
+    require(legacy_end <= len(mesh), "skinned WMSH legacy stream is truncated")
+    submeshes = []
+    voffset = ioffset = 0
+    for row in range(subcount):
+        desc = SUBMESH_DESC.unpack_from(mesh, 16 + MESH_HEADER.size + row * SUBMESH_DESC.size)
+        require(desc[0] == voffset and desc[2] == ioffset and desc[1] > 0 and desc[3] > 0
+                and desc[3] % 3 == 0, "skinned WMSH submeshes are not complete contiguous triangles")
+        voffset += desc[1] * stride
+        ioffset += desc[3] * istride
+        submeshes.append(desc)
+    require(voffset == vcount * stride and ioffset == icount * istride,
+            "skinned WMSH aggregate counts disagree")
+    uv_rows: list[dict[str, list[tuple[float, float]]]] = []
+    if minor == 0:
+        require(legacy_end == len(mesh), "legacy skinned WMSH has trailing bytes")
+        uv_rows = [{} for _ in submeshes]
+    else:
+        require(legacy_end + SKINNED_UV_HEADER.size <= len(mesh), "skinned UV header is truncated")
+        uv_header = SKINNED_UV_HEADER.unpack_from(mesh, legacy_end)
+        payload = mesh[legacy_end + SKINNED_UV_HEADER.size:]
+        require(uv_header[:3] == (b"WUVS", 1, subcount) and uv_header[3] == len(payload)
+                and uv_header[4] == sha256_bytes(payload), "skinned UV header, size, or SHA-256 is invalid")
+        cursor = aggregate = 0
+        for desc in submeshes:
+            require(cursor + 8 <= len(payload), "skinned UV row is truncated")
+            count, mask = struct.unpack_from("<II", payload, cursor)
+            cursor += 8
+            require(count == desc[1] and mask & ~(VF_TEXCOORD1 | VF_TEXCOORD2) == 0
+                    and (not mask & VF_TEXCOORD2 or mask & VF_TEXCOORD1),
+                    "skinned UV row count or channel mask is invalid")
+            aggregate |= mask
+            row_uv = {}
+            for name, bit in (("TEXCOORD_1", VF_TEXCOORD1), ("TEXCOORD_2", VF_TEXCOORD2)):
+                if mask & bit:
+                    end = cursor + count * 8
+                    require(end <= len(payload), "skinned UV channel is truncated")
+                    values = list(struct.iter_unpack("<2f", payload[cursor:end]))
+                    require(all(math.isfinite(c) for uv in values for c in uv),
+                            "skinned UV channel is non-finite")
+                    row_uv[name] = values
+                    cursor = end
+            uv_rows.append(row_uv)
+        require(cursor == len(payload) and aggregate == vertex_flags & (VF_TEXCOORD1 | VF_TEXCOORD2),
+                "skinned UV payload length or aggregate mask disagrees")
+    return {"modelHeader": (model[1], model[2], model[3], tuple(model[4:])),
+            "sections": sections, "mesh": mesh, "meshHeader": header,
+            "submeshes": submeshes, "vertexStart": vertex_start, "indexStart": index_start,
+            "legacyEnd": legacy_end, "uvRows": uv_rows, "versionMinor": minor}
+
+
+def cook_skinned_uv_contract(data: bytes, channels: dict[int, dict[str, list[tuple[float, float]]]]) -> tuple[bytes, dict[str, Any]]:
+    """Append verified extra UVs without recooking geometry, weights, or animation.
+
+    Only source-joined channel arrays belong here. Missing channels remain absent;
+    no UV0 duplication or source-evidence flags are manufactured by this writer.
+    """
+    original = parse_skinned_uv_wmodel(data)
+    require(original["versionMinor"] == 0, "skinned UV cooker requires a legacy 1.0 input")
+    submeshes = original["submeshes"]
+    require(bool(channels) and all(type(i) is int and 0 <= i < len(submeshes) for i in channels),
+            "skinned UV submesh selection is invalid")
+    blocks = []
+    aggregate = 0
+    summaries = []
+    for index, desc in enumerate(submeshes):
+        row = channels.get(index, {})
+        require(set(row) <= {"TEXCOORD_1", "TEXCOORD_2"}
+                and ("TEXCOORD_2" not in row or "TEXCOORD_1" in row),
+                "skinned UV channel selection is invalid")
+        mask = (VF_TEXCOORD1 if "TEXCOORD_1" in row else 0) | (VF_TEXCOORD2 if "TEXCOORD_2" in row else 0)
+        aggregate |= mask
+        blocks.append(struct.pack("<II", desc[1], mask))
+        summary = {"submeshIndex": index, "vertexCount": desc[1], "channelMask": mask, "channelSha256": {}}
+        for name in ("TEXCOORD_1", "TEXCOORD_2"):
+            if name not in row:
+                continue
+            values = row[name]
+            require(len(values) == desc[1] and all(len(uv) == 2 and all(math.isfinite(v) for v in uv) for uv in values),
+                    "skinned UV source count or finite float2 validation failed")
+            packed = b"".join(struct.pack("<2f", *uv) for uv in values)
+            blocks.append(packed)
+            summary["channelSha256"][name] = hashlib.sha256(packed).hexdigest()
+        summaries.append(summary)
+    require(aggregate & VF_TEXCOORD1, "skinned UV payload has no additional UV channel")
+    payload = b"".join(blocks)
+    tail = SKINNED_UV_HEADER.pack(b"WUVS", 1, len(submeshes), len(payload), sha256_bytes(payload)) + payload
+    content = bytearray(original["mesh"][FILE_HEADER.size:])
+    struct.pack_into("<I", content, 12, original["meshHeader"][3] | aggregate)
+    content.extend(tail)
+    mesh = FILE_HEADER.pack(b"WINT", 1, WINT_SKINNED_UV_VERSION_MINOR, 0, len(content)) + content
+    result = rebuild_wmodel(original["modelHeader"], original["sections"], mesh)
+    readback = parse_skinned_uv_wmodel(result)
+    require(readback["mesh"][FILE_HEADER.size + MESH_HEADER.size:original["legacyEnd"]]
+            == original["mesh"][FILE_HEADER.size + MESH_HEADER.size:],
+            "skinned UV cook changed existing geometry, skinning, or bounds")
+    for old, new in zip(original["sections"], readback["sections"]):
+        require(old.type_id == new.type_id and old.index == new.index and old.name_bytes == new.name_bytes
+                and (old.type_id == 1 or old.payload == new.payload),
+                "skinned UV cook changed an existing non-mesh section")
+    return result, {"formatVersion": "1.3", "legacyVertexStride": STRIDE_SKINNED,
+                    "legacyMeshStreamPreserved": True, "nonMeshSectionsPreserved": True,
+                    "animationCount": original["modelHeader"][1], "submeshes": summaries,
+                    "uvPayloadSha256": hashlib.sha256(payload).hexdigest()}
 
 
 def cook_wmodel_geometry_contract(

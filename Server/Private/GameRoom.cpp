@@ -39,6 +39,17 @@ namespace
 	   15.82s dwell. No product trigger reads this. */
 	constexpr std::uint32_t PILLAR_AUDITION_DWELL_TICKS = 475u;
 
+	bool Is_KoukuBossMotionNavigable(const BOSS_PATTERN_DEFINITION& pattern,
+		const CServerNavigation& navigation)
+	{
+		if (!pattern.BossMotion) return true;
+		const auto& motion = *pattern.BossMotion;
+		return navigation.Is_PointWalkableExact(motion.StartPosition[0], motion.StartPosition[2]) &&
+			navigation.Is_PointWalkableExact(motion.EndPosition[0], motion.EndPosition[2]) &&
+			navigation.Has_LineOfSight(motion.StartPosition[0], motion.StartPosition[2],
+				motion.EndPosition[0], motion.EndPosition[2]);
+	}
+
 	constexpr float MAX_ABS_MOVE_GOAL = 10000.f;
 	constexpr float MOVE_STOP_DISTANCE = 0.05f;
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
@@ -6216,7 +6227,11 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	if (request.Scope.ExpectedGameplayRevision != m_GameplayCatalog.Get_ActiveRevision())
 		return reject(RESULT::REJECTED_REVISION_MISMATCH, "KoukuSaydon audition expected gameplay revision is not active");
 	if (request.Scope.iExpectedSourceRevision != outResult.iPinnedSourceRevision)
-		return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH, "KoukuSaydon audition expected Product source revision is not active");
+		return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
+			"KoukuSaydon Product revision mismatch: requested " +
+			std::to_string(request.Scope.iExpectedSourceRevision) +
+			", Server active " + std::to_string(outResult.iPinnedSourceRevision) +
+			". Restart Server after publishing the saved PRODUCT, then reconnect Client.");
 	if (request.eOperation == OP::STOP || restart)
 	{
 		if (!running || m_KoukuSaydonPatternAudition.iOwnerSessionId != sessionId ||
@@ -6310,6 +6325,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 				(!pattern->strTargetBossPlacementId.empty() && pattern->strTargetBossPlacementId != placement->strPlacementId) ||
 				(!request.Scope.strGateId.empty() && !pattern->strGateId.empty() && request.Scope.strGateId != pattern->strGateId))
 				return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "KoukuSaydon member/follow-up body or Gate target differs from Product");
+			if (!Is_KoukuBossMotionNavigable(*pattern, m_ServerNavigation))
+				return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "KoukuSaydon Boss Motion leaves active navigation");
 			if (pattern->bResetBossToSpawn && (!m_ServerNavigation.Is_PointWalkableExact(boss->fSpawnPositionX, boss->fSpawnPositionZ) || !std::isfinite(boss->fSpawnPositionY)))
 				return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "KoukuSaydon spawn reset is not on active navigation");
 			for (const auto& trigger : pattern->MechanicTriggers)
@@ -6497,11 +6514,12 @@ void LostArk::Server::CGameRoom::Broadcast_OwnedWorldSequence(const LostArk::Sha
 		if (const auto session = Find_Session(player.iSessionId); session && !session->Send_Frame(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer())) session->Request_Close();
 }
 
-void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberId)
+void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberId, const bool finished)
 {
 	using namespace LostArk::Shared;
 	if (!m_KoukuSaydonPatternAudition.iRoomAuditionEpoch) return;
-	S2C_WORLD_SEQUENCE_PLAY stop; stop.eOperation = WORLD_SEQUENCE_OPERATION::STOP_OWNER;
+	S2C_WORLD_SEQUENCE_PLAY stop;
+	stop.eOperation = finished ? WORLD_SEQUENCE_OPERATION::FINISH_OWNER : WORLD_SEQUENCE_OPERATION::STOP_OWNER;
 	stop.iRunEpoch = m_KoukuSaydonPatternAudition.iRoomAuditionEpoch; stop.strMemberId = memberId; stop.iServerTick = m_iServerTick;
 	Broadcast_OwnedWorldSequence(stop);
 	std::erase_if(m_KoukuSaydonPatternAudition.WorldPlays, [&](const auto& play) { return memberId.empty() || play.strMemberId == memberId; });
@@ -6520,7 +6538,7 @@ void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool com
 		completed ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED,
 		completed ? std::string{} : "KoukuSaydon run stopped or lost an admitted participant");
 	Broadcast_KoukuBundleState(completed ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED);
-	Stop_KoukuWorldOwner();
+	Stop_KoukuWorldOwner({}, completed);
 	for (auto& member : run.Members)
 	{
 		SERVER_WORLD_ENTITY* boss = nullptr;
@@ -6543,6 +6561,7 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 	for (const auto& support : schedule)
 		if (Has_ReachedServerTick(serverTick, support.iStartTick)) surfaces.push_back(support.Surface);
 	const auto previousRevision = m_ServerNavigation.Get_Revision();
+	const auto previousSurfaces = m_ServerNavigation.Get_RuntimeSupportSurfaces();
 	std::string status;
 	if (!m_ServerNavigation.Set_RuntimeSupportSurfaces(surfaces, status))
 	{
@@ -6569,6 +6588,31 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 			m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, ground))
 			player.fPositionY = ground.y;
 	}
+	// Only a boss on an added/removed support may change height. Authored airborne motion keeps its Y.
+	for (auto& boss : m_WorldEntities)
+	{
+		if (!CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, boss) || !boss.iCurrentHp ||
+			boss.eAction == SERVER_ENTITY_ACTION::DEAD || !boss.PatternStageRootMotion.empty() ||
+			boss.fPatternForcedMotionSpeed != 0.f) continue;
+		const auto containsBoss = [&](const auto& surface)
+		{
+			const double dx = boss.fPositionX - surface.fCenterX, dz = boss.fPositionZ - surface.fCenterZ;
+			return dx * dx + dz * dz <= static_cast<double>(surface.fRadiusM) * surface.fRadiusM;
+		};
+		if (!std::any_of(previousSurfaces.begin(), previousSurfaces.end(), containsBoss) &&
+			!std::any_of(surfaces.begin(), surfaces.end(), containsBoss)) continue;
+		if (!boss.strPatternId.empty())
+		{
+			const auto* catalog = m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
+			std::string patternStatus;
+			const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, boss.strPatternId, patternStatus) : nullptr;
+			if (!pattern || pattern->BossMotion) continue;
+		}
+		SERVER_NAV_POINT ground;
+		if (m_ServerNavigation.Is_PointWalkableExact(boss.fPositionX, boss.fPositionZ) &&
+			m_ServerNavigation.Sample_Position(boss.fPositionX, boss.fPositionZ, ground))
+			boss.fPositionY = ground.y;
+	}
 	return true;
 }
 
@@ -6594,7 +6638,7 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 		std::string status;
 		const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member.PatternIds[member.iPatternIndex], status);
 		START start{boss, *boss, &member, {}};
-		if (!pattern || (pattern->bResetBossToSpawn && (!m_ServerNavigation.Is_PointWalkableExact(boss->fSpawnPositionX, boss->fSpawnPositionZ) || !std::isfinite(boss->fSpawnPositionY))) ||
+		if (!pattern || !Is_KoukuBossMotionNavigable(*pattern, m_ServerNavigation) || (pattern->bResetBossToSpawn && (!m_ServerNavigation.Is_PointWalkableExact(boss->fSpawnPositionX, boss->fSpawnPositionZ) || !std::isfinite(boss->fSpawnPositionY))) ||
 			!m_KoukuSaydonBrain.Begin_Pattern(start.staged, *pattern, run.PinnedGameplayRevision, member.iNextStartTick, status))
 		{ m_strStatus = status.empty() ? "KoukuSaydon scheduled member could not begin" : status; Clear_KoukuSaydonPatternAudition(); return; }
 		if (pattern->bResetBossToSpawn)
@@ -6602,6 +6646,9 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 			start.staged.fPositionX = boss->fSpawnPositionX; start.staged.fPositionY = boss->fSpawnPositionY; start.staged.fPositionZ = boss->fSpawnPositionZ;
 			if (pattern->ResetBossYawDegrees) start.staged.fYawDegrees = *pattern->ResetBossYawDegrees;
 		}
+		if (!Commit_BossPatternPlayerStageActions(start.staged, *catalog, pattern->strPatternId,
+			pattern->Stages.front().strActionId, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, member.iNextStartTick, 0u))
+		{ m_strStatus = "KoukuSaydon initial target selection failed"; Clear_KoukuSaydonPatternAudition(); return; }
 		CKoukuSaydonLogicRuntime::Build(*pattern, start.staged, member.iNextStartTick, start.ledger);
 		for (const auto& cue : pattern->WorldSequences)
 		{
@@ -6663,6 +6710,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member->PatternIds[member->iPatternIndex], status) : nullptr;
 	if (!pattern || boss.strPatternId != pattern->strPatternId)
 	{ m_strStatus = "KoukuSaydon member lost its exact running pattern"; Clear_KoukuSaydonPatternAudition(); return true; }
+	CKoukuSaydonBrain::Apply_BossMotion(boss, *pattern, serverTick);
 	const auto completedPatternId = boss.strPatternId;
 	const auto sequence = boss.iPatternSequence, stage = boss.iPatternStageIndex;
 	KOUKUSAYDON_LOGIC_OUTPUT output;
@@ -6671,7 +6719,12 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	const bool early = Apply_KoukuLogicOutput(output, boss, serverTick);
 	const auto update = early ? KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED : m_KoukuSaydonBrain.Update(boss, *catalog, serverTick, status);
 	if (update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED)
+	{
+		if (!Commit_BossPatternPlayerStageActions(boss, *catalog, completedPatternId,
+			pattern->Stages[boss.iPatternStageIndex].strActionId, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick, 0u))
+		{ m_strStatus = "KoukuSaydon stage target selection failed"; Clear_KoukuSaydonPatternAudition(); return true; }
 		Queue_KoukuSaydonPatternAuditionLifecycle(completedPatternId, boss.iPatternSequence, boss.iPatternStageIndex, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE, {}, boss.iNetEntityId);
+	}
 	if (update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION || update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD)
 	{ m_strStatus = status; Clear_KoukuSaydonPatternAudition(); return true; }
 	if (update != KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED) return true;
@@ -6687,7 +6740,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	}
 	else
 	{
-		member->bCompleted = true; Stop_KoukuWorldOwner(member->strMemberId);
+		member->bCompleted = true; Stop_KoukuWorldOwner(member->strMemberId, true);
 		if (std::all_of(m_KoukuSaydonPatternAudition.Members.begin(), m_KoukuSaydonPatternAudition.Members.end(), [](const auto& value) { return value.bCompleted; }))
 		{ Clear_KoukuSaydonPatternAudition(true); boss.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision(); return true; }
 	}
@@ -12965,6 +13018,9 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 				{
 					boss.fYawDegrees =
 						std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+					// The catalog Big Saydon face/hammer forward is measured +X, while yaw faces +Z.
+					if (boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+						boss.fYawDegrees -= 90.f;
 				}
 			}
 			continue;

@@ -78,6 +78,7 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 정본 runner는 `UpdateLib.bat`을 별도로 호출하지 않는다. `Client.vcxproj`의
 `PrepareEngineSdk`, `DeployClientCompiledShaders`, `DeployClientRuntimeDependencies`가 선택한
 구성의 Engine 산출물로 `EngineSDK\`와 Client runtime 폴더를 한 번만 갱신하는 단일 소유자다.
+`PrepareEngineSdk`는 `FxExport;FxCompile;ClCompile` 전에 실행되어 공유 HLSLI도 Client 셰이더 컴파일보다 먼저 갱신한다.
 `UpdateLib.bat`은 수동 호환용 보조 명령일 뿐 정본 자동화 단계가 아니다.
 
 - `Engine\Public\*.*` → `EngineSDK\inc\`
@@ -248,11 +249,11 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.4`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.14`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` simulation을 만든다. 따라서 class 변경, 몬스터 소환, collider 판정과 damage는 모두 Server에서 실행되지만 다른 Character Select session과 player/entity/HP/damage snapshot을 공유하지 않는다. session 퇴장 시 queued `LEAVE`를 room tick이 소비하고 private simulation을 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 world별 shared simulation을 유지한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.4:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.14:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
 보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server
@@ -507,7 +508,8 @@ Map 모델 Object는 Append 때 현재 캐릭터 앞 위치를 절대 좌표로 
 Composition Save는 편집본을 저장한 뒤 준비된 PRODUCT 자료를 비동기로 생성한다. 기존 PRODUCT의
 유효한 Object Append·Transform·시간 변경은 상태를 유지하고, 미완성 DRAFT는 자동 승격하지 않는다.
 Server 재시작 전에는 새 revision이 전투에 적용됐다고 표시하지 않는다. box `durationMs`와 optional
-placement TRS는 protocol 68 WORLD cue로 전달한다. 종료/Stop/실패 시 동적 객체를 정리한다.
+placement TRS는 protocol 69 WORLD cue로 전달한다. 정상 완료는 `FINISH_OWNER`로 이미 시작한
+재생의 저작 수명을 보존하고, Stop/실패는 `STOP_OWNER`로 즉시 정리한다. 양쪽 실행 파일 갱신 후 Server와 Client를 재시작한다.
 여러 카드의 접촉은 Composition `TRIGGER / OBJECT_CONTACT`와 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result로 연결한다. 대상은 저장 Motion ID가 아니라 같은 Pattern의 WORLD occurrence 목록이며 실제 맞은 카드별로 반응한다. 전체 조커찾기 제한시간은 `DURATION / EXTERNAL_SIGNAL`과 접촉 Result의 `COMPLETE_LOGIC_WINDOW`로 분리한다. Collider의 `BOSS → WEAPON → Bone`에서 실제 망치 Bone을 선택하며, Product publish가 기존 WModel에서 서버용 Bone 궤적을 계산한다. 자세한 저작 순서는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md` 17.7을 따른다.
 
 자식 Motion의 On Complete에서 반복·마지막 자세·다음 모션을 저장한다. `OBJECT_OVERLAP`과

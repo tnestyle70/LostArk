@@ -1,0 +1,520 @@
+{
+  "schema": "lostark.map-materials",
+  "formatVersion": 2,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "materials": [
+    {
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1271",
+      "materialName": "bg_pap_stone_rock04_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1299",
+      "materialName": "bg_pap_stone_rock04_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1304",
+      "materialName": "bg_pap_stone_rock04_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1337",
+      "materialName": "bg_pap_stone_rock04_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL00_E1643",
+      "materialName": "bg_pap_stone_rock02_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL03_E4893",
+      "materialName": "bg_pap_stone_rock02_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL03_normalizedaveragecolor1_50.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL03_directionalmaxcomponent1_50.dds",
+        "colorSpace": "linear"
+      }
+    },
+    {
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL04_E2950",
+      "materialName": "bg_pap_stone_rock02_mi_ksr",
+      "sourceMaterial": "lv_lut_heartrb.mat.bg_pap_stone_rock04_mi_ksr",
+      "family": "bg_base_opa_overlay",
+      "diffuseBrightness": 0.800000011920929,
+      "diffuseSaturation": 0.20000000298023224,
+      "normalIntensity": 1.5,
+      "specularIntensity": 0.20000000298023224,
+      "specularPower": 60.0,
+      "diffuseColor": [
+        1.0,
+        0.9583333134651184,
+        0.8999999761581421,
+        1.0
+      ],
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "overlayTiling": 2.5,
+      "overlayNormalIntensity": 1.0,
+      "overlaySharpness": 1.0,
+      "overlayBrightness": 1.2000000476837158,
+      "overlaySaturation": 1.2999999523162842,
+      "overlaySpecularIntensity": 0.0,
+      "castsShadow": true,
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "overlayDiffuse": "srgb",
+        "overlayNormal": "linear"
+      },
+      "diffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_d_ksr.dds",
+      "normalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_pap_stone_rock02_n_ksr.dds",
+      "overlayDiffuseTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02a_d_ksr.dds",
+      "overlayNormalTexture": "Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/Textures/bg_rad_drlands_tile_floor02_n_ksr.dds",
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL04_normalizedaveragecolor1_58.dds",
+        "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL04_directionalmaxcomponent1_58.dds",
+        "colorSpace": "linear"
+      }
+    }
+  ],
+  "placementLighting": [
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1271",
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1271",
+      "coordinateScale": [
+        0.2421875,
+        0.2421875
+      ],
+      "coordinateBias": [
+        0.25390625,
+        0.00390625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        4.333828449249268,
+        4.4113240242004395,
+        4.23090124130249
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1299",
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1299",
+      "coordinateScale": [
+        0.2421875,
+        0.2421875
+      ],
+      "coordinateBias": [
+        0.75390625,
+        0.00390625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        3.9628212451934814,
+        4.290340423583984,
+        3.433763027191162
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1304",
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1304",
+      "coordinateScale": [
+        0.2421875,
+        0.2421875
+      ],
+      "coordinateBias": [
+        0.00390625,
+        0.00390625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        4.237461566925049,
+        3.8251233100891113,
+        4.095407962799072
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1337",
+      "assetId": "MAP_4A6CF4B84315_LV_LUT_HEARTRB_FLOOR01_SM_VST_SL00_E1337",
+      "coordinateScale": [
+        0.2421875,
+        0.2421875
+      ],
+      "coordinateBias": [
+        0.00390625,
+        0.25390625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        2.1748392581939697,
+        1.878908395767212,
+        1.9845921993255615
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL00:export:1643",
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL00_E1643",
+      "coordinateScale": [
+        0.1171875,
+        0.1171875
+      ],
+      "coordinateBias": [
+        0.50390625,
+        0.44140625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL03:export:4893",
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL03_E4893",
+      "coordinateScale": [
+        0.029296875,
+        0.029296875
+      ],
+      "coordinateBias": [
+        0.9384765625,
+        0.4072265625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0,
+        1.5570645332336426,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LUT_HEARTRB_ED_SL04:export:2950",
+      "assetId": "MAP_587BBEFCB597_BG_PAP_STONE_ROCK02_SM_VST_SL04_E2950",
+      "coordinateScale": [
+        0.029296875,
+        0.05859375
+      ],
+      "coordinateBias": [
+        0.9697265625,
+        0.189453125
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ]
+}

@@ -2995,11 +2995,11 @@ def _validate_camera_track(track: Any, context: str) -> None:
     keyframes = track["keyframes"]
     if (
         not isinstance(keyframes, list)
-        or len(keyframes) < 2
+        or len(keyframes) < 1
         or len(keyframes) > CAMERA_TRACK_MAX_KEYFRAMES
     ):
         raise CompositionError(
-            f"{context}.keyframes must be 2 to {CAMERA_TRACK_MAX_KEYFRAMES} rows"
+            f"{context}.keyframes must be 1 to {CAMERA_TRACK_MAX_KEYFRAMES} rows"
         )
     scene_ids: set[str] = set()
     previous_time_ms = -1
@@ -3047,7 +3047,7 @@ def _validate_camera_track(track: Any, context: str) -> None:
             raise CompositionError(
                 f"{key_context}.fovYDegrees must be between 1 and 179"
             )
-    if previous_time_ms != duration_ms:
+    if len(keyframes) > 1 and previous_time_ms != duration_ms:
         raise CompositionError(f"{context} must end at its duration")
 
 

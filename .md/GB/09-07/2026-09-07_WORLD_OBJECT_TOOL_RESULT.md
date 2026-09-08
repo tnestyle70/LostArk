@@ -382,3 +382,58 @@ G11 최종 빌드 경과: 첫 Product 시도는 Engine Model.cpp의 assetRoot �
 다음 시도는 빌드 중 갱신된 MapAssetRenderUtils 선언과 이전 object 파일이 섞여 LNK2019로 실패했다.
 최신 헤더를 소비한 마지막 Product 증분 빌드에서 전 프로젝트 PASS, 누락 runtime 입력0을 확인했다.
 최종 코드의 기존 인코딩/PDB 경고는 남지만 컴파일·링크 오류는 0이다.
+
+## G12. 공 Motion의 V2 Effect row — 통합 검증 전 구현 checkpoint
+
+2026-09-08 명시 재개 요청에 따라 Object Resources에 V2 Group/Leaf 목록과
+`Append Effect at Motion End`를 추가했다. Object Detail의 Effect Rows에서
+Motion End/At Time, window, offset, rotation, scale, 삭제를 편집하며 Sequencer는 Effect tail까지
+같은 clock을 표시한다. Append는 선택 V2 closure와 staged WorldSequence를 검증한 뒤 commit한다.
+WorldSequence v3의 optional effectTracks는 기존 codec/Save/equality/Map publisher로 소비한다.
+
+WorldSequencePlayer는 model과 Effect가 같은 Sample_ObjectWorld로 궤적을 계산하고 기존
+V2 immutable snapshot/Prewarm/Play_Group·Play_Leaf/Sample_Group external clock을 사용한다.
+Effect window는 원본 leaf envelope를 늘리지 않는다. STOP 뒤 자연 tail을 남기고 NEXT 이전 tail,
+LOOP overlap 및 역방향 seek를 동일 clock에서 재구성하며 명시 Stop은 관련 handle을 정리한다.
+Effect-bearing Motion은 각 공의 full body lifetime을 사용하며 수평 spread만 적용해 원래 Y 궤적을 보존한다.
+같은 player의 생성 cutoff 뒤에도 이미 태어난 공의 body와 effect가 끝날 때까지 재생한다.
+TARGET_SET의 birth-time world sampler와 Get_InstanceElapsedSpanMs public getter는 통합 caller가 소비한다.
+
+WorldSequence source revision400→401에서 공_튀기기만 count10/interval300/spread360으로 변경하고
+Motion End에 boss.kouku.ball.smoke GROUP, duration2000ms, offset(0,-2.3,-1.35), scale1을 추가했다.
+기존 velocity/acceleration1700ms 모션과 instance playbackSpeed1.5, 다른 모든 저작 값은 보존했다.
+Pattern occurrence는 effective1을 위해2/3 배속을 사용하며 start1481ms 기준 births1481..4181ms,
+마지막 model end5881ms, 마지막 smoke end7881ms다. 해당 occurrence/쿠크 anchor 연결과 Level 정리는
+통합 작업자가 소유한다. 이 checkpoint에서 그 caller 변경이나 Client 실행 완료를 대신 판정하지 않는다.
+
+| 실행한 확인 | 결과 |
+|---|---|
+| 기존 실제 publisher fixture 검사 | PASS. test_v3_object_publisher_accepts_source_and_rejects_invalid_resources; Motion End/At Time, 열 개 full emission, duplicate/missing ID·timing·window·scale 거절 추가 |
+| 현재 실제 WorldSequence source validation | PASS. source-validation.log; 게시 없이 기존 Read-WorldSequenceDocument만 실행 |
+| 원본 보존·수치 | PASS. source-preservation-and-emissions.json; 명시 변경 외 JSON 의미 완전 동일, 마지막 smoke7881ms |
+| 컴파일·runtime publish | 통합 작업자의 최소 Client 컴파일·Map publish 실행 대기 |
+| Client 입력·Save/Reload·화면 | 사용자 확인 대기. UI 실행·조작·캡처 없음 |
+
+로그는 out/WorldObjectEffects다. 새 C++ 파일/project 등록, 물리 Resources 변경이나 Drive 전달 대상은 없다.
+사용자 경로는 F1 Tools → World Object Tool → 공 → 공_튀기기 → Object Detail Effect Rows다.
+다른 Effect 추가는 Object Resources → V2 Effects에서 Group/Leaf를 선택하고 Append Effect at Motion End를 누른다.
+
+## G13. 공 생성과 종료 Effect 통합 검증 완료
+
+G12의 caller 연결·컴파일·runtime publish 대기 항목을 완료했다. WorldSequencePlayer의 birth callback이 있는 경우 PLAYER fanout을 하지 않고 단일 공 emitter를 사용한다. NEXT chain 전체의 Effect 수명을 판정하며 MainApp/Level/Bundle Preview가 공용 Get_InstanceElapsedSpanMs를 소비한다. Pattern8 단독 재생도 기존 Bundle preview 경로로 같은 movement·tail을 재생한다.
+
+Debug Product 빌드·배포, Map publish, 실제 publisher fixture 및 V2 Group 자연 수명 검사 PASS. 마지막 smoke7881ms, body end5881ms, 발생10개와 published source 일치는 out/KoukuPatternEffects20260908/final-schedule.json에 기록했다. Server/Network의 자연 완료·Stop·Restart 검증도 PASS. 최종 통합 상세는 같은 날짜 EFFECT_COMPOSITION_WORKBENCH_AND_PATTERN_CAMERA_RESULT의 G19를 따른다. Client UI 실행·화면 최종 판정은 사용자 확인 대기다.
+
+## G14. 세이튼 등장 공 1.5배 적용 (2026-09-08)
+
+WorldSequence revision402의 공_튀기기 template은0/1700ms transform key 두 개 모두
+scaleMultiplier(1.5,1.5,1.5)다. 모델 리소스의 modelPreScale과 다른 Motion은 유지했다.
+count10/interval300ms,1700ms 궤적, smoke MOTION_END2000ms와 offset/scale1은 보존했다.
+현재 P8 발생 구간은3080..5780ms, 마지막 smoke는7480..9480ms이며 크기 변경으로 바뀌지 않는다.
+WorldSequencePlayer_Objects의 Effect pivot basis 정규화가 공 mesh scale과 Effect 미터 scale을 분리한다.
+
+원본 semantic 비교는 revision과 scale 두 key만 달라졌음을 확인했고 Map Area publish8파일,
+source/runtime JSON 동일성, 최종 Debug Product compile/link/deploy와 diff check가 PASS다.
+증거는 out/KoukuPausedScrub20260908/final-data-validation.json 및 map-publish.log,
+20260908T044302127Z-debug-product.json이다. 사용자에게 새 EXE 실행 준비를 안내했으며
+실제 커진 공과 smoke의 화면 판정은 사용자가 한다. Client/UI 실행·캡처와 신규 Resources/Drive 전달은 없다.

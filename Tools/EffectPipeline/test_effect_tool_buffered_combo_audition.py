@@ -161,15 +161,14 @@ class EffectToolBufferedComboAuditionTests(unittest.TestCase):
             if binding["skillId"] == 2050010
         )
         self.assertEqual(
-            dimensionmaster_binding["clips"][1],
-            ["pc_sp_m_00_sk_att_battle_1_03"],
+            [stage[0] for stage in dimensionmaster_binding["clips"]][1:],
+            ["pc_sp_m_00_sk_att_battle_1_02", "pc_sp_m_00_sk_att_battle_1_03",
+             "pc_sp_m_00_sk_att_battle_1_04"],
         )
         self.assertEqual(
-            sum(
-                stage["comboAdvanceMs"]
-                for stage in dimensionmaster["comboStages"][:1]
-            ),
-            1500,
+            [sum(stage["comboAdvanceMs"] for stage in dimensionmaster["comboStages"][:index])
+             for index in range(4)],
+            [0, 1400, 2900, 3967],
         )
         self.assertEqual(
             sum(stage["comboAdvanceMs"] for stage in artist["comboStages"][:2]),

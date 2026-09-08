@@ -2,6 +2,8 @@
 
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
+#include "SourceCharacterMaterialParameters.h"
 
 #include <algorithm>
 #include <fstream>
@@ -174,6 +176,58 @@ namespace
 		return CHARACTER_CLASS_ID::END;
 	}
 
+    bool_t ParseCharacterMaterialOverrides(const DATA_JSON_VALUE& row,
+        CHARACTER_ACTOR_ENTRY& entry)
+    {
+        const auto* definitions = row.Find("modelMaterialOverrides");
+        if (!definitions) return true;
+        if (!definitions->Is_Array() || definitions->Get_Array().size() > 128u) return false;
+        std::set<std::pair<std::string,std::string>> names;
+        for (const auto& definition : definitions->Get_Array())
+        {
+            std::string asset, family, sourceIdentity;
+            Engine::MODEL_MATERIAL_OVERRIDE replacement;
+            if (!definition.Is_Object() ||
+                !ReadRequiredString(definition,"modelAssetId",asset) || !IsResourceId(asset) ||
+                !ReadRequiredString(definition,"materialName",replacement.materialName) ||
+                !ReadRequiredString(definition,"family",family) ||
+                !ReadRequiredString(definition,"sourceMaterial",sourceIdentity) ||
+                !names.emplace(asset,replacement.materialName).second) return false;
+            if (asset != entry.bodyModel &&
+                std::find(entry.equipmentModels.begin(),entry.equipmentModels.end(),asset)==entry.equipmentModels.end() &&
+                std::find(entry.weaponModels.begin(),entry.weaponModels.end(),asset)==entry.weaponModels.end()) return false;
+            const auto* parameters=definition.Find("parameters");
+            const auto* textures=definition.Find("textures");
+            if (!parameters || !textures || !textures->Is_Array() ||
+                !SourceCharacterMaterial::Configure(family,*parameters,replacement.surface.sourceCharacter)) return false;
+            replacement.surface.family=Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
+            const uint32_t required = replacement.surface.sourceCharacter.baseTextureMask |
+                replacement.surface.sourceCharacter.lightTextureMask;
+            uint32_t supplied=0u;
+            for (const auto& texture : textures->Get_Array())
+            {
+                uint32_t index=0u;
+                std::string assetId,colorSpace;
+                if (!texture.Is_Object() || !ReadRequiredU32(texture,"expressionIndex",index) ||
+                    index>=Engine::SOURCE_CHARACTER_TEXTURE_COUNT ||
+                    (supplied & (1u<<index))!=0u || (required & (1u<<index))==0u ||
+                    !ReadRequiredString(texture,"assetId",assetId) ||
+                    !ReadRequiredString(texture,"colorSpace",colorSpace) ||
+                    (colorSpace!="srgb" && colorSpace!="linear") ||
+                    !assetId.starts_with("Character/") || assetId.find(':')!=std::string::npos)
+                    return false;
+                const auto input=CRuntimeAssetRoot::Resolve(assetId);
+                if (input.empty()) return false;
+                replacement.sourceCharacterTextures[index].path=input;
+                replacement.sourceCharacterTextures[index].srgb=colorSpace=="srgb";
+                supplied|=1u<<index;
+            }
+            if (supplied!=required) return false;
+            entry.modelMaterialOverrides[asset].push_back(std::move(replacement));
+        }
+        return true;
+    }
+
 	bool_t ParseCharacters(const DATA_JSON_VALUE& root)
 	{
 		const DATA_JSON_VALUE* pSchema = root.Find("schema");
@@ -245,6 +299,7 @@ namespace
 					return false;
 				entry.weaponModels.push_back(weapon.Get_String());
 			}
+			if (!ParseCharacterMaterialOverrides(value, entry)) return false;
 			const bool_t hasEquipment = !entry.equipmentModels.empty();
 			const bool_t hasWeapon = !entry.weaponModels.empty();
 			if (entry.runtimeStatus == "supported" &&
@@ -777,6 +832,61 @@ bool_t Client::CActorCatalog::Initialize()
 	}
 	g_isInitialized = true;
 	g_Status = "Actor catalogs ready.";
+	return true;
+}
+
+bool_t Client::CActorCatalog::Build_ModelLoadDescription(
+	const std::string_view modelAssetId, Engine::MODEL_ASSET_LOAD_DESC& outDesc,
+	std::string& outStatus, const std::string_view characterAssetId)
+{
+	if (!Initialize())
+	{
+		outStatus = Get_Status();
+		return false;
+	}
+	const std::string asset(modelAssetId);
+	if (!IsResourceId(asset))
+	{
+		outStatus = "Model asset is not a Resources-relative identity: " + asset;
+		return false;
+	}
+	const auto ownsModel = [&asset](const CHARACTER_ACTOR_ENTRY& actor) {
+		return actor.bodyModel == asset ||
+			std::find(actor.equipmentModels.begin(), actor.equipmentModels.end(), asset) != actor.equipmentModels.end() ||
+			std::find(actor.weaponModels.begin(), actor.weaponModels.end(), asset) != actor.weaponModels.end();
+	};
+	const CHARACTER_ACTOR_ENTRY* owner = nullptr;
+	for (const auto& actor : g_Characters)
+	{
+		if ((!characterAssetId.empty() && actor.assetId != characterAssetId) ||
+			(characterAssetId.empty() && !ownsModel(actor))) continue;
+		if (owner || !ownsModel(actor) || actor.runtimeStatus != "supported")
+		{
+			outStatus = "Character model ownership is invalid or ambiguous: " + asset;
+			return false;
+		}
+		owner = &actor;
+	}
+	if (!characterAssetId.empty() && !owner)
+	{
+		outStatus = "Character catalog identity is absent: " + std::string(characterAssetId);
+		return false;
+	}
+	Engine::MODEL_ASSET_LOAD_DESC staged;
+	staged.assetRoot = CRuntimeAssetRoot::Get_ResourceRoot();
+	staged.meshPath = CRuntimeAssetRoot::Resolve(asset);
+	if (staged.assetRoot.empty() || staged.meshPath.empty())
+	{
+		outStatus = "Model asset escaped or failed to resolve below Resources: " + asset;
+		return false;
+	}
+	if (owner)
+	{
+		const auto found = owner->modelMaterialOverrides.find(asset);
+		if (found != owner->modelMaterialOverrides.end()) staged.materialOverrides = found->second;
+	}
+	outDesc = std::move(staged);
+	outStatus.clear();
 	return true;
 }
 

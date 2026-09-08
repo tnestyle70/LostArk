@@ -571,11 +571,14 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			if (!modelPath.empty() &&
 				std::filesystem::is_regular_file(modelPath))
 			{
+				MODEL_ASSET_LOAD_DESC description;
+				if (!CActorCatalog::Build_ModelLoadDescription(asset.pModelAssetId, description, m_Status))
+					return false;
 				model = CModel::Create(
 					m_pDevice,
 					m_pContext,
 					MODEL::ANIM,
-					modelPath.string().c_str(),
+					description,
 					previewTransform);
 			}
 			if (nullptr == model)
@@ -633,11 +636,14 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 					std::isfinite(asset.fWeaponScale) &&
 					asset.fWeaponScale > 0.f)
 				{
+					MODEL_ASSET_LOAD_DESC description;
+					if (!CActorCatalog::Build_ModelLoadDescription(asset.pWeaponModelAssetId, description, m_Status))
+						return false;
 					weaponModel = CModel::Create(
 						m_pDevice,
 						m_pContext,
 						MODEL::NONANIM,
-						weaponPath.string().c_str(),
+						description,
 						XMMatrixScaling(
 							asset.fWeaponScale,
 							asset.fWeaponScale,

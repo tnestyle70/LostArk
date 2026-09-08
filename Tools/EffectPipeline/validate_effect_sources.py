@@ -521,6 +521,20 @@ def _validate_authored_material_color_space(source: dict[str, Any], relative: st
             raise ContractError(f"{owner} requires an ordinary authored standard material")
 
 
+def _validate_authored_module_overrides(source: dict[str, Any], relative: str) -> None:
+    for index, element in enumerate(source.get("elements", [])):
+        if not isinstance(element, dict):
+            continue
+        recipe = element.get("sourceRecipe", {})
+        if not isinstance(recipe, dict) or "authoredModuleOverrides" not in recipe:
+            continue
+        owner = f"{relative}.elements[{index}].sourceRecipe.authoredModuleOverrides"
+        if not isinstance(recipe["authoredModuleOverrides"], bool):
+            raise ContractError(f"{owner} must be a boolean")
+        if source.get("version") not in SUPPORTED_PRODUCT_DOCUMENT_VERSIONS:
+            raise ContractError(f"{owner} requires a portable authored document")
+
+
 def _validate_attachment_orientations(source: dict[str, Any], relative: str) -> None:
     anchors: dict[str, tuple[Any, ...]] = {}
     for element in source.get("elements", []):
@@ -530,8 +544,16 @@ def _validate_attachment_orientations(source: dict[str, Any], relative: str) -> 
         if not isinstance(attachment, dict):
             raise ContractError(f"actionCueAttachment must be an object: {relative}")
         orientation = attachment.get("orientation", "bone")
-        if not isinstance(orientation, str) or orientation not in ("bone", "owner_yaw"):
-            raise ContractError(f"attachment orientation must be bone or owner_yaw: {relative}")
+        if not isinstance(orientation, str) or orientation not in ("bone", "owner_yaw", "camera_view"):
+            raise ContractError(f"attachment orientation must be bone, owner_yaw, or camera_view: {relative}")
+        if orientation == "camera_view":
+            if (attachment.get("enabled") is not True or attachment.get("follow") is not True or
+                    attachment.get("runtimeBoneName") != ""):
+                raise ContractError(f"camera_view requires enabled follow with no bone: {relative}")
+            source_slot = attachment.get("sourceAnchorSlotId")
+            if (not isinstance(source_slot, str) or not source_slot.strip() or
+                    len(source_slot.encode("utf-8")) > 128):
+                raise ContractError(f"camera_view requires a stable source slot: {relative}")
         if orientation == "owner_yaw":
             recipe = element.get("sourceRecipe", {})
             if (attachment.get("enabled") is not True or
@@ -545,7 +567,7 @@ def _validate_attachment_orientations(source: dict[str, Any], relative: str) -> 
         slot = attachment.get("runtimeAnchorSlotId")
         bone = attachment.get("runtimeBoneName")
         if any(not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > 128
-               for value in (slot, bone)):
+               for value in ((slot,) if orientation == "camera_view" else (slot, bone))):
             raise ContractError(f"follow attachment requires stable slot and bone names: {relative}")
         socket = attachment.get("socketLocalTransform")
         if not isinstance(socket, dict):
@@ -895,6 +917,35 @@ def _validate_player_skill_effect_references(
     return references
 
 
+def _editor_recovery_ids(
+    root: Path, authored_ids: set[str], product_effect_ids: set[str]
+) -> set[str]:
+    """Mirror the editor index's exact sibling join without Product admission."""
+    path = root / PLAYER_SKILLS_PATH
+    if not path.is_file():
+        return set()
+    document, _ = _read_json(path)
+    owners = {
+        (skill["characterClass"].lower().replace("_", ""), str(skill["skillId"]))
+        for skill in document.get("skills", [])
+        if isinstance(skill, dict) and isinstance(skill.get("characterClass"), str)
+        and isinstance(skill.get("skillId"), int) and not isinstance(skill["skillId"], bool)
+    }
+    recoveries: set[str] = set()
+    for effect_id in authored_ids - product_effect_ids:
+        suffix = next((s for s in (".tuning.restore", ".full.restore", ".restore")
+                       if effect_id.endswith(s)), None)
+        if suffix is None:
+            continue
+        stem = effect_id[:-len(suffix)]
+        promoted = stem + ".restore"
+        source = promoted if promoted in product_effect_ids else stem + ".unified"
+        owner = re.match(r"^effect\.([a-z]+)\.skill\.(\d+)(?:\.|$)", source)
+        if source in product_effect_ids and owner and owner.groups() in owners:
+            recoveries.add(effect_id)
+    return recoveries
+
+
 def _validate_declared_draft_effects(
     root: Path, product_effect_ids: set[str]
 ) -> tuple[set[str], bool]:
@@ -1190,6 +1241,7 @@ def validate_repository(
             raise ContractError(f"direct source elements must be an array: {relative}")
         _validate_authored_material_color_space(source, relative)
         _validate_native_sprite_particle_options(source, relative)
+        _validate_authored_module_overrides(source, relative)
         _validate_attachment_orientations(source, relative)
         resource_ids.update(_collect_runtime_resource_ids(source, relative))
         if version == 15:
@@ -1276,7 +1328,8 @@ def validate_repository(
             raise ContractError(
                 f"declared Valtan draft Effect files are missing: {missing_drafts[:5]}"
             )
-        orphaned = sorted(authored_ids - effect_ids - draft_effect_ids)
+        recoveries = _editor_recovery_ids(root, authored_ids, product_effect_ids)
+        orphaned = sorted(authored_ids - effect_ids - draft_effect_ids - recoveries)
         if orphaned:
             raise ContractError(
                 f"Authored Effect files have no Product or draft owner: {orphaned[:5]}"

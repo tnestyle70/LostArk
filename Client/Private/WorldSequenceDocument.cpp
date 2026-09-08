@@ -425,7 +425,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 				  "interpolation", "tracks" }) :
 			Is_ObjectShape(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
-				  "interpolation", "tracks", "animationTracks" }, { "objectMotion" });
+				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks" });
 		if (!validTemplateShape)
 		{
 			outStatus = "World sequence template shape is invalid";
@@ -575,6 +575,34 @@ bool_t Client::CWorldSequenceDocument::Load(
 				parsedTemplate.animationTracks.push_back(std::move(parsedTrack));
 			}
 		}
+		if (const auto* effects = templateValue.Find("effectTracks"))
+		{
+			if (parsedFormatVersion < 3u || !effects->Is_Array() || effects->Get_Array().size() > MAX_TRACK_COUNT)
+			{ outStatus = "World Object effectTracks must be a bounded v3 array"; return false; }
+			for (const auto& row : effects->Get_Array())
+			{
+				WORLD_SEQUENCE_EFFECT_TRACK effect;
+				if (!Is_ExactObject(row, { "effectTrackId", "slotId", "resourceKind", "resourceId",
+					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }))
+				{ outStatus = "World Object effect track shape is invalid"; return false; }
+				for (const char* key : { "effectTrackId", "slotId", "resourceKind", "resourceId", "timing" })
+					if (!row.Find(key)->Is_String())
+					{ outStatus = "World Object effect identity must be text"; return false; }
+				effect.effectTrackId = row.Find("effectTrackId")->Get_String();
+				effect.slotId = row.Find("slotId")->Get_String();
+				effect.resourceKind = row.Find("resourceKind")->Get_String();
+				effect.resourceId = row.Find("resourceId")->Get_String();
+				effect.timing = row.Find("timing")->Get_String();
+				if (!Read_Uint32(row.Find("startMs"), effect.startMs, MAX_DURATION_MS) ||
+					!Read_Uint32(row.Find("durationMs"), effect.durationMs, MAX_DURATION_MS) ||
+					!Read_Float3(row.Find("positionOffset"), effect.positionOffset) ||
+					!Read_Float3(row.Find("rotationDegrees"), effect.rotationDegrees) ||
+					!Read_Float3(row.Find("scale"), effect.scale))
+				{ outStatus = "World Object effect timing or transform is invalid"; return false; }
+				parsedTemplate.effectTracks.push_back(std::move(effect));
+			}
+		}
+
 		staged.m_Templates.push_back(std::move(parsedTemplate));
 	}
 
@@ -818,8 +846,26 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< ", \"holdLastFrame\": "
 				<< (track.holdLastFrame ? "true" : "false") << " }";
 		}
-		output << (value.animationTracks.empty() ? "]\n" : "\n      ]\n")
-			<< "    }";
+		output << (value.animationTracks.empty() ? "]" : "\n      ]");
+		if (!value.effectTracks.empty())
+		{
+			output << ",\n      \"effectTracks\": [";
+			for (size_t index = 0; index < value.effectTracks.size(); ++index)
+			{
+				const auto& effect = value.effectTracks[index];
+				output << (index ? ",\n" : "\n") << "        { \"effectTrackId\": \"" << CDataJson::Escape(effect.effectTrackId)
+					<< "\", \"slotId\": \"" << CDataJson::Escape(effect.slotId)
+					<< "\", \"resourceKind\": \"" << effect.resourceKind
+					<< "\", \"resourceId\": \"" << CDataJson::Escape(effect.resourceId)
+					<< "\", \"timing\": \"" << effect.timing
+					<< "\", \"startMs\": " << effect.startMs << ", \"durationMs\": " << effect.durationMs
+					<< ", \"positionOffset\": [" << effect.positionOffset.x << ", " << effect.positionOffset.y << ", " << effect.positionOffset.z
+					<< "], \"rotationDegrees\": [" << effect.rotationDegrees.x << ", " << effect.rotationDegrees.y << ", " << effect.rotationDegrees.z
+					<< "], \"scale\": [" << effect.scale.x << ", " << effect.scale.y << ", " << effect.scale.z << "] }";
+			}
+			output << "\n      ]";
+		}
+		output << "\n    }";
 	}
 	output << (m_Templates.empty() ? "],\n" : "\n  ],\n")
 		<< "  \"instances\": [";
@@ -933,7 +979,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			(WORLD_SEQUENCE_INTERPOLATION::LINEAR != value.interpolation &&
 				WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP != value.interpolation) ||
 			(value.tracks.empty() && value.animationTracks.empty()) ||
-			value.tracks.size() + value.animationTracks.size() > MAX_TRACK_COUNT)
+			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() > MAX_TRACK_COUNT)
 		{
 			outStatus = "Invalid or duplicate world sequence template: " +
 				value.sequenceId;
@@ -944,9 +990,27 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			!Is_BoundedFloat3(motion.angularVelocityDegrees) ||
 			!Is_BoundedFloat3(motion.revolutionDegreesPerSecond) || !Is_BoundedFloat3(motion.revolutionOffset) ||
 			motion.count < 1u || motion.count > 128u || motion.intervalMs > MAX_DURATION_MS ||
-			static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs ||
-			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > 180.f)
+			(value.effectTracks.empty() && static_cast<uint64_t>(motion.count - 1u) * motion.intervalMs >= value.durationMs) ||
+			!std::isfinite(motion.spreadDegrees) || motion.spreadDegrees < 0.f || motion.spreadDegrees > (value.effectTracks.empty() ? 180.f : 360.f))
 		{ outStatus = "Invalid object motion in template: " + value.sequenceId; return false; }
+		std::unordered_set<std::string> effectIds;
+		for (const auto& effect : value.effectTracks)
+		{
+			const bool slotExists = std::any_of(value.tracks.begin(), value.tracks.end(),
+				[&](const auto& track) { return track.slotId == effect.slotId; }) ||
+				std::any_of(value.animationTracks.begin(), value.animationTracks.end(),
+					[&](const auto& track) { return track.slotId == effect.slotId; });
+			if (!Is_ValidStableId(effect.effectTrackId) || !effectIds.insert(effect.effectTrackId).second ||
+				!Is_ValidStableId(effect.slotId) || !slotExists || !Is_ValidStableId(effect.resourceId) ||
+				(effect.resourceKind != "LEAF" && effect.resourceKind != "GROUP") ||
+				(effect.timing != "TIME" && effect.timing != "MOTION_END") ||
+				(effect.timing == "MOTION_END" && effect.startMs != 0u) ||
+				effect.startMs > value.durationMs || effect.durationMs == 0u || effect.durationMs > MAX_DURATION_MS ||
+				!Is_BoundedFloat3(effect.positionOffset) || !Is_BoundedFloat3(effect.rotationDegrees) ||
+				!Is_BoundedFloat3(effect.scale) || effect.scale.x < MIN_SCALE || effect.scale.y < MIN_SCALE || effect.scale.z < MIN_SCALE ||
+				value.PresentationSpanMs() > MAX_DURATION_MS)
+			{ outStatus = "Invalid World Object effect track: " + value.sequenceId + "/" + effect.effectTrackId; return false; }
+		}
 		std::unordered_set<std::string> slotIds;
 		for (const WORLD_SEQUENCE_TRACK& track : value.tracks)
 		{
@@ -1038,6 +1102,9 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
 			return false;
 		}
+		if (!targetTemplate->effectTracks.empty() && (value.bindings.size() != 1u ||
+			value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE))
+		{ outStatus = "Effect lanes require one Object Resource binding: " + value.instanceId; return false; }
 		if (value.walkableSurface)
 		{
 			const auto& surface = *value.walkableSurface;
@@ -1348,6 +1415,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.interpolation != right.interpolation ||
 			left.tracks.size() != right.tracks.size() ||
 			left.animationTracks.size() != right.animationTracks.size() ||
+			left.effectTracks.size() != right.effectTracks.size() ||
 			!sameFloat3(left.objectMotion.velocity, right.objectMotion.velocity) ||
 			!sameFloat3(left.objectMotion.acceleration, right.objectMotion.acceleration) ||
 			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||
@@ -1357,6 +1425,14 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.objectMotion.spreadDegrees != right.objectMotion.spreadDegrees || left.objectMotion.seed != right.objectMotion.seed)
 		{
 			return false;
+		}
+		for (size_t index = 0; index < left.effectTracks.size(); ++index)
+		{
+			const auto& a = left.effectTracks[index]; const auto& b = right.effectTracks[index];
+			if (a.effectTrackId != b.effectTrackId || a.slotId != b.slotId || a.resourceKind != b.resourceKind ||
+				a.resourceId != b.resourceId || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
+				!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat3(a.rotationDegrees, b.rotationDegrees) ||
+				!sameFloat3(a.scale, b.scale)) return false;
 		}
 		for (size_t trackIndex = 0u; trackIndex < left.tracks.size(); ++trackIndex)
 		{

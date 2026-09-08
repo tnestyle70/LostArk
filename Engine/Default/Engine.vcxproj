@@ -327,6 +327,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Engine_Shader_Defines.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Cell.hlsl" />

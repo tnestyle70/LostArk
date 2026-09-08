@@ -116,6 +116,44 @@ bool_t CCamera::Apply_PresentationPose(
 	return true;
 }
 
+bool_t CCamera::Apply_PresentationPoseWithUp(
+	const uint64_t iOwnerId,
+	const float3_t& vEye,
+	const float3_t& vLookAt,
+	const float3_t& vUp,
+	const f32_t fFovYDegrees)
+{
+	if (!Is_PresentationOverrideOwnedBy(iOwnerId) || nullptr == m_pTransformCom ||
+		!std::isfinite(vEye.x) || !std::isfinite(vEye.y) || !std::isfinite(vEye.z) ||
+		!std::isfinite(vLookAt.x) || !std::isfinite(vLookAt.y) || !std::isfinite(vLookAt.z) ||
+		!std::isfinite(vUp.x) || !std::isfinite(vUp.y) || !std::isfinite(vUp.z) ||
+		!std::isfinite(fFovYDegrees) || fFovYDegrees <= 1.f || fFovYDegrees >= 179.f)
+		return false;
+	const vector_t eye = XMLoadFloat3(&vEye);
+	const vector_t direction = XMLoadFloat3(&vLookAt) - eye;
+	const f32_t lengthSq = XMVectorGetX(XMVector3LengthSq(direction));
+	const f32_t upLengthSq = XMVectorGetX(XMVector3LengthSq(XMLoadFloat3(&vUp)));
+	if (!std::isfinite(lengthSq) || lengthSq <= 0.000001f ||
+		!std::isfinite(upLengthSq) || upLengthSq <= 0.000001f)
+		return false;
+	const vector_t look = XMVector3Normalize(direction);
+	const vector_t cross = XMVector3Cross(XMVector3Normalize(XMLoadFloat3(&vUp)), look);
+	const f32_t crossLengthSq = XMVectorGetX(XMVector3LengthSq(cross));
+	if (!std::isfinite(crossLengthSq) || crossLengthSq <= 0.000001f)
+		return false;
+	const vector_t right = XMVector3Normalize(cross);
+	const vector_t up = XMVector3Cross(look, right);
+	m_pTransformCom->Set_State(STATE::RIGHT, XMVectorSetW(right, 0.f));
+	m_pTransformCom->Set_State(STATE::UP, XMVectorSetW(up, 0.f));
+	m_pTransformCom->Set_State(STATE::LOOK, XMVectorSetW(look, 0.f));
+	m_pTransformCom->Set_State(STATE::POSITION, XMVectorSetW(eye, 1.f));
+	m_fFovy = fFovYDegrees;
+	m_PresentationAppliedWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+	m_fPresentationAppliedFovy = m_fFovy;
+	Update_PipeLine();
+	return true;
+}
+
 bool_t CCamera::End_PresentationOverride(const uint64_t iOwnerId)
 {
 	if (!m_bPresentationOverrideActive)
