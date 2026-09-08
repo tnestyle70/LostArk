@@ -56,6 +56,32 @@ namespace
 	// One KoukuSaydon interaction HUD press converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t KOUKU_INTERACTION_TICKS =
 		(LostArk::Shared::KOUKU_INTERACTION_ACTION_MS * 30u + 999u) / 1000u;
+	/* The hammer keeps its whole authored swing, because the Client scrubs
+	that clip by the action's age and snaps back to idle as soon as the Server
+	drops the action. What the hunter gets instead is a cancel: once the head
+	has landed, their own next input ends the recovery early. Returns true
+	when a recovery was actually cancelled. An escape teleport borrows the
+	same lock, so a pending transfer is never cancelled here. */
+	bool Cancel_MazeHammerRecovery(
+		LostArk::Server::SERVER_PLAYER& player, const std::uint32_t tick)
+	{
+		using namespace LostArk::Shared;
+		if (PLAYER_ACTION_STATE::INTERACTION != player.eAction ||
+			KOUKU_HUD_MODE::MAZE != player.eKoukuHudMode ||
+			0u != player.CardMaze.transferStartTick ||
+			0u == player.iActionStartTick ||
+			static_cast<std::int32_t>(tick - (player.iActionStartTick +
+				LostArk::Server::CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)) < 0)
+		{
+			return false;
+		}
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iActionStartTick = 0u;
+		player.fActionElapsedSeconds = 0.f;
+		player.PendingCommand.Clear();
+		return true;
+	}
 	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
 		"LOSTARK_RAID_CLEAR_TEST_MODE";
 
@@ -2902,6 +2928,9 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
+	/* Walking away is the hunter's own input, so it ends a spent hammer swing
+	instead of being refused for the rest of the pose. */
+	(void)Cancel_MazeHammerRecovery(player, m_iServerTick);
 	if (0u != player.iMarioStage || player.bPatternBound ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
@@ -3479,6 +3508,9 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	/* Every interaction skill is one fixed-length action today: the press is
 	refused while any action runs, exactly like a class skill, and Update_Players
 	returns the action to NONE after KOUKU_INTERACTION_ACTION_MS. */
+	/* The next swing is also the hunter's own input, so it may cut a spent
+	one short; the shortened MAZE cooldown below is what paces the chain. */
+	(void)Cancel_MazeHammerRecovery(state, m_iServerTick);
 	if (state.bPatternBound || state.fKnockbackRemainingSeconds > 0.f ||
 		0u == state.iCurrentHp || PLAYER_ACTION_STATE::NONE != state.eAction)
 	{
@@ -3499,9 +3531,13 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	state.iActionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+	/* The maze hammer chains at swing speed; every other mode keeps the pose
+	cooldown it was authored with. */
 	state.CooldownEndTickBySkillId[cooldownId] = CKoukuSaydonLogicRuntime::Add_Ticks(
 		state.iActionStartTick,
-		CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_INTERACTION_COOLDOWN_MS));
+		CKoukuSaydonLogicRuntime::Ticks_FromMs(
+			KOUKU_HUD_MODE::MAZE == state.eKoukuHudMode ?
+				KOUKU_MAZE_HAMMER_COOLDOWN_MS : KOUKU_INTERACTION_COOLDOWN_MS));
 	state.fActionElapsedSeconds = 0.f;
 	state.iComboStage = 0u;
 	state.hasBufferedComboInput = false;
@@ -14059,6 +14095,20 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 		}
 		const CKoukuCardMazeRuntime::HIT_OUTCOME outcome = m_KoukuCardMaze.On_TargetHit(
 			player, entity, SERVER_COMBAT_HIT_RESULT::KILLED == result);
+		if (outcome.bKillCounted)
+		{
+			/* The shard rises where the suppressed damage number used to: the
+			felled soldier's position, carrying the hunter's running count. */
+			DAMAGE_EVENT shard{};
+			shard.iTargetNetEntityId = entity.iNetEntityId;
+			shard.iAmount = player.iCardMazeKills;
+			shard.fPositionX = entity.fPositionX;
+			shard.fPositionY = entity.fPositionY;
+			shard.fPositionZ = entity.fPositionZ;
+			shard.isOutgoing = true;
+			shard.eCardMazeSuit = player.eCardMazeSuit;
+			m_TickDamageEvents.push_back(shard);
+		}
 		if (outcome.bStartMarch)
 		{
 			m_iCardMazeMarchStartTick = updateTick;
@@ -14931,10 +14981,15 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
 				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0;
+		/* An escape teleport borrows the same INTERACTION lock and start tick,
+		so a swing is judged only for a real hammer press. */
+		const bool mazeHammerPress =
+			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
+			LostArk::Shared::KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode &&
+			0u == player.CardMaze.transferStartTick;
 		/* The maze hammer lands part-way through its press: judge the swing
 		once, on that tick, against the run's targets in front of the player. */
-		if (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
-			LostArk::Shared::KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode &&
+		if (mazeHammerPress &&
 			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)
 		{
 			Resolve_CardMazeHammerHit(player, updateTick);

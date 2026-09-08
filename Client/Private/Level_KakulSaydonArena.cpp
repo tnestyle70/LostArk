@@ -1412,21 +1412,34 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			text = L"[ Q ] Strike the telescope at the maze center (G is not used)";
 		if (maze.CardMaze.flags & 1u) text = L"[ TELESCOPE ON ]";
 		else if (maze.CardMaze.flags & 2u) text = L"[ ESCAPED / HAMMER TELESCOPE TO VIEW ]";
-		/* The Debug solo owner hunts as well, so both parts can show at once. */
+		/* The Debug solo owner hunts as well, so both parts can show at once.
+		   The suit name is Korean, written with universal character names so this
+		   file keeps the ASCII bytes its codepage needs; the YoonGasiIIM sprite
+		   font carries every Hangul syllable used here. */
 		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != maze.eCardMazeSuit)
 		{
 			if (!text.empty())
 				text += L" ";
 			switch (maze.eCardMazeSuit)
 			{
-			case LostArk::Shared::MECHANIC_CARD_SYMBOL::HEART: text += L"HEART"; break;
-			case LostArk::Shared::MECHANIC_CARD_SYMBOL::SPADE: text += L"SPADE"; break;
-			case LostArk::Shared::MECHANIC_CARD_SYMBOL::CLUB: text += L"CLUB"; break;
-			case LostArk::Shared::MECHANIC_CARD_SYMBOL::DIAMOND: text += L"DIAMOND"; break;
-			default: text += L"SUIT"; break;
+			/* hateu */
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::HEART:
+				text += L"\uD558\uD2B8"; break;
+			/* seupeideu */
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::SPADE:
+				text += L"\uC2A4\uD398\uC774\uB4DC"; break;
+			/* keullobeo */
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::CLUB:
+				text += L"\uD074\uB85C\uBC84"; break;
+			/* daia */
+			case LostArk::Shared::MECHANIC_CARD_SYMBOL::DIAMOND:
+				text += L"\uB2E4\uC774\uC544"; break;
+			/* munyang */
+			default:
+				text += L"\uBB38\uC591"; break;
 			}
-			text += L" " + std::to_wstring(maze.iCardMazeKills) + L" / " +
-				std::to_wstring(maze.iCardMazeKillTarget);
+			/* "<suit> jogak x N": the shards this hunter has collected. */
+			text += L" \uC870\uAC01 x " + std::to_wstring(maze.iCardMazeKills);
 		}
 		if (maze.CardMaze.flags & 4u)
 			text += L" EXIT (" + std::to_wstring(static_cast<int>(maze.CardMaze.exitX)) + L", " +

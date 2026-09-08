@@ -55,3 +55,114 @@ Client/UI를 에이전트가 실행·조작·캡처하지 않았다. 실제 4인
 - `Character/KoukuSaton/CardMiro_Monster_Clover/CardMiro_Monster_Clover.wmodel`
 - `Character/KoukuSaton/CardMiro_Monster_Spade/CardMiro_Monster_Spade.wmodel`
 - `Character/KoukuSaton/MN_PPCT_00/MN_PPCT_00.wmodel` (세토)
+
+## 후속 보정 (2026-09-08, 사용자 관찰 3건)
+
+사용자가 실제 런타임에서 관찰한 세 항목을 원인 확정 후 수정했다.
+
+### 1. 병사를 때리면 `300`이 뜨는 것
+
+원인은 `Server/Private/ServerCombatHitRuntime.cpp`의 한 방 처치 규칙이다.
+`damage = target.strSpawnGroupId == "cardmaze.targets" ? target.iCurrentHp : Apply_Defense(...)`로
+카드미로 목표는 남은 HP 전액을 데미지로 삼기 때문에, 그 값이 공개 체력 300 그대로
+`PushDamageEvent`로 들어가 snapshot의 `DamageEvents`를 타고 `CMainApp::RenderDamageNumbers`가 그린다.
+망치 데미지 상수 `HAMMER_RAW_DAMAGE`는 100이므로 300은 병사의 최대 체력이지 망치 수치가 아니다.
+
+해결은 같은 파일에서 `cardmaze.targets` 목표일 때 `PushDamageEvent`를 건너뛰는 것이다.
+`KILLED` 반환과 집계는 그대로이고 띄우는 숫자만 생략한다. 보스·일반 몬스터는 영향 없다.
+
+### 2. 스택 텍스트를 문양별 한글로
+
+`Client/Private/Level_KakulSaydonArena.cpp`의 `HEART 1 / 3`을
+`하트 조각 x 1`, `다이아 조각 x 2`, `스페이드 조각 x 3`, `클로버 조각 x N` 형식으로 바꿨다.
+이 파일은 `/utf-8` 옵션이 없으므로 한글을 raw UTF-8로 넣지 않고 wide literal의 universal character name
+(`L"\uD558\uD2B8"`)으로 썼다. 파일 바이트는 그대로 ASCII 구간을 유지한다.
+`Client/Bin/Resources/Fonts/YoonGasiIIM.spritefont`를 직접 파싱해 glyph 11361개 중 한글 음절 11172자가
+모두 있고 사용한 13자가 전부 포함된 것을 확인했다.
+
+### 3. Q로 때린 뒤 움직이지 못하는 딜레이
+
+원인을 상수까지 추적했다.
+
+1. `Shared/Public/Network/PacketMessages.h`의 `KOUKU_INTERACTION_ACTION_MS`가 3000ms다.
+2. `Server/Private/GameRoom.cpp`의 `KOUKU_INTERACTION_TICKS`가 30Hz에서 90tick, 즉 3.0초가 된다.
+3. Q 입력은 `C2S_INTERACTION_SLOT` 핸들러에서 `eAction = INTERACTION`을 걸고 이동 목표와 경로를 지운다.
+4. 망치 판정은 `iActionStartTick + HAMMER_HIT_TICK_OFFSET`, 즉 12tick(0.4초)에 끝난다.
+5. 그러나 `interactionElapsed`는 90tick에야 참이 되어 그때 비로소 `eAction`이 NONE이 된다.
+6. 이동 명령은 `Handle_MoveGoal`과 pending flush가 `PLAYER_ACTION_STATE::NONE != player.eAction`이면 거절한다.
+
+즉 망치는 0.4초에 맞히는데 몸은 3.0초까지 잠긴다. 남는 2.6초가 체감된 딜레이다.
+이 3초는 마리오·댄스의 자세 유지용 상수를 망치가 그대로 물려받은 것이지 망치를 위해 고른 값이 아니다.
+같은 이유로 `KOUKU_INTERACTION_COOLDOWN_MS` 3000ms 때문에 다음 타격도 3초 뒤에야 가능했다.
+
+해결은 망치 전용 길이를 따로 둔 것이다.
+
+- Shared에 `KOUKU_MAZE_HAMMER_ACTION_MS = 400`, `KOUKU_MAZE_HAMMER_COOLDOWN_MS = 400` 추가. wire 포맷은 그대로라 protocol은 70 유지.
+- `GameRoom.cpp`에 `KOUKU_MAZE_HAMMER_TICKS`(12tick) 추가하고 `static_assert`로 판정 tick 이상임을 고정했다.
+- `Update_Players`에 `mazeHammerElapsed`를 추가해 판정과 같은 tick에 잠금을 푼다. 판정 블록이 먼저 실행되므로 타격은 그대로 들어간다.
+- 슬롯 쿨다운을 MAZE일 때만 400ms로 줄였고 Client HUD 쿨다운 링 길이도 같은 값을 읽도록 맞췄다.
+- 탈출 이동이 같은 INTERACTION을 빌려 쓰기 때문에 `mazeHammerPress`를
+  `0u == player.CardMaze.transferStartTick`으로 제한했다. 덤으로 1.2초 암전 중 12tick째에 헛스윙이 나가던 기존 경로도 닫혔다.
+
+결과 타임라인은 누름 0s → 0.4s 망치 판정·처치 → 같은 tick에 이동 가능 → 0.4s 후 재타격 가능이다.
+자세 클립은 판정 지점에서 끝나므로 마무리 동작은 재생되지 않는다. 더 길게 보고 싶으면 두 상수를 올리면 된다.
+
+### 자동 검증 (이번 보정)
+
+- 앵커 치환 5파일 `--check` 유일 매칭 후 적용. 적용본이 구문검사한 임시 복사본과 SHA-256 동일(5/5).
+- `cl /Zs` 산출물 없는 구문검사 4개 묶음 exit 0:
+  `PacketMessages.cpp`, `NetworkProtocolHarness.cpp`, `GameRoom.cpp`, `ServerCombatHitRuntime.cpp`,
+  `KoukuSaydonLogicRuntime.cpp`, `CombatHUDViewModel.cpp`, `Level_KakulSaydonArena.cpp`.
+- CRLF/LF 구성과 BOM 없음 그대로 유지. `git diff --check` 깨끗함.
+- 한글 literal을 파일에서 다시 읽어 `하트`, `스페이드`, `클로버`, `다이아`, `문양`, ` 조각 x `로 디코드되는 것을 확인.
+
+### 아직 수행하지 않은 확인
+
+빌드와 런타임 확인은 사용자가 한다. Server와 Client를 다시 빌드해야 하며(protocol은 70 그대로),
+확인할 것은 세 가지다. 병사를 때렸을 때 숫자가 안 뜨는지, HUD가 `다이아 조각 x 1`처럼 나오는지,
+Q로 때린 직후 우클릭 이동이 바로 들어가는지. 자세 클립이 짧게 끝나는 느낌은 사용자 판단이 정본이다.
+
+## 재보정 (2026-09-08, 사용자 관찰 2건)
+
+22:15 빌드로 실행한 뒤 사용자가 두 가지를 지적했고 둘 다 앞 보정의 잘못이다.
+
+### 1. 조각 수는 HUD 줄이 아니라 처치 위치에 떠야 한다
+
+300을 막은 것은 맞았으나 그 자리가 비어 버렸다. 사용자가 원한 것은 그 자리에
+`다이아 조각 x 1`처럼 콤보가 쌓이듯 올라가는 표시이고 최대 x3까지다. Client는 어느 문양이
+죽었는지 알 수 없다. `WORLD_ENTITY_SNAPSHOT`에 archetype이 없기 때문이다. 그래서 Server가
+이미 보내던 데미지 이벤트에 문양을 실어 보낸다. protocol 70에서 71로 올렸다.
+
+- Shared `DAMAGE_EVENT`에 `eCardMazeSuit` 1바이트 추가. NONE이면 기존 데미지 숫자, 문양이면 `iAmount`가 누적 수다.
+- 검증 불변식: 조각은 항상 outgoing이고 문양 enum은 범위 안이어야 한다.
+- Server는 `Resolve_CardMazeHammerHit`의 `bKillCounted`에서 쓰러진 병사 좌표로 조각 이벤트를 보낸다.
+- Client `RenderDamageNumbers`는 자기 문양의 조각만 띄우고 기존 상승·페이드 트윈을 그대로 쓴다. 색은 흰색이다.
+
+### 2. Q가 아무것도 안 하는 것은 앞 보정의 회귀다
+
+앞 보정은 판정 tick인 0.4초에 INTERACTION을 풀었다. 그런데 `Client/Private/Character.cpp`는
+그 상태가 유지되는 동안만 action age로 클립을 감고, 상태가 풀리면 즉시 idle이나 run으로 스냅한다.
+따라서 망치 클립이 앞부분만 재생되고 내려치는 장면이 나오지 않았다. Server 판정 자체는 살아 있었다.
+`--card-maze-contract-test`의 `Q reaches the actual interaction action handler`와
+`Center Q hit facing away starts solo telescope and actually spawns a target`가 22:15 바이너리에서 PASS다.
+
+수정은 스윙을 자르지 않고 취소를 주는 방향으로 바꿨다.
+
+- `KOUKU_MAZE_HAMMER_ACTION_MS`와 `KOUKU_MAZE_HAMMER_TICKS`, `mazeHammerElapsed` 제거. 3초 자세 종료를 다시 쓴다.
+- `GameRoom.cpp`에 file-local `Cancel_MazeHammerRecovery` 추가. 판정 tick 이후의 MAZE 망치 회수만 풀며 탈출 이동은 건드리지 않는다.
+- `Handle_MoveGoal`과 `Handle_InteractionSlot`의 거절 직전에서 호출한다. 우클릭 이동과 다음 Q가 곧바로 들어간다.
+- MAZE 쿨다운 400ms는 유지해서 연타 간격을 정한다.
+
+### 자동 검증 (재보정)
+
+- 앵커 치환 7파일 `--check` 유일 매칭 후 적용. 적용본이 구문검사한 임시 복사본과 SHA-256 동일(7/7).
+- `cl /Zs` 4개 묶음 exit 0: `PacketMessages.cpp`, `NetworkProtocolHarness.cpp`, `GameRoom.cpp`,
+  `ServerCombatHitRuntime.cpp`, `MainApp.cpp`, `CombatHUDViewModel.cpp`, `Level_KakulSaydonArena.cpp`.
+- 내가 삽입한 줄은 전부 CRLF다. 하네스의 LF 45줄은 이전 커밋에서 온 것으로, 내가 건드리지 않은 2690줄이 이미 LF임을 확인했다.
+- `git diff --check` 깨끗함.
+
+### 아직 수행하지 않은 확인
+
+protocol 71이므로 Server와 Client를 다시 함께 빌드해야 한다. 하네스도 재빌드 대상이다.
+화면 확인은 사용자가 한다. 병사를 잡을 때 그 자리에 `다이아 조각 x 1`이 떠오르는지,
+x3까지 올라가는지, Q 스윙이 정상으로 보이고 때린 뒤 우클릭 이동과 다음 Q가 바로 들어가는지다.

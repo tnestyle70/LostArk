@@ -155,10 +155,17 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		target.iCurrentHp = damage >= target.iCurrentHp ?
 			0u : target.iCurrentHp - damage;
 	}
-	PushDamageEvent(
-		target.iNetEntityId, damage,
-		target.fPositionX, target.fPositionY, target.fPositionZ,
-		true, outDamageEvents);
+	/* A card maze soldier is a gimmick token, not a damage race: the rule
+	above removes its whole HP in one blow, so a floating number would read as
+	the soldier's max HP over every corpse. The hit still reports KILLED and
+	the maze still counts it; only the presentation number is withheld. */
+	if (target.strSpawnGroupId != "cardmaze.targets")
+	{
+		PushDamageEvent(
+			target.iNetEntityId, damage,
+			target.fPositionX, target.fPositionY, target.fPositionZ,
+			true, outDamageEvents);
+	}
 
 	const float pushDistance = 0u == hit.iPushMs ?
 		0.f : hit.fPushRangeM * target.fHitKnockbackScale;

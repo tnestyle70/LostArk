@@ -232,7 +232,12 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 			if (cooldown.iSkillId == id)
 			{
 				m_KoukuGimmick.CooldownEndTicks[i] = cooldown.iCooldownEndTick;
-				m_KoukuGimmick.CooldownDurationTicks[i] = LostArk::Shared::KOUKU_INTERACTION_COOLDOWN_MS * 30u / 1000u;
+				/* The ring has to measure the same window the Server enforces, and
+				the maze hammer runs on its own shorter one. */
+				m_KoukuGimmick.CooldownDurationTicks[i] =
+					(LostArk::Shared::KOUKU_HUD_MODE::MAZE == snapshot.eKoukuHudMode ?
+						LostArk::Shared::KOUKU_MAZE_HAMMER_COOLDOWN_MS :
+						LostArk::Shared::KOUKU_INTERACTION_COOLDOWN_MS) * 30u / 1000u;
 				break;
 			}
 	}

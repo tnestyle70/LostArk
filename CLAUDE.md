@@ -375,13 +375,18 @@ Kouku world만 허용, 밟거나 `G`를 눌러도 아무 일 없음)를 MAZE 모
 `CKoukuCardMazeRuntime`이 나머지 살아 있는 플레이어(최대 3명)에게 4문양 중 3개를 서로 다르게 랜덤 배정한 뒤
 문양당 `MONSTER_KOUKU_CARD_*` 1마리를 CardMiro 네비 격자의 중앙과 연결된 통로 칸(중앙 5m·플레이어 4m·서로 3m 이상)에
 `Spawn_Monster`로 생성한다. MAZE 모드 뿅망치는 누른 지 12tick에 전방 120°·2.4m를 한 번 판정하며 자기 문양 목표만
-한 방 처치·즉시 despawn한다. 3스택 전에는 다음 목표 1마리가 랜덤 보충된다. 첫 유효 타격은
+한 방 처치·즉시 despawn하며 데미지 숫자 대신 처치 위치에 `<문양> 조각 x N`이 떠오른다. 이 표시는 protocol 71의
+`DAMAGE_EVENT.eCardMazeSuit`가 문양을, `iAmount`가 누적 수를 실어 보내고 Client는 자기 문양만 그린다.
+뿅망치는 저작된 3초 스윙 클립을 그대로 유지하되 머리가 닿은 tick 이후에는 이동 명령이나 다음 Q가 회수 동작을
+취소한다. 연타 간격은 `KOUKU_MAZE_HAMMER_COOLDOWN_MS` 400ms다. 탈출 이동이 같은 INTERACTION 상태를
+빌리므로 `CardMaze.transferStartTick`이 0일 때만 뿅망치로 판정·취소한다.
+3스택 전에는 다음 목표 1마리가 랜덤 보충된다. 첫 유효 타격은
 `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개를 서버 시계로 반복 시작한다. worldbootstrap v10의
 출발/도착/지연/기간은 저작 WorldSequence에서 publisher가 투영하며 접촉도 이 경로로 판정한다.
 중앙 반경 5m는 안전하고 바깥 세토 접촉은 본인 스택과 출구를 취소하고 목표를 다시 배치한다.
-`PLAYER_SNAPSHOT`의 기존 문양 4필드와 `CardMaze`의 관전/탈출/개인 출구/행진·암전 시계를 protocol 70으로 복제한다.
+`PLAYER_SNAPSHOT`의 기존 문양 4필드와 `CardMaze`의 관전/탈출/개인 출구/행진·암전 시계를 protocol 71로 복제한다.
 네 프로파일은 트리거가 참조하지 않는 잠자는 group `spawn.kouku.cardmaze.profiles`가 Kouku bootstrap에 싣는다. Client는
-표시만 하며(`[ TELESCOPE ]`/`HEART 1 / 3` 텍스트와 문양 플레이어·병사 발밑 Decal), 망원경 담당의 카메라는
+표시만 하며(`[ TELESCOPE ]`와 `하트/스페이드/클로버/다이아 조각 x N` HUD 텍스트, 처치 위치에 떠오르는 같은 조각 텍스트, 문양 플레이어·병사 발밑 Decal), 망원경 담당의 카메라는
 `camerashots.json`의 `cardmaze.telescope` shot(priority 1000)을 관전 flag가 켜진 동안 잡는다. 기본 미로 시점은
 `cardmaze.follow`다. 다인 플레이와 Release의 망원경 담당은 문양을 받지 않는다. Debug Server의 방에 정확히 한 명일 때는 상자 타격자가 HUNTER 문양과 망원경 시점을 함께 받아 혼자 테스트한다. 이때만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 첫 유효 병사 타격부터 세토 행진·접촉 초기화·출구 규칙을 그대로 적용한다. 상자 재가격은 재시작이 아니라 관전 토글이다.
 3스택 개인 출구 진입은 1.2초 암전의 18tick째 중앙 이동을 commit한다. 탈출자도 중앙 상자를 가격해 관전을 독립 토글한다.

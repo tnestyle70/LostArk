@@ -501,6 +501,10 @@ namespace
 			damage.iTargetNetEntityId !=
 				LostArk::Shared::INVALID_NET_ENTITY_ID &&
 			0 != damage.iAmount &&
+			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
+			/* A shard is something a hunter earned, so it is always outgoing. */
+			(LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == damage.eCardMazeSuit ||
+				damage.isOutgoing) &&
 			std::isfinite(damage.fPositionX) &&
 			std::isfinite(damage.fPositionY) &&
 			std::isfinite(damage.fPositionZ);
@@ -2786,6 +2790,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(damage.fPositionY);
 		writer.Write_F32(damage.fPositionZ);
 		writer.Write_U8(damage.isOutgoing ? 1u : 0u);
+		writer.Write_U8(static_cast<std::uint8_t>(damage.eCardMazeSuit));
 	}
 	for (const BOSS_COMBAT_EVENT& event : message.BossCombatEvents)
 	{
@@ -3074,17 +3079,21 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	{
 		DAMAGE_EVENT damage{};
 		std::uint8_t rawOutgoing = 0;
+		std::uint8_t rawShardSuit = 0;
 		if (!reader.Read_U32(damage.iTargetNetEntityId) ||
 			!reader.Read_U32(damage.iAmount) ||
 			!reader.Read_F32(damage.fPositionX) ||
 			!reader.Read_F32(damage.fPositionY) ||
 			!reader.Read_F32(damage.fPositionZ) ||
 			!reader.Read_U8(rawOutgoing) ||
-			rawOutgoing > 1u)
+			rawOutgoing > 1u ||
+			!reader.Read_U8(rawShardSuit) ||
+			rawShardSuit >= static_cast<std::uint8_t>(MECHANIC_CARD_SYMBOL::END))
 		{
 			return false;
 		}
 		damage.isOutgoing = 0u != rawOutgoing;
+		damage.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawShardSuit);
 		if (!Is_Valid_DamageEvent(damage))
 			return false;
 		decoded.DamageEvents.push_back(damage);

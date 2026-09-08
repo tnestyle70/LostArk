@@ -2282,7 +2282,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 70u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 66");
@@ -2384,6 +2384,31 @@ namespace
 				decoded.Players[0].eCardMazeRole == CARD_MAZE_ROLE::TELESCOPE &&
 				decoded.Players[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::NONE,
 				"Card maze telescope owner carries no suit");
+		}
+		{
+			/* A shard rides the damage event for the position it already carries:
+			the suit names the hunter it belongs to and iAmount is the count. */
+			S2C_WORLD_SNAPSHOT shardSnapshot = snapshot;
+			DAMAGE_EVENT shard{};
+			shard.iTargetNetEntityId = 900u;
+			shard.iAmount = 2u;
+			shard.isOutgoing = true;
+			shard.eCardMazeSuit = MECHANIC_CARD_SYMBOL::DIAMOND;
+			shardSnapshot.DamageEvents.push_back(shard);
+			CPacketWriter shardWriter;
+			testRunner.Require(Write_Message(shardWriter, shardSnapshot), "Card maze shard event writes");
+			CPacketReader shardReader{ shardWriter.Get_Buffer() };
+			S2C_WORLD_SNAPSHOT shardDecoded{};
+			testRunner.Require(Read_Message(shardReader, shardDecoded) &&
+				shardReader.Get_RemainingSize() == 0u &&
+				shardDecoded.DamageEvents.size() == 1u &&
+				shardDecoded.DamageEvents[0].eCardMazeSuit == MECHANIC_CARD_SYMBOL::DIAMOND &&
+				shardDecoded.DamageEvents[0].iAmount == 2u,
+				"Card maze shard suit and count round trip on the damage event");
+			shardSnapshot.DamageEvents[0].isOutgoing = false;
+			CPacketWriter incomingShard;
+			testRunner.Require(!Write_Message(incomingShard, shardSnapshot) && incomingShard.Get_Buffer().empty(),
+				"An incoming card maze shard refuses the entire snapshot before writing");
 		}
 		{
 			/* The Debug solo run: the owner keeps the telescope and hunts a suit. */
@@ -2586,7 +2611,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 70u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2654,7 +2679,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 70u, "World Object placement protocol is 70");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u, "World Object placement protocol is 71");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2995,8 +3020,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 70u,
-			"Protocol 70 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 71u,
+			"Protocol 71 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3112,8 +3137,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(70u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 70");
+			testRunner.Require(71u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 71");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -6317,7 +6342,7 @@ namespace
 		}
 
 		testRunner.Require(
-			70u == NETWORK_PROTOCOL_VERSION,
+			71u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 68");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6345,8 +6370,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			70u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 70");
+			71u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 71");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

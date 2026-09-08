@@ -783,6 +783,11 @@ namespace LostArk::Shared
 	clip that the mode assigns to the pressed slot. */
 	constexpr std::uint32_t KOUKU_INTERACTION_ACTION_MS = 3000u;
 	constexpr std::uint32_t KOUKU_INTERACTION_COOLDOWN_MS = 3000u;
+	/* The card maze hammer keeps the authored swing above, because the Client
+	scrubs that clip by the action's age and returns to idle the moment the
+	action ends. Only the cooldown is shortened, so a hunter who cancels the
+	recovery with their own next input can swing again at once. */
+	constexpr std::uint32_t KOUKU_MAZE_HAMMER_COOLDOWN_MS = 400u;
 	/* Reserved interaction cooldown identity. It is separate from the mode's
 	zero-based animation index and from product character skill IDs. */
 	constexpr SKILL_ID Kouku_InteractionCooldownSkillId(
@@ -1154,6 +1159,10 @@ namespace LostArk::Shared
 		// True when a player dealt it. Presentation styles incoming and outgoing
 		// damage differently, and only the server knows which is which.
 		bool isOutgoing = false;
+		/* NONE on an ordinary hit. A card maze shard instead names the suit the
+		hunter was dealt and carries their running count in iAmount, because the
+		entity snapshot has no archetype for the Client to read the suit from. */
+		MECHANIC_CARD_SYMBOL eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
 	};
 
 	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t

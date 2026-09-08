@@ -57,7 +57,7 @@ namespace LostArk::Shared
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots.
 	69 adds the card maze role, hunting suit and kill counts to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 70;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 71;
 
 	enum class WORLD_ID : std::uint16_t
 	{
