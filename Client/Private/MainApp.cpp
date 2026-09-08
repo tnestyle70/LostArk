@@ -956,7 +956,9 @@ namespace
      {float(value.RotationDegrees[0]), float(value.RotationDegrees[1]), float(value.RotationDegrees[2])},
      {float(value.Scale[0]), float(value.Scale[1]), float(value.Scale[2])}};
    }
-   cues.push_back({box.strOccurrenceId, def->strSequenceInstanceId, box.iStartMs, box.iDurationMs, box.fPlaybackSpeed, offset, placement});
+   cues.push_back({box.strOccurrenceId, def->strSequenceInstanceId, box.iStartMs, box.iDurationMs,
+    box.fPlaybackSpeed, offset, placement, previewAtCharacter ? CKoukuSaydonPresentationPlayer::WORLD_EMISSION_ANCHOR{} :
+     CKoukuSaydonPresentationPlayer::Make_WorldEmissionAnchor(pattern, *def, box)});
   }
   return arena->Debug_BeginCompositionWorldPreview(pattern.strPatternId, std::move(cues), status, sourceDocument);
  }
@@ -1141,14 +1143,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
 		arena->Collect_KoukuPresentationViews(bosses, cards);
 		m_pKoukuPresentationPlayer->Update(fTimeDelta, bosses, cards);
+		arena->Set_CompositionWorldEmissionResolver([this](std::uint32_t sourceRevision, std::string_view patternId, std::string_view occurrenceId,
+			CLevel_KakulSaydonArena::WORLD_EMISSION_ANCHOR& anchor)
+		{ return m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Resolve_ProductWorldEmissionAnchor(
+			sourceRevision, patternId, occurrenceId, anchor); });
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
+        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
 #endif
 	}
 	else if (m_pKoukuPresentationPlayer)
 	{
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
+        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
 #endif
 		m_pKoukuPresentationPlayer->Reset();
 		m_pKoukuPresentationPlayer.reset();
@@ -1232,20 +1240,40 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				ExpectedValtanSourceRevision);
 		}
 	}
-	if (nullptr != m_pEffectTool)
+	if (m_pEffectTool || m_pEffectToolV2)
 	{
-		m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
-            IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
-        m_pEffectTool->Update(fTimeDelta);
-		EFFECT_RESOURCE_KEY ResourceKey;
-		if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
-		{
-			const bool_t bOpened = m_pEffectTool->Open_AuthoringResource(ResourceKey);
-			m_strToolStatus = bOpened ?
-				"Opened the selected resource in its typed Effect owner." :
-				"The typed Effect owner preserved its current draft; inspect the owner status.";
-		}
-	}
+        shared_ptr<CCamera_Free> effectCamera;
+        const LEVEL effectLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+        if (effectLevel == LEVEL::CHARACTER_SELECT)
+        { if (auto* arena = CLevel_CharacterSelect::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        else if (effectLevel == LEVEL::VALTAN_ARENA)
+        { if (auto* arena = CLevel_ValtanArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        else if (effectLevel == LEVEL::KAKULSAYDON_ARENA)
+        { if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        if (m_pEffectToolV2)
+        {
+            m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
+            m_pEffectToolV2->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+                IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2);
+        }
+        if (m_pEffectTool)
+        {
+            m_pEffectTool->Set_AuthoringCamera(effectCamera);
+            m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+                IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
+            m_pEffectTool->Update(fTimeDelta);
+            EFFECT_RESOURCE_KEY ResourceKey;
+            if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
+            {
+                const bool_t bOpened = ResourceKey.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ?
+                    m_pEffectTool->Open_AuthoringResource(ResourceKey) :
+                    SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT_V2)) && m_pEffectToolV2->Open_Resource(ResourceKey);
+                m_strToolStatus = bOpened ?
+                    "Opened the selected resource in its typed Effect owner." :
+                    "The typed Effect owner preserved its current draft; inspect the owner status.";
+            }
+        }
+    }
 	if (nullptr != m_pValtanBossTool)
 	{
 		m_pValtanBossTool->Update(
@@ -1447,6 +1475,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != m_pKoukuSaydonActionWorkbench)
 	{
 		m_pKoukuSaydonActionWorkbench->Tick_Background();
+		if (m_pKoukuSaydonActionWorkbench->Consume_ProductInventoryRefreshRequest() && m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
 		if (m_pKoukuPresentationPlayer)
 			m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(
 				m_pKoukuSaydonActionWorkbench->Get_Composition(), m_pKoukuSaydonActionWorkbench->Get_DraftGeneration());
@@ -1508,6 +1538,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (m_pKoukuSaydonActionWorkbench->Consume_PatternPreviewRequest(
     pattern, startClockMs, startPaused, targetAssetName))
   {
+   if ((!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
+   {
+    auto document = m_pKoukuSaydonActionWorkbench->Get_Composition();
+    for (auto& previewPattern : document.Patterns)
+     if (previewPattern.strPatternId == pattern.strPatternId) { previewPattern = pattern; break; }
+    KOUKU_SAYDON_COMPOSITION_BUNDLE single;
+    single.strBundleId = pattern.strPatternId;
+    single.strGateId = pattern.strGateId;
+    single.Members.push_back({pattern.strPatternId + ".preview.member", pattern.strPatternId, 0u});
+    document.Bundles.push_back(std::move(single));
+    if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
+      document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+    {
+     if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+     m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+    }
+    else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
+   }
+   else
+   {
    const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
     [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
    bool previewed = !hasAnimation;
@@ -1528,7 +1580,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
    }
    else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    else previewRouteStatus = m_strToolStatus;
+   }
   }
+
+  KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
+  while (m_pKoukuSaydonActionWorkbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
+   if (m_pKoukuPresentationPlayer)
+    (void)m_pKoukuPresentationPlayer->Preview_PresentationGeometry(
+     presentationGeometryPreview.strPatternId, presentationGeometryPreview.Occurrence);
 
   KOUKU_PRESENTATION_PREVIEW_REQUEST resourcePreview;
   if (m_pKoukuSaydonActionWorkbench->Consume_PresentationPreviewRequest(resourcePreview))
@@ -1626,14 +1685,23 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			const bool ownClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
 			if (ownClock)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE) m_pKoukuPresentationPlayer->Pause_Preview(true);
+				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+				{
+					// Restore the displayed clock before freezing; Update already advanced this frame.
+					m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+					m_pKoukuPresentationPlayer->Pause_Preview(true);
+				}
 				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME) m_pKoukuPresentationPlayer->Pause_Preview(false);
 				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
 			}
 			else if (m_pAnimationTool)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE &&
+					m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
+				{
 					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
+					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+				}
 				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
 					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
 				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK &&
@@ -1976,6 +2044,13 @@ HRESULT CMainApp::Render()
                 if (m_pEffectTool && m_pEffectTool->Consume_AuthoringInteraction())
                     m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
 			}
+            if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_pEffectToolV2)
+            {
+                focusNextWindow(DEBUG_TOOL::EFFECT_V2);
+                m_pEffectToolV2->Render();
+                if (m_pEffectToolV2->Consume_AuthoringInteraction())
+                    m_eDebugInputOwner = DEBUG_TOOL::EFFECT_V2;
+            }
 			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
 			{
 				focusNextWindow(DEBUG_TOOL::RENDERING);
@@ -5603,6 +5678,17 @@ void CMainApp::RenderDamageNumbers()
 	{
 		if (damageEvent.iServerTick <= iSpawnedUpToTick)
 			continue;
+		m_iLastRenderedDamageServerTick =
+			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
+		/* A shard belongs to the one hunter who was dealt that suit, so the
+		other hunters' shards are not drawn on this screen. */
+		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE !=
+				damageEvent.Event.eCardMazeSuit &&
+			damageEvent.Event.eCardMazeSuit !=
+				CCombatHUDViewModel::Get().Get_KoukuGimmick().eCardMazeSuit)
+		{
+			continue;
+		}
 		FLOATING_DAMAGE_NUMBER number{};
 		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
@@ -5611,9 +5697,8 @@ void CMainApp::RenderDamageNumbers()
 			damageEvent.Event.fPositionZ);
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
+		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
 		m_FloatingDamageNumbers.push_back(number);
-		m_iLastRenderedDamageServerTick =
-			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
 	}
 	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
@@ -5641,6 +5726,28 @@ void CMainApp::RenderDamageNumbers()
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
 	const f32_t stageScale = viewportSize.y / 1080.f;
 
+	/* A card maze shard rises where the damage number would: "<suit> jogak x N".
+	   Korean is written with universal character names so this file keeps its
+	   existing bytes; Font_EventDamage is the same YoonGasiIIM sprite font that
+	   carries every Hangul syllable used here. */
+	const auto shardText = [](const LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
+		const uint32_t count) -> wstring
+	{
+		const wchar_t* name = L"\uBB38\uC591";
+		switch (suit)
+		{
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::HEART:
+			name = L"\uD558\uD2B8"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::SPADE:
+			name = L"\uC2A4\uD398\uC774\uB4DC"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::CLUB:
+			name = L"\uD074\uB85C\uBC84"; break;
+		case LostArk::Shared::MECHANIC_CARD_SYMBOL::DIAMOND:
+			name = L"\uB2E4\uC774\uC544"; break;
+		default: break;
+		}
+		return wstring(name) + L" \uC870\uAC01 x " + std::to_wstring(count);
+	};
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
@@ -5671,15 +5778,23 @@ void CMainApp::RenderDamageNumbers()
 			projection, view, XMMatrixIdentity());
 		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
 			continue;
-		const wstring strAmount = Format_ThousandsSeparated(number.iAmount);
+		const bool_t isShard =
+			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
+		const wstring strAmount = isShard ?
+			shardText(number.eCardMazeSuit, number.iAmount) :
+			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
 		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
 		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
 		hit by project decision, incoming hits the enemy red (0xFF0000). */
-		const fvector_t vColor = number.isOutgoing ?
-			XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
-			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
+		/* A shard is a pickup, not a hit, so it reads white instead of the
+		outgoing yellow or the incoming red. */
+		const fvector_t vColor = isShard ?
+			XMVectorSet(1.f, 1.f, 1.f, fAlpha) :
+			(number.isOutgoing ?
+				XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
+				XMVectorSet(1.f, 0.f, 0.f, fAlpha));
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
 			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
@@ -5997,6 +6112,7 @@ void CMainApp::Apply_LevelRequest()
 		return;
 #ifdef _DEBUG
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
+    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
 	m_pWorldObjectCatalogSource = nullptr;
 #endif
@@ -6216,7 +6332,7 @@ HRESULT CMainApp::ReadyDebugTools()
 
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
-	const DEBUG_TOOL eCanonicalTool = (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool) ?
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_COMPOSITION == eTool ?
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
@@ -6230,7 +6346,7 @@ void CMainApp::SetDebugToolVisible(
 	const DEBUG_TOOL eTool,
 	const bool_t bVisible)
 {
-	const DEBUG_TOOL eCanonicalTool = (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool) ?
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_COMPOSITION == eTool ?
 		DEBUG_TOOL::EFFECT :
 		(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		 DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool) ? DEBUG_TOOL::SEQUENCER : eTool;
@@ -6250,19 +6366,13 @@ void CMainApp::SetDebugToolVisible(
 	}
 	if (DEBUG_TOOL::EFFECT == eCanonicalTool)
 	{
-		/* The retired compatibility slot never owns independent visibility. */
-		m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_V2)] = false;
         m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_COMPOSITION)] = false;
 	}
 	if (!bVisible)
 	{
-		if (m_eDebugInputOwner == eCanonicalTool ||
-			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			 DEBUG_TOOL::EFFECT_V2 == m_eDebugInputOwner))
+		if (m_eDebugInputOwner == eCanonicalTool)
 			m_eDebugInputOwner = DEBUG_TOOL::NONE;
-		if (m_eDebugWindowFocusPending == eCanonicalTool ||
-			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			 DEBUG_TOOL::EFFECT_V2 == m_eDebugWindowFocusPending))
+		if (m_eDebugWindowFocusPending == eCanonicalTool)
 			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
 		if (DEBUG_TOOL::MAP == eCanonicalTool && nullptr != m_pMapTool)
 			m_pMapTool->SetOpen(false);
@@ -6270,15 +6380,10 @@ void CMainApp::SetDebugToolVisible(
 			m_pWorldObjectTool->Deactivate();
 		else if (DEBUG_TOOL::CAMERA == eCanonicalTool && nullptr != m_pCameraTool)
 			m_pCameraTool->Deactivate();
-		else if (DEBUG_TOOL::EFFECT == eCanonicalTool &&
-			nullptr != m_pEffectToolV2)
-		{
-			/* Both codecs stop rendering on this shared visibility edge. The
-			   typed backend additionally owns standalone preview actors, so it
-			   explicitly releases them while preserving its authored draft. */
-			m_pEffectToolV2->Deactivate();
-            if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
-		}
+        else if (DEBUG_TOOL::EFFECT == eCanonicalTool && m_pEffectTool)
+            m_pEffectTool->Deactivate_AuthoringWorkspace();
+        else if (DEBUG_TOOL::EFFECT_V2 == eCanonicalTool && m_pEffectToolV2)
+            m_pEffectToolV2->Deactivate();
 	}
 }
 
@@ -6288,8 +6393,7 @@ void CMainApp::CloseAllDebugTools()
 		iTool < static_cast<size_t>(DEBUG_TOOL::COUNT); ++iTool)
 	{
 		const DEBUG_TOOL eTool = static_cast<DEBUG_TOOL>(iTool);
-		if (DEBUG_TOOL::EFFECT_V2 != eTool)
-			SetDebugToolVisible(eTool, false);
+		SetDebugToolVisible(eTool, false);
 	}
 	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
 }
@@ -6316,7 +6420,7 @@ HRESULT CMainApp::EnsureAnimationPreviewBackend()
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
 	/* Keep the old enum value as an internal compatibility route only. */
-	if (DEBUG_TOOL::EFFECT_V2 == eTool || DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
+	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
 	if (DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool)
@@ -6369,13 +6473,18 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 					ExpectedValtanSourceRevision);
 			}
 		}
-		if (nullptr == m_pEffectToolV2)
-			m_pEffectToolV2 =
-				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
-        m_pEffectTool->Configure_AuthoringWorkspace(*m_pEffectToolV2, m_pKoukuPresentationPlayer.get());
+        m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
 
 		break;
 	}
+    case DEBUG_TOOL::EFFECT_V2:
+        if (!m_pCharacterPreviewPanel)
+            m_pCharacterPreviewPanel = make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+        if (!m_pEffectToolV2)
+            m_pEffectToolV2 = make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
+        m_pEffectToolV2->Configure_AuthoringWorkspace(m_pCharacterPreviewPanel, m_pKoukuPresentationPlayer.get());
+        m_pEffectToolV2->Activate();
+        break;
 	case DEBUG_TOOL::RENDERING:
 		if (nullptr == m_RenderingProfiles.Get_ActiveProfile()) return E_FAIL;
 		m_bLightResourcesWindowVisible = true;
@@ -7026,7 +7135,7 @@ void CMainApp::RefreshDebugResourceFiles()
 		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"Assemblies",
 			"Data/Effects/Assemblies", DEBUG_TOOL::EFFECT },
 		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"V2",
-			"Data/Effects/V2", DEBUG_TOOL::EFFECT },
+			"Data/Effects/V2", DEBUG_TOOL::EFFECT_V2 },
 		{ "Sound", "Resources", resourceRoot / L"Sound",
 			"Resources/Sound", DEBUG_TOOL::ANIMATION },
 		{ "Sound", "Data", dataRoot / L"Sound",
@@ -8127,11 +8236,30 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight());
+	const auto prepareSavedProduct = [&]() {
+		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition())
+		{
+			if (m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
+			{ m_strKoukuCompletePlayStatus = "Saved PRODUCT is still being published. Wait for completion before Complete Play."; return false; }
+			if (m_pKoukuSaydonActionWorkbench->Is_Dirty())
+			{ m_strKoukuCompletePlayStatus = "Save Composition changes before Complete Play."; return false; }
+		}
+		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
+		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition() &&
+			m_pKoukuSaydonActionWorkbench->Get_Composition().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
+		{ m_strKoukuCompletePlayStatus = "Saved Composition and published PRODUCT differ. Complete Save/publish and restart Server before Complete Play."; return false; }
+		return true;
+	};
 	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";
 	if (ImGui::Button(playLabel.c_str()))
 	{
-		if (bundleSelected) (void)m_pKoukuSaydonBossTool->Play_BundleById(selectedBundle->strBundleId,m_pKoukuSaydonBossTool->Get_SourceRevision(),m_strKoukuCompletePlayStatus);
-		else (void)m_pKoukuSaydonBossTool->Play_PatternById(pattern->strPatternId,m_pKoukuSaydonBossTool->Get_SourceRevision(),m_strKoukuCompletePlayStatus);
+		// Reload can replace the inventory backing these UI pointers.
+		const std::string selectedId = bundleSelected ? selectedBundle->strBundleId : pattern->strPatternId;
+		if (prepareSavedProduct())
+		{
+			if (bundleSelected) (void)m_pKoukuSaydonBossTool->Play_SavedBundleById(selectedId,m_strKoukuCompletePlayStatus);
+			else (void)m_pKoukuSaydonBossTool->Play_SavedPatternById(selectedId,m_strKoukuCompletePlayStatus);
+		}
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
 	ImGui::BeginDisabled(!arena || !audition.Is_InFlight() || !audition.iRoomAuditionEpoch);
@@ -8140,7 +8268,8 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Button("Restart Bundle")) (void)service.Restart_Bundle(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled(); ImGui::EndDisabled();
 	ImGui::BeginDisabled(!arena || !gateHasProduct || m_pKoukuSaydonBossTool->Get_PlayAllPatternIds().empty() || audition.Is_InFlight());
-	if (ImGui::Button("Complete Play All (Sequential)##KoukuServerPatternAll")) (void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
+	if (ImGui::Button("Complete Play All (Sequential)##KoukuServerPatternAll") && prepareSavedProduct())
+		(void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
@@ -8696,7 +8825,8 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
-		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("World Object Tool", DEBUG_TOOL::WORLD_OBJECT);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
@@ -8708,13 +8838,14 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 13>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 14>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "World Object Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
-			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
+			{ DEBUG_TOOL::EFFECT, "Effect Tool V1" },
+            { DEBUG_TOOL::EFFECT_V2, "Effect Tool V2" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
 			{ DEBUG_TOOL::PROFILER, "Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
@@ -9183,6 +9314,9 @@ void CMainApp::RenderRenderingWorkbench()
             case MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
                 ImGui::TextWrapped("Source opaque specular");
                 break;
+            case MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
+                ImGui::TextWrapped("Source stone overlay + baked lighting");
+                break;
 			default:
 				ImGui::Text("Unknown (%u)", static_cast<uint32_t>(row.family));
 				break;
@@ -9471,11 +9605,13 @@ void CMainApp::Free()
 {
 #ifdef _DEBUG
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
+    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG
     if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
+    if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
 #endif
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();

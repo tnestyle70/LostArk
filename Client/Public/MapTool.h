@@ -272,6 +272,10 @@ private:
 	/* Authoring keeps the arena visible so it can be edited. This previews the
 	   product level's cutscene start state without touching a saved document. */
 	void Render_CutsceneArenaPreview();
+	/* Runs the four card maze march states on the editor Level so the
+	   crossing can be watched without a Server or an arena entry. */
+	bool_t Play_CardMiroMarch();
+	void Stop_CardMiroMarch();
 	void Apply_CutsceneCameraTrack(f32_t timeDelta);
 	void End_CutsceneCameraTrack();
 	/* Marshals a shot's authored track into the one cinematic cue the
@@ -630,6 +634,11 @@ private:
 	std::string m_MarioIntroInstanceId;
 	std::string m_MarioWalkStatus =
 		"No stage intro has run in this session";
+	std::string m_CardMiroMarchStatus =
+		"No card maze march has run in this session";
+	/* The arena Level registers the world object prototype; the editor
+	   Level does not, so the first march here registers it. */
+	bool_t m_bWorldObjectPrototypeReady = false;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 

@@ -251,7 +251,7 @@ std::uint32_t Pattern_Duration(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 
 bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
     const std::shared_ptr<Engine::CModel>& model, float4x4_t& result,
-    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr)
+    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr, float4x4_t* sampledBasis = nullptr)
 {
     float4x4_t anchor = root;
     if (!box.strBone.empty())
@@ -281,12 +281,49 @@ bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
         if (XMVectorGetX(XMVector3LengthSq(basis.r[axis])) < 0.000001f) return false;
         basis.r[axis] = XMVector3Normalize(basis.r[axis]);
     }
+    if (sampledBasis) XMStoreFloat4x4(sampledBasis, basis);
     XMStoreFloat4x4(&result,
         XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
         XMMatrixRotationRollPitchYaw(XMConvertToRadians(float(box.RotationDegrees[0])),
             XMConvertToRadians(float(box.RotationDegrees[1])), XMConvertToRadians(float(box.RotationDegrees[2]))) *
         XMMatrixTranslation(float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2])) * basis);
     return true;
+}
+
+// Recorded resolved anchors contain WORLD scale but no editable occurrence geometry.
+bool Make_ResolvedEffectPivot(const OCCURRENCE& box, const float4x4_t& anchor,
+    float4x4_t& output)
+{
+    auto placed = box;
+    placed.strBone.clear();
+    const matrix_t basis = XMLoadFloat4x4(&anchor);
+    for (size_t axis = 0u; axis < 3u; ++axis)
+    {
+        const float scale = XMVectorGetX(XMVector3Length(basis.r[axis]));
+        placed.PositionOffset[axis] *= scale;
+        placed.Scale[axis] *= scale;
+    }
+    return Make_Pivot(placed, anchor, {}, output);
+}
+
+CEffectV2Object::PIVOT_SAMPLER Effect_PivotSampler(const OCCURRENCE& box,
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory)
+{
+    if (!box.bFollowBoss) return {};
+    const bool resolved = box.strAnchorKind == "WORLD" || !box.strBone.empty();
+    return [box, history = resolved ? anchorHistory : rootHistory, resolved]
+        (float seconds, float4x4_t& output, std::string& error)
+    {
+        if (!history) { error = "Effect anchor history is unavailable."; return false; }
+        float4x4_t recorded;
+        if (!history->Sample(resolved ? seconds : box.iStartMs / 1000.f + seconds,
+            recorded, error)) return false;
+        if (resolved ? Make_ResolvedEffectPivot(box, recorded, output) :
+            Make_Pivot(box, recorded, {}, output)) return true;
+        error = "Recorded Effect anchor cannot form its authored pivot.";
+        return false;
+    };
 }
 
 HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
@@ -358,8 +395,11 @@ void Draw_LightWire(const LIGHT_DESC& light)
 std::string Card_Asset(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
 {
     using namespace LostArk::Shared;
+    // Roulette retains its overhead card; maze assignment now lives on the floor.
+    const MECHANIC_CARD_SYMBOL cardSymbol = snapshot.eMechanicCardSymbol;
+    const MECHANIC_CARD_COLOR cardColor = snapshot.eMechanicCardColor;
     const char* symbol = nullptr;
-    switch (snapshot.eMechanicCardSymbol)
+    switch (cardSymbol)
     {
     case MECHANIC_CARD_SYMBOL::HEART: symbol = "heart"; break;
     case MECHANIC_CARD_SYMBOL::SPADE: symbol = "spade"; break;
@@ -368,7 +408,7 @@ std::string Card_Asset(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
     default: return {};
     }
     const char* color = nullptr;
-    switch (snapshot.eMechanicCardColor)
+    switch (cardColor)
     {
     case MECHANIC_CARD_COLOR::RED: color = "red"; break;
     case MECHANIC_CARD_COLOR::BLACK: color = "black"; break;
@@ -489,6 +529,41 @@ Client::CKoukuSaydonPresentationPlayer::~CKoukuSaydonPresentationPlayer()
     Reset();
 }
 
+Client::CKoukuSaydonPresentationPlayer::WORLD_EMISSION_ANCHOR
+Client::CKoukuSaydonPresentationPlayer::Make_WorldEmissionAnchor(
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world,
+    const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE& occurrence)
+{
+    if (!pattern.BossMotion || occurrence.Placement || world.strAnchorKind != "BOSS_SPAWN") return {};
+    KOUKU_SAYDON_COMPOSITION_PATTERN sampled;
+    sampled.BossMotion = pattern.BossMotion;
+    return [sampled = std::move(sampled), world, startMs = occurrence.iStartMs](
+        const f32_t birthMs, float4x4_t& out)
+    {
+        std::array<double, 3u> position{};
+        double yaw = 0.0;
+        if (!Sample_KoukuSaydonBossMotion(sampled, double(startMs) + birthMs, position, yaw)) return false;
+        for (std::size_t axis = 0; axis < position.size(); ++axis)
+            position[axis] += world.PositionOffset[axis] - world.AnchorPosition[axis];
+        XMStoreFloat4x4(&out, XMMatrixRotationY(XMConvertToRadians(float(yaw))) *
+            XMMatrixTranslation(float(position[0]), float(position[1]), float(position[2])));
+        return true;
+    };
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Resolve_ProductWorldEmissionAnchor(
+    const std::uint32_t sourceRevision, const std::string_view patternId,
+    const std::string_view occurrenceId, WORLD_EMISSION_ANCHOR& out) const
+{
+    if (sourceRevision != m_iProductSourceRevision) return false;
+    const auto pattern = m_Product.find(std::string(patternId));
+    if (pattern == m_Product.end()) return false;
+    const auto anchor = pattern->second.worldEmissionAnchors.find(std::string(occurrenceId));
+    out = anchor == pattern->second.worldEmissionAnchors.end() ? WORLD_EMISSION_ANCHOR{} : anchor->second;
+    return true;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(std::string& status)
 {
     m_bProductAttempted = true;
@@ -528,6 +603,38 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(std::string& status)
             if (value.Find("targetBossPlacementId")) item.pattern.strTargetBossPlacementId = Text(value, "targetBossPlacementId");
             if (value.Find("actorProfileId")) item.pattern.strActorProfileId = Text(value, "actorProfileId");
             item.durationMs = UInt(value, "durationMs", 1u, MAX_TIMELINE_MS);
+            if (value.Find("animationRootVerticalScale"))
+                item.pattern.fAnimationRootVerticalScale = Number(value, "animationRootVerticalScale", 0.0, 1.0);
+            if (const auto* source = value.Find("bossMotion"))
+            {
+                KOUKU_SAYDON_BOSS_MOTION motion;
+                motion.iStartMs = UInt(*source, "startMs", 0u, item.durationMs - 1u);
+                motion.iEndMs = UInt(*source, "endMs", motion.iStartMs + 1u, item.durationMs);
+                motion.StartPosition = Vector(*source, "startPosition", -100000.0, 100000.0);
+                motion.EndPosition = Vector(*source, "endPosition", -100000.0, 100000.0);
+                motion.fYawDegrees = Number(*source, "yawDegrees", -360.0, 360.0);
+                if (std::abs(motion.StartPosition[1] - motion.EndPosition[1]) > 0.0001)
+                    throw std::runtime_error("Product bossMotion must keep its ground height.");
+                item.pattern.BossMotion = motion;
+            }
+            if (const auto* anchors = value.Find("worldEmissionAnchors"))
+            {
+                if (!item.pattern.BossMotion || !anchors->Is_Array() || anchors->Get_Array().size() > 4096u)
+                    throw std::runtime_error("Product WORLD emission anchors require a bounded bossMotion owner.");
+                for (const auto& anchor : anchors->Get_Array())
+                {
+                    KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
+                    world.strAnchorKind = "BOSS_SPAWN";
+                    world.PositionOffset = Vector(anchor, "positionOffset", -100000.0, 100000.0);
+                    world.AnchorPosition = Vector(anchor, "anchorPosition", -100000.0, 100000.0);
+                    KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE occurrence;
+                    occurrence.strOccurrenceId = Text(anchor, "occurrenceId");
+                    occurrence.iStartMs = UInt(anchor, "startMs", 0u, item.durationMs - 1u);
+                    if (!item.worldEmissionAnchors.emplace(occurrence.strOccurrenceId,
+                        Make_WorldEmissionAnchor(item.pattern, world, occurrence)).second)
+                        throw std::runtime_error("Duplicate Product WORLD emission anchor.");
+                }
+            }
             const auto& boxes = Field(value, "presentationOccurrences");
             if (!boxes.Is_Array() || boxes.Get_Array().size() > 4096u)
                 throw std::runtime_error("Product presentationOccurrences must be a bounded array.");
@@ -827,7 +934,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 {
                     // A WORLD may not have its first sampled pose yet. Retry
                     // Collider anchors next frame instead of hiding this box forever.
-                    row.waitingForAnchor = resource.eKind == KIND::COLLIDER;
+                    row.waitingForAnchor = resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT;
                     row.failed = !row.waitingForAnchor;
                     m_strStatus = "WORLD presentation anchor unavailable: " + box.strWorldId;
                     return;
@@ -842,7 +949,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 placedBox.strBone.clear();
                 anchorModel.reset();
             }
-            if (!Make_Pivot(placedBox, anchor, anchorModel, row.pivot, weaponView))
+            if (!Make_Pivot(placedBox, anchor, anchorModel, row.pivot, weaponView,
+                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT) ? &row.placementAnchor : nullptr))
             {
                 row.waitingForAnchor = resource.eKind == KIND::LIGHT;
                 row.failed = !row.waitingForAnchor;
@@ -852,22 +960,39 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             if (row.waitingForAnchor)
                 m_strStatus = "Collider WORLD anchor ready: " + box.strWorldId;
             row.waitingForAnchor = false;
-            if (resource.eKind == KIND::COLLIDER) row.wire = Collider_Wire(resource, placedBox);
+            if (resource.eKind == KIND::COLLIDER)
+                row.wire = Collider_Wire(resource, placedBox);
+            if (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT)
+            {
+                for (size_t axis = 0u; axis < 3u; ++axis)
+                    row.placementAnchorScale[axis] = placedBox.Scale[axis] / box.Scale[axis];
+                row.hasPlacementAnchor = true;
+            }
         }
         if (resource.eKind == KIND::EFFECT && box.bFollowBoss &&
             (box.strAnchorKind == "WORLD" || !box.strBone.empty()))
         {
             if (!row.effectPivotHistory) row.effectPivotHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
-            const float dx = row.pivot._41 - row.effectLastPivot._41;
-            const float dy = row.pivot._42 - row.effectLastPivot._42;
-            const float dz = row.pivot._43 - row.effectLastPivot._43;
+            float4x4_t recordedAnchor;
+            XMStoreFloat4x4(&recordedAnchor, XMMatrixScaling(float(row.placementAnchorScale[0]),
+                float(row.placementAnchorScale[1]), float(row.placementAnchorScale[2])) *
+                XMLoadFloat4x4(&row.placementAnchor));
+            const float dx = recordedAnchor._41 - row.effectLastPivot._41;
+            const float dy = recordedAnchor._42 - row.effectLastPivot._42;
+            const float dz = recordedAnchor._43 - row.effectLastPivot._43;
             std::string historyStatus;
-            if (!row.effectPivotHistory->Record(age, row.pivot,
-                row.lastAge >= 0.f && dx*dx + dy*dy + dz*dz > 2500.f, historyStatus))
-            { row.failed = true; m_strStatus = std::move(historyStatus); return; }
-            row.effectLastPivot = row.pivot;
+            // A paused/backward preview samples existing history instead of
+            // appending an earlier timestamp or inventing past bone poses.
+            if (age >= row.effectRecordedSeconds)
+            {
+                if (!row.effectPivotHistory->Record(age, recordedAnchor,
+                    row.effectRecordedSeconds >= 0.f && dx*dx + dy*dy + dz*dz > 2500.f, historyStatus))
+                { row.failed = true; m_strStatus = std::move(historyStatus); return; }
+                row.effectLastPivot = recordedAnchor;
+                row.effectRecordedSeconds = age;
+            }
         }
-        if (inserted)
+        if (inserted || (resource.eKind == KIND::EFFECT && !row.effectHandle))
         {
             switch (resource.eKind)
             {
@@ -889,30 +1014,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 // MainApp's general Effect clock cannot advance it a second time.
                 playback.bProductOwned = true;
                 playback.bExternalClock = true;
-                if (box.bFollowBoss)
-                {
-                    if (box.strAnchorKind != "WORLD" && box.strBone.empty())
-                    {
-                        const auto history = session.rootHistory;
-                        playback.PivotSampler = [history, box](float seconds, float4x4_t& output, std::string& error)
-                        {
-                            float4x4_t recorded;
-                            if (!history->Sample(box.iStartMs / 1000.f + seconds, recorded, error)) return false;
-                            if (!Make_Pivot(box, recorded, {}, output))
-                            { error = "Recorded Effect root cannot form its authored pivot."; return false; }
-                            return true;
-                        };
-                    }
-                    else
-                    {
-                        const auto history = row.effectPivotHistory;
-                        playback.PivotSampler = [history](float seconds, float4x4_t& output, std::string& error)
-                        {
-                            if (!history) { error = "Effect anchor history is unavailable."; return false; }
-                            return history->Sample(seconds, output, error);
-                        };
-                    }
-                }
+                playback.PivotSampler = Effect_PivotSampler(box, session.rootHistory, row.effectPivotHistory);
                 if (resource.strResourceKind == "GROUP")
                 {
                     const auto* group = effects->Find_Group(resource.strAssetId);
@@ -1297,10 +1399,11 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (card->second.handle) CEffectV2Runtime::Stop_Group(card->second.handle);
         card = m_Cards.erase(card);
     }
+    Update_MazeMarks(players);
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
     {
         if (!m_bPreviewPaused && !m_bModelReferencePreview) m_fPreviewClockMs += double(dt) * 1000.0;
-        if (!m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
+        if (!m_bPreviewPaused && !m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
         {
             if (m_bColliderResourcePreview)
             {
@@ -1364,6 +1467,7 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     for (auto& member : members)
     {
+        if (member.actor && member.actor->Get_Model()) (void)member.actor->Get_Model()->Set_RootMotionVerticalScale(1.f);
         Stop_Session(member.session);
         if (level)
         {
@@ -1449,6 +1553,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         if (!level->Create_CompositionPreviewActor(*source, member.actor, status)) return fail(status);
         const auto model = member.actor->Get_Model();
         member.initialAnimation = model->Get_CurrentAnimIndex();
+        const auto& initialRoot = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
+        member.initialYawDegrees = XMConvertToDegrees(std::atan2(initialRoot._31, initialRoot._33));
         float ignored = 0.f;
         model->Get_AnimationProgress(member.initialAnimation, member.initialTicks, ignored);
         std::uint32_t stageStart = 0u;
@@ -1487,6 +1593,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                 return fail(status.empty() ? player->Get_Status() : status);
             if (!player->Validate_ObjectPlacement(world->strSequenceInstanceId, WorldPlacementFromOccurrence(box), status))
                 return fail(status);
+            const auto worldSpan = player->Get_InstanceElapsedSpanMs(
+                world->strSequenceInstanceId, box.fPlaybackSpeed, box.iDurationMs);
+            if (worldSpan <= 0.f) return fail("Bundle WORLD has no finite presentation span.");
+            duration = (std::max)(duration, (std::uint64_t(member.offsetTicks) * 1000u + 29u) / 30u +
+                box.iStartMs + static_cast<std::uint64_t>(std::ceil(worldSpan)));
+            if (duration > MAX_TIMELINE_MS) return fail("Bundle WORLD tail exceeds the timeline duration limit.");
             member.session.previewWorlds.emplace(box.strOccurrenceId, player);
             float3_t offset(float(world->PositionOffset[0]), float(world->PositionOffset[1]), float(world->PositionOffset[2]));
             if (!box.Placement && world->strAnchorKind == "BOSS_SPAWN")
@@ -1560,6 +1672,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
             return false;
         }
         auto& pattern = reference.Patterns.emplace_back(*source);
+        pattern.BossMotion.reset();
+        pattern.fAnimationRootVerticalScale = 1.0;
+        for (auto& stage : pattern.Stages) stage.bRetargetOnEnter = false;
         pattern.LogicOccurrences.clear();
         pattern.SummonOccurrences.clear();
         pattern.WorldOccurrences.clear();
@@ -1604,6 +1719,43 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceTarget(
     return true;
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
+    BUNDLE_PREVIEW_MEMBER& member, const double localMs)
+{
+    if (std::none_of(member.pattern.Stages.begin(), member.pattern.Stages.end(),
+        [](const auto& stage) { return stage.bRetargetOnEnter; })) return;
+    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    const auto player = level ? level->Get_LocalCharacter() : nullptr;
+    const auto& root = *member.actor->Get_Transform()->Get_WorldMatrixPtr();
+    float yaw = member.initialYawDegrees;
+    std::uint32_t stageStartMs = 0u;
+    for (const auto& stage : member.pattern.Stages)
+    {
+        if (localMs < stageStartMs) break;
+        if (stage.bRetargetOnEnter)
+        {
+            auto [sample, inserted] = member.stageFacingYawDegrees.try_emplace(stage.strStageId, yaw);
+            if (inserted && player && player->Get_Transform())
+            {
+                const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
+                const float dx = target._41 - root._41, dz = target._43 - root._43;
+                if (std::isfinite(dx) && std::isfinite(dz) && dx * dx + dz * dz > .000001f)
+                {
+                    sample->second = XMConvertToDegrees(std::atan2(dx, dz));
+                    // Match the Server's measured catalog +X face/hammer forward for Big Saydon.
+                    if (CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
+                        member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+                        sample->second -= 90.f;
+                }
+            }
+            // A seek reuses this stage's first sample, including its held yaw when no target existed.
+            yaw = sample->second;
+        }
+        stageStartMs += stage.iDurationMs;
+    }
+    (void)member.actor->Apply_NetworkState({root._41, root._42, root._43}, yaw);
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
 {
     auto* level = CLevel_KakulSaydonArena::Get_Active();
@@ -1613,7 +1765,14 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     {
         const double localMs = m_fPreviewClockMs - double(member.offsetTicks) * 1000.0 / 30.0;
         const auto model = member.actor->Get_Model();
+        (void)model->Set_RootMotionVerticalScale(float(member.pattern.fAnimationRootVerticalScale));
         const auto sampleMs = static_cast<float>((std::clamp)(localMs, 0.0, double(member.durationMs)));
+        Sample_BundlePreviewFacing(member, localMs);
+        std::array<double, 3u> bossPosition{};
+        double bossYaw = 0.0;
+        if (Sample_KoukuSaydonBossMotion(member.pattern, sampleMs, bossPosition, bossYaw))
+            (void)member.actor->Apply_NetworkState(
+                {float(bossPosition[0]), float(bossPosition[1]), float(bossPosition[2])}, float(bossYaw));
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* animation = nullptr;
         for (const auto& box : member.animations)
             if (sampleMs >= box.iStartOffsetMs && localMs >= 0.0) animation = &box;
@@ -1641,13 +1800,17 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             const auto world = std::find_if(m_PreviewDocument.Worlds.begin(), m_PreviewDocument.Worlds.end(),
                 [&](const auto& value) { return value.strWorldId == box.strWorldId; });
             auto& player = member.session.previewWorlds.at(box.strOccurrenceId);
-            if (localMs < box.iStartMs || localMs >= double(box.iStartMs) + box.iDurationMs)
-            { player->Stop_All(targets, true); continue; }
+            auto worldTargets = targets;
+            worldTargets.objectEmissionAnchor = Make_WorldEmissionAnchor(member.pattern, *world, box);
+            const auto span = player->Get_InstanceElapsedSpanMs(world->strSequenceInstanceId,
+                box.fPlaybackSpeed, box.iDurationMs);
+            if (localMs < box.iStartMs || localMs >= double(box.iStartMs) + span)
+            { player->Stop_All(worldTargets, true); continue; }
             if (!player->Is_Playing(world->strSequenceInstanceId) &&
-                !player->Play(world->strSequenceInstanceId, targets, box.fPlaybackSpeed,
+                !player->Play(world->strSequenceInstanceId, worldTargets, box.fPlaybackSpeed,
                     member.worldOffsets.at(box.strOccurrenceId), box.iDurationMs, WorldPlacementFromOccurrence(box)))
             { m_strStatus = player->Get_Status(); continue; }
-            if (!player->Seek_InstanceToMs(world->strSequenceInstanceId, float(localMs - box.iStartMs), targets))
+            if (!player->Seek_InstanceToMs(world->strSequenceInstanceId, float(localMs - box.iStartMs), worldTargets))
                 m_strStatus = player->Get_Status();
         }
         member.actor->Synchronize_WeaponPose();
@@ -1688,6 +1851,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockM
 void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
 {
     m_bPreviewPaused = paused;
+    if (!paused && m_bPreviewPlaying && m_iPreviewDurationMs && m_fPreviewClockMs >= m_iPreviewDurationMs)
+        Seek_Preview(0u);
     for (const auto& member : m_BundlePreviewMembers)
         for (const auto& [id, row] : member.session.rows)
         {
@@ -1704,8 +1869,22 @@ void Client::CKoukuSaydonPresentationPlayer::Pause_Preview(bool paused)
 void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
 {
     m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
-    Stop_Session(m_PreviewSession);
-    for (auto& member : m_BundlePreviewMembers) Stop_Session(member.session);
+    if (m_fPreviewClockMs >= m_iPreviewDurationMs) Pause_Preview(true);
+    // Stop/paused scrubbing must retain the observed birth history and a
+    // frozen Effect's original anchor. The V2 external clock handles rewind.
+    const auto prepare = [&](SESSION& session) {
+        session.lastClockMs = -1.f;
+        for (auto row = session.rows.begin(); row != session.rows.end();)
+        {
+            if (row->second.kind == KIND::EFFECT && !row->second.failed)
+            { ++row; continue; }
+            if (row->second.effectHandle) CEffectV2Runtime::Stop_Group(row->second.effectHandle);
+            if (row->second.soundHandle) CGameInstance::Get().Stop_SoundCue(row->second.soundHandle);
+            row = session.rows.erase(row);
+        }
+    };
+    prepare(m_PreviewSession);
+    for (auto& member : m_BundlePreviewMembers) prepare(member.session);
     if (Preview_IsBundle()) Sample_BundlePreview();
     // MainApp samples single-pattern WORLD at the new clock before recreating these cue handles.
     Refresh_SharedPresentation();
@@ -1727,6 +1906,117 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     Refresh_SharedPresentation();
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Sync_MazeMark(
+    CARD& mark, const std::string& asset, const float4x4_t& pivot)
+{
+    if (mark.assetId != asset)
+    {
+        if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+        mark = {}; mark.assetId = asset;
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
+        if (Ensure_EffectResource("GROUP", asset, effects))
+            if (const auto* group = effects->Find_Group(asset))
+            {
+                EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+                playback.PivotWorld = pivot;
+                playback.fDurationSeconds = 0.f;
+                playback.bProductOwned = true;
+                mark.handle = CEffectV2Runtime::Play_Group(*group, effects, playback, m_Device, m_Context);
+            }
+        if (!mark.handle) m_strStatus = "Maze floor mark unavailable: " + asset;
+    }
+    if (mark.handle)
+    {
+        CEffectV2Runtime::Set_GroupPivot(mark.handle, pivot);
+        std::string failure;
+        if (CEffectV2Runtime::Consume_GroupFailure(mark.handle, failure))
+        {
+            CEffectV2Runtime::Stop_Group(mark.handle); mark.handle = 0u;
+            m_strStatus = "Maze floor mark failed: " + asset + ": " + failure;
+        }
+    }
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
+    const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
+{
+    using namespace LostArk::Shared;
+    const auto suitName = [](MECHANIC_CARD_SYMBOL suit) -> const char*
+    {
+        switch (suit)
+        {
+        case MECHANIC_CARD_SYMBOL::HEART: return "heart";
+        case MECHANIC_CARD_SYMBOL::SPADE: return "spade";
+        case MECHANIC_CARD_SYMBOL::CLUB: return "club";
+        case MECHANIC_CARD_SYMBOL::DIAMOND: return "diamond";
+        default: return nullptr;
+        }
+    };
+    const auto groundPivot = [](const float4x4_t& world)
+    {
+        // Translation only: character scale/yaw must not resize or rotate the symbol.
+        float4x4_t pivot;
+        XMStoreFloat4x4(&pivot, XMMatrixTranslation(world._41, world._42 + .02f, world._43));
+        return pivot;
+    };
+    std::set<std::uint32_t> livePlayers, liveTargets, liveExits;
+    bool mazeActive = false;
+    for (const auto& view : players)
+    {
+        const auto& s = view.Snapshot;
+        if (!s.iCurrentHp || s.eCardMazeRole == CARD_MAZE_ROLE::NONE || (s.CardMaze.flags & 8u)) continue;
+        mazeActive = true;
+        // The telescope owner never carries a suit marker, even with an old Debug snapshot.
+        if (s.eCardMazeRole != CARD_MAZE_ROLE::HUNTER) continue;
+        const char* suit = suitName(s.eCardMazeSuit);
+        if (!suit) continue;
+        if (!(s.CardMaze.flags & 2u) && !s.CardMaze.transferStartTick)
+            if (auto character = view.pCharacter.lock(); character && character->Get_Transform())
+            {
+                livePlayers.insert(s.iNetEntityId);
+                Sync_MazeMark(m_MazePlayerMarks[s.iNetEntityId], std::string("cardmaze.mark.") + suit,
+                    groundPivot(*character->Get_Transform()->Get_WorldMatrixPtr()));
+            }
+        if ((s.CardMaze.flags & 4u) && !s.CardMaze.transferStartTick)
+        {
+            liveExits.insert(s.iNetEntityId);
+            float4x4_t pivot;
+            XMStoreFloat4x4(&pivot, XMMatrixTranslation(s.CardMaze.exitX, s.CardMaze.exitY + .02f, s.CardMaze.exitZ));
+            Sync_MazeMark(m_MazeExits[s.iNetEntityId], std::string("cardmaze.exit.") + suit, pivot);
+        }
+    }
+    if (const auto* arena = CLevel_KakulSaydonArena::Get_Active(); mazeActive && arena)
+    {
+        std::vector<KOUKU_MAZE_TARGET_VIEW> targets;
+        arena->Collect_KoukuMazeTargets(targets);
+        for (const auto& target : targets)
+        {
+            const char* suit = nullptr;
+            if (target.archetypeId == "MONSTER_KOUKU_CARD_HEART") suit = "heart";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_SPADE") suit = "spade";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_CLUB") suit = "club";
+            else if (target.archetypeId == "MONSTER_KOUKU_CARD_DIAMOND") suit = "diamond";
+            const auto npc = target.npc.lock();
+            if (!suit || !npc || !npc->Get_Transform()) continue;
+            liveTargets.insert(target.entityId);
+            Sync_MazeMark(m_MazeTargetMarks[target.entityId], std::string("cardmaze.mark.") + suit,
+                groundPivot(*npc->Get_Transform()->Get_WorldMatrixPtr()));
+        }
+    }
+    const auto removeStale = [](auto& marks, const auto& live)
+    {
+        for (auto i = marks.begin(); i != marks.end();)
+        {
+            if (live.contains(i->first)) { ++i; continue; }
+            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
+            i = marks.erase(i);
+        }
+    };
+    removeStale(m_MazePlayerMarks, livePlayers);
+    removeStale(m_MazeTargetMarks, liveTargets);
+    removeStale(m_MazeExits, liveExits);
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Reset()
 {
     m_LightPlayerPivots.clear();
@@ -1738,6 +2028,15 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
     m_Cards.clear();
+    for (const auto& [id, exit] : m_MazeExits)
+        if (exit.handle) CEffectV2Runtime::Stop_Group(exit.handle);
+    m_MazeExits.clear();
+    for (auto* marks : { &m_MazePlayerMarks, &m_MazeTargetMarks })
+    {
+        for (const auto& [id, mark] : *marks)
+            if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+        marks->clear();
+    }
     m_ColliderDebugOverrides.clear();
     Stop_Preview();
     Restore_Scene();
@@ -1880,6 +2179,98 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_ColliderAuthoring(
         m_fPreviewClockMs = (std::min)(m_fPreviewClockMs, double(m_iPreviewDurationMs - 1u));
         Stop_Session(m_PreviewSession);
     }
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
+    const std::string& patternId, const OCCURRENCE& occurrence)
+{
+    if (!m_bPreviewPlaying || m_bModelReferencePreview) return false;
+    if (m_bColliderResourcePreview)
+    {
+        const auto owner = std::find_if(m_PreviewDocument.Patterns.begin(), m_PreviewDocument.Patterns.end(),
+            [&](const auto& value) { return value.strPatternId == patternId; });
+        if (owner == m_PreviewDocument.Patterns.end() ||
+            std::none_of(owner->PresentationOccurrences.begin(), owner->PresentationOccurrences.end(),
+                [&](const auto& value) { return value.strOccurrenceId == occurrence.strOccurrenceId &&
+                    value.strResourceId == occurrence.strResourceId; })) return false;
+    }
+    const auto finite = [](const auto& values, const double minimum, const double maximum) {
+        return std::all_of(values.begin(), values.end(), [=](const double value) {
+            return std::isfinite(value) && value >= minimum && value <= maximum;
+        });
+    };
+    if (!finite(occurrence.PositionOffset, -100000.0, 100000.0) ||
+        !finite(occurrence.RotationDegrees, -36000.0, 36000.0) ||
+        !finite(occurrence.Scale, 0.001, 10000.0)) return false;
+    const auto update = [&](KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, SESSION& session) {
+        if (pattern.strPatternId != patternId && !m_bColliderResourcePreview) return false;
+        const auto box = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+            [&](const auto& value) { return value.strOccurrenceId == occurrence.strOccurrenceId &&
+                value.strResourceId == occurrence.strResourceId; });
+        if (box == pattern.PresentationOccurrences.end()) return false;
+        const auto resource = std::find_if(m_PreviewDocument.PresentationResources.begin(), m_PreviewDocument.PresentationResources.end(),
+            [&](const auto& value) { return value.strResourceId == box->strResourceId &&
+                (value.eKind == KIND::COLLIDER || value.eKind == KIND::EFFECT); });
+        if (resource == m_PreviewDocument.PresentationResources.end()) return false;
+        auto edited = *box;
+        edited.PositionOffset = occurrence.PositionOffset;
+        edited.RotationDegrees = occurrence.RotationDegrees;
+        edited.Scale = occurrence.Scale;
+        const auto active = session.rows.find(box->strOccurrenceId);
+        if (active != session.rows.end() && active->second.hasPlacementAnchor &&
+            !active->second.failed && !active->second.waitingForAnchor)
+        {
+            // Frozen rows retain their first anchor; following rows retain the
+            // current sampled anchor and all prior particle birth transforms.
+            auto placed = edited;
+            placed.strBone.clear();
+            for (size_t axis = 0u; axis < 3u; ++axis)
+            {
+                placed.PositionOffset[axis] *= active->second.placementAnchorScale[axis];
+                placed.Scale[axis] *= active->second.placementAnchorScale[axis];
+            }
+            float4x4_t pivot{};
+            if (!Make_Pivot(placed, active->second.placementAnchor, nullptr, pivot)) return false;
+            if (resource->eKind == KIND::EFFECT && active->second.effectHandle &&
+                !CEffectV2Runtime::Rebuild_GroupPlacement(active->second.effectHandle, pivot,
+                    Effect_PivotSampler(edited, session.rootHistory, active->second.effectPivotHistory),
+                    m_Device, m_Context))
+            {
+                m_strStatus = "Effect geometry preview failed: " + CEffectV2Runtime::Last_Error();
+                return false;
+            }
+            active->second.pivot = pivot;
+            if (resource->eKind == KIND::COLLIDER)
+                active->second.wire = Collider_Wire(*resource, placed);
+        }
+        else if (active != session.rows.end())
+        {
+            if (active->second.effectHandle) CEffectV2Runtime::Stop_Group(active->second.effectHandle);
+            session.rows.erase(active);
+        }
+        box->PositionOffset = occurrence.PositionOffset;
+        box->RotationDegrees = occurrence.RotationDegrees;
+        box->Scale = occurrence.Scale;
+        return true;
+    };
+    for (auto& member : m_BundlePreviewMembers)
+    {
+        if (!update(member.pattern, member.session)) continue;
+        const double localMs = m_fPreviewClockMs - double(member.offsetTicks) * 1000.0 / 30.0;
+        if (member.actor && localMs >= 0.0 && localMs < member.durationMs)
+        {
+            ANIMATION_MODEL_TARGET_VIEW weaponView;
+            const bool hasWeapon = member.actor->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
+            Sample(member.session, m_PreviewDocument, member.pattern, float(localMs), m_bPreviewPaused,
+                *member.actor->Get_Transform()->Get_WorldMatrixPtr(), member.actor->Get_Model(),
+                hasWeapon ? &weaponView : nullptr);
+        }
+        return true;
+    }
+    if (!update(m_PreviewPattern, m_PreviewSession)) return false;
+    // MainApp samples the single-pattern owner later in this same frame with its
+    // actual animation target and weapon view. Its displayed clock is unchanged.
+    return true;
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Render_Debug() const

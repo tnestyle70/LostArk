@@ -19,6 +19,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CWorldSequenceObject;
+class EFFECT_V2_CATALOG_SNAPSHOT;
 
 /* One playback path for authored world sequences. The Map Tool preview and the
    product level both evaluate a sequence here so a sequence can never look one
@@ -46,6 +47,7 @@ public:
 	{
 		uint64_t entityId = 0;
 		float4x4_t world{};
+		bool_t emissionOverride = false;
 	};
 	struct TARGET_SET final
 	{
@@ -56,6 +58,8 @@ public:
 		ComPtr<ID3D11Device> device;
 		ComPtr<ID3D11DeviceContext> context;
 		std::function<std::vector<PLAYER_ANCHOR>()> playerAnchors;
+		// Occurrence-local real milliseconds at birth -> frozen world origin.
+		std::function<bool_t(f32_t, float4x4_t&)> objectEmissionAnchor;
 
 		bool_t Is_Complete() const noexcept
 		{
@@ -140,6 +144,9 @@ public:
 	/* The longest authored span across the playing instances, so the tool can
 	   size a scrub bar without guessing. */
 	f32_t Get_LongestElapsedSpanMs() const;
+	// Explicit duration limits births; admitted Object Effect tails finish afterwards.
+	f32_t Get_InstanceElapsedSpanMs(const std::string& instanceId,
+		f32_t playbackSpeed = 1.f, uint32_t durationMs = 0u) const;
 
 	/* Stopping hands every animated Deploy target back: an authoring preview
 	   left running blocks the prop's state from being set, so a second play
@@ -217,6 +224,13 @@ private:
 		uint32_t durationMs = 0;
 		std::string objectSampleStatus;
 		std::vector<OBJECT_INSTANCE> objects;
+		struct EFFECT_INSTANCE
+		{
+			std::string key;
+			uint32_t handle = 0;
+		};
+		std::vector<EFFECT_INSTANCE> effects;
+		std::unordered_map<std::string, PLAYER_ANCHOR> emissionAnchors;
 	};
 
 	/* A finished sequence keeps its last authored frame; only a broken one
@@ -232,7 +246,15 @@ private:
 	bool_t Prepare_ObjectResources(const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets);
 	bool_t Prepare_ObjectMotionChain(const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets);
 	bool_t Apply_Objects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
-		const WORLD_SEQUENCE_TEMPLATE& sequence, const TARGET_SET& targets, f32_t localMs, bool_t visible);
+		const WORLD_SEQUENCE_TEMPLATE& sequence, const TARGET_SET& targets, f32_t localMs, bool_t visible, bool_t holdFinalPose = false,
+		f32_t emissionStartMs = 0.f, f32_t emissionRate = 1.f, const std::string& emissionMotionId = {});
+	bool_t Get_EmissionAnchor(ACTIVE_INSTANCE& active, const TARGET_SET& targets, const std::string& key,
+		f32_t birthMs, const PLAYER_ANCHOR& baseline, PLAYER_ANCHOR& out);
+	bool_t Sample_ObjectWorld(const ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
+		const WORLD_SEQUENCE_TEMPLATE& sequence, const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
+		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out);
+	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
+		const TARGET_SET& targets);
 	void Release_Objects(ACTIVE_INSTANCE& active);
 	void Release_DeployPreviews(
 		const ACTIVE_INSTANCE& active,
@@ -246,6 +268,7 @@ private:
 	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;
 	std::unordered_map<std::string, OBJECT_MODEL> m_ObjectModels;
+	std::unordered_map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> m_EffectSnapshots;
 	std::string m_Status;
 };
 

@@ -217,6 +217,11 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_KoukuGimmick.iMadnessGauge = snapshot.iCurrentMadness;
 	m_KoukuGimmick.iMadnessMaximum = snapshot.iMaximumMadness;
 	m_KoukuGimmick.eHudMode = static_cast<HUD_KOUKU_HUD_MODE>(snapshot.eKoukuHudMode);
+	m_KoukuGimmick.eCardMazeRole = snapshot.eCardMazeRole;
+	m_KoukuGimmick.eCardMazeSuit = snapshot.eCardMazeSuit;
+	m_KoukuGimmick.iCardMazeKills = snapshot.iCardMazeKills;
+	m_KoukuGimmick.iCardMazeKillTarget = snapshot.iCardMazeKillTarget;
+	m_KoukuGimmick.CardMaze = snapshot.CardMaze;
 	for (std::size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 	{
 		const auto index = snapshot.ModeSkillIndexBySlot[i];
@@ -227,7 +232,12 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 			if (cooldown.iSkillId == id)
 			{
 				m_KoukuGimmick.CooldownEndTicks[i] = cooldown.iCooldownEndTick;
-				m_KoukuGimmick.CooldownDurationTicks[i] = LostArk::Shared::KOUKU_INTERACTION_COOLDOWN_MS * 30u / 1000u;
+				/* The ring has to measure the same window the Server enforces, and
+				the maze hammer runs on its own shorter one. */
+				m_KoukuGimmick.CooldownDurationTicks[i] =
+					(LostArk::Shared::KOUKU_HUD_MODE::MAZE == snapshot.eKoukuHudMode ?
+						LostArk::Shared::KOUKU_MAZE_HAMMER_COOLDOWN_MS :
+						LostArk::Shared::KOUKU_INTERACTION_COOLDOWN_MS) * 30u / 1000u;
 				break;
 			}
 	}

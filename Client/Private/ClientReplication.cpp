@@ -1652,6 +1652,17 @@ void Client::CClientReplication::Collect_KoukuPresentationViews(
 	}
 }
 
+void Client::CClientReplication::Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const
+{
+	targets.clear();
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA)) return;
+	for (const auto& [id, entity] : m_WorldEntities)
+		if (entity.eKind == LostArk::Shared::WORLD_ENTITY_KIND::MONSTER &&
+			!entity.pNpc.expired() && !entity.bPresentationIsolated &&
+			entity.KoukuSnapshot.iNetEntityId == id && entity.KoukuSnapshot.iCurrentHp > 0u)
+			targets.push_back({entity.pNpc, id, entity.strArchetypeId});
+}
+
 void Client::CClientReplication::Collect_PlayerViews(
 	std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const
 {
@@ -3624,7 +3635,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
 							action.strClip.c_str(), false,
-							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f) :
+							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f, action.fAnimationRootVerticalScale) :
 						boss->Play_DefaultIdle(0.08f);
 					const bool_t missingProductAction = !hasAction &&
 						!entity.strPatternId.empty() && !entity.strActionId.empty();

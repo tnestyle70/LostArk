@@ -1058,6 +1058,9 @@ struct EFFECT_PARTICLE_BURST_DESC final
 struct EFFECT_CASCADE_RECIPE_DESC final
 {
 	bool_t bEnabled = false;
+	/* Explicit authoring ownership of portable module values. The source
+	   simulator and material contract remain active; native evidence stays read-only. */
+	bool_t bAuthoredModuleOverrides = false;
 	std::string strRendererShape;
 	std::string strSourceContractProfileId;
 	std::string strSourceContractSha256;
@@ -1223,6 +1226,7 @@ enum class EFFECT_ATTACHMENT_ORIENTATION : uint32_t
 {
 	BONE,
 	OWNER_YAW,
+	CAMERA_VIEW,
 	END
 };
 
@@ -1235,6 +1239,8 @@ struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
 	std::string strSourceAnchorSlotId;
 	std::string strRuntimeAnchorSlotId;
 	std::string strRuntimeBoneName;
+	// Empty selects the external character; otherwise this document owns the model.
+	std::string strModelCueId;
 	/* Root-snapshot ActionCues are authored in the source character basis.
 	   Bone-follow cues already inherit that basis from the prepared model bone,
 	   so this correction is valid only for enabled, non-follow attachments. */

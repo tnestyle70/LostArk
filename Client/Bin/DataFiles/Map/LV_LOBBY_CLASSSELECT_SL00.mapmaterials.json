@@ -467,6 +467,190 @@
       "normalTexture": "Map/CHARACTERSELECTMAP/MAP_FB0D0FFCBE97_BG_GDOGODS_MAGICFLOOR03D_SM_OVR_43CE9773CA87/textures/6dd10243443c_bg_elg_kayangel_floor02b_n_ksr.dds",
       "specularTexture": "Map/CHARACTERSELECTMAP/MAP_FB0D0FFCBE97_BG_GDOGODS_MAGICFLOOR03D_SM_OVR_43CE9773CA87/textures/dc26661a123d_spec.dds",
       "reflectionTexture": "Map/CHARACTERSELECTMAP/MAP_FB0D0FFCBE97_BG_GDOGODS_MAGICFLOOR03D_SM_OVR_43CE9773CA87/textures/c96a3addcf7f_ambientreflection_18.dds"
+    },
+    {
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_6D0C7C84B6CF",
+      "materialName": "SLOT_000_bg_elg_aryanorb_floor13b_mi_pjh",
+      "sourceMaterial": "bg_pcselect14.mat.bg_elg_aryanorb_floor13b_01_mi_pjh",
+      "family": "bg_base_pbr_opa",
+      "diffuseBrightness": 1.7999999523162842,
+      "normalIntensity": 1.0,
+      "reflectionIntensity": 0.15000000596046448,
+      "reflectionContrast": 0.5,
+      "detailNormalIntensity": 2.0,
+      "detailNormalTiling": 5.0,
+      "metallicIntensity": 1.0,
+      "metallicPower": 1.0,
+      "roughnessIntensity": 1.5,
+      "roughnessPower": 1.2000000476837158,
+      "aoIntensity": 1.0,
+      "aoPower": 1.0,
+      "specularPBRIntensity": 0.5,
+      "nonmetallicBrightness": 1.0,
+      "metallicBrightness": 1.0,
+      "diffuseColor": [
+        1.0,
+        0.8494257926940918,
+        0.6910112500190735,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        0.9406006932258606,
+        0.632042646408081,
+        1.0
+      ],
+      "diffuseSaturation": 1.0,
+      "reflectionTiling": 1.0,
+      "uvFixedNormal": false,
+      "useWorldReflection": false,
+      "castsShadow": true,
+      "minimumRoughness": 0.04,
+      "vertexAlpha": 1.0,
+      "reflectionOriginOffset": [
+        0.0,
+        0.0
+      ],
+      "uvTiling": [
+        1.0,
+        1.0
+      ],
+      "diffuseTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/37c47c710f7a_bg_elg_aryanorb_floor13b_d_pjh.dds",
+      "normalTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/6f3bb5554318_bg_elg_aryanorb_floor13b_n_pjh.dds",
+      "detailNormalTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/c40abc5defd9_bg_anh_common_bm01_03_n_old.dds",
+      "ormTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/bf25b215bf9e_orm.dds",
+      "reflectionTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/c96a3addcf7f_ambientreflection_18.dds",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "detailNormal": "linear",
+        "orm": "linear",
+        "reflection": "srgb"
+      },
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_74.dds",
+        "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_74.dds",
+        "colorSpace": "linear"
+      },
+      "environment": {
+        "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+        "brdfTexture": "Map/Lighting/CharacterSelect/character_select_project_brdf.dds",
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          1.0
+        ]
+      },
+      "emissive": {
+        "texture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/e31a24a3b565_bg_elg_aryanorb_floor13b_em_pjh.dds",
+        "color": [
+          0.5340763330459595,
+          1.0,
+          0.925800085067749,
+          1.0
+        ],
+        "intensity": 10.0,
+        "uvTiling": [
+          1.0,
+          1.0
+        ],
+        "colorSpace": "srgb",
+        "flicker": {
+          "minimum": 0.0,
+          "speed": 0.5,
+          "phaseOffset": 0.0
+        }
+      }
+    },
+    {
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_7954B5585694",
+      "materialName": "SLOT_000_bg_elg_aryanorb_floor13b_mi_pjh",
+      "sourceMaterial": "bg_pcselect14.mat.bg_elg_aryanorb_floor13b_01_mi_pjh",
+      "family": "bg_base_pbr_opa",
+      "diffuseBrightness": 1.7999999523162842,
+      "normalIntensity": 1.0,
+      "reflectionIntensity": 0.15000000596046448,
+      "reflectionContrast": 0.5,
+      "detailNormalIntensity": 2.0,
+      "detailNormalTiling": 5.0,
+      "metallicIntensity": 1.0,
+      "metallicPower": 1.0,
+      "roughnessIntensity": 1.5,
+      "roughnessPower": 1.2000000476837158,
+      "aoIntensity": 1.0,
+      "aoPower": 1.0,
+      "specularPBRIntensity": 0.5,
+      "nonmetallicBrightness": 1.0,
+      "metallicBrightness": 1.0,
+      "diffuseColor": [
+        1.0,
+        0.8494257926940918,
+        0.6910112500190735,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        0.9406006932258606,
+        0.632042646408081,
+        1.0
+      ],
+      "diffuseSaturation": 1.0,
+      "reflectionTiling": 1.0,
+      "uvFixedNormal": false,
+      "useWorldReflection": false,
+      "castsShadow": true,
+      "minimumRoughness": 0.04,
+      "vertexAlpha": 1.0,
+      "reflectionOriginOffset": [
+        0.0,
+        0.0
+      ],
+      "uvTiling": [
+        1.0,
+        1.0
+      ],
+      "diffuseTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/37c47c710f7a_bg_elg_aryanorb_floor13b_d_pjh.dds",
+      "normalTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/6f3bb5554318_bg_elg_aryanorb_floor13b_n_pjh.dds",
+      "detailNormalTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/c40abc5defd9_bg_anh_common_bm01_03_n_old.dds",
+      "ormTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/bf25b215bf9e_orm.dds",
+      "reflectionTexture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/c96a3addcf7f_ambientreflection_18.dds",
+      "textureColorSpace": {
+        "diffuse": "srgb",
+        "normal": "linear",
+        "detailNormal": "linear",
+        "orm": "linear",
+        "reflection": "srgb"
+      },
+      "bakedLighting": {
+        "averageTexture": "Map/Lighting/CharacterSelect/normalizedaveragecolor0_74.dds",
+        "directionalTexture": "Map/Lighting/CharacterSelect/directionalmaxcomponent0_74.dds",
+        "colorSpace": "linear"
+      },
+      "emissive": {
+        "texture": "Map/CHARACTERSELECTMAP/MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343/textures/e31a24a3b565_bg_elg_aryanorb_floor13b_em_pjh.dds",
+        "color": [
+          0.5340763330459595,
+          1.0,
+          0.925800085067749,
+          1.0
+        ],
+        "intensity": 10.0,
+        "uvTiling": [
+          1.0,
+          1.0
+        ],
+        "colorSpace": "srgb",
+        "flicker": {
+          "minimum": 0.0,
+          "speed": 0.5,
+          "phaseOffset": 0.0
+        }
+      }
     }
   ],
   "placementLighting": [
@@ -920,6 +1104,182 @@
       "coordinateBias": [
         0.8525390625,
         0.5947265625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:482",
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_6D0C7C84B6CF",
+      "coordinateScale": [
+        0.005859375,
+        0.005859375
+      ],
+      "coordinateBias": [
+        0.8369140625,
+        0.5869140625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:439",
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_7954B5585694",
+      "coordinateScale": [
+        0.005859375,
+        0.005859375
+      ],
+      "coordinateBias": [
+        0.8447265625,
+        0.5869140625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.1411879062652588,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:486",
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_7954B5585694",
+      "coordinateScale": [
+        0.005859375,
+        0.005859375
+      ],
+      "coordinateBias": [
+        0.8291015625,
+        0.5869140625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.1603357791900635,
+        1.0032634735107422,
+        1.0
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:442",
+      "assetId": "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM_OVR_E64DE25941B5",
+      "coordinateScale": [
+        0.248046875,
+        0.248046875
+      ],
+      "coordinateBias": [
+        0.2509765625,
+        0.0009765625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.1106634140014648,
+        1.0,
+        1.009320855140686
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:444",
+      "assetId": "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM_OVR_E64DE25941B5",
+      "coordinateScale": [
+        0.248046875,
+        0.248046875
+      ],
+      "coordinateBias": [
+        0.0009765625,
+        0.2509765625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.0779062509536743,
+        1.0,
+        1.2727837562561035
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:458",
+      "assetId": "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM_OVR_E64DE25941B5",
+      "coordinateScale": [
+        0.248046875,
+        0.248046875
+      ],
+      "coordinateBias": [
+        0.7509765625,
+        0.2509765625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.1508424282073975,
+        1.1235986948013306,
+        1.0044326782226562
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:474",
+      "assetId": "MAP_AC527A4AF171_BG_ELG_ARYANORB_BRIDGE01E_SM_OVR_E64DE25941B5",
+      "coordinateScale": [
+        0.248046875,
+        0.248046875
+      ],
+      "coordinateBias": [
+        0.2509765625,
+        0.2509765625
+      ],
+      "averageScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "directionalScale": [
+        1.1841096878051758,
+        1.0,
+        1.1838183403015137
+      ]
+    },
+    {
+      "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:507",
+      "assetId": "MAP_D6DB636BED17_BG_ELG_ARYANORB_FLOOR13H_SM_OVR_E42AC6730343_LGT_7954B5585694",
+      "coordinateScale": [
+        0.005859375,
+        0.005859375
+      ],
+      "coordinateBias": [
+        0.8212890625,
+        0.5869140625
       ],
       "averageScale": [
         1.0,

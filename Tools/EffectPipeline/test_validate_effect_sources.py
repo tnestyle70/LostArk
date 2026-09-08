@@ -37,6 +37,22 @@ class EffectSourceValidatorTests(unittest.TestCase):
         self._write_source(self.effect_id)
         self._write_consumers()
 
+    def test_authored_module_override_ownership_is_optional_and_typed(self) -> None:
+        source = {"version": 13, "elements": [{"sourceRecipe": {"enabled": True}}]}
+        MODULE._validate_authored_module_overrides(source, "fixture")
+        recipe = source["elements"][0]["sourceRecipe"]
+        for flag in (False, True):
+            recipe["authoredModuleOverrides"] = flag
+            MODULE._validate_authored_module_overrides(source, "fixture")
+        for flag in (0, 1, "true", None):
+            recipe["authoredModuleOverrides"] = flag
+            with self.assertRaisesRegex(MODULE.ContractError, "must be a boolean"):
+                MODULE._validate_authored_module_overrides(source, "fixture")
+        recipe["authoredModuleOverrides"] = True
+        source["version"] = 14
+        with self.assertRaisesRegex(MODULE.ContractError, "portable authored"):
+            MODULE._validate_authored_module_overrides(source, "fixture")
+
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
@@ -257,6 +273,30 @@ class EffectSourceValidatorTests(unittest.TestCase):
                     MODULE._validate_attachment_orientations(candidate, "fixture")
                 MODULE._validate_attachment_orientations(baseline, "unchanged baseline")
 
+    def test_camera_view_attachment_preserves_native_recipe_and_shared_camera_slot(self) -> None:
+        attachment = {
+            "enabled": True, "follow": True, "orientation": "camera_view",
+            "sourceAnchorSlotId": "source.camera.01", "runtimeAnchorSlotId": "camera.01",
+            "runtimeBoneName": "",
+            "socketLocalTransform": {"position": [0, 0, 0.5], "rotationDegrees": [0, 180, 0], "scale": [1, 1, 1]},
+        }
+        element = {"id": "camera.one", "actionCueAttachment": attachment, "sourceRecipe": {"enabled": True}}
+        baseline = {"version": 13, "elements": [element, json.loads(json.dumps(element))]}
+        baseline["elements"][1]["id"] = "camera.two"
+        MODULE._validate_attachment_orientations(baseline, "camera fixture")
+        for field, value in (("enabled", False), ("follow", False), ("runtimeBoneName", "root"),
+                             ("sourceAnchorSlotId", ""), ("runtimeAnchorSlotId", "")):
+            with self.subTest(field=field):
+                candidate = json.loads(json.dumps(baseline))
+                candidate["elements"][0]["actionCueAttachment"][field] = value
+                with self.assertRaises(MODULE.ContractError):
+                    MODULE._validate_attachment_orientations(candidate, "invalid camera fixture")
+                MODULE._validate_attachment_orientations(baseline, "preserved camera fixture")
+        candidate = json.loads(json.dumps(baseline))
+        candidate["elements"][1]["actionCueAttachment"]["socketLocalTransform"]["position"][2] = 0.6
+        with self.assertRaisesRegex(MODULE.ContractError, "conflicting"):
+            MODULE._validate_attachment_orientations(candidate, "conflicting camera fixture")
+
     def test_repository_validation_consumes_attachment_orientation(self) -> None:
         path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
         source = json.loads(path.read_text(encoding="utf-8"))
@@ -470,6 +510,21 @@ class EffectSourceValidatorTests(unittest.TestCase):
         )
         report = MODULE.validate_repository(self.root)
         self.assertEqual(report.unbound_reference_count, 1)
+
+    def test_editor_recovery_requires_exact_ordinary_player_sibling(self) -> None:
+        self._write_json(self.root / MODULE.PLAYER_SKILLS_PATH, {"skills": [
+            {"characterClass": "DIMENSIONMASTER", "skillId": 2050010},
+            {"characterClass": "DIMENSIONMASTER", "skillId": 2050100},
+        ]})
+        q = "effect.dimensionmaster.skill.2050100"
+        ba = "effect.dimensionmaster.skill.2050010.ba0"
+        product = {q + ".unified", ba + ".restore"}
+        valid = {q + ".restore", q + ".full.restore", q + ".tuning.restore",
+                 ba + ".full.restore"}
+        invalid = {q + ".wrong.tuning.restore", "effect.dimensionmaster.skill.99999.full.restore",
+                   "effect.valtan.skill.2050100.full.restore"}
+        self.assertEqual(MODULE._editor_recovery_ids(self.root, valid | invalid, product), valid)
+        self.assertEqual(MODULE._editor_recovery_ids(self.root, valid, set()), set())
 
     def test_player_skill_effect_must_resolve_to_product_catalog(self) -> None:
         self._write_json(

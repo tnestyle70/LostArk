@@ -141,7 +141,7 @@ void CEffectAuthoringV2Pane::Render_ToolContents()
 {
     ImGui::SeparatorText("Current Effect");
     if (m_Edit.Empty())
-    { ImGui::TextWrapped("Choose Open or Create Effect in Data Files > Effect Resource > Saved Effects."); return; }
+    { ImGui::TextWrapped("Choose Open or Create Effect in the Saved Effects tab."); return; }
     const bool leaf = m_Edit.Resource_Kind() == EFFECT_V2_RESOURCE_KIND::LEAF;
     ImGui::TextDisabled("%s | %s", leaf ? "V2 Effect" : "V2 Group", m_Edit.Resource_Id().c_str());
     const auto requestPlay = [&](bool selectedOnly)
@@ -344,11 +344,6 @@ void CEffectAuthoringV2Pane::Render_WorldObjects()
         }
         ImGui::PopID();
     }
-}
-
-void CEffectAuthoringV2Pane::Render_AttachWindow()
-{
-    m_Editor.Render_Attach(ImGui::GetIO().DeltaTime);
 }
 
 void CEffectAuthoringV2Pane::Render_ResourceContents()

@@ -48,7 +48,7 @@
                      "damageProfileCount":  109,
                      "bossProfileCount":  8,
                      "encounterPatternCount":  34,
-                     "fieldEntryCount":  3486,
+                     "fieldEntryCount":  3491,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  9
                  },
@@ -11310,9 +11310,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1500,
+                        "sourceValue":  1400,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1500,
+                        "resultValue":  1400,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11350,9 +11350,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  3,
+                        "sourceValue":  4,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  3,
+                        "resultValue":  4,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11364,9 +11364,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1500,
+                        "sourceValue":  1400,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1500,
+                        "resultValue":  1400,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11378,9 +11378,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1500,
+                        "sourceValue":  1400,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1500,
+                        "resultValue":  1400,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11392,9 +11392,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  50,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  50,
+                        "resultValue":  100,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11406,9 +11406,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  510,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
+                        "resultValue":  510,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11420,9 +11420,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
+                        "resultValue":  100,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11434,9 +11434,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1067,
+                        "sourceValue":  1500,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1067,
+                        "resultValue":  1500,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11448,9 +11448,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1067,
+                        "sourceValue":  1500,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1067,
+                        "resultValue":  1500,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11462,9 +11462,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  28,
+                        "sourceValue":  43,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  28,
+                        "resultValue":  43,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11476,9 +11476,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  410,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
+                        "resultValue":  410,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11504,9 +11504,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1700,
+                        "sourceValue":  1067,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1700,
+                        "resultValue":  1067,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11518,9 +11518,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1700,
+                        "sourceValue":  1067,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1700,
+                        "resultValue":  1067,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11532,9 +11532,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  335,
+                        "sourceValue":  28,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  335,
+                        "resultValue":  28,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11546,9 +11546,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  494,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  0,
+                        "resultValue":  494,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -11560,10 +11560,80 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
+                        "sourceValue":  93,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  93,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "comboStages[3].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1700,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1700,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "comboStages[3].comboAdvanceMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1700,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1700,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "comboStages[3].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  335,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  335,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "comboStages[3].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
                         "sourceValue":  0,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
-                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "comboStages[3].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11632,9 +11702,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  50,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  50,
+                        "resultValue":  100,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {

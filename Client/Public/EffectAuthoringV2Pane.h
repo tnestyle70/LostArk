@@ -9,7 +9,7 @@ namespace Client
 {
 class CEffect_Tool_V2;
 
-// Bodies for the existing Effect Tool / Effect Detail / resource windows.
+// CPU document panels owned by the independent Effect Tool V2.
 // The pane owns CPU drafts; the shared resource editor owns slot thumbnails.
 class CEffectAuthoringV2Pane final
 {
@@ -22,7 +22,6 @@ public:
     void Render_ToolContents();
     void Render_DetailContents();
     void Render_ResourceContents();
-    void Render_AttachWindow();
     bool Snapshot(EFFECT_RESOURCE_KEY& outKey,
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& outSnapshot, std::string& error) const;
     bool Consume_Saved(EFFECT_RESOURCE_KEY& outKey, std::string& outName);

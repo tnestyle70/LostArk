@@ -2500,27 +2500,118 @@ def _require_bounded_display_text(value: Any, context: str, maximum_bytes: int) 
     return result
 
 
+def _validate_world_sequence_effect_tracks(
+    template: Mapping[str, Any], slots: Mapping[str, str], context: str
+) -> None:
+    """Match the Map owner's v3 effect identity, clock and presentation bounds."""
+    effects = template["effectTracks"]
+    if not effects:
+        return
+    duration_ms = template["durationMs"]
+    emission_ms = 0
+    if "objectMotion" in template:
+        motion = template["objectMotion"]
+        if not isinstance(motion, dict):
+            raise CompositionError(f"{context}.objectMotion must be an object")
+        # These fields extend every effect's presentation span across emissions.
+        # The Map owner continues to validate the remaining motion payload.
+        count = _require_positive_int(
+            motion.get("count"), f"{context}.objectMotion.count"
+        )
+        interval_ms = _require_nonnegative_int(
+            motion.get("intervalMs"), f"{context}.objectMotion.intervalMs"
+        )
+        if count > 128 or interval_ms > WORLD_SEQUENCE_MAX_DURATION_MS:
+            raise CompositionError(f"{context}.objectMotion emission exceeds its limits")
+        emission_ms = (count - 1) * interval_ms
+    effect_ids: set[str] = set()
+    for ordinal, effect in enumerate(effects):
+        effect_context = f"{context}.effectTracks[{ordinal}]"
+        if not isinstance(effect, dict):
+            raise CompositionError(f"{effect_context} must be an object")
+        _require_exact_fields(
+            effect,
+            (
+                "effectTrackId", "slotId", "resourceKind", "resourceId", "timing",
+                "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale",
+            ),
+            (),
+            effect_context,
+        )
+        effect_id = _require_owner_stable_id(
+            effect["effectTrackId"], f"{effect_context}.effectTrackId", 128
+        )
+        if effect_id in effect_ids:
+            raise CompositionError(f"{effect_context}.effectTrackId is duplicate")
+        effect_ids.add(effect_id)
+        slot_id = _require_owner_stable_id(
+            effect["slotId"], f"{effect_context}.slotId", 128
+        )
+        if slot_id not in slots:
+            raise CompositionError(f"{effect_context}.slotId does not resolve")
+        _require_owner_stable_id(
+            effect["resourceId"], f"{effect_context}.resourceId", 128
+        )
+        if effect["resourceKind"] not in ("LEAF", "GROUP"):
+            raise CompositionError(f"{effect_context}.resourceKind is invalid")
+        if effect["timing"] not in ("TIME", "MOTION_END"):
+            raise CompositionError(f"{effect_context}.timing is invalid")
+        start_ms = _require_nonnegative_int(
+            effect["startMs"], f"{effect_context}.startMs"
+        )
+        effect_duration_ms = _require_positive_int(
+            effect["durationMs"], f"{effect_context}.durationMs"
+        )
+        motion_end = effect["timing"] == "MOTION_END"
+        effect_start_ms = duration_ms if motion_end else start_ms
+        if (
+            start_ms > duration_ms
+            or (motion_end and start_ms != 0)
+            or max(duration_ms, effect_start_ms + effect_duration_ms) + emission_ms
+            > WORLD_SEQUENCE_MAX_DURATION_MS
+        ):
+            raise CompositionError(f"{effect_context} exceeds its motion or presentation span")
+        for field in ("positionOffset", "rotationDegrees", "scale"):
+            values = _require_float3(
+                effect[field], f"{effect_context}.{field}",
+                maximum_magnitude=WORLD_SEQUENCE_MAX_COMPONENT,
+                positive=field == "scale",
+            )
+            if field == "scale" and any(value < WORLD_SEQUENCE_MIN_SCALE for value in values):
+                raise CompositionError(f"{effect_context}.scale is below runtime epsilon")
+
+
 def _validate_world_sequence_source(
     document: Mapping[str, Any], expected_area_id: str
 ) -> set[str]:
-    """Validate the complete format-v2 Map owner without publishing the Map domain."""
+    """Validate the complete Map owner without publishing the Map domain.
+
+    Format v3 adds objectResources, which the Map owner validates and publishes.
+    A composition only resolves template and instance references, so the field
+    is accepted here and left to its owner rather than inspected twice.
+    """
     context = "World Sequence source"
     _require_exact_fields(
         document,
         ("schema", "formatVersion", "areaId", "revision", "templates", "instances"),
-        (),
+        ("objectResources",),
         context,
     )
     if (
         document["schema"] != "lostark.world-sequences"
         or isinstance(document["formatVersion"], bool)
-        or document["formatVersion"] != 2
+        or document["formatVersion"] not in (2, 3)
         or document["areaId"] != expected_area_id
     ):
         raise CompositionError(f"{context} header/area is invalid")
     _require_positive_int(document["revision"], f"{context}.revision")
     templates = document["templates"]
     instances = document["instances"]
+    object_resource_ids = {
+        resource["objectId"]
+        for resource in document.get("objectResources", ())
+        if isinstance(resource, dict) and isinstance(resource.get("objectId"), str)
+    }
     if (
         not isinstance(templates, list)
         or len(templates) > WORLD_SEQUENCE_MAX_TEMPLATES
@@ -2530,6 +2621,7 @@ def _validate_world_sequence_source(
         raise CompositionError(f"{context} exceeds its array limits")
 
     template_slots: dict[str, dict[str, str]] = {}
+    effect_template_ids: set[str] = set()
     for template_ordinal, template in enumerate(templates):
         template_context = f"{context}.templates[{template_ordinal}]"
         if not isinstance(template, dict):
@@ -2545,7 +2637,8 @@ def _validate_world_sequence_source(
                 "tracks",
                 "animationTracks",
             ),
-            (),
+            (("objectMotion", "effectTracks") if document["formatVersion"] == 3
+             else ("objectMotion",)),
             template_context,
         )
         sequence_id = _require_owner_stable_id(
@@ -2585,6 +2678,12 @@ def _validate_world_sequence_source(
                 f"{template_context} track count must be between 1 and "
                 f"{WORLD_SEQUENCE_MAX_TRACKS}"
             )
+        effect_tracks = template.get("effectTracks", [])
+        if (
+            not isinstance(effect_tracks, list)
+            or total_tracks + len(effect_tracks) > WORLD_SEQUENCE_MAX_TRACKS
+        ):
+            raise CompositionError(f"{template_context}.effectTracks must be a bounded array")
 
         # A slot may carry both a transform track and a clip chain so one
         # binding can walk an animated prop while it plays. Duplicates are a
@@ -2697,7 +2796,7 @@ def _validate_world_sequence_source(
             _require_exact_fields(
                 track,
                 ("slotId", "clipName", "playbackRate", "loop", "holdLastFrame"),
-                ("startMs",),
+                ("startMs", "displayName"),
                 track_context,
             )
             slot_id = _require_owner_stable_id(
@@ -2741,6 +2840,10 @@ def _validate_world_sequence_source(
                 raise CompositionError(
                     f"{track_context}.loop/holdLastFrame must be boolean"
                 )
+        if "effectTracks" in template:
+            _validate_world_sequence_effect_tracks(template, slots, template_context)
+        if effect_tracks:
+            effect_template_ids.add(sequence_id)
         template_slots[sequence_id] = slots
 
     instance_ids: set[str] = set()
@@ -2758,7 +2861,13 @@ def _validate_world_sequence_source(
                 "playbackSpeed",
                 "bindings",
             ),
-            (),
+            (
+                "anchorKind",
+                "position",
+                "motionEnd",
+                "nextMotionId",
+                "walkableSurface",
+            ),
             instance_context,
         )
         instance_id = _require_owner_stable_id(
@@ -2798,6 +2907,14 @@ def _validate_world_sequence_source(
             raise CompositionError(
                 f"{instance_context}.bindings count does not match its template"
             )
+        if template_id in effect_template_ids and (
+            len(bindings) != 1
+            or not isinstance(bindings[0], dict)
+            or bindings[0].get("targetKind") != "OBJECT_RESOURCE"
+        ):
+            raise CompositionError(
+                f"{instance_context} effect lanes require one Object Resource binding"
+            )
         bound_slots: set[str] = set()
         bound_targets: set[tuple[str, str]] = set()
         for binding_ordinal, binding in enumerate(bindings):
@@ -2816,26 +2933,41 @@ def _validate_world_sequence_source(
                 )
             bound_slots.add(slot_id)
             target_kind = binding["targetKind"]
-            if target_kind not in ("MAP_PLACEMENT", "DEPLOY_PLACEMENT"):
-                raise CompositionError(f"{binding_context}.targetKind is invalid")
-            if target_kind != slots[slot_id]:
-                raise CompositionError(
-                    f"{binding_context}.targetKind does not match slot kind"
-                )
-            target_id = _require_string(
-                binding["targetId"], f"{binding_context}.targetId"
-            )
-            if (
-                len(target_id) > 20
-                or not target_id.isascii()
-                or not target_id.isdecimal()
+            if target_kind not in (
+                "MAP_PLACEMENT",
+                "DEPLOY_PLACEMENT",
+                "OBJECT_RESOURCE",
             ):
-                raise CompositionError(
-                    f"{binding_context}.targetId must be an unsigned integer string"
+                raise CompositionError(f"{binding_context}.targetKind is invalid")
+            if target_kind == "OBJECT_RESOURCE":
+                target_id = _require_owner_stable_id(
+                    binding["targetId"], f"{binding_context}.targetId", 128
                 )
-            numeric_target_id = int(target_id)
-            if numeric_target_id == 0 or numeric_target_id > (1 << 64) - 1:
-                raise CompositionError(f"{binding_context}.targetId is out of range")
+                if target_id not in object_resource_ids:
+                    raise CompositionError(
+                        f"{binding_context}.targetId is an unknown object resource"
+                    )
+            else:
+                if target_kind != slots[slot_id]:
+                    raise CompositionError(
+                        f"{binding_context}.targetKind does not match slot kind"
+                    )
+                target_id = _require_string(
+                    binding["targetId"], f"{binding_context}.targetId"
+                )
+                if (
+                    len(target_id) > 20
+                    or not target_id.isascii()
+                    or not target_id.isdecimal()
+                ):
+                    raise CompositionError(
+                        f"{binding_context}.targetId must be an unsigned integer string"
+                    )
+                numeric_target_id = int(target_id)
+                if numeric_target_id == 0 or numeric_target_id > (1 << 64) - 1:
+                    raise CompositionError(
+                        f"{binding_context}.targetId is out of range"
+                    )
             target_key = (target_kind, target_id)
             if target_key in bound_targets:
                 raise CompositionError(
@@ -2889,9 +3021,16 @@ def _validate_camera_shot_source(
                 "blendOutMs",
                 "priority",
             ),
-            ("cameraTrack", "follow"),
+            (
+                "cameraTrack", "follow", "displayName", "defaultHoldMs",
+                "transitionEasing", "activation",
+            ),
             shot_context,
         )
+        if "displayName" in shot:
+            _require_bounded_display_text(
+                shot["displayName"], f"{shot_context}.displayName", 128
+            )
         shot_id = _require_owner_stable_id(
             shot["shotId"], f"{shot_context}.shotId", 128
         )
@@ -2964,6 +3103,21 @@ def _validate_camera_shot_source(
                 raise CompositionError(
                     f"{shot_context}.{field} exceeds {maximum}"
                 )
+        if "defaultHoldMs" in shot:
+            hold_ms = _require_nonnegative_int(
+                shot["defaultHoldMs"], f"{shot_context}.defaultHoldMs"
+            )
+            if not 1 <= hold_ms + shot["blendInMs"] <= MAX_CUE_TIME_MS:
+                raise CompositionError(
+                    f"{shot_context}.defaultHoldMs plus blendInMs must be "
+                    f"1..{MAX_CUE_TIME_MS} ms"
+                )
+        for field, allowed in (
+            ("transitionEasing", ("LINEAR", "SMOOTHSTEP")),
+            ("activation", ("AUTO", "PATTERN_ONLY")),
+        ):
+            if field in shot and shot[field] not in allowed:
+                raise CompositionError(f"{shot_context}.{field} is invalid")
         if "cameraTrack" in shot:
             _validate_camera_track(shot["cameraTrack"], f"{shot_context}.cameraTrack")
         if "follow" in shot:
@@ -2995,11 +3149,11 @@ def _validate_camera_track(track: Any, context: str) -> None:
     keyframes = track["keyframes"]
     if (
         not isinstance(keyframes, list)
-        or len(keyframes) < 2
+        or len(keyframes) < 1
         or len(keyframes) > CAMERA_TRACK_MAX_KEYFRAMES
     ):
         raise CompositionError(
-            f"{context}.keyframes must be 2 to {CAMERA_TRACK_MAX_KEYFRAMES} rows"
+            f"{context}.keyframes must be 1 to {CAMERA_TRACK_MAX_KEYFRAMES} rows"
         )
     scene_ids: set[str] = set()
     previous_time_ms = -1
@@ -3047,7 +3201,7 @@ def _validate_camera_track(track: Any, context: str) -> None:
             raise CompositionError(
                 f"{key_context}.fovYDegrees must be between 1 and 179"
             )
-    if previous_time_ms != duration_ms:
+    if len(keyframes) > 1 and previous_time_ms != duration_ms:
         raise CompositionError(f"{context} must end at its duration")
 
 

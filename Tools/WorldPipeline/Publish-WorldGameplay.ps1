@@ -234,6 +234,7 @@ function Get-EncounterProfiles {
 				$patternProperties += 'verticalOffsetM'
 			}
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
 			if ($isKoukuSaydon) {
 				foreach ($field in @('gateId','targetBossPlacementId','actorProfileId','folderId')) {
@@ -258,10 +259,32 @@ function Get-EncounterProfiles {
 				@($pattern.stages).Count -eq 0) {
 				throw "Encounter pattern timing or range is invalid: $($pattern.patternId)"
 			}
+			$bossMotionPatternDurationMs = [uint64]0
 			foreach ($stage in @($pattern.stages)) {
 				Assert-StableId $stage.stageId "$($document.encounterId) stageId"
 				Assert-StableId $stage.actionId "$($document.encounterId) stage actionId"
 				Assert-JsonInteger $stage.durationMs "$($document.encounterId) stage durationMs" 1 ([uint32]::MaxValue)
+				$bossMotionPatternDurationMs += [uint64]$stage.durationMs
+			}
+			if ($null -ne $pattern.PSObject.Properties['bossMotion']) {
+				$bossMotion = $pattern.bossMotion
+				Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
+				Assert-JsonInteger $bossMotion.startMs 'KoukuSaydon bossMotion startMs' 0 600000
+				Assert-JsonInteger $bossMotion.endMs 'KoukuSaydon bossMotion endMs' 1 $bossMotionPatternDurationMs
+				Assert-JsonNumber $bossMotion.yawDegrees 'KoukuSaydon bossMotion yawDegrees'
+				if ($pattern.resetBossToSpawn -or $null -ne $pattern.PSObject.Properties['resetBossYawDegrees'] -or
+					$bossMotion.startMs -ge $bossMotion.endMs -or [Math]::Abs([double]$bossMotion.yawDegrees) -gt 360) {
+					throw 'KoukuSaydon bossMotion requires an ordered interval, valid yaw and no spawn reset'
+				}
+				foreach ($field in @('startPosition','endPosition')) {
+					if ($bossMotion.$field -isnot [Array] -or @($bossMotion.$field).Count -ne 3) { throw "KoukuSaydon bossMotion $field needs XYZ" }
+					foreach ($component in $bossMotion.$field) {
+						Assert-JsonNumber $component "KoukuSaydon bossMotion $field"
+						if ([Math]::Abs([double]$component) -gt 100000) { throw 'KoukuSaydon bossMotion position exceeds bounds' }
+					}
+				}
+				if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 			}
 		}
 		if ($isKoukuSaydon) {
@@ -739,6 +762,16 @@ function Convert-WorldDocument {
 					}
 					$triggerFields += @('playSequence', '1', [string]$event.sequenceInstanceId)
 				}
+				elseif ($event.type -eq 'claimCardMazeTelescope') {
+					Assert-ExactProperties $event @('type','targetId') "$relativePath claimCardMazeTelescope event"
+					Assert-StableId $event.targetId "$relativePath claimCardMazeTelescope targetId"
+					# The box is the strike volume the Server measures the hammer swing
+					# against; only the Kouku arena has a card maze.
+					if ($WorldId -cne 'KAKULSAYDON_ARENA') {
+						throw "claimCardMazeTelescope requires a box in the Kouku arena: $($placement.placementId)"
+					}
+					$triggerFields += @('claimCardMazeTelescope', '1', [string]$event.targetId)
+				}
 				else {
 					throw "Unsupported product trigger event: $($event.type)"
 				}
@@ -1021,12 +1054,44 @@ function Convert-WorldDocument {
         }
         if ($sequenceIds.Count -gt 4096) { throw 'Sequence viewer ID count exceeds 4096.' }
     }
+    # The same authoring that draws Seto owns its collision path. Reject
+    # unsupported motion instead of silently baking a different trajectory.
+    $mazeLanes = [Collections.Generic.List[string]]::new()
+    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+        $mazeInstances = @($sequenceDocument.instances | Where-Object { $_.instanceId -like 'cardmiro.march.instance.*' -and $_.enabled })
+        if ($mazeInstances.Count -ne 0 -and $mazeInstances.Count -ne 36) { throw 'Card maze requires all 36 enabled march lanes.' }
+        foreach ($instance in $mazeInstances) {
+            if ($instance.instanceId -cnotmatch '^cardmiro\.march\.instance\.from(3|6|9|12)\.lane[1-9]$') { throw 'Invalid card maze lane ID.' }
+            $template = @($sequenceDocument.templates | Where-Object { $_.sequenceId -ceq $instance.templateId })[0]
+            $track = @($template.tracks | Where-Object { $_.slotId -ceq 'object' })
+            if ($track.Count -ne 1 -or $track[0].keys.Count -ne 2 -or $template.interpolation -cne 'LINEAR' -or
+                $instance.anchorKind -cne 'WORLD' -or $instance.motionEnd -cne 'STOP' -or $instance.playbackSpeed -ne 1 -or
+                $instance.bindings.Count -ne 1 -or $instance.bindings[0].targetId -cne 'cardmiro.march.seto' -or
+                $template.objectMotion.count -ne 1) { throw "Unsupported card maze motion: $($instance.instanceId)" }
+            foreach ($name in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
+                if (@($template.objectMotion.$name | Where-Object { $_ -ne 0 }).Count) { throw 'Card maze path must use transform keys only.' }
+            }
+            $keys = $track[0].keys
+            if ($keys[0].timeMs -ne 0 -or $keys[1].timeMs -ne $template.durationMs -or $template.durationMs -le 0 -or
+                $template.durationMs -gt 120000 -or $instance.startDelayMs -lt 0 -or $instance.startDelayMs -gt 120000) { throw 'Invalid card maze lane time.' }
+            $fields = @([string]$instance.instanceId, [string]$instance.startDelayMs, [string]$template.durationMs)
+            foreach ($key in $keys) {
+                for ($axis = 0; $axis -lt 3; ++$axis) {
+                    $value = [double]$instance.position[$axis] + [double]$key.positionOffset[$axis]
+                    if ([double]::IsNaN($value) -or [double]::IsInfinity($value)) { throw 'Invalid card maze coordinate.' }
+                    $fields += $value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+                }
+            }
+            $mazeLanes.Add(($fields -join "`t"))
+        }
+    }
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t9`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t10`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)`t$($sequenceIds.Count)`t$($mazeLanes.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }
     foreach ($sequenceId in @($sequenceIds | Sort-Object)) { $lines.Add($sequenceId) }
+    foreach ($lane in $mazeLanes) { $lines.Add($lane) }
     return [ordered]@{
         WorldId = $WorldId
         AreaId = $AreaId

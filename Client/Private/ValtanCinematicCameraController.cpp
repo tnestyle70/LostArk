@@ -212,7 +212,9 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	const f32_t elapsedSeconds,
 	VALTAN_CINEMATIC_CAMERA_POSE& outPose)
 {
-	if (cue.Keyframes.size() < 2u || !std::isfinite(elapsedSeconds) ||
+	// Area shots may keep one pose for the whole duration; Valtan document
+	// validation still requires two endpoint keys before activating a cue.
+	if (cue.Keyframes.empty() || !std::isfinite(elapsedSeconds) ||
 		elapsedSeconds < 0.f)
 	{
 		return false;

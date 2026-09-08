@@ -158,3 +158,9 @@ Client/UI를 실행·조작·캡처하지 않았다. 사용자가 아직 확인�
 기존 sequence event는 방 전체 broadcast다. 여러 플레이어가 서로 다른 intro를 동시에 시험할 때의
 개인 카메라 격리 계약은 새로 구현하지 않았다. 이번 작업은 입장 카메라·자동 추적·편집·빠른 확인이며,
 제한 시간/피해/클리어 판정 등 마리오 게임 규칙을 새로 완성했다고 보고하지 않는다.
+
+## G5. 2026-09-08 3관문 마리오 입구 네 곳 비활성화
+
+Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json의 Mario1_go, Mario2_go, Mario3_go, Mario4_go만 enabled=false로 변경했다. 각 trigger의 transform/action/destination과 내부 intro·이동 trigger는 보존했다. 수정 전 JSON 대비 명시된 enabled 네 개 외 의미 값이 같음을 확인했다.
+
+World publisher Publish PASS. Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap의 네 enabled field=0과 Client viewer 결과도 확인했다. 변경 JSON strict parse PASS. 통합 Debug Product build는 out/BuildPipeline/runs/20260908T025058075Z-debug-product.json에서 PASS했다. 이 결과는 새 Server 시작 후 소비된다. 실제 Client에서 네 입구가 작동하지 않는지는 사용자 확인 대기다.

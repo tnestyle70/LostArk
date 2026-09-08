@@ -205,11 +205,14 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t revision = 0;
 	std::uint32_t count = 0;
 	std::uint32_t sequenceCount = 0;
-	if ((6u != header.size() && 7u != header.size()) ||
+	std::uint32_t laneCount = 0;
+	if ((6u != header.size() && 7u != header.size() && 8u != header.size()) ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || (8u != version && 9u != version) ||
+		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version) ||
 		(8u == version && 6u != header.size()) ||
 		(9u == version && (7u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u)) ||
+		(10u == version && (8u != header.size() || !ParseNumber(header[6], sequenceCount) || sequenceCount > 4096u ||
+			!ParseNumber(header[7], laneCount) || (laneCount != 0u && laneCount != 36u))) ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -398,6 +401,19 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						return false;
 					}
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE;
+					action.strTargetId = fields[actionCursor + 2u];
+				}
+				else if ("claimCardMazeTelescope" == fields[actionCursor])
+				{
+					if (1u != payloadCount ||
+						!IsStableId(fields[actionCursor + 2u]) ||
+						worldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA)
+					{
+						m_strStatus = "World claimCardMazeTelescope action is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					action.eKind = WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE;
 					action.strTargetId = fields[actionCursor + 2u];
 				}
 				else
@@ -655,6 +671,26 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		{ m_strStatus = "World sequence ID is invalid or duplicated"; return false; }
 		sequences.push_back(line);
 	}
+	std::vector<CARD_MAZE_MARCH_LANE> lanes;
+	std::unordered_set<std::string> laneIds;
+	for (std::uint32_t i = 0u; i < laneCount; ++i)
+	{
+		if (!std::getline(input, line)) { m_strStatus = "Card maze lanes truncated"; return false; }
+		StripCarriageReturn(line);
+		const auto f = SplitTabs(line);
+		CARD_MAZE_MARCH_LANE lane;
+		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() != 9u ||
+			!sequenceIds.contains(std::string(f[0])) || !laneIds.insert(std::string(f[0])).second ||
+			!ParseNumber(f[1], lane.delayMs) || lane.delayMs > 120000u ||
+			!ParseNumber(f[2], lane.durationMs) || lane.durationMs == 0u || lane.durationMs > 120000u ||
+			!ParseNumber(f[3], lane.startX) || !ParseNumber(f[4], lane.startY) || !ParseNumber(f[5], lane.startZ) ||
+			!ParseNumber(f[6], lane.endX) || !ParseNumber(f[7], lane.endY) || !ParseNumber(f[8], lane.endZ) ||
+			!std::isfinite(lane.startX) || !std::isfinite(lane.startY) || !std::isfinite(lane.startZ) ||
+			!std::isfinite(lane.endX) || !std::isfinite(lane.endY) || !std::isfinite(lane.endZ))
+		{ m_strStatus = "Card maze lane is invalid"; return false; }
+		lane.instanceId = f[0];
+		lanes.push_back(std::move(lane));
+	}
 	if (std::getline(input, line))
 	{
 		m_strStatus = "World bootstrap has trailing rows";
@@ -687,6 +723,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 
 	m_Placements = std::move(staged);
 	m_SequenceInstanceIds = std::move(sequences);
+	m_CardMazeLanes = std::move(lanes);
 	m_strAreaId = stagedAreaId;
 	m_iRevision = revision;
 	m_strStatus = "Loaded world bootstrap: " +

@@ -2134,8 +2134,8 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 0,
-      "actionDurationMs": 1500,
-      "hitTimeMs": 50,
+      "actionDurationMs": 1400,
+      "hitTimeMs": 100,
       "resourceCost": 0,
       "identityCost": 0,
       "movementDistance": 0.0,
@@ -2144,18 +2144,25 @@
       "effectId": "",
       "comboStages": [
         {
+          "actionDurationMs": 1400,
+          "hitTimeMs": 100,
+          "comboAdvanceMs": 1400,
+          "inputOpenMs": 100,
+          "inputCloseMs": 510
+        },
+        {
           "actionDurationMs": 1500,
-          "hitTimeMs": 50,
+          "hitTimeMs": 43,
           "comboAdvanceMs": 1500,
           "inputOpenMs": 0,
-          "inputCloseMs": 0
+          "inputCloseMs": 410
         },
         {
           "actionDurationMs": 1067,
           "hitTimeMs": 28,
           "comboAdvanceMs": 1067,
-          "inputOpenMs": 0,
-          "inputCloseMs": 0
+          "inputOpenMs": 93,
+          "inputCloseMs": 494
         },
         {
           "actionDurationMs": 1700,

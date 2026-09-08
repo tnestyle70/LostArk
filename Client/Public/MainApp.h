@@ -63,8 +63,7 @@ private:
 		KOUKU_SAYDON_ACTION_WORKBENCH,
 		ANIMATION,
 		EFFECT,
-		/* Compatibility-only route. MainApp canonicalizes it to EFFECT so old
-		   callers cannot reopen a second user-facing tool entry. */
+		/* Independent V2 document and preview windows. */
 		EFFECT_V2,
 		RENDERING,
 		UI,
@@ -597,6 +596,10 @@ private:
 		float3_t vWorldPosition = {};
 		uint32_t iAmount = 0;
 		bool_t isOutgoing = false;
+		/* NONE draws iAmount as a damage number. A suit draws it as that
+		hunter's card maze shard count instead. */
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
+			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
 	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the

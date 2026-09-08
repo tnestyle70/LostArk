@@ -442,3 +442,191 @@ Material Parameters는 이미 source scalar/vector를 authoring override로 저�
 ## G16. 최종 마감 범위
 
 사용자가 패턴 제작을 우선하고 작업 확대를 멈추도록 요청했다. 추가 Material family/새 shader/관련 publisher 확장은 이번 EXE에서 제외하고 설계만 보존한다. 기존 Effect panel 재사용·Parent tree·Model/Effect Sequencer·World resource·Pattern Save와 승인된 Nav 수정까지만 최종 컴파일하고 배포한다. 기존 스킬 Effect와 JSON은 생성하거나 변경하지 않는다. G13의 실제 재질 수직 구현은 미구현/후속으로 전환한다.
+
+## G17. 저장 GROUP의 Append 진입점
+
+2026-09-08 사용자가 `boss.kouku.ball.smoke` GROUP은 Preview되지만 Append가 보이지 않는다고 보고했다.
+통합 Effect Sequencer는 이미 `V2_GROUP + stable ID`를 단일 occurrence로 저장하고 기존 V2 group runtime을
+호출한다. 실제 누락은 Saved Effects tree의 사용되지 않는 PREVIEW/APPEND command 버튼과 쿠크 Action
+Workbench의 Effect source 직접 Append다. Current Effect의 Append도 긴 child 목록 아래에 배치돼 있다.
+
+- `EffectAuthoringResourceTree.cpp`: 선택한 saved resource에 Preview/Append를 표시해 기존 typed command를 보낸다.
+- `Effect_Tool.cpp`, `Effect_Tool_Workspace.cpp`: Current Effect의 Append를 child 목록 위로 옮기고 선택 draft의 수명을 사용한다.
+- `KoukuSaydonActionWorkbench.h/.cpp`: Effect source를 기존 resource와 typed asset ID로 재사용하거나 candidate에
+  등록한 뒤 occurrence까지 검증해 한 번 commit한다. GROUP을 leaf로 풀거나 Effect 파일을 재생성하지 않는다.
+- 기존 사용자 occurrence의 offset/rotation/scale/timing과 이미 등록한 resource 설정은 유지한다.
+
+새 C++/project/filter 등록, 별도 Effect runtime, nested group 편집 확장은 없다. 빌드는 전체 요청의 통합
+Product 단계에서 확인한다. UI 입력·저장·재로드 및 실제 시각 결과는 사용자가 수행한다.
+
+### G17-1. 쿠크 저장 GROUP 17개와 실제 사용처
+
+아래 표는 2026-09-08 현재 source와 runtime의 대조 결과다. 새 데이터 연결은 전체 패턴 변경 담당자가
+Composition의 기존 dirty 변경을 보존해 순차 적용한다. 시간은 현재 저장한 ordered Stage 합계의 ms다.
+
+| GROUP | 기존 사용처 또는 연결 위치 | 보존할 경계 |
+|---|---|---|
+| `boss.kouku.card.{clober,dia,heart,spade}.{red,black}` 8개 | `Card_Asset(PLAYER_SNAPSHOT)`이 Server 문양·색에 맞는 1개를 선택해 플레이어 머리 위에 지속 재생 | Pattern에 8개를 추가하지 않는다. `CLUB→clober`, `DIAMOND→dia` stable ID를 유지한다. |
+| `boss.kouku.disarm` | Pattern 1의 presentation 1~21에 이미 leaf 단위로 연결 | 앞뒤 방패의 별도 offset/yaw, 별/연기/바닥의 5개 위치와 10684ms 구간을 유지한다. GROUP 추가는 중복이다. |
+| `boss.kouku.find.heart` | Pattern 2의 presentation 1/2/3, 시작 6767/13167/19567, 각각 2400ms | 기존 `b_effectroot`, yaw 90°, followBoss=true 유지 |
+| `boss.kouku.find.star` | Pattern 5의 presentation 1/2/3, 시작 6166/12566/18966, 각각 934ms | 기존 `b_effectroot`, yaw 90°, followBoss=false 유지 |
+| `boss.kouku.dance` | Pattern 6 댄스 구간 0~26800의 4색 바닥 | BOSS root를 시작 위치로 잡고 followBoss=false, bone 없음. 마지막 패턴 전환 clip은 제외한다. |
+| `boss.kouku.dance.clap` | Pattern 6 양팔모으기 STAGE 590 시작 23300, 2000ms | BOSS root/followBoss=true. leaf에 손 높이 offset이 있으므로 추측한 bone을 더하지 않는다. |
+| `boss.kouku.find.core` | 진짜 Pattern 2 3900~23967 및 가짜 Pattern 5 1833~23900의 공통 구체로 연결 가능 | 진짜에만 추가해 퍼즐 답을 노출하지 않는다. 두 Pattern의 기존 heart/star는 별도 cue로 유지한다. |
+| `boss.kouku.medusa.blue`, `boss.kouku.medusa.red` | Pattern 11 `대형세이튼_파1빨2`의 두 attack Stage: 0~4000 / 6667~10667 | BOSS root/followBoss=true. 현재 DRAFT의 visual 저작 연결이며 Server judgement 구현을 뜻하지 않는다. |
+| `boss.kouku.ball.smoke` | 공 Object Motion 종료 endpoint에서 GROUP 한 번, 2000ms | 보스 고정 위치의 Pattern Effect로 생성하지 않는다. 여러 공은 동일 effect ID를 각 공 끝에서 참조한다. |
+
+smoke의 6색 Texture는 leaf position `(0,2.3,1.35)`, spread Particle는 child+leaf position `(0,4,2)`를
+이미 가진다. 공 중심과 6색 smoke 중심을 맞추려면 Object Effect row offset `(0,-2.3,-1.35)`에서
+조정하며 원본 leaf를 다시 만들지 않는다. 최종 위치·방향·모양의 판정은 사용자 관찰로 한다.
+
+## G18. WORLD owner 정상 완료와 취소 구분
+
+최종 공 10개 기준 마지막 공은 WORLD 시작 1481ms + 마지막 생성 offset 2700ms + 이동 1700ms + smoke 2000ms로
+7881ms까지 필요하다. actor bundle 애니메이션이 7400ms에 정상 완료될 때 기존 `STOP_OWNER`는
+남은 WORLD 재생까지 지운다. Shared에 기존 operation 값 0~3을 유지한 `FINISH_OWNER = 4`를
+추가하고 같은 owner identity packet 형식을 사용한다. Server의 member/all-run 정상 완료만
+FINISH를 보내며 취소·실패·restart는 기존 STOP을 유지한다. Client의 실제 WORLD consumer는
+FINISH에서 이미 시작한 재생을 각 authored 수명까지 유지하고 STOP에서 즉시 정리한다.
+protocol은 69로 올리고 Server/Client를 함께 재빌드·재시작한다. 기존 packet identity와 field layout은 유지한다.
+
+Shared `PacketMessages.h/cpp`, Server `GameRoom.h/cpp`의 기존 함수 구간만 변경한다. 새 파일이나
+프로젝트 등록은 없다. 기존 NetworkProtocolHarness의 world-motion 사례에서 operation prefix,
+member/epoch round trip, 잘못된 owner identity와 placement 거절을 확인한다. 컴파일·실행은
+통합 담당자가 수행하고 이 하위 작업은 source diff와 `git diff --check`만 확인한다.
+
+## G20. Cinematic Camera Tool의 쿠크 Area 저장 연결
+
+현재 CCameraTool은 Valtan source만 읽는다. 사용자 요청의 `카메라_2관문_세이튼 등장`을 같은
+Cut List와 Capture Pos에서 편집하도록 Source에 Kouku Area를 연결한다. PATTERN_ONLY shot의
+cameraTrack를 기존 cue/keyframe 편집기가 소비하고, 저장은 기존 Area parser와 MapTool의
+CAS 원자 저장을 사용한다. AUTO shot과 기존 Valtan source·추적·게임플레이는 유지한다.
+
+CameraTool.h/cpp는 source 선택과 draft/preview adapter를 소유하고 Level_KakulSaydonArena.h/cpp는
+기존 shot→cue 변환, 변경된 pattern shot staging, 검증 뒤 Area source 저장 경계를 제공한다.
+새 파일·project/filter 등록·Camera runtime은 없다. 이름은 UTF-8 displayName이고 shotId는 기존
+camera.kouku.pattern.N 계약이다. 카메라 진입·복귀 시간과 activation, AUTO/마리오 shot은 보존한다.
+독립 편집기의 미저장 draft나 디스크 baseline이 달라지면 저장을 거절하고 기존 상태를 보존한다.
+
+통합 담당자가 source shot과 bundle 공통 Camera occurrence를 연결하고 최소 컴파일·publish를
+수행한다. 이 하위 작업은 UI/Client 실행 없이 변경 diff와 실제 save/preview caller를 확인한다.
+
+## G21. 사용자 재생 확인 뒤 등장 높이와 공 생성 구간 조정
+
+사용자는 공 생성과 smoke 재생을 확인했고, 쿠크 상승량과 마지막 생성 위치를 조정하도록 요청했다.
+원본 root 최대 상승량은 17.846225m(5433.333ms)다. Pattern 8에 animationRootVerticalScale=0.8을
+지정해 14.276980m로 낮추고, Server의 바닥 Y=10.56 및 이동 구간 1870~5780ms는 유지한다.
+원본 애니메이션의 수직 복귀는 약 6100ms이며 수평 도착 5780ms와 구분한다.
+
+기존 10번째 공은 4181ms에 (7.802724,10.56,322.765918)에서 생성돼 수평 도착점과 5.664945m
+차이가 난다. WORLD occurrence 시작을 1481에서 3080ms로 옮기고 생성 구간을 3000ms로 지정한다.
+10개·300ms 간격·공 이동 1700ms·smoke 2000ms는 유지한다. 마지막 생성은 5780ms 도착점이고,
+마지막 공의 smoke는 7480~9480ms다. 정상 완료의 WORLD tail 보존 경로를 그대로 소비한다.
+
+Area camera.kouku.pattern.1을 카메라_2관문_세이튼 등장으로 등록하고 bundle.1의 공통 Camera로
+0~7400ms 연결한다. 진입 1200ms·hold 6200ms·복귀 1200ms와 SMOOTHSTEP을 사용한다.
+초기 wide pose는 eye=(-11.085,40.56,339.87), lookAt=(6.915,15.56,321.87), FOV=60으로 두고
+사용자가 Cinematic Camera Tool의 Capture Pos에서 최종 구도를 조정한다. 기존 AUTO/마리오 shot과
+134 revision의 조커찾기 무기 앵커 변경은 보존한다. 새 C++ 파일이나 project/filter 등록은 없다.
+
+검증은 관련 컴파일, Map/Composition/Gameplay publish, 수정 JSON/XML parse와 scoped diff check를
+실행한다. 카메라 진입·복귀와 조정 높이의 화면 확인은 사용자에게 남긴다.
+
+## G22. 사용자가 저장한 P1/P2 카메라 높이 적용
+
+사용자가 Area camera revision70에 camera.scene.auto.1/auto.2를 저장했다. Eye Y는 각각
+25.3147125244/25.3114490509이며 두 Pos 모두 높은 시야의 목표다. 처음 플레이어 시점은
+저장 key가 아니라 재생 시작 때 취득하며, 마지막 플레이어 시점도 현재 Follow pose로 계산한다.
+사용자가 정한 두 Eye/LookAt/FOV와 key ID는 그대로 보존한다. 진입1200ms, Camera box7400ms,
+복귀1200ms를 유지하고 Map domain publish로 서버 재생의 Client 카메라 입력까지 반영한다.
+이는 데이터 배포 작업이며 C++/프로젝트/엔진 변경이나 재빌드는 필요하지 않다.
+
+입력은 Follow 상태의 Composition Camera가 gameplay gate를 막지 않는지 실제 caller를 확인한다.
+현재 화면 VIEW/PROJ의 우클릭·스킬 aim ray, typed Server command까지 검토하고 직접 UI 검증은
+하지 않는다. source/runtime JSON parse·동일성, 기존 Bundle 연결과 scoped diff check를 확인한다.
+
+## G23. 쿠크 Camera Tool의 단일 Pos
+
+사용자가 선택한 P1 한 개를 cameraTrack.keyframes에 남긴다. durationMs는 Camera box의 기존
+7400ms를 유지하고 단일 key의 timeMs는 0이다. Level의 기존 Area parser와 Composition publisher의
+Area track validator는 1..64개를 허용하며 두 개 이상일 때만 마지막 key가 durationMs와 같아야 한다.
+기존 Sample_Cue는 한 key를 처음부터 끝까지 고정 pose로 반환한다. Valtan document와 제품
+controller의 최소 두 key 검사는 유지하고 별도 카메라 재생 경로는 만들지 않는다.
+
+Camera Tool의 Kouku Source는 한 Pos로 Capture/선택/Go To Scene/Start/Save를 허용한다. Duration
+변경 때도 단일 key의 0ms를 유지하며 static shot adapter도 P1만 보여준다. 두 개 이상인 기존
+track은 그대로 읽고 편집한다. 사용자 P1의 Eye/LookAt/FOV와 ID, 진입·복귀 시간은 변경하지 않는다.
+원본 P2 삭제와 publish는 통합 담당자가 순차 수행한다. 기존 Valtan 계약 검사와 Area track의
+단일 key·잘못된 시작 시각·빈 목록·두 key 종료 경계 검사를 기존 test 파일에서 실행한다.
+
+
+## G24. 댄스 장판 방향과 사용자 박수 배치·PRODUCT 선택 (2026-09-08)
+
+최신 사용자 저장본의 PATTERN_6 stage/Logic/박수 occurrence를 보존하면서 boss.kouku.dance의
+presentation.4에 rotationDegrees [0,90,0]을 설정한다. GROUP/leaf 원본을 회전시키지 않고 Pattern
+occurrence의 Y축 회전만 바꾼다. 장판0~26800ms와 사용자 박수 presentation.6~19 총14개의 각
+시작 시각·2000ms 수명을 유지한다. 앞선 G17/G19의 박수 한 개 연결은 이전 기준점이다.
+
+P6을 PRODUCT로 설정하고 기존 authored 순서의 playAllPatternIds에 반영한다. Patterns 목록에는
+선택 Pattern의 Set Pattern to PRODUCT 버튼을 기존 Set_PatternAuthoringStatus로 연결한다.
+검증 실패는 기존 draft를 보존하고 성공 뒤 Save가 필요함을 표시한다. 기존 CAS Save와
+Map/Composition/Gameplay publish·Server 재시작을 실제 반영 경계로 유지한다. 버튼·저장 API의
+상세 구현/검증은 Gate Pattern Bundle PLAN/RESULT G21을 정본으로 사용한다.
+
+변경은 기존 Composition JSON과 Workbench의 목록 UI이며 새 Effect asset·C++ 파일·project/filter
+등록은 없다. JSON parse, 장판 rotation 외 사용자 값 보존과 박수14개 유지, 해당 domain publish 및
+최소 Product 컴파일을 확인한다. 실제 장판 방향·박수 겹침/타이밍은 사용자가 아레나에서 판정한다.
+
+
+## G25. Collider Box Detail의 즉시 geometry Preview (2026-09-08)
+
+Position/Rotation/Scale과 Width/Height/Depth 또는 Radius 편집은 현재 표시 clock에서 즉시
+Collider wire에 반영한다. resource의 HalfExtents/Radius는 유지하고 box Scale로 환산한다.
+편집값은 Detail에 남으며 Apply/Save 이전에는 Composition draft, generation과 파일을 바꾸지 않는다.
+시간·Bone·Logic 등 다른 미적용 필드는 geometry Preview에 섞지 않는다.
+
+Workbench의 KOUKU_COLLIDER_GEOMETRY_PREVIEW_REQUEST는 stable Pattern ID와 occurrence를
+전달하고 Request_ColliderGeometryPreview가 원본 occurrence의 세 geometry 배열만 덮어쓴다.
+같은 occurrence의 연속 drag를 하나로 합치며 active Pattern 및 Bundle member에는 새 재생·Seek를
+요청하지 않는다. inactive일 때만 현재 cursor에서 기존 paused Pattern Preview를 한 번 준비한다.
+끝 cursor는 duration을 유지한다. Cancel/선택 동기화는 현재 적용된 draft geometry로 복구하고,
+새 Preview/계층 전환 Reset은 폐기되는 session의 오래된 overlay request를 함께 버린다.
+
+MainApp은 Pattern Preview 준비 뒤 geometry queue를 소비한다. PresentationPlayer는 정확한
+Pattern/member·occurrence·Collider resource를 확인하고 해당 wire만 갱신한다. 기존 actor, clock,
+Effect/SFX handle과 다른 session은 유지한다. follow=false Collider는 처음 확정한 anchor basis와
+placement scale을 보관해 drag 중 움직이는 actor를 새 anchor로 취득하지 않는다.
+
+수정 범위는 기존 Workbench H/CPP, MainApp, PresentationPlayer H/CPP와 기존 focused native
+harness다. 새 schema·C++ 파일·project/filter 등록은 없다. running/paused와 Bundle child, cold/end
+cursor, invalid 값 보존, 연속 편집 합치기, Cancel/선택 복구와 authoring 무변경을 기존
+--kouku-preview-transport-contract에서 검사한다. Product 빌드 후 실제 wire 즉시 반영은 사용자가 확인한다.
+
+
+## G27. V2 Effect Box Detail의 Sequencer 기준 즉시 P/R/S 편집 (2026-09-08)
+
+Effect Box Detail의 Position/Rotation/Scale은 실제 Pattern 또는 active Bundle member의 현재
+clock과 actor/bone/WORLD anchor에 즉시 반영한다. Detail Preview도 같은 owner 경로를 사용한다.
+독립 resource 목록의 Preview만 기존 자원 미리보기로 남긴다. Effect 편집값은 stable Pattern ID와
+occurrence ID별로 보관해 선택을 바꿔도 유지하고, Save 후보에 geometry 세 배열만 모아 검증한 뒤
+기존 CAS 저장이 성공하면 commit한다. 미적용 timing/Bone/Logic은 자동 저장하지 않는다. 잘못된 값과
+외부 파일 변경은 기존 파일을 보존하며 명시 Revert는 해당 box geometry를 취소한다.
+
+기존 Collider geometry request를 COLLIDER/EFFECT 공통 typed request로 확장한다. PresentationPlayer는
+실제 session의 선택 row만 갱신한다. Effect는 기존 V2 GROUP/LEAF handle, clock, pause, snapshot을
+유지하고 새 pivot sampler로 같은 age의 기존 child 객체를 다시 계산해 월드 공간 particle birth도 갱신한다.
+이미 렌더 큐에 들어간 객체를 교체하지 않아 연속 drag 도중 빈 프레임이 생기지 않게 한다.
+전체 Pattern/Bundle과 무관한 Effect/Sound를 재시작하지 않는다. frozen anchor는 처음 위치를 보존하고,
+bone/WORLD history에는 편집 geometry 전의 resolved anchor와 WORLD scale을 기록한다. sampler가
+새 geometry를 합성하며 기록되지 않은 과거를 현재 actor 위치로 위장하지 않는다.
+
+V2 Object의 pivot scale 소비와 trail의 과거 pivot sampling도 같은 경로에서 확인한다. 기존 C++와
+기존 focused native 검사만 수정하며 신규 runtime, schema, project/filter 항목은 없다. Workbench의
+running/paused/Bundle/선택전환/복수 box Save·reload/invalid·CAS 보존, V2의 동일 age 재계산과 실제
+runtime 컴파일을 확인한다. 최종 Product EXE 교체는 실행 프로세스 종료 뒤 수행하며 화면의 위치·
+크기·회전과 이펙트 모양은 사용자가 직접 판정한다.
+
+Stop/paused seek는 같은 실행의 활성 Effect row와 raw anchor history를 보존하고 V2 절대 clock으로
+되감는다. 과거 시점은 이미 기록한 표본을 사용하며 history에 역순으로 append하지 않는다. Reset과
+새 Pattern 실행은 기존 Stop_Session으로 완전히 해제한다. WORLD anchor 준비를 기다린 Effect는
+anchor가 생긴 뒤 기존 GROUP/LEAF 경로로 재시도한다.

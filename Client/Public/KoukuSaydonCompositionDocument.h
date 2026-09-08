@@ -40,6 +40,7 @@ namespace Client
 		std::uint32_t iDurationMs = 0u;
 		std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE>
 			AnimationOccurrences;
+		bool bRetargetOnEnter = false;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_STAGE&) const = default;
 	};
@@ -351,6 +352,17 @@ namespace Client
 	inline constexpr std::array<const char_t*, 3u> KOUKU_SAYDON_LOGIC_TYPES = {
 		"DURATION", "TRIGGER", "RESULT" };
 
+	// Absolute world base transform; animation keeps its original vertical pose.
+	struct KOUKU_SAYDON_BOSS_MOTION final
+	{
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iEndMs = 1u;
+		std::array<double, 3u> StartPosition{};
+		std::array<double, 3u> EndPosition{};
+		double fYawDegrees = 0.0;
+		bool operator==(const KOUKU_SAYDON_BOSS_MOTION&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_PATTERN final
 	{
 		std::string strPatternId;
@@ -371,6 +383,8 @@ namespace Client
 		std::uint32_t iNextPresentationOccurrenceOrdinal = 1u;
 		bool_t bResetBossToSpawn = false;
 		std::optional<double> ResetBossYawDegrees;
+		std::optional<KOUKU_SAYDON_BOSS_MOTION> BossMotion;
+		double fAnimationRootVerticalScale = 1.0;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
 		std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
 		std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE> SummonOccurrences;
@@ -384,6 +398,11 @@ namespace Client
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN&) const = default;
 	};
+
+	// Holds start/end outside the interval. False leaves outputs unchanged.
+	[[nodiscard]] bool Sample_KoukuSaydonBossMotion(
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, double patternTimeMs,
+		std::array<double, 3u>& outPosition, double& outYawDegrees) noexcept;
 
 	struct KOUKU_SAYDON_COMPOSITION_FOLDER final
 	{

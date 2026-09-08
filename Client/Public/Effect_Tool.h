@@ -32,6 +32,7 @@
 
 NS_BEGIN(Engine)
 class CModel;
+class CCamera;
 NS_END
 
 NS_BEGIN(Client)
@@ -39,8 +40,6 @@ NS_BEGIN(Client)
 class CEffectObject;
 class CEffectAuthoringResourceTree;
 class CEffectAuthoringSequencer;
-class CEffectAuthoringV2Pane;
-class CEffect_Tool_V2;
 class CKoukuSaydonPresentationPlayer;
 class CEffectThumbnailCache;
 class CBalanceTool;
@@ -554,8 +553,9 @@ public:
 		CBalanceTool* pBalanceTool = nullptr);
     ~CEffect_Tool();
 
-    void Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuSaydonPresentationPlayer* player);
+    void Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player);
     void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
+    void Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera);
     void Update_AuthoringWorkspace(float dt, bool active);
     void Deactivate_AuthoringWorkspace();
     bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
@@ -832,7 +832,8 @@ private:
     bool_t Try_SaveDocument();
     size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
-    bool_t Try_SaveDocumentAs(const std::string& strAssetId);
+    bool_t Try_SaveDocumentAs(const std::string& strAssetId,
+        const std::string& strDisplayName = {}, const std::string& strParentId = {});
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
@@ -931,6 +932,8 @@ private:
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
 	bool_t Try_PlayActiveUnifiedEffect();
+	bool_t Try_PlayRecoveryEffect();
+	void Render_RecoveryEffectForProduct(const std::string& strProductEffectId);
 	bool_t Try_PlaySavedUnifiedEffect(
 		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
 	bool_t Try_PlayUnifiedModelCues(
@@ -1475,18 +1478,13 @@ private:
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
     std::unique_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
-    std::unique_ptr<CEffectAuthoringV2Pane> m_pAuthoringV2;
-    EFFECT_RESOURCE_KEY m_AuthoringV2PreviousKey;
     std::vector<EFFECT_COMPOSITION_WORLD_RESOURCE> m_AuthoringWorldObjects;
     std::unordered_map<CEffectObject*, uint32_t> m_AuthoringOccurrenceLevels;
     std::unordered_map<CEffectObject*, std::shared_ptr<const EFFECT_DOCUMENT_DESC>> m_AuthoringOccurrenceDocuments;
     std::unordered_map<std::string, std::string> m_AuthoringParents;
     std::string m_strAuthoringParentId, m_strAuthoringWorldStatus;
-    bool m_bAuthoringV2Selected = false, m_bAuthoringWorldLoaded = false;
-    CEffect_Tool_V2* m_pLegacyV2 = nullptr;
-    bool m_bLegacyV2Window = false;
+    bool m_bAuthoringWorldLoaded = false;
     int m_iAuthoringResourceSource = 0;
-    uint64_t m_iAuthoringV2PreviewGeneration = 0u;
 };
 
 NS_END

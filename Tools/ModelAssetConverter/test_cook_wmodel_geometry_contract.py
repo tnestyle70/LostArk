@@ -718,6 +718,65 @@ def write_harness_suite(output_root: Path) -> None:
 
 
 class WModelGeometryContractTests(unittest.TestCase):
+    def test_skinned_uv_tail_preserves_legacy_and_animation_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mesh, skeleton, animation = _build_legacy_skinned_fixture(root)
+            static = geometry.parse_legacy_wmodel(_build_legacy_wmodel(root / "material.wmodel").read_bytes())
+            material = next(s for s in static[1] if s.type_id == 2)
+            sections = [geometry.Section(1, 0, bytes(40), mesh.read_bytes()), material,
+                        geometry.Section(3, 0, bytes(40), skeleton.read_bytes()),
+                        geometry.Section(4, 0, fixed_bytes("animation", 40), animation.read_bytes())]
+            legacy = geometry.rebuild_wmodel((4, 1, 1, (0, 0, 0, 0)), sections, mesh.read_bytes())
+            uv1 = [(0.0, 0.5), (0.25, 0.75), (1.0, -1.0)]
+            uv2 = [(0.125, 0.0), (0.625, 0.5), (1.125, 1.0)]
+            cooked, receipt = geometry.cook_skinned_uv_contract(legacy, {0: {"TEXCOORD_1": uv1, "TEXCOORD_2": uv2}})
+            before = geometry.parse_skinned_uv_wmodel(legacy)
+            after = geometry.parse_skinned_uv_wmodel(cooked)
+            self.assertEqual(after["versionMinor"], 3)
+            self.assertEqual(after["meshHeader"][4], 76)
+            self.assertEqual(after["uvRows"], [{"TEXCOORD_1": uv1, "TEXCOORD_2": uv2}])
+            self.assertEqual(before["mesh"][52:], after["mesh"][52:before["legacyEnd"]])
+            self.assertEqual(before["sections"][1:], after["sections"][1:])
+            self.assertTrue(receipt["nonMeshSectionsPreserved"])
+            self.assertEqual(receipt["animationCount"], 1)
+
+    def test_skinned_uv_tail_rejects_corruption_and_missing_channel_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mesh, skeleton, animation = _build_legacy_skinned_fixture(root)
+            static = geometry.parse_legacy_wmodel(_build_legacy_wmodel(root / "material.wmodel").read_bytes())
+            material = next(s for s in static[1] if s.type_id == 2)
+            sections = [geometry.Section(1, 0, bytes(40), mesh.read_bytes()), material,
+                        geometry.Section(3, 0, bytes(40), skeleton.read_bytes()),
+                        geometry.Section(4, 0, fixed_bytes("animation", 40), animation.read_bytes())]
+            legacy = geometry.rebuild_wmodel((4, 1, 1, (0, 0, 0, 0)), sections, mesh.read_bytes())
+            uv = [(0.25, 0.75)] * 3
+            for channels in ({0: {"TEXCOORD_2": uv}}, {0: {"TEXCOORD_1": uv[:2]}},
+                             {0: {"TEXCOORD_1": [(float("nan"), 0)] * 3}}, {1: {"TEXCOORD_1": uv}}):
+                with self.assertRaises(ValueError):
+                    geometry.cook_skinned_uv_contract(legacy, channels)
+            cooked, _ = geometry.cook_skinned_uv_contract(legacy, {0: {"TEXCOORD_1": uv}})
+            parsed = geometry.parse_skinned_uv_wmodel(cooked)
+            tail = parsed["legacyEnd"]
+            baseline = parsed["mesh"]
+            def reject(changed: bytes) -> None:
+                corrupt = geometry.rebuild_wmodel(parsed["modelHeader"], parsed["sections"], changed)
+                with self.assertRaises(ValueError):
+                    geometry.parse_skinned_uv_wmodel(corrupt)
+            corrupt = bytearray(baseline); corrupt[-1] ^= 1
+            reject(bytes(corrupt))  # payload digest mismatch
+            for relative, value in ((0, 99), (4, geometry.VF_TEXCOORD2), (8, 0x7fc00000)):
+                corrupt = bytearray(baseline)
+                payload_start = tail + geometry.SKINNED_UV_HEADER.size
+                struct.pack_into("<I", corrupt, payload_start + relative, value)
+                corrupt[tail + 16:tail + 48] = hashlib.sha256(corrupt[payload_start:]).digest()
+                reject(bytes(corrupt))  # valid digest, invalid count/mask/non-finite UV
+            corrupt = bytearray(baseline)
+            struct.pack_into("<I", corrupt, 16 + 12, geometry.VF_STATIC_BASE | geometry.VF_BONE_WEIGHT | geometry.VF_TEXCOORD1 | geometry.VF_TEXCOORD2)
+            reject(bytes(corrupt))  # aggregate flags require absent UV2
+            reject(baseline[:-1])
+
     def test_harness_suite_has_exact_nonempty_corrupt_fixture_denominator(
         self,
     ) -> None:

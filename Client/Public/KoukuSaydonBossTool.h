@@ -49,6 +49,9 @@ namespace Client
 		const std::vector<PRODUCT_FOLDER>& Get_ProductFolders() const { return m_ProductFolders; }
 		const std::vector<PRODUCT_BUNDLE>& Get_ProductBundles() const { return m_ProductBundles; }
 		bool Play_BundleById(std::string_view bundleId, std::uint32_t expectedSourceRevision, std::string& status);
+		// F1 inventory selection resolves the latest published revision at the click.
+		bool Play_SavedPatternById(std::string_view patternId, std::string& status);
+		bool Play_SavedBundleById(std::string_view bundleId, std::string& status);
 		CKoukuSaydonBossTool() = default;
 
 		void Open();
@@ -88,6 +91,8 @@ namespace Client
 
 	private:
 		bool Play_Selected(std::string& outStatus);
+		bool Play_LoadedPatternById(std::string_view patternId, std::string& status);
+		bool Play_LoadedBundleById(std::string_view bundleId, std::string& status);
 		void Normalize_Selection();
 		[[nodiscard]] const PRODUCT_PATTERN*
 			Find_SelectedPattern() const;

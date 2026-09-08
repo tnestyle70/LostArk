@@ -83,7 +83,7 @@ Kouku domain은 필요한 `koukusaydon.product`만 공식 domain runner로 갱�
 3. Current Effect의 Play All/Family/Element로 미리 보고, Append를 누르면 Effect Sequencer의 현재 시간에 추가된다. Model View에서 모델 선택 → Reload saved ordered clips 또는 KoukuSaydon Patterns에서 저장 Pattern/Bundle 선택 → Sequencer Play로 함께 확인한다.
 4. World Object 리소스는 저장 model/texture를 사용한다. V2 World Object Resource에서 공_튀기기 Motion을 선택해 CPU draft로 가져오고 기존 Effect Detail로 튜닝한다. Effect Save와 Sequence Save는 서로 다른 저장 단위다.
 5. Action Workbench의 Patterns by Gate 바로 위 Save는 Parent/Bundle을 포함한 전체 Composition을 저장하며 Saved/Unsaved를 표시한다. 자동 저장이 아니다.
-6. Camera와 fake Spotlight는 기존 G03 경로를 유지한다. 룰렛 보행면은 현재 해당 Pattern이 DRAFT라 Product run에 아직 포함되지 않는다. 사용자가 Pattern Status를 PRODUCT로 저장·Publish All PRODUCT 후 Server를 재시작하면 Complete Play에서 확인할 수 있다. 현재 저장 상태는 임의로 바꾸지 않았다.
+6. Camera와 fake Spotlight는 기존 G03 경로를 유지한다. 후속 source149에서 룰렛 P7은 PRODUCT로 설정됐다. 최신 보행면 서버 검증과 남은 Product/아레나 확인은 Gate Pattern Bundle RESULT G22를 따른다.
 
 ## 남은 경계
 
@@ -134,3 +134,317 @@ Kouku domain은 필요한 `koukusaydon.product`만 공식 domain runner로 갱�
 - Data/Effects JSON392개 SHA256 및 Composition95 SHA256 전부 보존. 2관문 Parent8·Bundle8, 전체 참조 확인. `세이튼등장`2명/클립4개, `파1빨2`·`조커찾기`각2명/클립0개, 나머지5개Parent/Bundle은 member0 상태까지 실제 파일과 대조했다. 원본 백업 `out/EffectCompositionWorkbench/pre-rebuild-user-saved-composition-r95.json`.
 - 보존 검사 JSON: `out/EffectCompositionWorkbench/final-pattern-tools-preservation.json`. 실제 Effect 생성·스킬 binding·기존 W shader 변경 없음. 미완성 Material 작업은 `out/EffectCompositionWorkbench/deferred-material-20260907/`에 후속 참고로만 보관했다.
 - Client/UI 자율 실행·화면 캡처·visual PASS 없음. 사용자가 F1 Effect Tool과 Action Workbench에서 입력·저장·재생을 확인한다. 종료 확인 뒤 EXE만 배포했으며 Client/Server는 자동 실행하지 않았다.
+
+## G17. 저장 GROUP Append 연결 — 2026-09-08
+
+사용자는 `boss.kouku.ball.smoke` GROUP Preview는 정상이며 Append가 보이지 않는다고 보고했다.
+실측 결과 통합 Effect Sequencer는 이미 GROUP stable ID를 단일 occurrence로 소비했다. Saved Effects
+tree는 PREVIEW/APPEND command와 consumer가 있어도 버튼이 없었고, Current Effect의 Append는 긴
+child 목록 아래에 있었다. 쿠크 Action Workbench의 source 직접 Append는 Light/Camera에만 표시됐다.
+
+구현 상태:
+
+- Saved Effects tree에 선택 리소스의 `Preview`와 `Append`를 연결했다. V1/V2 LEAF/GROUP의 owner key를 유지한다.
+- V2 Current Effect의 Append를 child 목록 위로 옮겼고, tree command도 현재 선택 draft의 native 수명을 사용한다.
+- 쿠크 `Resources > Effect` source에 `Append Effect at Cursor`를 표시한다. 선택한 child Pattern의 cursor에
+  하나의 GROUP/LEAF resource reference를 추가한다. bundle/빈 Pattern에는 actor lane 추가를 허용하지 않는다.
+- 새 resource 등록과 occurrence 생성은 같은 candidate를 검증한 뒤 한 번 commit한다. 실패하면 기존 draft와
+  resource ordinal을 보존한다. 기존 typed asset reference를 찾으면 저장된 resource 설정을 재사용한다.
+- Effect runtime, Group/leaf 원본, Composition 저작 데이터는 이 UI 수정에서 변경하지 않았다. 원본 Group을
+  leaf로 펼쳐 Pattern에 복제하는 경로도 추가하지 않았다. 관련 17 GROUP 사용처는 PLAN G17-1에 대조했다.
+
+자동 검증과 수동 검증:
+
+- 변경 구간 diff와 기존 actual caller를 대조했다. source→typed key→기존 V2 snapshot/Group runtime 연결을 확인했다.
+- 변경 소스 5개와 PLAN/RESULT의 `git diff --check`가 통과했다. 모든 변경 H/CPP가 기존 Client project/filter에 등록되어 있음을 확인했다.
+- 독립 diff 검토에서 확인한 범위의 correctness/transaction 결함은 없었다. 전체 caller 검토는 다른 구현의
+  agent slot 확보 요청으로 중단했으며 이를 전체 검토 PASS로 기록하지 않는다.
+- 최소 컴파일은 전체 기능의 통합 Product 빌드 담당자가 수행한다. 이 하위 작업에서 build/publish/Client 실행은 하지 않았다.
+- UI 버튼 클릭, Save/Reload 및 아레나 시각 확인은 사용자 대기다.
+
+## G18. WORLD 정상 완료 신호 — 2026-09-08
+
+최종 공 10개의 마지막 smoke는 7881ms까지 필요하여 7400ms의 actor 완료 후에도 481ms가 남는다.
+기존 owner Stop이 이 재생을 자르지 않도록 정상 완료와 취소의 Shared/Server 경계를 분리했다.
+
+- `WORLD_SEQUENCE_OPERATION`은 기존 0~3을 보존하고 `FINISH_OWNER = 4`를 추가했다. packet field
+  layout은 유지하며 FINISH도 STOP과 같은 exact run/member identity와 transform 거절 검사를 소비한다.
+  Read는 같은 Write 검증을 통과한 뒤에만 destination을 변경한다.
+- protocol은 69다. 68 peer는 새 operation을 읽을 수 없어 Server/Client를 함께 갱신·재시작해야 한다.
+  기존 packet type 값과 source-pinning 계약은 그대로 유지한다.
+- Server `Stop_KoukuWorldOwner(memberId, finished)`의 기본값은 false다. 정상 member 완료와
+  `Clear_KoukuSaydonPatternAudition(completed)`만 FINISH를 보내고 취소·실패·재시작은 STOP을 보낸다.
+  Server의 완료된 replay/support ownership 정리는 기존대로 유지한다. Client tail 소비자는 통합 담당자가 연결한다.
+- 기존 NetworkProtocolHarness에 5종 operation prefix/member round trip, whole-run STOP/FINISH
+  round trip, epoch 없는 owner 신호와 placement를 가진 FINISH 거절을 추가했다. 현재 protocol 기대값도 69로 맞췄다.
+- source diff와 `git diff --check`는 통과했다. JSON/XML 변경은 없고 새 project 등록도 없다.
+  이 하위 작업은 빌드·하네스 실행·publish·Client 실행을 하지 않았다. 통합 시 기존
+  `NetworkProtocolHarness --kouku-bundle-only`가 새 사례를 전부 포함한다. 실행 결과와 실제 재생은 별도 기록한다.
+
+## G19. 2026-09-08 쿠크 공·V2 연결 최종 통합 결과
+
+Composition source revision133, WorldSequence source revision401을 사용한다. 사용자가 저장한 최신 revision130의 stage·Logic·기존 occurrence를 보존하고 다음 연결만 추가했다.
+
+| 연결 | 최종 데이터 |
+|---|---|
+| 쿠크 본체 | PATTERN_8 bossMotion, (2.04,10.56,316.95)→(11.79,10.56,326.79), 1870~5780ms, yaw314.7368, 도착점 유지 |
+| 높이 | Server baseY10.56. 기존 CNpc root 수평 억제 유지, sourceZ→worldY animation pose 유지. 추가 포물선 없음 |
+| 공 발생 | 기존 world.6 / PATTERN_8.world.1, start1481/duration4933 보존. ball_bounce, BOSS_SPAWN, occurrenceSpeed2/3 × 원본 instanceSpeed1.5 = effective1 |
+| 공 개수·궤적 | count10, interval300ms, spread360° 수평. 기존 velocity(1,5,0), acceleration(0,-6,0), lifetime1700ms 보존 |
+| 폭발 | 각 공 Motion End에 boss.kouku.ball.smoke GROUP 2000ms. Group 원본 offset을 Effect row (0,-2.3,-1.35)로 보정 |
+| 댄스 장판·박수 | PATTERN_6 dance 0~26800ms, clap23300~25300ms |
+| 세이튼 찾기 공통 구체 | PATTERN_2 find.core3900~23967ms, PATTERN_5 find.core1833~23833ms. 진짜·가짜 양쪽에 연결 |
+| 파랑·빨강 | 현재 저작된 PATTERN_11 attack stage에 medusa.blue0~4000ms, medusa.red6667~10667ms. DRAFT 상태와 gameplay 판정은 그대로 |
+| 기존 연결 | card.{clober,dia,heart,spade}.{red,black} 8종은 Server snapshot 문양·색별 플레이어 표현을 그대로 사용. disarm의 튜닝된21개 leaf와 find.heart/star는 중복 추가하지 않음 |
+
+첫 공1481ms, 열 번째4181ms, 마지막 공 이동 종료5881ms, 마지막 smoke 종료7881ms다. 공 출생마다 패턴 시각으로 계산한 world matrix를 고정한다. 플레이어 수와 무관하게 한 번씩 생성하고 이후 쿠크·플레이어를 따라가지 않는다. body와 end Effect는 같은 궤적 sampler·출생 matrix를 사용한다.
+
+Pattern Play의 bossMotion은 기존 Bundle preview player를 임시 한 member로 재사용한다. Play Bundle은 로컬 저작 preview이며 실제 Server Play는 별도 audition command다. 둘은 같은 선형 구간과 시작/도착 유지 계약을 사용한다. P8/P9와 세이튼등장_동시 bundle1을 PRODUCT로 승격하고 publisher 계약에 맞춰 playAllPatternIds 순서도 동기화했다.
+
+자연 완료는 FINISH_OWNER(protocol69)로 새 발생을 닫고 남은 body/tail을 보존한다. Stop·실패는 즉시 정리한다. 새 run epoch가 오면 이전 공·Effect·대기 cue를 정리한다. 초기 입장이나 Product 준비 순서 때문에 수신 cue를 잃지 않도록 최대1024개를 유효 수명 동안 보존하며 sourceRevision이 맞은 뒤 시작한다. Product의 worldEmissionAnchors는 occurrence 시각과 offset을 제공하고 편집 중인 source를 매 프레임 다시 읽지 않는다.
+
+Kouku publisher의 엄격한 JSON 검사에서 기존 MapCatalog의 Character Select 영역에 sourceLights/lights가 각각 두 번 존재함을 발견했다. 완전히 동일한 앞쪽 두 속성만 제거했고 전체 유효 JSON 값이 수정 전과 동일함을 확인했다.
+
+| 실제 실행 검증 | 결과 |
+|---|---|
+| Shared / Server / Client 최소 ClCompile | PASS. 최초 Client scope 오류 교정 후 재컴파일 PASS |
+| Debug Product Engine→Shared→Server→Client | PASS. compile/link, SDK·shader·DLL 정상 배포 |
+| Map / Composition / GameplayBalance / World publish | PASS. Composition revision133, Source/Runtime WorldSequence 의미 동일 |
+| Server --kouku-bundle-contract-test | PASS, failures0. 이동 시작/도착 유지, 30Hz 경계, tick wrap, navigation 거부·보존, Bundle/Restart/Stop 포함 |
+| NetworkProtocolHarness --kouku-bundle-only | PASS. FINISH/STOP owner roundtrip, 유효성 거부, protocol69 |
+| 새 bossMotion projector focused2개 | PASS |
+| 기존 Object publisher fixture + V2 Group 자연 수명 검사 | PASS,2 tests |
+| 변경 JSON strict parse / 변경 XML parse | PASS |
+| 공10개 발생·마지막 Effect 시각·published motion/anchor 일치 | PASS, final-schedule.json |
+| Client 화면·Append/Save/Reload 실제 UI 입력 | 사용자 확인 대기. 에이전트 실행·조작·캡처 없음 |
+
+최종 빌드 증거는 out/BuildPipeline/runs/20260908T025058075Z-debug-product.json이다. 상세 로그·수치는 out/KoukuPatternEffects20260908에 있다. 기존 C4819/PDB/셰이더 경고는 남으며 최종 컴파일·링크 오류는0이다. git diff --check는 이 작업의 파일에서 PASS이고 작업 전부터 있던 ArenaCameraProfile.cpp:53의 탭만 전체 검사에서 별도로 남는다. 해당 사용자 줄은 수정하지 않았다.
+
+사용자는 새 Server + Client profile을 Ctrl+F5로 실행한다. endpoint는192.168.0.14:7777이다. KoukuSaydon Arena에서 Composition의 세이튼등장_동시를 골라 Play Bundle 또는 서버 재생 명령으로 확인한다. Object Tool → 공 → 공_튀기기 → Effect Rows에 끝 smoke가 보인다. 다른 Group은 Object Resources → V2 Effects에서 고르고 Append Effect at Motion End를 사용한다. Effect Tool의 Saved Effects / Current Effect 상단과 쿠크 Resources → Effect에도 Append가 있다.
+
+사용자 최종 확인은 화면상9시 방향, 원본 상승 높이, 공 발사 위치·속도·smoke 크기/정렬이다. 최종 visual PASS를 대신 기록하지 않는다. 새 Resources binary, vcxproj/filters 소스 등록, Drive 전달 대상은 없으며 Git stage/commit/push는 수행하지 않았다.
+
+## G20. 2026-09-08 Cinematic Camera Tool의 쿠크 Area 저장 연결
+
+기존 Cinematic Camera Tool에 `Source: Kouku Area`를 연결했다. 쿠크 Arena에서 열면 자동 선택하며,
+미저장 draft가 있으면 source 전환과 Valtan cue deep link를 거절해 현재 편집을 보존한다.
+Valtan source·cue 저장·Complete Play 호출은 기존 경로를 유지한다. 쿠크 모드에서는 Valtan 전용
+Complete Play 버튼을 숨기고 Save 뒤 Kouku Action Workbench의 Play Bundle을 사용하도록 안내한다.
+
+- Cut List는 Area의 PATTERN_ONLY shot만 표시하고 AUTO/마리오 shot은 기존 MapTool 소유로 남긴다.
+  한글 displayName을 New Cut과 기존 Cut에서 편집할 수 있으며 참조 shotId는 이름 변경으로 바뀌지 않는다.
+- Capture Pos, keyframe 편집과 Start는 기존 cue editor와 Sample_Cue/Engine camera override를 재사용한다.
+  keyframe은 기존 shot.cameraTrack에 저장한다. 새 Camera runtime·파일·project/filter 등록은 없다.
+- Level의 CameraShot_ToCue, Stage_PatternCameraTracks, Save_CameraShotSource가 기존 Area parser와
+  MapTool 원자 저장 경계를 연결한다. 전체 candidate를 먼저 검사한 뒤 disk baseline CAS가 성공해야
+  source와 Arena 저작 cache를 교체한다. Action Workbench의 미저장 Camera draft도 저장 충돌로 거절한다.
+- 변경하지 않은 shot과 기존 defaultHoldMs/transitionEasing/activation을 보존한다. 이름이나 blend만
+  바꾸면 기존 static/follow/track pose를 유지하며 실제 keyframe 변경 때만 cameraTrack으로 저장한다.
+- 쿠크 진입·복귀는 Area의 0..10000ms 계약을 사용하므로 요청된 1200ms가 보존된다. Valtan의
+  Stage_CameraDraft/MAX1000 경로는 쿠크 저장과 preview 검증에서 호출하지 않는다.
+
+사용자 입력 경로는 F1 → Camera Tool → Source Kouku Area → 카메라_2관문_세이튼 등장이다.
+Capture Pos는 현재 pose를 추가하고 Pos 선택·keyframe editor에서 각 장면을 조정한다. Save는 Area
+authoring을 저장하며, 실제 bundle 연결·진입 1200ms·7400ms 뒤 Follow 복귀는 통합 데이터와 기존
+Kouku Action Workbench → 세이튼등장_동시 → Play Bundle 경로에서 확인한다. 전체 카메라 복귀를
+볼 때는 F6 Follow 상태에서 재생한다. Camera Tool의 Start는 저작된 path preview다.
+
+자동 검증은 기존 `test_valtan_camera_tool_contract.py` PASS와 변경 소스/문서의 scoped
+`git diff --check` PASS다. 기존 H/CPP의 UTF-8 인코딩과 CRLF 줄바꿈을 유지했다. 이 하위 작업은
+JSON/XML을 변경하지 않았고 native 컴파일·publisher·Client 실행·UI 저장 입력은 수행하지 않았다.
+최소 컴파일과 source/Composition publish는 통합 담당자가 실행하고 실제 Capture/Save/Reload,
+카메라 구도와 Follow 복귀의 화면 확인은 사용자에게 남긴다.
+
+## G21. 2026-09-08 사용자 확인 뒤 등장 높이·공 생성 시각·공통 카메라 통합
+
+사용자가 이전 EXE에서 공 생성과 끝 smoke 재생을 확인했고, 상승량이 높고 마지막 공이 도착점에
+못 미친다고 보고했다. 아래 변경은 그 후속 조정이다. 새 높이와 카메라 구도의 육안 승인은 아직 아니다.
+
+| 항목 | 이전 | 현재 저장·배포값 |
+|---|---|---|
+| 쿠크 root 최대 상승 | 17.846225m | 14.276980m, animationRootVerticalScale=0.8 |
+| 기준 Y / 최고 root Y | 10.56 / 28.406225 | 10.56 / 24.836980 |
+| 수평 이동 / 도착 유지 | 1870~5780ms | 동일, (11.79,10.56,326.79)에 유지 |
+| 원본 clip 수직 복귀 | 약 6100ms | 동일; 수평 도착 시각과 구분 |
+| 공 생성 | 1481~4181ms | 3080~5780ms, 10개·300ms 간격 유지 |
+| 마지막 공 생성점 | (7.802724,10.56,322.765918) | (11.79,10.56,326.79), 이전보다 경로상 5.664945m 전진 |
+| 마지막 공 smoke | 5881~7881ms | 7480~9480ms, 정상 WORLD tail 보존 |
+| 등장 카메라 | bundle 공통 Camera 없음 | 0~1200 진입, 1200~7400 유지, 7400~8600 현재 Follow로 복귀 |
+
+Composition revision134→135에서 Pattern8의 높이 배율과 WORLD 시간, resource36 CAMERA와 bundle1
+presentation.1만 변경했다. 조커찾기 무기 앵커를 포함한 다른 모든 Pattern은134와 의미상 동일하다.
+Area camera revision68→69에 camera.kouku.pattern.1만 추가했고 기존 AUTO/마리오 shot은 전부 보존했다.
+표시명은 카메라_2관문_세이튼 등장이다. 초기 eye=(-11.085,40.56,339.87),
+lookAt=(6.915,15.56,321.87), FOV60의 고정 두 key를 등록했다. 현재 view에서 이 pose로 진입하며
+카메라의 최종 구도는 사용자가 Capture Pos와 keyframe editor에서 조정한다.
+
+검증 증거는 out/KoukuIntroTuning20260908 및 out/KoukuBossMotion/root-vertical-scale-tests.log에 있다.
+
+| 검증 | 실제 결과 |
+|---|---|
+| 최종 Debug Product 컴파일·링크·SDK/DLL 배포 | PASS, out/BuildPipeline/runs/20260908T034213853Z-debug-product.json |
+| Map Area publish / Composition135 publish / GameplayBalance publish | PASS |
+| 실물 WModel root 최고 높이·6100ms 복귀·배율 cache 격리 / action 투영 / 기존 hammer bake | Python 3개 PASS |
+| Camera return tail 충돌 / bundle offset·reference / malformed common Camera | Python 3개 PASS |
+| 기존 Valtan Camera Tool 계약 | PASS |
+| Server --kouku-bundle-contract-test | failures0 |
+| native Composition editor Save/Reload·실패 보존 | Debug build와 --kouku-composition-editor-contract exit0. 높이0/0.8/1 저장·재로드 및 음수/1초과/NaN/무한대 거절·기존 상태 보존 포함 |
+| strict JSON5·XML3 parse / source135와 배포본 일치 / 기존 Pattern·shot 보존 | PASS |
+| scoped git diff --check | PASS; 작업 전 ArenaCameraProfile.cpp:53의 whitespace만 제외 |
+
+Camera tail 검사에서 기존 합성 bundle fixture가 실제 새 clip으로 stage를 교체하면서 예전 bossMotion과
+WORLD 구간을 함께 남겨 검사 목적과 무관한 범위 오류가 먼저 났다. 그 fixture에서 기존 lane과 motion,
+공통 Camera/Scene을 비우고 합성 시나리오를 구성하도록 수정했다. 실제 runtime 검증은 완화하지 않았다.
+
+실행은 Server + Client profile을 Ctrl+F5로 시작한다. endpoint는192.168.0.14:7777이고 이 작업에서
+Client/UI를 실행하거나 캡처하지 않았다. F1 → Camera Tool → Source Kouku Area에서 이름을 선택해
+Capture Pos/Save를 사용한다. 전체 연출은 F6 Follow 상태의 Kouku Action Workbench에서
+세이튼등장_동시 → Play Bundle로 확인한다. Camera Tool Start는 컷 경로 미리보기다.
+사용자 후속 확인은 새 높이, 마지막 생성점, 카메라 framing 및 현재 플레이어로의 복귀다.
+새 Resources binary/Drive 전달물, C++ 파일/project/filter 등록, Git stage/commit/push는 없다.
+
+최종 파일 시각은 Client.exe 12:39:08, Server.exe 12:37:33, 배포 Engine.dll 12:42:12 KST다.
+마지막 Model.cpp 수정 12:40:42 이후 Engine을 다시 컴파일·배포한 증거가 위 최종 Product receipt다.
+종료 확인에서 Client/Server 프로세스와 TCP7777 listener는 없으며 사용자 Ctrl+F5 실행 대기 상태다.
+기존 인코딩/PDB 경고는 남지만 컴파일·링크 오류는0이다. 팀 사용서의 WORLD 수명 설명도 실제
+protocol69·FINISH_OWNER tail 보존 계약에 맞췄다.
+
+## G22. 2026-09-08 사용자 P1/P2 목표 높이 배포와 입력 경로 확인
+
+사용자가 Camera Tool에 새 Pos를 추가한 뒤 Save한 Area revision70을 적용했다. 최초 확인 시에는
+새 Pos가 미저장 상태여서 이전69만 보였으며, 사용자 Save 뒤 camera.scene.auto.1/auto.2를 확인했다.
+P1 Eye=(-3.0489308834,25.3147125244,331.9632873535),
+P2 Eye=(-4.0211238861,25.3114490509,331.9855651855)와 사용자의 LookAt/FOV60을 그대로 보존했다.
+기존 초기 key.1/key.2는 사용자 저장에서 이미 교체됐으므로 에이전트가 추가 삭제하거나 재작성하지 않았다.
+
+두 key는 0/7400ms의 연출 목표이며 플레이어 시점을 저장한 key가 아니다. Y 차이는0.003263m로
+거의 같은 높이이며, 연출 도중에는 사용자가 저장한 약0.972m의 작은 수평 이동을 보간한다.
+시작의 현재 카메라에서1200ms 진입, 7400ms에 복귀 시작, 8600ms에 현재 플레이어 Follow로 돌아오는
+기존 공통 Camera 구간을 유지했다. 처음/끝 플레이어 pose는 runtime이 취득하므로 P0/P3를 더하지 않는다.
+
+Map Area publish PASS(8 files), source/runtime Camera revision70 동일성 및 JSON3 parse,
+Composition135의 bundle1→resource36→camera.kouku.pattern.1 연결과 기존 시간값을 확인했다.
+로그와 수치는 out/KoukuIntroTuning20260908/user-camera-map-publish.log 및
+user-camera-validation.json에 있다. 데이터 배포만 수행했으므로 C++/XML 변경·재빌드는 없다.
+Camera Tool Save는 저작 cache에 이미 반영됐고, Server 재생은 다음 run에서 배포 Camera를 다시 읽는다.
+
+입력은 코드의 실제 소비 경로로 확인했다. Level의 gameplay gate는 Follow 여부와 sequence 연결
+Area cameraTrack을 검사한다. 이 PATTERN_ONLY shot의 sequenceInstanceId는 비어 있으므로
+Composition Camera는 Follow 상태의 이동·스킬을 막지 않는다. PlayerController는 현재 VIEW/PROJ로
+우클릭/스킬 aim ray를 만들고 player groundY 평면을 피킹해 IPlayerCommandSink로 Server에 제출한다.
+F6 Free 또는 ImGui가 소비한 마우스·키보드/텍스트 입력은 기존 계약대로 gameplay에서 차단된다.
+이는 읽기 전용 호출 경로 확인이며 Client 화면 조작·실제 입력 PASS를 대신 기록하지 않았다.
+
+## G23. 2026-09-08 쿠크 Camera Tool의 단일 Pos
+
+쿠크 Area cameraTrack은 0ms의 P1 한 개만으로 저장·재생할 수 있다. 기존 durationMs를 유지하고
+Sample_Cue의 endpoint sampling으로 전 구간 같은 Eye/LookAt/FOV를 사용한다. 처음 현재 화면에서
+P1까지의 진입과 마지막 플레이어 Follow 복귀는 기존 Composition Camera blend가 계속 담당한다.
+기존 Valtan document parser와 Valtan active controller는 최소 두 key 규칙을 유지한다.
+
+Camera Tool의 Kouku Source에서 Pos 선택, Go To Scene, Start, Save는 한 key를 허용한다.
+Duration을 바꿔도 유일한 key는 0ms에 유지하고 static shot도 P1 하나로 표시한다. Capture Pos는
+기존대로 새 Pos를 추가하며, P1의 현재 구도를 바꿀 때는 Fine Adjust 또는 Capture / Replace
+Selected Scene을 사용한다. 기존 다중 Pos path는 그대로 편집하며 두 개 이상일 때 마지막 key는
+durationMs여야 한다. CAS 저장과 실패 시 기존 source/draft 보존 경로는 변경하지 않았다.
+
+Level Area parser와 Composition publisher의 Area track validator를 1..64개 계약으로 맞췄다.
+Map publisher는 기존 cameraTrack을 그대로 배포하므로 변경하지 않았다. Valtan cue validator는
+별개이고 최소 두 key를 유지한다. 새 Camera runtime·C++ 파일·project/filter 등록은 없다.
+source Camera revision71은 기존 camera.scene.auto.1 P1만 남기고 P2를 제거했다. P1 Eye는
+(-3.0489308834,25.3147125244,331.9632873535), LookAt은(2.4010531902,18.4604892731,327.1344909668),
+FOV60이며 사용자 저장값을 그대로 보존했다. track7400ms, 진입1200ms·기존 유지·복귀1200ms와
+나머지 shot은 유지했다. Map Area publish8파일 및 source/runtime 동일성 검증 PASS다.
+
+검증은 기존 test_composition_pipeline.py의 CameraTrackContractTests 3개 PASS다. 단일 P1의
+원본 pose/duration 보존, 빈 목록·0이 아닌 시작 시각·잘못된 view 거절, 두 Pos 종료 시각 경계를
+확인했다. 기존 test_valtan_camera_tool_contract.py도 PASS다. 변경 소스는 기존 UTF-8/CRLF,
+Python은 지정된 LF를 유지했고 scoped git diff --check가 통과했다. 최종 Debug Product compile/link/deploy는
+20260908T044302127Z-debug-product.json의 모든 단계 PASS다. 자세한 통합 로그는
+out/KoukuPausedScrub20260908과 Kouku Gate Pattern Bundle RESULT G19에 있다.
+실제 Pos 한 개 표시·Capture/Save/Reload·Start와 아레나 화면 확인은 사용자 대기다.
+
+
+## G24. 댄스 장판 +90도·박수14개·PRODUCT 선택 (2026-09-08)
+
+Composition source149의 P6 세이튼_댄스타임은 PRODUCT다. boss.kouku.dance의 presentation.4는
+rotationDegrees [0,90,0],0~26800ms이며 GROUP/leaf 원본은 유지했다. 사용자가 저장한 박수
+boss.kouku.dance.clap은 presentation.6~19 총14개, 각2000ms이고 기존 시작 시각·transform을
+보존했다. brightnessMultiplier는 모두1이다. G19의 clap23300~25300ms 한 개는 과거 연결이며
+현재 저장본으로 덮어쓰지 않았다.
+
+Patterns 목록의 Set Pattern to PRODUCT는 선택 Pattern의 검증된 draft 상태를 바꾼다.
+Save가 기존 CAS 저장과 ready PRODUCT publish를 실행하고 Server 재시작 뒤 제품에서 사용한다.
+버튼 자체를 저장·서버 적용 완료로 표시하지 않는다. 해당 코드와 native 저장 회귀 결과는
+[Gate Pattern Bundle RESULT G21](2026-09-07_KOUKU_GATE_PATTERN_BUNDLE_RESULT.md)에 기록했다.
+
+source149 JSON에서 +90도·박수14개·PRODUCT 상태를 확인했으며 Composition publish는
+PRODUCT11개/88 stages로 통과했다. out/KoukuJoker20260908/composition-publish.log가 근거다.
+최종 Product 통합 빌드와 사용자의 실제 장판/박수 화면 확인은 아직 별도 완료 기록이 필요하다.
+에이전트는 Client/UI를 실행·조작하거나 visual PASS를 기록하지 않았다.
+
+
+## G25. Collider Box Detail의 즉시 geometry Preview (2026-09-08)
+
+Position/Rotation/Scale, Width/Height/Depth와 Radius를 바꾸면 Preview 버튼 없이 geometry 요청을
+보낸다. 크기 입력은 기존 resource 치수를 기준으로 occurrence Scale에 환산한다. 요청은 적용된
+occurrence의 세 geometry 배열만 바꾸므로 Detail의 미적용 시간·Bone·Logic을 함께 실행하지 않는다.
+Apply/Save의 저장 의미와 실패 보존은 유지했다. Revert geometry와 선택 동기화는 현재 적용된
+geometry를 복구한다. 원본 JSON/schema와 resource definition은 이 변경에서 수정하지 않았다.
+
+Workbench는 연속 drag를 같은 stable ID의 최신 요청으로 합친다. 재생/정지된 Pattern과 Bundle
+child는 clock과 session을 유지하고, inactive는 현재 cursor에서 paused Preview를 한 번 준비한다.
+MainApp/PresentationPlayer는 정확한 owner의 해당 Collider wire만 갱신하며 Effect/SFX를 다시
+시작하지 않는다. follow=false는 저장한 anchor basis와 scale로 geometry를 계산해 정지 anchor를
+유지한다. 이 소비 경로는 실제 코드 읽기 검토이며 화면 검증을 대신하지 않는다.
+
+기존 ValtanPatternAuditionServiceHarness Debug x64를 BuildProjectReferences=false로 빌드하고
+--kouku-preview-transport-contract를 실행해 exit0 PASS를 확인했다. running/paused Pattern,
+Bundle child의 끝 cursor, geometry 요청 합치기, invalid/NaN/ID 오류에서 이전값 보존, 다른
+미적용 필드 격리, Cancel/선택 복구, 계층 Reset 폐기, inactive321ms/끝시각 보존과 기존
+Apply/Save/Reload·Stage retarget 검사가 포함된다. source bytes·dirty·generation도 유지했다.
+초기 fixture 기대값은 parse된 occurrence와 기존 계층 전환 STOP 계약에 맞춰 수정했다.
+
+로그는 out/KoukuJoker20260908/collider-live-geometry-build.log와 collider-live-geometry-contract.log다.
+소유 C++/harness의 scoped git diff --check PASS, UTF-8/CRLF 유지 확인을 완료했다. 최종 Product
+compile/link/deploy와 사용자의 실제 Detail drag/정지 pose/wire 확인은 통합 완료 기록을 기다린다.
+에이전트는 Client/UI 실행·조작·캡처를 하지 않았다.
+
+## G26. 최종 실행 파일 반영 (2026-09-08)
+
+G24 댄스타임 +90도·clap14개와 PRODUCT 상태, G25 Collider 즉시 geometry Preview가 최종
+Debug Product EXE에 반영됐다. Engine/Shared/Server/Client compile·link·deploy 모두 PASS/exit0,
+receipt는 `out/BuildPipeline/runs/20260908T062920624Z-debug-product.json`이다.
+실제 새EXE의 즉시 geometry Preview 문자열도 확인했다. source149/World402/Camera71과
+배포 데이터의 동일성, 변경 JSON/XML parse를 재확인했다. 빌드·맵 입장 오류 진단의 통합 결과는
+같은 폴더 `2026-09-07_KOUKU_GATE_PATTERN_BUNDLE_RESULT.md` G23에 있다.
+편집기 입력·저장 회귀는 PASS이며 실제 아레나의 시각·음향·drag 결과는 사용자 확인 대상이다.
+
+
+## G27. V2 Effect의 즉시 geometry 편집과 Save (2026-09-08)
+
+Box Detail P/R/S와 Preview를 실제 Pattern/active Bundle member의 actor·bone·WORLD 및 현재
+clock으로 연결했다. 선택별 Effect geometry staging을 Save 후보에 모두 합쳐 CAS 저장하므로
+여러 박스를 바꾼 뒤 Apply 없이 Save해도 보존한다. geometry 외 미적용 timing/Bone/Logic은 섞지
+않는다. invalid와 CAS 실패는 이전 원본/draft를 유지하며 Revert는 해당 box만 복구한다.
+
+PresentationPlayer는 Effect/Collider의 resolved anchor와 WORLD scale을 저장한다. V2 GROUP/LEAF는
+새 geometry sampler를 적용하고 같은 handle·clock·pause·snapshot·기존 child 객체에서 같은 age를
+재계산한다. 이미 렌더 큐에 있는 객체를 교체하지 않아 연속 drag 도중 객체가 빠지는 경로를 막았다.
+particle world birth·표시 크기와 sprite/trail의 parent scale 소비를 연결했고 Trail replay는 기록된
+pivot을 샘플한다. source leaf/group geometry와 다른 Effect/Sound는 변경하지 않는다. 활성 Effect
+구간의 Stop/paused seek는 기존 raw history/첫 anchor를 유지하며 역순 history append를 하지 않는다.
+과거 anchor를 취득할 수 없는 replay 실패는 해당 Effect만 격리하며 시각 상태 rollback으로 기록하지 않는다.
+
+기존 native --kouku-preview-transport-contract의 Debug refs=false 빌드·실행 PASS다. LEAF/GROUP의
+running/paused/Bundle/cold clock, 복수 박스 Save/Reload, invalid/CAS 실패·unrelated field 보존과
+기존 Collider/Stage 회귀를 포함한다. 로그는 effect-live-geometry-build.log,
+effect-live-geometry-contract.log 및 최종 product-save-launch-contract.log이며 모두
+out/KoukuJoker20260908 아래에 있다. 기존 V2 occurrence-runtime Python8개도 PASS다. 이 Python
+검사는 source/JSON 계약이며 native V2 particle/trail 시각 동작 PASS로 해석하지 않는다.
+
+최종 Debug Product의 Engine/Shared/Server/Client compile·link·deploy가 exit0로 완료됐다.
+receipt는 `out/BuildPipeline/runs/20260908T071602366Z-debug-product.json`, 로그는 `out/KoukuJoker20260908/product160-v2-build.log`다.
+변경 source JSON/XML parse와 소유 범위 diff check를 확인했다. Client/UI 실행·조작·캡처는 하지
+않았으며, 현재 Effect 활성 시각에서 Stop → Box Detail P/R/S 조절 → Save/Reload의 실제 표시와
+회전·크기는 새 EXE에서 사용자가 확인해야 한다.

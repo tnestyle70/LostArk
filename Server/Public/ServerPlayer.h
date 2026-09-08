@@ -251,6 +251,24 @@ namespace LostArk::Server
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eMechanicCardSymbol =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 		LostArk::Shared::MECHANIC_CARD_COLOR eMechanicCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
+		/* Card maze truth dealt by CKoukuCardMazeRuntime when the telescope is
+		claimed. Cleared with the run, never by the roulette that shares the
+		suit enum. */
+		LostArk::Shared::CARD_MAZE_ROLE eCardMazeRole = LostArk::Shared::CARD_MAZE_ROLE::NONE;
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		std::uint8_t iCardMazeKills = 0u;
+		std::uint8_t iCardMazeKillTarget = 0u;
+		LostArk::Shared::CARD_MAZE_PRESENTATION CardMaze;
+		float fCardMazeTransferX = 0.f, fCardMazeTransferY = 0.f, fCardMazeTransferZ = 0.f;
+		bool bCardMazeTransferCommitted = false;
+		void Clear_CardMazeState() noexcept
+		{
+			eCardMazeRole = LostArk::Shared::CARD_MAZE_ROLE::NONE;
+			eCardMazeSuit = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+			iCardMazeKills = 0u;
+			iCardMazeKillTarget = 0u;
+			CardMaze = {};
+		}
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT LastDebugKoukuHudModeResult;
 
 		void Clear_KoukuInteractionState()

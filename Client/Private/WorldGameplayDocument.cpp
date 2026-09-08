@@ -576,6 +576,22 @@ bool_t Client::CWorldGameplayDocument::Load(
 					}
 					event.targetId = sequenceInstanceId->Get_String();
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE == event.eKind)
+				{
+					if (!Is_ExactObject(eventValue, { "type", "targetId" }))
+					{
+						outStatus = "Gameplay claimCardMazeTelescope event has invalid fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* targetId = eventValue.Find("targetId");
+					if (nullptr == targetId || !targetId->Is_String() ||
+						!Is_ValidStableId(targetId->Get_String()))
+					{
+						outStatus = "Gameplay claimCardMazeTelescope target is invalid";
+						return false;
+					}
+					event.targetId = targetId->Get_String();
+				}
 				else
 				{
 					if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
@@ -945,6 +961,11 @@ bool_t Client::CWorldGameplayDocument::Save(
 					output << ", \"sequenceInstanceId\": \""
 						<< CDataJson::Escape(event.targetId) << '"';
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE == event.eKind)
+				{
+					output << ", \"targetId\": \""
+						<< CDataJson::Escape(event.targetId) << '"';
+				}
 				else
 				{
 					output << ", \"targetId\": \"" << CDataJson::Escape(event.targetId)
@@ -1100,6 +1121,12 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 						   sequence document, which this document cannot see.
 						   Shape is checked here; existence is checked when the
 						   sequence player admits the instance. */
+						return Is_ValidStableId(event.targetId);
+					}
+					if (WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE == event.eKind)
+					{
+						/* The claim box is the hammer's strike volume; the publisher
+						   and the Server both refuse it outside the Kouku arena. */
 						return Is_ValidStableId(event.targetId);
 					}
 					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
@@ -1292,6 +1319,7 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 	case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE: return "playSequence";
 	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
 	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
+	case WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE: return "claimCardMazeTelescope";
 	default: return "invalid";
 	}
 }
@@ -1313,6 +1341,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
 	else if ("setDestroyableState" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE;
+	else if ("claimCardMazeTelescope" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE;
 	else
 		return false;
 	return true;

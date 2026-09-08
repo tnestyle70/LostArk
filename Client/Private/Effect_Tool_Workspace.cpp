@@ -3,8 +3,6 @@
 #include "Effect_Tool.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
-#include "EffectAuthoringV2Pane.h"
-#include "Effect_Tool_V2.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Object.h"
 #include "EffectV2_Catalog.h"
@@ -23,11 +21,9 @@ std::string Parent_Key(const EFFECT_RESOURCE_KEY& key)
 { return std::to_string(static_cast<int>(key.eOwnerKind)) + ":" + key.strStableId; }
 }
 
-void CEffect_Tool::Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuSaydonPresentationPlayer* player)
+void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player)
 {
-    if (!m_pAuthoringResources) m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>();
-    m_pLegacyV2 = &editor;
-    if (!m_pAuthoringV2) m_pAuthoringV2 = std::make_unique<CEffectAuthoringV2Pane>(editor);
+    if (!m_pAuthoringResources) m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>(EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT);
     if (!m_pAuthoringSequencer)
     {
         m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel);
@@ -50,13 +46,6 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuS
         m_pAuthoringSequencer->Set_V2SnapshotProvider(
             [this](const EFFECT_RESOURCE_KEY& key, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot, std::string& error)
             {
-                EFFECT_RESOURCE_KEY selected;
-                std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> draft;
-                if (m_pAuthoringV2 && m_pAuthoringV2->Owns_Resource(key))
-                {
-                    if (!m_pAuthoringV2->Snapshot(selected, draft, error)) return false;
-                    snapshot = std::move(draft); return true;
-                }
                 return CEffectV2Catalog::Get().Load_ResourceSnapshot(
                     key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_GROUP ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
                     key.strStableId, snapshot, error);
@@ -69,42 +58,15 @@ void CEffect_Tool::Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player)
 {
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Player(player);
 }
+void CEffect_Tool::Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera)
+{
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Set_Camera(camera);
+}
 void CEffect_Tool::Update_AuthoringWorkspace(float dt, bool active)
 {
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Update(dt, active);
-    if (active && m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active() && m_pAuthoringV2 &&
-        m_bAuthoringV2Selected && m_pAuthoringV2->Edit_Generation() != m_iAuthoringV2PreviewGeneration && !ImGui::IsAnyItemActive())
-    {
-        m_iAuthoringV2PreviewGeneration = m_pAuthoringV2->Edit_Generation();
-        (void)m_pAuthoringSequencer->Refresh_Effects();
-    }
-
-    if (m_pAuthoringV2 && m_pAuthoringResources)
-    {
-        const auto current = m_pAuthoringV2->Current_Key();
-        if (current.Is_Valid() && !(current == m_AuthoringV2PreviousKey))
-        {
-            const auto prior = m_AuthoringParents.find(Parent_Key(m_AuthoringV2PreviousKey));
-            if (m_AuthoringV2PreviousKey.Is_Valid() && !m_AuthoringParents.contains(Parent_Key(current)) && prior != m_AuthoringParents.end())
-                m_AuthoringParents.emplace(Parent_Key(current), prior->second);
-            m_AuthoringV2PreviousKey = current;
-        }
-        EFFECT_RESOURCE_KEY play; std::string child;
-        if (active && m_pAuthoringV2->Consume_Play(play, child) && m_pAuthoringSequencer)
-        {
-            Release_WorldPreview(true);
-            (void)m_pAuthoringSequencer->Preview(play, m_pAuthoringV2->DurationMs());
-        }
-        EFFECT_RESOURCE_KEY saved; std::string name;
-        if (m_pAuthoringV2->Consume_Saved(saved, name))
-        {
-            std::string status;
-            (void)m_pAuthoringResources->Attach_Saved(saved.eOwnerKind, saved.strStableId, name,
-                m_AuthoringParents[Parent_Key(saved)], status);
-            m_pAuthoringResources->Set_Status(status);
-        }
-    }
 }
+
 void CEffect_Tool::Deactivate_AuthoringWorkspace()
 {
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
@@ -117,15 +79,14 @@ bool CEffect_Tool::Consume_AuthoringInteraction()
 bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
 {
     if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+        return Try_LoadDocument(key.strStableId);
+    if (key.Is_Valid())
     {
-        const bool opened = Try_LoadDocument(key.strStableId);
-        if (opened) m_bAuthoringV2Selected = false;
-        return opened;
+        m_PendingTypedEffectResourceOpen = key;
+        return true;
     }
-    if (!m_pAuthoringV2) return false;
-    const bool opened = m_pAuthoringV2->Open(key);
-    if (opened) { m_bAuthoringV2Selected = true; m_AuthoringV2PreviousKey = key; Release_WorldPreview(true); }
-    return opened;
+    m_strDocumentStatus = "Effect open rejected an invalid owner or ID.";
+    return false;
 }
 
 void CEffect_Tool::Render_AuthoringResourceTree()
@@ -133,6 +94,9 @@ void CEffect_Tool::Render_AuthoringResourceTree()
     ImGui::SetNextWindowPos(ImVec2(1110.f, 35.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(430.f, 660.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Effect Resources")) { ImGui::End(); return; }
+    m_pAuthoringResources->Set_V1CopySource(
+        m_ActiveDocument ? m_ActiveDocument->strEffectAssetId : std::string{},
+        m_ActiveDocument ? m_ActiveDocument->strDisplayName : std::string{});
     m_pAuthoringResources->Render();
     CEffectAuthoringResourceTree::COMMAND command;
     while (m_pAuthoringResources->Take_Command(command))
@@ -142,7 +106,16 @@ void CEffect_Tool::Render_AuthoringResourceTree()
         {
             m_AuthoringParents[Parent_Key(key)] = command.strParentId;
             if (Open_AuthoringResource(key)) m_strAuthoringParentId = command.strParentId;
-            else m_pAuthoringResources->Set_Status(command.eKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? m_strDocumentStatus : m_pAuthoringV2->Status());
+            else m_pAuthoringResources->Set_Status(m_strDocumentStatus);
+        }
+        else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::CREATE_V1_COPY)
+        {
+            if (!m_ActiveDocument ||
+                m_ActiveDocument->strEffectAssetId != command.strSourceAssetId)
+                m_strDocumentStatus = "The selected V1 copy source changed; select it again before copying.";
+            else
+                (void)Try_SaveDocumentAs(command.strAssetId, command.strDisplayName, command.strParentId);
+            m_pAuthoringResources->Set_Status(m_strDocumentStatus);
         }
         else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::CREATE_EFFECT)
         {
@@ -155,29 +128,24 @@ void CEffect_Tool::Render_AuthoringResourceTree()
                     std::snprintf(m_NewAssetId.data(), m_NewAssetId.size(), "%s", command.strAssetId.c_str());
                     std::snprintf(m_NewDisplayName.data(), m_NewDisplayName.size(), "%s", command.strDisplayName.c_str());
                     created = Try_CreateDocument();
-                    if (created) m_bAuthoringV2Selected = false;
                 }
                 m_pAuthoringResources->Set_Status(m_strDocumentStatus);
-            }
-            else if (m_pAuthoringV2)
-            {
-                created = m_pAuthoringV2->Create(command.strDisplayName, EFFECT_V2_TYPE::PARTICLE, command.eKind);
-                if (created) { m_bAuthoringV2Selected = true; Release_WorldPreview(true); }
-                m_pAuthoringResources->Set_Status(m_pAuthoringV2->Status());
             }
             if (created)
             {
                 m_strAuthoringParentId = command.strParentId;
-                const auto createdId = command.eKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ?
-                    m_ActiveDocument->strEffectAssetId : m_pAuthoringV2->Current_Key().strStableId;
+                const auto& createdId = m_ActiveDocument->strEffectAssetId;
                 m_AuthoringParents[Parent_Key({command.eKind, createdId})] = command.strParentId;
             }
         }
         else if (m_pAuthoringSequencer)
         {
             Release_WorldPreview(true);
+            const uint32_t duration = m_ActiveDocument && key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+                    m_ActiveDocument->strEffectAssetId == key.strStableId ?
+                    static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f) : 3000u;
             const bool ok = command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::APPEND ?
-                m_pAuthoringSequencer->Append(key) : m_pAuthoringSequencer->Preview(key);
+                m_pAuthoringSequencer->Append(key, duration) : m_pAuthoringSequencer->Preview(key, duration);
             (void)ok;
             m_pAuthoringResources->Set_Status(m_pAuthoringSequencer->Status());
         }
@@ -185,18 +153,18 @@ void CEffect_Tool::Render_AuthoringResourceTree()
     ImGui::End();
 }
 
+
+
 void CEffect_Tool::Render_AuthoringCommands()
 {
     if (!m_pAuthoringSequencer) return;
     EFFECT_RESOURCE_KEY selected;
-    if (m_bAuthoringV2Selected && m_pAuthoringV2) selected = m_pAuthoringV2->Current_Key();
-    else if (m_ActiveDocument) selected = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId};
+    if (m_ActiveDocument) selected = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId};
     ImGui::BeginDisabled(!selected.Is_Valid());
     if (ImGui::Button("Append##EffectSequence"))
     {
         Release_WorldPreview(true);
-        const uint32_t duration = !m_bAuthoringV2Selected ?
-            static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f) : m_pAuthoringV2->DurationMs();
+        const uint32_t duration = static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f);
         (void)m_pAuthoringSequencer->Append(selected, duration);
     }
     ImGui::EndDisabled();
@@ -225,8 +193,12 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId == key.strStableId)
     {
         document = *m_ActiveDocument;
+        if (m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(document))
+        { error = "The particle-system draft could not be applied."; return false; }
         if (m_bDetailDraftDirty && !Apply_DetailDraft(document))
         { error = m_strDetailStatus; return false; }
+        if (m_bModelCueDraftDirty && !Apply_ModelCueDraft(document))
+        { error = "The model-cue draft could not be applied."; return false; }
     }
     else
     {

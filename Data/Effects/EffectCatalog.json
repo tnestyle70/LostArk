@@ -97,21 +97,6 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31950.unified.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.unified.effect.json"
-    },
-    {
       "effectAssetId": "effect.dimensionmaster.skill.2050100.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.unified.effect.json"
@@ -895,6 +880,26 @@
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.warp.portal.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba0.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba0.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba1.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.restore.effect.json"
     }
   ]
 }

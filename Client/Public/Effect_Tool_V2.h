@@ -13,17 +13,24 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Engine)
+class CCamera;
 class CModel;
 class CShader;
 NS_END
 
 NS_BEGIN(Client)
 
+class CCharacterPreviewPanel;
+class CKoukuSaydonPresentationPlayer;
+class CEffectAuthoringV2Pane;
+class CEffectAuthoringResourceTree;
+class CEffectAuthoringSequencer;
 class CNpc;
 class CValtan;
 
@@ -116,6 +123,13 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext);
 	~CEffect_Tool_V2();
 
+    void Configure_AuthoringWorkspace(std::shared_ptr<CCharacterPreviewPanel> panel,
+        CKoukuSaydonPresentationPlayer* player);
+    void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
+    void Set_AuthoringCamera(const std::shared_ptr<Engine::CCamera>& camera);
+    void Update_AuthoringWorkspace(float dt, bool active);
+    bool Consume_AuthoringInteraction();
+    void Activate() { m_bNativeRestorePending = true; }
 	void Render();
 	/* Visibility and Level lifetime are separate from the authored slot/document
 	   draft.  Deactivation releases spawned preview actors and playback while
@@ -127,7 +141,6 @@ public:
 	   concrete leaf/group loaders remain private codec implementation details. */
 	bool_t Open_Resource(const EFFECT_RESOURCE_KEY& Key);
 	bool_t Open_Attach(const EFFECT_RESOURCE_KEY& Key);
-	void Render_Attach(f32_t fTimeDelta);
 	const std::string& Document_Status() const { return m_strDocumentStatus; }
 
 public:
@@ -156,6 +169,11 @@ private:
 		float3_t& OutMaximum,
 		std::string& strOutInfo);
 
+    void Claim_AuthoringInteraction();
+    void Render_AuthoringWorkspace();
+    bool_t Open_PreviewResource(const EFFECT_RESOURCE_KEY& Key);
+    bool Capture_PreviewDocument(EFFECT_V2_DOCUMENT& document) const;
+    bool Restore_NativeDraft();
 	void Render_TypeSelector();
 	void Render_SlotCards();
 	void Render_ResourceBrowser();
@@ -244,6 +262,17 @@ private:
 	static const char* Slot_Description(RESOURCE_SLOT eSlot);
 
 private:
+    std::shared_ptr<CCharacterPreviewPanel> m_pAuthoringPanel;
+    std::unique_ptr<CEffectAuthoringV2Pane> m_pAuthoringPane;
+    std::unique_ptr<CEffectAuthoringResourceTree> m_pAuthoringResources;
+    std::unique_ptr<CEffectAuthoringSequencer> m_pAuthoringSequencer;
+    std::unordered_map<std::string, std::string> m_AuthoringParents;
+    EFFECT_RESOURCE_KEY m_AuthoringPreviousKey;
+    uint64_t m_iAuthoringPreviewGeneration = 0u;
+    bool m_bAuthoringInteraction = false;
+    bool m_bNativeWindows = true, m_bNativeRestorePending = false;
+    std::optional<EFFECT_V2_DOCUMENT> m_PreservedNativeDraft;
+    bool m_bPreservedNativeHidden = false;
 	ComPtr<ID3D11Device> m_pDevice;
 	ComPtr<ID3D11DeviceContext> m_pContext;
 	shared_ptr<Engine::CShader> m_pModelShader;

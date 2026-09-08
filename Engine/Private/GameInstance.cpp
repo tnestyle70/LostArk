@@ -429,6 +429,12 @@ HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<C
 	return m_pRenderer->Add_RenderObject(eRenderGroupID, pRenderObject);
 }
 
+void CGameInstance::Request_SceneColorSnapshot()
+{
+	if (m_pRenderer)
+		m_pRenderer->Request_SceneColorSnapshot();
+}
+
 RENDER_QUALITY_SETTINGS CGameInstance::Get_RenderQualitySettings() const
 {
 	return m_pRenderer->Get_RenderQualitySettings();

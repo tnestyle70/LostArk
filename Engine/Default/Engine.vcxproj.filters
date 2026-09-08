@@ -691,6 +691,15 @@
     <None Include="..\Bin\ShaderFiles\Engine_Shader_Defines.hlsli">
       <Filter>03.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli">
+      <Filter>03.ShaderFiles</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_Cell.hlsl">

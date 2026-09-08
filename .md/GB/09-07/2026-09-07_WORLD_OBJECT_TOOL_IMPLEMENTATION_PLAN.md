@@ -345,3 +345,46 @@ EXE 링크/배포, 관련 JSON parse와 diff check를 수행한다. Client 화�
 G17 재개 경계: 사용자가 뿅망치 고정 장착을 중단하고 카드 Position 수정을 계속 진행하도록 지정했다.
 망치 Anchor/Logic/사용자 배치 데이터는 수정하지 않는다. 이미 작성한 Collider BOX 높이 표시 소스는
 보존하며, 이번 검증·배포의 필수 목표는 카드 Position이 정확한 Preview 객체에 즉시 전달되는 것이다.
+
+## G18. 공 Motion 끝의 V2 Effect row
+
+2026-09-08 새 구현 요청으로 재개한다. `공_튀기기` Motion 끝에 기존 GROUP
+`boss.kouku.ball.smoke`를 연결하고 Object Tool의 V2 목록에서 Effect row를 Append·편집한다.
+공 수량·간격·방향 분산은 기존 objectMotion을 사용한다. Sequencer에 공별 World 박스를 복제하지 않는다.
+
+WorldSequence v3 template의 optional `effectTracks`는 stable `effectTrackId`, 기존 object `slotId`,
+`resourceKind/resourceId`, `timing`, `startMs/durationMs`, `positionOffset/rotationDegrees/scale`를 저장한다.
+`MOTION_END`는 Lifetime을 변경해도 끝을 따라가며 `startMs=0`이다. `TIME`은 Motion 안의 고정 시각이다.
+Effect row가 있는 Motion만 각 emission에 전체 모델 수명을 주고 마지막 Effect tail까지 clock을 유지한다.
+기존 effect 없는 Motion의 종료 계약은 유지한다.
+
+WorldSequenceDocument의 parse·Save·equality·검증과 기존 Map publisher가 같은 구조를 소비한다.
+WorldSequencePlayer가 기존 궤적 계산으로 각 공의 trigger 위치를 구하고 기존 CEffectV2Runtime의
+immutable snapshot, group/leaf handle 및 external clock sampling을 사용한다. model 종료 뒤 Effect
+tail은 남고 Stop/Seek/Loop/NEXT에서는 같은 clock으로 재구성한다. 별도 Effect runtime·C++ 파일은 없다.
+Object Tool의 row Append는 선택 V2 closure를 먼저 검증한 후 document에 commit한다.
+
+기존 WorldSequence focused 검사의 실제 publisher 입력·잘못된 timing/ID/수명 거절을 확장한다.
+최소 Client 컴파일·Map publish·JSON/PowerShell parse·diff check는 통합 작업자가 모아 실행한다.
+Client/UI 실행·캡처는 하지 않으며 실제 입력·Save/Reload·폭발 모습은 사용자 확인을 남긴다.
+
+G18 확정 emission은 열 개다. 공 원형의 objectMotion은 count10/interval300ms/yaw spread360도를
+사용한다. 기존 instance playbackSpeed1.5는 보존하고 Pattern occurrence의 2/3 배속으로 effective1을
+만든다. 첫 birth1481ms부터 마지막4181ms까지 발사하고 각 공은1700ms 뒤 폭발, 자연 tail2000ms 뒤
+종료한다. 원본 smoke 여섯 색 leaf의 내부 중심 offset을 상쇄하도록 이 Object row만
+positionOffset(0,-2.3,-1.35)을 사용하며 V2 원본 Group/leaf를 바꾸지 않는다.
+
+`TARGET_SET::objectEmissionAnchor`는 occurrence-local real birth ms에서 world matrix를 받는다.
+WorldSequencePlayer가 birth마다 이를 고정 저장하고 model과 Effect가 같이 소비한다. 원래 배치의
+scale/rotation을 먼저 적용하고 이 matrix를 world origin으로 사용하여 생성 후 쿠크를 따라가지 않는다.
+`Get_InstanceElapsedSpanMs`는 명시 duration을 생성 cutoff로 보고 이미 생성된 공의 body/tail을 포함한다.
+LEVEL/Composition caller는 이 단일 getter와 활성 상태를 사용해 마지막 tail 이전에 player를 정리하지 않는다.
+
+## G19. 세이튼 등장 공 크기 1.5배 (2026-09-08)
+
+사용자 요청에 따라 공_튀기기 template의 0/1700ms transform key 두 개의 scaleMultiplier를
+1에서1.5로 바꾸고 source revision402로 저장한다. 공통 modelPreScale과 다른 Motion을 보존한다.
+count10, interval300ms, velocity/acceleration, 발생 지점과 smoke Effect row는 유지한다.
+Effect pivot는 model basis를 정규화하여 미터 단위 offset/scale을 사용하므로 smoke scale은1이다.
+Map publisher 배포, source/runtime JSON 동일성과 명시 변경만의 semantic 비교를 확인한다.
+신규 C++/project/Resources 변경은 없으며 최종 화면 크기는 사용자 확인 대상이다.

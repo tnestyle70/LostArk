@@ -282,7 +282,7 @@ f32_t CWorldObjectTool::SpanMs() const
     const auto* instance = Preview_Instance();
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     return !sequence ? 0.f : static_cast<float>(instance->startDelayMs) +
-        static_cast<float>(sequence->durationMs) / (std::max)(.05f, instance->playbackSpeed);
+        static_cast<float>(sequence->PresentationSpanMs()) / (std::max)(.05f, instance->playbackSpeed);
 }
 
 f32_t CWorldObjectTool::PreviewSpanMs() const
@@ -480,6 +480,7 @@ void CWorldObjectTool::Render()
                 if (ImGui::Button("Reload Source")) Load_Source();
                 ImGui::TextWrapped("%s", m_Status.c_str());
             }
+            if (m_Ready) Render_EffectResources();
             Render_PhysicalResources();
             if (m_Ready) Render_AnimationResources();
         }
@@ -648,6 +649,147 @@ void CWorldObjectTool::Render_Resources()
     ImGui::EndChild();
 }
 
+void CWorldObjectTool::Render_EffectResources()
+{
+    if (!ImGui::CollapsingHeader("V2 Effects", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    const bool reload = ImGui::Button("Reload V2 Effects");
+    if (!m_EffectInventoryLoaded || reload)
+    {
+        std::vector<EFFECT_V2_RESOURCE_SUMMARY> staged;
+        if (CEffectV2Catalog::Get().Read_Inventory(staged, m_EffectResourceStatus))
+            m_EffectResources = std::move(staged);
+        m_EffectInventoryLoaded = true;
+    }
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##ObjectEffectSearch", "Search smoke / group / leaf", m_EffectSearch.data(), m_EffectSearch.size());
+    const auto search = Lower(m_EffectSearch.data());
+    if (ImGui::BeginChild("ObjectV2Effects", ImVec2(0.f, 135.f), true))
+        for (const auto& effect : m_EffectResources)
+        {
+            if (!search.empty() && Lower(effect.strDisplayName + " " + effect.strResourceId).find(search) == std::string::npos) continue;
+            ImGui::PushID(effect.strResourceId.c_str());
+            const auto label = std::string(effect.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "[Group] " : "[Leaf] ") +
+                (effect.strDisplayName.empty() ? effect.strResourceId : effect.strDisplayName);
+            ImGui::BeginDisabled(!effect.strStatus.empty());
+            if (ImGui::Selectable(label.c_str(), m_SelectedEffectResource == effect.strResourceId && m_SelectedEffectKind == effect.eKind))
+            { m_SelectedEffectResource = effect.strResourceId; m_SelectedEffectKind = effect.eKind; }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("%s\n%s", effect.strResourceId.c_str(), effect.strStatus.c_str());
+            ImGui::PopID();
+        }
+    ImGui::EndChild();
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const bool target = instance && instance->bindings.size() == 1u &&
+        instance->bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+    ImGui::BeginDisabled(!target || m_SelectedEffectResource.empty());
+    if (ImGui::Button("Append Effect at Motion End")) Append_SelectedEffect();
+    ImGui::EndDisabled();
+    if (!target) ImGui::TextWrapped("Select an Object's child Motion, then append an Effect row.");
+    if (!m_EffectResourceStatus.empty()) ImGui::TextWrapped("%s", m_EffectResourceStatus.c_str());
+}
+
+bool CWorldObjectTool::Append_SelectedEffect()
+{
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!sequence || instance->bindings.size() != 1u || instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+    { m_Status = "Select a child Object Motion before appending an Effect."; return false; }
+    std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+    if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(m_SelectedEffectKind, m_SelectedEffectResource, snapshot, m_EffectResourceStatus))
+    { m_Status = "Effect Append failed: " + m_EffectResourceStatus; return false; }
+    // Match the existing V2 authoring preview span, including particles/trails
+    // remaining after emission ends. The row does not stretch leaf envelopes.
+    const auto leafSpan = [](const EFFECT_V2_DOCUMENT& document, const uint32_t explicitMs, const bool tailEnabled)
+    {
+        const auto& params = document.Desc.Params;
+        const double rate = (std::max)(.001, static_cast<double>(params.fPlayRate));
+        const double emission = explicitMs ? explicitMs : params.fLifetime > 0.f ?
+            std::ceil(params.fLifetime * 1000.0 / rate) : 3000.0;
+        const double tail = !tailEnabled ? 0.0 : document.eType == EFFECT_V2_TYPE::PARTICLE ?
+            params.Particle.vLifetime.y * 1000.0 / rate : document.eType == EFFECT_V2_TYPE::TRAIL ?
+            params.Trail.fPointLifetime * 1000.0 / rate : 0.0;
+        return emission + std::ceil(tail);
+    };
+    double span = 0.;
+    if (m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP)
+    {
+        const auto* group = snapshot->Find_Group(m_SelectedEffectResource);
+        if (!group) { m_Status = "Selected Effect group is unavailable."; return false; }
+        span = group->iDurationMs;
+        if (!group->iDurationMs)
+            for (const auto& child : group->Children)
+            {
+                const auto* leaf = snapshot->Find_Document(child.strEffectId);
+                if (!leaf) { m_Status = "Selected Effect group child is unavailable."; return false; }
+                span = (std::max)(span, child.iStartMs + leafSpan(*leaf, child.iDurationMs,
+                    child.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE));
+            }
+    }
+    else
+    {
+        const auto* leaf = snapshot->Find_Document(m_SelectedEffectResource);
+        if (!leaf) { m_Status = "Selected Effect leaf is unavailable."; return false; }
+        span = leafSpan(*leaf, 0u, true);
+    }
+    CWorldSequenceDocument staged = m_Document;
+    auto* edited = staged.Find_Template(sequence->sequenceId);
+    WORLD_SEQUENCE_EFFECT_TRACK row;
+    uint32_t serial = 1u;
+    do { row.effectTrackId = "effect." + std::to_string(serial++); }
+    while (std::any_of(edited->effectTracks.begin(), edited->effectTracks.end(),
+        [&](const auto& value) { return value.effectTrackId == row.effectTrackId; }));
+    row.slotId = instance->bindings.front().slotId;
+    row.resourceKind = m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
+    row.resourceId = m_SelectedEffectResource;
+    row.durationMs = static_cast<uint32_t>((std::clamp)(std::ceil(span), 1., 600000.));
+    edited->effectTracks.push_back(row);
+    if (!staged.Validate(m_MapTargets, m_DeployTargets, m_Status)) return false;
+    m_SelectedEffectRow = edited->effectTracks.size() - 1u;
+    m_Document = std::move(staged);
+    Mark_Dirty();
+    m_Status = "Effect row appended at Motion End. Adjust it in Effect Rows, then Save.";
+    return true;
+}
+
+void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
+{
+    if (!ImGui::CollapsingHeader("Effect Rows", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (sequence.effectTracks.empty())
+    { ImGui::TextWrapped("Choose a V2 Group or Leaf in Object Resources and Append Effect at Motion End."); return; }
+    m_SelectedEffectRow = (std::min)(m_SelectedEffectRow, sequence.effectTracks.size() - 1u);
+    for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
+    {
+        const auto& row = sequence.effectTracks[index];
+        const auto label = row.resourceId + "##" + row.effectTrackId;
+        if (ImGui::Selectable(label.c_str(), m_SelectedEffectRow == index)) m_SelectedEffectRow = index;
+    }
+    auto& row = sequence.effectTracks[m_SelectedEffectRow];
+    bool changed = false;
+    int timing = row.timing == "MOTION_END" ? 0 : 1;
+    if (ImGui::Combo("Effect Trigger", &timing, "Motion End\0At Time\0"))
+    {
+        row.timing = timing == 0 ? "MOTION_END" : "TIME";
+        row.startMs = timing == 0 ? 0u : sequence.durationMs;
+        changed = true;
+    }
+    if (timing == 1) changed |= EditUInt("Effect Start (ms)", row.startMs, sequence.durationMs);
+    else ImGui::TextDisabled("Follows Motion Lifetime: %u ms", sequence.durationMs);
+    changed |= EditUInt("Effect Window (ms)", row.durationMs, CWorldSequenceDocument::MAX_DURATION_MS, 1);
+    changed |= ImGui::DragFloat3("Effect Offset (m)", &row.positionOffset.x, .01f);
+    changed |= ImGui::DragFloat3("Effect Rotation (deg)", &row.rotationDegrees.x, .5f);
+    changed |= ImGui::DragFloat3("Effect Scale", &row.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::TextWrapped("Each emitted object triggers this Effect at its own trajectory position. The Effect stays there after the model ends; its original envelope is preserved.");
+    if (ImGui::Button("Remove Selected Effect Row"))
+    {
+        sequence.effectTracks.erase(sequence.effectTracks.begin() + static_cast<ptrdiff_t>(m_SelectedEffectRow));
+        m_SelectedEffectRow = 0;
+        changed = true;
+    }
+    if (changed) Mark_Dirty();
+}
+
+
 void CWorldObjectTool::Refresh_AnimationResources()
 {
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
@@ -781,7 +923,7 @@ bool CWorldObjectTool::Append_SelectedAnimation()
     }
     if (slotId.empty())
     { m_Status = "The selected pattern does not bind the selected object. Existing draft preserved."; return false; }
-    if (sequence->tracks.size() + sequence->animationTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    if (sequence->tracks.size() + sequence->animationTracks.size() + sequence->effectTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
     { m_Status = "The pattern has reached its track limit. Existing draft preserved."; return false; }
     const bool firstOfSlot = std::none_of(sequence->animationTracks.begin(), sequence->animationTracks.end(), [&](const auto& clip) {
         return clip.slotId == slotId;
@@ -1033,9 +1175,12 @@ void CWorldObjectTool::Render_Detail()
                     previous->second + 1, duration - static_cast<uint32_t>(remaining) - 1);
                 previousStarts[animation.slotId] = animation.startMs;
             }
+            for (auto& effect : sequence->effectTracks)
+                if (effect.timing == "TIME")
+                    effect.startMs = static_cast<uint32_t>(static_cast<uint64_t>(effect.startMs) * duration / sequence->durationMs);
             sequence->durationMs = duration;
             if (sequence->objectMotion.count > 1)
-                sequence->objectMotion.intervalMs = (std::min)(sequence->objectMotion.intervalMs, (duration - 1) / (sequence->objectMotion.count - 1));
+                sequence->objectMotion.intervalMs = (std::min)(sequence->objectMotion.intervalMs, (sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration) / (sequence->objectMotion.count - 1));
             changed = true;
         }
         else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
@@ -1105,24 +1250,26 @@ void CWorldObjectTool::Render_Detail()
                 motion.acceleration = {0.f, accelerationY, 0.f};
                 motion.spreadDegrees = 0.f;
                 changed = true;
-                m_Status = "Vertical arc applied. Count and interval preserved. First emission returns at Lifetime; later emissions share the sequence end. Save to keep the motion.";
+                m_Status = "Vertical arc applied. Count and interval preserved. First emission returns at Lifetime. Effect-bearing motions give every emission a full Lifetime. Save to keep the motion.";
             }
         }
         ImGui::TextDisabled("First emission: apex at %.0f ms; return at %u ms.", sequence->durationMs * .5f, sequence->durationMs);
-        ImGui::TextWrapped("Arc Height sets the physics offset above the Transform track. All emissions share the sequence end; later emissions have less time. Apply again after changing Lifetime. Velocity and Acceleration below remain directly editable.");
+        ImGui::TextWrapped("Arc Height sets the physics offset above the Transform track. With Effect rows, every emission has a full Lifetime and its own Effect tail. Apply again after changing Lifetime. Velocity and Acceleration remain editable.");
         changed |= ImGui::DragFloat3("Velocity (m/s)", &motion.velocity.x, .05f);
         changed |= ImGui::DragFloat3("Acceleration (m/s2)", &motion.acceleration.x, .05f);
         changed |= ImGui::DragFloat3("Self Rotation (deg/s)", &motion.angularVelocityDegrees.x, .5f);
         changed |= ImGui::DragFloat3("Revolution (deg/s)", &motion.revolutionDegreesPerSecond.x, .5f);
         changed |= ImGui::DragFloat3("Revolution Offset (m)", &motion.revolutionOffset.x, .05f);
         changed |= EditUInt("Count", motion.count, 128, 1);
-        const uint32_t maxInterval = motion.count > 1 ? (sequence->durationMs - 1) / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
+        const uint32_t maxInterval = motion.count > 1 ? (sequence->effectTracks.empty() ? sequence->durationMs - 1 :
+            CWorldSequenceDocument::MAX_DURATION_MS - sequence->durationMs) / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
         changed |= EditUInt("Creation Interval (ms)", motion.intervalMs, maxInterval);
-        changed |= ImGui::DragFloat("Spread (deg)", &motion.spreadDegrees, .5f, 0.f, 180.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat(sequence->effectTracks.empty() ? "Spread (deg)" : "Horizontal Spread (deg)", &motion.spreadDegrees, .5f, 0.f, sequence->effectTracks.empty() ? 180.f : 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
     }
     if (changed) Mark_Dirty();
+    if (!alias) Render_EffectRows(*sequence);
     ImGui::SeparatorText("Selected Key");
     Render_KeyEditor(*sequence);
 }
@@ -1155,31 +1302,32 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         (selectedInstance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP || selectedInstance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT))
         ImGui::TextWrapped("Completion motion active. This timeline still edits the selected Motion's first Lifetime; seek to 0 to restart it.");
     float clock = (std::min)(m_ClockMs, SpanMs());
-    if (ImGui::SliderFloat("First Lifetime (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
+    if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
     const float rowHeight = 32.f;
-    const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, sequence.durationMs * m_Zoom * .001f);
-    const float pixelsPerMs = width / sequence.durationMs;
+    const uint32_t timelineDuration = sequence.PresentationSpanMs();
+    const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, timelineDuration * m_Zoom * .001f);
+    const float pixelsPerMs = width / timelineDuration;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
-    const float tracksHeight = rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size());
+    const float tracksHeight = rowHeight * static_cast<float>(sequence.tracks.size() + sequence.animationTracks.size() + sequence.effectTracks.size());
     const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
-        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), sequence.durationMs, pixelsPerMs * 1000.f);
+        CompositionTimeline::DrawRuler(draw, origin, ImVec2(origin.x + width, origin.y + 25.f), timelineDuration, pixelsPerMs * 1000.f);
         ImGui::InvisibleButton("RulerSeek", ImVec2(width, 25.f));
         if (ImGui::IsItemActive())
         {
             const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
-            const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(sequence.durationMs));
+            const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(timelineDuration));
             if (instance) Seek(instance->startDelayMs + local / instance->playbackSpeed);
         }
         for (size_t index = 0; index < sequence.tracks.size(); ++index)
         {
             auto& track = sequence.tracks[index]; ImGui::PushID(track.slotId.c_str());
             const auto row = ImVec2(origin.x, origin.y + 28.f + rowHeight * index);
-            CompositionTimeline::DrawBox(draw, row, ImVec2(row.x + width, row.y + 25.f),
+            CompositionTimeline::DrawBox(draw, row, ImVec2(row.x + sequence.durationMs * pixelsPerMs, row.y + 25.f),
                 IM_COL32(61, 107, 141, 255), m_SelectedTrack == index, track.slotId.c_str(), false, false);
             if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, ImVec2(row.x + width, row.y + 25.f)) && ImGui::IsMouseClicked(0))
             { m_SelectedTrack = index; m_SelectedKey = 0; }
@@ -1213,6 +1361,17 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                 ImVec2(origin.x + end * pixelsPerMs, y + 25.f), IM_COL32(113, 82, 147, 255), false,
                 track.displayName.empty() ? track.clipName.c_str() : track.displayName.c_str());
         }
+        for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
+        {
+            const auto& effect = sequence.effectTracks[index];
+            const float y = origin.y + 28.f + rowHeight * (sequence.tracks.size() + sequence.animationTracks.size() + index);
+            const float x = origin.x + sequence.EffectStartMs(effect) * pixelsPerMs;
+            const float endX = x + effect.durationMs * pixelsPerMs;
+            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f),
+                IM_COL32(167, 95, 51, 255), m_SelectedEffectRow == index, effect.resourceId.c_str());
+            if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(ImVec2(x, y), ImVec2(endX, y + 25.f)) && ImGui::IsMouseClicked(0))
+                m_SelectedEffectRow = index;
+        }
         if (showPhysics)
         {
             const float top = origin.y + 28.f + tracksHeight;
@@ -1220,6 +1379,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             draw->AddText(ImVec2(origin.x + 5.f, top + 3.f), IM_COL32(136, 227, 198, 255), "Physics Y offset / first emission");
             const auto& motion = sequence.objectMotion;
             const float seconds = sequence.durationMs * .001f;
+            const float physicsWidth = sequence.durationMs * pixelsPerMs;
             const auto sampleY = [&motion](float time) { return motion.velocity.y * time + .5f * motion.acceleration.y * time * time; };
             float minimum = (std::min)(0.f, sampleY(seconds));
             float maximum = (std::max)(0.f, sampleY(seconds));
@@ -1235,14 +1395,14 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                 for (int segment = 0; segment < 64; ++segment)
                 {
                     const float from = static_cast<float>(segment) / 64.f, to = static_cast<float>(segment + 1) / 64.f;
-                    draw->AddLine(ImVec2(origin.x + width * from, top + 56.f - 30.f * (sampleY(seconds * from) - minimum) / range),
-                        ImVec2(origin.x + width * to, top + 56.f - 30.f * (sampleY(seconds * to) - minimum) / range), IM_COL32(91, 217, 171, 255), 2.f);
+                    draw->AddLine(ImVec2(origin.x + physicsWidth * from, top + 56.f - 30.f * (sampleY(seconds * from) - minimum) / range),
+                        ImVec2(origin.x + physicsWidth * to, top + 56.f - 30.f * (sampleY(seconds * to) - minimum) / range), IM_COL32(91, 217, 171, 255), 2.f);
                 }
             ImGui::SetCursorScreenPos(ImVec2(origin.x, top));
             ImGui::InvisibleButton("PhysicsSeek", ImVec2(width, 60.f));
             if (ImGui::IsItemActive() && selectedInstance)
             {
-                const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(sequence.durationMs));
+                const float local = (std::clamp)((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs, 0.f, static_cast<float>(timelineDuration));
                 Seek(selectedInstance->startDelayMs + local / selectedInstance->playbackSpeed);
             }
             if (ImGui::IsItemHovered())
@@ -1250,7 +1410,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         }
         const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
         const float local = instance ? (m_ClockMs - instance->startDelayMs) * instance->playbackSpeed : 0.f;
-        const float cursorX = origin.x + (std::clamp)(local, 0.f, static_cast<float>(sequence.durationMs)) * pixelsPerMs;
+        const float cursorX = origin.x + (std::clamp)(local, 0.f, static_cast<float>(timelineDuration)) * pixelsPerMs;
         draw->AddLine(ImVec2(cursorX, origin.y), ImVec2(cursorX, origin.y + height), IM_COL32(255, 217, 68, 255), 2.f);
         ImGui::SetCursorScreenPos(origin); ImGui::Dummy(ImVec2(width, height));
     }

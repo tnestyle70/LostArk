@@ -366,6 +366,8 @@ public:
 	const DESC& Creation_Desc() const { return m_CreationDesc; }
 	float4x4_t& PivotWorld() { return m_PivotWorld; }
 	void Set_PivotWorld(const float4x4_t& Pivot) { m_PivotWorld = Pivot; Apply_Transform(); }
+	/* Parent occurrence scale only; authored Group child scale stays in Params/Local. */
+	void Set_OccurrenceScale(const float3_t& Scale);
 	const std::string& Status() const { return m_strStatus; }
 	SHAPE Shape() const { return m_eShape; }
 	f32_t Time() const { return m_fTime; }
@@ -541,6 +543,7 @@ private:
 	std::vector<PARTICLE> m_Particles;
 	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstances;
 	PIVOT_SAMPLER m_PivotSampler;
+	float3_t m_vOccurrenceScale = { 1.f, 1.f, 1.f };
 	bool_t m_bPivotSampleFailed = false;
 	double m_dElapsedSeconds = 0.0;
 	double m_dParticleSeconds = 0.0;

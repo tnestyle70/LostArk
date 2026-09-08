@@ -30,6 +30,8 @@ enum class MODEL_SURFACE_FAMILY : uint32_t
 	PBR_SEAMLESS_OPAQUE = 3,
 	PBR_OPAQUE = 4,
 	SOURCE_SPECULAR_OPAQUE = 5,
+	SOURCE_CHARACTER = 6,
+	SOURCE_OVERLAY_OPAQUE = 7,
 };
 
 /* Per-placement atlas coordinates and decode scales. The texture pair belongs
@@ -41,9 +43,39 @@ struct MODEL_BAKED_LIGHTING_INSTANCE
     float4_t directionalScale = { 0.f, 0.f, 0.f, 0.f };
 };
 
+/* Selected native character programs share one CModel/CMaterial route. The
+   Client compiles named source parameters into the checked program's uniform
+   layout; these arrays are private render inputs, never avatar identities. */
+inline constexpr uint32_t SOURCE_CHARACTER_CONSTANT_COUNT = 64u;
+inline constexpr uint32_t SOURCE_CHARACTER_TEXTURE_COUNT = 16u;
+struct MODEL_SOURCE_CHARACTER_PARAMETERS
+{
+    uint32_t program = 0u;
+    uint32_t baseTextureMask = 0u;
+    uint32_t lightTextureMask = 0u;
+    std::array<float4_t, SOURCE_CHARACTER_CONSTANT_COUNT> baseConstants{};
+    std::array<float4_t, SOURCE_CHARACTER_CONSTANT_COUNT> lightConstants{};
+};
+
+struct MODEL_SOURCE_CHARACTER_TEXTURE
+{
+    filesystem::path path;
+    bool_t srgb = false;
+};
+
 struct MODEL_SURFACE_PARAMETERS
 {
 	MODEL_SURFACE_FAMILY family = MODEL_SURFACE_FAMILY::LEGACY;
+	MODEL_SOURCE_CHARACTER_PARAMETERS sourceCharacter;
+    // Source opaque overlay uses vertex R coverage and vertex A normal strength.
+    float4_t overlayColor = { 1.f, 1.f, 1.f, 1.f };
+    f32_t overlayTiling = 1.f;
+    f32_t overlayNormalIntensity = 1.f;
+    f32_t overlaySharpness = 1.f;
+    f32_t overlayBrightness = 1.f;
+    f32_t overlaySaturation = 1.f;
+    f32_t overlaySpecularIntensity = 1.f;
+    bool_t overlaySRGB = true;
 	f32_t diffuseBrightness = 1.f;
 	f32_t normalIntensity = 1.f;
 	f32_t specularIntensity = 1.f;
@@ -60,6 +92,14 @@ struct MODEL_SURFACE_PARAMETERS
 	bool_t reflectionSRGB = false;
 	bool_t ormSRGB = false;
 	bool_t castsShadow = true;
+	bool_t hasEmissive = false;
+	float4_t emissiveColor = { 1.f, 1.f, 1.f, 1.f };
+	f32_t emissiveIntensity = 0.f;
+	float2_t emissiveUVTiling = { 1.f, 1.f };
+	f32_t emissiveFlickerMinimum = 0.f;
+	f32_t emissiveFlickerSpeed = 0.f;
+	f32_t emissivePhaseOffset = 0.f;
+	bool_t emissiveSRGB = true;
 	float2_t uvTiling = { 1.f, 1.f };
 	bool_t uvFixedNormal = false;
 	bool_t useWorldReflection = false;
@@ -87,13 +127,19 @@ struct MODEL_SURFACE_PARAMETERS
 struct MODEL_MATERIAL_OVERRIDE
 {
 	string materialName;
+	bool_t hasDiffuseAddressU = false;
+	bool_t diffuseMirrorU = false;
 	MODEL_SURFACE_PARAMETERS surface;
 	filesystem::path surfaceSpecularPath;
 	filesystem::path reflectionPath;
 	filesystem::path surfaceDiffusePath;
 	filesystem::path surfaceNormalPath;
+	filesystem::path overlayDiffusePath;
+	filesystem::path overlayNormalPath;
 	filesystem::path detailNormalPath;
 	filesystem::path surfaceORMPath;
+	filesystem::path surfaceEmissivePath;
+	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
     filesystem::path environmentCubePath;
@@ -105,6 +151,7 @@ struct MODEL_MATERIAL_DATA
 	filesystem::path surfaceSpecularPath;
 	string name;
 	uint64_t nameHash = {};
+	bool_t diffuseMirrorU = false;
 	filesystem::path diffusePath;
 	filesystem::path normalPath;
 	filesystem::path specularPath;
@@ -120,8 +167,12 @@ struct MODEL_MATERIAL_DATA
 	filesystem::path reflectionPath;
 	filesystem::path surfaceDiffusePath;
 	filesystem::path surfaceNormalPath;
+	filesystem::path overlayDiffusePath;
+	filesystem::path overlayNormalPath;
 	filesystem::path detailNormalPath;
 	filesystem::path surfaceORMPath;
+	filesystem::path surfaceEmissivePath;
+	std::array<MODEL_SOURCE_CHARACTER_TEXTURE, SOURCE_CHARACTER_TEXTURE_COUNT> sourceCharacterTextures;
     filesystem::path bakedAveragePath;
     filesystem::path bakedDirectionalPath;
     filesystem::path environmentCubePath;
@@ -198,6 +249,7 @@ struct MODEL_MESH_DATA
 	vector<uint32_t> color0Rgba8;
 	bool_t hasColor0 = { false };
 	bool_t hasTexcoord1 = { false };
+	bool_t hasTexcoord2 = { false };
 	MODEL_MESH_BOUNDS_DATA embeddedBounds;
 };
 

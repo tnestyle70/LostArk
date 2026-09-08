@@ -1219,7 +1219,8 @@ namespace
         const auto AddRequest = [&Requests](SOURCE_ANCHOR_REQUEST Request)
         {
             if (Request.strRuntimeAnchorSlotId.empty() ||
-                Request.strRuntimeBoneName.empty())
+                (Request.eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
+                 Request.strRuntimeBoneName.empty()))
             {
                 return;
             }
@@ -1236,7 +1237,8 @@ namespace
         for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
         {
             if (Element.ActionCueAttachment.bEnabled &&
-                Element.ActionCueAttachment.bFollow)
+                Element.ActionCueAttachment.bFollow &&
+                Element.ActionCueAttachment.strModelCueId.empty())
             {
                 AddRequest({
                     Element.ActionCueAttachment.strRuntimeAnchorSlotId,
@@ -1326,6 +1328,24 @@ namespace
     {
 		InOutResult.clear();
 		InOutResult.reserve(Requests.size());
+		// Camera attachments own the full scene-view basis and do not depend on
+		// the character model, owner scale policy, or a bone with an empty name.
+		const float4x4_t* pCameraWorld = Engine::CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+		for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
+		{
+			if (Request.eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW ||
+				nullptr == pCameraWorld || !Is_NonDegenerateAffineMatrix(*pCameraWorld))
+				continue;
+			const auto& Local = Request.SocketLocalTransform;
+			const matrix_t SocketLocal = XMMatrixScaling(Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+				XMMatrixRotationRollPitchYaw(XMConvertToRadians(Local.vRotationDegrees.x),
+					XMConvertToRadians(Local.vRotationDegrees.y), XMConvertToRadians(Local.vRotationDegrees.z)) *
+				XMMatrixTranslation(Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
+			float4x4_t World{};
+			XMStoreFloat4x4(&World, SocketLocal * XMLoadFloat4x4(pCameraWorld));
+			if (Is_NonDegenerateAffineMatrix(World))
+				InOutResult.emplace(Request.strRuntimeAnchorSlotId, World);
+		}
 		float4x4_t PresentationRoot{};
 		float4x4_t EffectivePresentationRoot{};
 		if (!Owner.Is_Valid() ||
@@ -1347,6 +1367,8 @@ namespace
 			Owner.Try_Get_OwnerWorld(ActualOwnerWorld);
         for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
         {
+            if (Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW)
+                continue;
             if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
                 continue;
 			matrix_t BoneAnchorWorld;

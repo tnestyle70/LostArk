@@ -81,6 +81,8 @@ CModel::CModel(const CModel& Prototype)
 	, m_iRootMotionBoneIndex { Prototype.m_iRootMotionBoneIndex }
 	, m_iRootMotionVerticalAxis { Prototype.m_iRootMotionVerticalAxis }
 	, m_vRootMotionRestTranslation { Prototype.m_vRootMotionRestTranslation }
+	, m_vRootMotionUnscaledTranslation { Prototype.m_vRootMotionUnscaledTranslation }
+	, m_fRootMotionVerticalScale { Prototype.m_fRootMotionVerticalScale }
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
@@ -156,6 +158,9 @@ void CModel::Begin_AnimBlend(f32_t fBlendSeconds)
             &m_BlendFromPose[i],
             m_Bones[i]->Get_TransformationMatrix());
 
+    if (m_fRootMotionVerticalScale != 1.f && m_iRootMotionBoneIndex >= 0 &&
+        static_cast<size_t>(m_iRootMotionBoneIndex) < m_BlendFromPose.size())
+        Restore_UnscaledRootVertical(m_BlendFromPose[m_iRootMotionBoneIndex]);
     m_fBlendDuration = fBlendSeconds;
     m_fBlendElapsed = 0.f;
 }
@@ -354,6 +359,9 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 			if (!Is_FiniteMatrix(LocalTransforms[iBone]))
 				return false;
 		}
+		if (bUseCurrentPoseAndBlend && m_fRootMotionVerticalScale != 1.f && m_iRootMotionBoneIndex >= 0 &&
+			static_cast<size_t>(m_iRootMotionBoneIndex) < LocalTransforms.size())
+			Restore_UnscaledRootVertical(LocalTransforms[m_iRootMotionBoneIndex]);
 		if (!m_Animations[iExpectedAnimationIndex]->Sample_LocalBoneTransforms(
 				fTrackPositionTicks, LocalTransforms))
 		{
@@ -402,12 +410,7 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 			}
 			float4x4_t& Root =
 				LocalTransforms[static_cast<size_t>(m_iRootMotionBoneIndex)];
-			if (0 != m_iRootMotionVerticalAxis)
-				Root._41 = m_vRootMotionRestTranslation.x;
-			if (1 != m_iRootMotionVerticalAxis)
-				Root._42 = m_vRootMotionRestTranslation.y;
-			if (2 != m_iRootMotionVerticalAxis)
-				Root._43 = m_vRootMotionRestTranslation.z;
+			Apply_RootMotionTranslation(Root);
 		}
 
 		OutCombined.resize(LocalTransforms.size());
@@ -540,11 +543,52 @@ bool_t CModel::Enable_RootMotionSuppression(
         float4x4_t rest{};
         XMStoreFloat4x4(&rest, m_Bones[i]->Get_TransformationMatrix());
         m_vRootMotionRestTranslation = { rest._41, rest._42, rest._43 };
+        m_vRootMotionUnscaledTranslation = m_vRootMotionRestTranslation;
         m_iRootMotionBoneIndex = static_cast<int32_t>(i);
         m_iRootMotionVerticalAxis = iVerticalAxis;
         return true;
     }
     return false;
+}
+
+void CModel::Restore_UnscaledRootVertical(float4x4_t& Local) const
+{
+    if (0 == m_iRootMotionVerticalAxis) Local._41 = m_vRootMotionUnscaledTranslation.x;
+    if (1 == m_iRootMotionVerticalAxis) Local._42 = m_vRootMotionUnscaledTranslation.y;
+    if (2 == m_iRootMotionVerticalAxis) Local._43 = m_vRootMotionUnscaledTranslation.z;
+}
+
+void CModel::Apply_RootMotionTranslation(float4x4_t& Local) const
+{
+    if (0 != m_iRootMotionVerticalAxis) Local._41 = m_vRootMotionRestTranslation.x;
+    else if (m_fRootMotionVerticalScale != 1.f)
+        Local._41 = m_vRootMotionRestTranslation.x + (Local._41 - m_vRootMotionRestTranslation.x) * m_fRootMotionVerticalScale;
+    if (1 != m_iRootMotionVerticalAxis) Local._42 = m_vRootMotionRestTranslation.y;
+    else if (m_fRootMotionVerticalScale != 1.f)
+        Local._42 = m_vRootMotionRestTranslation.y + (Local._42 - m_vRootMotionRestTranslation.y) * m_fRootMotionVerticalScale;
+    if (2 != m_iRootMotionVerticalAxis) Local._43 = m_vRootMotionRestTranslation.z;
+    else if (m_fRootMotionVerticalScale != 1.f)
+        Local._43 = m_vRootMotionRestTranslation.z + (Local._43 - m_vRootMotionRestTranslation.z) * m_fRootMotionVerticalScale;
+}
+
+bool_t CModel::Set_RootMotionVerticalScale(const f32_t fScale)
+{
+    if (!std::isfinite(fScale) || fScale < 0.f || fScale > 1.f ||
+        (fScale != 1.f && (m_iRootMotionBoneIndex < 0 || m_iRootMotionVerticalAxis < 0))) return false;
+    if (m_fRootMotionVerticalScale == fScale) return true;
+    const f32_t previousScale = m_fRootMotionVerticalScale;
+    m_fRootMotionVerticalScale = fScale;
+    if (m_iRootMotionBoneIndex >= 0 && static_cast<size_t>(m_iRootMotionBoneIndex) < m_Bones.size() && m_Bones[m_iRootMotionBoneIndex])
+    {
+        float4x4_t local{};
+        XMStoreFloat4x4(&local, m_Bones[m_iRootMotionBoneIndex]->Get_TransformationMatrix());
+        if (previousScale != 1.f) Restore_UnscaledRootVertical(local);
+        else m_vRootMotionUnscaledTranslation = {local._41, local._42, local._43};
+        Apply_RootMotionTranslation(local);
+        m_Bones[m_iRootMotionBoneIndex]->Update_TransformationMatrix(XMLoadFloat4x4(&local));
+        Refresh_BoneCombinedMatrices();
+    }
+    return true;
 }
 
 bool_t CModel::Start_Animation(
@@ -713,6 +757,16 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())
         return false;
 
+    // Default scale leaves external local-pose edits untouched. Only a scaled
+    // pose needs restoration before an unkeyed channel or blend consumes it.
+    if (m_fRootMotionVerticalScale != 1.f && m_iRootMotionBoneIndex >= 0 &&
+        static_cast<size_t>(m_iRootMotionBoneIndex) < m_Bones.size() && m_Bones[m_iRootMotionBoneIndex])
+    {
+        float4x4_t local{};
+        XMStoreFloat4x4(&local, m_Bones[m_iRootMotionBoneIndex]->Get_TransformationMatrix());
+        Restore_UnscaledRootVertical(local);
+        m_Bones[m_iRootMotionBoneIndex]->Update_TransformationMatrix(XMLoadFloat4x4(&local));
+    }
     bool_t      isFinished = { false };
     /* 내가 로드한 애니메이션 중, 
     현재 취해야하는 애니메이션의 포즈뼈들의 m_TransformationMatrix를 갱신해준다. */
@@ -731,12 +785,8 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
         {
             float4x4_t local{};
             XMStoreFloat4x4(&local, pRoot->Get_TransformationMatrix());
-            if (0 != m_iRootMotionVerticalAxis)
-                local._41 = m_vRootMotionRestTranslation.x;
-            if (1 != m_iRootMotionVerticalAxis)
-                local._42 = m_vRootMotionRestTranslation.y;
-            if (2 != m_iRootMotionVerticalAxis)
-                local._43 = m_vRootMotionRestTranslation.z;
+            m_vRootMotionUnscaledTranslation = {local._41, local._42, local._43};
+            Apply_RootMotionTranslation(local);
             pRoot->Update_TransformationMatrix(XMLoadFloat4x4(&local));
         }
     }
@@ -788,6 +838,14 @@ const MODEL_COLOR_TINT* CModel::Get_MaterialColorTint(
         return nullptr;
 
     return &m_Materials[materialIndex]->Get_ColorTint();
+}
+
+HRESULT CModel::Bind_SourceCharacter(shared_ptr<CShader> shader, uint32_t meshIndex)
+{
+    if (meshIndex >= m_Meshes.size()) return E_INVALIDARG;
+    const uint32_t materialIndex = m_Meshes[meshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size() || !m_Materials[materialIndex]) return E_INVALIDARG;
+    return m_Materials[materialIndex]->Bind_SourceCharacter(shader);
 }
 
 HRESULT CModel::Bind_SurfaceLighting(shared_ptr<CShader> shader, uint32_t meshIndex)
@@ -973,17 +1031,75 @@ HRESULT CModel::Ready_BinaryModel(
 		if (replacement.materialName.empty() ||
 			find(overriddenNames.begin(), overriddenNames.end(), replacement.materialName) != overriddenNames.end())
 			return failOverride("empty or duplicate material name");
+        if (replacement.surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+        {
+            const auto& source = replacement.surface.sourceCharacter;
+            const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
+            if (source.program == 0u || source.program > 9u || mask == 0u ||
+                (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
+                replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
+                return failOverride("invalid source character program or texture mask");
+            for (const auto* constants : { &source.baseConstants, &source.lightConstants })
+                for (const auto& value : *constants)
+                    for (const float scalar : { value.x, value.y, value.z, value.w })
+                        if (!std::isfinite(scalar) || std::abs(scalar) > 1000000.f)
+                            return failOverride("invalid source character parameter");
+            const auto root = loadDesc.assetRoot.lexically_normal();
+            if (!root.is_absolute()) return failOverride("source character root is not absolute");
+            for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
+            {
+                const auto& path = replacement.sourceCharacterTextures[index].path;
+                if ((mask & (1u << index)) == 0u)
+                {
+                    if (!path.empty()) return failOverride("unused source character texture");
+                    continue;
+                }
+                const auto relative = path.lexically_normal().lexically_relative(root);
+                if (!path.is_absolute() || relative.empty() || relative.is_absolute() ||
+                    any_of(relative.begin(), relative.end(), [](const filesystem::path& part) { return part == ".."; }))
+                    return failOverride("source character texture escapes the resource root");
+            }
+            size_t matches = 0u;
+            for (auto& material : asset.materials)
+            {
+                if (material.name != replacement.materialName) continue;
+                const size_t materialIndex = static_cast<size_t>(&material - asset.materials.data());
+                if ((source.program == 5u || source.program == 7u) &&
+                    any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+                        return mesh.materialIndex == materialIndex &&
+                            (!mesh.hasTexcoord1 || (source.program == 5u && !mesh.hasTexcoord2));
+                    }))
+                    return failOverride("source character requires native extra UV channels");
+                // Some multipart weapons repeat one MIC in several material
+                // slots. An exact source name intentionally replaces all of them.
+                material.surface = replacement.surface;
+                material.sourceCharacterTextures = replacement.sourceCharacterTextures;
+                ++matches;
+            }
+            if (matches == 0u) return failOverride("source character material name is absent");
+            overriddenNames.push_back(replacement.materialName);
+            continue;
+        }
 		const auto match = find_if(asset.materials.begin(), asset.materials.end(),
 			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; });
 		if (match == asset.materials.end() || count_if(asset.materials.begin(), asset.materials.end(),
 			[&](const MODEL_MATERIAL_DATA& material) { return material.name == replacement.materialName; }) != 1)
 			return failOverride("material name does not resolve uniquely");
 		const auto& surface = replacement.surface;
+		if (replacement.hasDiffuseAddressU)
+		{
+			if (surface.family != MODEL_SURFACE_FAMILY::LEGACY || match->diffusePath.empty())
+				return failOverride("diffuse sampler requires an existing legacy diffuse input");
+			match->diffuseMirrorU = replacement.diffuseMirrorU;
+			overriddenNames.push_back(replacement.materialName);
+			continue;
+		}
 		if (surface.family != MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION &&
 			surface.family != MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION &&
 			surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
 			surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
-			surface.family != MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
+			surface.family != MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE &&
+            surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
 			return failOverride("unsupported surface family");
 		const f32_t scalars[] = { surface.diffuseBrightness, surface.normalIntensity,
 			surface.specularIntensity, surface.specularPower, surface.reflectionIntensity,
@@ -997,12 +1113,14 @@ HRESULT CModel::Ready_BinaryModel(
 		const auto root = loadDesc.assetRoot.lexically_normal();
 		const auto reflection = replacement.reflectionPath.lexically_normal();
 		const auto relative = reflection.lexically_relative(root);
-		if (!root.is_absolute() || !reflection.is_absolute() || relative.empty() ||
-			relative.is_absolute() || any_of(relative.begin(), relative.end(),
-				[](const filesystem::path& part) { return part == ".."; }))
+        if (surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+            (!root.is_absolute() || !reflection.is_absolute() || relative.empty() ||
+             relative.is_absolute() || any_of(relative.begin(), relative.end(),
+                [](const filesystem::path& part) { return part == ".."; })))
 			return failOverride("reflection escapes the resource root");
-		if (match->diffusePath.empty() || match->normalPath.empty() ||
-			(surface.family == MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION && match->specularPath.empty()))
+		if (surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+            (match->diffusePath.empty() || match->normalPath.empty() ||
+			(surface.family == MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION && match->specularPath.empty())))
 			return failOverride("required material input is absent");
 		if (surface.family == MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE ||
 			surface.family == MODEL_SURFACE_FAMILY::PBR_OPAQUE)
@@ -1054,6 +1172,36 @@ HRESULT CModel::Ready_BinaryModel(
                 *input.second = path;
             }
         }
+        if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
+        {
+            const uint32_t materialIndex = static_cast<uint32_t>(distance(asset.materials.begin(), match));
+            if (any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
+                return mesh.materialIndex == materialIndex &&
+                    (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || !mesh.hasColor0 || mesh.tangentHandedness.empty());
+            })) return failOverride("source overlay requires preserved static COLOR0 and tangent handedness");
+            const float values[] = { surface.overlayColor.x, surface.overlayColor.y, surface.overlayColor.z,
+                surface.overlayColor.w, surface.overlayTiling, surface.overlayNormalIntensity,
+                surface.overlaySharpness, surface.overlayBrightness, surface.overlaySaturation,
+                surface.overlaySpecularIntensity };
+            if (any_of(begin(values), end(values), [](float v) { return !std::isfinite(v) || v < 0.f; }) ||
+                surface.overlayTiling <= 0.f || surface.hasEnvironmentCube || surface.hasEmissive ||
+                !replacement.reflectionPath.empty()) return failOverride("invalid source overlay surface");
+            const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
+                { &replacement.surfaceDiffusePath, &match->surfaceDiffusePath },
+                { &replacement.surfaceNormalPath, &match->surfaceNormalPath },
+                { &replacement.overlayDiffusePath, &match->overlayDiffusePath },
+                { &replacement.overlayNormalPath, &match->overlayNormalPath }
+            };
+            for (const auto& input : inputs)
+            {
+                const auto& path = *input.first;
+                const auto rel = path.lexically_normal().lexically_relative(root);
+                if (!root.is_absolute() || !path.is_absolute() || rel.empty() || rel.is_absolute() ||
+                    any_of(rel.begin(), rel.end(), [](const filesystem::path& p) { return p == ".."; }))
+                    return failOverride("source overlay texture escapes the resource root");
+                *input.second = path;
+            }
+        }
         if (surface.hasBakedLighting)
         {
             const uint32_t materialIndex = static_cast<uint32_t>(distance(asset.materials.begin(), match));
@@ -1086,6 +1234,27 @@ HRESULT CModel::Ready_BinaryModel(
                 return failOverride("lighting texture escapes the resource root");
             *path.second = *path.first;
         }
+		if (surface.hasEmissive)
+		{
+			const f32_t emissionValues[] = { surface.emissiveColor.x, surface.emissiveColor.y,
+				surface.emissiveColor.z, surface.emissiveColor.w, surface.emissiveIntensity,
+				surface.emissiveUVTiling.x, surface.emissiveUVTiling.y,
+				surface.emissiveFlickerMinimum, surface.emissiveFlickerSpeed };
+			if ((surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
+				surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE) ||
+				any_of(begin(emissionValues), end(emissionValues),
+					[](f32_t value) { return !std::isfinite(value) || value < 0.f; }) ||
+				surface.emissiveUVTiling.x <= 0.f || surface.emissiveUVTiling.y <= 0.f ||
+				surface.emissiveFlickerMinimum > 1.f || !std::isfinite(surface.emissivePhaseOffset))
+				return failOverride("invalid PBR emissive value");
+			const auto emissive = replacement.surfaceEmissivePath.lexically_normal();
+			const auto emissiveRelative = emissive.lexically_relative(root);
+			if (!emissive.is_absolute() || emissiveRelative.empty() || emissiveRelative.is_absolute() ||
+				any_of(emissiveRelative.begin(), emissiveRelative.end(),
+					[](const filesystem::path& part) { return part == ".."; }))
+				return failOverride("emissive texture escapes the resource root");
+			match->surfaceEmissivePath = emissive;
+		}
 		match->surface = surface;
 		match->reflectionPath = reflection;
 		overriddenNames.push_back(replacement.materialName);

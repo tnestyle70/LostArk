@@ -131,6 +131,7 @@ void CMainApp::RefreshSequenceViewer()
 					case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL: row.action = "다른 맵으로 이동"; break;
 					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP: row.action = "몬스터 그룹 소환"; break;
 					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER: row.action = "보스 전투 활성화"; break;
+					case WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE: row.action = "카드미로 망원경 (망치 타격)"; break;
 					default: row.enabled = false; row.error = "지원하지 않는 트리거 동작"; break;
 					}
 					row.related = event.targetId;

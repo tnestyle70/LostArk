@@ -14,7 +14,7 @@ NS_BEGIN(Client)
 class CEffectAuthoringResourceTree final
 {
 public:
-    enum class COMMAND_KIND { OPEN, PREVIEW, APPEND, CREATE_EFFECT };
+    enum class COMMAND_KIND { OPEN, PREVIEW, APPEND, CREATE_EFFECT, CREATE_V1_COPY };
     struct COMMAND final
     {
         COMMAND_KIND eCommand = COMMAND_KIND::OPEN;
@@ -22,9 +22,12 @@ public:
         std::string strAssetId;
         std::string strDisplayName;
         std::string strParentId;
+        std::string strSourceAssetId;
     };
 
+    explicit CEffectAuthoringResourceTree(EFFECT_RESOURCE_OWNER_KIND owner = EFFECT_RESOURCE_OWNER_KIND::END);
     void Render();
+    void Set_V1CopySource(const std::string& strAssetId, const std::string& strDisplayName);
     bool Take_Command(COMMAND& OutCommand);
     bool Reload(std::string& strOutStatus);
     bool Attach_Saved(EFFECT_RESOURCE_OWNER_KIND eKind,
@@ -71,6 +74,7 @@ private:
     void Render_Resources(const std::string& strParentId);
     const REFERENCE* Find_Reference(EFFECT_RESOURCE_OWNER_KIND eKind, const std::string& strId) const;
 
+    EFFECT_RESOURCE_OWNER_KIND m_eOwnerFilter = EFFECT_RESOURCE_OWNER_KIND::END;
     DOCUMENT m_Document;
     std::vector<RESOURCE> m_V1Resources, m_V2Resources;
     std::deque<COMMAND> m_Commands;
@@ -81,6 +85,8 @@ private:
     EFFECT_RESOURCE_OWNER_KIND m_eCreateKind = EFFECT_RESOURCE_OWNER_KIND::V2_LEAF;
     char m_szName[257] = {};
     char m_szSearch[257] = {};
+    std::string m_strV1CopySource;
+    char m_szCopyId[129] = {}, m_szCopyName[65] = {};
 };
 
 NS_END

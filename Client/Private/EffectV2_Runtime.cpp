@@ -277,6 +277,24 @@ namespace
 		return true;
 	}
 
+	float3_t Occurrence_PivotScale(const float4x4_t& Pivot)
+	{
+		const matrix_t Matrix = XMLoadFloat4x4(&Pivot);
+		return { XMVectorGetX(XMVector3Length(Matrix.r[0])),
+			XMVectorGetX(XMVector3Length(Matrix.r[1])), XMVectorGetX(XMVector3Length(Matrix.r[2])) };
+	}
+
+	bool Valid_PlacementPivot(const float4x4_t& Pivot)
+	{
+		for (size_t Row = 0u; Row < 4u; ++Row)
+			for (size_t Column = 0u; Column < 4u; ++Column)
+				if (!std::isfinite(Pivot.m[Row][Column])) return false;
+		const float Determinant = XMVectorGetX(XMMatrixDeterminant(XMLoadFloat4x4(&Pivot)));
+		return std::isfinite(Determinant) && Determinant != 0.f &&
+			std::fabs(Pivot._14) < .000001f && std::fabs(Pivot._24) < .000001f &&
+			std::fabs(Pivot._34) < .000001f && std::fabs(Pivot._44 - 1.f) < .000001f;
+	}
+
 	float4x4_t Child_Local(const Client::EFFECT_V2_GROUP_CHILD& Child)
 	{
 		float4x4_t Local;
@@ -589,7 +607,12 @@ namespace
 				pObject->Set_DissolveOutRange(pPlayback->fDissolveOutStart,
 					pPlayback->fDissolveOutEnd);
 		}
-		if (pPlayback) pObject->Set_PivotSampler(Child_PivotSampler(Pending, *pPlayback));
+		if (pPlayback)
+		{
+			pObject->Set_PivotSampler(Child_PivotSampler(Pending, *pPlayback));
+			// Pending.Local/Params already own authored child scale; this is only the parent.
+			pObject->Set_OccurrenceScale(Occurrence_PivotScale(Pivot));
+		}
 		const f32_t StopAge = Pending.fStopSeconds >= 0.f ?
 			(Pending.fStopSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) / fPlaybackRate : -1.f;
 		const bool_t DrainAtStart = StopAge >= 0.f && fInitialElapsedSeconds >= StopAge &&
@@ -1755,9 +1778,69 @@ void Client::CEffectV2Runtime::Set_GroupPivot(
 			float4x4_t ChildPivot;
 			XMStoreFloat4x4(&ChildPivot,
 				XMLoadFloat4x4(&Pending->Local) * XMLoadFloat4x4(&PivotWorld));
+			pObject->Set_OccurrenceScale(Occurrence_PivotScale(PivotWorld));
 			pObject->Set_PivotWorld(ChildPivot);
 		}
 	}
+}
+
+bool_t Client::CEffectV2Runtime::Rebuild_GroupPlacement(const uint32_t iHandle,
+	const float4x4_t& PivotWorld, CEffectV2Object::PIVOT_SAMPLER Sampler,
+	const ComPtr<ID3D11Device>& pDevice, const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end() || !Found->second.Playback.bExternalClock ||
+		!std::isfinite(Found->second.fSeconds) || Found->second.fSeconds < 0.f ||
+		!Valid_PlacementPivot(PivotWorld))
+	{
+		Report("Live placement requires an external-clock group and a finite nonsingular affine pivot.");
+		return false;
+	}
+	FREE_GROUP& Lane = Found->second;
+	float4x4_t Sampled = PivotWorld;
+	std::string Error;
+	if ((Sampler && !Sampler(Lane.fSeconds, Sampled, Error)) || !Valid_PlacementPivot(Sampled))
+	{
+		Report(Error.empty() ? "Live placement current-age pivot sample is invalid." : Error);
+		return false; // Keep the old handle, particles, sampler and clock on validation failure.
+	}
+	const float Age = Lane.fSeconds;
+	const bool_t Paused = Lane.bPaused;
+	Lane.Pivot = Sampled;
+	Lane.Playback.PivotWorld = Sampled;
+	Lane.Playback.PivotSampler = std::move(Sampler);
+	Lane.strFailure.clear();
+	Set_GroupPivot(iHandle, Sampled);
+	// Keep the same objects: Late_Update may already have queued them for this
+	// frame. Placement edits change neither child timing nor attempted epochs.
+	for (auto& Effect : Lane.Spawned)
+	{
+		const auto Object = Effect.pObject.lock();
+		if (!Object) continue;
+		const auto Pending = std::find_if(Lane.Pending.begin(), Lane.Pending.end(),
+			[&Effect](const auto& Row) { return Row.iChildIndex == Effect.iChildIndex; });
+		if (Pending == Lane.Pending.end()) continue;
+		Object->Set_PivotSampler(Child_PivotSampler(*Pending, Lane.Playback));
+		const float Start = Ms_ToSeconds(Pending->Binding.iStartMs);
+		const float Elapsed = (std::max)(0.f, Age - Start) / Lane.fPlaybackRate;
+		if (Effect.fStopSeconds >= 0.f && Age >= Effect.fStopSeconds)
+		{
+			if (Effect.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE)
+			{
+				Object->Seek_ElapsedSeconds((Effect.fStopSeconds - Start) / Lane.fPlaybackRate);
+				Object->Stop_Emission();
+				(void)Object->Sample_ElapsedSeconds(Elapsed);
+			}
+			else Object->Finish();
+			Effect.bStopApplied = true;
+		}
+		else Object->Seek_ElapsedSeconds(Elapsed);
+		Object->Set_PlaybackPaused(true); // The occurrence remains externally clocked.
+		if (Object->Has_PivotSampleFailure() && Lane.strFailure.empty())
+			Lane.strFailure = Object->Status();
+	}
+	if (!Lane.strFailure.empty()) { Report(Lane.strFailure); return false; }
+	return Sample_Group(iHandle, Age, Paused, pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Set_GroupPaused(const uint32_t iHandle, const bool_t bPaused)

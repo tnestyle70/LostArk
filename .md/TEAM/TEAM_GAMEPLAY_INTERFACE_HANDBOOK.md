@@ -37,7 +37,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.4:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.4/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.4:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.14:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.14/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.14:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
 `PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
@@ -69,7 +69,7 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.4` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.14` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
 | 서로 다른 장소/VPN | `0.0.0.0` | Server PC가 실제 소유한 VPN IPv4와 별도 source CIDR 방화벽 규칙 |
 | 일반 NAT 공인 IPv4 | 현 단일 endpoint sync 미지원 | advertised endpoint와 Server owner address 분리 구현을 먼저 추가 |
@@ -98,10 +98,10 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.4</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.4`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.14`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
@@ -118,12 +118,12 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map/Sound 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.4`로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.14`로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 192.168.0.4 -Port 7777
+Test-NetConnection 192.168.0.14 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
@@ -187,7 +187,7 @@ Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
 profile을 정상 시작해 listener를 계속 유지한다. 그다음 Client PC에서 확인한다.
 
 ```powershell
-Test-NetConnection 192.168.0.4 -Port 7777
+Test-NetConnection 192.168.0.14 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
@@ -274,7 +274,7 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 
 two-step ground target의 optional 정본은 `Data/Balance/PlayerSkillTargeting.json`이다. T/2050500은 첫 키 입력에서 packet·sequence·resource·cooldown을 소비하지 않고 class-neutral targeting state와 두 preview만 연다. valid navigation sample의 LMB confirm만 기존 `C2S_USE_SKILL`에 typed `GROUND_POINT` intent를 실으며 RMB cancel은 packet을 만들지 않는다. 성공한 confirm LMB는 물리 release 전까지 BA로 다시 해석하지 않는다. Client의 11m clamp와 red invalid 표시는 preview이고, Server가 finite/range/current navigation을 다시 검증해 승인한 target XYZ만 `PLAYER_SNAPSHOT`으로 복제한다. Character의 `skill_target` pseudo anchor와 Server damage shape는 이 승인 XYZ를 함께 사용한다. 사거리 링 asset identity는 `SOURCE_EXTRACTED`, cursor marker identity는 `RUNTIME_RESOURCE`지만 두 texture의 preview scale/tint/usage는 모두 `PROJECT_TUNED`다.
 
-LMB COMBO는 `comboStages[].hitTimeMs`, `comboAdvanceMs`, `actionDurationMs`를 구분한다. `hitTimeMs`는 damage 발생 시점이다. non-final stage의 input window가 non-zero인 manual COMBO에서 `comboAdvanceMs`는 필수 caster hit/projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 가장 이른 시점이며, release는 재생 중인 stage를 자르지 않고 아직 commit되지 않은 continuation만 취소한다. non-final stage가 `inputOpenMs/inputCloseMs == 0/0`이고 `comboAdvanceMs == actionDurationMs`이면 automatic COMBO다. 이 경우 Server는 추가 LMB 없이 full-motion 경계마다 다음 stage로 전환하고, pending MOVE/SKILL도 chain을 끊지 않은 채 마지막 stage 종료 뒤 commit한다. 차원술사 `2050010`은 `_01(3000ms source/2x) -> _03 -> _04`의 automatic 3-stage 계약이다. manual COMBO 중 pending command는 현재 stage의 `actionDurationMs`까지 유지한 뒤 commit한다. Client는 성공한 LMB command를 같은 물리 press에서 재제출하지 않고, 명시 command가 수락된 뒤에도 실제 LMB release 전까지 BA를 억제한다.
+LMB COMBO는 `comboStages[].hitTimeMs`, `comboAdvanceMs`, `actionDurationMs`를 구분한다. `hitTimeMs`는 damage 발생 시점이다. non-final stage의 input window가 non-zero인 manual COMBO에서 `comboAdvanceMs`는 필수 caster hit/projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 가장 이른 시점이며, release는 재생 중인 stage를 자르지 않고 아직 commit되지 않은 continuation만 취소한다. non-final stage가 `inputOpenMs/inputCloseMs == 0/0`이고 `comboAdvanceMs == actionDurationMs`이면 automatic COMBO다. 이 경우 Server는 추가 LMB 없이 full-motion 경계마다 다음 stage로 전환하고, pending MOVE/SKILL도 chain을 끊지 않은 채 마지막 stage 종료 뒤 commit한다. 차원술사 `2050010`은 `_01 -> _02 -> _03 -> _04`의 manual 4-stage 계약이며 추가 클릭 또는 hold 입력으로 다음 단계에 진입한다. 각 stage의 동작 길이는 1400/1500/1067/1700ms다. manual COMBO 중 pending command는 현재 stage의 `actionDurationMs`까지 유지한 뒤 commit한다. Client는 성공한 LMB command를 같은 물리 press에서 재제출하지 않고, 명시 command가 수락된 뒤에도 실제 LMB release 전까지 BA를 억제한다.
 
 스킬 서버 흐름은 다음과 같다.
 
@@ -320,7 +320,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 66의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 69의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -720,8 +720,8 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 |---|---|
 | Valtan Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
 | Action Workbench | Boss 선택과 공용 Sequencer/Resources/Patterns/Box Detail; Valtan split owner 또는 Kouku Composition의 편집·Preview·Save |
-| Effect Tool | V1 Effect asset과 V2 leaf/group body 편집 |
-| Effect Tool | 기존 Current Effect·Effect Detail, V1/V2 Parent→Effect Resource 트리, World Object 리소스와 Model Animation/Effect Sequencer |
+| Effect Tool V1 | 복원 Effect asset·Current Effect·Effect Detail·V1 Resource·World Object·Model View·Effect Sequencer |
+| Effect Tool V2 | V2 leaf/group CPU draft·독립 Resource/Sequencer·target attachment 편집 |
 | Server | branch, motion, hit, combat object, phase의 gameplay 권위 |
 
 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은 `REFERENCE_ONLY`,
@@ -736,6 +736,21 @@ Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대�
 묶음은 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
 Camera/Scene Profile 행을, 자식을 선택하면 기존 상세 Sequencer를 편집한다. Create Parent → Create Bundle →
 Create Pattern 또는 Link Existing Pattern으로 연결하며 원본 패턴·클립을 복제하지 않는다.
+Patterns 목록의 `Set Pattern to PRODUCT`는 선택 Pattern 검증 후 기존 CAS Save와 PRODUCT
+publish를 요청한다. 이미 PRODUCT인 항목도 배포를 재시도할 수 있다. 저장 성공과 background
+배포 성공은 구분해 표시하며, 포함된 DRAFT Bundle은 이름을 안내하고 별도로 승격한다.
+배포 성공 후 F1 목록을 갱신하며 Complete Play는 최신 Product를 재조회한다. Workbench의 미저장
+변경·배포 진행·source/Product revision 불일치를 거절하고, Server 활성 revision 검사는 유지한다.
+새 runtime 데이터의 Server 적용에는 재시작이 필요하다. Product source revision 거절 메시지는
+요청 번호와 Server 활성 번호를 함께 표시한다. publish 성공 뒤에는 Server를 재시작하고 Client를 재접속한다.
+패턴 상세 Sequencer는 Stage/Animation/Logic/Summon/World/Scene Profile 및 모든 presentation lane을
+드래그 또는 Ctrl+click으로 함께 선택한다. 드래그는 박스의 시간폭 전체를 감싸며 Ctrl+drag는 선택을 추가한다.
+Duplicate 또는 Ctrl+D는 선택한 구간과 Collider↔Logic·World↔동반 Effect 연결을 새 stable ID로 복제한다.
+Stage가 포함되면 뒤 구간을 밀고 삽입점을 가로지르는 기존 master/World의 수명을 연장한다.
+외부 카드와 검색 master 참조는 유지한다. 긴 master/World까지 직접 선택하면 그 전체 구간이 복제되므로
+한 타격만 복제할 때는 선택 표시를 확인한다. lane만 복제하면 선택 끝에 배치하고 필요한 끝 시간을 늘린다.
+Delete도 선택 전체를 한 번에 처리한다. Earlier/Later는 Stage/Animation만 선택했을 때 사용한다.
+복제·삭제 결과는 DRAFT이므로 Save와 PRODUCT 승격 후 Server 재시작을 거쳐 Complete Play로 확인한다.
 F1의 Gate 선택은 유지하며 게시된 PRODUCT만 나열한다. Complete Play는 선택한 패턴 하나 또는 선택한 묶음
 전체를 Server에 요청한다. 기존 Play All은 원본 PRODUCT 순서의 순차 재생이다. Server는 묶음의 모든 대상을
 검증한 뒤 하나의 run epoch와 공통 시작 tick을 확정한다. offset은 30Hz tick으로 올림하며 Stop/Restart는
@@ -749,23 +764,53 @@ PRODUCT의 `sourceActionIds`가 비어 있으면 K bootstrap의 PATTERNSOURCE �
 Kouku Composition Play는 같은 clock으로 Animation, WORLD와 presentation occurrence를 재생한다.
 WORLD 정의의 optional `positionOffset: [x,y,z]`와 speed, WORLD occurrence의 `durationMs`는
 projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 거쳐 Server cue까지
-전달된다. protocol 66의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 재생 요청의 경과시간 제한이며
-1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 박스 수명은 playback speed와
-별도로 측정하고, Stop/수명 종료에서 원래 배치를 복구하며 생성한 World Object를 정리한다.
+전달된다. protocol 69의 `S2C_WORLD_SEQUENCE_PLAY::iDurationMs`는 요청 구간의 경과시간 제한이며
+1..600000ms를 사용한다. 0은 기존 요청의 authored 수명을 사용한다. 구간은 playback speed와
+별도로 측정한다. Object Motion은 이 구간 안에서 생성한 객체의 이동과 MOTION_END Effect 수명을
+마저 재생한 뒤 정리한다. 명시적 Stop은 원래 배치를 복구하고 생성한 객체를 즉시 정리한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
-STOP_OWNER와 종료된 member 정리는 해당 실행이 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 66으로 함께 빌드·재시작한다.
+STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
+남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
+Server/Shared/Client는 같은 protocol 69로 함께 빌드·재시작한다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
 누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.
+optional `bossMotion { startMs, endMs, startPosition, endPosition, yawDegrees }`는 패턴 내부 구간의
+절대 월드 XZ 이동을 저장한다. 두 위치의 base Y는 같으며 시작 전에는 시작점, 종료 후에는 도착점을 유지한다.
+spawn reset 및 REAL_GAZE_TELEPORT와 동시 사용은 거부한다. Server는 audition stage 전에 경로 navigation을
+검증하고 30Hz fixed tick에서 보간한 위치·yaw를 기존 snapshot/늦은 입장의 spawn으로 전달한다.
+Client는 기존 root 수평 억제를 유지하고 원본 animation의 수직 pose를 재생한다. 별도 높이 arc는 더하지 않는다.
+Stage의 optional `retargetOnEnter`는 strict boolean, 기본false다. Workbench Stage Detail과
+Composition parse/validate/save가 같은 값을 소유하고 기존 `RETARGET_RANDOM_ALIVE` ENTER action으로
+투영한다. Server는 Stage 진입 때 살아 있는 player의 현재 위치와 yaw를 한 번 확정해 다음 지정
+Stage까지 유지한다. fixed-yaw `bossMotion`과의 동시 사용, 잘못된 타입/중복 action은 거부한다.
+Preview는 Stage별 표본을 저장해 되감기에 재사용하며, 처음 방문한 미래 Stage는 현재 player를
+표본으로 삼는다. 명시 Model Reference는 이 retarget을 사용하지 않는다.
+Pattern의 optional `animationRootVerticalScale`은 0~1, 기본 1이며 원본 root의 기준 pose 대비 수직
+변위만 조절한다. mesh 크기·clip 속도·Server base Y는 바꾸지 않는다. Product action binding과
+Preview가 같은 값을 소비하고, bone Collider 투영도 같은 배율을 사용한다. 다음 action/idle은
+자기 Pattern 값 또는 기본 1을 적용하므로 이전 패턴의 높이 설정을 이어받지 않는다.
+Play Bundle과 실제 보스 actor를 소유한 단일 Pattern Play는 같은 actor/weapon preview 경로를 사용한다. Model Reference는 제자리 비교다.
+BOSS_SPAWN World Object는 Product의 `worldEmissionAnchors`와 bossMotion을 사용해 각 emission 시각의 생성점을
+고정한 뒤 개별 objectMotion을 재생한다. 객체가 이동하는 보스를 매 프레임 따라가는 정책은 아니다.
 
-F1 `Effect Tool`은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를 같은 owner로 연다. 이전 Effect Composition Workbench enum은 호환 진입점이며 별도 편집기나 재생 owner를 생성하지 않는다. Effect Resources의 V1/V2 root 아래에서 Parent를 생성하고 그 Parent 아래의 Effect를 선택하면 원래 owner의 Current Effect에 열린다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
+F1 `Effect Tool V1`과 `Effect Tool V2`는 별도 버튼·창·입력 focus·visibility로 연다. V1은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를, V2는 자기 CPU draft·Resources·Sequencer와 기존 target attachment 도구를 소유한다. 한 도구를 닫아도 다른 도구의 창과 draft를 닫지 않으며 각 Sequencer의 창 ID와 기본 저장 ID를 구분한다. 이전 Effect Composition Workbench enum은 V1 호환 진입점이다. 각 Resource 트리는 자기 V1 또는 V2 root만 표시하고 typed resource open은 해당 도구로 전달한다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
 
 Current Effect의 Play All/Family/Element는 미리보기이며 Append만 별도 Effect Sequencer에 occurrence를 추가한다. 캐릭터 skillbinding·Valtan Product·Kouku Pattern/Bundle의 실제 clip sequence는 읽기 전용 모델 참고이며 저장 단위는 `Data/Effects/Sequences/<id>.effectsequence.json`의 stable source reference와 occurrence 시간이다. 해당 Save는 boss Composition이나 skillbinding을 변경하지 않는다. Native V2 leaf Open/Save는 원래 leaf ID/파일을 유지하며 group으로 확장하는 것은 명시적 생성 명령이다. Effect CPU draft 저장에 GPU preview나 타 보스 전체 admission을 선행조건으로 붙이지 않는다.
 
 World Object category는 Area 저작 `objectResources`의 model/base texture/pre-scale과 자식 Motion을 읽어 현재 Effect draft에 적용한다. 원본 Object/Motion은 수정하지 않는다. 공의 `objectMotion` velocity/acceleration/count/interval/lifetime은 기존 Mesh Particle로 옮기며 실제 충돌 물리를 추가하지 않는다. 모델 참고는 기존 Kouku preview actor/CModel을 재사용하고 root motion·WORLD gameplay는 실행하지 않는다. 실제 Product 이동 입자는 Server presentation root의 birth 시각 표본을 사용하며 과거 표본이 없으면 해당 Effect 오류를 표시한다.
 
-Kouku Action Workbench Camera는 이름으로 shot 생성 → 현재 view의 eye/lookAt/FOV capture → Box Detail의 blend-in/default hold/blend-out → Save → Append 흐름을 제공한다. `patternOnly` shot은 명시적으로 배치한 Pattern Camera에서 소비하며 저작 Preview는 저장본, Complete Play는 Map publisher 배포본을 읽는다. 진입 pose는 시작 때 취득하고 복귀 목표는 매 프레임 현재 player follow pose를 사용한다. Camera box duration은 진입+유지이며 복귀 tail은 별도로 검사한다. 기존 Valtan 문서 제한을 넓히지 않고 Kouku의 LINEAR 전환을 지원한다.
+Kouku Action Workbench Camera는 이름으로 shot 생성 → 현재 view의 eye/lookAt/FOV capture → Box Detail의 blend-in/default hold/blend-out → Save → Append 흐름을 제공한다. `activation: "PATTERN_ONLY"` shot은 명시적으로 배치한 Pattern/Bundle Camera에서 소비하며 저작 Preview는 저장본, Complete Play는 Map publisher 배포본을 읽는다. 진입 pose는 시작 때 취득하고 복귀 목표는 매 프레임 현재 player follow pose를 사용한다. Camera box duration은 진입+유지이며 복귀 tail은 별도로 검사한다. 기존 Valtan 문서 제한을 넓히지 않고 Kouku의 LINEAR/SMOOTHSTEP 전환을 지원한다.
+
+F1 `Cinematic Camera Tool`의 Kouku Area source도 같은 Area `camerashots.json`의 PATTERN_ONLY shot을
+Cut List/Capture Pos/Keyframe Editor로 편집한다. 표시 이름은 UTF-8 `displayName`, 참조는 변경하지
+않는 stable `shotId`다. Save는 parser 검증과 디스크 baseline CAS를 거치며 AUTO/마리오 shot과
+다른 도구의 변경을 보존한다. 복귀는 마지막 key에 플레이어 좌표를 저장하지 않고 `blendOutMs` 동안
+현재 follow pose로 보간한다. Kouku Area cameraTrack은0ms의 P1 한 개를 허용하며
+이 경우 durationMs 동안 같은 Eye/LookAt/FOV를 유지한다. 둘 이상이면 마지막 key는
+durationMs여야 한다. P1 수정은 Fine Adjust 또는 Capture / Replace Selected Scene을 사용하고
+Capture Pos는 새 Pos를 추가한다. Valtan 문서는 최소 두 key를 유지한다.
+플레이어 복귀를 확인하려면 F6 Follow 상태에서 Play Bundle을 시작한다.
 
 F1 `World Object Tool`의 정의와 이름을 가진 상태는 Area의
 `Data/Maps/Authoring/<Area>/<Area>.worldsequences.json` v3에 저장한다. `objectResources`의 모델은
@@ -784,6 +829,14 @@ target 필드가 비어 있는 기존 메시지는 WORLD 생성 요청이다. Re
 target/Motion 쌍에 한 번만 송신한다. `OBJECT_OVERLAP`은 player 입력과 무관하게 source Collider와
 고정 target 원의 겹침을 Server fixed tick에서 확인한다. target 반경은 저작 값이며 모델의 bone
 변형을 추적하지 않는다. 기존 player 영역 판정은 계속 별도 Logic 종류로 유지한다.
+`OBJECT_CONTACT`는 같은 Pattern의 stable `targetWorldOccurrenceIds`를 대상으로 판정하며
+`PLAY_CONTACT_WORLD_OBJECT_MOTION`은 접촉한 occurrence의 기존 객체에만 Motion을 적용한다.
+동일 `contactGroupId`의 같은 타격 창은 시간·수명을 일치시키고 서로 다른 `contactPriority`를 사용한다.
+큰 priority가 같은 카드의 반응을 우선하며, 적용한 Motion priority를 Pattern ledger에 보존하여
+뒤집기 `HOLD` 뒤의 낮은 priority 들썩임이 그 카드를 Idle로 되돌리지 않게 한다. 같은 priority의
+다음 타격은 허용하고 새 Pattern/Reset에서는 ledger를 초기화한다. `COMPLETE_LOGIC_WINDOW`의
+`contactTargetWorldOccurrenceId`는 지정 카드 접촉만 전체 기한을 성공시킬 수 있다. 짧은 접촉 창의
+Miss는 전체기한 Timeout이 아니며, 전체기한 마지막 tick의 접촉 성공을 Timeout보다 먼저 처리한다.
 LOGIC occurrence의 optional `enabled:false`는 저작 창·RESULT를 보존하고 gameplay 투영에서 제외한다.
 TRIGGER의 `REAL_GAZE_TELEPORT`는 명시한
 teleportPosition과 clonePatternId, clockHours를 사용해 Server가 진짜 이동과 clone 3개를 함께 commit한다.
@@ -809,6 +862,26 @@ Effect V2 `TexturedOverlay`는 기존 `Add_ScreenOverlay`를 사용한다. 전�
 World mesh나 카메라 위치를 바꿔 화면 효과를 흉내 내지 않는다. 이 profile은 alpha envelope를 사용하고
 texture dissolve는 사용하지 않는다. 원본 texture 근거와 조정한 이동 시간, Resources 전달 및
 사용자 화면 검증 상태는 대응 RESULT에 기록한다.
+
+Collider Detail에서 새 Logic을 연결하는 `Apply Values`와 `Apply`는 정의값·Logic 시간창·`logicOccurrenceId`
+연결을 `Set_ColliderLogicValues`의 한 validated candidate로 commit한다. 같은 정의의 정확한
+start/duration만 재사용하며, 다른 타격 구간은 독립 window를 생성한다. 명시 `Shared Logic window`
+선택은 그 창의 시간·결과를 유지한다. 이름만 있는 Trigger나 잘못된 target은 오류를 표시하고
+기존 draft·ID counter·저장 원문을 보존한다. 실제 source 교체는 기존 `Save`의 CAS 경로로 수행한다.
+
+Collider Box Detail의 position/rotation/scale·치수 편집은 stable Pattern/occurrence의 geometry만
+즉시 Preview하며 Apply/Save 전에는 draft나 원본을 바꾸지 않는다. active Pattern/Bundle member의
+clock·actor·Effect/SFX session을 유지하고 inactive만 현재 cursor에서 paused Preview를 준비한다.
+Revert geometry/선택 변경은 적용된 geometry로 복구하고 Reset은 임시 요청을 폐기한다.
+Logic이 연결된 지면 gameplay Collider는 Yaw만 편집하며 PRODUCT의 X/Z 기울기는 저장 전에 거절한다.
+
+V2 Effect Box Detail의 Position/Rotation/Scale은 같은 Pattern/Bundle의 현재 actor·bone·WORLD와
+clock에서 즉시 Preview한다. Box Preview도 그 소유자를 사용하며 독립 Resource Preview는 별도다.
+여러 Effect box의 geometry 편집은 선택 전환 뒤에도 보존하고 Apply 없이 Save 후보에 모아 CAS
+저장한다. 미적용 시간·Bone·Logic까지 저장하려면 Apply를 사용한다. invalid/CAS 실패는 원본을
+보존하며 Revert geometry는 선택한 box만 복구한다. V2는 기존 객체와 시간·다른 cue를 유지하며
+해당 Effect의 particle/trail을 같은 age로 다시 계산한다. 기록되지 않은 과거 anchor는 오류로
+격리하고 현재 actor pose로 위장하지 않는다.
 
 Collider resource는 `shape`, 크기, `colliderKind=GEOMETRY|ROULETTE_CARD_REGION`을 정의한다.
 각 box는 `regionId`, `cardSymbol/cardColor`, `anchorKind=BOSS|WORLD`, `worldId`와
@@ -1116,3 +1189,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 
 
 WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }`는 단일 MAP_PLACEMENT의 고정 수평 원판과 WORLD/STOP에 한정한다. Kouku WORLD cue의 활성 구간이 Server effective support height를 소유하며 기본 blocked/NO_SURFACE와 step policy는 유지한다. Motion Detail에서 설정을 저장한 뒤 Map 및 Kouku Product publisher를 소비한다. DRAFT pattern은 Product에 포함되지 않으며 클라이언트의 로컬 Transform으로 서버 보행면을 대신하지 않는다.
+
+### 카드미로 진행·관전 계약
+
+MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 70의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+
+카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
+
+문양 플레이어·병사 발밑은 `cardmaze.mark.heart/spade/club/diamond`, 개인 출구는 `cardmaze.exit.heart/spade/club/diamond` Effect GROUP을 사용한다. 두 그룹은 같은 `cardmaze.symbol.*` Decal leaf와 기존 `Effect/KoukuSaydon/Textures/FX_TEX_NOMIPMAP_00/fx_l_symbol_47{,_1,_2,_3}.dds`를 사용한다(하트/스페이드/클럽/다이아몬드 순서). 기존 춤 연출은 수정하지 않는다. 플레이어/병사 표시는 해당 객체의 이동 위치만 따라가고 출구는 서버 출구 좌표에 고정한다. Client는 이동·처치 판정 없이 snapshot과 복제 객체로 표시·정리만 한다. 다인 플레이와 Release의 망원경 담당은 문양과 목표를 받지 않는다. Debug Server에서 방에 정확히 한 명이면 최초 상자 타격자가 HUNTER 문양과 망원경 owner identity를 함께 받는다. 이 1인 테스트만 관전 중 이동과 중앙 밖 관전 유지가 허용되며 세토 접촉·처치·출구는 기존 규칙을 사용한다. 다른 참가자가 죽어 혼자 생존한 상황은 이 예외를 켜지 않는다. Protocol 70 Client/Server를 함께 사용한다. 화면 크기·색상·실제 4인 입력·접촉·암전은 사용자 런타임 확인 대상이다.

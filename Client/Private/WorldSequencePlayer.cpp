@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace Client;
 using namespace Engine;
@@ -27,6 +28,10 @@ namespace
 		bool_t visible = false;
 		bool_t finished = false;
 		bool_t pending = false;
+		bool_t holdFinalPose = false;
+		f32_t emissionStartMs = 0.f;
+		f32_t emissionRate = 1.f;
+		std::string emissionMotionId;
 	};
 
 	bool_t Is_SingleObjectMotion(const WORLD_SEQUENCE_INSTANCE& instance)
@@ -40,6 +45,7 @@ namespace
 		const std::string& initialId, f32_t elapsedMs, const f32_t speed,
 		OBJECT_MOTION_SAMPLE& sample)
 	{
+		const f32_t originalElapsedMs = elapsedMs;
 		const auto* motion = document.Find_Instance(initialId);
 		const WORLD_SEQUENCE_TEMPLATE* previousSequence = nullptr;
 		for (uint32_t depth = 0; depth <= 32u; ++depth)
@@ -51,15 +57,21 @@ namespace
 			if (!std::isfinite(rate) || rate <= 0.f) return false;
 			const f32_t delayed = elapsedMs - motion->startDelayMs;
 			const f32_t raw = (std::max)(0.f, delayed) * rate;
-			const f32_t duration = static_cast<f32_t>(sequence->durationMs);
+			const f32_t duration = static_cast<f32_t>(sequence->ObjectSpanMs());
 			if (!std::isfinite(raw)) return false;
 			if (delayed < 0.f && previousSequence)
 			{
 				sample.sequence = previousSequence;
 				sample.localMs = static_cast<f32_t>(previousSequence->durationMs);
 				sample.visible = true;
+				sample.holdFinalPose = true;
 				return true;
 			}
+			sample.emissionStartMs = originalElapsedMs - elapsedMs + motion->startDelayMs;
+			sample.emissionRate = rate;
+			sample.emissionMotionId = motion->instanceId;
+			if (motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP)
+				sample.emissionStartMs += std::floor(raw / duration) * duration / rate;
 			if (motion->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT && raw >= duration)
 			{
 				elapsedMs -= motion->startDelayMs + duration / rate;
@@ -70,9 +82,10 @@ namespace
 			sample.sequence = sequence;
 			sample.localMs = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP ?
 				std::fmod(raw, duration) : (std::min)(raw, duration);
-			sample.finished = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::STOP && raw >= duration;
-			sample.visible = delayed >= 0.f && !sample.finished;
+			sample.finished = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::STOP && raw >= sequence->PresentationSpanMs();
+			sample.visible = delayed >= 0.f && (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP || raw < duration);
 			sample.pending = delayed < 0.f;
+			sample.holdFinalPose = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::HOLD;
 			return true;
 		}
 		return false;
@@ -159,6 +172,7 @@ bool_t CWorldSequencePlayer::Load_Area(
 	}
 	Stop_All(targets, true);
 	m_ObjectModels.clear();
+	m_EffectSnapshots.clear();
 	m_Document = std::move(staged);
 	m_Status = "World sequence loaded: " +
 		std::to_string(m_Document.Get_Instances().size()) + " instances";
@@ -172,6 +186,7 @@ void CWorldSequencePlayer::Clear()
 	for (auto& held : m_Held) Release_Objects(held);
 	m_Held.clear();
 	m_ObjectModels.clear();
+	m_EffectSnapshots.clear();
 	m_ModelCache.clear();
 	m_Document.Reset_Empty({});
 	m_Status.clear();
@@ -477,6 +492,7 @@ bool_t CWorldSequencePlayer::Play(
 		existing->placement = placement;
 		existing->motionInstanceId.clear();
 		existing->motionStartMs = 0.f;
+		existing->emissionAnchors.clear();
 		return true;
 	}
 
@@ -734,21 +750,65 @@ bool_t CWorldSequencePlayer::Seek_AllToMs(
 	return succeeded;
 }
 
+f32_t CWorldSequencePlayer::Get_InstanceElapsedSpanMs(const std::string& instanceId,
+    const f32_t playbackSpeed, const uint32_t durationMs) const
+{
+    if (!std::isfinite(playbackSpeed) || playbackSpeed <= 0.f) return 0.f;
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    if (!instance || !instance->enabled) return 0.f;
+    bool hasEffects = false;
+    const auto* probe = instance;
+    for (uint32_t depth = 0; probe && depth <= 32u; ++depth)
+    {
+        const auto* sequence = m_Document.Find_Template(probe->templateId);
+        if (!sequence) return 0.f;
+        hasEffects |= !sequence->effectTracks.empty();
+        if (probe->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;
+        probe = m_Document.Find_Instance(probe->nextMotionId);
+    }
+    if (!hasEffects)
+    {
+        const auto* sequence = m_Document.Find_Template(instance->templateId);
+        return durationMs ? static_cast<f32_t>(durationMs) : instance->startDelayMs +
+            sequence->durationMs / (instance->playbackSpeed * playbackSpeed);
+    }
+    const double cutoff = durationMs ? durationMs : (std::numeric_limits<double>::max)();
+    double start = 0., span = 0.;
+    for (uint32_t depth = 0; instance && depth <= 32u; ++depth)
+    {
+        const auto* sequence = m_Document.Find_Template(instance->templateId);
+        if (!sequence || !instance->enabled) return 0.f;
+        const double rate = instance->playbackSpeed * playbackSpeed;
+        if (!std::isfinite(rate) || rate <= 0.) return 0.f;
+        start += instance->startDelayMs;
+        if (start >= cutoff) break;
+        const double period = sequence->ObjectSpanMs() / rate;
+        const bool loop = instance->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
+        if (loop && !durationMs) return static_cast<f32_t>(CWorldSequenceDocument::MAX_DURATION_MS);
+        double tail = sequence->durationMs;
+        for (const auto& effect : sequence->effectTracks)
+            tail = (std::max)(tail, static_cast<double>(sequence->EffectStartMs(effect) + effect.durationMs));
+        for (uint32_t emitter = 0; emitter < sequence->objectMotion.count; ++emitter)
+        {
+            double birth = start + static_cast<double>(emitter) * sequence->objectMotion.intervalMs / rate;
+            if (birth >= cutoff) continue;
+            if (loop) birth += (std::max)(0., std::ceil((cutoff - birth) / period) - 1.) * period;
+            span = (std::max)(span, birth + tail / rate);
+        }
+        if (instance->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;
+        start += period;
+        instance = m_Document.Find_Instance(instance->nextMotionId);
+    }
+    return std::isfinite(span) ? static_cast<f32_t>(span) : 0.f;
+}
+
+
 f32_t CWorldSequencePlayer::Get_LongestElapsedSpanMs() const
 {
 	f32_t longest = 0.f;
 	for (const ACTIVE_INSTANCE& active : m_Active)
 	{
-		const WORLD_SEQUENCE_INSTANCE* instance =
-			m_Document.Find_Instance(active.instanceId);
-		const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ? nullptr :
-			m_Document.Find_Template(instance->templateId);
-		if (nullptr == instance || nullptr == sequence)
-			continue;
-		const f32_t speed = instance->playbackSpeed > 0.001f ?
-			instance->playbackSpeed * active.playbackSpeed : active.playbackSpeed;
-		const f32_t span = active.durationMs ? static_cast<f32_t>(active.durationMs) :
-			static_cast<f32_t>(instance->startDelayMs) + static_cast<f32_t>(sequence->durationMs) / speed;
+		const f32_t span = Get_InstanceElapsedSpanMs(active.instanceId, active.playbackSpeed, active.durationMs);
 		longest = (std::max)(longest, span);
 	}
 	return longest;
@@ -805,10 +865,31 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			active.instanceId;
 		return APPLY_RESULT::FAILED;
 	}
-	if (active.durationMs && active.elapsedMs >= active.durationMs)
+	bool hasObjectEffects = false;
+	for (const auto& motionId : {active.instanceId, active.motionInstanceId})
+	{
+		const auto* motion = m_Document.Find_Instance(motionId);
+		for (uint32_t depth = 0; motion && depth <= 32u; ++depth)
+		{
+			const auto* motionSequence = m_Document.Find_Template(motion->templateId);
+			if (!motionSequence) break;
+			if (!motionSequence->effectTracks.empty()) { hasObjectEffects = true; break; }
+			if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;
+			motion = m_Document.Find_Instance(motion->nextMotionId);
+		}
+	}
+	if (Is_SingleObjectMotion(*instance) && !Apply_ObjectEffects(active, *instance, targets))
+		return APPLY_RESULT::FAILED;
+	if (hasObjectEffects && active.durationMs && active.effects.empty() &&
+		active.elapsedMs >= Get_InstanceElapsedSpanMs(active.instanceId, active.playbackSpeed, active.durationMs))
 	{
 		(void)Apply_Objects(active, *instance, *sequence, targets, 0.f, false);
 		return APPLY_RESULT::FINISHED;
+	}
+	if (active.durationMs && active.elapsedMs >= active.durationMs && !hasObjectEffects)
+	{
+		(void)Apply_Objects(active, *instance, *sequence, targets, 0.f, false);
+		return active.effects.empty() ? APPLY_RESULT::FINISHED : APPLY_RESULT::PLAYING;
 	}
 	if (Is_SingleObjectMotion(*instance))
 	{
@@ -835,11 +916,13 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			// STOP stops the applied motion, not the target object's lifetime.
 			sample.visible = true;
 			sample.finished = false;
+			sample.holdFinalPose = true;
 		}
 		// Keep the target's binding/anchor/placement and reuse its existing object. Only the motion changes.
-		if (!Apply_Objects(active, *instance, *sample.sequence, targets, sample.localMs, sample.visible))
+		if (!Apply_Objects(active, *instance, *sample.sequence, targets, sample.localMs, sample.visible, sample.holdFinalPose,
+			sample.emissionStartMs + (appliedMotion ? active.motionStartMs : 0.f), sample.emissionRate, sample.emissionMotionId))
 			return APPLY_RESULT::FAILED;
-		return sample.finished && active.durationMs == 0u ? APPLY_RESULT::FINISHED : APPLY_RESULT::PLAYING;
+		return sample.finished && (active.durationMs == 0u || hasObjectEffects) && active.effects.empty() ? APPLY_RESULT::FINISHED : APPLY_RESULT::PLAYING;
 	}
 	const f32_t delayedMs =
 		active.elapsedMs - static_cast<f32_t>(instance->startDelayMs);

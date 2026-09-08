@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <iterator>
 #include <set>
@@ -91,6 +92,53 @@ namespace
         const auto* Field = Value.Find(Key);
         if (!Field || !Field->Is_String()) return false;
         Out = Field->Get_String();
+        return true;
+    }
+
+    // Discovery reads only scalar header metadata. Native owner codecs validate
+    // the complete document on Open/Play; listing must not parse every emitter.
+    bool Read_V1Header(const std::filesystem::path& Path, DATA_JSON_VALUE& Header,
+        std::string& Error)
+    {
+        std::ifstream Input(Path, std::ios::binary);
+        if (!Input.is_open()) return Fail(Error, "Cannot open effect source: " + Path.string());
+        char Buffer[4096];
+        Input.read(Buffer, sizeof(Buffer));
+        if (Input.bad()) return Fail(Error, "Cannot read effect source: " + Path.string());
+        const std::string_view Bytes(Buffer, static_cast<size_t>(Input.gcount()));
+        size_t Begin = Bytes.starts_with("\xEF\xBB\xBF") ? 3u : 0u;
+        Begin = Bytes.find_first_not_of(" \t\r\n", Begin);
+        Header = DATA_JSON_VALUE::Object({});
+        if (Begin == std::string_view::npos || Bytes[Begin] != '{') return true;
+        size_t End = Begin + 1u;
+        bool Quoted = false, Escaped = false, Complete = false;
+        size_t Depth = 1u;
+        for (size_t Index = Begin + 1u; Index < Bytes.size(); ++Index)
+        {
+            const char C = Bytes[Index];
+            if (Quoted)
+            {
+                if (Escaped) Escaped = false;
+                else if (C == '\\') Escaped = true;
+                else if (C == '"') Quoted = false;
+                continue;
+            }
+            if (C == '"') Quoted = true;
+            else if (C == ',' && Depth == 1u) End = Index;
+            else if (C == '[' || C == '{') ++Depth;
+            else if (C == ']' || C == '}')
+            {
+                if (--Depth == 0u) { End = Index + 1u; Complete = true; break; }
+            }
+        }
+        std::string Prefix(Bytes.substr(Begin, End - Begin));
+        if (!Complete) Prefix += '}';
+        std::string Ignored;
+        DATA_JSON_VALUE Parsed;
+        if (CDataJson::Parse(Prefix, Parsed, Ignored) && Parsed.Is_Object())
+            Header = std::move(Parsed);
+        // Missing/out-of-order/long metadata falls back to the stable filename
+        // and saved tree label. A header scan is not document admission.
         return true;
     }
 
@@ -254,17 +302,14 @@ bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE
             RESOURCE Row;
             Row.eKind = OWNER::V1_DOCUMENT;
             Row.strAssetId = File.substr(0u, File.size() - Suffix.size());
-            std::string Bytes;
-            bool Present = false;
             DATA_JSON_VALUE Root;
             if (!Stable_Id(Row.strAssetId)) Row.strStatus = "Source filename has an invalid stable ID.";
-            else if (Read_Source(It->path(), Bytes, Present, Row.strStatus) && Present &&
-                CDataJson::Parse(Bytes, Root, Row.strStatus))
+            else if (Read_V1Header(It->path(), Root, Row.strStatus))
             {
                 const auto* Id = Root.Find("effectAssetId");
                 const auto* Schema = Root.Find("schema");
-                if (!Root.Is_Object() || !Id || !Id->Is_String() || Id->Get_String() != Row.strAssetId ||
-                    !Schema || !Schema->Is_String() || Schema->Get_String() != "lostark.effect-authoring")
+                if ((Id && (!Id->Is_String() || Id->Get_String() != Row.strAssetId)) ||
+                    (Schema && (!Schema->Is_String() || Schema->Get_String() != "lostark.effect-authoring")))
                     Row.strStatus = "V1 schema or filename identity mismatch.";
                 if (const auto* Label = Root.Find("displayName"))
                 {
@@ -272,7 +317,6 @@ bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE
                     else Row.strStatus = "V1 displayName is invalid.";
                 }
             }
-            else if (!Present && Row.strStatus.empty()) Row.strStatus = "Source disappeared during discovery.";
             Staged.push_back(std::move(Row));
         }
         if (Code) return Fail(Error, "V1 saved effect scan failed: " + Code.message());
@@ -280,6 +324,12 @@ bool Client::CEffectAuthoringResourceTree::Read_V1Inventory(std::vector<RESOURCE
     std::sort(Staged.begin(), Staged.end(), [](const auto& A, const auto& B) { return A.strAssetId < B.strAssetId; });
     OutRows = std::move(Staged);
     return true;
+}
+
+Client::CEffectAuthoringResourceTree::CEffectAuthoringResourceTree(EFFECT_RESOURCE_OWNER_KIND owner)
+    : m_eOwnerFilter(owner)
+{
+    if (owner == OWNER::V2_LEAF || owner == OWNER::V2_GROUP) m_strSelectedParentId = "root.v2";
 }
 
 bool Client::CEffectAuthoringResourceTree::Reload(std::string& Status)
@@ -296,14 +346,17 @@ bool Client::CEffectAuthoringResourceTree::Reload(std::string& Status)
         m_strBaselineBytes = std::move(Bytes);
         m_bBaselineExists = Exists;
         m_bMetadataReady = true;
-        if (Root_For(m_Document, m_strSelectedParentId).empty()) m_strSelectedParentId = "root.v1";
+        if (Root_For(m_Document, m_strSelectedParentId).empty())
+            m_strSelectedParentId = m_eOwnerFilter == OWNER::V2_LEAF || m_eOwnerFilter == OWNER::V2_GROUP ? "root.v2" : "root.v1";
     }
     Status = MetadataReady ? "Saved Effects metadata ready." : "Previous tree preserved: " + Error;
     std::string InventoryError;
-    const bool V1Ready = Read_V1Inventory(m_V1Resources, InventoryError);
+    const bool V1Ready = (m_eOwnerFilter == OWNER::V2_LEAF || m_eOwnerFilter == OWNER::V2_GROUP) ||
+        Read_V1Inventory(m_V1Resources, InventoryError);
     if (!V1Ready) Status += " V1 previous list preserved: " + InventoryError;
     std::vector<EFFECT_V2_RESOURCE_SUMMARY> V2;
-    const bool V2Ready = CEffectV2Catalog::Get().Read_Inventory(V2, InventoryError);
+    const bool V2Ready = m_eOwnerFilter == OWNER::V1_DOCUMENT ||
+        CEffectV2Catalog::Get().Read_Inventory(V2, InventoryError);
     if (V2Ready)
     {
         std::vector<RESOURCE> Rows;
@@ -330,6 +383,12 @@ bool Client::CEffectAuthoringResourceTree::Save_Staged(DOCUMENT Candidate, std::
     if (!Read_Source(Path, Current, Exists, Status)) return false;
     if (Exists != m_bBaselineExists || Current != m_strBaselineBytes)
         return Fail(Status, "Tree metadata changed or was deleted on disk. Reload before saving; previous tree is preserved.");
+    // Still check the disk baseline before skipping an unchanged metadata save.
+    if (Exists && Serialize(m_Document) == Bytes)
+    {
+        Status = "Saved Effects tree is unchanged.";
+        return true;
+    }
     if (!CEffectV2Document::Write_AtomicFile(Path, Bytes, Status)) return false;
     m_Document = std::move(Parsed);
     m_strBaselineBytes = Bytes;
@@ -356,10 +415,19 @@ bool Client::CEffectAuthoringResourceTree::Attach_Saved(OWNER Kind, const std::s
     {
         m_strSelectedParentId = Parent;
         m_SelectedResource = { Kind, AssetId };
-        // Refresh discovery only at this explicit successful-save edge.
-        std::string RefreshStatus;
-        Reload(RefreshStatus);
-        m_strStatus = Status;
+        // The resource owner has just committed this exact identity. Update
+        // only its row; full discovery remains an explicit Reload operation.
+        auto& Rows = Kind == OWNER::V1_DOCUMENT ? m_V1Resources : m_V2Resources;
+        const auto Row = std::find_if(Rows.begin(), Rows.end(), [&](const RESOURCE& Value)
+            { return Value.eKind == Kind && Value.strAssetId == AssetId; });
+        RESOURCE SavedRow{ Kind, AssetId, DisplayName, {} };
+        if (Row != Rows.end()) *Row = std::move(SavedRow);
+        else
+        {
+            Rows.push_back(std::move(SavedRow));
+            std::sort(Rows.begin(), Rows.end(), [](const RESOURCE& A, const RESOURCE& B)
+                { return A.strAssetId < B.strAssetId; });
+        }
     }
     return Saved;
 }
@@ -493,19 +561,40 @@ void Client::CEffectAuthoringResourceTree::Render_Branch(const std::string& Id,
     ImGui::PopID();
 }
 
+void Client::CEffectAuthoringResourceTree::Set_V1CopySource(
+    const std::string& AssetId, const std::string& DisplayName)
+{
+    if (m_strV1CopySource == AssetId) return;
+    m_strV1CopySource = AssetId;
+    std::snprintf(m_szCopyId, sizeof(m_szCopyId), "%s", New_Id("effect.user.").c_str());
+    // Keep the exact source label; the copy dialog accepts its new UTF-8 name.
+    std::snprintf(m_szCopyName, sizeof(m_szCopyName), "%s", DisplayName.c_str());
+}
+
 void Client::CEffectAuthoringResourceTree::Render()
 {
     if (!m_bReloadAttempted) Reload(m_strStatus);
     ImGui::SeparatorText("Saved Effects");
     if (ImGui::Button("Reload##SavedEffectTree")) Reload(m_strStatus);
     ImGui::SameLine();
-    ImGui::TextDisabled("V1 %zu | V2 %zu", m_V1Resources.size(), m_V2Resources.size());
+    if (m_eOwnerFilter == OWNER::V1_DOCUMENT) ImGui::TextDisabled("V1 %zu", m_V1Resources.size());
+    else if (m_eOwnerFilter != OWNER::END) ImGui::TextDisabled("V2 %zu", m_V2Resources.size());
+    else ImGui::TextDisabled("V1 %zu | V2 %zu", m_V1Resources.size(), m_V2Resources.size());
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##SavedEffectSearch", "Search saved name or ID", m_szSearch, sizeof(m_szSearch));
     ImGui::BeginChild("##SavedEffectTree", ImVec2(0.f, 280.f), ImGuiChildFlags_Borders);
-    Render_Branch("root.v1", "V1", true);
-    Render_Branch("root.v2", "V2", true);
+    if (m_eOwnerFilter == OWNER::END || m_eOwnerFilter == OWNER::V1_DOCUMENT)
+        Render_Branch("root.v1", "V1", true);
+    if (m_eOwnerFilter != OWNER::V1_DOCUMENT)
+        Render_Branch("root.v2", "V2", true);
     ImGui::EndChild();
+    ImGui::BeginDisabled(!m_SelectedResource.Is_Valid());
+    if (ImGui::Button("Preview##SavedEffect")) Queue_Selected(COMMAND_KIND::PREVIEW);
+    ImGui::SameLine();
+    if (ImGui::Button("Append##SavedEffect")) Queue_Selected(COMMAND_KIND::APPEND);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Append the selected saved Effect or Group as one occurrence at the Sequencer cursor.");
     ImGui::TextWrapped("Parent: %s", Selected_ParentName().c_str());
     ImGui::SetNextItemWidth(-1.f);
     ImGui::InputTextWithHint("##SavedEffectName", "Name", m_szName, sizeof(m_szName));
@@ -529,5 +618,21 @@ void Client::CEffectAuthoringResourceTree::Render()
         m_Commands.push_back({ COMMAND_KIND::CREATE_EFFECT, Selected_Kind(), New_Id("effect.user."),
             m_szName, m_strSelectedParentId });
     ImGui::EndDisabled();
+    if (m_eOwnerFilter == OWNER::END || m_eOwnerFilter == OWNER::V1_DOCUMENT)
+    {
+    ImGui::SeparatorText("V1 Recovery Copy");
+    ImGui::TextWrapped("Current V1 Effect: %s", m_strV1CopySource.empty() ? "Open a V1 Effect first" : m_strV1CopySource.c_str());
+    ImGui::InputText("New Effect ID", m_szCopyId, sizeof(m_szCopyId));
+    ImGui::InputText("Copy display name", m_szCopyName, sizeof(m_szCopyName));
+    ImGui::TextWrapped("Destination parent: %s", Selected_ParentName().c_str());
+    ImGui::BeginDisabled(m_strV1CopySource.empty() || !m_bMetadataReady ||
+        Root_For(m_Document, m_strSelectedParentId) != "root.v1" ||
+        !Stable_Id(m_szCopyId, 128u) || !Name(m_szCopyName) || m_Commands.size() >= 32u);
+    if (ImGui::Button("Create V1 Recovery Copy"))
+        m_Commands.push_back({ COMMAND_KIND::CREATE_V1_COPY, OWNER::V1_DOCUMENT,
+            m_szCopyId, m_szCopyName, m_strSelectedParentId, m_strV1CopySource });
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Copies every Element and its source recipe into a new saved Effect. Catalog admission and Animation Tool cue selection are separate steps.");
+    }
     if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 }

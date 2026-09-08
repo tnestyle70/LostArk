@@ -591,6 +591,9 @@
     <ClCompile Include="..\Private\EffectAuthoringSequencer.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EffectAuthoringSequencer_Camera.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\EffectAuthoringV2Pane.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
@@ -1213,6 +1216,9 @@
     <ClInclude Include="..\Public\Part_Equipment.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\SourceCharacterMaterialParameters.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClInclude>
@@ -1427,6 +1433,15 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_MaterialTemplate.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_DimensionMasterQMaterial.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_DimensionMasterALTVMaterial.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_DimensionMasterVMaterial.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
@@ -1867,6 +1882,42 @@
     <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json">
       <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.heart.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.heart.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.spade.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.spade.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.spade.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.club.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.club.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.club.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.diamond.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.diamond.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.diamond.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
@@ -2292,6 +2343,12 @@
     <None Include="..\Bin\ShaderFiles\Shader_MapMaterialSurface.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapmaterials.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json">
       <Filter>96.DataFiles</Filter>
     </None>
@@ -2306,6 +2363,30 @@
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli">
       <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterQNative.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNative.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterVNative.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectCubeSampleScene.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectSliceSceneDepth.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli">
       <Filter>97.ShaderFiles</Filter>
@@ -2388,5 +2469,163 @@
     <ClInclude Include="..\Public\PhysicalResourceCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba0.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba0.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba2.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba2.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba3.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba3.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.tuning.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.clip2.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.clip2.tuning.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.clip4.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.clip4.tuning.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.tuning.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a1.full.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a1.tuning.restore.effect.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.tuning.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.tuning.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.tuning.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.tuning.restore.effectsequence.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Effect_DimensionMasterWRMaterial.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterWRNative.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Effect_DimensionMasterSDMaterial.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterSDNative.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.clip1.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.appear.card_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.appear.smoke_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.blur_2.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.burst_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_2.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.joker.hammer.decal_3.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.medusa.laser_1.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Bindings\MN_RPCT_06.effectv2bindings.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.appear.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.joker.hammer.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.medusa.laser.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
   </ItemGroup>
 </Project>

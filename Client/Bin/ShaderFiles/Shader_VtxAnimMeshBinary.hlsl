@@ -31,6 +31,19 @@ float4 g_EffectModelCueColorMultiply = 1.f;
 float g_EffectModelCueOpacity = 1.f;
 matrix g_BoneMatrices[512];
 
+/* Model textures carry full mip chains. Anisotropic sampling also preserves
+   detail on slanted body and equipment surfaces at gameplay distance. */
+sampler MaterialAnisotropicSampler = sampler_state
+{
+    Filter = ANISOTROPIC;
+    MaxAnisotropy = 16;
+    AddressU = WRAP;
+    AddressV = WRAP;
+    AddressW = WRAP;
+};
+
+#include "Shader_SourceCharacterMaterial.hlsli"
+
 struct VS_IN
 {
     float3 vPosition : POSITION;
@@ -38,6 +51,8 @@ struct VS_IN
     float3 vTangent : TANGENT;
     float3 vBinormal : BINORMAL;
     float2 vTexcoord : TEXCOORD0;
+    float2 vTexcoord1 : TEXCOORD1;
+    float2 vTexcoord2 : TEXCOORD2;
     uint4 vBlendIndices : BLENDINDEX;
     float4 vBlendWeights : BLENDWEIGHT;
 };
@@ -51,6 +66,7 @@ struct VS_OUT
     float2 vTexcoord : TEXCOORD0;
     float4 vWorldPos : TEXCOORD1;
     float4 vProjPos : TEXCOORD2;
+    float4 vSourceExtraUV : TEXCOORD3;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -78,6 +94,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.vTexcoord = input.vTexcoord;
     output.vWorldPos = mul(position, g_WorldMatrix);
     output.vProjPos = output.vPosition;
+    output.vSourceExtraUV = float4(input.vTexcoord1, input.vTexcoord2);
     return output;
 }
 
@@ -88,20 +105,48 @@ struct PS_OUT
     float4 vDepth : SV_TARGET2;
     float4 vPickPos : SV_TARGET3;
     float4 vEmissive : SV_TARGET4;
+    float4 vMaterialSpecular : SV_TARGET5;
+    float4 vCharacterSurface : SV_TARGET6;
+    float4 vCharacterGeometry : SV_TARGET7;
 };
 
 PS_OUT Evaluate_Material(
-    VS_OUT input, bool alphaClip, float alphaClipThreshold)
+    VS_OUT input, bool alphaClip, float alphaClipThreshold, bool frontFace)
 {
-    PS_OUT output;
-    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    PS_OUT output = (PS_OUT)0;
+    if (g_SourceCharacterProgram != 0u)
+    {
+        SOURCE_CHARACTER_GBUFFER source = EvaluateSourceCharacterGeometry(input.vTexcoord,
+            input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+            input.vNormal.xyz, input.vProjPos, input.vPosition, g_ViewMatrix, g_ProjMatrix, frontFace);
+        output.vDiffuse = source.diffuse;
+        output.vNormal = source.normal;
+        output.vDepth = source.depth;
+        output.vPickPos = source.pickPosition;
+        output.vEmissive = source.indirect;
+        output.vMaterialSpecular = source.extraUV;
+        output.vCharacterSurface = source.surfaceUVTangent;
+        output.vCharacterGeometry = source.geometricNormal;
+        // Existing hit/skill presentation stays independent of material light.
+        if (g_HasFullSurfaceEmissiveOverride != 0u)
+        {
+            float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            float weight = g_FullSurfaceEmissiveMaskMode == 1u ?
+                pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
+                    normalize(camera - input.vWorldPos.xyz))), 3.f) : 1.f;
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * weight;
+        }
+        return output;
+    }
+    float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     if (alphaClip && diffuse.a < alphaClipThreshold)
         discard;
     if (!alphaClip)
         diffuse.a = 1.f;
     if (0 != g_HasDyeMask)
     {
-        float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        float3 mask = g_DyeMaskTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord).rgb;
         float3 tint = g_DyeDiffuseColor.rgb;
         tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
         tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
@@ -115,7 +160,7 @@ PS_OUT Evaluate_Material(
         /* Monster normal maps ship as BC5 (RG only); a plain xyz decode reads
            z = -1 and flips the normal into the surface. */
         float4 encodedNormal =
-            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+            g_NormalTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
         float3 tangentNormal;
         if (encodedNormal.b <= 0.0001f)
         {
@@ -139,7 +184,7 @@ PS_OUT Evaluate_Material(
     if (0 != g_HasSpecularTexture)
     {
         float3 specular = g_SpecularTexture.Sample(
-            LinearSampler, input.vTexcoord).rgb;
+            MaterialAnisotropicSampler, input.vTexcoord).rgb;
         specularMask *= dot(specular, float3(0.299f, 0.587f, 0.114f));
     }
     output.vNormal = float4(normal * 0.5f + 0.5f, specularMask);
@@ -153,7 +198,7 @@ PS_OUT Evaluate_Material(
     if (0 != g_HasEmissiveTexture)
     {
         float3 emissive = g_EmissiveTexture.Sample(
-            LinearSampler, input.vTexcoord).rgb;
+            MaterialAnisotropicSampler, input.vTexcoord).rgb;
         output.vEmissive = float4(
             emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
     }
@@ -183,24 +228,24 @@ PS_OUT Evaluate_Material(
     return output;
 }
 
-PS_OUT PS_MAIN(VS_OUT input)
+PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    return Evaluate_Material(input, true, 0.3f);
+    return Evaluate_Material(input, true, 0.3f, frontFace);
 }
 
-PS_OUT PS_MAIN_OPAQUE(VS_OUT input)
+PS_OUT PS_MAIN_OPAQUE(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    return Evaluate_Material(input, false, 0.f);
+    return Evaluate_Material(input, false, 0.f, frontFace);
 }
 
-PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input)
+PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    return Evaluate_Material(input, true, 0.333f);
+    return Evaluate_Material(input, true, 0.333f, frontFace);
 }
 
 float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
 {
-    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     diffuse.rgb *= g_EffectModelCueColorMultiply.rgb;
     diffuse.a = saturate(
         diffuse.a * g_EffectModelCueColorMultiply.a * g_EffectModelCueOpacity);
@@ -211,7 +256,7 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
 
 void PS_MAIN_SHADOW(VS_OUT input)
 {
-    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     if (diffuse.a < 0.3f)
         discard;
 }
@@ -220,7 +265,7 @@ float3 g_CutinLightDirection = float3(-0.45f, -0.75f, 0.35f);
 
 float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
 {
-    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
     if (diffuse.a < 0.3f)
         discard;
 
@@ -228,7 +273,7 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     if (0 != g_HasNormalTexture)
     {
         float4 encodedNormal =
-            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+            g_NormalTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
         float3 tangentNormal;
         if (encodedNormal.b <= 0.0001f)
         {
@@ -270,7 +315,7 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     if (0 != g_HasEmissiveTexture)
     {
         float3 emissive =
-            g_EmissiveTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+            g_EmissiveTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord).rgb;
         color += emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
     }
     return float4(color, 1.f);
@@ -344,5 +389,15 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
+    }
+    // Appended index 6 preserves all existing effect and portrait pass IDs.
+    pass SourceCharacterTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
     }
 }

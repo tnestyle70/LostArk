@@ -9,6 +9,7 @@ rows whose authoringStatus is PRODUCT.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 import os
@@ -128,7 +129,7 @@ PATTERN_OPTIONAL_KEYS = {
     "nextWorldOccurrenceOrdinal",
     "worldOccurrences",
     "nextSceneProfileOccurrenceOrdinal",
-    "sceneProfileOccurrences", "resetBossToSpawn", "resetBossYawDegrees",
+    "sceneProfileOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale",
     "presentationOccurrences", "nextPresentationOccurrenceOrdinal", "gateId", "targetBossPlacementId", "folderId",
 }
 LOGIC_KEYS = {"logicId", "displayName", "logicType"}
@@ -1062,6 +1063,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             context,
         )
         _boolean(pattern.get("resetBossToSpawn", False), f"{context} resetBossToSpawn")
+        _number(pattern.get("animationRootVerticalScale", 1.0), f"{context} animationRootVerticalScale", 0.0, 1.0)
         if "resetBossYawDegrees" in pattern:
             _number(pattern["resetBossYawDegrees"], f"{context} resetBossYawDegrees", -360, 360)
             if not pattern.get("resetBossToSpawn", False):
@@ -1262,7 +1264,10 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         pattern_duration_ms = 0
         for stage_index, stage in enumerate(stages):
             stage_context = f"{context}.stages[{stage_index}]"
-            _exact_keys(stage, STAGE_KEYS, stage_context)
+            _exact_keys(stage, STAGE_KEYS | ({"retargetOnEnter"} if "retargetOnEnter" in stage else set()), stage_context)
+            retarget = _boolean(stage.get("retargetOnEnter", False), f"{stage_context} retargetOnEnter")
+            if retarget and "bossMotion" in pattern:
+                raise CompositionError(f"{stage_context} retargetOnEnter cannot share bossMotion yaw")
             stage_id = _stable_id(stage["stageId"], f"{stage_context} stageId")
             action_id = _stable_id(stage["actionId"], f"{stage_context} actionId")
             if stage_id in stage_ids:
@@ -1384,6 +1389,20 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                         f"EXACT): {occurrence_id}"
                     )
 
+        if "bossMotion" in pattern:
+            motion = pattern["bossMotion"]
+            _exact_keys(motion, {"startMs", "endMs", "startPosition", "endPosition", "yawDegrees"}, f"{context} bossMotion")
+            start = _integer(motion["startMs"], f"{context} bossMotion.startMs", 0, 600000)
+            end = _integer(motion["endMs"], f"{context} bossMotion.endMs", 1, pattern_duration_ms)
+            _vector3(motion["startPosition"], f"{context} bossMotion.startPosition", -100000, 100000)
+            _vector3(motion["endPosition"], f"{context} bossMotion.endPosition", -100000, 100000)
+            _number(motion["yawDegrees"], f"{context} bossMotion.yawDegrees", -360, 360)
+            if start >= end or motion["startPosition"][1] != motion["endPosition"][1]:
+                raise CompositionError(f"{context} bossMotion requires an ordered interval and equal base Y")
+            if pattern.get("resetBossToSpawn", False) or "resetBossYawDegrees" in pattern:
+                raise CompositionError(f"{context} bossMotion cannot also reset boss to spawn")
+            if any(box.get("enabled", True) and logic_defs[box["logicId"]].get("kind") == "REAL_GAZE_TELEPORT" for box in logic_occurrences):
+                raise CompositionError(f"{context} bossMotion cannot also teleport the boss")
         _validate_presentation_occurrences(pattern, presentation_resources, pattern_duration_ms, worlds_by_id)
         for box in logic_occurrences:
             if box["startMs"] + box["durationMs"] > pattern_duration_ms:
@@ -1486,6 +1505,9 @@ def _project_stage(stage: dict[str, Any]) -> dict[str, Any]:
         "actionId": stage["actionId"],
         "stageKind": stage["stageKind"],
         "durationMs": stage["durationMs"],
+        **({"actions": [{"trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
+                        "targetId": "boss.target.pattern", "value": 1, "durationMs": 0}]}
+           if stage.get("retargetOnEnter", False) else {}),
         "hitShape": "NONE",
         "hitOuterRadius": 0.0,
         "hitInnerRadius": 0.0,
@@ -2040,7 +2062,7 @@ def _load_bone_bake_actor(pattern, root, cache):
     return value
 
 
-def _sample_bone_bake_pose(actor, part, clip_name, source_seconds):
+def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical_scale=1.0):
     model = actor[part]
     if model is None:
         raise CompositionError("Bone Collider actor has no weapon model")
@@ -2069,7 +2091,7 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds):
             channel.rotation_keys = normalized
         actor["validatedClips"].add((part, clip_name))
     ticks = min(source_seconds * animation.ticks_per_second, animation.duration_ticks) if animation else 0
-    key = (part, clip_name, ticks)
+    key = (part, clip_name, ticks, root_vertical_scale if part == "body" else 1.0)
     if key in actor["poses"]:
         return actor["poses"][key]
     local = [list(bone.transform) for bone in model.skeleton_bones]
@@ -2086,6 +2108,8 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds):
         # CNpc/CModel suppress local X/Y root translation and preserve vertical Z.
         for axis in (12, 13):
             local[roots[0]][axis] = model.skeleton_bones[roots[0]].transform[axis]
+        rest_z = model.skeleton_bones[roots[0]].transform[14]
+        local[roots[0]][14] = rest_z + (local[roots[0]][14] - rest_z) * root_vertical_scale
     combined = wmodel_pose.combined_transforms(model.skeleton_bones, local)
     pre = actor[part + "Pre"]
     combined = [wmodel_pose.matrix_multiply(matrix, pre) for matrix in combined]
@@ -2177,7 +2201,7 @@ def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
             # Product plays the action without looping. A held final stage
             # keeps advancing its source clock until CAnimation's native end.
             seconds = min(seconds, native_seconds)
-        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds)
+        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds, pattern.get("animationRootVerticalScale", 1.0))
         matrix = body_pose[bone_indices[0]] if part == "body" else None
         if part == "weapon":
             prefix = "mn_rpct_06_sk.ao_"
@@ -2450,6 +2474,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "resetBossToSpawn": source.get("resetBossToSpawn", False),
                 **({"resetBossYawDegrees": float(source["resetBossYawDegrees"])}
                    if "resetBossYawDegrees" in source else {}),
+                **({"bossMotion": copy.deepcopy(source["bossMotion"])} if "bossMotion" in source else {}),
                 "logicWindows": logic_windows,
                 "mechanicTriggers": mechanic_triggers,
                 "worldSequences": [
@@ -2677,7 +2702,20 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],
             "fadeInMs": box["blendMs"],
         })
+    worlds = {world["worldId"]: world for world in document.get("worlds", [])}
+    emission_anchors = [
+        {"occurrenceId": box["occurrenceId"], "startMs": box["startMs"],
+         "positionOffset": list(worlds[box["worldId"]].get("positionOffset", [0.0, 0.0, 0.0])),
+         "anchorPosition": list(worlds[box["worldId"]].get("anchorPosition", [0.0, 0.0, 0.0]))}
+        for box in pattern.get("worldOccurrences", [])
+        if "bossMotion" in pattern and "placement" not in box
+        and worlds[box["worldId"]].get("objectResourceId")
+        and worlds[box["worldId"]].get("anchorKind", "NONE") == "BOSS_SPAWN"
+    ]
     return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": sum(stage["durationMs"] for stage in pattern["stages"]),
+            **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
+            **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
+            **({"worldEmissionAnchors": emission_anchors} if emission_anchors else {}),
             "presentationOccurrences": occurrences}
 
 
@@ -2749,6 +2787,7 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
                         "playRate": occurrence["playRate"],
                         "endPolicy": occurrence["endPolicy"],
                         **({"unblendedBoneContact": True} if unblended_bone_contact else {}),
+                        **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
                     }
                 )
     return {

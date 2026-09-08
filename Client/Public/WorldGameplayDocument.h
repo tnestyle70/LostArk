@@ -33,6 +33,9 @@ enum class WORLD_TRIGGER_EVENT_KIND
 	PLAY_SEQUENCE,
 	SET_CONDITION,
 	SET_DESTROYABLE_STATE,
+	/* Claims the card maze telescope for the interacting player. Only an
+	   interact-gated Kouku box may carry it; the Server deals the suits. */
+	CLAIM_CARD_MAZE_TELESCOPE,
 	END
 };
 

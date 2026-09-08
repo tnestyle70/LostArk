@@ -1,5 +1,6 @@
 
 #include "Engine_Shader_Defines.hlsli"
+#include "Shader_SourceStoneSurface.hlsli"
 
 float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 float4x4    g_CameraViewMatrix, g_CameraProjMatrix;
@@ -11,6 +12,12 @@ texture2D   g_DepthTexture;
 texture2D   g_SpecularTexture;
 texture2D   g_MaterialSpecularTexture;
 texture2D   g_GeometricNormalTexture;
+Texture2D g_CharacterSurfaceTexture;
+Texture2D g_CharacterGeometryTexture;
+float4x4 g_SourceCharacterViewMatrix, g_SourceCharacterProjMatrix;
+#define SOURCE_CHARACTER_LIGHT_PASS
+#include "Shader_SourceCharacterMaterial.hlsli"
+
 uint g_MaterialDebugView = 0;
 texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
@@ -393,6 +400,63 @@ PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
     return output;
 }
 
+PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
+    float3 lightDirection, float attenuation, float directShadow)
+{
+    PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float3 baseNormal = SourceStoneUnit(g_NormalTexture.Load(pixel).xyz * 2.f - 1.f);
+    const float3 mixedNormal = g_CharacterGeometryTexture.Load(pixel).xyz;
+    const float3 diffuse = g_CharacterSurfaceTexture.Load(pixel).rgb;
+    const float3 specular = g_MaterialSpecularTexture.Load(pixel).rgb;
+    const float3 radiance = EvaluateSourceStoneDirect(diffuse, specular,
+        baseNormal, mixedNormal, g_vCamPosition.xyz - worldPosition,
+        lightDirection, g_DepthTexture.Load(pixel).z, g_vLightDiffuse.rgb,
+        directShadow.xxx, float4(0.f, 0.f, 0.f, 1.f));
+    // RT4 already holds source baked diffuse AND baked specular. Source scene
+    // hemisphere/ambient remains explicitly unbound, not duplicated per light.
+    // Direct carries albedo, so the combined pass must add it without RT0.
+    output.vSpecular = float4(radiance * attenuation, 0.f);
+    return output;
+}
+
+PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
+    float attenuation, float directShadow)
+{
+    PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
+    const int3 pixel = int3(int2(input.vPosition.xy), 0);
+    const float4 depth = g_DepthTexture.Load(pixel);
+    if (depth.w != 5.f || depth.z != float(g_SourceCharacterRow) ||
+        g_SourceCharacterRow == 0u || attenuation <= 0.f) discard;
+    const float4 surface = g_CharacterSurfaceTexture.Load(pixel);
+    const float4 geometry = g_CharacterGeometryTexture.Load(pixel);
+    const float3 position = g_GeometricNormalTexture.Load(pixel).xyz;
+    const float3 normal = SourceCharacterSafeUnit(geometry.xyz);
+    const float3 tangent = SourceCharacterOctDecode(surface.zw);
+    const float3 binormal = SourceCharacterSafeUnit(cross(normal, tangent)) * (geometry.w < 0.f ? -1.f : 1.f);
+    const float4 clipPosition = mul(mul(float4(position,1.f),
+        g_SourceCharacterViewMatrix),g_SourceCharacterProjMatrix);
+    SOURCE_CHARACTER_NATIVE_INPUT nativeInput = MakeSourceCharacterInput(surface.xy,
+        g_MaterialSpecularTexture.Load(pixel), position, tangent, binormal, normal,
+        g_vCamPosition.xyz, clipPosition,
+        mul(g_SourceCharacterViewMatrix,g_SourceCharacterProjMatrix),
+        lightDirection, g_vLightDiffuse.rgb, directShadow, abs(geometry.w) < 1.5f);
+    SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterLight(nativeInput);
+    if (native.discarded) return output;
+    // Native direct output already contains albedo and both lighting lobes.
+    // The existing combined pass adds Specular without multiplying albedo again.
+    // Hair's native pass uses its own projected PCF protocol. Until that
+    // engine-owned projection is available, use this renderer's shadow once.
+    const float shadowAdapter = g_SourceCharacterProgram == 7u ? directShadow : 1.f;
+    output.vSpecular = float4(native.targets[0].rgb * (attenuation * shadowAdapter), 0.f);
+    // Engine-owned source SH/cube values are not authored in these MICs. Keep
+    // the scene's explicit ambient approximation separate from recovered direct.
+    output.vShade = g_vLightDiffuse * g_vLightAmbient * g_vMtrlAmbient *
+        (attenuation * Resolve_AmbientOcclusion(input.vTexcoord));
+    output.vShade.a = 0.f;
+    return output;
+}
+
 PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
 {
     PS_OUT_LIGHT Out;
@@ -431,6 +495,12 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
         normalize(g_vLightDir) * -1.f, normalize(vNormal)));
     const float fDirectionalShadow = Resolve_DirectionalShadow(
         vWorldPos, vNormal.xyz);
+    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    if (g_SourceCharacterRow != 0u)
+        return Resolve_SourceCharacterLight(In, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
+    if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
+    if (sourceDepth.w == 7.f)
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -g_vLightDir.xyz, 1.f, fDirectionalShadow);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
         return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -g_vLightDir.xyz,
             1.f, fDirectionalShadow);
@@ -516,6 +586,12 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot)
         fAtt *= fCone * fCone;
     }
     
+    const float4 sourceDepth = g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0));
+    if (g_SourceCharacterRow != 0u)
+        return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, 1.f);
+    if (sourceDepth.w == 5.f) return (PS_OUT_LIGHT)0;
+    if (sourceDepth.w == 7.f)
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 4.f)
         return Resolve_MapSourceSpecularLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, 1.f);
     if (g_DepthTexture.Load(int3(int2(In.vPosition.xy), 0)).w == 3.f)
@@ -557,6 +633,11 @@ bool Is_SSAOBackground(float4 vDepthDesc)
 
 float3 Decode_SSAONormal(float2 vTexcoord)
 {
+    // Marker 7 stores the unnormalized final mixed normal in the shared RT7;
+    // RT1 deliberately retains the base normal used by its direct specular.
+    if (g_DepthTexture.SampleLevel(PointSampler, vTexcoord, 0.f).w == 7.f)
+        return SourceStoneUnit(g_CharacterGeometryTexture.SampleLevel(
+            PointSampler, vTexcoord, 0.f).xyz);
     float3 vNormal = g_NormalTexture.Sample(
         PostProcessSampler, vTexcoord).xyz * 2.f - 1.f;
     float fLengthSquared = dot(vNormal, vNormal);
@@ -1196,6 +1277,23 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
         const int3 pixel = int3(int2(In.vPosition.xy), 0);
         const float marker = g_DepthTexture.Load(pixel).w;
         float3 color = 0.f;
+        if (marker == 7.f)
+        {
+            if (g_MaterialDebugView == 1u)
+                color = pow(saturate(g_CharacterSurfaceTexture.Load(pixel).rgb), 1.f / 2.2f);
+            else if (g_MaterialDebugView == 2u)
+                color = SourceStoneUnit(g_CharacterGeometryTexture.Load(pixel).xyz) * 0.5f + 0.5f;
+            else if (g_MaterialDebugView == 3u)
+            {
+                // This family's additive target holds full source direct light,
+                // including diffuse. It is not a separated specular-only pass.
+                const float3 direct = max(g_SpecularTexture.Load(pixel).rgb, 0.f);
+                color = pow(direct / (1.f + direct), 1.f / 2.2f);
+            }
+            // No source reflection texture/ORM exists in this permutation.
+            Out.vBackBuffer = float4(color, 1.f);
+            return Out;
+        }
         if (marker == 1.f || marker == 2.f || marker == 3.f || marker == 4.f)
         {
             if (g_MaterialDebugView == 2u)

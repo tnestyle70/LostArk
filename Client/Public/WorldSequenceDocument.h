@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 
 #include <optional>
+#include <algorithm>
 
 #include <filesystem>
 #include <string>
@@ -104,6 +105,20 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	std::string displayName;
 };
 
+struct WORLD_SEQUENCE_EFFECT_TRACK
+{
+	std::string effectTrackId;
+	std::string slotId;
+	std::string resourceKind = "GROUP";
+	std::string resourceId;
+	std::string timing = "MOTION_END";
+	uint32_t startMs = 0;
+	uint32_t durationMs = 1000;
+	float3_t positionOffset = {};
+	float3_t rotationDegrees = {};
+	float3_t scale = {1.f, 1.f, 1.f};
+};
+
 struct WORLD_SEQUENCE_TEMPLATE
 {
 	std::string sequenceId;
@@ -114,7 +129,19 @@ struct WORLD_SEQUENCE_TEMPLATE
 		WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP;
 	std::vector<WORLD_SEQUENCE_TRACK> tracks;
 	std::vector<WORLD_SEQUENCE_ANIMATION_TRACK> animationTracks;
+	std::vector<WORLD_SEQUENCE_EFFECT_TRACK> effectTracks;
 	WORLD_SEQUENCE_OBJECT_MOTION objectMotion;
+	uint32_t EffectStartMs(const WORLD_SEQUENCE_EFFECT_TRACK& effect) const noexcept
+	{ return effect.timing == "MOTION_END" ? durationMs : effect.startMs; }
+	uint32_t ObjectSpanMs() const noexcept
+	{ return durationMs + (effectTracks.empty() ? 0u : (objectMotion.count - 1u) * objectMotion.intervalMs); }
+	uint32_t PresentationSpanMs() const noexcept
+	{
+		uint32_t span = durationMs;
+		for (const auto& effect : effectTracks)
+			span = (std::max)(span, EffectStartMs(effect) + effect.durationMs);
+		return span + (effectTracks.empty() ? 0u : (objectMotion.count - 1u) * objectMotion.intervalMs);
+	}
 };
 
 struct WORLD_SEQUENCE_BINDING

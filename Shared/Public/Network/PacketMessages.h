@@ -705,6 +705,32 @@ namespace LostArk::Shared
 		return symbol < MECHANIC_CARD_SYMBOL::END;
 	}
 
+	/* KoukuSaydon card maze. The first player to claim the telescope owns it
+	and hunts nothing; every other living player is dealt one distinct suit to
+	hunt. The Server owns both; the Client only draws them. */
+	enum class CARD_MAZE_ROLE : std::uint8_t
+	{
+		NONE,
+		TELESCOPE,
+		HUNTER,
+		END
+	};
+
+	/* Server-owned maze state. Flags: observing=1, escaped=2, exit=4,
+	   leaving maze=8. Effect assets and camera poses stay Client-side. */
+	struct CARD_MAZE_PRESENTATION final
+	{
+		std::uint8_t flags = 0u;
+		float exitX = 0.f, exitY = 0.f, exitZ = 0.f;
+		std::uint32_t marchStartTick = 0u, marchCycleMs = 0u;
+		std::uint32_t transferStartTick = 0u;
+	};
+
+	constexpr bool Is_Valid_CardMazeRole(const CARD_MAZE_ROLE role) noexcept
+	{
+		return role < CARD_MAZE_ROLE::END;
+	}
+
 	enum class MECHANIC_CARD_COLOR : std::uint8_t
 	{
 		NONE,
@@ -757,6 +783,11 @@ namespace LostArk::Shared
 	clip that the mode assigns to the pressed slot. */
 	constexpr std::uint32_t KOUKU_INTERACTION_ACTION_MS = 3000u;
 	constexpr std::uint32_t KOUKU_INTERACTION_COOLDOWN_MS = 3000u;
+	/* The card maze hammer keeps the authored swing above, because the Client
+	scrubs that clip by the action's age and returns to idle the moment the
+	action ends. Only the cooldown is shortened, so a hunter who cancels the
+	recovery with their own next input can swing again at once. */
+	constexpr std::uint32_t KOUKU_MAZE_HAMMER_COOLDOWN_MS = 400u;
 	/* Reserved interaction cooldown identity. It is separate from the mode's
 	zero-based animation index and from product character skill IDs. */
 	constexpr SKILL_ID Kouku_InteractionCooldownSkillId(
@@ -995,6 +1026,13 @@ namespace LostArk::Shared
 			{ -1, -1, -1, -1, -1, -1, -1, -1 };
 		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
 		std::uint8_t iMarioStage = 0u;
+		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
+		carries the suit it was dealt and kills <= the kill target. */
+		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;
+		MECHANIC_CARD_SYMBOL eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
+		std::uint8_t iCardMazeKills = 0u;
+		std::uint8_t iCardMazeKillTarget = 0u;
+		CARD_MAZE_PRESENTATION CardMaze;
 		bool isCombatReady = true;
 		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
 		late Client present the remaining window without deciding its lifetime. */
@@ -1121,6 +1159,10 @@ namespace LostArk::Shared
 		// True when a player dealt it. Presentation styles incoming and outgoing
 		// damage differently, and only the server knows which is which.
 		bool isOutgoing = false;
+		/* NONE on an ordinary hit. A card maze shard instead names the suit the
+		hunter was dealt and carries their running count in iAmount, because the
+		entity snapshot has no archetype for the Client to read the suit from. */
+		MECHANIC_CARD_SYMBOL eCardMazeSuit = MECHANIC_CARD_SYMBOL::NONE;
 	};
 
 	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t
@@ -2270,7 +2312,7 @@ namespace LostArk::Shared
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.
-	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, END };
+	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, FINISH_OWNER = 4, END };
 	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
 	{
 		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, END
