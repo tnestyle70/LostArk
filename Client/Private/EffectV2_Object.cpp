@@ -958,6 +958,18 @@ void Client::CEffectV2Object::Update(const f32_t fTimeDeltaIn)
 	}
 	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f) return;
 	m_dElapsedSeconds += static_cast<double>(fTimeDelta);
+	if (SHAPE::TRAIL == m_eShape && m_PivotSampler && !m_bFinished && !m_bEmissionStopped)
+	{
+		float4x4_t sampled;
+		if (!m_PivotSampler(static_cast<f32_t>(m_dElapsedSeconds), sampled, m_strStatus))
+		{
+			m_strStatus = "Trail sample pivot unavailable: " + m_strStatus;
+			m_bPivotSampleFailed = true;
+			m_bFinished = true;
+			return;
+		}
+		m_PivotWorld = sampled;
+	}
 	if (SHAPE::PARTICLE == m_eShape)
 	{
 		if (!m_bFinished) Advance_ParticleClock(fTimeDelta * m_Params.fPlayRate);
@@ -1011,6 +1023,14 @@ void Client::CEffectV2Object::Advance_Lifetime(const f32_t fStep)
 		m_bFinished = true;
 }
 
+void Client::CEffectV2Object::Set_OccurrenceScale(const float3_t& Scale)
+{
+	if (!std::isfinite(Scale.x) || !std::isfinite(Scale.y) || !std::isfinite(Scale.z) ||
+		Scale.x <= 0.f || Scale.y <= 0.f || Scale.z <= 0.f) return;
+	m_vOccurrenceScale = Scale;
+	Apply_Transform();
+}
+
 void Client::CEffectV2Object::Apply_Transform()
 {
 	const f32_t fRatio = Life_Ratio();
@@ -1059,7 +1079,9 @@ void Client::CEffectV2Object::Apply_Transform()
 			CameraWorld.r[1] = XMVector3Normalize(CameraWorld.r[1]);
 			CameraWorld.r[2] = XMVector3Normalize(CameraWorld.r[2]);
 			CameraWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-			World = Scale * Rotation * CameraWorld *
+			// Billboarding replaces the pivot basis; keep its parent occurrence size.
+			World = Scale * XMMatrixScaling(m_vOccurrenceScale.x, m_vOccurrenceScale.y,
+				m_vOccurrenceScale.z) * Rotation * CameraWorld *
 				XMMatrixTranslationFromVector(World.r[3]);
 		}
 	}
@@ -1394,7 +1416,8 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 		if (bMeshParticle)
 		{
 			const f32_t fScale = (std::max)(0.f, fSizeX) * m_Params.fMeshPreScale;
-			InstanceWorld = XMMatrixScaling(fScale, fScale, fScale) *
+			InstanceWorld = XMMatrixScaling(fScale * m_vOccurrenceScale.x,
+				fScale * m_vOccurrenceScale.y, fScale * m_vOccurrenceScale.z) *
 				XMMatrixRotationRollPitchYaw(
 					XMConvertToRadians(Particle.vMeshRotationDegrees.x),
 					XMConvertToRadians(Particle.vMeshRotationDegrees.y),
@@ -1403,8 +1426,8 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 		}
 		else
 		{
-			InstanceWorld.r[0] = XMVectorSetW(RolledRight * fSizeX, 0.f);
-			InstanceWorld.r[1] = XMVectorSetW(RolledUp * fSizeY, 0.f);
+			InstanceWorld.r[0] = XMVectorSetW(RolledRight * (fSizeX * m_vOccurrenceScale.x), 0.f);
+			InstanceWorld.r[1] = XMVectorSetW(RolledUp * (fSizeY * m_vOccurrenceScale.y), 0.f);
 			InstanceWorld.r[2] = XMVectorSetW(Look, 0.f);
 			InstanceWorld.r[3] = XMVectorSetW(Position, 1.f);
 		}
@@ -1547,7 +1570,8 @@ HRESULT Client::CEffectV2Object::Build_TrailGeometry()
 			else if (!Normalize_Safe(XMVector3Cross(XMVectorSet(0.f, 1.f, 0.f, 0.f), Tangent), Side) &&
 				!Normalize_Safe(XMVector3Cross(XMVectorSet(1.f, 0.f, 0.f, 0.f), Tangent), Side))
 				continue;
-			const f32_t fWidth = T.fStartWidth + (T.fEndWidth - T.fStartWidth) * Saturate(Point.fAge);
+			const f32_t fWidth = (T.fStartWidth + (T.fEndWidth - T.fStartWidth) * Saturate(Point.fAge)) *
+				m_vOccurrenceScale.x;
 			First = Center - Side * (fWidth * 0.5f);
 			Second = Center + Side * (fWidth * 0.5f);
 		}
@@ -1621,6 +1645,7 @@ f32_t Client::CEffectV2Object::ScreenPost_Intensity() const
 
 HRESULT Client::CEffectV2Object::Submit_Presentation()
 {
+	if (m_bFinished || m_bHidden) return S_OK;
 	m_ePresentationFailureScope = Engine::PRESENTATION_FAILURE_SCOPE::NONE;
 	Engine::CPresentation_Manager& Presentation = Engine::CPresentation_Manager::Get();
 	const SCREEN_POST_PARAMS& S = m_Params.ScreenPost;
@@ -1790,7 +1815,8 @@ HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
 
 HRESULT Client::CEffectV2Object::Render()
 {
-	if (SHAPE::SCREEN_POST == m_eShape || nullptr == m_pShader)
+	// Transport can finish an object after Late_Update queued its shared pointer.
+	if (m_bFinished || m_bHidden || SHAPE::SCREEN_POST == m_eShape || nullptr == m_pShader)
 		return S_OK;
 	if (FAILED(Bind_Common(m_pShader)))
 	{

@@ -234,6 +234,7 @@ function Get-EncounterProfiles {
 				$patternProperties += 'verticalOffsetM'
 			}
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
 			if ($isKoukuSaydon) {
 				foreach ($field in @('gateId','targetBossPlacementId','actorProfileId','folderId')) {
@@ -258,10 +259,32 @@ function Get-EncounterProfiles {
 				@($pattern.stages).Count -eq 0) {
 				throw "Encounter pattern timing or range is invalid: $($pattern.patternId)"
 			}
+			$bossMotionPatternDurationMs = [uint64]0
 			foreach ($stage in @($pattern.stages)) {
 				Assert-StableId $stage.stageId "$($document.encounterId) stageId"
 				Assert-StableId $stage.actionId "$($document.encounterId) stage actionId"
 				Assert-JsonInteger $stage.durationMs "$($document.encounterId) stage durationMs" 1 ([uint32]::MaxValue)
+				$bossMotionPatternDurationMs += [uint64]$stage.durationMs
+			}
+			if ($null -ne $pattern.PSObject.Properties['bossMotion']) {
+				$bossMotion = $pattern.bossMotion
+				Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
+				Assert-JsonInteger $bossMotion.startMs 'KoukuSaydon bossMotion startMs' 0 600000
+				Assert-JsonInteger $bossMotion.endMs 'KoukuSaydon bossMotion endMs' 1 $bossMotionPatternDurationMs
+				Assert-JsonNumber $bossMotion.yawDegrees 'KoukuSaydon bossMotion yawDegrees'
+				if ($pattern.resetBossToSpawn -or $null -ne $pattern.PSObject.Properties['resetBossYawDegrees'] -or
+					$bossMotion.startMs -ge $bossMotion.endMs -or [Math]::Abs([double]$bossMotion.yawDegrees) -gt 360) {
+					throw 'KoukuSaydon bossMotion requires an ordered interval, valid yaw and no spawn reset'
+				}
+				foreach ($field in @('startPosition','endPosition')) {
+					if ($bossMotion.$field -isnot [Array] -or @($bossMotion.$field).Count -ne 3) { throw "KoukuSaydon bossMotion $field needs XYZ" }
+					foreach ($component in $bossMotion.$field) {
+						Assert-JsonNumber $component "KoukuSaydon bossMotion $field"
+						if ([Math]::Abs([double]$component) -gt 100000) { throw 'KoukuSaydon bossMotion position exceeds bounds' }
+					}
+				}
+				if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 			}
 		}
 		if ($isKoukuSaydon) {

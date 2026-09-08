@@ -3635,7 +3635,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
 							action.strClip.c_str(), false,
-							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f) :
+							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f, action.fAnimationRootVerticalScale) :
 						boss->Play_DefaultIdle(0.08f);
 					const bool_t missingProductAction = !hasAction &&
 						!entity.strPatternId.empty() && !entity.strActionId.empty();

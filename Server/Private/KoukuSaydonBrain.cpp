@@ -135,6 +135,16 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
 	{
 		const BOSS_PATTERN_STAGE_DEFINITION& stage = pattern.Stages[index];
+		const bool supportedActions = stage.Actions.empty() ||
+			(stage.Actions.size() == 1u && !pattern.BossMotion && [&]() {
+				const auto& action = stage.Actions.front();
+				return action.eTrigger == BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER &&
+					action.eKind == BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE &&
+					action.strTargetId == "boss.target.pattern" && action.iValue == 1u &&
+					action.iDurationMs == 0u && action.eReleaseMode == BOSS_GRABBED_RELEASE_MODE::NONE &&
+					action.fReleaseSpeedMps == 0.f && action.fReleaseYawOffsetDegrees == 0.f &&
+					action.Volley.ePolicy == BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE;
+			}());
 		const bool supportedKind =
 			BOSS_PATTERN_STAGE_KIND::WINDUP == stage.eStageKind ||
 			BOSS_PATTERN_STAGE_KIND::ACTIVE == stage.eStageKind ||
@@ -181,7 +191,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			stage.bKnockdown || 0u != stage.iDownMs || stage.bWallContact ||
 			stage.bChargeImpact || stage.bPiercesCover ||
 			!Is_ZeroMotion(stage.Motion) || !stage.strPropBreakSetId.empty() ||
-			!stage.PropBreakSlotIds.empty() || !stage.Actions.empty() ||
+			!stage.PropBreakSlotIds.empty() || !supportedActions ||
 			!validTimeoutBranch)
 		{
 			status = "KoukuSaydon pattern contains unsupported combat, motion, action, or branch data";
@@ -191,6 +201,19 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	std::uint64_t patternDurationMs = 0u;
 	for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 		patternDurationMs += stage.iDurationMs;
+	if (pattern.BossMotion)
+	{
+		const auto& motion = *pattern.BossMotion;
+		bool valid = !pattern.bResetBossToSpawn && !pattern.ResetBossYawDegrees &&
+			motion.iStartMs < motion.iEndMs && motion.iEndMs <= patternDurationMs &&
+			motion.StartPosition[1] == motion.EndPosition[1] &&
+			std::isfinite(motion.fYawDegrees) && std::abs(motion.fYawDegrees) <= 360.f;
+		for (std::size_t axis = 0u; axis < 3u; ++axis)
+			valid = valid && std::isfinite(motion.StartPosition[axis]) && std::isfinite(motion.EndPosition[axis]) &&
+				std::abs(motion.StartPosition[axis]) <= 100000.f && std::abs(motion.EndPosition[axis]) <= 100000.f;
+		if (!valid)
+		{ status = "KoukuSaydon Boss Motion interval, base height or reset policy is invalid"; return false; }
+	}
 	std::unordered_set<std::string> triggerIds;
 	for (const auto& trigger : pattern.MechanicTriggers)
 	{
@@ -198,7 +221,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
 			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
 			(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind &&
-			 (trigger.strClonePatternId.empty() || trigger.ClockHours.size() != 3u)))
+			 (pattern.BossMotion || trigger.strClonePatternId.empty() || trigger.ClockHours.size() != 3u)))
 		{
 			status = "KoukuSaydon mechanic trigger is invalid";
 			return false;
@@ -469,6 +492,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 		(std::numeric_limits<std::uint32_t>::max)() ? 1u :
 		boss.iPatternSequence + 1u;
 	Enter_Stage(boss, pattern.Stages.front(), 0u, serverTick, true);
+	Apply_BossMotion(boss, pattern, serverTick);
 	status.clear();
 	return true;
 }
@@ -531,6 +555,7 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 			status = "KoukuSaydon running stage no longer matches its pinned definition";
 		return KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION;
 	}
+	Apply_BossMotion(boss, *pattern, serverTick);
 	const std::uint64_t elapsedTicks = Stage_ElapsedTicks(boss, serverTick);
 	boss.fActionElapsedSeconds = static_cast<float>(elapsedTicks) /
 		static_cast<float>(SERVER_TICK_HZ);
@@ -569,6 +594,29 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED);
 	status.clear();
 	return KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED;
+}
+
+void LostArk::Server::CKoukuSaydonBrain::Apply_BossMotion(
+	SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
+	const std::uint32_t serverTick) noexcept
+{
+	if (!pattern.BossMotion || !boss.iPatternStartTick || boss.strPatternId != pattern.strPatternId) return;
+	const auto& motion = *pattern.BossMotion;
+	if (motion.iEndMs <= motion.iStartMs) return;
+	const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
+		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
+	const double timeMs = static_cast<double>(ticks) * 1000.0 / SERVER_TICK_HZ;
+	const double alpha = (std::clamp)((timeMs - motion.iStartMs) /
+		static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
+	const auto sample = [&](std::size_t axis)
+	{
+		return static_cast<float>(motion.StartPosition[axis] +
+			(motion.EndPosition[axis] - motion.StartPosition[axis]) * alpha);
+	};
+	boss.fPositionX = sample(0u);
+	boss.fPositionY = motion.StartPosition[1];
+	boss.fPositionZ = sample(2u);
+	boss.fYawDegrees = motion.fYawDegrees;
 }
 
 void LostArk::Server::CKoukuSaydonBrain::Abort_Pattern(

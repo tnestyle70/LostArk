@@ -66,6 +66,7 @@ float4 g_DyeRegionB = 1.f;
 float4 g_DyeRegionC = 1.f;
 
 #include "Shader_MapMaterialSurface.hlsli"
+#include "Shader_SourceCharacterMaterial.hlsli"
 
 struct VS_IN
 {
@@ -75,6 +76,7 @@ struct VS_IN
     float3 vBinormal : BINORMAL;
     float2 vTexcoord : TEXCOORD0;
     float2 vLightmapUV : TEXCOORD1;
+    float4 vColor : COLOR0;
 };
 
 struct VS_OUT
@@ -89,6 +91,7 @@ struct VS_OUT
     /* Radial masks must remain centered while the authored texture pans. */
     float2 vRawTexcoord : TEXCOORD3;
     float2 vLightmapUV : TEXCOORD4;
+    float4 vColor : COLOR0;
     nointerpolation float4 vLightmapAverageScale : TEXCOORD5;
     nointerpolation float4 vLightmapDirectionalScale : TEXCOORD6;
 };
@@ -96,6 +99,7 @@ struct VS_OUT
 VS_OUT VS_MAIN(VS_IN input)
 {
     VS_OUT output;
+    output.vColor = input.vColor; // Decoded source PS RGBA, no second BGRA swizzle.
     matrix worldView = mul(g_WorldMatrix, g_ViewMatrix);
     matrix worldViewProjection = mul(worldView, g_ProjMatrix);
     output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
@@ -139,6 +143,8 @@ struct PS_OUT
     float4 vPickPos : SV_TARGET3;
     float4 vEmissive : SV_TARGET4;
     float4 vMaterialSpecular : SV_TARGET5;
+    float4 vCharacterSurface : SV_TARGET6;
+    float4 vCharacterGeometry : SV_TARGET7;
 };
 
 /* The landscape atlas is authored as a top-down XZ projection, so a
@@ -156,15 +162,15 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
     const float3 faceNormal =
         normalize(cross(ddx(worldPos), ddy(worldPos)));
 
-    const float4 topDown = g_DiffuseTexture.Sample(LinearSampler, texcoord);
+    const float4 topDown = SampleMapDiffuseTexture(texcoord, SurfaceAnisotropicSampler);
     if (g_TriplanarHeightScale <= 0.f)
         return topDown;
 
     const float heightCoord = worldPos.y * g_TriplanarHeightScale;
     const float4 sideX =
-        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.y, heightCoord));
+        SampleMapDiffuseTexture(float2(texcoord.y, heightCoord), SurfaceAnisotropicSampler);
     const float4 sideZ =
-        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.x, heightCoord));
+        SampleMapDiffuseTexture(float2(texcoord.x, heightCoord), SurfaceAnisotropicSampler);
 
     float3 weight = pow(abs(faceNormal), 8.f);
     weight /= max(weight.x + weight.y + weight.z, 1e-5f);
@@ -189,9 +195,53 @@ void ApplyPresentationOpacityDither(float4 screenPosition)
 
 PS_OUT PS_MAIN(VS_OUT input)
 {
-    PS_OUT output;
+    PS_OUT output = (PS_OUT)0;
     ApplyPresentationOpacityDither(input.vPosition);
+    if (g_SourceCharacterProgram != 0u)
+    {
+        SOURCE_CHARACTER_GBUFFER source = EvaluateSourceCharacterGeometry(input.vTexcoord,
+            0.f, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+            input.vNormal.xyz, input.vProjPos, input.vPosition, g_ViewMatrix, g_ProjMatrix, true);
+        output.vDiffuse = source.diffuse;
+        output.vNormal = source.normal;
+        output.vDepth = source.depth;
+        output.vPickPos = source.pickPosition;
+        output.vEmissive = source.indirect;
+        output.vMaterialSpecular = source.extraUV;
+        output.vCharacterSurface = source.surfaceUVTangent;
+        output.vCharacterGeometry = source.geometricNormal;
+        // Existing hit/skill presentation stays independent of material light.
+        if (g_HasFullSurfaceEmissiveOverride != 0u)
+        {
+            float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            float weight = g_FullSurfaceEmissiveMaskMode == 1u ?
+                pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
+                    normalize(camera - input.vWorldPos.xyz))), 3.f) : 1.f;
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * weight;
+        }
+        return output;
+    }
+
     output.vMaterialSpecular = 0.f;
+    if (g_SurfaceProgram == 7u)
+    {
+        const MAP_STONE_GBUFFER stone = EvaluateMapSourceStoneGeometry(
+            input.vRawTexcoord, input.vColor, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz,
+            input.vProjPos, input.vLightmapUV, input.vLightmapAverageScale,
+            input.vLightmapDirectionalScale);
+        output.vDiffuse = stone.diffuse;
+        output.vNormal = stone.normal;
+        output.vDepth = stone.depth;
+        output.vPickPos = stone.pickPosition;
+        output.vEmissive = stone.indirect;
+        output.vMaterialSpecular = stone.materialSpecular;
+        output.vCharacterSurface = stone.surface;
+        output.vCharacterGeometry = stone.geometry;
+        return output;
+    }
+
     if (g_SurfaceProgram != 0u)
     {
         const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord,
@@ -218,7 +268,8 @@ PS_OUT PS_MAIN(VS_OUT input)
         output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
             input.vLightmapUV, input.vLightmapAverageScale,
             input.vLightmapDirectionalScale, input.vWorldPos.xyz,
-            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz), 0.f);
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz) +
+            EvaluateMapSurfaceEmissive(input.vRawTexcoord), 0.f);
         output.vMaterialSpecular = float4(surface.specular, pbr ? surface.metallic :
             (sourceSpecular ? diffuseScale : 0.f));
         return output;
@@ -230,7 +281,7 @@ PS_OUT PS_MAIN(VS_OUT input)
         discard;
     if (0 != g_HasDyeMask)
     {
-        float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        float3 mask = g_DyeMaskTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         float3 tint = g_DyeDiffuseColor.rgb;
         tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
         tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
@@ -241,7 +292,7 @@ PS_OUT PS_MAIN(VS_OUT input)
     if (0 != g_HasNormalTexture)
     {
         float4 encodedNormal =
-            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+            g_NormalTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
         float3 tangentNormal;
         if (encodedNormal.b <= 0.0001f)
         {
@@ -264,7 +315,7 @@ PS_OUT PS_MAIN(VS_OUT input)
     if (0 != g_HasSpecularTexture)
     {
         float3 specular = g_SpecularTexture.Sample(
-            LinearSampler, input.vTexcoord).rgb;
+            SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         specularMask *= dot(specular, float3(0.299f, 0.587f, 0.114f));
     }
     output.vNormal = float4(normal * 0.5f + 0.5f, specularMask);
@@ -276,7 +327,7 @@ PS_OUT PS_MAIN(VS_OUT input)
     if (0 != g_HasEmissiveTexture)
     {
         float3 emissive = g_EmissiveTexture.Sample(
-            LinearSampler, input.vTexcoord).rgb;
+            SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         output.vEmissive = float4(
             emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
     }
@@ -330,14 +381,14 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
 {
     PS_OUT_FORWARD output;
     const float4 textureColor =
-        g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+        g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
     float4 color = textureColor;
     color.rgb *= g_ColorTint.rgb;
     float opacityMask = 1.f;
     if (0 != g_HasOpacityTexture)
     {
         float3 opacitySample =
-            g_OpacityTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+            g_OpacityTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         opacityMask = pow(saturate(dot(
             opacitySample, float3(0.299f, 0.587f, 0.114f))),
             g_OpacityPower);
@@ -460,7 +511,7 @@ float3 Water_SampleNormal(
     float intensity)
 {
     const float3 packed = normalTexture.Sample(
-        LinearSampler,
+        SurfaceAnisotropicSampler,
         Water_PannedUV(baseUV, tilingPanning)).xyz * 2.f - 1.f;
     return float3(packed.xy * intensity, 1.f);
 }
@@ -502,14 +553,14 @@ PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
         g_WaterFresnelIntensity);
 
     float4 color = g_DiffuseTexture.Sample(
-        LinearSampler,
+        SurfaceAnisotropicSampler,
         input.vTexcoord * g_WaterDiffuseTiling);
     color.rgb *= g_WaterDiffuseColor.rgb * g_ColorTint.rgb;
 
     if (0 != g_HasReflectionTexture)
     {
         const float3 reflection = g_ReflectionTexture.Sample(
-            LinearSampler,
+            SurfaceAnisotropicSampler,
             Water_PannedUV(
                 input.vTexcoord + tangentNormal.xy,
                 g_WaterReflectionTilingPanning)).rgb;
@@ -539,7 +590,7 @@ PS_OUT_WATER PS_MAIN_WATER(VS_OUT input)
 PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
 {
     PS_OUT_FORWARD output;
-    float4 color = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    float4 color = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
     output.vColor = float4(color.rgb * g_ColorTint.rgb, 1.f);
     return output;
 }
@@ -551,12 +602,12 @@ void PS_MAIN_SHADOW(VS_OUT input)
     {
         // The four Character Select source overrides are opaque, including
         // diffuse alpha=0. Kouku's original masked programs retain their cutoff.
-        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
-            clip(g_DiffuseTexture.Sample(LinearSampler, input.vRawTexcoord).a - 0.3333f);
+        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
+            clip(SampleMapDiffuseTexture(input.vRawTexcoord, SurfaceAnisotropicSampler).a - 0.3333f);
         return;
     }
     float4 diffuse =
-        g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord) *
+        SampleMapDiffuseTexture(input.vTexcoord, SurfaceAnisotropicSampler) *
         g_ColorTint;
     if (diffuse.a < 0.3f)
         discard;
@@ -573,7 +624,7 @@ PS_OUT_DEFERRED_EMISSIVE_OVERLAY PS_MAIN_DEFERRED_EMISSIVE_OVERLAY(
     clip((float)g_HasEmissiveTexture - 0.5f);
 
     const float3 emissive = pow(saturate(g_EmissiveTexture.Sample(
-        LinearSampler, input.vTexcoord).rgb),
+        SurfaceAnisotropicSampler, input.vTexcoord).rgb),
         float3(g_EmissiveMaskPower, g_EmissiveMaskPower,
             g_EmissiveMaskPower));
     clip(max(emissive.r, max(emissive.g, emissive.b)) - (1.f / 255.f));
@@ -639,7 +690,7 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
         discard;
     if (0 != g_HasDyeMask)
     {
-        float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        float3 mask = g_DyeMaskTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         float3 tint = g_DyeDiffuseColor.rgb;
         tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
         tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
@@ -650,7 +701,7 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     if (0 != g_HasNormalTexture)
     {
         float4 encodedNormal =
-            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+            g_NormalTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord);
         float3 tangentNormal;
         if (encodedNormal.b <= 0.0001f)
         {
@@ -690,7 +741,7 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     if (0 != g_HasEmissiveTexture)
     {
         float3 emissive =
-            g_EmissiveTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+            g_EmissiveTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb;
         color += emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
     }
     return float4(color, 1.f);

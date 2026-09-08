@@ -136,11 +136,9 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 		CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
-	if (nullptr != m_pMapLightPresentation)
-	{
-		m_pMapLightPresentation->Clear();
-		m_pMapLightPresentation.reset();
-	}
+	// Update may have queued this provider before the level transition. Keep its
+	// document valid until Presentation_Manager releases the pending frame owner.
+	m_pMapLightPresentation.reset();
 	m_MapRuntime.Clear();
 	m_pMapLightAuthoringOverride.reset();
 }

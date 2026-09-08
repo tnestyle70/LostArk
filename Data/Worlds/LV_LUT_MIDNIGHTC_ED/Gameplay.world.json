@@ -216,7 +216,7 @@
         945.330017
       ],
       "yawDegrees": 44,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [
         1,
         0.5,
@@ -438,7 +438,7 @@
         942.929993
       ],
       "yawDegrees": 40,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [
         1,
         0.5,
@@ -802,7 +802,7 @@
         941.22998
       ],
       "yawDegrees": 44,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [
         1,
         0.5,
@@ -1191,7 +1191,7 @@
         939.530029
       ],
       "yawDegrees": 45.5,
-      "enabled": true,
+      "enabled": false,
       "halfExtents": [
         1,
         0.5,

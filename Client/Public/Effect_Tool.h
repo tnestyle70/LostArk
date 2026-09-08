@@ -32,6 +32,7 @@
 
 NS_BEGIN(Engine)
 class CModel;
+class CCamera;
 NS_END
 
 NS_BEGIN(Client)
@@ -556,6 +557,7 @@ public:
 
     void Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuSaydonPresentationPlayer* player);
     void Set_AuthoringPlayer(CKoukuSaydonPresentationPlayer* player);
+    void Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera);
     void Update_AuthoringWorkspace(float dt, bool active);
     void Deactivate_AuthoringWorkspace();
     bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
@@ -832,7 +834,8 @@ private:
     bool_t Try_SaveDocument();
     size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
-    bool_t Try_SaveDocumentAs(const std::string& strAssetId);
+    bool_t Try_SaveDocumentAs(const std::string& strAssetId,
+        const std::string& strDisplayName = {}, const std::string& strParentId = {});
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
@@ -931,6 +934,8 @@ private:
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
 	bool_t Try_PlayActiveUnifiedEffect();
+	bool_t Try_PlayRecoveryEffect();
+	void Render_RecoveryEffectForProduct(const std::string& strProductEffectId);
 	bool_t Try_PlaySavedUnifiedEffect(
 		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
 	bool_t Try_PlayUnifiedModelCues(
@@ -1465,6 +1470,7 @@ private:
 private:
     void Render_AuthoringResourceTree();
     void Render_AuthoringCommands();
+    void Render_AuthoringOwnerSelector();
     bool Render_WorldObjectResourceGrid(bool draft);
     bool Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const;
     bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const float4x4_t& root,

@@ -6,6 +6,8 @@
 
 #include <filesystem>
 #include <memory>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -60,6 +62,8 @@ public:
 	static void Clear_ActorPreviewContext(uint32_t levelIndex);
 
 private:
+	bool_t Select_Source(bool_t kouku);
+	bool_t Reload_Kouku();
 	bool_t Reload();
 	bool_t Validate_Draft(
 		CValtanCinematicCameraDocument& outDocument,
@@ -138,6 +142,9 @@ private:
 	CValtanCinematicCameraDocument m_LoadedDocument;
 	CValtanCinematicCameraDocument m_PreviewDocument;
 	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> m_DraftCues;
+	std::map<std::string, std::string> m_KoukuCameraNames;
+	std::set<std::string> m_KoukuReservedShotIds;
+	bool_t m_bKoukuSource = false;
 	VALTAN_CINEMATIC_CAMERA_CUE m_DraftDeathCue;
 	bool_t m_hasDraftDeathCue = false;
 

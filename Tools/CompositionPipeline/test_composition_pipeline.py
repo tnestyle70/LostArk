@@ -910,5 +910,184 @@ class CompositionPipelineTests(unittest.TestCase):
             self.assertFalse((output_root / pipeline.PUBLISH_JOURNAL_NAME).exists())
 
 
+class WorldSequenceEffectContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+        )
+        template = next(row for row in self.document["templates"] if row.get("effectTracks"))
+        self.document["templates"] = [template]
+        self.document["instances"] = [
+            row for row in self.document["instances"]
+            if row["templateId"] == template["sequenceId"]
+        ]
+
+    def validate(self, document: dict) -> set[str]:
+        return pipeline._validate_world_sequence_source(document, document["areaId"])
+
+    def test_existing_effects_preserve_all_source_fields_and_instance_ids(self) -> None:
+        before = copy.deepcopy(self.document)
+        expected = {row["instanceId"] for row in before["instances"]}
+        self.assertEqual(expected, self.validate(self.document))
+        self.assertEqual(before, self.document)
+        template = self.document["templates"][0]
+        for resource_kind in ("LEAF", "GROUP"):
+            template["effectTracks"][0].update(
+                resourceKind=resource_kind, timing="TIME", startMs=template["durationMs"]
+            )
+            self.assertEqual(expected, self.validate(self.document))
+
+    def test_effect_tracks_reject_malformed_fields_and_keep_source_unchanged(self) -> None:
+        cases = (
+            {"effectTrackId": "../effect"}, {"resourceId": "../effect"},
+            {"slotId": "unresolved"}, {"resourceKind": "WORLD"}, {"timing": "FINISH"},
+            {"startMs": True}, {"startMs": 1}, {"durationMs": 0},
+            {"durationMs": 600000}, {"durationMs": 1.5},
+            {"timing": "TIME", "startMs": 600001},
+            {"positionOffset": [0, float("nan"), 0]},
+            {"rotationDegrees": [0, 0, 100001]}, {"scale": [1, 0.0000001, 1]},
+            {"scale": [-1, 1, 1]}, {"unexpected": True},
+        )
+        for fields in cases:
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["effectTracks"][0].update(fields)
+            before = copy.deepcopy(candidate)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+            self.assertEqual(before, candidate)
+
+    def test_effect_tracks_enforce_v3_slot_binding_and_combined_track_limit(self) -> None:
+        candidates = []
+        for effects in (None, {}, [None]):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["effectTracks"] = effects
+            candidates.append(candidate)
+        duplicate = copy.deepcopy(self.document)
+        duplicate["templates"][0]["effectTracks"] *= 2
+        candidates.append(duplicate)
+        old_version = copy.deepcopy(self.document)
+        old_version["formatVersion"] = 2
+        candidates.append(old_version)
+        wrong_binding = copy.deepcopy(self.document)
+        wrong_binding["instances"][0]["bindings"][0].update(
+            targetKind="MAP_PLACEMENT", targetId="1"
+        )
+        candidates.append(wrong_binding)
+        too_many = copy.deepcopy(self.document)
+        template = too_many["templates"][0]
+        template["effectTracks"] = [
+            dict(template["effectTracks"][0], effectTrackId=f"effect.{index}")
+            for index in range(pipeline.WORLD_SEQUENCE_MAX_TRACKS)
+        ]
+        candidates.append(copy.deepcopy(too_many))
+        template["effectTracks"].pop()
+        self.validate(too_many)
+        for index, candidate in enumerate(candidates):
+            with self.subTest(case=index), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+    def test_effect_presentation_span_includes_last_object_emission(self) -> None:
+        template = self.document["templates"][0]
+        template["objectMotion"].update(count=10, intervalMs=300, spreadDegrees=360)
+        effect = template["effectTracks"][0]
+        effect.update(timing="MOTION_END", startMs=0)
+        effect["durationMs"] = (
+            pipeline.WORLD_SEQUENCE_MAX_DURATION_MS - template["durationMs"] - 2700
+        )
+        self.validate(self.document)
+        effect["durationMs"] += 1
+        with self.assertRaisesRegex(pipeline.CompositionError, "presentation span"):
+            self.validate(self.document)
+        effect["durationMs"] -= 1
+        for fields in ({"count": True}, {"count": 129}, {"intervalMs": "300"}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["objectMotion"].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+
+class CameraShotOptionalContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["CAMERA_SHOTS"]
+        )
+        self.document["shots"] = self.document["shots"][:1]
+        self.document["shots"][0]["sequenceInstanceId"] = ""
+
+    def validate(self, document: dict) -> set[str]:
+        return pipeline._validate_camera_shot_source(document, document["areaId"], set())
+
+    def test_optional_camera_fields_preserve_source_and_support_legacy_absence(self) -> None:
+        shot = self.document["shots"][0]
+        for activation in ("AUTO", "PATTERN_ONLY"):
+            for easing in ("LINEAR", "SMOOTHSTEP"):
+                shot.update(activation=activation, transitionEasing=easing, defaultHoldMs=600000,
+                            blendInMs=0)
+                before = copy.deepcopy(self.document)
+                self.validate(self.document)
+                self.assertEqual(before, self.document)
+        shot.update(defaultHoldMs=0, blendInMs=1)
+        self.validate(self.document)
+        for field in ("activation", "transitionEasing", "defaultHoldMs"):
+            del shot[field]
+        self.validate(self.document)
+
+    def test_camera_hold_and_transition_fields_reject_invalid_values(self) -> None:
+        for fields in (
+            {"activation": "ALWAYS"}, {"activation": None},
+            {"transitionEasing": "HOLD"}, {"transitionEasing": True},
+            {"defaultHoldMs": True}, {"defaultHoldMs": -1}, {"defaultHoldMs": 1.5},
+            {"defaultHoldMs": 0, "blendInMs": 0},
+            {"defaultHoldMs": 600000, "blendInMs": 1}, {"unexpected": True},
+        ):
+            candidate = copy.deepcopy(self.document)
+            candidate["shots"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+
+class CameraTrackContractTests(unittest.TestCase):
+    def make_track(self) -> dict:
+        return {
+            "durationMs": 7400,
+            "interpolation": "LINEAR",
+            "easing": "SMOOTHSTEP",
+            "keyframes": [{
+                "sceneId": "camera.scene.auto.1",
+                "timeMs": 0,
+                "eye": [-11.0, 25.3, 339.0],
+                "lookAt": [6.0, 15.0, 321.0],
+                "fovYDegrees": 60,
+            }],
+        }
+
+    def test_one_pose_preserves_authored_frame_and_duration(self) -> None:
+        track = self.make_track()
+        before = copy.deepcopy(track)
+        pipeline._validate_camera_track(track, "single pose")
+        self.assertEqual(before, track)
+
+    def test_single_pose_still_rejects_empty_nonzero_and_invalid_view(self) -> None:
+        empty = self.make_track()
+        empty["keyframes"] = []
+        nonzero = self.make_track()
+        nonzero["keyframes"][0]["timeMs"] = 7400
+        invalid_view = self.make_track()
+        invalid_view["keyframes"][0]["lookAt"] = invalid_view["keyframes"][0]["eye"][:]
+        for track in (empty, nonzero, invalid_view):
+            with self.subTest(track=track), self.assertRaises(pipeline.CompositionError):
+                pipeline._validate_camera_track(track, "invalid single pose")
+
+    def test_multiple_poses_keep_the_authored_duration_endpoint(self) -> None:
+        track = self.make_track()
+        last = copy.deepcopy(track["keyframes"][0])
+        last.update(sceneId="camera.scene.auto.2", timeMs=7400)
+        track["keyframes"].append(last)
+        pipeline._validate_camera_track(track, "two poses")
+        last["timeMs"] = 7399
+        with self.assertRaisesRegex(pipeline.CompositionError, "end at its duration"):
+            pipeline._validate_camera_track(track, "bad endpoint")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,8 @@
 #include "Shader.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cwctype>
 #include <cstring>
 #include <fstream>
@@ -31,6 +33,88 @@ namespace
 
 namespace
 {
+	struct RGBA_MIP_LEVEL
+	{
+		uint32_t width;
+		uint32_t height;
+		vector<uint8_t> pixels;
+	};
+
+	vector<RGBA_MIP_LEVEL> BuildRgbaMipChain(uint32_t width, uint32_t height,
+		vector<uint8_t>&& rgba, bool_t isColorSlot)
+	{
+		static const array<double, 256> srgbToLinear = []
+		{
+			array<double, 256> values{};
+			for (size_t index = 0; index < values.size(); ++index)
+			{
+				const double value = static_cast<double>(index) / 255.0;
+				values[index] = value <= 0.04045 ? value / 12.92 :
+					pow((value + 0.055) / 1.055, 2.4);
+			}
+			return values;
+		}();
+
+		vector<RGBA_MIP_LEVEL> levels;
+		// Moving the decoded image preserves every mip-zero channel byte.
+		levels.push_back({ width, height, move(rgba) });
+		while (levels.back().width > 1 || levels.back().height > 1)
+		{
+			const RGBA_MIP_LEVEL& source = levels.back();
+			RGBA_MIP_LEVEL target{ max(1u, source.width / 2),
+				max(1u, source.height / 2), {} };
+			target.pixels.resize(static_cast<size_t>(target.width) * target.height * 4);
+			for (uint32_t y = 0; y < target.height; ++y)
+			{
+				const double top = static_cast<double>(y) * source.height / target.height;
+				const double bottom = static_cast<double>(y + 1) * source.height / target.height;
+				const uint32_t firstY = static_cast<uint32_t>(top);
+				const uint32_t endY = min(source.height, static_cast<uint32_t>(ceil(bottom)));
+				for (uint32_t x = 0; x < target.width; ++x)
+				{
+					const double left = static_cast<double>(x) * source.width / target.width;
+					const double right = static_cast<double>(x + 1) * source.width / target.width;
+					const uint32_t firstX = static_cast<uint32_t>(left);
+					const uint32_t endX = min(source.width, static_cast<uint32_t>(ceil(right)));
+					double sum[4]{};
+					// Area weights include the final row/column of odd-sized images.
+					for (uint32_t sourceY = firstY; sourceY < endY; ++sourceY)
+					{
+						const double weightY = min(bottom, static_cast<double>(sourceY + 1)) -
+							max(top, static_cast<double>(sourceY));
+						for (uint32_t sourceX = firstX; sourceX < endX; ++sourceX)
+						{
+							const double weight = weightY *
+								(min(right, static_cast<double>(sourceX + 1)) -
+									max(left, static_cast<double>(sourceX)));
+							const size_t index =
+								(static_cast<size_t>(sourceY) * source.width + sourceX) * 4;
+							for (size_t channel = 0; channel < 4; ++channel)
+							{
+								const uint8_t value = source.pixels[index + channel];
+								sum[channel] += weight * ((isColorSlot && channel < 3)
+									? srgbToLinear[value] : static_cast<double>(value) / 255.0);
+							}
+						}
+					}
+					const double area = (right - left) * (bottom - top);
+					const size_t index = (static_cast<size_t>(y) * target.width + x) * 4;
+					for (size_t channel = 0; channel < 4; ++channel)
+					{
+						double value = clamp(sum[channel] / area, 0.0, 1.0);
+						if (isColorSlot && channel < 3)
+							value = value <= 0.0031308 ? value * 12.92 :
+								1.055 * pow(value, 1.0 / 2.4) - 0.055;
+						target.pixels[index + channel] = static_cast<uint8_t>(
+							clamp(lround(value * 255.0), 0l, 255l));
+					}
+				}
+			}
+			levels.push_back(move(target));
+		}
+		return levels;
+	}
+
 	HRESULT LoadTgaTexture(ComPtr<ID3D11Device> pDevice,
 		const filesystem::path& path,
 		bool_t isColorSlot,
@@ -121,10 +205,19 @@ namespace
 			}
 		}
 
+		const vector<RGBA_MIP_LEVEL> mipLevels = BuildRgbaMipChain(
+			header.width, header.height, move(rgba), isColorSlot);
+		vector<D3D11_SUBRESOURCE_DATA> initialData(mipLevels.size());
+		for (size_t index = 0; index < mipLevels.size(); ++index)
+		{
+			initialData[index].pSysMem = mipLevels[index].pixels.data();
+			initialData[index].SysMemPitch = mipLevels[index].width * 4;
+		}
+
 		D3D11_TEXTURE2D_DESC textureDesc{};
 		textureDesc.Width = header.width;
 		textureDesc.Height = header.height;
-		textureDesc.MipLevels = 1;
+		textureDesc.MipLevels = static_cast<UINT>(mipLevels.size());
 		textureDesc.ArraySize = 1;
 		textureDesc.Format = isColorSlot ?
 			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -132,12 +225,8 @@ namespace
 		textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
-		D3D11_SUBRESOURCE_DATA initialData{};
-		initialData.pSysMem = rgba.data();
-		initialData.SysMemPitch = header.width * 4;
-
 		ComPtr<ID3D11Texture2D> texture;
-		if (FAILED(pDevice->CreateTexture2D(&textureDesc, &initialData, &texture)))
+		if (FAILED(pDevice->CreateTexture2D(&textureDesc, initialData.data(), &texture)))
 			return E_FAIL;
 		return pDevice->CreateShaderResourceView(texture.Get(), nullptr, &pSRV);
 	}
@@ -303,6 +392,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 {
 	m_strName = material.name;
 	m_iNameHash = material.nameHash;
+	m_iDiffuseMirrorU = material.diffuseMirrorU ? 1u : 0u;
 
 	const filesystem::path& compatibleDiffusePath = material.diffusePath.empty()
 		? material.emissivePath
@@ -344,15 +434,49 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	m_ColorTint.isEnabled = material.colorTint.isEnabled &&
 		Has_Texture(aiTextureType_BASE_COLOR);
 	m_Surface = material.surface;
+    if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+    {
+        const auto mask = m_Surface.sourceCharacter.baseTextureMask |
+            m_Surface.sourceCharacter.lightTextureMask;
+        for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
+        {
+            if ((mask & (1u << index)) == 0u) continue;
+            const auto& input = material.sourceCharacterTextures[index];
+            if (FAILED(LoadTexture(m_pDevice, input.path, input.srgb,
+                m_SourceCharacterTextures[index], true))) return E_FAIL;
+            D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+            m_SourceCharacterTextures[index]->GetDesc(&desc);
+            if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
+        }
+        return S_OK;
+    }
+	if (m_Surface.hasEmissive)
+	{
+		if ((m_Surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
+			m_Surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE) ||
+			FAILED(LoadTexture(m_pDevice, material.surfaceEmissivePath,
+				m_Surface.emissiveSRGB, m_SurfaceEmissive, true)))
+		{
+			OutputDebugStringA(("[CMaterial] Source emissive input load failed: " +
+				m_strName + "\n").c_str());
+			return E_FAIL;
+		}
+		D3D11_SHADER_RESOURCE_VIEW_DESC emissive{};
+		m_SurfaceEmissive->GetDesc(&emissive);
+		if (emissive.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D)
+			return E_INVALIDARG;
+	}
 	if (MODEL_SURFACE_FAMILY::LEGACY != m_Surface.family)
 	{
 		const auto& diffuse = material.surfaceDiffusePath.empty() ? material.diffusePath : material.surfaceDiffusePath;
-		if (diffuse.empty() || material.normalPath.empty() ||
-			material.reflectionPath.empty() ||
+		if (diffuse.empty() ||
+            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE && material.normalPath.empty()) ||
+            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE && material.reflectionPath.empty()) ||
 			FAILED(LoadTexture(m_pDevice, diffuse,
 				m_Surface.diffuseSRGB, m_SurfaceDiffuse, true)) ||
-			FAILED(LoadTexture(m_pDevice, material.reflectionPath,
-				m_Surface.reflectionSRGB, m_SurfaceReflection, true)))
+            (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
+                FAILED(LoadTexture(m_pDevice, material.reflectionPath,
+                    m_Surface.reflectionSRGB, m_SurfaceReflection, true))))
 		{
 			OutputDebugStringA(("[CMaterial] Source surface texture load failed: " +
 				m_strName + "\n").c_str());
@@ -375,6 +499,18 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         {
             OutputDebugStringA(("[CMaterial] Source opaque inputs failed: " + m_strName + "\n").c_str());
             return E_FAIL;
+        }
+        if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
+        {
+            if (FAILED(LoadTexture(m_pDevice, material.surfaceNormalPath, false, m_SurfaceNormal, true)) ||
+                FAILED(LoadTexture(m_pDevice, material.overlayDiffusePath, m_Surface.overlaySRGB, m_SurfaceOverlayDiffuse, true)) ||
+                FAILED(LoadTexture(m_pDevice, material.overlayNormalPath, false, m_SurfaceOverlayNormal, true))) return E_FAIL;
+            for (const auto& input : { m_SurfaceDiffuse, m_SurfaceNormal, m_SurfaceOverlayDiffuse, m_SurfaceOverlayNormal })
+            {
+                D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
+                input->GetDesc(&desc);
+                if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
+            }
         }
         if (m_Surface.hasBakedLighting)
         {
@@ -428,9 +564,75 @@ HRESULT CMaterial::Bind_Material(shared_ptr<class CShader> pShader, const char_t
 		   Shaders without this optional contract simply reject the variable. */
 		const uint32_t disabled = 0u;
 		pShader->Bind_RawValue("g_SurfaceProgram", &disabled, sizeof(disabled));
+        pShader->Bind_RawValue("g_SourceCharacterProgram", &disabled, sizeof(disabled));
+        pShader->Bind_RawValue("g_SourceCharacterRow", &disabled, sizeof(disabled));
 		pShader->Bind_RawValue("g_HasSurfaceDefinition", &disabled, sizeof(disabled));
+		pShader->Bind_RawValue("g_HasSurfaceEmissive", &disabled, sizeof(disabled));
+		pShader->Bind_RawValue("g_DiffuseMirrorU", &m_iDiffuseMirrorU, sizeof(m_iDiffuseMirrorU));
 	}
 	return pShader->Bind_Texture(pConstantName, m_Textures[eType][iTextureIndex]);
+}
+
+namespace
+{
+    // Populated only by actual mesh draws on the rendering thread. Keeping a
+    // shared reference until light accumulation finishes also closes teardown.
+    thread_local std::vector<std::shared_ptr<CMaterial>> g_SourceCharacterFrame;
+    thread_local float g_SourceCharacterTime = 0.f;
+}
+
+void CMaterial::Reset_SourceCharacterFrame(float presentationTime)
+{
+    g_SourceCharacterFrame.clear();
+    g_SourceCharacterTime = presentationTime;
+}
+
+uint32_t CMaterial::Get_SourceCharacterFrameCount()
+{
+    return static_cast<uint32_t>(g_SourceCharacterFrame.size());
+}
+
+HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
+    bool lightPass, uint32_t row)
+{
+    if (!shader) return E_INVALIDARG;
+    const auto& source = m_Surface.sourceCharacter;
+    const auto& constants = lightPass ? source.lightConstants : source.baseConstants;
+    const uint32_t mask = lightPass ? source.lightTextureMask : source.baseTextureMask;
+    if (FAILED(shader->Bind_RawValue("g_SourceCharacterTime", &g_SourceCharacterTime, sizeof(g_SourceCharacterTime))) ||
+        FAILED(shader->Bind_RawValue("g_SourceCharacterProgram", &source.program, sizeof(source.program))) ||
+        FAILED(shader->Bind_RawValue("g_SourceCharacterRow", &row, sizeof(row))) ||
+        FAILED(shader->Bind_RawValue(lightPass ? "g_SourceCharacterLightConstants" :
+            "g_SourceCharacterBaseConstants", constants.data(), sizeof(constants)))) return E_FAIL;
+    for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
+    {
+        if ((mask & (1u << index)) == 0u) continue;
+        const auto name = std::string("g_SourceCharacterTexture") + std::to_string(index);
+        if (FAILED(shader->Bind_Texture(name.c_str(), m_SourceCharacterTextures[index]))) return E_FAIL;
+    }
+    return S_OK;
+}
+
+HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
+{
+    if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return S_FALSE;
+    auto found = std::find_if(g_SourceCharacterFrame.begin(), g_SourceCharacterFrame.end(),
+        [this](const auto& entry) { return entry.get() == this; });
+    if (found == g_SourceCharacterFrame.end())
+    {
+        // Row IDs are ephemeral render indices, never serialized asset IDs.
+        if (g_SourceCharacterFrame.size() >= 256u) return E_BOUNDS;
+        g_SourceCharacterFrame.push_back(shared_from_this());
+        found = std::prev(g_SourceCharacterFrame.end());
+    }
+    const uint32_t row = static_cast<uint32_t>(std::distance(g_SourceCharacterFrame.begin(), found)) + 1u;
+    return Bind_SourceCharacterInputs(shader, false, row);
+}
+
+HRESULT CMaterial::Bind_SourceCharacterLight(shared_ptr<CShader> shader, uint32_t index)
+{
+    if (index >= g_SourceCharacterFrame.size()) return E_INVALIDARG;
+    return g_SourceCharacterFrame[index]->Bind_SourceCharacterInputs(shader, true, index + 1u);
 }
 
 HRESULT CMaterial::Bind_SurfaceLighting(shared_ptr<CShader> shader)
@@ -450,6 +652,12 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 {
 	if (nullptr == pShader || nullptr == pConstantName)
 		return E_INVALIDARG;
+    if (eType == aiTextureType_DIFFUSE)
+    {
+        const uint32_t zero = 0u;
+        for (const auto* name : { "g_SourceCharacterProgram", "g_SourceCharacterRow" })
+            (void)pShader->Bind_RawValue(name, &zero, sizeof(zero));
+    }
 	ComPtr<ID3D11ShaderResourceView> texture;
 	switch (eType)
 	{
@@ -459,6 +667,10 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 	case aiTextureType_NORMALS: texture = m_SurfaceNormal; break;
 	case aiTextureType_HEIGHT: texture = m_SurfaceDetailNormal; break;
 	case aiTextureType_UNKNOWN: texture = m_SurfaceORM; break;
+	case aiTextureType_EMISSIVE: texture = m_SurfaceEmissive; break;
+    // Surface-only roles, separate from the legacy color-mask texture array.
+    case aiTextureType_BASE_COLOR: texture = m_SurfaceOverlayDiffuse; break;
+    case aiTextureType_NORMAL_CAMERA: texture = m_SurfaceOverlayNormal; break;
 	default: return E_INVALIDARG;
 	}
 	return texture ? pShader->Bind_Texture(pConstantName, texture) : E_FAIL;

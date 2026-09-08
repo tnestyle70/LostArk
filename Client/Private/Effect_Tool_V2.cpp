@@ -1526,8 +1526,17 @@ namespace
 		const matrix_t PreviewTransform =
 			XMMatrixScaling(Asset.fPreviewScale, Asset.fPreviewScale, Asset.fPreviewScale) *
 			XMMatrixRotationY(XMConvertToRadians(Asset.fPreviewYawDegrees));
+		MODEL_ASSET_LOAD_DESC Description;
+		if (Asset.bPlayableClassBody && (nullptr == Asset.pAssetName || '\0' == Asset.pAssetName[0]))
+		{
+			strOutError = "Playable preview body has no catalog identity.";
+			return false;
+		}
+		if (!CActorCatalog::Build_ModelLoadDescription(Asset.pModelAssetId, Description, strOutError,
+			Asset.bPlayableClassBody ? std::string_view(Asset.pAssetName) : std::string_view{}))
+			return false;
 		std::unique_ptr<CModel> pModel = CModel::Create(
-			pDevice, pContext, MODEL::ANIM, ModelPath.string().c_str(), PreviewTransform);
+			pDevice, pContext, MODEL::ANIM, Description, PreviewTransform);
 		if (nullptr == pModel)
 		{
 			strOutError = std::string("Preview body model failed to decode: ") +

@@ -124,6 +124,10 @@ public:
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
+	// Scales only the preserved root translation axis; geometry and clip time stay unchanged.
+	bool_t Set_RootMotionVerticalScale(f32_t fScale);
+	f32_t Get_RootMotionVerticalScale() const { return m_fRootMotionVerticalScale; }
+
 	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false,
 		f32_t fBlendSeconds = 0.f) {
 		if (iAnimIndex >= m_iNumAnimations)
@@ -173,6 +177,7 @@ public:
 	isEnabled false) when the material simply has no colour mask. */
 	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
 	HRESULT Bind_SurfaceLighting(shared_ptr<class CShader> shader, uint32_t meshIndex);
+	HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType);
@@ -205,6 +210,8 @@ private:
 	int32_t									m_iRootMotionBoneIndex = { -1 };
 	int32_t									m_iRootMotionVerticalAxis = { -1 };
 	float3_t								m_vRootMotionRestTranslation = {};
+	float3_t m_vRootMotionUnscaledTranslation = {};
+	f32_t m_fRootMotionVerticalScale = 1.f;
 	vector<float4x4_t>						m_BlendFromPose;
 	f32_t									m_fBlendElapsed = {};
 	f32_t									m_fBlendDuration = {};
@@ -229,6 +236,8 @@ private:
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
 	void Begin_AnimBlend(f32_t fBlendSeconds);
+	void Restore_UnscaledRootVertical(float4x4_t& Local) const;
+	void Apply_RootMotionTranslation(float4x4_t& Local) const;
 	void Update_AnimBlend(f32_t fTimeDelta);
 	HRESULT Ready_Meshes();
 	HRESULT Ready_Materials(const char_t* pModelFilePath);

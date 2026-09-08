@@ -2,6 +2,7 @@
 
 #include "Network/PacketMessages.h"
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -1013,6 +1014,15 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_BUNDLE_MEMBER> Members;
 	};
 
+	struct BOSS_PATTERN_BOSS_MOTION
+	{
+		std::uint32_t iStartMs = 0u;
+		std::uint32_t iEndMs = 1u;
+		std::array<float, 3u> StartPosition{};
+		std::array<float, 3u> EndPosition{};
+		float fYawDegrees = 0.f;
+	};
+
 	struct BOSS_PATTERN_DEFINITION
 	{
 		std::string strEncounterId;
@@ -1071,6 +1081,7 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
 		bool bResetBossToSpawn = false;
 		std::optional<float> ResetBossYawDegrees;
+		std::optional<BOSS_PATTERN_BOSS_MOTION> BossMotion;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;
 		std::vector<BOSS_PATTERN_WORLD_SEQUENCE> WorldSequences;
 		std::vector<BOSS_PATTERN_SCENE_PROFILE> SceneProfiles;

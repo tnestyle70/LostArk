@@ -3123,6 +3123,7 @@ $koukuFollowupTargets = [Collections.Generic.List[string]]::new()
 foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$koukuOptionalProperties = @()
 	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) { $koukuOptionalProperties += 'resetBossYawDegrees' }
+	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) { $koukuOptionalProperties += 'bossMotion' }
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
 	Assert-ExactProperties $koukuPattern (@(
 		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
@@ -3267,12 +3268,32 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	for ($stageIndex = 0;
 		$stageIndex -lt @($koukuPattern.stages).Count; ++$stageIndex) {
 		$koukuStage = $koukuPattern.stages[$stageIndex]
-		Assert-ExactProperties $koukuStage @(
+		$koukuStageOptionalProperties = @()
+		if ($null -ne $koukuStage.PSObject.Properties['actions']) { $koukuStageOptionalProperties += 'actions' }
+		Assert-ExactProperties $koukuStage (@(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
 			'hitHalfWidth','hitCount','hitIntervalMs','hitDelayMs',
-			'serverDamageProfileId','pushRangeM','pushMs','knockdown','downMs') `
+			'serverDamageProfileId','pushRangeM','pushMs','knockdown','downMs') + $koukuStageOptionalProperties) `
 			'KoukuSaydon encounter pattern stage'
+		if ($null -ne $koukuStage.PSObject.Properties['actions']) {
+			if ($koukuStage.actions -isnot [Array] -or @($koukuStage.actions).Count -ne 1 -or
+				$null -ne $koukuPattern.PSObject.Properties['bossMotion']) {
+				throw 'KoukuSaydon stage actions require one retarget action and no BossMotion'
+			}
+			$koukuStageRetarget = $koukuStage.actions[0]
+			Assert-ExactProperties $koukuStageRetarget @('trigger','kind','targetId','value','durationMs') 'KoukuSaydon stage retarget'
+			foreach ($field in @('trigger','kind','targetId')) {
+				Assert-JsonString $koukuStageRetarget.$field "KoukuSaydon stage retarget $field"
+			}
+			Assert-JsonInteger $koukuStageRetarget.value 'KoukuSaydon stage retarget value' 1 1
+			Assert-JsonInteger $koukuStageRetarget.durationMs 'KoukuSaydon stage retarget durationMs' 0 0
+			if ($koukuStageRetarget.trigger -cne 'ENTER' -or
+				$koukuStageRetarget.kind -cne 'RETARGET_RANDOM_ALIVE' -or
+				$koukuStageRetarget.targetId -cne 'boss.target.pattern') {
+				throw 'KoukuSaydon stage retarget identity is invalid'
+			}
+		}
 		foreach ($field in @(
 			'stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $koukuStage.$field `
@@ -3320,6 +3341,14 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$koukuStage.actionId, $koukuStage.stageKind,
 			[uint32]$koukuStage.durationMs, 'NONE', '0', '0', '0', '0',
 			'0', 0, 0, 0, '-', '0', 0, 0, 0) -join "`t"))
+		if ($null -ne $koukuStage.PSObject.Properties['actions']) {
+			$patternRows.Add((@(
+				'PATTERNSTAGEACTION', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $koukuStage.actionId, 0,
+				$koukuStageRetarget.trigger, $koukuStageRetarget.kind,
+				$koukuStageRetarget.targetId, [uint32]$koukuStageRetarget.value,
+				[uint32]$koukuStageRetarget.durationMs) -join "`t"))
+		}
 		$nextActionId = if ($stageIndex + 1 -lt @($koukuPattern.stages).Count) {
 			[string]$koukuPattern.stages[$stageIndex + 1].actionId
 		}
@@ -3337,6 +3366,31 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$koukuPatternDurationMs = [uint64]0
 	foreach ($koukuStage in @($koukuPattern.stages)) {
 		$koukuPatternDurationMs += [uint64]$koukuStage.durationMs
+	}
+	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) {
+		$bossMotion = $koukuPattern.bossMotion
+		Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
+		Assert-JsonInteger $bossMotion.startMs 'KoukuSaydon bossMotion startMs' 0 600000
+		Assert-JsonInteger $bossMotion.endMs 'KoukuSaydon bossMotion endMs' 1 $koukuPatternDurationMs
+		Assert-JsonNumber $bossMotion.yawDegrees 'KoukuSaydon bossMotion yawDegrees'
+		if ($koukuPattern.resetBossToSpawn -or $null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees'] -or
+			$bossMotion.startMs -ge $bossMotion.endMs -or [Math]::Abs([double]$bossMotion.yawDegrees) -gt 360) {
+			throw 'KoukuSaydon bossMotion requires an ordered interval, valid yaw and no spawn reset'
+		}
+		foreach ($field in @('startPosition','endPosition')) {
+			if ($bossMotion.$field -isnot [Array] -or @($bossMotion.$field).Count -ne 3) { throw "KoukuSaydon bossMotion $field needs XYZ" }
+			foreach ($component in $bossMotion.$field) {
+				Assert-JsonNumber $component "KoukuSaydon bossMotion $field"
+				if ([Math]::Abs([double]$component) -gt 100000) { throw 'KoukuSaydon bossMotion position exceeds bounds' }
+			}
+		}
+		if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
+		$bossMotionRow = @('PATTERNBOSSMOTION', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $bossMotion.startMs, $bossMotion.endMs)
+		foreach ($component in @($bossMotion.startPosition) + @($bossMotion.endPosition) + @($bossMotion.yawDegrees)) {
+			$bossMotionRow += Format-InvariantSignedFloat $component 'KoukuSaydon bossMotion'
+		}
+		$patternRows.Add(($bossMotionRow -join "`t"))
 	}
 	if ($koukuPattern.logicWindows -isnot [Array] -or
 		@($koukuPattern.logicWindows).Count -gt 64 -or
@@ -5915,6 +5969,33 @@ function Get-BootstrapRowSortKey {
 	param([Parameter(Mandatory = $true)][string]$Row)
 
 	$fields = @($Row.Split("`t"))
+	if ($fields.Count -ge 4 -and $fields[0] -cin @(
+		'PATTERNWORLDSEQUENCE','PATTERNWORLDPLACEMENT','PATTERNWORLDSUPPORT')) {
+		# Placement/support rows resolve an already loaded World occurrence.
+		# Preserve the original ordering inside each kind after its parent rank.
+		$dependencyOrder = switch -CaseSensitive ($fields[0]) {
+			'PATTERNWORLDSEQUENCE' { 0 }
+			'PATTERNWORLDPLACEMENT' { 1 }
+			'PATTERNWORLDSUPPORT' { 2 }
+		}
+		$Row = (@('PATTERNWORLDSEQUENCE', $dependencyOrder) +
+			@($fields[1..($fields.Count - 1)])) -join "`t"
+	}
+	if ($fields.Count -ge 6 -and $fields[0] -cin @(
+		'PATTERNLOGICOUTCOME','PATTERNLOGICCONTACTMOTION','PATTERNLOGICSIGNAL')) {
+		# Contact mappings and completion signals decorate an already loaded
+		# outcome slot. Admit every dense outcome ordinal before its dependents.
+		$dependencyOrder = switch -CaseSensitive ($fields[0]) {
+			'PATTERNLOGICOUTCOME' { 0 }
+			'PATTERNLOGICCONTACTMOTION' { 1 }
+			'PATTERNLOGICSIGNAL' { 2 }
+		}
+		$tail = if ($fields.Count -gt 6) { @($fields[6..($fields.Count - 1)]) }
+			else { @() }
+		$Row = (@(
+			'PATTERNLOGICOUTCOME', $fields[1], $fields[2], $fields[3],
+			$fields[4], $dependencyOrder, $fields[5], $fields[0]) + $tail) -join "`t"
+	}
 	if ($fields.Count -ge 5 -and $fields[0] -cin @(
 		'PATTERNSTAGEACTION','PATTERNSTAGEVOLLEY')) {
 		# Both row kinds append to the same Server stage action vector. Keep their

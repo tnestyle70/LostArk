@@ -181,6 +181,11 @@ public:
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Moves the lane pivot and every live child immediately. */
 	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
+	/* Rebuild only this externally clocked occurrence at its current age. The
+	   handle, pause state, snapshot and other lanes survive the placement edit. */
+	static bool_t Rebuild_GroupPlacement(uint32_t iHandle, const float4x4_t& PivotWorld,
+		CEffectV2Object::PIVOT_SAMPLER Sampler, const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Set_GroupPaused(uint32_t iHandle, bool_t bPaused);
 	static void Stop_Group(uint32_t iHandle);
 	static f32_t Group_Seconds(uint32_t iHandle);

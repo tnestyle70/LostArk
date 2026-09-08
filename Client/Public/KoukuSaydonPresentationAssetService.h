@@ -16,6 +16,7 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 	std::string strClip;
 	std::uint32_t iPlayMs = 0u;
 	f32_t fPlayRate = 1.f;
+	f32_t fAnimationRootVerticalScale = 1.f;
 	bool_t bUnblendedBoneContact = false;
 };
 

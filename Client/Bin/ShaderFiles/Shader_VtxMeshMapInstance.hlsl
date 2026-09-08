@@ -67,6 +67,7 @@ struct VS_IN
     float3 vBinormal : BINORMAL;
     float2 vTexcoord : TEXCOORD0;
     float2 vLightmapUV : TEXCOORD1;
+    float4 vColor : COLOR0;
 
     float4 vWorld0 : WORLD0;
     float4 vWorld1 : WORLD1;
@@ -93,6 +94,7 @@ struct VS_OUT
     float4 vProjPos : TEXCOORD2;
     float2 vRawTexcoord : TEXCOORD3;
     float2 vLightmapUV : TEXCOORD4;
+    float4 vColor : COLOR0;
     nointerpolation float4 vLightmapAverageScale : TEXCOORD5;
     nointerpolation float4 vLightmapDirectionalScale : TEXCOORD6;
 };
@@ -100,6 +102,7 @@ struct VS_OUT
 VS_OUT VS_MAIN(VS_IN input)
 {
     VS_OUT output;
+    output.vColor = input.vColor; // Decoded source PS RGBA, no second BGRA swizzle.
 
     const float4x4 world = float4x4(
 		input.vWorld0,
@@ -202,6 +205,8 @@ struct PS_OUT
     float4 vPickPos : SV_TARGET3;
     float4 vEmissive : SV_TARGET4;
     float4 vMaterialSpecular : SV_TARGET5;
+    float4 vCharacterSurface : SV_TARGET6;
+    float4 vCharacterGeometry : SV_TARGET7;
 };
 
 /* The landscape atlas is authored as a top-down XZ projection, so a
@@ -219,15 +224,15 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
     const float3 faceNormal =
         normalize(cross(ddx(worldPos), ddy(worldPos)));
 
-    const float4 topDown = g_DiffuseTexture.Sample(LinearSampler, texcoord);
+    const float4 topDown = SampleMapDiffuseTexture(texcoord, LinearSampler);
     if (g_TriplanarHeightScale <= 0.f)
         return topDown;
 
     const float heightCoord = worldPos.y * g_TriplanarHeightScale;
     const float4 sideX =
-        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.y, heightCoord));
+        SampleMapDiffuseTexture(float2(texcoord.y, heightCoord), LinearSampler);
     const float4 sideZ =
-        g_DiffuseTexture.Sample(LinearSampler, float2(texcoord.x, heightCoord));
+        SampleMapDiffuseTexture(float2(texcoord.x, heightCoord), LinearSampler);
 
     float3 weight = pow(abs(faceNormal), 8.f);
     weight /= max(weight.x + weight.y + weight.z, 1e-5f);
@@ -236,8 +241,26 @@ float4 SampleMapDiffuse(float2 texcoord, float3 worldPos)
 
 PS_OUT PS_MAIN(VS_OUT input)
 {
-    PS_OUT output;
+    PS_OUT output = (PS_OUT)0;
     output.vMaterialSpecular = 0.f;
+    if (g_SurfaceProgram == 7u)
+    {
+        const MAP_STONE_GBUFFER stone = EvaluateMapSourceStoneGeometry(
+            input.vRawTexcoord, input.vColor, input.vWorldPos.xyz,
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz,
+            input.vProjPos, input.vLightmapUV, input.vLightmapAverageScale,
+            input.vLightmapDirectionalScale);
+        output.vDiffuse = stone.diffuse;
+        output.vNormal = stone.normal;
+        output.vDepth = stone.depth;
+        output.vPickPos = stone.pickPosition;
+        output.vEmissive = stone.indirect;
+        output.vMaterialSpecular = stone.materialSpecular;
+        output.vCharacterSurface = stone.surface;
+        output.vCharacterGeometry = stone.geometry;
+        return output;
+    }
+
     if (g_SurfaceProgram != 0u)
     {
         const MAP_SURFACE_SAMPLE surface = EvaluateMapSurface(input.vRawTexcoord,
@@ -264,7 +287,8 @@ PS_OUT PS_MAIN(VS_OUT input)
         output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
             input.vLightmapUV, input.vLightmapAverageScale,
             input.vLightmapDirectionalScale, input.vWorldPos.xyz,
-            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz), 0.f);
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz) +
+            EvaluateMapSurfaceEmissive(input.vRawTexcoord), 0.f);
         output.vMaterialSpecular = float4(surface.specular, pbr ? surface.metallic :
             (sourceSpecular ? diffuseScale : 0.f));
         return output;
@@ -608,14 +632,12 @@ void PS_MAIN_SHADOW(
     {
         // The four Character Select source overrides are opaque, including
         // diffuse alpha=0. Kouku's original masked programs retain their cutoff.
-        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular())
-            clip(g_DiffuseTexture.Sample(LinearSampler, input.vRawTexcoord).a - 0.3333f);
+        if (!IsMapSurfacePBR() && !IsMapSurfaceSourceSpecular() && g_SurfaceProgram != 7u)
+            clip(SampleMapDiffuseTexture(input.vRawTexcoord, LinearSampler).a - 0.3333f);
         return;
     }
     float4 diffuse =
-		g_DiffuseTexture.Sample(
-			LinearSampler,
-			input.vTexcoord) *
+		SampleMapDiffuseTexture(input.vTexcoord, LinearSampler) *
 		g_ColorTint;
 
     if (diffuse.a < 0.3f)

@@ -472,7 +472,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_UV1_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_SKINNED_UV_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != fileReader.Remaining())
 		{
@@ -481,7 +481,10 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		}
 
 		const bool_t geometryContract =
-			WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor;
+			WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor &&
+			fileHeader.versionMinor <= WINT_UV1_VERSION_MINOR;
+		const bool_t skinnedUVContract =
+			fileHeader.versionMinor == WINT_SKINNED_UV_VERSION_MINOR;
 		const uint8_t* pContent = fileReader.Peek();
 		CBinaryReader reader(pContent, fileHeader.contentSize);
 		const MESH_META_HEADER meshHeader = reader.Read<MESH_META_HEADER>();
@@ -490,7 +493,11 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const bool_t hasUV1 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD1);
 		const uint32_t expectedStride = (hasColor0 ?
 			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0);
-		const bool_t versionedFlagsValid = geometryContract ?
+		const bool_t versionedFlagsValid = skinnedUVContract ?
+			(skinned && hasUV1 &&
+				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
+				0 == (meshHeader.vertexFormatFlags &
+					~(VF_STATIC_BASE | VF_BONE_WEIGHT | VF_TEXCOORD1 | VF_TEXCOORD2))) : geometryContract ?
 			(!skinned &&
 				(hasUV1 == (fileHeader.versionMinor == WINT_UV1_VERSION_MINOR)) &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
@@ -500,7 +507,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			((meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
 					~(VF_STATIC_BASE | VF_BONE_WEIGHT)));
-		const bool_t reservedValid = !geometryContract ||
+		const bool_t reservedValid = (!geometryContract && !skinnedUVContract) ||
 			(0 == meshHeader.reserved[0] &&
 				0 == meshHeader.reserved[1] &&
 				0 == meshHeader.reserved[2]);
@@ -522,7 +529,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 
 		vector<SUBMESH_DESC> submeshes(meshHeader.submeshCount);
 		reader.ReadBytes(submeshes.data(), sizeof(SUBMESH_DESC) * submeshes.size());
-		if (geometryContract)
+		if (geometryContract || skinnedUVContract)
 		{
 			uint64_t expectedVertexOffset = {};
 			uint64_t expectedIndexOffset = {};
@@ -587,6 +594,9 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		}
 
 		vector<MESH_BOUNDS_V1> embeddedBounds;
+		vector<uint32_t> skinnedUVFlags(meshHeader.submeshCount);
+		vector<vector<float2_t>> skinnedUV1(meshHeader.submeshCount);
+		vector<vector<float2_t>> skinnedUV2(meshHeader.submeshCount);
 		if (meshHeader.hasBounding)
 		{
 			size_t boundsBytes = {};
@@ -633,6 +643,60 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 				outMesh.geometryMetadata, outReport.error))
 				return false;
 		}
+		else if (skinnedUVContract)
+		{
+			const MESH_SKINNED_UV_HEADER uvHeader = reader.Read<MESH_SKINNED_UV_HEADER>();
+			array<uint8_t, SHA256_SIZE> digest{};
+			if (!HasMagic(uvHeader.magic, "WUVS") || uvHeader.version != 1u ||
+				uvHeader.submeshCount != meshHeader.submeshCount ||
+				uvHeader.payloadSize != reader.Remaining() ||
+				!ComputeSha256(reader.Peek(), reader.Remaining(), digest) ||
+				0 != memcmp(digest.data(), uvHeader.payloadSha256, SHA256_SIZE))
+			{
+				outReport.error = "WMSH skinned UV header, size, or SHA-256 is invalid.";
+				return false;
+			}
+			uint32_t aggregateFlags = 0u;
+			for (uint32_t i = 0; i < meshHeader.submeshCount; ++i)
+			{
+				const uint32_t vertexCount = reader.Read<uint32_t>();
+				const uint32_t flags = reader.Read<uint32_t>();
+				if (vertexCount != submeshes[i].vertexCount ||
+					0 != (flags & ~(VF_TEXCOORD1 | VF_TEXCOORD2)) ||
+					(0 != (flags & VF_TEXCOORD2) && 0 == (flags & VF_TEXCOORD1)))
+				{
+					outReport.error = "WMSH skinned UV submesh count or channel mask is invalid.";
+					return false;
+				}
+				skinnedUVFlags[i] = flags;
+				aggregateFlags |= flags;
+				for (const uint32_t channel : { VF_TEXCOORD1, VF_TEXCOORD2 })
+				{
+					if (0 == (flags & channel)) continue;
+					size_t uvBytes = 0u;
+					if (!CheckedByteCount(vertexCount, sizeof(float2_t), reader.Remaining(), uvBytes))
+					{
+						outReport.error = "WMSH skinned UV channel is truncated.";
+						return false;
+					}
+					auto& values = channel == VF_TEXCOORD1 ? skinnedUV1[i] : skinnedUV2[i];
+					values.resize(vertexCount);
+					reader.ReadBytes(values.data(), uvBytes);
+					for (const float2_t& uv : values)
+						if (!isfinite(uv.x) || !isfinite(uv.y))
+						{
+							outReport.error = "WMSH skinned UV channel is non-finite.";
+							return false;
+						}
+				}
+			}
+			if (reader.Remaining() != 0u || aggregateFlags !=
+				(meshHeader.vertexFormatFlags & (VF_TEXCOORD1 | VF_TEXCOORD2)))
+			{
+				outReport.error = "WMSH skinned UV masks disagree with the complete payload.";
+				return false;
+			}
+		}
 		else if (0 != reader.Remaining())
 		{
 			outReport.error = "Legacy WMSH contains unsupported trailing payload.";
@@ -661,7 +725,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 				outReport.error = "A submesh points outside its vertex or index block.";
 				return false;
 			}
-			if (geometryContract && (0 == sourceMesh.vertexCount ||
+			if ((geometryContract || skinnedUVContract) && (0 == sourceMesh.vertexCount ||
 				0 == sourceMesh.indexCount || 0 != sourceMesh.indexCount % 3))
 			{
 				outReport.error = "A versioned WMSH submesh is not an indexed triangle list.";
@@ -673,7 +737,10 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			mesh.materialIndex = sourceMesh.materialIndex;
 			mesh.vertexKind = skinned ? MODEL_VERTEX_KIND::SKINNED : MODEL_VERTEX_KIND::STATIC;
 			mesh.hasColor0 = geometryContract && hasColor0;
-			mesh.hasTexcoord1 = geometryContract && hasUV1;
+			mesh.hasTexcoord1 = (geometryContract && hasUV1) ||
+				(skinnedUVContract && 0 != (skinnedUVFlags[submeshIndex] & VF_TEXCOORD1));
+			mesh.hasTexcoord2 = skinnedUVContract &&
+				0 != (skinnedUVFlags[submeshIndex] & VF_TEXCOORD2);
 			mesh.indices.resize(sourceMesh.indexCount);
 
 			const uint8_t* pVertices = pVertexBlob + sourceMesh.vertexOffset;
@@ -690,6 +757,8 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 						outReport.error = "A skinned vertex contains invalid bone data.";
 						return false;
 					}
+					if (mesh.hasTexcoord1) mesh.skinnedVertices[i].vTexcoord1 = skinnedUV1[submeshIndex][i];
+					if (mesh.hasTexcoord2) mesh.skinnedVertices[i].vTexcoord2 = skinnedUV2[submeshIndex][i];
 				}
 			}
 			else

@@ -83,6 +83,7 @@ struct EFFECT_DIRECT_AUTHORED_SOURCE_INDEX final
 {
 	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY> Entries;
 	size_t iCatalogDirectCount = 0u;
+	size_t iEditorRecoveryCount = 0u;
 	size_t iUnavailableCount = 0u;
 	std::string strFirstUnavailable;
 	size_t iOwnerJoinUnavailableCount = 0u;
@@ -97,7 +98,10 @@ public:
 	   joins: an owner failure leaves eOwnerKind == END but never removes an
 	   otherwise valid authored document from Entries. A catalog-level error
 	   preserves InOutIndex; invalid rows are isolated, while a structurally valid
-	   audition with a stale source pin remains visible but freshness-locked. */
+	   audition with a stale source pin remains visible but freshness-locked.
+	   Scanned local *.restore, *.full.restore and *.tuning.restore files may inherit
+	   an ordinary catalogued *.unified or *.restore player identity for editor-only
+	   discovery; these comparison copies do not gain a Product owner. */
 	static bool Build(
 		const std::filesystem::path& CatalogPath,
 		const std::filesystem::path& AuditionCatalogPath,

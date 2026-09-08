@@ -2837,6 +2837,31 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
 		}
+		else if (!fields.empty() && "PATTERNBOSSMOTION" == fields[0])
+		{
+			BOSS_PATTERN_BOSS_MOTION motion;
+			if (fields.size() != 12u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], motion.iStartMs) || !ParseNumber(fields[4], motion.iEndMs) ||
+				motion.iStartMs >= motion.iEndMs || motion.iEndMs > 600000u ||
+				!ParseNumber(fields[11], motion.fYawDegrees) || !std::isfinite(motion.fYawDegrees) ||
+				std::abs(motion.fYawDegrees) > 360.f)
+			{ m_strStatus = "Boss Motion row has invalid timing or yaw"; return false; }
+			for (std::size_t axis = 0u; axis < 3u; ++axis)
+				if (!ParseNumber(fields[5u + axis], motion.StartPosition[axis]) ||
+					!ParseNumber(fields[8u + axis], motion.EndPosition[axis]) ||
+					!std::isfinite(motion.StartPosition[axis]) || !std::isfinite(motion.EndPosition[axis]) ||
+					std::abs(motion.StartPosition[axis]) > 100000.f || std::abs(motion.EndPosition[axis]) > 100000.f)
+				{ m_strStatus = "Boss Motion position is invalid"; return false; }
+			if (motion.StartPosition[1] != motion.EndPosition[1])
+			{ m_strStatus = "Boss Motion base height must remain constant"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) return false;
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || owner->BossMotion || owner->bResetBossToSpawn ||
+				owner->strEncounterId != "ENCOUNTER_KAKULSAYDON_G1") return false;
+			owner->BossMotion = motion;
+		}
 		else if (!fields.empty() && "PATTERNSPAWNRESET" == fields[0])
 		{
 			if ((4u != fields.size() && 5u != fields.size()) || fields[3] != "1")
@@ -2849,7 +2874,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
 				[&fields](const BOSS_PATTERN_DEFINITION& pattern) { return pattern.strPatternId == fields[2]; });
-			if (owner == owners->second.end() || owner->bResetBossToSpawn)
+			if (owner == owners->second.end() || owner->bResetBossToSpawn || owner->BossMotion)
 				return false;
 			if (5u == fields.size())
 			{
@@ -5223,6 +5248,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						"Boss health mechanic trigger bar/order pair is duplicated";
 					return false;
 				}
+			}
+			if (pattern.BossMotion)
+			{
+				std::uint64_t durationMs = 0u;
+				for (const auto& stage : pattern.Stages) durationMs += stage.iDurationMs;
+				if (!isKoukuSaydonGateOne || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
+					pattern.BossMotion->iEndMs > durationMs ||
+					std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(), [](const auto& trigger)
+					{ return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT; }))
+				{ m_strStatus = "Boss Motion exceeds its Pattern or conflicts with another position policy"; return false; }
 			}
 			std::unordered_set<std::string> activeStageActions;
 			bool patternOwnsBossResponse = false;

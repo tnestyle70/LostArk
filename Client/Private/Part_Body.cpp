@@ -1,4 +1,5 @@
 #include "Part_Body.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
@@ -97,12 +98,18 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
+        uint32_t materialPass = iPassIndex;
+        const auto* surface = m_pModelCom->Get_MaterialSurface(i);
+        if (iPassIndex == 0u && surface &&
+            surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+            (surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u))
+            materialPass = 6u;
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, {},
 				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(iPassIndex)) ||
+			FAILED(m_pShaderCom->Begin(materialPass)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

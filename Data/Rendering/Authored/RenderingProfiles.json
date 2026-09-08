@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 18,
+  "revision": 19,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -67,6 +67,7 @@
     },
     {
       "profileId": "scene.character-select.warm-high-key.v1",
+      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.0399999991, "ssaoBias": 0, "ssaoIntensity": 0.689999998, "ssaoPower": 2.0999999, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 2.74000001, "bloomSoftKnee": 1, "bloomIntensity": 2.6099999, "bloomScatter": 1, "exposure": 0.730000019, "whitePoint": 1, "gamma": 1.90499997, "fxaaEnabled": true, "fxaaSubpixel": 0.75, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006},
       "exposureMultiplier": 0.870000005,
       "bloomIntensityMultiplier": 0.850000024,
       "light": {

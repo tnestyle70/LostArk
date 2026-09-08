@@ -2989,6 +2989,33 @@ void Client::CEffectPlayback::Reset()
 	Rebuild_Frame(Identity);
 }
 
+void Client::CEffectPlayback::Set_ModelCueAnchorProvider(
+	EFFECT_MODEL_CUE_ANCHOR_PROVIDER Provider)
+{
+	const auto& Elements = Get_StagedDocument().Elements;
+	const bool_t bNeeded = std::any_of(Elements.begin(), Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element) {
+			return Element.bVisible && !Element.ActionCueAttachment.strModelCueId.empty();
+		});
+	m_ModelCueAnchorProvider = bNeeded ? std::move(Provider) : EFFECT_MODEL_CUE_ANCHOR_PROVIDER{};
+}
+
+bool_t Client::CEffectPlayback::Refresh_ModelCueAnchors(
+	const f32_t fSampleTimeSeconds, const float4x4_t& RootWorld)
+{
+	if (!m_ModelCueAnchorProvider)
+		return true;
+	auto Staged = m_SourceAnchorWorlds;
+	std::string Error;
+	if (!m_ModelCueAnchorProvider(fSampleTimeSeconds, RootWorld, Staged, Error))
+	{
+		m_strSourceVisualProgramStatus = "Model Cue anchor sampling failed: " + Error;
+		return false;
+	}
+	m_SourceAnchorWorlds = std::move(Staged);
+	return true;
+}
+
 void Client::CEffectPlayback::Update(
 	const f32_t fTimeDelta,
 	const float4x4_t& RootWorld)
@@ -3098,6 +3125,9 @@ bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
 		strOutError = "Effect transform history root is not a finite affine matrix.";
 		return false;
 	}
+	if (m_ModelCueAnchorProvider && !m_ModelCueAnchorProvider(
+		fSampleTimeSeconds, Staged.RootWorld, Staged.SourceAnchorWorlds, strOutError))
+		return false;
 	for (const auto& [AnchorId, AnchorWorld] : Staged.SourceAnchorWorlds)
 	{
 		if (AnchorId.empty() || !Is_FiniteAffineMatrix(AnchorWorld))
@@ -3309,6 +3339,10 @@ bool_t Client::CEffectPlayback::Step(
 {
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FixedStep");
+	const f32_t fNextSampleTime = static_cast<f32_t>(
+		static_cast<f64_t>(m_iSimulationStep + 1u) * FIXED_STEP_SECONDS_EXACT);
+	if (!Refresh_ModelCueAnchors(fNextSampleTime, RootWorld))
+		return false;
 	const auto PreviousStates = m_bHasPortableSourceEvents ?
 		m_States : decltype(m_States){};
 	const uint64_t iPreviousSimulationStep = m_iSimulationStep;
@@ -4231,6 +4265,40 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 	const f32_t fEmitterTimeSeconds,
 	const float4x4_t& ElementWorld)
 {
+	const auto* pQProgram = Find_DimensionMasterQProgram(
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	if (Element.Material.SourceMaterial.bEnabled && nullptr != pQProgram &&
+		(45u == pQProgram->iProfileIndex || 49u == pQProgram->iProfileIndex) &&
+		std::none_of(Element.SourceRecipe.Modules.begin(),
+			Element.SourceRecipe.Modules.end(),
+			[](const EFFECT_SOURCE_MODULE_DESC& Module)
+			{
+				return SourceModule_Enabled(Module) && SourceClass_Matches(
+					Module, "particlemoduleparameterdynamic");
+			}))
+	{
+		// These source sprite VFs use the all-one Null Dynamic stream when
+		// no module supplies it. Zero collapses Q45 UVs and Q45/Q49 opacity.
+		Particle.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
+	}
+
+	const auto* pALTVProgram = Find_DimensionMasterALTVProgram(
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	const auto* pWRProgram = Find_DimensionMasterWRProgram(
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	if (Element.Material.SourceMaterial.bEnabled &&
+		((nullptr != pALTVProgram && pALTVProgram->bDynamicVertexFactory) ||
+		 (nullptr != pWRProgram && pWRProgram->bDynamicVertexFactory)) &&
+		std::none_of(Element.SourceRecipe.Modules.begin(), Element.SourceRecipe.Modules.end(),
+			[](const EFFECT_SOURCE_MODULE_DESC& Module)
+			{
+				return SourceModule_Enabled(Module) && SourceClass_Matches(Module, "particlemoduleparameterdynamic");
+			}))
+	{
+		// Selected native dynamic VF with no module uses the UE Null Dynamic stream.
+		Particle.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
+	}
+
 	bool_t bHasSize = false;
 	const bool_t bSourceVisualDecalParticle =
 		Is_SourceVisualDecalParticle(
@@ -4443,8 +4511,19 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			{
 				const f32_t fVelocityScale = Evaluate_ModuleFloat(
 					State, Module, "velocityscale", fEmitterTimeSeconds, 0.f);
+				float3_t VelocityOffset = Offset;
+				if (SourceBool(Module, "radialvelocity", false))
+				{
+					// The source cylinder's velocity excludes its height axis.
+					if (Axis.ends_with("_x"))
+						VelocityOffset.x = 0.f;
+					else if (Axis.ends_with("_y"))
+						VelocityOffset.y = 0.f;
+					else
+						VelocityOffset.z = 0.f;
+				}
 				Particle.vVelocity = Add3(Particle.vVelocity,
-					Scale3(UE3_CentimetersToClient(Offset), fVelocityScale));
+					Scale3(UE3_CentimetersToClient(VelocityOffset), fVelocityScale));
 			}
 		}
 		else if (SourceClass_Matches(
@@ -6134,6 +6213,8 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
 
 void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 {
+	if (!Refresh_ModelCueAnchors(m_fSampleTimeSeconds, RootWorld))
+		return;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	/* Rebuild runs for every active Effect.  Keep the retained row storage so
 	   a stable particle/trail population does not free and reallocate all
@@ -6324,6 +6405,47 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			Post.fFrequency = Element.Detail.ScreenPost.fFrequency;
 			Post.vTint = Element.Detail.ScreenPost.vTint;
 			Post.fNormalizedLife = T;
+
+			const float3_t SourceColor = Evaluate_SourceVector(Element,
+				"particlemodulecoloroverlife", "coloroverlife", T,
+				fStableRandom, float3_t(1.f, 1.f, 1.f));
+			const float3_t SourceScale = Evaluate_SourceVector(Element,
+				"particlemodulecolorscaleoverlife", "colorscaleoverlife", T,
+				fStableRandom, float3_t(1.f, 1.f, 1.f));
+			const float4_t& AuthoredColor = Element.Detail.Color.vColorMultiply;
+			Post.vSourceColor = {
+				SourceColor.x * SourceScale.x * AuthoredColor.x,
+				SourceColor.y * SourceScale.y * AuthoredColor.y,
+				SourceColor.z * SourceScale.z * AuthoredColor.z,
+				Evaluate_SourceFloat(Element, "particlemodulecoloroverlife",
+					"alphaoverlife", T, fStableRandom, 1.f) *
+				Evaluate_SourceFloat(Element, "particlemodulecolorscaleoverlife",
+					"alphascaleoverlife", T, fStableRandom, 1.f) * AuthoredColor.w };
+			Post.SourceWorld = Evaluate_ElementWorld(
+				Element, m_fSampleTimeSeconds, RootWorld);
+			const float3_t SourceLocation = UE3_CentimetersToClient(
+				Evaluate_SourceVector(Element, "particlemodulelocation",
+					"startlocation", 0.f, fStableRandom, float3_t{}));
+			XMStoreFloat4x4(&Post.SourceWorld,
+				XMMatrixTranslation(SourceLocation.x, SourceLocation.y, SourceLocation.z) *
+				XMLoadFloat4x4(&Post.SourceWorld));
+			Post.fSourceCameraOffset = .01f * Evaluate_SourceFloat(Element,
+				"particlemodulecameraoffset", "cameraoffset", T, fStableRandom, 0.f);
+			for (const auto& Module : Element.SourceRecipe.Modules)
+			{
+				if (!SourceClass_Matches(Module, "particlemoduleparameterdynamic"))
+					continue;
+				for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
+				{
+					const auto& Paths = DYNAMIC_PARAMETER_PATHS[iParameter];
+					const f32_t fTime = SourceBool(Module, Paths.strSpawnTimeOnly, false) ?
+						0.f : SourceBool(Module, Paths.strUseEmitterTime, false) ?
+						fPresentationTime : T;
+					(&Post.vSourceDynamicParameter.x)[iParameter] = Evaluate_SourceFloat(
+						Element, "particlemoduleparameterdynamic", Paths.strValue.data(),
+						fTime, fStableRandom, 1.f);
+				}
+			}
 
 			if (EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1 ==
 				Post.eProfile)

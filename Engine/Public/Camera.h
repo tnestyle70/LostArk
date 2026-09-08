@@ -43,6 +43,14 @@ public:
 		const float3_t& vEye,
 		const float3_t& vLookAt,
 		f32_t fFovYDegrees);
+	/* Explicit up preserves authored roll. Invalid inputs leave the applied pose intact. */
+	bool_t Apply_PresentationPoseWithUp(
+		uint64_t iOwnerId,
+		const float3_t& vEye,
+		const float3_t& vLookAt,
+		const float3_t& vUp,
+		f32_t fFovYDegrees);
+	f32_t Get_AspectRatio() const { return m_fAspect; }
 	bool_t End_PresentationOverride(uint64_t iOwnerId);
 	/* Release to an explicitly resolved gameplay pose; ordinary End still restores. */
 	bool_t End_PresentationOverrideToPose(uint64_t iOwnerId,

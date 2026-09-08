@@ -5,7 +5,13 @@
 
 namespace LostArk::Shared
 {
-	/* 68 combines owned bundle/TRS world cues with main Mario and world playback.
+	/* 72 combines main v71 card-maze snapshots with FINISH_OWNER.
+	Both peers must use 72; neither previous branch supports the combined contract.
+	71 adds suit-tagged shard feedback; 70 adds exit, march and blackout state.
+	Main v69 adds card-maze role, hunting suit and kill counts.
+	Branch v69 adds FINISH_OWNER so natural completion preserves authored WORLD tails.
+	Both peers must use 69; 68 cannot decode the new owner lifecycle operation.
+	68 combines owned bundle/TRS world cues with main Mario and world playback.
 	Main packet identities 72..76 are preserved; bundle state appends as 77.
 	Neither independently published v66 nor v67 peer is wire-compatible.
 	67 adds absolute position, rotation and scale to owned WORLD placement cues.
@@ -55,9 +61,8 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
-	51 adds Server-owned Pattern bind and silence deadlines to player snapshots.
-	69 adds the card maze role, hunting suit and kill counts to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 71;
+	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 72;
 
 	enum class WORLD_ID : std::uint16_t
 	{

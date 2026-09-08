@@ -515,7 +515,7 @@ namespace LostArk::Server
 		bool Build_KoukuBundleState(LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& message) const;
 		void Broadcast_KoukuBundleState(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state);
 		void Broadcast_OwnedWorldSequence(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& message);
-		void Stop_KoukuWorldOwner(const std::string& memberId = {});
+		void Stop_KoukuWorldOwner(const std::string& memberId = {}, bool finished = false);
 
 		struct KOUKUSAYDON_PATTERN_AUDITION_RECEIPT final
 		{

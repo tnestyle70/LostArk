@@ -3,6 +3,7 @@
 #include "WorldSequenceDocument.h"
 #include "PhysicalResourceCatalog.h"
 #include "CompositionResourceTree.h"
+#include "EffectV2_Catalog.h"
 
 #include <array>
 #include <filesystem>
@@ -52,6 +53,9 @@ private:
     void Render_Resources();
     void Refresh_AnimationResources();
     void Render_AnimationResources();
+    void Render_EffectResources();
+    bool Append_SelectedEffect();
+    void Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence);
     bool Append_SelectedAnimation();
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
     bool Assign_SelectedModel();
@@ -114,6 +118,13 @@ private:
     std::string m_AnimationResourceStatus;
     std::string m_SelectedAnimationClip;
     std::array<char, 256> m_AnimationSearch{};
+    std::vector<EFFECT_V2_RESOURCE_SUMMARY> m_EffectResources;
+    std::string m_SelectedEffectResource;
+    EFFECT_V2_RESOURCE_KIND m_SelectedEffectKind = EFFECT_V2_RESOURCE_KIND::GROUP;
+    std::string m_EffectResourceStatus;
+    bool m_EffectInventoryLoaded = false;
+    size_t m_SelectedEffectRow = 0;
+    std::array<char, 256> m_EffectSearch{};
     std::array<char, 256> m_ObjectSearch{};
     std::array<char, 256> m_PhysicalSearch{};
     std::vector<PHYSICAL_RESOURCE_ASSET> m_PhysicalAssets;

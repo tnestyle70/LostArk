@@ -236,6 +236,11 @@ private:
 		float4_t vSourceVector0{};
 		float4_t vSourceVector1{};
 		std::array<float4_t, 8u> TypedTrailParameters{};
+		std::array<float4_t, 32u> QSourceMaterialParameters{};
+		std::array<float4_t, 32u> VSourceMaterialParameters{};
+		std::array<float4_t, 32u> ALTVSourceMaterialParameters{};
+		bool_t bSourceRequiresSceneColor = false;
+		uint32_t iSourceMeshHasUV1 = 0u;
 		std::array<float4_t, 16u> LinearFlowParameters{};
 		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
 		float4_t vLinearFlowMaskBColor{ 1.f, 1.f, 1.f, 1.f };
@@ -584,6 +589,7 @@ public:
 		std::string& strOutError);
 
 	HRESULT Initialize();
+	void Preserve_StartingSceneCapture(const CEffectDocumentRenderer& Previous);
 	bool_t Stage_Prepared(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
@@ -615,6 +621,10 @@ public:
 		std::string& strOutError);
 	bool_t Stage_ReconstructedDiagnostic(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
+		std::string& strOutError);
+	bool_t Collect_ModelCueAnchorWorlds(
+		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
+		std::unordered_map<std::string, float4x4_t>& InOutAnchorWorlds,
 		std::string& strOutError);
 	bool_t Has_NonBlendModelCues() const;
 	bool_t Has_WorldMarkElements() const;
@@ -668,6 +678,8 @@ private:
 	struct PREWARM_ASSET_CACHE;
 	struct RECONSTRUCTED_DIAGNOSTIC_COMPOSITE;
 
+	bool_t Capture_StartingSceneColor(
+		ComPtr<ID3D11ShaderResourceView>& OutCapture, std::string& strOutError) const;
 	bool_t Stage_PreparedInternal(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
@@ -787,6 +799,10 @@ private:
 	HRESULT Render_AfterImages(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages);
+	static bool_t Sample_ModelCuePose(
+		const EFFECT_MODEL_CUE_DESC& Cue, MODEL_CUE_RESOURCE& Resource,
+		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
+		float4x4_t& OutWorld, std::string& strOutError);
 	HRESULT Render_ModelCues(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		bool_t bNonBlendCharacterSurfaceOnly);
@@ -850,6 +866,8 @@ private:
 	std::vector<EFFECT_EVALUATED_TRAIL_POINT> m_TrailPointScratch;
 	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertexScratch;
 	std::vector<uint32_t> m_TrailIndexScratch;
+	// Per playback occurrence; never retained by the shared prepared-resource cache.
+	ComPtr<ID3D11ShaderResourceView> m_pStartingSceneCapture;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
 	bool_t m_bReconstructedSourceRuntimeActive = false;

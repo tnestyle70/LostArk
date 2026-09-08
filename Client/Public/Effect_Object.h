@@ -168,6 +168,7 @@ public:
 		if (!m_bRenderFailureIsolated || !bPlaying)
 			m_bPlaying = bPlaying;
 	}
+	void Preserve_StartingSceneCapture(const CEffectObject& Previous);
 	void Set_Visible(bool_t bVisible);
 	void Reset();
 	bool_t Is_Finished() const
@@ -246,6 +247,7 @@ private:
 		const char* pFailureChannel,
 		bool_t bPreserveFailedResult);
 	void Reset_RenderFailureIsolation();
+	void Bind_ModelCueAnchorProvider();
 
 private:
 	unique_ptr<CEffectDocumentRenderer> m_pRenderer;

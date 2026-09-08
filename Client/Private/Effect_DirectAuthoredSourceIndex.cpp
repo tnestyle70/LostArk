@@ -1037,6 +1037,97 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 				Entry.strEffectAssetId);
 		}
 	}
+	// Local recovery copies are editor documents, not new Product catalog rows.
+	// Resolve only an exact sibling ID of an already admitted ordinary skill.
+	// Add these after audition source validation so they cannot satisfy a pin.
+	std::unordered_set<std::string> RegisteredAssetIds;
+	for (const CATALOG_ROW_REF& RowRef : CatalogRows)
+	{
+		const DATA_JSON_VALUE* pId = RowRef.pRow->Find("effectAssetId");
+		if (nullptr != pId && pId->Is_String())
+			RegisteredAssetIds.insert(pId->Get_String());
+	}
+	std::unordered_set<std::string> ObservedRecoveryIds;
+	for (const EFFECT_DIRECT_AUTHORED_SCANNED_FILE& File : ScannedFiles)
+	{
+		const std::string& strAssetId = File.strEffectAssetId;
+		// Match the longer suffix first so both copies join the same Product.
+		const std::string_view RecoverySuffix = strAssetId.ends_with(".tuning.restore") ?
+			".tuning.restore" : strAssetId.ends_with(".full.restore") ?
+			".full.restore" : ".restore";
+		if (!strAssetId.ends_with(RecoverySuffix) ||
+			RegisteredAssetIds.contains(strAssetId) ||
+			!ObservedRecoveryIds.insert(strAssetId).second)
+			continue;
+		const auto iMatchingFiles = std::count_if(
+			ScannedFiles.begin(), ScannedFiles.end(),
+			[&strAssetId](const EFFECT_DIRECT_AUTHORED_SCANNED_FILE& Other)
+			{ return Other.strEffectAssetId == strAssetId; });
+		std::string strDerivedAssetId;
+		if (iMatchingFiles != 1 ||
+			!Try_DeriveAssetId(File.Path, strDerivedAssetId) ||
+			strDerivedAssetId != strAssetId)
+		{
+			RecordUnavailable("Editor-only recovery has an ambiguous or mismatched scanned ID: " + strAssetId);
+			continue;
+		}
+		const std::string strStem = strAssetId.substr(
+			0u, strAssetId.size() - RecoverySuffix.size());
+		// A promoted recovery (for example a split BA stage) owns its comparison
+		// copies. Otherwise keep the exact original unified sibling.
+		const std::string strPromotedRecoveryId = strStem + ".restore";
+		const std::string strSourceId = RegisteredAssetIds.contains(strPromotedRecoveryId) ?
+			strPromotedRecoveryId : strStem + ".unified";
+		const auto Source = std::find_if(
+			Staged.Entries.begin(), Staged.Entries.end(),
+			[&strSourceId](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry)
+			{
+				return Entry.strEffectAssetId == strSourceId &&
+					!Entry.bRegistryBoundAuditionOnly &&
+					Entry.eOwnerKind == EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL;
+			});
+		if (Source == Staged.Entries.end())
+		{
+			RecordUnavailable("Editor-only recovery has no admitted ordinary player source: " + strAssetId);
+			continue;
+		}
+		std::string PathStatus;
+		if (!Try_ResolveCatalogAuthoredPath(CanonicalAuthoredRoot,
+				"Effects/Authored/" + strAssetId + ".effect.json",
+				strAssetId, File.Path, PathStatus))
+		{
+			RecordUnavailable("Editor-only recovery path disagrees with its canonical Authored scan: " + strAssetId);
+			continue;
+		}
+		std::error_code FileError;
+		EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Entry;
+		Entry.Path = std::filesystem::weakly_canonical(File.Path, FileError);
+		if (FileError)
+		{
+			RecordUnavailable("Editor-only recovery path became unavailable: " + strAssetId);
+			continue;
+		}
+		Entry.LastWriteTime = std::filesystem::last_write_time(Entry.Path, FileError);
+		if (FileError)
+		{
+			RecordUnavailable("Editor-only recovery timestamp is unavailable: " + strAssetId);
+			continue;
+		}
+		Entry.iFileSize = static_cast<uint64_t>(std::filesystem::file_size(Entry.Path, FileError));
+		if (FileError)
+		{
+			RecordUnavailable("Editor-only recovery file size is unavailable: " + strAssetId);
+			continue;
+		}
+		Entry.strEffectAssetId = strAssetId;
+		Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::END;
+		Entry.eCharacterClass = Source->eCharacterClass;
+		Entry.iSkillId = Source->iSkillId;
+		Entry.strSourceEffectAssetId = Source->strEffectAssetId;
+		Entry.SourceDocumentPath = Source->Path;
+		Staged.Entries.push_back(std::move(Entry));
+		++Staged.iEditorRecoveryCount;
+	}
 	std::sort(Staged.Entries.begin(), Staged.Entries.end(),
 		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
 			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
@@ -1054,9 +1145,12 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 					Right.strClientVisualId, Right.strEffectAssetId);
 		});
 	strOutStatus = "Direct authored source index admitted " +
-		std::to_string(Staged.Entries.size()) + " / " +
+		std::to_string(Staged.Entries.size() - Staged.iEditorRecoveryCount) + " / " +
 		std::to_string(Staged.iCatalogDirectCount) +
 		" DIRECT_AUTHORED_DOCUMENT source paths.";
+	strOutStatus += " Editor-only recovery paths: " +
+		std::to_string(Staged.iEditorRecoveryCount) +
+		" (not Product catalog admission).";
 	if (0u != Staged.iUnavailableCount)
 	{
 		strOutStatus += " Isolated or locked " +

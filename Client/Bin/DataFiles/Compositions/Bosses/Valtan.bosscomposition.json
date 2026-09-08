@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "a7100d3dcc453234d91f1dcb741f53702f51ffd4eb9a1df5aea9ae4c2d8c8af9",
+  "compositionRevision": "36754493542230b39c5b2ef9a784aa2bb10d382401254fe866e3fe9ef5b54723",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "a7100d3dcc453234d91f1dcb741f53702f51ffd4eb9a1df5aea9ae4c2d8c8af9",
+    "sourceManifestId": "36754493542230b39c5b2ef9a784aa2bb10d382401254fe866e3fe9ef5b54723",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -382,8 +382,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "2f3ee7218a681cee8b5d54948b895b644809a329603567bd8ce4f2d2e24c5cd4",
-        "bytes": 42506
+        "sha256": "c397612efc84bbcef8a57841b6646ade0887c5f0bd9771d3fbd5fed60fbba234",
+        "bytes": 42746
       },
       {
         "path": "Data/Effects/V2/Authored/boss.kouku.ball.smoke.blue_1.effectv2.json",
@@ -992,23 +992,23 @@
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.club.effectv2.json",
-        "sha256": "1c83752cb69f024e6e0593add362aa1db9688c9b28c6cbde3eea4a5ec2cb2bf4",
-        "bytes": 4556
+        "sha256": "d48534981540112b1c8df7b5a572f6e4238162a55892a6b3fc1dbd81a94e4f8a",
+        "bytes": 4843
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.diamond.effectv2.json",
-        "sha256": "2a2f3a737cc5ebde39ab4d68da20a7f32c3b851c6cb6acd21ad2a9ff91cd1a49",
-        "bytes": 4559
+        "sha256": "c41423a810507c0f5d9429602f448a2915aaeefb7862be3c261ce8e16082bea8",
+        "bytes": 4846
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.heart.effectv2.json",
-        "sha256": "f0f0fbe73ab834fa2f46296f2678a254fad097ef3e95fa5bcc196f7b96c3c1eb",
-        "bytes": 4553
+        "sha256": "61e93d22f76604d24813d39afbd7569a862a46630d6682cd53dd4326a439de3f",
+        "bytes": 4840
       },
       {
         "path": "Data/Effects/V2/Authored/cardmaze.symbol.spade.effectv2.json",
-        "sha256": "0a9017038a783431e3e468094f99407cd3e7067a1950bc4b8ca16cf001fbbf06",
-        "bytes": 4557
+        "sha256": "53bf502f848790a47db3fa90e8114c5d8e336a14ae0faa7a365930c5772214ed",
+        "bytes": 4844
       },
       {
         "path": "Data/Effects/V2/Authored/esther.balthorr.appear_1.effectv2.json",
@@ -1532,43 +1532,43 @@
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.club.effectv2group.json",
-        "sha256": "89cf6108f64bfacb817f3c0567a0c4c04b81d29d9aa4ab5938d5912bd03b01b4",
-        "bytes": 588
+        "sha256": "a072039053f46e76048e9cb4c4e3ab024b5d0af24d173c500aca6c107168e708",
+        "bytes": 623
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.diamond.effectv2group.json",
-        "sha256": "2e8dbc9831174a85e194d7c92c875a8a2c58f482d9d3e8961536b3f9c7bec350",
-        "bytes": 594
+        "sha256": "e9bc56ce7d229d1da3744d68c718ae36674e237d69e06ecc4007868474b36934",
+        "bytes": 629
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.heart.effectv2group.json",
-        "sha256": "55c31beaccb9a68c4c13e3d4a4b3ccd8e74f88c715a9489add339b8d0e4a0c2b",
-        "bytes": 590
+        "sha256": "58580c49f47a41b6b82fead40de69dfdb4f701d0f3d4d29ba45811bde55e8c54",
+        "bytes": 625
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.spade.effectv2group.json",
-        "sha256": "bf674d4dce7d6457c8f848b2a19a3d9b3f179106553e58b0a964364acde4d7c1",
-        "bytes": 590
+        "sha256": "84ce034725d6ccfaf1a1cbc56a704d49ce0baebc07271ce7127fd3b5de877b9a",
+        "bytes": 625
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.club.effectv2group.json",
-        "sha256": "745b5f6a1775b6a2cf374b3132aeb90dabebad554b1cc569ea736f8c456b7aa0",
-        "bytes": 588
+        "sha256": "46f066480e8d04458438a3955d72a8e498fa86d14051553c6fceed5ec013924b",
+        "bytes": 623
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.diamond.effectv2group.json",
-        "sha256": "a7e3e1c2ec8b299ac7dc52fd19417e08e4af47fd5385421d907986a1af9cd135",
-        "bytes": 594
+        "sha256": "1637ea349b2cedddb263cc8fdfc2bb13e218f96bebd61b75f9fdc0bce686505a",
+        "bytes": 629
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.heart.effectv2group.json",
-        "sha256": "55858a72041a9170c41df4a3ace4f5c88527afcfa112c1fff53962ef09ea2f6e",
-        "bytes": 590
+        "sha256": "b1398794e86391051a8b26ddf673ee4056adca1b3fd3d7ae25fab778e94a5555",
+        "bytes": 625
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.spade.effectv2group.json",
-        "sha256": "6a1883843f805fbb29ecdf77513a2424c5688fcf6ff6cc92a1a3089fafd5e07e",
-        "bytes": 590
+        "sha256": "5cb293201ddd381b962147b0d8d9ee390dfe56d1aea549d02ddc11648fff8ca7",
+        "bytes": 625
       },
       {
         "path": "Data/Encounters/Valtan/ValtanCinematicCamera.json",

@@ -9,6 +9,33 @@
       "fidelityClass": "PROJECT_TUNED_APPROX",
       "sourceEffectAssetId": "effect.dimensionmaster.skill.2050230.unified",
       "sourceDocumentRawSha256": "afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba1.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.dimensionmaster.skill.2050010.ba3.restore",
+      "sourceDocumentRawSha256": "c5f4a4ac5cc900176b1916310b5c3661df6f4c7616bf2f7df4259b41d4b4d2e6"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.dimensionmaster.skill.2050010.ba0.restore",
+      "sourceDocumentRawSha256": "73f4af4e6683a4a0ca087170d98221e8aec4265958d2fbbf12665ae59e8144c5"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.dimensionmaster.skill.2050010.ba2.restore",
+      "sourceDocumentRawSha256": "32ae162b64c940a4fb83d98104e72041f0e1340fe8e1fd5eeca528db73e4c248"
     }
   ]
 }

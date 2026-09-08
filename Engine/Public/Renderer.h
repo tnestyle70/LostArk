@@ -20,6 +20,8 @@ public:
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw();
+	// A visible refractive occurrence requests the pre-translucency colour once.
+	void Request_SceneColorSnapshot() { m_bSceneColorSnapshotRequested = true; }
 	const RENDER_QUALITY_SETTINGS& Get_RenderQualitySettings() const { return m_RenderQualitySettings; }
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	const MATERIAL_RENDER_SETTINGS& Get_MaterialRenderSettings() const { return m_MaterialRenderSettings; }
@@ -65,6 +67,7 @@ private:
 	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
 	MATERIAL_RENDER_SETTINGS m_MaterialRenderSettings = {};
 	HEIGHT_FOG_SETTINGS				m_HeightFogSettings = {};
+	bool_t m_bSceneColorSnapshotRequested = false;
 	f32_t							m_fPresentationClock = 0.f;
 
 #ifdef _DEBUG
@@ -81,6 +84,7 @@ private:
 	HRESULT Render_Combined();
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
+	HRESULT Capture_SceneColorSnapshot();
 	HRESULT Render_ScreenPosts();
 	HRESULT Render_ScreenPostPass(
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV,

@@ -1,6 +1,20 @@
 #ifndef LOSTARK_MAP_MATERIAL_SURFACE
 #define LOSTARK_MAP_MATERIAL_SURFACE
 
+#include "Shader_SourceStoneSurface.hlsli"
+
+// Program 7: actual Valtan bg_base_opa overlay permutation. These are material
+// inputs; normal textures remain linear and color SRVs retain source SRGB.
+Texture2D g_SurfaceOverlayDiffuseTexture;
+Texture2D g_SurfaceOverlayNormalTexture;
+float4 g_SurfaceOverlayColor = 1.f;
+float g_SurfaceOverlayTiling = 1.f;
+float g_SurfaceOverlayNormalIntensity = 1.f;
+float g_SurfaceOverlaySharpness = 0.f;
+float g_SurfaceOverlayBrightness = 1.f;
+float g_SurfaceOverlaySaturation = 1.f;
+float g_SurfaceOverlaySpecularIntensity = 0.f;
+
 // Opt-in surface programs. Each SRV preserves its source color-space contract;
 // the actual Character Select overrides include a linear diffuse texture.
 uint g_SurfaceProgram = 0;
@@ -40,6 +54,15 @@ float g_SurfaceMetallicBrightness = 1.f;
 float g_SurfaceMinimumRoughness = 0.04f;
 float2 g_SurfaceReflectionOriginOffset = 0.f;
 float g_SurfaceVertexAlpha = 1.f;
+uint g_HasSurfaceEmissive = 0;
+Texture2D g_SurfaceEmissiveTexture;
+float4 g_SurfaceEmissiveColor = 1.f;
+float g_SurfaceEmissiveIntensity = 0.f;
+float2 g_SurfaceEmissiveUVTiling = 1.f;
+float g_SurfaceEmissiveFlickerMinimum = 0.f;
+float g_SurfaceEmissiveFlickerSpeed = 0.f;
+float g_SurfaceEmissivePhaseOffset = 0.f;
+float g_SurfaceEmissiveTime = 0.f;
 // Source component LOD lightmap bindings. Ordinary draws bind these values;
 // instanced draws transport the same scale/bias and coefficient vectors.
 uint g_HasBakedLighting = 0;
@@ -69,6 +92,39 @@ sampler SurfaceAnisotropicSampler = sampler_state
     AddressU = WRAP;
     AddressV = WRAP;
 };
+
+// Original Texture2D AddressX is carried by the named diffuse material.
+uint g_DiffuseMirrorU = 0;
+sampler SurfaceMirrorUSampler = sampler_state
+{
+    Filter = ANISOTROPIC;
+    MaxAnisotropy = 16;
+    AddressU = MIRROR;
+    AddressV = WRAP;
+};
+
+float4 SampleMapDiffuseTexture(float2 uv, SamplerState wrapSampler)
+{
+    if (g_DiffuseMirrorU != 0u)
+        return g_DiffuseTexture.Sample(SurfaceMirrorUSampler, uv);
+    return g_DiffuseTexture.Sample(wrapSampler, uv);
+}
+
+float3 EvaluateMapSurfaceEmissive(float2 meshUV)
+{
+    if (g_HasSurfaceEmissive == 0u)
+        return 0.f;
+    // Source bg_base_pbr_opa flicker, including its nested cosine modulation.
+    // phaseOffset owns the unavailable engine-origin constant explicitly.
+    const float phase = g_SurfaceEmissivePhaseOffset +
+        g_SurfaceEmissiveTime * g_SurfaceEmissiveFlickerSpeed;
+    const float flicker = 0.5f * (1.f +
+        sin((phase + cos(phase * 3.524534f)) * 1.328987f)) +
+        g_SurfaceEmissiveFlickerMinimum;
+    return g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler,
+        meshUV * g_SurfaceEmissiveUVTiling).rgb * g_SurfaceEmissiveColor.rgb *
+        g_SurfaceEmissiveIntensity * flicker;
+}
 
 bool IsMapSurfacePBR()
 {
@@ -316,6 +372,80 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     // not replaced by a synthetic ambient tint: only the bound baked irradiance
     // drives this explicitly partial environment reconstruction.
     return indirect;
+}
+
+struct MAP_STONE_GBUFFER
+{
+    float4 diffuse;
+    float4 normal;
+    float4 depth;
+    float4 pickPosition;
+    float4 indirect;
+    float4 materialSpecular;
+    float4 surface;
+    float4 geometry;
+};
+
+MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexColor,
+    float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
+    float4 projectedPosition, float2 lightmapUV, float4 averageScale,
+    float4 directionalScale)
+{
+    SOURCE_STONE_PARAMETERS material;
+    material.diffuseColor = g_SurfaceDiffuseColor.rgb;
+    material.overlayColor = g_SurfaceOverlayColor.rgb;
+    material.specularColor = g_SurfaceSpecularColor.rgb;
+    material.normalIntensity = g_SurfaceNormalIntensity;
+    material.overlayNormalIntensity = g_SurfaceOverlayNormalIntensity;
+    material.overlaySharpness = g_SurfaceOverlaySharpness;
+    material.diffuseSaturation = g_SurfaceDiffuseSaturation;
+    material.diffuseBrightness = g_SurfaceDiffuseBrightness;
+    material.overlayBrightness = g_SurfaceOverlayBrightness;
+    material.overlaySaturation = g_SurfaceOverlaySaturation;
+    material.specularIntensity = g_SurfaceSpecularIntensity;
+    material.overlaySpecularIntensity = g_SurfaceOverlaySpecularIntensity;
+    material.specularPower = g_SurfaceSpecularPower;
+    const float2 overlayUV = meshUV * g_SurfaceOverlayTiling;
+    // Original material instructions use SampleBias(0). The existing aniso
+    // sampler is the project filtering adapter; it does not alter UV domains.
+    const SOURCE_STONE_SURFACE stone = EvaluateSourceStoneSurface(
+        SampleMapDiffuseTexture(meshUV, SurfaceAnisotropicSampler),
+        g_NormalTexture.Sample(SurfaceAnisotropicSampler, meshUV),
+        g_SurfaceOverlayDiffuseTexture.Sample(SurfaceAnisotropicSampler, overlayUV),
+        g_SurfaceOverlayNormalTexture.Sample(SurfaceAnisotropicSampler, overlayUV),
+        vertexColor, material);
+    const float3x3 tangentToWorld = float3x3(normalize(tangent),
+        normalize(binormal), normalize(normal));
+    const bool hasLightmap = g_HasBakedLighting != 0u && averageScale.w != 0.f;
+    float3 average = 0.f, coefficients = 0.f;
+    if (hasLightmap)
+    {
+        average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler,
+            lightmapUV).rgb * averageScale.rgb;
+        coefficients = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler,
+            lightmapUV).rgb * directionalScale.rgb;
+    }
+    const SOURCE_STONE_BASE_LIGHT base = EvaluateSourceStoneBase(stone,
+        mul(tangentToWorld, g_vCamPosition.xyz - worldPosition),
+        mul(tangentToWorld, float3(0.f, 1.f, 0.f)), average, coefficients,
+        hasLightmap, material.specularPower, SourceStoneInactiveEngineInputs());
+    MAP_STONE_GBUFFER output;
+    // RT0 is the ordinary albedo debug view. HDR shading uses RT4/RT6, never
+    // multiplies this UNORM value back into an already colored source result.
+    output.diffuse = float4(base.diffuse, 1.f);
+    output.normal = float4(SourceStoneUnit(mul(stone.baseNormal, tangentToWorld)) *
+        0.5f + 0.5f, 0.f);
+    output.depth = float4(projectedPosition.z / projectedPosition.w,
+        projectedPosition.w / 1000.f, material.specularPower, 7.f);
+    output.pickPosition = float4(worldPosition,
+        EncodeMapSurfaceGeometricNormal(normal, hasLightmap));
+    output.indirect = float4(base.radiance, 0.f);
+    output.materialSpecular = float4(stone.specular, stone.overlayWeight);
+    output.surface = float4(stone.diffuse, 0.f);
+    // Preserve the length of the mixed normal: source Direct never normalizes
+    // it. The selected Base/Baked normal is normalized inside the pure helper.
+    output.geometry = float4(mul(stone.directMixedNormal, tangentToWorld), 0.f);
+    return output;
 }
 
 MAP_SURFACE_SAMPLE EvaluateMapSurface(float2 meshUV, float3 worldPosition,

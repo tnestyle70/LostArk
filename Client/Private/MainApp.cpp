@@ -956,7 +956,9 @@ namespace
      {float(value.RotationDegrees[0]), float(value.RotationDegrees[1]), float(value.RotationDegrees[2])},
      {float(value.Scale[0]), float(value.Scale[1]), float(value.Scale[2])}};
    }
-   cues.push_back({box.strOccurrenceId, def->strSequenceInstanceId, box.iStartMs, box.iDurationMs, box.fPlaybackSpeed, offset, placement});
+   cues.push_back({box.strOccurrenceId, def->strSequenceInstanceId, box.iStartMs, box.iDurationMs,
+    box.fPlaybackSpeed, offset, placement, previewAtCharacter ? CKoukuSaydonPresentationPlayer::WORLD_EMISSION_ANCHOR{} :
+     CKoukuSaydonPresentationPlayer::Make_WorldEmissionAnchor(pattern, *def, box)});
   }
   return arena->Debug_BeginCompositionWorldPreview(pattern.strPatternId, std::move(cues), status, sourceDocument);
  }
@@ -1141,6 +1143,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
 		arena->Collect_KoukuPresentationViews(bosses, cards);
 		m_pKoukuPresentationPlayer->Update(fTimeDelta, bosses, cards);
+		arena->Set_CompositionWorldEmissionResolver([this](std::uint32_t sourceRevision, std::string_view patternId, std::string_view occurrenceId,
+			CLevel_KakulSaydonArena::WORLD_EMISSION_ANCHOR& anchor)
+		{ return m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Resolve_ProductWorldEmissionAnchor(
+			sourceRevision, patternId, occurrenceId, anchor); });
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
 #endif
@@ -1234,6 +1240,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pEffectTool)
 	{
+        shared_ptr<CCamera_Free> effectCamera;
+        const LEVEL effectLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+        if (effectLevel == LEVEL::CHARACTER_SELECT)
+        { if (auto* arena = CLevel_CharacterSelect::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        else if (effectLevel == LEVEL::VALTAN_ARENA)
+        { if (auto* arena = CLevel_ValtanArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        else if (effectLevel == LEVEL::KAKULSAYDON_ARENA)
+        { if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
+        m_pEffectTool->Set_AuthoringCamera(effectCamera);
 		m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
             IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
         m_pEffectTool->Update(fTimeDelta);
@@ -1447,6 +1462,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != m_pKoukuSaydonActionWorkbench)
 	{
 		m_pKoukuSaydonActionWorkbench->Tick_Background();
+		if (m_pKoukuSaydonActionWorkbench->Consume_ProductInventoryRefreshRequest() && m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
 		if (m_pKoukuPresentationPlayer)
 			m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(
 				m_pKoukuSaydonActionWorkbench->Get_Composition(), m_pKoukuSaydonActionWorkbench->Get_DraftGeneration());
@@ -1508,6 +1525,28 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (m_pKoukuSaydonActionWorkbench->Consume_PatternPreviewRequest(
     pattern, startClockMs, startPaused, targetAssetName))
   {
+   if ((!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
+   {
+    auto document = m_pKoukuSaydonActionWorkbench->Get_Composition();
+    for (auto& previewPattern : document.Patterns)
+     if (previewPattern.strPatternId == pattern.strPatternId) { previewPattern = pattern; break; }
+    KOUKU_SAYDON_COMPOSITION_BUNDLE single;
+    single.strBundleId = pattern.strPatternId;
+    single.strGateId = pattern.strGateId;
+    single.Members.push_back({pattern.strPatternId + ".preview.member", pattern.strPatternId, 0u});
+    document.Bundles.push_back(std::move(single));
+    if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
+      document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+    {
+     if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+     m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+    }
+    else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
+   }
+   else
+   {
    const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
     [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
    bool previewed = !hasAnimation;
@@ -1528,7 +1567,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
    }
    else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    else previewRouteStatus = m_strToolStatus;
+   }
   }
+
+  KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
+  while (m_pKoukuSaydonActionWorkbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
+   if (m_pKoukuPresentationPlayer)
+    (void)m_pKoukuPresentationPlayer->Preview_PresentationGeometry(
+     presentationGeometryPreview.strPatternId, presentationGeometryPreview.Occurrence);
 
   KOUKU_PRESENTATION_PREVIEW_REQUEST resourcePreview;
   if (m_pKoukuSaydonActionWorkbench->Consume_PresentationPreviewRequest(resourcePreview))
@@ -1626,14 +1672,23 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			const bool ownClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
 			if (ownClock)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE) m_pKoukuPresentationPlayer->Pause_Preview(true);
+				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+				{
+					// Restore the displayed clock before freezing; Update already advanced this frame.
+					m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+					m_pKoukuPresentationPlayer->Pause_Preview(true);
+				}
 				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME) m_pKoukuPresentationPlayer->Pause_Preview(false);
 				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
 			}
 			else if (m_pAnimationTool)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE &&
+					m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
+				{
 					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
+					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+				}
 				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
 					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
 				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK &&
@@ -8164,11 +8219,30 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight());
+	const auto prepareSavedProduct = [&]() {
+		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition())
+		{
+			if (m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
+			{ m_strKoukuCompletePlayStatus = "Saved PRODUCT is still being published. Wait for completion before Complete Play."; return false; }
+			if (m_pKoukuSaydonActionWorkbench->Is_Dirty())
+			{ m_strKoukuCompletePlayStatus = "Save Composition changes before Complete Play."; return false; }
+		}
+		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
+		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition() &&
+			m_pKoukuSaydonActionWorkbench->Get_Composition().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
+		{ m_strKoukuCompletePlayStatus = "Saved Composition and published PRODUCT differ. Complete Save/publish and restart Server before Complete Play."; return false; }
+		return true;
+	};
 	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";
 	if (ImGui::Button(playLabel.c_str()))
 	{
-		if (bundleSelected) (void)m_pKoukuSaydonBossTool->Play_BundleById(selectedBundle->strBundleId,m_pKoukuSaydonBossTool->Get_SourceRevision(),m_strKoukuCompletePlayStatus);
-		else (void)m_pKoukuSaydonBossTool->Play_PatternById(pattern->strPatternId,m_pKoukuSaydonBossTool->Get_SourceRevision(),m_strKoukuCompletePlayStatus);
+		// Reload can replace the inventory backing these UI pointers.
+		const std::string selectedId = bundleSelected ? selectedBundle->strBundleId : pattern->strPatternId;
+		if (prepareSavedProduct())
+		{
+			if (bundleSelected) (void)m_pKoukuSaydonBossTool->Play_SavedBundleById(selectedId,m_strKoukuCompletePlayStatus);
+			else (void)m_pKoukuSaydonBossTool->Play_SavedPatternById(selectedId,m_strKoukuCompletePlayStatus);
+		}
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
 	ImGui::BeginDisabled(!arena || !audition.Is_InFlight() || !audition.iRoomAuditionEpoch);
@@ -8177,7 +8251,8 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (ImGui::Button("Restart Bundle")) (void)service.Restart_Bundle(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled(); ImGui::EndDisabled();
 	ImGui::BeginDisabled(!arena || !gateHasProduct || m_pKoukuSaydonBossTool->Get_PlayAllPatternIds().empty() || audition.Is_InFlight());
-	if (ImGui::Button("Complete Play All (Sequential)##KoukuServerPatternAll")) (void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
+	if (ImGui::Button("Complete Play All (Sequential)##KoukuServerPatternAll") && prepareSavedProduct())
+		(void)m_pKoukuSaydonBossTool->Play_All(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
 	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
@@ -9219,6 +9294,9 @@ void CMainApp::RenderRenderingWorkbench()
                 break;
             case MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
                 ImGui::TextWrapped("Source opaque specular");
+                break;
+            case MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
+                ImGui::TextWrapped("Source stone overlay + baked lighting");
                 break;
 			default:
 				ImGui::Text("Unknown (%u)", static_cast<uint32_t>(row.family));

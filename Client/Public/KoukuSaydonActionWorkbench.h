@@ -68,6 +68,12 @@ namespace Client
 		std::string strEditedOccurrenceId;
 	};
 
+	struct KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST final
+	{
+		std::string strPatternId;
+		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
+	};
+
 	/* K-only authoring session and Stage/Animation lane editor. It owns no socket
 	   or runtime executor; typed preview/server-play requests are consumed by
 	   MainApp and routed to their dedicated tools/services. */
@@ -85,6 +91,11 @@ namespace Client
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
 		void Tick_Background() { Poll_PublishProcess(); }
+		bool_t Consume_ProductInventoryRefreshRequest() {
+			const bool_t requested = m_bProductInventoryRefreshRequested;
+			m_bProductInventoryRefreshRequested = false;
+			return requested;
+		}
 		bool_t Consume_PresentationPreviewRequest(KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest);
 		/* MainApp supplies admitted camera/audio rows from the existing readers;
 		   a failed refresh preserves the prior complete list and its status. */
@@ -144,7 +155,7 @@ namespace Client
 		[[nodiscard]] bool_t Has_Composition() const noexcept {
 			return m_bHasDraft;
 		}
-		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty; }
+		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty || !m_StagedEffectGeometry.empty(); }
 		[[nodiscard]] std::uint64_t Get_DraftGeneration() const noexcept { return m_iDraftGeneration; }
 		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT&
 			Get_Composition() const noexcept { return m_Draft; }
@@ -159,9 +170,20 @@ namespace Client
 			std::string& outStatus);
 		bool_t Consume_AnimationPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& outRequest);
-		// Preview the current draft at its cursor; a cursor at/past the end restarts at zero.
+		// Play restarts at the end; paused scrubbing keeps the exact endpoint pose.
 		bool_t Request_PatternPreview(std::string_view patternId,
-			std::uint32_t startClockMs, std::string& outStatus);
+			std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused = false);
+		bool_t Request_PreviewPause();
+		bool_t Request_PatternScrub(std::string_view patternId, std::uint32_t clockMs, std::string& outStatus);
+		bool_t Request_BundleScrub(std::uint32_t clockMs);
+		// Detail Preview keeps its actor animation and starts at this edited Bone Collider's window.
+		bool_t Request_ColliderBoxPreview(std::string_view patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
+		// Geometry-only draft overlay; active previews retain their clock, actors and sessions.
+		bool_t Request_PresentationGeometryPreview(std::string_view patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
+		bool_t Consume_PresentationGeometryPreviewRequest(KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST& outRequest);
+		void Cancel_PresentationGeometryPreview(bool_t discardEffectGeometry = true);
 		bool_t Consume_PatternPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_PATTERN& outPattern,
 			std::uint32_t& outStartClockMs,
@@ -237,7 +259,8 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
-		// Copy selected owner Stages once, in order after the rightmost selected Stage.
+		// All lane occurrence IDs share this atomic copy command; Stage children are copied only once.
+		// Mixed blocks preserve relative clocks, splice later lanes and remap owned stable references.
 		bool_t Duplicate_TimelineSelection(
 			std::string_view patternId,
 			const std::vector<std::string>& stageIds,
@@ -267,6 +290,12 @@ namespace Client
 			std::string_view patternId,
 			std::string_view stageId,
 			std::string_view stageKind,
+			std::string& outStatus);
+
+		bool_t Set_StageRetargetOnEnter(
+			std::string_view patternId,
+			std::string_view stageId,
+			bool_t retargetOnEnter,
 			std::string& outStatus);
 
 		bool_t Bind_Animation(
@@ -361,6 +390,10 @@ namespace Client
 		bool_t Connect_ColliderLogic(const std::string& patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
 			const std::string& logicId, std::string& outStatus);
+		// Apply the definition, exact Logic window and Collider link as one authoring transaction.
+		bool_t Set_ColliderLogicValues(std::string_view patternId,
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& values, std::string& outStatus);
 		bool_t Set_PresentationBox(std::string_view patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Set_PresentationBoxDebugRender(std::string_view patternId,
@@ -524,7 +557,9 @@ namespace Client
 		void Render_AnimationResources();
 		void Render_LogicResources();
 		void Render_LogicDefinitionValues(
-			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic);
+			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
+			std::string_view colliderPatternId = {},
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* collider = nullptr);
 		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_LogicOutcomeSlots(const std::string& patternId, const std::string& occurrenceId);
 		void Render_SummonResources();
@@ -534,7 +569,11 @@ namespace Client
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
 			std::string_view displayName, std::string& outStatus);
+		bool_t Append_PresentationSource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
+			std::string& outStatus);
 		bool_t Append_PresentationBox(std::string_view resourceId, std::string& outStatus);
+		bool_t Append_PresentationCandidate(KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate,
+			std::string_view resourceId, std::string& outStatus);
 		bool_t Delete_PresentationBox(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
 		void Queue_WorldBoxPreview(std::string_view patternId, std::string_view occurrenceId);
 		void Queue_PresentationPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
@@ -608,9 +647,14 @@ namespace Client
 		int32_t m_iColliderDamagePercent = 10;
 		bool_t m_bColliderDamageDirty = false;
 
+		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_PendingPresentationGeometryPreviews;
+		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_StagedEffectGeometry;
+		std::string m_strPresentationGeometryPreviewPatternId;
+		std::string m_strPresentationGeometryPreviewOccurrenceId;
 		KOUKU_PRESENTATION_PREVIEW_REQUEST m_PendingPresentationPreviewRequest;
 		bool_t m_bPresentationPreviewRequestPending = false;
 		bool_t m_bPresentationResourceRefreshRequested = true;
+		bool_t m_bProductInventoryRefreshRequested = false;
 		// World lane session state: the arena's sequence list and the box being edited.
 		std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> m_WorldSequenceResources;
 		std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> m_WorldPlacementResolver;

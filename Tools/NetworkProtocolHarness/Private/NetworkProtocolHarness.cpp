@@ -2282,7 +2282,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 66");
@@ -2611,7 +2611,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2679,7 +2679,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 71u, "World Object placement protocol is 71");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u, "World Object owner lifecycle protocol is 69");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2687,13 +2687,18 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK) == 75u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT) == 76u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE) == 77u,
-			"Protocol 70 preserves main identities and appends bundle state");
-		for (unsigned operation = 0u; operation < 4u; ++operation)
+			"Protocol 72 preserves main identities and bundle state");
+		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
+			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
+			"Natural owner finish appends without renumbering immediate owner stop");
+		for (unsigned operation = 0u; operation < static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::END); ++operation)
 		{
 			S2C_WORLD_SEQUENCE_PLAY message{};
 			message.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);
-			if (message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER)
-				message.iRunEpoch = 7u;
+			if (message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER || message.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER)
+			{
+				message.iRunEpoch = 7u; message.strMemberId = "member.7";
+			}
 			else
 				message.strSequenceInstanceId = "world.sequence.instance.8";
 			CPacketWriter writer;
@@ -2702,8 +2707,9 @@ namespace
 			S2C_WORLD_SEQUENCE_PLAY decoded{};
 			testRunner.Require(written && !writer.Get_Buffer().empty() && writer.Get_Buffer().front() == operation &&
 				Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.eOperation == message.eOperation &&
-				decoded.iRunEpoch == message.iRunEpoch && decoded.strSequenceInstanceId == message.strSequenceInstanceId,
-				"PLAY REPLAY STOP and STOP_OWNER preserve distinct prefix operations and ownership");
+				decoded.iRunEpoch == message.iRunEpoch && decoded.strSequenceInstanceId == message.strSequenceInstanceId &&
+				decoded.strMemberId == message.strMemberId,
+				"PLAY REPLAY STOP STOP_OWNER and FINISH_OWNER preserve distinct prefix operations and ownership");
 			if (written)
 			{
 				auto malformed = writer.Get_Buffer();
@@ -2763,7 +2769,7 @@ namespace
 			testRunner.Require(secondWritten && Read_Message(secondReader, decoded) && decoded.fWorldPositionX == -25.f &&
 				decoded.strSequenceInstanceId == placed.strSequenceInstanceId && placed.fWorldPositionX == 12.f,
 				"Two placements sharing a saved WORLD instance keep separate occurrence transforms");
-			for (unsigned invalid = 0u; invalid < 8u; ++invalid)
+			for (unsigned invalid = 0u; invalid < 9u; ++invalid)
 			{
 				auto bad = placed;
 				switch (invalid)
@@ -2776,9 +2782,10 @@ namespace
 				case 5u: bad.strTargetSequenceInstanceId = "world.existing.target"; break;
 				case 6u: bad.eOperation = WORLD_SEQUENCE_OPERATION::STOP_OWNER; bad.strSequenceInstanceId.clear(); break;
 				case 7u: bad.iRunEpoch = 0u; break;
+				case 8u: bad.eOperation = WORLD_SEQUENCE_OPERATION::FINISH_OWNER; bad.strSequenceInstanceId.clear(); break;
 				}
 				CPacketWriter rejected;
-				testRunner.Require(!Write_Message(rejected, bad), "Invalid WORLD placement, legacy offset conflict, motion replacement and STOP transforms are rejected");
+					testRunner.Require(!Write_Message(rejected, bad), "Invalid WORLD placement, legacy offset conflict, motion replacement and owner lifecycle transforms are rejected");
 			}
 			auto malformed = placedWriter.Get_Buffer(); malformed[malformed.size() - 37u] = 2u;
 			CPacketReader malformedReader(malformed); decoded.fWorldPositionX = 999.f;
@@ -3020,8 +3027,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 71u,
-			"Protocol 71 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 72u,
+			"Protocol 72 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3137,8 +3144,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(71u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 71");
+			testRunner.Require(69u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 69");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -6342,8 +6349,8 @@ namespace
 		}
 
 		testRunner.Require(
-			71u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 68");
+			69u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 69");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -6370,8 +6377,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			71u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 71");
+			69u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 69");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7614,8 +7621,17 @@ namespace
 		world.strCueId = "world.1.1"; world.strOccurrenceId = "world-box.7"; world.iStartTick = 100u; world.iServerTick = 105u; world.iBossNetEntityId = 101u;
 		CPacketWriter worldWriter; const bool worldWritten = Write_Message(worldWriter, world); CPacketReader worldReader(worldWriter.Get_Buffer()); decltype(world) decodedWorld;
 		testRunner.Require(worldWritten && Read_Message(worldReader, decodedWorld) && decodedWorld.strOccurrenceId == world.strOccurrenceId && decodedWorld.iServerTick == 105u, "Owned World cue preserves occurrence identity and catch-up clock");
-		world.eOperation = WORLD_SEQUENCE_OPERATION::STOP_OWNER; world.strSequenceInstanceId.clear(); world.strMemberId.clear(); CPacketWriter ownerStop;
-		testRunner.Require(Write_Message(ownerStop, world), "Whole-run World stop may omit member and source instance");
+		for (const auto operation : { WORLD_SEQUENCE_OPERATION::STOP_OWNER, WORLD_SEQUENCE_OPERATION::FINISH_OWNER })
+		{
+			world.eOperation = operation; world.strSequenceInstanceId.clear(); world.strMemberId.clear();
+			CPacketWriter ownerWriter; const bool ownerWritten = Write_Message(ownerWriter, world);
+			CPacketReader ownerReader(ownerWriter.Get_Buffer());
+			testRunner.Require(ownerWritten && Read_Message(ownerReader, decodedWorld) && ownerReader.Get_RemainingSize() == 0u &&
+				decodedWorld.eOperation == operation && decodedWorld.iRunEpoch == 19u && decodedWorld.strMemberId.empty(),
+				"Whole-run World stop and finish round trip without a member or source instance");
+			auto invalidOwner = world; invalidOwner.iRunEpoch = 0u; CPacketWriter invalidOwnerWriter;
+			testRunner.Require(!Write_Message(invalidOwnerWriter, invalidOwner), "Owner stop and finish require an exact run epoch");
+		}
 
 	}
 }

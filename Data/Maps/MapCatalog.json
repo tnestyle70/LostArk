@@ -41,9 +41,11 @@
       "navigationBlockers": "Data/Navigation/LV_LUT_HEARTRB_ED.navblockers",
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
       "gameplayDocument": "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
-      "placementCount": 13186,
-      "assetCount": 275,
-      "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED"
+      "placementCount": 13184,
+      "assetCount": 279,
+      "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapmaterials.json"
     },
     {
       "id": "LV_DEV_TRAINING_GROUND",
@@ -84,7 +86,7 @@
       "navigationPaint": "Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint",
       "gameplayDocument": "Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/Gameplay.world.json",
       "placementCount": 803,
-      "assetCount": 61,
+      "assetCount": 63,
       "runtimeAssetRoot": "Map/CHARACTERSELECTMAP",
       "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",
       "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",

@@ -117,9 +117,15 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	}
 	else
 	{
+		if ((mesh.hasColor0 && mesh.color0Rgba8.size() != mesh.vertices.size()) ||
+			(!mesh.hasColor0 && !mesh.color0Rgba8.empty()))
+			return E_INVALIDARG;
 		staticVertices = mesh.vertices;
-		for (VTXMESH& vertex : staticVertices)
+		for (size_t index = 0; index < staticVertices.size(); ++index)
 		{
+			VTXMESH& vertex = staticVertices[index];
+			// The WModel reader already decoded RGBA; upload without a second swizzle.
+			vertex.color0Rgba8 = mesh.hasColor0 ? mesh.color0Rgba8[index] : 0xffffffffu;
 			XMStoreFloat3(&vertex.vPosition,
 				XMVector3TransformCoord(XMLoadFloat3(&vertex.vPosition), PreTransformMatrix));
 			XMStoreFloat3(&vertex.vNormal,
@@ -300,6 +306,10 @@ HRESULT CMesh::Ready_VertexBuffer_Anim(const aiMesh* pAIMesh, const vector<share
 		memcpy(&pVertices[i].vTangent, &pAIMesh->mTangents[i], sizeof(float3_t));		
 		memcpy(&pVertices[i].vBinormal, &pAIMesh->mBitangents[i], sizeof(float3_t));		
 		memcpy(&pVertices[i].vTexcoord, &pAIMesh->mTextureCoords[0][i], sizeof(float2_t));
+		if (pAIMesh->HasTextureCoords(1))
+			memcpy(&pVertices[i].vTexcoord1, &pAIMesh->mTextureCoords[1][i], sizeof(float2_t));
+		if (pAIMesh->HasTextureCoords(2))
+			memcpy(&pVertices[i].vTexcoord2, &pAIMesh->mTextureCoords[2][i], sizeof(float2_t));
 	}
 
 	m_iNumBones = pAIMesh->mNumBones;

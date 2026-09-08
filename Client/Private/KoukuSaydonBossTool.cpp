@@ -306,24 +306,37 @@ void Client::CKoukuSaydonBossTool::Normalize_Selection()
 
 bool Client::CKoukuSaydonBossTool::Play_Selected(std::string& outStatus)
 {
-	const PRODUCT_PATTERN* const pattern =
-		Find_SelectedPattern();
+	const std::string patternId = m_strSelectedPatternId;
+	return Play_SavedPatternById(patternId, outStatus);
+}
+
+bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view patternId, std::string& outStatus)
+{
+	const auto found = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+		[&](const auto& row) { return row.strPatternId == patternId; });
+	const PRODUCT_PATTERN* const pattern = found == m_ProductPatterns.end() ? nullptr : &*found;
 	if (nullptr == pattern || !pattern->strLoadError.empty())
 	{
-		outStatus = "Select one valid saved PRODUCT pattern first.";
+		outStatus = m_strStatus = "Pattern '" + std::string(patternId) +
+			"' is not ready in published PRODUCT revision " + std::to_string(m_iSourceRevision) +
+			". Save it as PRODUCT, wait for publish, then reload the inventory.";
 		return false;
 	}
+	m_strSelectedPatternId = pattern->strPatternId;
 	const auto& revision =
 		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	if (!pattern->strTargetBossPlacementId.empty())
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(pattern->strTargetBossPlacementId,
 			CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(pattern->strTargetBossPlacementId));
-	return CKoukuSaydonPatternAuditionService::Get().Play_Selected(
+	const bool played = CKoukuSaydonPatternAuditionService::Get().Play_Selected(
 		pattern->strPatternId, revision, m_iSourceRevision, outStatus);
+	m_strStatus = outStatus;
+	return played;
 }
 
 bool Client::CKoukuSaydonBossTool::Play_All(std::string& outStatus)
 {
+	if (!Reload(outStatus)) return false;
 	if (!m_bHasSavedComposition ||
 		m_PlayAllPatternIds.empty())
 	{
@@ -351,23 +364,19 @@ bool Client::CKoukuSaydonBossTool::Play_PatternById(
 		m_strStatus = outStatus;
 		return false;
 	}
-	const auto found = std::find_if(
-		m_ProductPatterns.begin(), m_ProductPatterns.end(),
-		[patternId](const PRODUCT_PATTERN& pattern)
-		{
-			return pattern.strPatternId == patternId;
-		});
-	if (found == m_ProductPatterns.end())
-	{
-		outStatus =
-			"The selected Workbench Pattern is not in the saved PRODUCT inventory.";
-		m_strStatus = outStatus;
-		return false;
-	}
-	m_strSelectedPatternId = found->strPatternId;
-	const bool played = Play_Selected(outStatus);
-	m_strStatus = outStatus;
-	return played;
+	return Play_LoadedPatternById(patternId, outStatus);
+}
+
+bool Client::CKoukuSaydonBossTool::Play_SavedPatternById(const std::string_view patternId, std::string& status)
+{
+	const std::string stableId(patternId);
+	return Reload(status) && Play_LoadedPatternById(stableId, status);
+}
+
+bool Client::CKoukuSaydonBossTool::Play_SavedBundleById(const std::string_view bundleId, std::string& status)
+{
+	const std::string stableId(bundleId);
+	return Reload(status) && Play_LoadedBundleById(stableId, status);
 }
 
 bool Client::CKoukuSaydonBossTool::Play_BundleById(const std::string_view bundleId,
@@ -376,9 +385,15 @@ bool Client::CKoukuSaydonBossTool::Play_BundleById(const std::string_view bundle
 	if (!Reload(status)) return false;
 	if (!expectedSourceRevision || expectedSourceRevision!=m_iSourceRevision)
 	{ status=m_strStatus="Saved bundle and Product revisions differ. Save and Publish before Complete Play."; return false; }
+	return Play_LoadedBundleById(bundleId, status);
+}
+
+bool Client::CKoukuSaydonBossTool::Play_LoadedBundleById(const std::string_view bundleId, std::string& status)
+{
 	const auto found=std::find_if(m_ProductBundles.begin(),m_ProductBundles.end(),[&](const auto& b){return b.strBundleId==bundleId;});
 	if (found==m_ProductBundles.end() || !found->strLoadError.empty() || found->Members.empty())
-	{ status=m_strStatus="Select a valid published bundle with all children ready."; return false; }
+	{ status=m_strStatus="Bundle '" + std::string(bundleId) + "' is not ready in published PRODUCT revision " +
+		std::to_string(m_iSourceRevision) + ". Set this Bundle and all child Patterns to PRODUCT, Save, and wait for publish."; return false; }
 	const auto& target=found->Members.front().strTargetBossPlacementId;
 	auto& service=CKoukuSaydonPatternAuditionService::Get();
 	service.Set_TargetBoss(target,CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));

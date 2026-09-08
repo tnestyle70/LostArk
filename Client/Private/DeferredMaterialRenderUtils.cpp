@@ -60,6 +60,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	// A diffuse override can bypass CMaterial's shared-program reset.
 	const uint32_t noSurface = 0u;
 	pShader->Bind_RawValue("g_SurfaceProgram", &noSurface, sizeof(noSurface));
+    pShader->Bind_RawValue("g_SourceCharacterProgram", &noSurface, sizeof(noSurface));
+    pShader->Bind_RawValue("g_SourceCharacterRow", &noSurface, sizeof(noSurface));
 	pShader->Bind_RawValue("g_HasSurfaceDefinition", &noSurface, sizeof(noSurface));
 	const uint32_t iHasNormal = Model.Has_MaterialTexture(
 		iMeshIndex, aiTextureType_NORMALS) ? 1u : 0u;
@@ -152,5 +154,5 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	{
 		return hFirstBindFailure;
 	}
-	return S_OK;
+	return Model.Bind_SourceCharacter(pShader, iMeshIndex);
 }

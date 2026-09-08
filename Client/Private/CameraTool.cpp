@@ -7,6 +7,7 @@
 #include "Collider.h"
 #include "GameInstance.h"
 #include "MainApp.h"
+#include "Level_KakulSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "ValtanCinematicCameraController.h"
 
@@ -265,8 +266,9 @@ void Client::CCameraTool::Open()
 {
 	m_bOpen = true;
 	m_bFocusPending = true;
-	if (!m_bLoaded)
-		(void)Reload();
+	const bool kouku = CLevel_KakulSaydonArena::Get_Active() != nullptr;
+	if (!m_bLoaded || (!m_bDirty && m_bKoukuSource != kouku))
+		(void)Select_Source(kouku);
 }
 
 bool_t Client::CCameraTool::Open_Cue(
@@ -278,11 +280,16 @@ bool_t Client::CCameraTool::Open_Cue(
 		return false;
 	}
 	m_strPendingOpenCueId = request.strCueId;
-	Open();
-	if (!m_bLoaded)
+	m_bOpen = true;
+	m_bFocusPending = true;
+	if ((m_bKoukuSource || !m_bLoaded) && !Select_Source(false))
+	{
+		m_strPendingOpenCueId.clear();
 		return false;
+	}
 	if (nullptr == Find_DraftCue(request.strCueId))
 	{
+		m_strPendingOpenCueId.clear();
 		m_strStatus = "Camera cue was not found: " + request.strCueId;
 		return false;
 	}
@@ -346,6 +353,9 @@ void Client::CCameraTool::Render()
 		return;
 	}
 
+	int source = m_bKoukuSource ? 1 : 0;
+	if (ImGui::Combo("Source", &source, "Valtan\0Kouku Area\0")) (void)Select_Source(source == 1);
+	if (m_bKoukuSource) ImGui::TextDisabled("Pattern Camera shots. Automatic Area shots remain in Map Tool.");
 	if (ImGui::Button("Reload"))
 	{
 		if (m_bDirty)
@@ -371,15 +381,19 @@ void Client::CCameraTool::Render()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 #ifdef _DEBUG
-	if (ImGui::Button("Complete Play (Server/Arena)##CameraTool"))
+	if (!m_bKoukuSource)
 	{
-		if (CMainApp* const app = CMainApp::Get_Active())
-			(void)app->Debug_CompletePlaySelected(m_strCompletePlayStatus);
-		else
-			m_strCompletePlayStatus = "Complete Play workspace is unavailable.";
+		if (ImGui::Button("Complete Play (Server/Arena)##CameraTool"))
+		{
+			if (CMainApp* const app = CMainApp::Get_Active())
+				(void)app->Debug_CompletePlaySelected(m_strCompletePlayStatus);
+			else
+				m_strCompletePlayStatus = "Complete Play workspace is unavailable.";
+		}
+		ImGui::SameLine();
+		ImGui::TextDisabled("%s", m_strCompletePlayStatus.c_str());
 	}
-	ImGui::SameLine();
-	ImGui::TextDisabled("%s", m_strCompletePlayStatus.c_str());
+	else ImGui::TextDisabled("Save, then Play Bundle from Kouku Action Workbench.");
 	ImGui::SameLine();
 #endif
 	ImGui::TextDisabled("%s", m_bDirty ? "UNSAVED DRAFT" : "SOURCE MATCHED");
@@ -445,8 +459,51 @@ void Client::CCameraTool::On_LevelChanged()
 	m_strStatus = "Level changed. Preview was restored; reload or select a cue.";
 }
 
+bool_t Client::CCameraTool::Select_Source(const bool_t kouku)
+{
+	if (m_bDirty && m_bKoukuSource != kouku)
+	{ m_strStatus = "Save or Reload the current Camera draft before changing Source."; return false; }
+	const bool previous = m_bKoukuSource;
+	m_bKoukuSource = kouku;
+	if (Reload()) return true;
+	m_bKoukuSource = previous;
+	return false;
+}
+
+bool_t Client::CCameraTool::Reload_Kouku()
+{
+	const auto path = CProjectDataRoot::Resolve(
+		L"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json");
+	std::string text;
+	std::vector<CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT> shots;
+	if (!Read_TextFile(path, text, m_strStatus) ||
+		!CLevel_KakulSaydonArena::Parse_CameraShots(text, shots, m_strStatus)) return false;
+	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> cues;
+	std::map<std::string, std::string> names;
+	std::set<std::string> ids;
+	for (const auto& shot : shots)
+	{
+		ids.insert(shot.strShotId);
+		if (!shot.bPatternOnly) continue;
+		cues.push_back(CLevel_KakulSaydonArena::CameraShot_ToCue(shot));
+		names.emplace(shot.strShotId, shot.strDisplayName);
+	}
+	Stop_Preview(false);
+	m_CameraPath = path; m_strBaselineText = std::move(text);
+	m_DraftCues = std::move(cues); m_KoukuCameraNames = std::move(names); m_KoukuReservedShotIds = std::move(ids);
+	m_hasDraftDeathCue = false; m_DraftDeathCue = {};
+	m_bLoaded = true; m_bDirty = false; m_bPreviewDraftStale = true;
+	m_fPreviewSeconds = 0.f;
+	if (!Find_DraftCue(m_strSelectedCueId)) m_strSelectedCueId = m_DraftCues.empty() ? "" : m_DraftCues.front().strCueId;
+	const auto* cue = Get_SelectedCue(); m_iSelectedKeyframe = cue && !cue->Keyframes.empty() ? 0 : -1;
+	m_bLookAtDummyEnabled = false; Reset_LookAtDummy();
+	m_strStatus = "Loaded Kouku Area Pattern Cameras. Capture Pos edits this Area source.";
+	return true;
+}
+
 bool_t Client::CCameraTool::Reload()
 {
+	if (m_bKoukuSource) return Reload_Kouku();
 	const std::filesystem::path encounterPath = CProjectDataRoot::Resolve(
 		L"Encounters/Valtan/ValtanEncounter.json");
 	const std::filesystem::path cameraPath = CProjectDataRoot::Resolve(
@@ -487,6 +544,9 @@ bool_t Client::CCameraTool::Validate_Draft(
 	std::string& outText,
 	std::string& outStatus) const
 {
+	if (m_bKoukuSource)
+		return m_bLoaded && CLevel_KakulSaydonArena::Stage_PatternCameraTracks(
+			m_strBaselineText, m_DraftCues, m_KoukuCameraNames, outText, outStatus);
 	if (!m_bLoaded || !m_Encounter.Is_Ready() ||
 		!m_LoadedDocument.Is_Ready())
 	{
@@ -500,6 +560,15 @@ bool_t Client::CCameraTool::Validate_Draft(
 
 bool_t Client::CCameraTool::Save()
 {
+	if (m_bKoukuSource)
+	{
+		auto* level = CLevel_KakulSaydonArena::Get_Active();
+		std::string text;
+		if (!level) { m_strStatus = "Enter KoukuSaydon to save its Area Camera source."; return false; }
+		if (!CLevel_KakulSaydonArena::Stage_PatternCameraTracks(m_strBaselineText, m_DraftCues, m_KoukuCameraNames, text, m_strStatus) ||
+			!level->Save_CameraShotSource(m_strBaselineText, text, m_strStatus)) return false;
+		return Reload_Kouku();
+	}
 	CValtanCinematicCameraDocument stagedDocument;
 	std::string serialized;
 	std::string status;
@@ -1035,7 +1104,7 @@ bool_t Client::CCameraTool::Apply_PreviewPose()
 {
 	if (!Acquire_PreviewCamera())
 		return false;
-	const VALTAN_CINEMATIC_CAMERA_CUE* cue =
+	const VALTAN_CINEMATIC_CAMERA_CUE* cue = m_bKoukuSource ? Get_SelectedCue() :
 		Find_DocumentCue(m_PreviewDocument, m_strSelectedCueId);
 	if (nullptr == cue)
 	{
@@ -1147,8 +1216,9 @@ void Client::CCameraTool::Render_CueList()
 	ImGui::SeparatorText("Cut List");
 	for (const VALTAN_CINEMATIC_CAMERA_CUE& cue : m_DraftCues)
 	{
+		const auto label = m_bKoukuSource ? m_KoukuCameraNames.at(cue.strCueId) + "###" + cue.strCueId : cue.strCueId;
 		if (ImGui::Selectable(
-			cue.strCueId.c_str(), cue.strCueId == m_strSelectedCueId))
+			label.c_str(), cue.strCueId == m_strSelectedCueId))
 		{
 			Select_Cue(cue.strCueId);
 		}
@@ -1169,6 +1239,16 @@ void Client::CCameraTool::Render_CueList()
 void Client::CCameraTool::Render_CutManagement()
 {
 	ImGui::SeparatorText("Cut Management");
+	if (m_bKoukuSource)
+	{
+		ImGui::InputTextWithHint("##newCutName", "Camera name", m_szNewCutName, sizeof(m_szNewCutName));
+		if (ImGui::Button("New Cut")) (void)Create_Cut();
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!Get_SelectedCue());
+		if (ImGui::Button("Delete Cut")) (void)Delete_SelectedCut();
+		ImGui::EndDisabled();
+		return;
+	}
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint("##newCutName", "cut name (a-z 0-9 . _ -)",
 		m_szNewCutName, sizeof(m_szNewCutName));
@@ -1272,7 +1352,19 @@ void Client::CCameraTool::Render_CueEditor()
 	}
 	ImGui::SeparatorText("Cut Draft");
 	ImGui::Text("%s", cue->strCueId.c_str());
-	if (!Is_DeathCueSelected())
+	if (m_bKoukuSource)
+	{
+		char name[129]{};
+		(void)strcpy_s(name, m_KoukuCameraNames.at(cue->strCueId).c_str());
+		if (ImGui::InputText("Camera name", name, sizeof(name)))
+		{ m_KoukuCameraNames[cue->strCueId] = name; Mark_Dirty("Edited Camera display name; stable shot ID is unchanged."); }
+		if (ImGui::InputScalar("Blend in ms", ImGuiDataType_U32, &cue->iTransitionInMs))
+		{ cue->iTransitionInMs = (std::min)(cue->iTransitionInMs, 10000u); Mark_Dirty("Edited Camera entry blend."); }
+		if (ImGui::InputScalar("Return ms", ImGuiDataType_U32, &cue->iTransitionOutMs))
+		{ cue->iTransitionOutMs = (std::min)(cue->iTransitionOutMs, 10000u); Mark_Dirty("Edited Camera return to the moving player."); }
+		ImGui::TextWrapped("Start previews this path. Bundle Camera box end starts Return ms toward the current player Follow view.");
+	}
+	else if (!Is_DeathCueSelected())
 	{
 		ImGui::TextDisabled("Pattern %s  |  Stage %s",
 			cue->strPatternId.c_str(), cue->strStageId.c_str());
@@ -1281,7 +1373,7 @@ void Client::CCameraTool::Render_CueEditor()
 	/* Simple flow first: capture positions, review them in the pos list,
 	   fine-tune the selected one, then Start plays the connected path. The
 	   full editor stays available under Advanced. */
-	const bool_t playable = cue->Keyframes.size() >= 2u;
+	const bool_t playable = cue->Keyframes.size() >= (m_bKoukuSource ? 1u : 2u);
 	if (ImGui::Button("Capture Pos"))
 		(void)Append_CapturedPos(*cue);
 	ImGui::SameLine();
@@ -1294,7 +1386,7 @@ void Client::CCameraTool::Render_CueEditor()
 	{
 		if (!playable)
 		{
-			m_strStatus =
+			m_strStatus = m_bKoukuSource ? "Capture a position before playing the camera." :
 				"Capture at least two positions before playing the path.";
 		}
 		else
@@ -1347,7 +1439,7 @@ void Client::CCameraTool::Render_AdvancedEditor(
 		}
 		cue->iDurationMs = (std::clamp)(duration, minimumDuration, maximumDuration);
 		if (!cue->Keyframes.empty())
-			cue->Keyframes.back().iTimeMs = cue->iDurationMs;
+			cue->Keyframes.back().iTimeMs = cue->Keyframes.size() == 1u ? 0u : cue->iDurationMs;
 		m_fPreviewSeconds = (std::min)(
 			m_fPreviewSeconds,
 			static_cast<f32_t>(cue->iDurationMs) * 0.001f);
@@ -1372,7 +1464,7 @@ void Client::CCameraTool::Render_AdvancedEditor(
 		Mark_Dirty("Edited camera cue easing.");
 	}
 
-	if (!Is_DeathCueSelected())
+	if (!m_bKoukuSource && !Is_DeathCueSelected())
 	{
 		int tracking = static_cast<int>(cue->eTrackingMode);
 		const char_t* modes[] = {
@@ -1404,7 +1496,7 @@ void Client::CCameraTool::Render_AdvancedEditor(
 			}
 		}
 	}
-	if (ImGui::InputFloat(
+	if (!m_bKoukuSource && ImGui::InputFloat(
 		"Shake Amplitude", &cue->fShakeAmplitude, 0.01f, 0.1f, "%.3f"))
 	{
 		cue->fShakeAmplitude = (std::clamp)(
@@ -1416,7 +1508,7 @@ void Client::CCameraTool::Render_AdvancedEditor(
 				DEFAULT_CAMERA_SHAKE_DURATION_MS, cue->iDurationMs);
 		Mark_Dirty("Edited camera shake amplitude.");
 	}
-	if (ImGui::InputScalar(
+	if (!m_bKoukuSource && ImGui::InputScalar(
 		"Shake Duration (ms)", ImGuiDataType_U32, &cue->iShakeDurationMs))
 	{
 		cue->iShakeDurationMs = (std::min)(
@@ -1453,7 +1545,8 @@ void Client::CCameraTool::Render_AdvancedEditor(
 		}
 		ImGui::EndDisabled();
 		if (endpoint)
-			ImGui::TextDisabled(
+			ImGui::TextDisabled(m_bKoukuSource && cue->Keyframes.size() == 1u ?
+				"A single Pos stays at 0 ms and holds its pose for the whole duration." :
 				"First and final scene times stay bound to 0 and cue duration.");
 	}
 	if (ImGui::Button("Insert Sampled Scene"))
@@ -1487,7 +1580,7 @@ void Client::CCameraTool::Render_KeyframeEditor(
 				m_bPlaying = false;
 				m_fPreviewSeconds =
 					static_cast<f32_t>(cue.Keyframes[index].iTimeMs) * 0.001f;
-				if (cue.Keyframes.size() >= 2u)
+				if (cue.Keyframes.size() >= (m_bKoukuSource ? 1u : 2u))
 					(void)Apply_PreviewPose();
 				if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
 				{
@@ -1500,9 +1593,10 @@ void Client::CCameraTool::Render_KeyframeEditor(
 	}
 	ImGui::TextDisabled(
 		"Capture Pos appends P1..PN and clicking a pos moves the camera to it.");
-	if (cue.Keyframes.size() < 2u)
-		ImGui::TextDisabled(
-			"Save and playback need at least two positions (a start and an end).");
+	if (m_bKoukuSource)
+		ImGui::TextDisabled("One Pos is enough for a fixed camera. Entry and Return are blended by the bundle.");
+	else if (cue.Keyframes.size() < 2u)
+		ImGui::TextDisabled("Save and playback need at least two positions (a start and an end).");
 	if (m_iSelectedKeyframe < 0 ||
 		m_iSelectedKeyframe >= static_cast<int32_t>(cue.Keyframes.size()))
 	{
@@ -1539,10 +1633,10 @@ void Client::CCameraTool::Render_KeyframeEditor(
 	{
 		m_bPlaying = false;
 		m_fPreviewSeconds = static_cast<f32_t>(key.iTimeMs) * 0.001f;
-		if (cue.Keyframes.size() >= 2u)
+		if (cue.Keyframes.size() >= (m_bKoukuSource ? 1u : 2u))
 			(void)Apply_PreviewPose();
 		else
-			m_strStatus =
+			m_strStatus = m_bKoukuSource ? "Capture a position before previewing the camera." :
 				"Capture at least two positions before previewing the path.";
 	}
 
@@ -1756,6 +1850,7 @@ f32_t Client::CCameraTool::Calculate_SegmentArcLength(
 uint32_t Client::CCameraTool::Get_MaximumCueDuration(
 	const VALTAN_CINEMATIC_CAMERA_CUE& cue) const
 {
+	if (m_bKoukuSource) return 120000u;
 	if (Is_DeathCueSelected())
 		return CEncounterPatternReference::MAX_STAGE_DURATION_MS;
 	const ENCOUNTER_PATTERN_REFERENCE* pattern =
@@ -1948,6 +2043,26 @@ bool_t Client::CCameraTool::Delete_SelectedKeyframe(
 
 bool_t Client::CCameraTool::Create_Cut()
 {
+	if (m_bKoukuSource)
+	{
+		const std::string name(m_szNewCutName);
+		if (!m_bLoaded || name.empty() || name.size() > 128u ||
+			MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name.data(), static_cast<int>(name.size()), nullptr, 0) <= 0)
+		{ m_strStatus = "Camera name requires 1..128 UTF-8 bytes."; return false; }
+		VALTAN_CINEMATIC_CAMERA_CUE cue;
+		for (uint32_t ordinal = 1u; ordinal <= 65u; ++ordinal)
+		{
+			cue.strCueId = "camera.kouku.pattern." + std::to_string(ordinal);
+			if (!Find_DraftCue(cue.strCueId) && !m_KoukuReservedShotIds.contains(cue.strCueId)) break;
+		}
+		if (Find_DraftCue(cue.strCueId) || m_KoukuReservedShotIds.contains(cue.strCueId))
+		{ m_strStatus = "Camera shot IDs are exhausted."; return false; }
+		cue.iDurationMs = 3500u; cue.iTransitionInMs = 500u; cue.iTransitionOutMs = 500u;
+		m_KoukuCameraNames[cue.strCueId] = name;
+		const auto id = cue.strCueId; m_DraftCues.push_back(std::move(cue)); Select_Cue(id);
+		m_szNewCutName[0] = '\0'; Mark_Dirty("Created a Kouku Camera cut. Capture one position, then Save.");
+		return true;
+	}
 	if (!m_bLoaded || !m_Encounter.Is_Ready())
 	{
 		m_strStatus = "Reload the camera document before creating a cut.";

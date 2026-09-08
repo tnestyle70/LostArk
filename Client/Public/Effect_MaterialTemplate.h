@@ -1,6 +1,11 @@
 #pragma once
 
 #include "Effect_AuthoringDocument.h"
+#include "Effect_DimensionMasterQMaterial.h"
+#include "Effect_DimensionMasterVMaterial.h"
+#include "Effect_DimensionMasterALTVMaterial.h"
+#include "Effect_DimensionMasterWRMaterial.h"
+#include "Effect_DimensionMasterSDMaterial.h"
 
 #include <algorithm>
 #include <array>
@@ -60,7 +65,13 @@ inline constexpr std::string_view
 inline constexpr std::string_view EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID =
 	"effect.ue3.watertrail-01.v1";
 
-inline constexpr std::array<std::string_view, 22u>
+inline constexpr std::string_view EFFECT_CUBESAMPLE_SCENE_RUNTIME_PROFILE_ID =
+	"effect.ue3.cubesample-01-scene.v1";
+
+inline constexpr std::string_view EFFECT_SLICE_SCENE_DEPTH_RUNTIME_PROFILE_ID =
+	"effect.ue3.slice-01-depth.v1";
+
+inline constexpr std::array<std::string_view, 57u>
 	EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS = {{
 		"effect.ue3.reconstructed-standard.v1",
 		"effect.ue3.fallback-blocked.v1",
@@ -83,7 +94,42 @@ inline constexpr std::array<std::string_view, 22u>
 		"effect.ue3.fluidninja-01.v1",
 		"effect.ue3.customparticle-01.v1",
 		"effect.ue3.crackholev2-01.v1",
-		"effect.ue3.simple-01.v1"
+		"effect.ue3.simple-01.v1",
+		EFFECT_CUBESAMPLE_SCENE_RUNTIME_PROFILE_ID,
+		EFFECT_SLICE_SCENE_DEPTH_RUNTIME_PROFILE_ID,
+		"effect.ue3.q-blackline-aura-native.v1",
+		"effect.ue3.q-basic-add-native.v1",
+		"effect.ue3.q-missiletrail-sprite-native.v1",
+		"effect.ue3.q-center-glow-native.v1",
+		"effect.ue3.q-rot-turbulence-native.v1",
+		"effect.ue3.q-simple-add-native.v1",
+		"effect.ue3.q-local-crack-native.v1",
+		"effect.ue3.q-glass-hole-native.v1",
+		"effect.ue3.v-bfx-c-pa-lightflare-01-ddt-4-ad-native.v1",
+		"effect.ue3.v-bfx-d-pa-circ-01-01-dt-ad-native.v1",
+		"effect.ue3.v-bfx-d-pa-flar-02-01-ad-native.v1",
+		"effect.ue3.v-bfx-j-pa-ring-07-06-ad-native.v1",
+		"effect.ue3.v-fx-a-pa-gl-01-9-ad-native.v1",
+		"effect.ue3.v-fx-d-pa-atta-05-07-ad-native.v1",
+		"effect.ue3.v-fx-d-pa-atta-09-02-ad-native.v1",
+		"effect.ue3.v-fx-d-pa-atta-09-04-tr-native.v1",
+		"effect.ue3.v-fx-j-me-ringrainbow-01-2-ts-tr-native.v1",
+		"effect.ue3.v-fx-j-pa-chromaring-01-ad-native.v1",
+		"effect.ue3.v-fx-j-pa-circledisort-01-ad-native.v1",
+		"effect.ue3.v-fx-e-pa-ht-18-4-tr-native.v1",
+		"effect.ue3.v-fx-j-rgbsplit-01-2-ad-native.v1",
+		"effect.ue3.v-fx-d-pa-flare-03-ad-native.v1",
+		"effect.ue3.v-fx-j-me-localcrack-01-07-tr-native.v1",
+		"effect.ue3.v-fx-j-pa-slice-01-07-tr-native.v1",
+		"effect.ue3.v-fx-j-po-rgbnoise-01-01-tr-native.v1",
+		"effect.ue3.v-fx-o-pa-splitline-02-ad-native.v1",
+		"effect.ue3.v-fx-r-me-ringmaster-11-01-ts-fs-ad-native.v1",
+		"effect.ue3.v-fx-r-pa-customparticle-02-01-ad-native.v1",
+		"effect.ue3.v-fx-r-pa-ri-04-02-ad-native.v1",
+		"effect.ue3.v-fx-r-pa-ringmaster-12-03-dt-ad-native.v1",
+		"effect.ue3.v-fx-r-pa-ringmaster-12-04-dt-ad-native.v1",
+		"effect.ue3.v-fx-r-pa-slice-01-02-tr-native.v1",
+		"effect.ue3.v-fx-c-pa-zoomblur-01-tr-native.v1"
 	}};
 
 // fx_mm_simple_01_ad is the corpus' most-used parent: 359 grouped occurrences
@@ -886,7 +932,12 @@ inline bool_t Is_SupportedEffectSourceRuntimeShaderProfile(
 	const std::string_view strProfileId)
 {
 	return Contains_EffectMaterialToken(
-		EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS, strProfileId);
+		EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS, strProfileId) ||
+		nullptr != Find_DimensionMasterALTVProgram(strProfileId) ||
+		nullptr != Find_DimensionMasterSDProgram(strProfileId) ||
+		nullptr != Find_DimensionMasterWRProgram(strProfileId) ||
+		nullptr != Find_DimensionMasterVProgram(strProfileId) ||
+		nullptr != Find_DimensionMasterQProgram(strProfileId);
 }
 
 inline bool_t Is_SupportedEffectSourceDynamicParameterSemantic(
@@ -1396,6 +1447,78 @@ inline const EFFECT_NAMED_TEXTURE_DESC* Find_EffectUniqueNamedTexture(
 		pMatch = &Texture;
 	}
 	return nullptr != pMatch && !pMatch->strAssetId.empty() ? pMatch : nullptr;
+}
+
+inline bool_t Has_EffectCubeSampleSceneContract(const EFFECT_ELEMENT_DESC& Element)
+{
+	const EFFECT_SOURCE_MATERIAL_DESC& Source = Element.Material.SourceMaterial;
+	if (!Source.bEnabled || Element.Material.Execution.bEnabled ||
+		Source.strRuntimeShaderProfileId != EFFECT_CUBESAMPLE_SCENE_RUNTIME_PROFILE_ID ||
+		Source.strProfileId !=
+			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.me.cubesample.01.tr.18cdc7bb814f" ||
+		Source.strParentMaterialPath != "fx_m_mi_j_00.fx_m.fx_j_me_cubesample_01_tr" ||
+		Element.Material.strSourceMaterialPath != "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_04_tr" ||
+		Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+		!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "mesh" ||
+		std::ranges::count_if(Element.ResourceBindings,
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{ return Binding.strSlotId == "meshModel" && !Binding.strAssetId.empty(); }) != 1 ||
+		Element.Material.eRenderProfile != EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+		Source.Textures.size() != 1u ||
+		Source.StaticSwitches.size() != 1u ||
+		nullptr == Find_EffectUniqueNamedTexture(Source, "spec_texture"))
+		return false;
+	for (const EFFECT_NAMED_BOOL_DESC& Switch : Source.StaticSwitches)
+		if (Switch.strName != "use_emissiveclamp" || Switch.bValue)
+			return false;
+	// This selected Q emitter has no DynamicParameter module. The recovered
+	// MeshEmitterDynamicParameter uniform therefore uses its material default.
+	return std::ranges::none_of(Element.SourceRecipe.Modules,
+		[](const EFFECT_SOURCE_MODULE_DESC& Module)
+		{
+			return Module.strClassName == "particlemoduleparameterdynamic";
+		});
+}
+
+inline bool_t Has_EffectSliceSceneDepthContract(const EFFECT_ELEMENT_DESC& Element)
+{
+	const EFFECT_SOURCE_MATERIAL_DESC& Source = Element.Material.SourceMaterial;
+	if (!Source.bEnabled || Element.Material.Execution.bEnabled ||
+		Source.strRuntimeShaderProfileId != EFFECT_SLICE_SCENE_DEPTH_RUNTIME_PROFILE_ID ||
+		Source.strProfileId !=
+			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.slice.01.tr.afc439ecf232" ||
+		Source.strParentMaterialPath != "fx_m_mi_j_00.fx_m.fx_j_pa_slice_01_tr" ||
+		Element.Material.strSourceMaterialPath != "fx_m_mi_j_00.fx_mi.fx_j_pa_slice_01_10_tr" ||
+		Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+		!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite" ||
+		std::ranges::any_of(Element.ResourceBindings,
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{ return Binding.strSlotId == "meshModel"; }) ||
+		Element.Material.eRenderProfile != EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+		Source.Textures.size() != 1u || !Source.StaticSwitches.empty() ||
+		nullptr == Find_EffectUniqueNamedTexture(Source, "slice_flow_texture"))
+		return false;
+	constexpr std::array<std::string_view, 4u> Names = {
+		"slice_light", "opacity_radialgra", "flow_str", "param4" };
+	std::array<bool_t, 4u> Seen{};
+	uint32_t count = 0u;
+	for (const EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
+	{
+		if (Module.strClassName != "particlemoduleparameterdynamic") continue;
+		++count;
+		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+		{
+			for (size_t lane = 0u; lane < Names.size(); ++lane)
+			{
+				if (Literal.strPropertyPath != "dynamicparams[" +
+					std::to_string(lane) + "].paramname") continue;
+				if (Seen[lane] || Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::STRING ||
+					Literal.strString != Names[lane]) return false;
+				Seen[lane] = true;
+			}
+		}
+	}
+	return count == 1u && std::ranges::all_of(Seen, [](bool_t value) { return value; });
 }
 
 inline bool_t Is_EffectNamedTextureLaneUnique(

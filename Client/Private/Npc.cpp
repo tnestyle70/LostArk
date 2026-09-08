@@ -139,7 +139,8 @@ bool_t CNpc::Play_NetworkAction(
 	const char_t* pClipName,
 	const bool_t isLoop,
 	const f32_t fPlaybackRate,
-	const f32_t fBlendSeconds)
+	const f32_t fBlendSeconds,
+	const f32_t fRootVerticalScale)
 {
 	m_fTransientActionRemainingSeconds = 0.f;
 	m_strTransientReturnClip.clear();
@@ -148,10 +149,13 @@ bool_t CNpc::Play_NetworkAction(
 		fPlaybackRate < 0.1f || fPlaybackRate > 4.f ||
 		!std::isfinite(fBlendSeconds) ||
 		fBlendSeconds < 0.f || fBlendSeconds > 2.f ||
+		!std::isfinite(fRootVerticalScale) || fRootVerticalScale < 0.f || fRootVerticalScale > 1.f ||
+		(fRootVerticalScale != 1.f && !m_bSuppressRootMotion) ||
 		!m_pModelCom->Set_Animation(pClipName, isLoop, fBlendSeconds))
 	{
 		return false;
 	}
+	if (!m_pModelCom->Set_RootMotionVerticalScale(fRootVerticalScale)) return false;
 	m_pModelCom->Set_AnimationSpeed(fPlaybackRate);
 	if (!m_pModelCom->Start_Animation(
 			m_pModelCom->Get_CurrentAnimIndex(), isLoop))

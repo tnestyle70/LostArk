@@ -213,7 +213,11 @@ namespace
 					  "sourceStartMs", "playMs", "playRate", "endPolicy" }) &&
 				!Has_ExactProperties(value,
 					{ "actionId", "occurrenceId", "clip", "startOffsetMs",
-					  "sourceStartMs", "playMs", "playRate", "endPolicy", "unblendedBoneContact" }))
+					  "sourceStartMs", "playMs", "playRate", "endPolicy", "unblendedBoneContact" }) &&
+				!Has_ExactProperties(value,
+					{ "actionId", "occurrenceId", "clip", "startOffsetMs", "sourceStartMs", "playMs", "playRate", "endPolicy", "animationRootVerticalScale" }) &&
+				!Has_ExactProperties(value,
+					{ "actionId", "occurrenceId", "clip", "startOffsetMs", "sourceStartMs", "playMs", "playRate", "endPolicy", "unblendedBoneContact", "animationRootVerticalScale" }))
 			{
 				outStatus = "KoukuSaydon Product animation row has unexpected fields.";
 				++skipped; continue;
@@ -236,6 +240,7 @@ namespace
 				value, "endPolicy", DATA_JSON_TYPE::STRING);
 			KOUKU_SAYDON_ACTION_PRESENTATION row;
 			const DATA_JSON_VALUE* unblended = value.Find("unblendedBoneContact");
+			const auto* verticalScale = value.Find("animationRootVerticalScale");
 			std::uint32_t parsedStartOffset = 0u;
 			std::uint32_t parsedSourceStart = 0u;
 			if (nullptr == action || !Is_StableToken(action->Get_String()) ||
@@ -251,7 +256,9 @@ namespace
 				!std::isfinite(playRate->Get_Number()) ||
 				playRate->Get_Number() < 0.1 || playRate->Get_Number() > 4.0 ||
 				nullptr == endPolicy || endPolicy->Get_String() != "EXACT" ||
-				!Has_Clip(model, clip->Get_String()) || (unblended && !unblended->Is_Boolean()))
+				!Has_Clip(model, clip->Get_String()) || (unblended && !unblended->Is_Boolean()) ||
+				(verticalScale && (!verticalScale->Is_Number() || !std::isfinite(verticalScale->Get_Number()) ||
+					verticalScale->Get_Number() < 0.0 || verticalScale->Get_Number() > 1.0)))
 			{
 				outStatus = "KoukuSaydon Product animation row is invalid or unsupported.";
 				++skipped; continue;
@@ -260,6 +267,7 @@ namespace
 			row.strOccurrenceId = occurrence->Get_String();
 			row.strClip = clip->Get_String();
 			row.fPlayRate = static_cast<f32_t>(playRate->Get_Number());
+			row.fAnimationRootVerticalScale = verticalScale ? static_cast<f32_t>(verticalScale->Get_Number()) : 1.f;
 			row.bUnblendedBoneContact = unblended && unblended->Get_Boolean();
 			const std::string actionId = row.strActionId;
 			if (duplicates.contains(actionId) || !staged.emplace(actionId, std::move(row)).second)

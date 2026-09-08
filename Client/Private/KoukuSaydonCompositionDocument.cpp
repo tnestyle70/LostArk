@@ -1164,6 +1164,9 @@ namespace
 				return false;
 			}
 
+			if (!std::isfinite(pattern.fAnimationRootVerticalScale) ||
+				pattern.fAnimationRootVerticalScale < 0.0 || pattern.fAnimationRootVerticalScale > 1.0)
+			{ outStatus = "Animation root vertical scale must be finite 0..1."; return false; }
 			if (pattern.ResetBossYawDegrees && (!pattern.bResetBossToSpawn ||
 				!std::isfinite(*pattern.ResetBossYawDegrees) || std::abs(*pattern.ResetBossYawDegrees) > 360.0))
 			{
@@ -1238,6 +1241,20 @@ namespace
 			std::uint64_t lifetimeMs = 0u;
 			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern.Stages)
 				lifetimeMs += stage.iDurationMs;
+			if (pattern.BossMotion)
+			{
+				const auto& motion = *pattern.BossMotion;
+				if (std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
+					[](const auto& stage) { return stage.bRetargetOnEnter; }))
+				{ outStatus = "Stage retargetOnEnter cannot share a Pattern with fixed-yaw Boss Motion."; return false; }
+				if (pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
+					motion.iStartMs >= motion.iEndMs || motion.iEndMs > lifetimeMs ||
+					!Valid_PresentationVector(motion.StartPosition, -100000.0, 100000.0) ||
+					!Valid_PresentationVector(motion.EndPosition, -100000.0, 100000.0) ||
+					motion.StartPosition[1] != motion.EndPosition[1] ||
+					!std::isfinite(motion.fYawDegrees) || std::abs(motion.fYawDegrees) > 360.0)
+				{ outStatus = "Boss Motion needs a valid pattern interval, equal base Y and no spawn reset."; return false; }
+			}
 			std::unordered_set<std::string> regionIds;
 			std::unordered_set<std::string> companionWorldBoxes;
 			for (const auto& row : pattern.PresentationOccurrences)
@@ -1336,6 +1353,8 @@ namespace
 					return false;
 				}
 				const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& owner = *findLogic(box.strLogicId);
+				if (pattern.BossMotion && box.bEnabled && owner.strTriggerKind == "REAL_GAZE_TELEPORT")
+				{ outStatus = "Boss Motion cannot also teleport the boss."; return false; }
 				if (owner.strJudgementKind == "OBJECT_OVERLAP")
 				{
 					const auto count = std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(), [&](const auto& worldBox) {
@@ -2153,7 +2172,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "gateId", "targetBossPlacementId", "folderId" }) :
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "gateId", "targetBossPlacementId", "folderId" }) :
 			Has_Properties(patternValue,
 				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
 				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
@@ -2161,7 +2180,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "gateId", "targetBossPlacementId", "folderId" });
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "gateId", "targetBossPlacementId", "folderId" });
 		if (!validProperties)
 		{
 			outStatus = "KoukuSaydon Pattern has unexpected properties.";
@@ -2199,9 +2218,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 
 		for (const DATA_JSON_VALUE& stageValue : stages->Get_Array())
 		{
-			if (!Has_ExactProperties(stageValue,
+			if (!Has_Properties(stageValue,
 					{ "stageId", "actionId", "stageKind", "durationMs",
-					  "animationOccurrences" }))
+					  "animationOccurrences" }, { "retargetOnEnter" }))
 			{
 				outStatus = "KoukuSaydon Stage has unexpected properties.";
 				return false;
@@ -2226,6 +2245,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			stagedStage.strStageId = stageId->Get_String();
 			stagedStage.strActionId = actionId->Get_String();
 			stagedStage.strStageKind = stageKind->Get_String();
+			if (const DATA_JSON_VALUE* retarget = stageValue.Find("retargetOnEnter"))
+			{
+				if (!retarget->Is_Boolean())
+				{ outStatus = "KoukuSaydon Stage retargetOnEnter must be boolean."; return false; }
+				stagedStage.bRetargetOnEnter = retarget->Get_Boolean();
+			}
 			parsedOccurrences += occurrences->Get_Array().size();
 			stagedStage.AnimationOccurrences.reserve(occurrences->Get_Array().size());
 
@@ -2517,6 +2542,21 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			if (!stagedPattern.bResetBossToSpawn || !Try_ParseFinite(*yaw, -360.0, 360.0, degrees))
 			{ outStatus = "Invalid resetBossYawDegrees: enable spawn reset and use -360..360 degrees."; return false; }
 			stagedPattern.ResetBossYawDegrees = degrees;
+		}
+		if (const auto* scale = patternValue.Find("animationRootVerticalScale"); nullptr != scale)
+			if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootVerticalScale))
+			{ outStatus = "Invalid animationRootVerticalScale: use 0..1."; return false; }
+		if (const auto* value = patternValue.Find("bossMotion"); nullptr != value)
+		{
+			KOUKU_SAYDON_BOSS_MOTION motion;
+			if (!Has_ExactProperties(*value, { "startMs", "endMs", "startPosition", "endPosition", "yawDegrees" }) ||
+				!Try_ParseUnsigned(*value->Find("startMs"), MAX_TIME_MS, motion.iStartMs) ||
+				!Try_ParseUnsigned(*value->Find("endMs"), MAX_TIME_MS, motion.iEndMs) ||
+				!Read_PresentationVector(*value, "startPosition", motion.StartPosition, -100000.0, 100000.0) ||
+				!Read_PresentationVector(*value, "endPosition", motion.EndPosition, -100000.0, 100000.0) ||
+				!Try_ParseFinite(*value->Find("yawDegrees"), -360.0, 360.0, motion.fYawDegrees))
+			{ outStatus = "Invalid Boss Motion fields."; return false; }
+			stagedPattern.BossMotion = motion;
 		}
 		if (const auto* ordinal = patternValue.Find("nextPresentationOccurrenceOrdinal"); nullptr != ordinal)
 			if (!Try_ParseUnsigned(*ordinal, MAX_NEXT_ORDINAL, stagedPattern.iNextPresentationOccurrenceOrdinal) ||
@@ -3032,8 +3072,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"stageId\": \"" << CDataJson::Escape(stage.strStageId) << "\",\n"
 				<< "          \"actionId\": \"" << CDataJson::Escape(stage.strActionId) << "\",\n"
 				<< "          \"stageKind\": \"" << CDataJson::Escape(stage.strStageKind) << "\",\n"
-				<< "          \"durationMs\": " << stage.iDurationMs << ",\n"
-				<< "          \"animationOccurrences\": [\n";
+				<< "          \"durationMs\": " << stage.iDurationMs << ",\n";
+			if (stage.bRetargetOnEnter) output << "          \"retargetOnEnter\": true,\n";
+			output << "          \"animationOccurrences\": [\n";
 			for (std::size_t occurrenceIndex = 0u;
 				occurrenceIndex < stage.AnimationOccurrences.size(); ++occurrenceIndex)
 			{
@@ -3115,6 +3156,18 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "        }" << (boxIndex + 1u < pattern.SceneProfileOccurrences.size() ? "," : "") << "\n";
 		}
 		output << "      ],\n      \"resetBossToSpawn\": " << (pattern.bResetBossToSpawn ? "true" : "false");
+		if (pattern.fAnimationRootVerticalScale != 1.0)
+			output << ",\n      \"animationRootVerticalScale\": " << pattern.fAnimationRootVerticalScale;
+		if (pattern.BossMotion)
+		{
+			const auto& motion = *pattern.BossMotion;
+			output << ",\n      \"bossMotion\": {\"startMs\": " << motion.iStartMs
+				<< ", \"endMs\": " << motion.iEndMs << ", \"startPosition\": ";
+			Write_PresentationVector(output, motion.StartPosition);
+			output << ", \"endPosition\": ";
+			Write_PresentationVector(output, motion.EndPosition);
+			output << ", \"yawDegrees\": " << motion.fYawDegrees << "}";
+		}
 		if (pattern.ResetBossYawDegrees)
 			output << ",\n      \"resetBossYawDegrees\": " << *pattern.ResetBossYawDegrees;
 		output << ",\n      \"nextPresentationOccurrenceOrdinal\": " << pattern.iNextPresentationOccurrenceOrdinal
@@ -3384,5 +3437,22 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 	m_strStatus = "Saved and reopened KoukuSaydon composition revision " +
 		std::to_string(m_LastGood.iRevision) + ".";
 	outStatus = m_strStatus;
+	return true;
+}
+
+
+bool Client::Sample_KoukuSaydonBossMotion(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const double patternTimeMs,
+	std::array<double, 3u>& outPosition, double& outYawDegrees) noexcept
+{
+	if (!pattern.BossMotion || !std::isfinite(patternTimeMs)) return false;
+	const auto& motion = *pattern.BossMotion;
+	if (motion.iEndMs <= motion.iStartMs) return false;
+	const double alpha = std::clamp((patternTimeMs - motion.iStartMs) /
+		static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
+	for (std::size_t axis = 0u; axis < outPosition.size(); ++axis)
+		outPosition[axis] = motion.StartPosition[axis] +
+			(motion.EndPosition[axis] - motion.StartPosition[axis]) * alpha;
+	outYawDegrees = motion.fYawDegrees;
 	return true;
 }

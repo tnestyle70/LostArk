@@ -25,7 +25,7 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | 279 assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, source stone material/baked lighting 7 placements, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
@@ -33,6 +33,19 @@ LevelCatalog scenario
 수련장은 Lobby의 `Enter Training`에서 Server 승인을 받은 뒤 `LEVEL::DEVELOPMENT`로 진입한다. Debug/Release network smoke는 map load, player spawn, Q command, Server action 승인, cooldown HUD 반영까지 검사한다.
 
 ## 3. 레이어별 생략 규칙
+
+발탄 중앙 석재 7배치는 `MapCatalog.json`의 `sourceMaterials/materials` 쌍으로 선언한
+`LV_LUT_HEARTRB_ED.mapmaterials.json` formatVersion 2를 소비한다. 선택 family
+`bg_base_opa_overlay`는 기본/overlay D/N 네 입력과 배치별 원본 COLOR0, UV1 및 tangent
+handedness가 필요하다. `placementLighting`은 sourcePlacementId와 variant assetId별
+평균색·방향 lightmap의 atlas 좌표와 RGB 계수를 운반한다. 필수 geometry/texture가 빠지면
+해당 Area stage가 실패하며 흰 정점색이나 UV0를 정상 입력으로 대체하지 않는다.
+
+catalog는 `Data/Maps/Imported`, placement/materials는 `Data/Maps/Authoring`에서 관리하고
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`로 함께 배포한다. 이 변경을 공유할
+때는 Git 제외 `Resources/Map/LV_LUT_HEARTRB_ED/SourceStoneRestore/`와
+`Resources/Map/Lighting/Valtan/`도 필요하다. 기존 Deploy·파괴·Server gameplay 계약은
+이 표면 재질 문서에 포함되지 않는다.
 
 | 레이어 | 없을 때 | 불완전할 때 |
 |---|---|---|
@@ -53,6 +66,11 @@ LevelCatalog scenario
 `Client/Bin/DataFiles/Map/<AreaId>.mapmaterials.json`을 선언한다.
 `lostark.map-materials` formatVersion 1/2의 재질 key는 `assetId + materialName`이다.
 `sourceMaterial`은 원본 근거이며 WModel의 material 이름과 별개다.
+v1/2의 `diffuse-sampler` 행은 `assetId`, `materialName`, `sourceMaterial`, `family`,
+`sourceTexture`, `addressU`만 저장하며 `addressU`는 `WRAP` 또는 `MIRROR`다.
+원본 Texture2D의 주소 방식이 필요한 legacy diffuse 재질에만 사용하고 V축은 WRAP을 유지한다.
+기존 diffuse 경로·UV·표면 수치·그림자 정책은 보존한다. 다른 surface family와 같은 material key로
+중복 선언하지 않는다. `sourceTexture`는 원본 object 경로 근거이고 새 texture 교체 경로가 아니다.
 v1의 `bg_seamless-specular_msk`, `bg_base_msk`를 유지하며, v2는
 `bg_base_pbr_seamless_opa`, `bg_base_pbr_opa`의 원본 채널·계산을 지원한다.
 PBR 입력에는 texture별 색 공간, optional `bakedLighting`/`environment`가 있다.
@@ -187,7 +205,9 @@ Action Workbench는 부모 Object를 선택해 기본 상태로 Append하며, WO
 `objectResourceId`와 `sequenceInstanceId`가 부모 및 Append 당시 초기 상태를 저장한다. 이후 기본 상태를
 변경해도 기존 박스의 초기 상태는 바뀌지 않는다. Map 모델 occurrence의 optional `placement`는 절대
 `position`, degree `rotationDegrees`, Object 기본 크기의 배수 `scale`을 소유한다. 기존 placement 없는 문서는
-원래 동작을 유지한다. 이 TRS는 projector → Server → Shared protocol 68 → 기존 Client player로 전달된다.
+원래 동작을 유지한다. 이 TRS는 projector → Server → Shared protocol 69 → 기존 Client player로 전달된다.
+owner 정상 완료의 `FINISH_OWNER`는 이미 시작한 WORLD의 저작 수명을 보존하며, 취소·실패의
+`STOP_OWNER`는 즉시 정리한다. protocol 68 실행 파일과 혼용하지 않고 Server와 Client를 함께 갱신·재시작한다.
 Object Tool Save가 기존 `Publish-MapAuthoring.ps1 -Scope WorldSequences`를 비동기 실행하며 이 scope는
 해당 Area worldsequences만 원자 배포한다. 조명·카메라 등 다른 Area 파일은 갱신하지 않는다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
