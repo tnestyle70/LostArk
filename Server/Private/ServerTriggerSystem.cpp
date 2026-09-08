@@ -36,6 +36,8 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER !=
 				placement.TriggerActions.front().eKind &&
 			WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE !=
+				placement.TriggerActions.front().eKind &&
+			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE !=
 				placement.TriggerActions.front().eKind))
 		{
 			outStatus = "Enabled trigger requires one supported action: " +
@@ -140,7 +142,8 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	}
 	else if ((WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == action.eKind ||
 		WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind ||
-		WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == action.eKind) &&
+		WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == action.eKind ||
+		WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE == action.eKind) &&
 		activateTarget)
 	{
 		fired = activateTarget(action.eKind, action.strTargetId);
@@ -217,6 +220,14 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	outPromptEdges.clear();
 	for (RUNTIME_TRIGGER& trigger : m_Triggers)
 	{
+		/* The telescope box is a strike volume the room measures the hammer
+		   against; walking into it runs nothing and offers nothing. */
+		if (!trigger.Definition.TriggerActions.empty() &&
+			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
+				trigger.Definition.TriggerActions.front().eKind)
+		{
+			continue;
+		}
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
 		for (auto& [playerId, player] : players)
 		{

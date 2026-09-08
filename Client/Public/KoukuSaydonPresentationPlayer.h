@@ -37,6 +37,12 @@ struct KOUKU_CARD_PRESENTATION_VIEW final
     std::weak_ptr<CCharacter> pCharacter;
     LostArk::Shared::PLAYER_SNAPSHOT Snapshot;
 };
+struct KOUKU_MAZE_TARGET_VIEW final
+{
+    std::weak_ptr<CNpc> npc;
+    std::uint32_t entityId = 0u;
+    std::string archetypeId;
+};
 
 // The Server supplies identity and time. This owner only samples presentation
 // resources and releases its own effects, audio and temporary scene/camera state.
@@ -147,6 +153,8 @@ private:
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
     struct CARD final { std::string assetId; std::uint32_t handle = 0; };
+    void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
+    void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Sample(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused,
         const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model,
@@ -181,6 +189,9 @@ private:
     std::set<std::string> m_MissingProductPatterns;
     std::map<std::uint32_t, SESSION> m_BossSessions;
     std::map<std::uint32_t, CARD> m_Cards;
+    std::map<std::uint32_t, CARD> m_MazeExits;
+    std::map<std::uint32_t, CARD> m_MazePlayerMarks;
+    std::map<std::uint32_t, CARD> m_MazeTargetMarks;
     std::map<std::string, bool> m_ColliderDebugOverrides;
     std::uint64_t m_iColliderAuthoringGeneration = UINT64_MAX;
     bool m_bProductLoaded = false, m_bProductAttempted = false;

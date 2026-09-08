@@ -29,6 +29,10 @@ namespace LostArk::Server
 		/* Starts one authored world sequence instance. The Server owns the OBB
 		   entry that decides when; the sequence itself is Client presentation. */
 		PLAY_SEQUENCE,
+		/* Claims the card maze telescope for the interacting player. The room
+		   deals the suits and raises the targets; only an interact-gated box may
+		   carry it, because an entry edge has no claimant. */
+		CLAIM_CARD_MAZE_TELESCOPE,
 		END
 	};
 
@@ -132,6 +136,15 @@ namespace LostArk::Server
 		bool isEnabled = true;
 	};
 
+	/* Geometry/timing compiled from the 36 authored Seto lanes; no asset paths. */
+	struct CARD_MAZE_MARCH_LANE final
+	{
+		std::string instanceId;
+		std::uint32_t delayMs = 0u, durationMs = 0u;
+		float startX = 0.f, startY = 0.f, startZ = 0.f;
+		float endX = 0.f, endY = 0.f, endZ = 0.f;
+	};
+
 	class CWorldBootstrap final
 	{
 	public:
@@ -146,10 +159,12 @@ namespace LostArk::Server
 		const std::string& Get_Status() const { return m_strStatus; }
 		std::uint32_t Get_Revision() const { return m_iRevision; }
 		const std::vector<std::string>& Get_SequenceInstanceIds() const { return m_SequenceInstanceIds; }
+		const std::vector<CARD_MAZE_MARCH_LANE>& Get_CardMazeLanes() const { return m_CardMazeLanes; }
 
 	private:
 		std::vector<WORLD_BOOTSTRAP_PLACEMENT> m_Placements;
 		std::vector<std::string> m_SequenceInstanceIds;
+		std::vector<CARD_MAZE_MARCH_LANE> m_CardMazeLanes;
 		std::string m_strAreaId;
 		std::string m_strStatus;
 		std::uint32_t m_iRevision = 0;

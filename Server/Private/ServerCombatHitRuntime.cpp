@@ -95,6 +95,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
 	if (!IsDamageableWorldTarget(target) ||
+		(target.strSpawnGroupId == "cardmaze.targets" && hit.iSkillId != 56411u) ||
 		LostArk::Shared::INVALID_SKILL_ID == hit.iSkillId)
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
@@ -149,14 +150,22 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	}
 	else
 	{
-		damage = CGameplayCatalog::Apply_Defense(hit.iRawDamage, target.iDefense);
+		damage = target.strSpawnGroupId == "cardmaze.targets" ? target.iCurrentHp :
+			CGameplayCatalog::Apply_Defense(hit.iRawDamage, target.iDefense);
 		target.iCurrentHp = damage >= target.iCurrentHp ?
 			0u : target.iCurrentHp - damage;
 	}
-	PushDamageEvent(
-		target.iNetEntityId, damage,
-		target.fPositionX, target.fPositionY, target.fPositionZ,
-		true, outDamageEvents);
+	/* A card maze soldier is a gimmick token, not a damage race: the rule
+	above removes its whole HP in one blow, so a floating number would read as
+	the soldier's max HP over every corpse. The hit still reports KILLED and
+	the maze still counts it; only the presentation number is withheld. */
+	if (target.strSpawnGroupId != "cardmaze.targets")
+	{
+		PushDamageEvent(
+			target.iNetEntityId, damage,
+			target.fPositionX, target.fPositionY, target.fPositionZ,
+			true, outDamageEvents);
+	}
 
 	const float pushDistance = 0u == hit.iPushMs ?
 		0.f : hit.fPushRangeM * target.fHitKnockbackScale;

@@ -7,6 +7,7 @@ namespace LostArk::Server
 		bool debugTeleportOnly = false, bool koukuBundlesOnly = false,
 		bool worldPlaybackOnly = false);
 	int Run_ServerNavigationContractTests();
+	int Run_ServerCardMazeContractTests();
 	int Run_ServerKoukuSupportSurfaceContractTests();
 	int Run_ServerKoukuObjectOverlapContractTests();
 }

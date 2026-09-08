@@ -26,6 +26,7 @@
 #include "RuntimeAssetRoot.h"
 #include "Trigger_Box.h"
 #include "ValtanCinematicCameraController.h"
+#include "WorldSequenceObject.h"
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
@@ -63,6 +64,30 @@ namespace
 	   behind the next import. */
 	constexpr const char* KAKUL_MARIO_INSTANCE_PREFIX =
 		"world.sequence.instance.mario_";
+	/* The card maze march states, in the order the Setos leave:
+	   3->9, 6->12, 9->3, 12->6 o'clock. Every corridor lane carries its own
+	   instance under this prefix, so one wave is the whole rank instead of a
+	   single Seto, and a new lane needs no list here. */
+	constexpr const char* CARDMIRO_MARCH_INSTANCE_PREFIX =
+		"cardmiro.march.instance.";
+	/* Every march instance whose id starts with that prefix, in document
+	   order. One wave is a rank across all nine corridor lanes. */
+	std::vector<std::string> Collect_CardMiroMarchInstanceIds(
+		const CWorldSequenceDocument& document)
+	{
+		const size_t prefixLength = strlen(CARDMIRO_MARCH_INSTANCE_PREFIX);
+		std::vector<std::string> ids;
+		for (const WORLD_SEQUENCE_INSTANCE& instance : document.Get_Instances())
+		{
+			if (instance.instanceId.size() > prefixLength &&
+				0 == instance.instanceId.compare(0, prefixLength,
+					CARDMIRO_MARCH_INSTANCE_PREFIX))
+			{
+				ids.push_back(instance.instanceId);
+			}
+		}
+		return ids;
+	}
 	/* Rewind this far before the authored end. One slow frame is well
 	   inside it, which is what keeps an instance from ever finishing. */
 	constexpr f32_t KAKUL_MARIO_LOOP_REWIND_MARGIN_MS = 120.f;
@@ -2838,6 +2863,107 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 			m_MarioLoopInstanceIds.size());
 	}
 	ImGui::TextDisabled("%s", m_MarioWalkStatus.c_str());
+	ImGui::SeparatorText("Card Maze March");
+	ImGui::TextWrapped(
+		"Runs the four card soldiers across the maze the way the march does: "
+		"3 to 9, 6 to 12, 9 to 3, then 12 to 6 o'clock, one after another "
+		"along the centre lanes. Editor preview only: nothing is saved and "
+		"no Server is involved.");
+	if (ImGui::Button("CardMiro_Play"))
+		(void)Play_CardMiroMarch();
+	ImGui::SameLine();
+	if (ImGui::Button("CardMiro_Stop"))
+		Stop_CardMiroMarch();
+	ImGui::TextDisabled("%s", m_CardMiroMarchStatus.c_str());
+	for (const std::string& instanceId :
+		Collect_CardMiroMarchInstanceIds(m_ArenaRisePlayer.Get_Document()))
+	{
+		if (m_ArenaRisePlayer.Is_Playing(instanceId))
+		{
+			ImGui::TextDisabled("%s: %s", instanceId.c_str(),
+				m_ArenaRisePlayer.Get_ObjectSampleStatus(instanceId).c_str());
+		}
+	}
+}
+
+bool_t Client::CMapTool::Play_CardMiroMarch()
+{
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	/* A world object builds its own model, which the placement previews
+	   never ask for, so this is the path that needs the device. */
+	targets.device = m_pDevice;
+	targets.context = m_pContext;
+	if (!targets.Is_Complete() || nullptr == m_pWorldSequenceToolPanel ||
+		!m_pWorldSequenceToolPanel->Is_Ready())
+	{
+		m_CardMiroMarchStatus =
+			"Card maze march needs a loaded Area with its world sequences";
+		return false;
+	}
+	/* The arena Level registers this prototype for itself; the editor
+	   Level does not, so without it the clone fails and nothing appears. */
+	if (!m_bWorldObjectPrototypeReady)
+	{
+		if (FAILED(CGameInstance::Get().Add_Prototype(
+			m_iAuthoringLevelIndex, CWorldSequenceObject::PROTOTYPE_TAG,
+			CWorldSequenceObject::Create(m_pDevice, m_pContext))))
+		{
+			m_CardMiroMarchStatus =
+				"World object prototype registration failed";
+			return false;
+		}
+		m_bWorldObjectPrototypeReady = true;
+	}
+	/* Admit the edited document rather than the file, so a march can be
+	   checked before Save. */
+	std::string status;
+	if (!m_ArenaRisePlayer.Set_Document(
+		m_pWorldSequenceToolPanel->Get_Document(), targets, status))
+	{
+		m_CardMiroMarchStatus = status;
+		return false;
+	}
+	m_bArenaRiseAreaLoaded = true;
+	m_fCutsceneScrubMs = m_fCutsceneLoopStartMs = m_fCutsceneLoopEndMs = -1.f;
+	m_ArenaRisePlayer.Set_Paused(false);
+	const std::vector<std::string> marchIds =
+		Collect_CardMiroMarchInstanceIds(m_ArenaRisePlayer.Get_Document());
+	if (marchIds.empty())
+	{
+		m_CardMiroMarchStatus =
+			"This Area authors no card maze march instances";
+		return false;
+	}
+	for (const std::string& instanceId : marchIds)
+	{
+		if (!m_ArenaRisePlayer.Play(instanceId, targets))
+		{
+			m_CardMiroMarchStatus = m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+	}
+	m_CardMiroMarchStatus =
+		"Card maze march started: 3->9, 6->12, 9->3, 12->6";
+	return true;
+}
+
+void Client::CMapTool::Stop_CardMiroMarch()
+{
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	targets.device = m_pDevice;
+	targets.context = m_pContext;
+	for (const std::string& instanceId :
+		Collect_CardMiroMarchInstanceIds(m_ArenaRisePlayer.Get_Document()))
+		m_ArenaRisePlayer.Stop_Instance(instanceId, targets, true);
+	m_CardMiroMarchStatus = "Card maze march stopped";
 }
 
 void Client::CMapTool::Render_AnimatedPropsAuthoring()
@@ -3155,6 +3281,14 @@ void Client::CMapTool::Render_AnimatedPropsAuthoring()
 void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 {
 	ImGui::TextUnformatted("World Gameplay Authoring");
+	if (ImGui::CollapsingHeader("Card Maze Setup / Help"))
+	{
+		ImGui::TextWrapped("%s", "카드미로: 자기 문양은 망치 한 방에 1스택, 3스택이면 개인 출구가 활성화됩니다.");
+		ImGui::TextWrapped("%s", "cardmaze.return: 비활성 상태를 유지하고 movePlayer의 Target Position을 편집하면 전원 완료 후 복귀 위치가 바뀝니다. 기본값은 2관문입니다.");
+		ImGui::TextWrapped("%s", "Camera 탭: cardmaze.follow는 기본 시점, cardmaze.telescope는 망원경 전체보기입니다.");
+		ImGui::TextWrapped("%s", "출구 효과는 미선정입니다. Effect Tool에서 cardmaze.exit.heart / spade / club / diamond 그룹을 등록·배포하면 연결됩니다. 현재 출구 좌표는 HUD에도 표시됩니다.");
+		ImGui::TextWrapped("%s", "행진 위치·시간을 편집한 뒤 Map 및 World Gameplay를 함께 publish하고 Server/Client를 재시작하세요. 네비 재베이크는 필요하지 않습니다.");
+	}
 	ImGui::TextDisabled(
 		"Player spawn, Trigger Box actions, and Collision Boxes are Server authority.");
 	ImGui::TextDisabled(
@@ -3668,6 +3802,9 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE:
 					actionOption = 5;
 					break;
+				case WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE:
+					actionOption = 6;
+					break;
 				default:
 					break;
 				}
@@ -3675,7 +3812,8 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			const char_t* actionOptions[] =
 			{
 				"None", "Move Player", "Change Level",
-				"Activate Spawn Group", "Activate Encounter", "Play Sequence"
+				"Activate Spawn Group", "Activate Encounter", "Play Sequence",
+				"Claim Card Maze Telescope"
 			};
 			if (ImGui::Combo("Action", &actionOption,
 				actionOptions, static_cast<int>(std::size(actionOptions))))
@@ -3711,6 +3849,14 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 								m_pWorldSequenceToolPanel->Get_InstanceIds();
 						if (!instanceIds.empty())
 							action.targetId = instanceIds.front();
+					}
+					else if (6 == actionOption)
+					{
+						/* The claim is a stable id of its own; the box itself is
+						   the natural name. The Server measures the hammer swing
+						   against this box, so it is not interact-gated. */
+						action.eKind = WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE;
+						action.targetId = staged.placementId;
 					}
 					else
 					{
@@ -3845,6 +3991,21 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 					}
 					ImGui::EndCombo();
 				}
+			}
+
+			const bool_t hasTelescopeAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
+					staged.triggerEvents.front().eKind;
+			if (hasTelescopeAction)
+			{
+				ImGui::SeparatorText("Claim Card Maze Telescope Action");
+				ImGui::TextDisabled("Target id: %s",
+					staged.triggerEvents.front().targetId.c_str());
+				ImGui::TextWrapped(
+					"The first player whose hammer swing reaches this box becomes "
+					"the telescope owner; the Server then deals the suits and raises "
+					"the targets. Walking in does nothing. Only the Kouku arena accepts it.");
 			}
 
 			const bool_t hasPlaySequenceAction =
@@ -7848,6 +8009,8 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_PrototypeModelPaths.clear();
 	m_EditorAreaPreload = {};
 	m_bDestructionDebrisPrototypesReady = false;
+	/* Prototypes live under the Level index that is being left. */
+	m_bWorldObjectPrototypeReady = false;
 	m_DestructionDebrisPrototypeStatus =
 		"PROJECT_AUTHORED debris models are not admitted";
 	m_iAuthoringLevelIndex = targetLevelIndex;

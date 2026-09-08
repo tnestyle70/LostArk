@@ -597,6 +597,10 @@ private:
 		float3_t vWorldPosition = {};
 		uint32_t iAmount = 0;
 		bool_t isOutgoing = false;
+		/* NONE draws iAmount as a damage number. A suit draws it as that
+		hunter's card maze shard count instead. */
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
+			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
 	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the

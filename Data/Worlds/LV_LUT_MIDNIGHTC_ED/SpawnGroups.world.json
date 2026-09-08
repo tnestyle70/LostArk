@@ -2,9 +2,73 @@
   "schema": "lostark.world-spawn-groups",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 193,
+  "revision": 194,
   "anchors": [
-    { "anchorId": "anchor.valtan.editor", "position": [0.266000003, 0.5, -46.2719994], "yawDegrees": 11 }
+    {
+      "anchorId": "anchor.valtan.editor",
+      "position": [
+        0.266000003,
+        0.5,
+        -46.2719994
+      ],
+      "yawDegrees": 11
+    },
+    {
+      "anchorId": "anchor.kouku.cardmaze.profiles",
+      "position": [
+        0.28,
+        -0.01,
+        1351.65
+      ],
+      "yawDegrees": 0
+    }
   ],
-  "spawnGroups": []
+  "spawnGroups": [
+    {
+      "spawnGroupId": "spawn.kouku.cardmaze.profiles",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 4,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_KOUKU_CARD_HEART",
+              "count": 1,
+              "anchorId": "anchor.kouku.cardmaze.profiles",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 100
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CARD_DIAMOND",
+              "count": 1,
+              "anchorId": "anchor.kouku.cardmaze.profiles",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 100
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CARD_CLUB",
+              "count": 1,
+              "anchorId": "anchor.kouku.cardmaze.profiles",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 100
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CARD_SPADE",
+              "count": 1,
+              "anchorId": "anchor.kouku.cardmaze.profiles",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 100
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

@@ -1867,6 +1867,42 @@
     <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json">
       <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.heart.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.heart.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.spade.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.spade.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.spade.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.club.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.club.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.club.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.diamond.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.diamond.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.diamond.effectv2group.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json">
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>

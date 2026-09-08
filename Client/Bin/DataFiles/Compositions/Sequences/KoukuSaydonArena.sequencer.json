@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.kakulsaydon",
   "sourceRevision": 2,
-  "compositionRevision": "f997d4bc46274b919533315b1937a3e2b601fd137228354849c30a5364785b37",
+  "compositionRevision": "b4ebfce0b7463cb216007f869187c1022f82c8c4b430331b24ba072af0f6e828",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Arena Sequencer",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "f997d4bc46274b919533315b1937a3e2b601fd137228354849c30a5364785b37",
+    "sourceManifestId": "b4ebfce0b7463cb216007f869187c1022f82c8c4b430331b24ba072af0f6e828",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
@@ -22,23 +22,23 @@
       },
       {
         "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
-        "sha256": "83382577e289bb295bd80747d9f5ade84c13ca94de4449cd9bc392c71c58dc4a",
-        "bytes": 1325
+        "sha256": "f9223d2eceb142eaf93a039602fdf3306e7597f5747e5270a1bb355fe12b5286",
+        "bytes": 1332
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "4dedb6a15067fed43dbdba1e21e41cebc8eae887d9e4d0c330a9a45ca2992448",
-        "bytes": 11385
+        "sha256": "814680cdcbfddb1fa91cc4d79c2ab672142b5266b5ff6f56254f5617c850529f",
+        "bytes": 40077
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "65b850392ea0356131a3a065906eb0768dd963a01fda832cdcd5d85f959ad98a",
-        "bytes": 5621100
+        "sha256": "9918d7a8e48d8a406ec4e15242bebac57d8bc6d07119d7c619582e8b484ea1a4",
+        "bytes": 8057264
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "9cd6bb32a3cdcc99e7d5cc9d90566320aa713514addbbfa1d2a10b4414d53932",
-        "bytes": 8130
+        "sha256": "47a977332b0224dba1ac7b3cfdb3a20490f2aeae234b8890473a66040f2fac0b",
+        "bytes": 13343
       }
     ]
   },
@@ -57,7 +57,7 @@
       "startMs": 0,
       "endMs": 21010,
       "payload": {
-        "shotId": "shot.1"
+        "shotId": "1Stage.finale"
       }
     }
   ]

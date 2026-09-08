@@ -1,6 +1,7 @@
 #include "GameRoom.h"
 
 #include "ClientSession.h"
+#include "ServerCombatHitRuntime.h"
 
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
@@ -55,6 +56,32 @@ namespace
 	// One KoukuSaydon interaction HUD press converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t KOUKU_INTERACTION_TICKS =
 		(LostArk::Shared::KOUKU_INTERACTION_ACTION_MS * 30u + 999u) / 1000u;
+	/* The hammer keeps its whole authored swing, because the Client scrubs
+	that clip by the action's age and snaps back to idle as soon as the Server
+	drops the action. What the hunter gets instead is a cancel: once the head
+	has landed, their own next input ends the recovery early. Returns true
+	when a recovery was actually cancelled. An escape teleport borrows the
+	same lock, so a pending transfer is never cancelled here. */
+	bool Cancel_MazeHammerRecovery(
+		LostArk::Server::SERVER_PLAYER& player, const std::uint32_t tick)
+	{
+		using namespace LostArk::Shared;
+		if (PLAYER_ACTION_STATE::INTERACTION != player.eAction ||
+			KOUKU_HUD_MODE::MAZE != player.eKoukuHudMode ||
+			0u != player.CardMaze.transferStartTick ||
+			0u == player.iActionStartTick ||
+			static_cast<std::int32_t>(tick - (player.iActionStartTick +
+				LostArk::Server::CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)) < 0)
+		{
+			return false;
+		}
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iActionStartTick = 0u;
+		player.fActionElapsedSeconds = 0.f;
+		player.PendingCommand.Clear();
+		return true;
+	}
 	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
 		"LOSTARK_RAID_CLEAR_TEST_MODE";
 
@@ -1964,7 +1991,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	if (!Refresh_KoukuSupportSurfaces(updateTick)) { recordTickDuration(); return; }
 #endif
 	Refresh_PlayerBlockingBodies();
+	for (const auto& [id, player] : m_Players)
+		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
+			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_Players(fixedDeltaSeconds);
+	Update_CardMaze(updateTick);
 	m_CombatObjectRuntime.Update(
 		m_Players, m_WorldEntities, m_GameplayCatalog,
 		fixedDeltaSeconds, updateTick, m_TickDamageEvents);
@@ -2781,6 +2812,8 @@ void LostArk::Server::CGameRoom::Leave(
 
 	const NET_ENTITY_ID netEntityId = playerIter->second.iNetEntityId;
 	m_CombatObjectRuntime.Cancel_Source(netEntityId);
+	if (m_KoukuCardMaze.Remove_Player(playerId))
+		Reset_CardMaze();
 	m_ServerTriggerSystem.Remove_Player(playerId);
 	if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
@@ -2882,6 +2915,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	}
 
 	player.iLastMoveSequence = move.iClientSequence;
+	if (((player.CardMaze.flags & 1u) && !m_KoukuCardMaze.Is_SoloHunter(player.iPlayerId)) ||
+		player.CardMaze.transferStartTick) return;
 #ifdef _DEBUG
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
@@ -2893,6 +2928,9 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
+	/* Walking away is the hunter's own input, so it ends a spent hammer swing
+	instead of being refused for the rest of the pose. */
+	(void)Cancel_MazeHammerRecovery(player, m_iServerTick);
 	if (0u != player.iMarioStage || player.bPatternBound ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
@@ -3470,6 +3508,9 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	/* Every interaction skill is one fixed-length action today: the press is
 	refused while any action runs, exactly like a class skill, and Update_Players
 	returns the action to NONE after KOUKU_INTERACTION_ACTION_MS. */
+	/* The next swing is also the hunter's own input, so it may cut a spent
+	one short; the shortened MAZE cooldown below is what paces the chain. */
+	(void)Cancel_MazeHammerRecovery(state, m_iServerTick);
 	if (state.bPatternBound || state.fKnockbackRemainingSeconds > 0.f ||
 		0u == state.iCurrentHp || PLAYER_ACTION_STATE::NONE != state.eAction)
 	{
@@ -3490,9 +3531,13 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	state.iActionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+	/* The maze hammer chains at swing speed; every other mode keeps the pose
+	cooldown it was authored with. */
 	state.CooldownEndTickBySkillId[cooldownId] = CKoukuSaydonLogicRuntime::Add_Ticks(
 		state.iActionStartTick,
-		CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_INTERACTION_COOLDOWN_MS));
+		CKoukuSaydonLogicRuntime::Ticks_FromMs(
+			KOUKU_HUD_MODE::MAZE == state.eKoukuHudMode ?
+				KOUKU_MAZE_HAMMER_COOLDOWN_MS : KOUKU_INTERACTION_COOLDOWN_MS));
 	state.fActionElapsedSeconds = 0.f;
 	state.iComboStage = 0u;
 	state.hasBufferedComboInput = false;
@@ -3606,7 +3651,7 @@ LostArk::Server::CGameRoom::Apply_DebugKoukuHudMode(
 	player.Clear_KoukuInteractionState();
 	if (nullptr != Active_KoukuPlayerLedger())
 		player.iKoukuSuppressedPatternSequence = Active_KoukuPlayerLedger()->iPatternSequence;
-	player.eMadnessForm = KOUKU_HUD_MODE::NONE == request.eMode ?
+	player.eMadnessForm = (KOUKU_HUD_MODE::NONE == request.eMode || KOUKU_HUD_MODE::MAZE == request.eMode) ?
 		PLAYER_MADNESS_FORM::NORMAL : PLAYER_MADNESS_FORM::CLOWN;
 	player.iMadnessFormEndTick = 0u;
 	player.eAction = PLAYER_ACTION_STATE::NONE;
@@ -4648,6 +4693,7 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	}
 	if (koukuGateWorld)
 	{
+		Reset_CardMaze();
 		if (!Despawn_KoukuSaydonArenaDebugEntities())
 			Mark_RuntimeFailure("despawn-all.koukusaydon-arena");
 		else if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())
@@ -5272,6 +5318,7 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 					if (kind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE) return play(id);
 					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP) return m_SpawnGroupRuntime.Activate(id);
 					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER) return Activate_Encounter(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE) return Begin_CardMaze(playerId->second);
 					return false;
 				});
 			for (auto& transfer : transfers)
@@ -10707,6 +10754,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
+		snapshot.eCardMazeRole = player.eCardMazeRole;
+		snapshot.eCardMazeSuit = player.eCardMazeSuit;
+		snapshot.iCardMazeKills = player.iCardMazeKills;
+		snapshot.iCardMazeKillTarget = player.iCardMazeKillTarget;
+		snapshot.CardMaze = player.CardMaze;
 		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.isPatternBound = player.bPatternBound;
 		snapshot.iPatternBindEndTick = player.iPatternBindEndTick;
@@ -13879,6 +13931,406 @@ std::uint32_t LostArk::Server::CGameRoom::Count_SpawnGroupEntities(
 		}));
 }
 
+bool LostArk::Server::CGameRoom::Begin_CardMaze(
+	const LostArk::Shared::PLAYER_ID claimantId)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+		return false;
+	if (CKoukuCardMazeRuntime::PHASE::HUNTING == m_KoukuCardMaze.Get_Phase())
+	{
+		const auto p = m_Players.find(claimantId);
+		return p != m_Players.end() && m_KoukuCardMaze.Toggle_Telescope(p->second);
+	}
+	else if (CKoukuCardMazeRuntime::PHASE::COMPLETE == m_KoukuCardMaze.Get_Phase())
+	{
+		return false;
+	}
+	if (m_WorldBootstrap.Get_CardMazeLanes().size() != 36u)
+	{ m_strStatus = "Publish all 36 card maze lanes before starting"; return false; }
+	std::vector<CKoukuCardMazeRuntime::SPAWN_REQUEST> spawns;
+	std::string status;
+	if (!m_KoukuCardMaze.Plan(claimantId, m_Players, m_ServerNavigation,
+		m_iServerTick, spawns, status))
+	{
+		m_strStatus = status;
+		return false;
+	}
+	std::uint32_t ordinal = 0u;
+	for (const CKoukuCardMazeRuntime::SPAWN_REQUEST& request : spawns)
+	{
+		const MONSTER_RUNTIME_PROFILE* profile = m_SpawnGroupBootstrap.Find_Profile(
+			CKoukuCardMazeRuntime::Archetype_ForSuit(request.eSuit));
+		SPAWN_GROUP_ANCHOR anchor{};
+		anchor.strAnchorId = "cardmaze.random";
+		anchor.fPositionX = request.fPositionX;
+		anchor.fPositionY = request.fPositionY;
+		anchor.fPositionZ = request.fPositionZ;
+		anchor.fYawDegrees = request.fYawDegrees;
+		SPAWN_GROUP_ENTRY entry{};
+		entry.strAnchorId = anchor.strAnchorId;
+		entry.iCount = 1u;
+		if (nullptr != profile)
+			entry.strArchetypeId = profile->strArchetypeId;
+		const NET_ENTITY_ID spawnedId = m_iNextNetEntityId;
+		if (nullptr == profile ||
+			!Spawn_Monster(CKoukuCardMazeRuntime::SPAWN_GROUP_TAG, entry, anchor, *profile, ordinal++))
+		{
+			/* Fail closed: nothing of a half-raised run stays behind. */
+			const std::string reason = nullptr == profile ?
+				"Card maze monster profile is not published: " +
+					std::string(CKoukuCardMazeRuntime::Archetype_ForSuit(request.eSuit)) :
+				"Card maze target could not be spawned: " + m_strStatus;
+			Despawn_CardMazeTargets();
+			m_KoukuCardMaze.Abort();
+			m_strStatus = reason;
+			return false;
+		}
+		m_KoukuCardMaze.Register_Target(spawnedId, request.eSuit);
+	}
+	m_KoukuCardMaze.Commit(m_Players);
+	m_strStatus = "Card maze started with " + std::to_string(spawns.size()) + " targets";
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Reset_CardMaze()
+{
+	Despawn_CardMazeTargets();
+	m_KoukuCardMaze.Reset(m_Players);
+	m_iCardMazeMarchStartTick = m_iCardMazeCycleMs = 0u;
+	m_CardMazePreviousPositions.clear();
+	m_CardMazeContactTicks.clear();
+}
+
+void LostArk::Server::CGameRoom::Despawn_CardMazeTargets()
+{
+	for (const auto& [entityId, suit] : m_KoukuCardMaze.Get_Targets())
+	{
+		(void)suit;
+		const auto entity = std::find_if(
+			m_WorldEntities.begin(), m_WorldEntities.end(),
+			[removedId = entityId](const SERVER_WORLD_ENTITY& candidate)
+			{
+				return candidate.iNetEntityId == removedId;
+			});
+		if (m_WorldEntities.end() == entity)
+			continue;
+		m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);
+		if (!Broadcast_CombatObjectLifecycle())
+			Mark_RuntimeFailure("card-maze.combat-object-lifecycle");
+		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
+		m_WorldEntities.erase(entity);
+	}
+}
+
+void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
+	SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	const float yawRadians = player.fYawDegrees * DEGREES_TO_RADIANS;
+	const float forwardX = std::sin(yawRadians);
+	const float forwardZ = std::cos(yawRadians);
+	// Q strikes the authored box; subsequent owner hits toggle observation.
+	const bool telescopeOpen = !player.CardMaze.transferStartTick;
+	const WORLD_BOOTSTRAP_PLACEMENT* telescope = telescopeOpen ?
+		Find_Placement(CKoukuCardMazeRuntime::TELESCOPE_PLACEMENT_ID) : nullptr;
+	if (nullptr != telescope)
+	{
+		const float deltaX = telescope->fPositionX - player.fPositionX;
+		const float deltaZ = telescope->fPositionZ - player.fPositionZ;
+		const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+		const float reach = CKoukuCardMazeRuntime::HAMMER_RANGE_M +
+			(std::max)(telescope->fHalfExtentX, telescope->fHalfExtentZ);
+		const float boxYaw = telescope->fYawDegrees * DEGREES_TO_RADIANS;
+		const float localX = deltaX * std::cos(boxYaw) - deltaZ * std::sin(boxYaw);
+		const float localZ = deltaX * std::sin(boxYaw) + deltaZ * std::cos(boxYaw);
+		const bool insideBox = std::abs(localX) <= telescope->fHalfExtentX &&
+			std::abs(localZ) <= telescope->fHalfExtentZ;
+		if (telescope->isEnabled && std::abs(player.fPositionY - telescope->fPositionY) <= telescope->fHalfExtentY &&
+			(insideBox || (distance <= reach && (distance <= 0.01f ||
+				(deltaX * forwardX + deltaZ * forwardZ) / distance >=
+					CKoukuCardMazeRuntime::HAMMER_HALF_ANGLE_COS))) &&
+			Begin_CardMaze(player.iPlayerId))
+		{
+			return;
+		}
+	}
+	if (CKoukuCardMazeRuntime::PHASE::HUNTING != m_KoukuCardMaze.Get_Phase())
+		return;
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (!m_KoukuCardMaze.Can_Hit(player, entity.iNetEntityId) ||
+			WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind ||
+			0u == entity.iCurrentHp ||
+			SERVER_ENTITY_ACTION::DEAD == entity.eAction)
+		{
+			continue;
+		}
+		const float deltaX = entity.fPositionX - player.fPositionX;
+		const float deltaZ = entity.fPositionZ - player.fPositionZ;
+		const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+		if (distance > CKoukuCardMazeRuntime::HAMMER_RANGE_M + entity.fCollisionRadius)
+			continue;
+		if (distance > 0.01f &&
+			(deltaX * forwardX + deltaZ * forwardZ) / distance <
+				CKoukuCardMazeRuntime::HAMMER_HALF_ANGLE_COS)
+		{
+			continue;
+		}
+		SERVER_PLAYER_TO_WORLD_HIT hit{};
+		hit.iSourcePlayerId = player.iPlayerId;
+		hit.iSkillId = CKoukuCardMazeRuntime::HAMMER_SKILL_ID;
+		hit.iRawDamage = CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
+		hit.fSourceX = player.fPositionX;
+		hit.fSourceZ = player.fPositionZ;
+		hit.fFallbackDirectionX = forwardX;
+		hit.fFallbackDirectionZ = forwardZ;
+		hit.iServerTick = updateTick;
+		const SERVER_COMBAT_HIT_RESULT result =
+			CServerCombatHitRuntime::Apply_PlayerToWorld(entity, hit, m_TickDamageEvents);
+		if (SERVER_COMBAT_HIT_RESULT::LANDED != result &&
+			SERVER_COMBAT_HIT_RESULT::KILLED != result)
+		{
+			continue;
+		}
+		const CKoukuCardMazeRuntime::HIT_OUTCOME outcome = m_KoukuCardMaze.On_TargetHit(
+			player, entity, SERVER_COMBAT_HIT_RESULT::KILLED == result);
+		if (outcome.bKillCounted)
+		{
+			/* The shard rises where the suppressed damage number used to: the
+			felled soldier's position, carrying the hunter's running count. */
+			DAMAGE_EVENT shard{};
+			shard.iTargetNetEntityId = entity.iNetEntityId;
+			shard.iAmount = player.iCardMazeKills;
+			shard.fPositionX = entity.fPositionX;
+			shard.fPositionY = entity.fPositionY;
+			shard.fPositionZ = entity.fPositionZ;
+			shard.isOutgoing = true;
+			shard.eCardMazeSuit = player.eCardMazeSuit;
+			m_TickDamageEvents.push_back(shard);
+		}
+		if (outcome.bStartMarch)
+		{
+			m_iCardMazeMarchStartTick = updateTick;
+			m_iCardMazeCycleMs = 0u;
+			for (const auto& lane : m_WorldBootstrap.Get_CardMazeLanes())
+				m_iCardMazeCycleMs = (std::max)(m_iCardMazeCycleMs, lane.delayMs + lane.durationMs);
+			// Durable snapshot clock drives all 36 presentations and contact sweeps.
+			m_strStatus = "Card maze march started by the first hit";
+		}
+		if (outcome.bAllComplete)
+			m_strStatus = "Card maze complete: every hunter felled three of their suit";
+		else if (outcome.bHunterComplete)
+			m_strStatus = "Card maze hunter completed their suit";
+	}
+	// Do not invalidate the entity range while the hammer iterates it.
+	std::vector<NET_ENTITY_ID> removed;
+	for (const auto& entity : m_WorldEntities)
+		if (!entity.iCurrentHp && m_KoukuCardMaze.Is_Target(entity.iNetEntityId)) removed.push_back(entity.iNetEntityId);
+	for (const auto id : removed) Remove_CardMazeTarget(id);
+}
+
+bool LostArk::Server::CGameRoom::Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request)
+{
+	const auto* profile = m_SpawnGroupBootstrap.Find_Profile(CKoukuCardMazeRuntime::Archetype_ForSuit(request.eSuit));
+	if (!profile) { m_strStatus = "Card maze target profile missing"; return false; }
+	SPAWN_GROUP_ANCHOR anchor{};
+	anchor.strAnchorId = "cardmaze.random";
+	anchor.fPositionX = request.fPositionX; anchor.fPositionY = request.fPositionY; anchor.fPositionZ = request.fPositionZ;
+	anchor.fYawDegrees = request.fYawDegrees;
+	SPAWN_GROUP_ENTRY entry{};
+	entry.strArchetypeId = profile->strArchetypeId; entry.strAnchorId = anchor.strAnchorId; entry.iCount = 1u;
+	const auto id = m_iNextNetEntityId;
+	if (!Spawn_Monster(CKoukuCardMazeRuntime::SPAWN_GROUP_TAG, entry, anchor, *profile, 0u)) return false;
+	m_KoukuCardMaze.Register_Target(id, request.eSuit);
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id)
+{
+	const auto e = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+		[id](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == id; });
+	if (e != m_WorldEntities.end())
+	{
+		m_CombatObjectRuntime.Cancel_Source(id);
+		if (!Broadcast_CombatObjectLifecycle()) Mark_RuntimeFailure("card-maze.despawn");
+		Broadcast_WorldEntityDespawned(id);
+		m_WorldEntities.erase(e);
+	}
+	m_KoukuCardMaze.Retire_Target(id);
+}
+
+bool LostArk::Server::CGameRoom::Begin_CardMazeTransfer(SERVER_PLAYER& player,
+	float x, float y, float z, std::uint32_t tick, bool leaving)
+{
+	SERVER_NAV_POINT ground{};
+	if (!m_ServerNavigation.Sample_Position(x, z, ground) || std::abs(ground.y - y) > 1.f)
+	{ m_strStatus = "Card maze transfer destination has no matching navigation"; return false; }
+	player.fCardMazeTransferX = x; player.fCardMazeTransferY = ground.y; player.fCardMazeTransferZ = z;
+	player.bCardMazeTransferCommitted = false;
+	player.CardMaze.transferStartTick = tick;
+	player.CardMaze.flags = static_cast<std::uint8_t>((player.CardMaze.flags & ~1u) | (leaving ? 8u : 0u));
+	player.hasMoveGoal = false; player.MovePath.clear(); player.iMovePathIndex = 0u;
+	player.PendingCommand.Clear(); player.Clear_SkillTarget(); player.Projectiles.clear();
+	player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION;
+	player.iActionStartTick = tick;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Update_CardMaze(std::uint32_t tick)
+{
+	using namespace LostArk::Shared;
+	using Maze = CKoukuCardMazeRuntime;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE) return;
+	const bool anyLiving = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
+		return entry.second.eCardMazeRole != CARD_MAZE_ROLE::NONE && entry.second.iCurrentHp > 0u;
+	});
+	if (!anyLiving) { Reset_CardMaze(); return; }
+	const auto distanceSquared = [](float x, float z) { return x * x + z * z; };
+	bool pendingTransfer = false;
+	for (auto& [id, player] : m_Players)
+	{
+		if (player.eCardMazeRole == CARD_MAZE_ROLE::NONE) continue;
+		player.CardMaze.marchStartTick = m_iCardMazeMarchStartTick;
+		player.CardMaze.marchCycleMs = m_iCardMazeCycleMs;
+		if (!player.iCurrentHp)
+		{
+			player.CardMaze.flags = 0u; player.CardMaze.transferStartTick = 0u;
+			continue;
+		}
+		if (player.CardMaze.transferStartTick)
+		{
+			const auto elapsed = tick - player.CardMaze.transferStartTick;
+			pendingTransfer = true;
+			if (elapsed >= 18u && !player.bCardMazeTransferCommitted)
+			{
+				player.fPositionX = player.fCardMazeTransferX;
+				player.fPositionY = player.fCardMazeTransferY;
+				player.fPositionZ = player.fCardMazeTransferZ;
+				player.bCardMazeTransferCommitted = true;
+				if (!(player.CardMaze.flags & 8u)) m_KoukuCardMaze.Mark_Escaped(player);
+			}
+			if (elapsed >= 36u)
+			{
+				player.CardMaze.transferStartTick = 0u;
+				player.eAction = PLAYER_ACTION_STATE::NONE;
+				player.fActionElapsedSeconds = 0.f;
+			}
+			continue;
+		}
+		if (m_KoukuCardMaze.Get_Phase() != Maze::PHASE::HUNTING) continue;
+		if (Maze::In_SafeZone(player.fPositionX, player.fPositionZ))
+		{
+			// The central lane may cross the telescope: physical overlap is harmless here.
+		}
+		else
+		{
+			if (!m_KoukuCardMaze.Is_SoloHunter(id))
+				player.CardMaze.flags &= static_cast<std::uint8_t>(~1u);
+			bool contact = false;
+			const auto previous = m_CardMazePreviousPositions.find(id);
+			const auto cooldown = m_CardMazeContactTicks.find(id);
+			if (m_iCardMazeMarchStartTick && m_iCardMazeCycleMs &&
+				(cooldown == m_CardMazeContactTicks.end() || tick - cooldown->second >= 30u))
+			{
+				const double absoluteMs = double(tick - m_iCardMazeMarchStartTick) * 1000.0 / 30.0;
+				const double beforeMs = (std::max)(0.0, absoluteMs - 1000.0 / 30.0);
+				const auto firstCycle = static_cast<std::uint64_t>(beforeMs / m_iCardMazeCycleMs);
+				const auto lastCycle = static_cast<std::uint64_t>(absoluteMs / m_iCardMazeCycleMs);
+				for (std::uint64_t cycle = firstCycle; cycle <= lastCycle && !contact; ++cycle)
+				for (const auto& lane : m_WorldBootstrap.Get_CardMazeLanes())
+				{
+					const double startMs = double(cycle * m_iCardMazeCycleMs) + lane.delayMs;
+					const double endMs = startMs + lane.durationMs;
+					if (absoluteMs < startMs || beforeMs >= endMs) continue;
+					const float a = static_cast<float>(std::clamp((beforeMs - startMs) / lane.durationMs, 0.0, 1.0));
+					const float b = static_cast<float>(std::clamp((absoluteMs - startMs) / lane.durationMs, 0.0, 1.0));
+					const float px = previous == m_CardMazePreviousPositions.end() ? player.fPositionX : previous->second.first;
+					const float pz = previous == m_CardMazePreviousPositions.end() ? player.fPositionZ : previous->second.second;
+					const float ax = px - (lane.startX + (lane.endX - lane.startX) * a);
+					const float az = pz - (lane.startZ + (lane.endZ - lane.startZ) * a);
+					const float bx = player.fPositionX - (lane.startX + (lane.endX - lane.startX) * b);
+					const float bz = player.fPositionZ - (lane.startZ + (lane.endZ - lane.startZ) * b);
+					const float vx = bx - ax, vz = bz - az;
+					const float len = distanceSquared(vx, vz);
+					const float t = len > .000001f ? std::clamp(-(ax * vx + az * vz) / len, 0.f, 1.f) : 0.f;
+					// Initial tuned contact radius (Seto + player); independent of model scale.
+					if (std::abs(player.fPositionY - lane.startY) < 2.f && distanceSquared(ax + vx * t, az + vz * t) <= 1.44f)
+					{ contact = true; break; }
+				}
+			}
+			if (contact && player.eCardMazeSuit != MECHANIC_CARD_SYMBOL::NONE)
+			{
+				m_CardMazeContactTicks[id] = tick;
+				m_KoukuCardMaze.Reset_Progress(player);
+				std::vector<NET_ENTITY_ID> replaced;
+				for (const auto& [entity, suit] : m_KoukuCardMaze.Get_Targets())
+					if (suit == player.eCardMazeSuit) replaced.push_back(entity);
+				for (auto entity : replaced) Remove_CardMazeTarget(entity);
+			}
+		}
+		if (player.eCardMazeSuit == MECHANIC_CARD_SYMBOL::NONE || (player.CardMaze.flags & 2u)) continue;
+		if (player.iCardMazeKills >= Maze::KILL_TARGET)
+		{
+			if (!(player.CardMaze.flags & 4u))
+			{
+				Maze::SPAWN_REQUEST exit{};
+				if (m_KoukuCardMaze.Sample_Corridor(player.eCardMazeSuit, m_Players, m_WorldEntities,
+					m_ServerNavigation, tick ^ id, exit))
+				{
+					player.CardMaze.exitX = exit.fPositionX; player.CardMaze.exitY = exit.fPositionY;
+					player.CardMaze.exitZ = exit.fPositionZ; player.CardMaze.flags |= 4u;
+				}
+				else m_strStatus = "Card maze exit waiting for a reachable free corridor";
+			}
+			if ((player.CardMaze.flags & 4u) && std::abs(player.fPositionY - player.CardMaze.exitY) < 1.f &&
+				distanceSquared(player.fPositionX - player.CardMaze.exitX, player.fPositionZ - player.CardMaze.exitZ) <= 1.f)
+				(void)Begin_CardMazeTransfer(player, Maze::CENTER_X, -.01f, Maze::CENTER_Z, tick, false);
+		}
+		else
+		{
+			const bool exists = std::any_of(m_KoukuCardMaze.Get_Targets().begin(), m_KoukuCardMaze.Get_Targets().end(),
+				[&](const auto& target) { return target.second == player.eCardMazeSuit; });
+			if (!exists)
+			{
+				Maze::SPAWN_REQUEST target{};
+				if (m_KoukuCardMaze.Sample_Corridor(player.eCardMazeSuit, m_Players, m_WorldEntities,
+					m_ServerNavigation, tick ^ id, target)) (void)Spawn_CardMazeTarget(target);
+				else m_strStatus = "Card maze target waiting for a free corridor";
+			}
+		}
+	}
+	if (m_KoukuCardMaze.Get_Phase() == Maze::PHASE::COMPLETE)
+	{
+		if (!pendingTransfer)
+		{
+			for (auto& [id, player] : m_Players)
+				if (player.eCardMazeRole != CARD_MAZE_ROLE::NONE)
+				{ (void)id; player.Clear_KoukuInteractionState(); }
+			Reset_CardMaze();
+		}
+		return;
+	}
+	if (m_KoukuCardMaze.All_LivingCentral(m_Players))
+	{
+		const auto* destination = Find_Placement("cardmaze.return");
+		if (!destination || destination->TriggerActions.size() != 1u)
+		{ m_strStatus = "Set the cardmaze.return movePlayer destination in MapTool"; return; }
+		const auto& move = destination->TriggerActions.front();
+		SERVER_NAV_POINT ground{};
+		if (move.eKind != WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER ||
+			!m_ServerNavigation.Sample_Position(move.fTargetX, move.fTargetZ, ground) || std::abs(ground.y - move.fTargetY) > 1.f)
+		{ m_strStatus = "Card maze return destination is not walkable"; return; }
+		m_KoukuCardMaze.Complete();
+		m_iCardMazeMarchStartTick = m_iCardMazeCycleMs = 0u;
+		Despawn_CardMazeTargets();
+		for (auto& [id, player] : m_Players)
+			if (player.eCardMazeRole != CARD_MAZE_ROLE::NONE && player.iCurrentHp)
+			{ (void)id; (void)Begin_CardMazeTransfer(player, move.fTargetX, move.fTargetY, move.fTargetZ, tick, true); }
+	}
+}
+
 float LostArk::Server::CGameRoom::Resolve_StanceMoveSpeedScale(
 	const SERVER_PLAYER& player) const
 {
@@ -14415,6 +14867,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+		if (player.CardMaze.transferStartTick && player.iCurrentHp) continue;
 		const auto ownsLivePatternOccurrence =
 			[this](const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
 				const std::uint32_t patternSequence)
@@ -14528,6 +14981,19 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
 				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0;
+		/* An escape teleport borrows the same INTERACTION lock and start tick,
+		so a swing is judged only for a real hammer press. */
+		const bool mazeHammerPress =
+			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
+			LostArk::Shared::KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode &&
+			0u == player.CardMaze.transferStartTick;
+		/* The maze hammer lands part-way through its press: judge the swing
+		once, on that tick, against the run's targets in front of the player. */
+		if (mazeHammerPress &&
+			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)
+		{
+			Resolve_CardMazeHammerHit(player, updateTick);
+		}
 		/* A KoukuSaydon interaction press is the same kind of fixed lock. */
 		const bool interactionElapsed =
 			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
