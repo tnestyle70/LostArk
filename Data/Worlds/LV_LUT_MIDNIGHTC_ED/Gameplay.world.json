@@ -586,7 +586,7 @@
         1.32000005,
         942.330017
       ],
-      "yawDegrees": 237,
+      "yawDegrees": 237.0,
       "enabled": false
     },
     {
@@ -595,8 +595,8 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "position": [
-        10.2399998,
-        8.63000011,
+        10.24,
+        10.0,
         317.75
       ],
       "yawDegrees": 226.5,
