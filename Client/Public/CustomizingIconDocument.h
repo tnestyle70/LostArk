@@ -22,9 +22,26 @@ class CCustomizingIconDocument final
 public:
 	struct CLASS_ICONS
 	{
+		/* Two different lists that happen to have the same row count per class, which is why
+		they look interchangeable and are not. The base tab's 프리셋 is a curated set of whole
+		appearances (table category 0, scattered icon indices); the face tab's 기본 얼굴 is the
+		systematic face-shape set (category 1, a consecutive run). */
 		std::vector<std::string> Presets;
+		std::vector<std::string> FaceShapes;
+		/* The left column's costume row: five per class, the same five the retail table
+		carries with Object_Unit 0..4 as the costume each cell stands for. */
+		std::vector<std::string> Costumes;
 		std::vector<std::string> Actions;
 		std::vector<std::string> Backgrounds;
+		/* The secondary tabs' own lists, by the table category each comes from: hair shapes
+		(4), eye irises (9), and the adorn pages the movie gives a list to -- eye make (10),
+		cheek touch (11) and lip (12). The adorn eyebrow page carries only a slider and a
+		colour chip, so it has no list here either. */
+		std::vector<std::string> HairShapes;
+		std::vector<std::string> EyeIrises;
+		std::vector<std::string> AdornEyeLine;
+		std::vector<std::string> AdornTouch;
+		std::vector<std::string> AdornLip;
 	};
 
 public:

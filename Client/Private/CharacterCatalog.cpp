@@ -23,6 +23,8 @@ namespace
 		KOUKU_CLOWN_BODY_PROTOTYPE_TAG,
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 		0u,
+		/* The doll body draws no hair of its own and wears no hairstyle. */
+		0u,
 
 		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 		nullptr,

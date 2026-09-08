@@ -48,6 +48,7 @@
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\FaceCustomizeApplier.h" />
+    <ClInclude Include="..\Public\FaceMorphApplier.h" />
     <ClInclude Include="..\Public\FaceSliderDocument.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
       <ClInclude Include="..\Public\ValtanBossTool.h" />
@@ -130,6 +131,9 @@
     <ClInclude Include="..\Public\RaidBossShowcaseService.h" />
 
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
+    <ClInclude Include="..\Public\CustomizingCostumeDocument.h" />
+    <ClInclude Include="..\Public\CustomizingFacePresetDocument.h" />
+    <ClInclude Include="..\Public\CustomizingFaceTextureDocument.h" />
     <ClInclude Include="..\Public\CustomizingIconDocument.h" />
     <ClInclude Include="..\Public\CustomizingView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
@@ -287,6 +291,7 @@
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\FaceCustomizeApplier.cpp" />
+    <ClCompile Include="..\Private\FaceMorphApplier.cpp" />
     <ClCompile Include="..\Private\FaceSliderDocument.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
       <ClCompile Include="..\Private\ValtanBossTool.cpp" />
@@ -341,6 +346,9 @@
     <ClCompile Include="..\Private\RaidBossShowcaseService.cpp" />
 
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
+    <ClCompile Include="..\Private\CustomizingCostumeDocument.cpp" />
+    <ClCompile Include="..\Private\CustomizingFacePresetDocument.cpp" />
+    <ClCompile Include="..\Private\CustomizingFaceTextureDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp" />
     <ClCompile Include="..\Private\CustomizingView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />

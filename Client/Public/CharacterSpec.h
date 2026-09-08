@@ -149,6 +149,12 @@ struct CHARACTER_SPEC
 	/* Bit i hides body submesh i, for the skin the equipment already carries. */
 	uint32_t iBodyHiddenMeshMask;
 
+	/* The hair the cooked body draws by itself. It is whichever style the source
+	SkeletalMesh happened to carry, so a worn hairstyle has to replace it rather than
+	stack on top of it -- these bits are hidden only while a HEAD set is worn, which
+	leaves the in-world look alone. 0 for a body that ships no hair at all. */
+	uint32_t iBodyHairMeshMask;
+
 	const tchar_t* pWeaponShaderTag;
 	const WEAPON_PART_SPEC* pWeapons;
 	uint32_t iNumWeapons;

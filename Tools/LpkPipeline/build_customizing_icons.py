@@ -46,15 +46,35 @@ CLASSES = {
     101: "Warlord",
 }
 
-# The icon packages each left-column list draws from.
-# Customizing_lv is the background picker (sys.pccrate.customizing_lv_select_title reads
-# "background selection"), not the recommended styles. Character creation hides that list, so
-# the icons are still cut for the salon screen but nothing on this screen uses them. The
-# recommended-style row is account content the client fetches, with no table behind it.
+# SecondaryKey is the customizing category, and it is what splits one class's
+# CharacterPreset_* rows into the separate lists each tab shows. Lumping them together mixes
+# whole-face thumbnails with lips and eyebrows.
+#
+# Key 0 is the base tab's preset grid: its IconIndex runs 1, 2, 3, ... and those icons match
+# the retail screenshot's grid cell for cell, in order. Key 2 is the action row and key 3 the
+# background picker (sys.pccrate.customizing_lv_select_title reads "background selection"),
+# which character creation hides. The rest belong to the tabs this screen has not built yet,
+# so they are cut and indexed but nothing reads them.
+SECONDARY_BASE_PRESET = 0
+SECONDARY_ACTION = 2
+SECONDARY_BACKGROUND = 3
+# The left column's costume row. Five rows per class, Object_Unit 0..4, which is the costume
+# each cell stands for; the left panel's leftDressList has exactly five cells.
+SECONDARY_COSTUME = 6
+
 LISTS = {
-    "preset": lambda icon: icon.lower().startswith("characterpreset_"),
-    "action": lambda icon: icon.lower() == "saction_01",
-    "background": lambda icon: icon.lower() == "customizing_lv",
+    "preset": lambda icon, key: (
+        icon.lower().startswith("characterpreset_") and key == SECONDARY_BASE_PRESET
+    ),
+    "costume": lambda icon, key: (
+        icon.lower().startswith("characterpreset_") and key == SECONDARY_COSTUME
+    ),
+    "action": lambda icon, key: icon.lower() == "saction_01" and key == SECONDARY_ACTION,
+    "background": lambda icon, key: (
+        icon.lower() == "customizing_lv" and key == SECONDARY_BACKGROUND
+    ),
+    # Everything else keeps its own bucket so a later tab can pick it up by key.
+    "other": lambda icon, key: icon.lower().startswith("characterpreset_"),
 }
 
 
@@ -93,16 +113,19 @@ def read_table(path: Path) -> list[dict]:
     connection.text_factory = bytes
     cursor = connection.cursor()
     cursor.execute(
-        "select PrimaryKey, Icon, IconIndex, SortOrder from CharacterCustomizing"
+        "select PrimaryKey, SecondaryKey, Icon, IconIndex, SortOrder, SourceRow "
+        "from CharacterCustomizing"
     )
     rows = []
-    for primary, icon, index, order in cursor.fetchall():
+    for primary, secondary, icon, index, order, source in cursor.fetchall():
         rows.append(
             {
                 "class": CLASSES.get(primary),
+                "key": secondary,
                 "icon": icon.decode("cp949", "replace"),
                 "index": index,
                 "order": order,
+                "source": source,
             }
         )
     connection.close()
@@ -138,10 +161,14 @@ def main() -> int:
     missing_icon: list[str] = []
     missing_page: set[str] = set()
 
-    for row in sorted(rows, key=lambda r: (r["class"], r["icon"], r["order"])):
-        kind = next((k for k, test in LISTS.items() if test(row["icon"])), None)
+    # SourceRow is the order the table itself lists a category in, which is the order the
+    # cells appear; SortOrder repeats across categories.
+    for row in sorted(rows, key=lambda r: (r["class"], r["source"])):
+        kind = next((k for k, test in LISTS.items() if test(row["icon"], row["key"])), None)
         if kind is None:
             continue
+        if kind == "other":
+            kind = "category%d" % row["key"]
         name = "%s_%d.png" % (row["icon"].lower(), row["index"])
         placement = icons.get(name)
         if placement is None:

@@ -55,6 +55,13 @@ public:
 	virtual ~CPart_Equipment();
 
 public:
+	/* The worn piece's own model, for the creation screen to repaint a dyed material on
+	it the same way it repaints one on the body. */
+	shared_ptr<CModel> Get_Model() const {
+		return m_pModelCom;
+	}
+
+public:
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Priority_Update(f32_t fTimeDelta) override;

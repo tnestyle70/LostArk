@@ -33,6 +33,12 @@ namespace
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_LanceMaster_Upper"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
+		/* The hairstyle is a part, not something the body draws: character creation
+		picks one and swaps this out for it. Style 0 of this class's list is what a
+		character that has never been through that screen wears. */
+		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_LanceMaster_Hair"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 
 		/* Mokoko avatar test slots: presence hides the base parts they cover,
 		see CCharacter::Ready_PartObjects. */
@@ -49,6 +55,11 @@ namespace
 	0 arm / 1 upper / 2 lower / 3 face / 4 eyelashes / 5 eye / 6 hair.
 	Re-cooking the body with different content invalidates these bits. */
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 0) | (1u << 1) | (1u << 2);
+
+	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
+	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
+	off the cooked model's material order, like the mask above. 6 is pc_ft_08_hair. */
+	constexpr uint32_t BAKED_HAIR = (1u << 6);
 
 	/* The rig keys only each chain's first bone and the original game solves
 	the rest at runtime -- the same contract as the Warlord chains. The two
@@ -82,36 +93,48 @@ namespace
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_upper_cloth_f_01", 5u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 60.0f },
 		{ "b_upper_cloth_b_01", 5u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 60.0f },
 
 		{ "b_upper_pelat_br_01", 4u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 40.0f },
 		{ "b_upper_pelat_bl_01", 4u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 40.0f },
 		{ "b_upper_pelat_r_01",  5u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 60.0f },
 		{ "b_upper_pelat_b_01",  4u, DRAPE_STIFFNESS, DRAPE_DAMPING,
-		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE },
+		  DRAPE_GRAVITY, DRAPE_MAX_DISPLACEMENT, DRAPE_WIND_RESPONSE, 40.0f },
 
 		{ "b_upper_skirt_fl_01", 2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 		{ "b_upper_skirt_fr_01", 2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 		{ "b_upper_skirt_l_01",  2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 		{ "b_upper_skirt_r_01",  2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 		{ "b_upper_skirt_bl_01", 2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 		{ "b_upper_skirt_br_01", 2u, FLAP_STIFFNESS, FLAP_DAMPING,
-		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE },
+		  FLAP_GRAVITY, FLAP_MAX_DISPLACEMENT, FLAP_WIND_RESPONSE, 50.0f },
 
 		{ "b_hair_fr_01", 2u, BANGS_STIFFNESS, BANGS_DAMPING,
-		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE },
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
 		{ "b_hair_fl_01", 2u, BANGS_STIFFNESS, BANGS_DAMPING,
-		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE },
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
+
+		/* The back hair and the belt tail. They are in this body's own 224-bone palette but
+		were never solved, so they stayed rigid while the front bangs beside them moved.
+		b_add_hair01_b's links are numbered from 11, which is the rig's own numbering. */
+		{ "b_hair00_b_01", 5u, BANGS_STIFFNESS, BANGS_DAMPING,
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
+		{ "b_hair01_b_01", 4u, BANGS_STIFFNESS, BANGS_DAMPING,
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
+		{ "b_add_hair01_b_11", 4u, BANGS_STIFFNESS, BANGS_DAMPING,
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 30.0f },
+		{ "b_add_tail_1_01", 4u, BANGS_STIFFNESS, BANGS_DAMPING,
+		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 30.0f },
 	};
 
 	unique_ptr<ICharacterLogic> Create_Logic()
@@ -139,6 +162,7 @@ const CHARACTER_SPEC Spec_LanceMaster =
 	TEXT("Prototype_Component_Model_LanceMaster"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
+	BAKED_HAIR,
 
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,

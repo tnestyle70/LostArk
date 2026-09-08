@@ -94,8 +94,15 @@ bool_t Client::CCustomizingIconDocument::Load()
 		}
 		CLASS_ICONS icons;
 		if (!Read_AssetList(value.Find("preset"), icons.Presets, error) ||
+			!Read_AssetList(value.Find("category1"), icons.FaceShapes, error) ||
+			!Read_AssetList(value.Find("costume"), icons.Costumes, error) ||
 			!Read_AssetList(value.Find("action"), icons.Actions, error) ||
-			!Read_AssetList(value.Find("background"), icons.Backgrounds, error))
+			!Read_AssetList(value.Find("background"), icons.Backgrounds, error) ||
+			!Read_AssetList(value.Find("category4"), icons.HairShapes, error) ||
+			!Read_AssetList(value.Find("category9"), icons.EyeIrises, error) ||
+			!Read_AssetList(value.Find("category10"), icons.AdornEyeLine, error) ||
+			!Read_AssetList(value.Find("category11"), icons.AdornTouch, error) ||
+			!Read_AssetList(value.Find("category12"), icons.AdornLip, error))
 		{
 			m_strStatus = path.string() + " (" + assetId + "): " + error;
 			return false;

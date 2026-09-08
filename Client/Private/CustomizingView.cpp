@@ -7,6 +7,7 @@
 #include "Model.h"
 #include "Transform.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -32,6 +33,22 @@ namespace
 		L"\xC74C\xC131",					/* voice */
 	};
 	constexpr int32_t FACE_TAB_INDEX = 1;
+	constexpr int32_t HAIR_TAB_INDEX = 2;
+	constexpr int32_t EYE_TAB_INDEX = 3;
+	constexpr int32_t SKIN_TAB_INDEX = 4;
+	constexpr int32_t ADORN_TAB_INDEX = 5;
+	/* Voice is left out on purpose: its list needs audio this project has none of, so drawing
+	its rows would only add a row of dead buttons. */
+	constexpr int32_t VOICE_TAB_INDEX = 6;
+
+	/* Cell counts of each tab's own rolling lists, sized to the retail viewports. */
+	/* Cells the grid draws, not entries the list holds. The retail viewports are this size and
+	scroll -- a class carries 38-53 hairstyles and 25-40 irises -- so a grid shows one window
+	onto its list and the wheel moves that window a row at a time. */
+	constexpr int32_t GRID_COLUMNS = 5;
+	constexpr int32_t HAIR_SHAPE_COUNT = 20;
+	constexpr int32_t EYE_IRIS_COUNT = 15;
+	constexpr int32_t ADORN_ITEM_COUNT = 10;
 
 	constexpr const wchar_t* LABEL_DETAIL_DESC =
 		L"\xC5BC\xAD74\xC758 \xC0C1\xC138\xD55C \xACE8\xACA9 \xC124\xC815";
@@ -81,10 +98,20 @@ namespace
 	/* bottomPage @ (33,426): the recommended-style caption sits at its (2,2). */
 	/* bottomPage @ (33,426): the recommended-style caption sits at its (2,2). */
 	constexpr f32_t GFX_TO_REF = 2.f / 3.f;
+	/* The right panel's content edge: every caption in it is left-aligned here, which is
+	where the source screen's text fields sit. */
+	constexpr f32_t RIGHT_LABEL_X = 1012.f;
+	/* A text field's height is its em size plus the font's ascent/descent overshoot, which the
+	sprite fonts bake into their line spacing and UILabelFont sizes by. The exact ratio survives
+	in neither the .gfx nor the .spritefont, so this is the one approximated number here. */
+	constexpr f32_t EM_TO_LINE_SPACING = 1.25f;
 	/* CharCustom_Right_TabFaceDefaultContent is a 390x470 box, so expanding the first
 	category pushes the second one down by its whole height. */
 	constexpr f32_t FACE_DEFAULT_SECTION_HEIGHT = 470.f * GFX_TO_REF;
 	constexpr int32_t FACE_PRESET_COUNT = 25;
+	/* leftDressList and leftActionList are five cells each, and the table's SecondaryKey 6
+	carries exactly five costume rows per class. */
+	constexpr int32_t COSTUME_COUNT = 5;
 	/* Retail point sizes, converted the same way every position in this file is. */
 	constexpr f32_t SIZE_RIGHT_TITLE = 28.f * GFX_TO_REF;
 	constexpr f32_t SIZE_BOTTOM_GUIDE = 16.f * GFX_TO_REF;
@@ -93,6 +120,41 @@ namespace
 	constexpr const wchar_t* LABEL_NO_SLIDERS =
 		L"\xC774 \xD074\xB798\xC2A4\xB294 \xC5BC\xAD74 \xC2AC\xB77C\xC774\xB354 "
 		L"\xB370\xC774\xD130\xAC00 \xC544\xC9C1 \xC5C6\xC2B5\xB2C8\xB2E4.";
+	/* The retail strings, taken from the client's own sys.pccreate.customizing_* table
+	rather than retyped. Written as wide escapes because this file has to stay ASCII. */
+	constexpr const wchar_t* LABEL_HAIR_SUB_BASE        = L"\xAE30\xBCF8";	/* customizing_button_hair_base */
+	constexpr const wchar_t* LABEL_HAIR_SUB_TWOTONE     = L"\xD22C\xD1A4";	/* customizing_button_hair_two_tone */
+	constexpr const wchar_t* LABEL_EYE_SUB_BOTH         = L"\xC591\xCABD \xB208";	/* customizing_button_eye_normal */
+	constexpr const wchar_t* LABEL_EYE_SUB_ODD          = L"\xC624\xB4DC\xC544\xC774";	/* customizing_button_eye_odd_eye */
+	constexpr const wchar_t* LABEL_ADORN_SUB_LIP        = L"\xC785\xC220";	/* customizing_label_lips */
+	constexpr const wchar_t* LABEL_ADORN_SUB_CHEEK      = L"\xBCFC \xD130\xCE58";	/* customizing_button_cheek */
+	constexpr const wchar_t* LABEL_ADORN_SUB_EYEMAKE    = L"\xB208 \xD654\xC7A5";	/* customizing_button_eye_makeup */
+	constexpr const wchar_t* LABEL_ADORN_SUB_EYEBROW    = L"\xB208\xC379";	/* customizing_button_eyebrow */
+	constexpr const wchar_t* LABEL_HAIR_FORM            = L"\xBA38\xB9AC \xD615\xD0DC";	/* customizing_label_hair_form */
+	constexpr const wchar_t* LABEL_HAIR_DESC            = L"\xBA38\xB9AC \xD615\xD0DC, \xC0C9\xC0C1 \xBCC0\xACBD";	/* customizing_label_hair_desc */
+	constexpr const wchar_t* LABEL_HAIR_COLOR           = L"\xBA38\xB9AC \xC0C9\xC0C1";	/* customizing_label_hair_color */
+	constexpr const wchar_t* LABEL_HAIR_COLOR_TWOTONE   = L"\xBA38\xB9AC \xCD94\xAC00\xC0C9\xC0C1";	/* customizing_label_hair_color_two_tone */
+	constexpr const wchar_t* LABEL_STRENGTH             = L"\xAC15\xB3C4";	/* customizing_label_strength */
+	constexpr const wchar_t* LABEL_RANGE                = L"\xBC94\xC704";	/* customizing_label_range */
+	constexpr const wchar_t* LABEL_EYE_DESC             = L"\xB208 \xD615\xD0DC\xC640 \xC0C9\xC0C1 \xBCC0\xACBD";	/* customizing_label_eye_desc */
+	constexpr const wchar_t* LABEL_EYE_FORM             = L"\xB208 \xBAA8\xC591";	/* customizing_label_detail_eye_form */
+	constexpr const wchar_t* LABEL_EYE_COLOR            = L"\xB208 \xC0C9\xC0C1";	/* customizing_label_eye_color */
+	constexpr const wchar_t* LABEL_EYE_IRIS_COLOR       = L"\xD64D\xCC44 \xC0C9\xC0C1";	/* customizing_label_eye_iris_color */
+	constexpr const wchar_t* LABEL_EYE_SIZE             = L"\xB208\xB3D9\xC790 \xD06C\xAE30";	/* customizing_label_eye_size */
+	constexpr const wchar_t* LABEL_ALPHA                = L"\xC120\xBA85\xB3C4";	/* customizing_label_alpha */
+	constexpr const wchar_t* LABEL_SKIN_DESC            = L"\xD53C\xBD80\xC758 \xC0C9\xC0C1, \xB098\xC774 \xB4F1 \xBCC0\xACBD";	/* customizing_label_skin_desc */
+	constexpr const wchar_t* LABEL_SKIN_COLOR           = L"\xD53C\xBD80 \xC0C9\xC0C1";	/* customizing_label_skin_color */
+	constexpr const wchar_t* LABEL_SKIN_WRINKLE         = L"\xD53C\xBD80 \xB098\xC774";	/* customizing_label_skin_wrinkle */
+	constexpr const wchar_t* LABEL_SKIN_GLOSS           = L"\xD53C\xBD80 \xC724\xAE30";	/* customizing_label_skin_gloss */
+	constexpr const wchar_t* LABEL_SKIN_FRECKLE         = L"\xC8FC\xADFC\xAE68";	/* customizing_label_skin_freckle */
+	constexpr const wchar_t* LABEL_ADORN_DESC           = L"\xD654\xC7A5\xC758 \xD615\xD0DC, \xC0C9\xC0C1 \xBCC0\xACBD";	/* customizing_label_makeup_desc */
+	constexpr const wchar_t* LABEL_ADORN_FORM           = L"\xB208 \xD654\xC7A5 \xD615\xD0DC";	/* customizing_label_makeup_form */
+	constexpr const wchar_t* LABEL_ADORN_COLOR          = L"\xC785\xC220 \xC0C9\xC0C1";	/* customizing_label_makeup_lips_color */
+	constexpr const wchar_t* LABEL_ADORN_SHADOW_COLOR   = L"\xC544\xC774\xC100\xB3C4 \xC0C9\xC0C1";	/* customizing_label_makeup_eyeshadow_color */
+	constexpr const wchar_t* LABEL_SAVE_SLOT            = L"\xCEE4\xC2A4\xD130\xB9C8\xC774\xC9D5 \xC800\xC7A5/\xBD88\xB7EC\xC624\xAE30";	/* customizing_label_save_slot */
+	/* sys.pccreate.checkname_button_ok / .customizing_btn_avatarreset */
+	constexpr const wchar_t* LABEL_PICKER_APPLY = L"\xD655\xC778";
+	constexpr const wchar_t* LABEL_PICKER_CANCEL = L"\xCDE8\xC18C";
 	constexpr const wchar_t* LABEL_NOT_READY = L"\xC900\xBE44 \xC911\xC778 \xD56D\xBAA9\xC785\xB2C8\xB2E4.";
 
 	/* One row of CharCustom_Right_TabFaceDetailPart<N>: the slider id in
@@ -274,10 +336,20 @@ void Client::CCustomizingView::Open()
 	m_iDraggingRow = -1;
 	m_bOrbitDragging = false;
 	m_fOrbitYaw = 0.f;
+	m_hasCapturedCharacterYaw = false;
 	m_fZoomTarget = 0.f;
 	m_fZoomBlend = 0.f;
 	m_bDecideRequested = false;
 	m_bBackRequested = false;
+	/* The hair a cooked body happens to draw by itself is not the retail starting look --
+	one class shows a style nobody picked and another has no hair mesh at all. Asking for
+	the selected style up front puts a real hairstyle on every class, and it is the same
+	apply the grid uses, so nothing about it is a second path. */
+	m_bHairChanged = true;
+	/* Same for the outfit. The class default equipment is its starting armour, not the
+	plain outfit the creation screen shows, and entry 0 of the try-on list is that
+	outfit -- so the screen opens on it rather than on a suit of armour. */
+	m_bCostumeChanged = true;
 }
 
 void Client::CCustomizingView::Close()
@@ -312,6 +384,8 @@ bool_t Client::CCustomizingView::Is_Hovered(
 bool_t Client::CCustomizingView::Is_Clicked(
 	const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight) const
 {
+	if (m_isPickerCapturingPointer)
+		return false;
 	return CUIInputRouter::Get().Is_Clicked(fX, fY, fWidth, fHeight, REF_WIDTH, REF_HEIGHT);
 }
 
@@ -327,6 +401,20 @@ bool_t Client::CCustomizingView::Try_Consume_Back()
 	const bool_t bRequested = m_bBackRequested;
 	m_bBackRequested = false;
 	return bRequested;
+}
+
+bool_t Client::CCustomizingView::Try_Consume_CostumeChange()
+{
+	const bool_t bChanged = m_bCostumeChanged;
+	m_bCostumeChanged = false;
+	return bChanged;
+}
+
+bool_t Client::CCustomizingView::Try_Consume_HairChange()
+{
+	const bool_t bChanged = m_bHairChanged;
+	m_bHairChanged = false;
+	return bChanged;
 }
 
 f32_t Client::CCustomizingView::Get_FieldOfViewDegrees() const
@@ -356,7 +444,7 @@ float3_t Client::CCustomizingView::Get_LateralOffset() const
 	/* Shifting the eye and the look point by the same sideways vector moves the subject across
 	the screen without turning the camera. The camera moves right, so the character reads as
 	left of centre. */
-	const f32_t fYaw = XMConvertToRadians(m_fCharacterYawDegrees + m_fOrbitYaw);
+	const f32_t fYaw = XMConvertToRadians(m_fCharacterYawDegrees);
 	const f32_t fLateral =
 		Subject_ScreenShiftFraction() * Camera_HorizontalTangent() * Get_Distance();
 	return float3_t(-std::cos(fYaw) * fLateral, 0.f, std::sin(fYaw) * fLateral);
@@ -371,7 +459,7 @@ f32_t Client::CCustomizingView::Get_LookHeight() const
 float3_t Client::CCustomizingView::Get_CameraPositionOffset() const
 {
 	/* Yaw 0 stands the camera directly in front of the character's own facing. */
-	const f32_t fYaw = XMConvertToRadians(m_fCharacterYawDegrees + m_fOrbitYaw);
+	const f32_t fYaw = XMConvertToRadians(m_fCharacterYawDegrees);
 	/* The retail pitch is the angle the camera looks UP at the character, so the eye sits
 	that much below the point it aims at. */
 	const f32_t fPitch = XMConvertToRadians(Get_Pitch());
@@ -403,20 +491,32 @@ void Client::CCustomizingView::Update(
 		float3_t vLook{};
 		XMStoreFloat3(&vLook,
 			pCharacter->Get_Transform()->Get_State(Engine::STATE::LOOK));
-		if (std::isfinite(vLook.x) && std::isfinite(vLook.z) &&
+		/* Captured once, on the frame the subject first appears. The drag turns the model,
+		so re-reading its facing every frame would swing the camera along with it and cancel
+		the rotation on screen -- the world-fixed lighting was the only thing that still
+		showed it moving. The camera stays where the retail framing puts it. */
+		if (!m_hasCapturedCharacterYaw &&
+			std::isfinite(vLook.x) && std::isfinite(vLook.z) &&
 			(std::fabs(vLook.x) > 1e-4f || std::fabs(vLook.z) > 1e-4f))
 		{
 			m_fCharacterYawDegrees =
 				XMConvertToDegrees(std::atan2(vLook.x, vLook.z));
+			m_hasCapturedCharacterYaw = true;
 		}
 	}
 
+	/* Decided before anything reads the pointer this frame. */
+	m_isPickerCapturingPointer = PICKER_SURFACE_NONE != m_iPickerSurface;
 	Update_SubjectMetrics(pCharacter);
 	Apply_ListIcons(pCharacter);
 	Update_Orbit(fTimeDelta);
 	Update_Tabs();
 	Update_FaceTab(pCharacter);
+	Update_SecondaryTabs(pCharacter);
 	Update_Buttons(pCharacter);
+	/* Last: its own widgets test the router directly, so the capture above does not block
+	the picker itself. */
+	Update_ColorPicker(pCharacter);
 }
 
 void Client::CCustomizingView::Update_Orbit(const f32_t fTimeDelta)
@@ -436,8 +536,10 @@ void Client::CCustomizingView::Update_Orbit(const f32_t fTimeDelta)
 		}
 		else if (bHasMouse)
 		{
-			/* Yaw only: the retail guide offers rotate and zoom, no free pitch. */
-			m_fOrbitYaw -= (fMouseX - m_fLastMouseX) * 0.4f;
+			/* Yaw only: the retail guide offers rotate and zoom, no free pitch. The model
+			follows the drag -- pulling left turns its near side left -- so the sign is the
+			cursor's, not its opposite. */
+			m_fOrbitYaw += (fMouseX - m_fLastMouseX) * 0.4f;
 		}
 	}
 	else if (bOverScene && Router.Is_LeftClickEdge())
@@ -450,10 +552,13 @@ void Client::CCustomizingView::Update_Orbit(const f32_t fTimeDelta)
 	/* One wheel notch swaps the whole framing in the original, so this is a toggle rather
 	than a continuous distance. */
 	const int32_t iWheel = CGameInstance::Get().Get_DIMouseMove(DIMM::WHEEL);
-	if (iWheel > 0)
-		m_fZoomTarget = 1.f;
-	else if (iWheel < 0)
-		m_fZoomTarget = 0.f;
+	if (!Consume_TabGridScroll(iWheel))
+	{
+		if (iWheel > 0)
+			m_fZoomTarget = 1.f;
+		else if (iWheel < 0)
+			m_fZoomTarget = 0.f;
+	}
 	const f32_t fStep = std::clamp((max)(0.f, fTimeDelta), 0.f, 0.1f);
 	m_fZoomBlend += (m_fZoomTarget - m_fZoomBlend) *
 		(1.f - std::exp(-ZOOM_RESPONSE * fStep));
@@ -467,7 +572,7 @@ void Client::CCustomizingView::Update_Tabs()
 		const string strGlowId = "CC_Tab" + std::to_string(i) + "_Glow";
 		const string strIconId = "CC_Tab" + std::to_string(i) + "_Icon";
 		const bool_t bSelected = i == m_iSelectedTab;
-		const bool_t bSupported = FACE_TAB_INDEX == i;
+		const bool_t bSupported = VOICE_TAB_INDEX != i;
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!Get_SlotRect(strBgId.c_str(), fX, fY, fWidth, fHeight))
@@ -505,13 +610,28 @@ void Client::CCustomizingView::Update_Tabs()
 	/* The left column's rolling lists: each CharCustom_LeftRenderer cell is its own plate
 	under the shared V2Slot_border frame, and the panel art behind them is a translucent
 	black sheet that reads as nothing on its own. */
-	for (int32_t i = 0; i < 5; ++i)
+	for (int32_t i = 0; i < COSTUME_COUNT; ++i)
 	{
 		for (const string& strId : { "CC_LeftDress" + std::to_string(i),
 			"CC_LeftAction" + std::to_string(i) })
 		{
 			m_pView->Set_SlotVisible(strId, true);
 			m_pView->Set_SlotVisible(strId + "_Plate", true);
+		}
+
+		/* Picking a costume only records which one is wanted. Putting it on the model is the
+		equipment presentation service's job, driven from the owning Level once the catalog
+		carries these sets. */
+		const string strDressId = "CC_LeftDress" + std::to_string(i);
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (Get_SlotRect(strDressId.c_str(), fX, fY, fWidth, fHeight) &&
+			Is_Hovered(fX, fY, fWidth, fHeight) &&
+			Is_Clicked(fX, fY, fWidth, fHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			if (m_iSelectedCostume != i)
+				m_bCostumeChanged = true;
+			m_iSelectedCostume = i;
 		}
 	}
 	for (int32_t i = 0; i < 6; ++i)
@@ -549,6 +669,20 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 			("[CustomizingView][Icons] " + m_IconDocument.Get_Status() + "\n").c_str());
 		return;
 	}
+	/* A missing preset document leaves the grid drawn and clickable but with nothing to
+	apply, the same way a class with no face morph data behaves. */
+	if (!m_FacePresetDocument.Load())
+	{
+		OutputDebugStringA(
+			("[CustomizingView][FacePresets] " + m_FacePresetDocument.Get_Status() + "\n").c_str());
+	}
+	if (!m_FaceTextureDocument.Load())
+	{
+		OutputDebugStringA(
+			("[CustomizingView][FaceTextures] " + m_FaceTextureDocument.Get_Status() + "\n").c_str());
+	}
+	m_iSelectedFacePreset = -1;
+	m_iSelectedEyeIris = -1;
 	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
 	if (nullptr == pIcons)
 		return;
@@ -565,8 +699,15 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 				static_cast<size_t>(i) < Assets.size() ? Assets[i] : string());
 		}
 	};
+	Fn_Fill("CC_LeftDress", 5, pIcons->Costumes);
 	Fn_Fill("CC_LeftAction", 5, pIcons->Actions);
-	Fn_Fill("CC_FacePreset", FACE_PRESET_COUNT, pIcons->Presets);
+	/* Hair and iris are longer than their grids, so they are filled from their scroll window
+	every frame rather than once per class here. */
+	/* The adorn list is one grid the sub-tab re-fills, so it is filled per frame from the
+	page in view rather than once here. */
+	/* The face tab's grid is 기본 얼굴 -- the face-shape set -- not the base tab's whole
+	appearance presets. The two have the same row count, so the wrong one looked plausible. */
+	Fn_Fill("CC_FacePreset", FACE_PRESET_COUNT, pIcons->FaceShapes);
 	/* The recommended-style row stays empty: it is account content the client fetches,
 	not a table, and the icon package that looked like it is the background picker. */
 }
@@ -598,7 +739,7 @@ void Client::CCustomizingView::Update_SubjectMetrics(const shared_ptr<CCharacter
 }
 
 void Client::CCustomizingView::Update_FaceCategoryHeader(
-	const char_t* pSlotId, bool_t& isExpanded, const bool_t isVisible)
+	const char_t* pSlotId, bool_t& isExpanded, bool_t& isOther, const bool_t isVisible)
 {
 	if (!isVisible)
 		return;
@@ -609,6 +750,10 @@ void Client::CCustomizingView::Update_FaceCategoryHeader(
 		return;
 	CMainApp::Play_UIButtonClickSound();
 	isExpanded = !isExpanded;
+	/* The two categories are one accordion, not two independent folds: opening either closes
+	the other, so the section below always sits directly under the collapsed header above it. */
+	if (isExpanded)
+		isOther = false;
 	m_iDraggingRow = -1;
 }
 
@@ -644,6 +789,568 @@ void Client::CCustomizingView::Apply_FaceAccordionLayout()
 		m_pView->Set_SlotPosition(id, vAuthored.x, vAuthored.y + fOffset);
 }
 
+bool_t Client::CCustomizingView::Consume_TabGridScroll(const int32_t iWheel)
+{
+	if (0 == iWheel)
+		return false;
+	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
+	if (nullptr == pIcons)
+		return false;
+
+	if (HAIR_TAB_INDEX == m_iSelectedTab)
+	{
+		return Consume_GridScroll("CC_HairShape", HAIR_SHAPE_COUNT,
+			static_cast<int32_t>(pIcons->HairShapes.size()), m_iHairScrollRow, iWheel);
+	}
+	if (EYE_TAB_INDEX == m_iSelectedTab)
+	{
+		return Consume_GridScroll("CC_EyeIris", EYE_IRIS_COUNT,
+			static_cast<int32_t>(pIcons->EyeIrises.size()), m_iEyeIrisScrollRow, iWheel);
+	}
+	if (ADORN_TAB_INDEX == m_iSelectedTab)
+	{
+		return Consume_GridScroll("CC_AdornItem", ADORN_ITEM_COUNT,
+			static_cast<int32_t>(Get_AdornPage().size()), m_iAdornScrollRow, iWheel);
+	}
+	return false;
+}
+
+const std::vector<std::string>& Client::CCustomizingView::Get_AdornPage() const
+{
+	static const std::vector<std::string> s_Empty;
+	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
+	if (nullptr == pIcons)
+		return s_Empty;
+	/* Lip, cheek touch and eye make each have their own table category; the eyebrow page is a
+	slider and a colour chip only, so its grid stays empty. */
+	switch (m_iSelectedAdornSub)
+	{
+	case 0: return pIcons->AdornLip;
+	case 1: return pIcons->AdornTouch;
+	case 2: return pIcons->AdornEyeLine;
+	default: return s_Empty;
+	}
+}
+
+bool_t Client::CCustomizingView::Consume_GridScroll(
+	const char_t* pPrefix, const int32_t iCellCount, const int32_t iEntryCount,
+	int32_t& iScrollRow, const int32_t iWheel)
+{
+	if (0 == iWheel || iCellCount <= 0)
+		return false;
+	/* The grid's own bounds are the union of its cells, so the pointer test needs no separate
+	authored rect. */
+	f32_t fLeft = 0.f, fTop = 0.f, fRight = 0.f, fBottom = 0.f;
+	bool_t bHasBounds = false;
+	for (int32_t i = 0; i < iCellCount; ++i)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!Get_SlotRect((string(pPrefix) + std::to_string(i)).c_str(),
+			fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
+		if (!bHasBounds)
+		{
+			fLeft = fX; fTop = fY; fRight = fX + fWidth; fBottom = fY + fHeight;
+			bHasBounds = true;
+			continue;
+		}
+		fLeft = (min)(fLeft, fX);
+		fTop = (min)(fTop, fY);
+		fRight = (max)(fRight, fX + fWidth);
+		fBottom = (max)(fBottom, fY + fHeight);
+	}
+	if (!bHasBounds || !Is_Hovered(fLeft, fTop, fRight - fLeft, fBottom - fTop))
+		return false;
+
+	const int32_t iBefore = iScrollRow;
+	iScrollRow = Clamp_ScrollRow(
+		iScrollRow + (iWheel > 0 ? -1 : 1), iEntryCount, iCellCount);
+	/* The notch is consumed even at the end of the list: the pointer was over the grid, so the
+	camera must not zoom instead. */
+	(void)iBefore;
+	return true;
+}
+
+int32_t Client::CCustomizingView::Clamp_ScrollRow(
+	int32_t iScrollRow, const int32_t iEntryCount, const int32_t iCellCount) const
+{
+	const int32_t iRows = (iEntryCount + GRID_COLUMNS - 1) / GRID_COLUMNS;
+	const int32_t iVisibleRows = iCellCount / GRID_COLUMNS;
+	const int32_t iMaximum = (max)(0, iRows - iVisibleRows);
+	return std::clamp(iScrollRow, 0, iMaximum);
+}
+
+void Client::CCustomizingView::Fill_ScrollingGrid(
+	const char_t* pPrefix, const int32_t iCellCount, const int32_t iScrollRow,
+	const std::vector<std::string>& Entries)
+{
+	const int32_t iFirst = iScrollRow * GRID_COLUMNS;
+	for (int32_t i = 0; i < iCellCount; ++i)
+	{
+		const size_t iEntry = static_cast<size_t>(iFirst + i);
+		m_pView->Set_SlotTexture(string(pPrefix) + std::to_string(i) + "_Plate",
+			iEntry < Entries.size() ? Entries[iEntry] : string());
+	}
+}
+
+float4_t Client::CCustomizingView::HsvToRgb(
+	const f32_t fHue, const f32_t fSaturation, const f32_t fValue)
+{
+	const f32_t fSector = std::fmod(std::fmax(fHue, 0.f), 360.f) / 60.f;
+	const int32_t iSector = static_cast<int32_t>(fSector) % 6;
+	const f32_t f = fSector - std::floor(fSector);
+	const f32_t p = fValue * (1.f - fSaturation);
+	const f32_t q = fValue * (1.f - fSaturation * f);
+	const f32_t t = fValue * (1.f - fSaturation * (1.f - f));
+	switch (iSector)
+	{
+	case 0: return float4_t(fValue, t, p, 1.f);
+	case 1: return float4_t(q, fValue, p, 1.f);
+	case 2: return float4_t(p, fValue, t, 1.f);
+	case 3: return float4_t(p, q, fValue, 1.f);
+	case 4: return float4_t(t, p, fValue, 1.f);
+	default: return float4_t(fValue, p, q, 1.f);
+	}
+}
+
+bool_t Client::CCustomizingView::Update_ColorPicker(
+	const shared_ptr<CCharacter>& pCharacter)
+{
+	const bool_t bOpen = PICKER_SURFACE_NONE != m_iPickerSurface;
+	/* Skin does not pick a hue in the source game -- its colour model is a named ramp
+	(SkinColor / GN_F_SkinColor), not the free HSV wheel hair and eyes use. So the wheel is
+	not offered for it and the bar alone moves the tone lighter or darker. */
+	const bool_t bSkinPicker = bOpen && SKIN_SURFACE_INDEX == m_iPickerSurface;
+	static constexpr const char_t* PICKER_SLOTS[] = {
+		"CC_PickerBg", "CC_PickerBar",
+		"CC_PickerBarThumb", "CC_PickerPreview", "CC_PickerApply", "CC_PickerCancel" };
+	for (const char_t* pSlotId : PICKER_SLOTS)
+		m_pView->Set_SlotVisible(pSlotId, bOpen);
+	m_pView->Set_SlotVisible("CC_PickerWheel", bOpen && !bSkinPicker);
+	m_pView->Set_SlotVisible("CC_PickerCursor", bOpen && !bSkinPicker);
+	if (bSkinPicker)
+	{
+		m_fPickerHue = 0.f;
+		m_fPickerSaturation = 0.f;
+	}
+	if (!bOpen)
+	{
+		m_isPickerWheelDragging = false;
+		m_isPickerBarDragging = false;
+		return false;
+	}
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	f32_t fMouseX = 0.f, fMouseY = 0.f;
+	const bool_t bHasMouse = Router.Get_MousePosition(REF_WIDTH, REF_HEIGHT, fMouseX, fMouseY);
+	if (!Router.Is_LeftDown())
+	{
+		m_isPickerWheelDragging = false;
+		m_isPickerBarDragging = false;
+	}
+
+	f32_t fWheelX = 0.f, fWheelY = 0.f, fWheelW = 0.f, fWheelH = 0.f;
+	if (!bSkinPicker &&
+		Get_SlotRect("CC_PickerWheel", fWheelX, fWheelY, fWheelW, fWheelH) && fWheelW > 0.f)
+	{
+		const f32_t fRadius = fWheelW * 0.5f;
+		const f32_t fCentreX = fWheelX + fRadius;
+		const f32_t fCentreY = fWheelY + fWheelH * 0.5f;
+		const f32_t dx = fMouseX - fCentreX;
+		const f32_t dy = fMouseY - fCentreY;
+		const f32_t fDistance = std::sqrt(dx * dx + dy * dy);
+		if (bHasMouse && Router.Is_LeftClickEdge() && fDistance <= fRadius)
+			m_isPickerWheelDragging = true;
+		if (m_isPickerWheelDragging && bHasMouse)
+		{
+			/* The wheel is painted clockwise in screen terms: sampling the art gives hue 0
+			at screen angle 0, 240 at 120 and 120 at 240. Screen y already grows downward,
+			so atan2 on it reads that direction with no sign flip. */
+			m_fPickerHue = XMConvertToDegrees(std::atan2(dy, dx));
+			if (m_fPickerHue < 0.f)
+				m_fPickerHue += 360.f;
+			m_fPickerSaturation = std::clamp(fDistance / fRadius, 0.f, 1.f);
+		}
+		f32_t fCursorW = 0.f, fCursorH = 0.f, fIgnoreX = 0.f, fIgnoreY = 0.f;
+		if (Get_SlotRect("CC_PickerCursor", fIgnoreX, fIgnoreY, fCursorW, fCursorH))
+		{
+			const f32_t fAngle = XMConvertToRadians(m_fPickerHue);
+			m_pView->Set_SlotPosition("CC_PickerCursor",
+				fCentreX + std::cos(fAngle) * m_fPickerSaturation * fRadius - fCursorW * 0.5f,
+				fCentreY + std::sin(fAngle) * m_fPickerSaturation * fRadius - fCursorH * 0.5f);
+		}
+	}
+
+	/* With the wheel hidden the bar would sit alone under a gap, so it moves up into the
+	space the wheel would have taken. */
+	if (bSkinPicker)
+	{
+		f32_t fWX = 0.f, fWY = 0.f, fWW = 0.f, fWH = 0.f;
+		f32_t fBX = 0.f, fBY = 0.f, fBW = 0.f, fBH = 0.f;
+		if (Get_SlotRect("CC_PickerWheel", fWX, fWY, fWW, fWH) &&
+			Get_SlotRect("CC_PickerBar", fBX, fBY, fBW, fBH))
+		{
+			m_pView->Set_SlotPosition("CC_PickerBar", fBX, fWY + fWH * 0.5f);
+		}
+	}
+
+	f32_t fBarX = 0.f, fBarY = 0.f, fBarW = 0.f, fBarH = 0.f;
+	if (Get_SlotRect("CC_PickerBar", fBarX, fBarY, fBarW, fBarH) && fBarW > 0.f)
+	{
+		if (bHasMouse && Router.Is_LeftClickEdge() &&
+			Is_Hovered(fBarX, fBarY - 4.f, fBarW, fBarH + 8.f))
+		{
+			m_isPickerBarDragging = true;
+		}
+		if (m_isPickerBarDragging && bHasMouse)
+			m_fPickerValue = std::clamp((fMouseX - fBarX) / fBarW, 0.f, 1.f);
+		f32_t fThumbW = 0.f, fThumbH = 0.f, fIgnoreX = 0.f, fIgnoreY = 0.f;
+		if (Get_SlotRect("CC_PickerBarThumb", fIgnoreX, fIgnoreY, fThumbW, fThumbH))
+		{
+			m_pView->Set_SlotPosition("CC_PickerBarThumb",
+				fBarX + m_fPickerValue * fBarW - fThumbW * 0.5f, fBarY - 1.f);
+		}
+	}
+
+	const float4_t vChosen = HsvToRgb(m_fPickerHue, m_fPickerSaturation, m_fPickerValue);
+	m_pView->Set_SlotTint("CC_PickerPreview", vChosen);
+	/* Live: a colour only means anything on the character, so it goes on as the wheel moves
+	and Apply just closes the picker rather than being the moment it lands. */
+	if (nullptr != pCharacter)
+	{
+		const bool_t bApplied = pCharacter->Set_DyeColor(
+			static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface), vChosen, vChosen);
+		if (bApplied != m_bLastDyeApplied)
+		{
+			m_bLastDyeApplied = bApplied;
+			OutputDebugStringA(("[Dye] surface " + std::to_string(m_iPickerSurface) +
+				(bApplied ? " applied" : " matched nothing") + "\n").c_str());
+		}
+	}
+
+	const auto Fn_PickerClicked = [&](const char_t* pSlotId)
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		return Get_SlotRect(pSlotId, fX, fY, fW, fH) &&
+			Router.Is_Clicked(fX, fY, fW, fH, REF_WIDTH, REF_HEIGHT);
+	};
+	if (Fn_PickerClicked("CC_PickerApply"))
+	{
+		CMainApp::Play_UIButtonClickSound();
+		if (nullptr != pCharacter)
+		{
+			/* The second hair colour follows the first until its own picker exists; a
+			hairstyle with no second colour ignores it either way. */
+			pCharacter->Set_DyeColor(
+				static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface), vChosen, vChosen);
+		}
+		m_SurfaceColors[static_cast<size_t>(m_iPickerSurface)] = vChosen;
+		m_iPickerSurface = PICKER_SURFACE_NONE;
+		return true;
+	}
+	if (Fn_PickerClicked("CC_PickerCancel"))
+	{
+		CMainApp::Play_UIButtonClickSound();
+		if (nullptr != pCharacter)
+		{
+			pCharacter->Set_DyeColor(
+				static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface),
+				m_vPickerRestore, m_vPickerRestore);
+		}
+		m_iPickerSurface = PICKER_SURFACE_NONE;
+		return true;
+	}
+	/* While it is up it owns the panel, so nothing behind it reads the pointer. */
+	return true;
+}
+
+void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>& pCharacter)
+{
+	/* Chrome for the hair, eye, skin and adorn tabs, placed from charactercustomizing.gfx. The
+	lists show the icons their table category already carries; the sliders and colour chips are
+	drawn and hit-tested but change nothing yet, because hair meshes, iris/lip/decal textures
+	and skin material tints are each their own slice with no runtime contract. Nothing here
+	invents a value -- an unbound control simply does not move. */
+	const auto Fn_ShowList = [&](const char_t* pPrefix, int32_t iCount, bool_t bVisible)
+	{
+		for (int32_t i = 0; i < iCount; ++i)
+		{
+			const string strId = string(pPrefix) + std::to_string(i);
+			m_pView->Set_SlotVisible(strId, bVisible);
+			m_pView->Set_SlotVisible(strId + "_Plate", bVisible);
+		}
+	};
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	f32_t fMouseX = 0.f, fMouseY = 0.f;
+	const bool_t bHasMouse = Router.Get_MousePosition(REF_WIDTH, REF_HEIGHT, fMouseX, fMouseY);
+	if (!Router.Is_LeftDown())
+		m_strDraggingSlider.clear();
+	/* Shows the track and thumb, and while it is up lets the pointer move it. Returns the
+	value so the caller can push it wherever it belongs; the same grab-and-follow the face
+	tab's sliders use, keyed by slot id because these do not sit in a row table. */
+	const auto Fn_ShowSlider = [&](const char_t* pId, bool_t bVisible, f32_t* pValue = nullptr)
+	{
+		const string strTrackId = string(pId) + "_Track";
+		const string strThumbId = string(pId) + "_Thumb";
+		m_pView->Set_SlotVisible(strTrackId, bVisible);
+		m_pView->Set_SlotVisible(strThumbId, bVisible);
+		if (!bVisible || nullptr == pValue)
+			return false;
+		f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
+		f32_t fThumbX = 0.f, fThumbY = 0.f, fThumbWidth = 0.f, fThumbHeight = 0.f;
+		if (!Get_SlotRect(strTrackId.c_str(), fTrackX, fTrackY, fTrackWidth, fTrackHeight) ||
+			!Get_SlotRect(strThumbId.c_str(), fThumbX, fThumbY, fThumbWidth, fThumbHeight) ||
+			fTrackWidth <= 0.f)
+		{
+			return false;
+		}
+		const bool_t bHovered = Is_Hovered(
+			fTrackX, fThumbY - 4.f, fTrackWidth, fThumbHeight + 8.f);
+		if (bHovered && Router.Is_LeftClickEdge())
+			m_strDraggingSlider = strTrackId;
+		bool_t bMoved = false;
+		if (m_strDraggingSlider == strTrackId && bHasMouse)
+		{
+			const f32_t fNext = std::clamp((fMouseX - fTrackX) / fTrackWidth, 0.f, 1.f);
+			bMoved = fNext != *pValue;
+			*pValue = fNext;
+		}
+		m_pView->Set_SlotTexture(strThumbId,
+			(bHovered || m_strDraggingSlider == strTrackId) ?
+			ASSET_THUMB_OVER : ASSET_THUMB_NORMAL);
+		m_pView->Set_SlotPosition(strThumbId,
+			fTrackX + *pValue * fTrackWidth - fThumbWidth * 0.5f, fThumbY);
+		return bMoved;
+	};
+	/* A swatch shows what the surface is wearing and opens the picker on it. Until a colour
+	is chosen it shows the art's own tint, which is what the asset was authored in. */
+	const auto Fn_ShowPicker = [&](const char_t* pId, bool_t bVisible, int32_t iSurface = -1)
+	{
+		const string strChipId = string(pId) + "_Chip";
+		m_pView->Set_SlotVisible(pId, bVisible);
+		m_pView->Set_SlotVisible(strChipId, bVisible);
+		if (!bVisible || iSurface < 0)
+			return;
+		const float4_t& vWorn = m_SurfaceColors[static_cast<size_t>(iSurface)];
+		if (vWorn.w > 0.f)
+			m_pView->Set_SlotTint(strChipId, vWorn);
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (Get_SlotRect(pId, fX, fY, fW, fH) &&
+			Is_Hovered(fX, fY, fW, fH) && Is_Clicked(fX, fY, fW, fH))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iPickerSurface = iSurface;
+			m_vPickerRestore = vWorn;
+		}
+	};
+	const auto Fn_ShowSubTab = [&](const char_t* pId, bool_t bVisible, bool_t bSelected)
+	{
+		m_pView->Set_SlotVisible(string(pId) + "_Bg", bVisible);
+		m_pView->Set_SlotVisible(string(pId) + "_Selected", bVisible && bSelected);
+	};
+
+	const bool_t bHair = HAIR_TAB_INDEX == m_iSelectedTab;
+	const bool_t bEye = EYE_TAB_INDEX == m_iSelectedTab;
+	const bool_t bSkin = SKIN_TAB_INDEX == m_iSelectedTab;
+	const bool_t bAdorn = ADORN_TAB_INDEX == m_iSelectedTab;
+
+	m_pView->Set_SlotVisible("CC_HairDivision", bHair);
+	Fn_ShowList("CC_HairShape", HAIR_SHAPE_COUNT, bHair);
+	if (bHair)
+	{
+		/* A class carries 38-53 hairstyles against a 20-cell grid, so the grid is a window and
+		a cell's list index is its position plus the scrolled rows. */
+		static const std::vector<std::string> s_Empty;
+		const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
+		const std::vector<std::string>& Shapes =
+			nullptr != pIcons ? pIcons->HairShapes : s_Empty;
+		const int32_t iCount = static_cast<int32_t>(Shapes.size());
+		m_iHairScrollRow = Clamp_ScrollRow(m_iHairScrollRow, iCount, HAIR_SHAPE_COUNT);
+		Fill_ScrollingGrid("CC_HairShape", HAIR_SHAPE_COUNT, m_iHairScrollRow, Shapes);
+
+		for (int32_t i = 0; i < HAIR_SHAPE_COUNT; ++i)
+		{
+			const int32_t iEntry = m_iHairScrollRow * GRID_COLUMNS + i;
+			if (iEntry >= iCount)
+				break;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!Get_SlotRect(("CC_HairShape" + std::to_string(i)).c_str(),
+				fX, fY, fWidth, fHeight))
+			{
+				continue;
+			}
+			if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iSelectedHair = iEntry;
+				m_bHairChanged = true;
+			}
+		}
+	}
+	Fn_ShowSubTab("CC_HairSubBasic", bHair, !m_isHairTwoTone);
+	Fn_ShowSubTab("CC_HairSubTwoTone", bHair, m_isHairTwoTone);
+	Fn_ShowPicker("CC_HairColor", bHair, 0);
+	{
+		const bool_t bStrength =
+			Fn_ShowSlider("CC_Slider_hair_strength", bHair, &m_fHairTwoToneStrength);
+		const bool_t bRange =
+			Fn_ShowSlider("CC_Slider_hair_range", bHair, &m_fHairTwoToneRange);
+		if ((bStrength || bRange) && nullptr != pCharacter)
+		{
+			pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+		}
+	}
+
+	m_pView->Set_SlotVisible("CC_EyeDivision", bEye);
+	Fn_ShowSubTab("CC_EyeSubIris", bEye, !m_isEyeOddSelected);
+	Fn_ShowSubTab("CC_EyeSubOdd", bEye, m_isEyeOddSelected);
+	Fn_ShowSlider("CC_Slider_eye_scale", bEye);
+	Fn_ShowPicker("CC_EyeColor", bEye, 1);
+	Fn_ShowPicker("CC_EyeIrisColor", bEye);
+	Fn_ShowSlider("CC_Slider_eye_definition", bEye);
+	Fn_ShowList("CC_EyeIris", EYE_IRIS_COUNT, bEye);
+	if (bEye)
+	{
+		static const std::vector<std::string> s_Empty;
+		const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
+		const std::vector<std::string>& Irises =
+			nullptr != pIcons ? pIcons->EyeIrises : s_Empty;
+		m_iEyeIrisScrollRow = Clamp_ScrollRow(m_iEyeIrisScrollRow,
+			static_cast<int32_t>(Irises.size()), EYE_IRIS_COUNT);
+		Fill_ScrollingGrid("CC_EyeIris", EYE_IRIS_COUNT, m_iEyeIrisScrollRow, Irises);
+
+		/* The icon list and the cooked texture list are the same retail list, so a cell's
+		icon index is its texture index. A cell whose texture the client does not ship stays
+		clickable but changes nothing, rather than putting a neighbour's iris on the eye. */
+		const auto* pIrisTextures =
+			m_FaceTextureDocument.Find(m_strIconClassAssetId, "iris");
+		const int32_t iIrisIconCount = static_cast<int32_t>(Irises.size());
+		for (int32_t i = 0; i < EYE_IRIS_COUNT; ++i)
+		{
+			const int32_t iEntry = m_iEyeIrisScrollRow * GRID_COLUMNS + i;
+			if (iEntry >= iIrisIconCount)
+				break;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!Get_SlotRect(("CC_EyeIris" + std::to_string(i)).c_str(),
+				fX, fY, fWidth, fHeight))
+			{
+				continue;
+			}
+			if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
+				continue;
+
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedEyeIris = iEntry;
+			if (nullptr == pCharacter || nullptr == pIrisTextures)
+			{
+				OutputDebugStringA(nullptr == pIrisTextures ?
+					"[FaceIris] no iris list for this class\n" :
+					"[FaceIris] no character\n");
+			}
+			else if (static_cast<size_t>(iEntry) >= pIrisTextures->size() ||
+				(*pIrisTextures)[iEntry].empty())
+			{
+				OutputDebugStringA(("[FaceIris] cell " + std::to_string(iEntry) +
+					" has no cooked texture (list has " +
+					std::to_string(pIrisTextures->size()) + ")\n").c_str());
+			}
+			else
+			{
+				pCharacter->Set_FaceIrisTexture((*pIrisTextures)[iEntry]);
+			}
+		}
+	}
+
+	m_pView->Set_SlotVisible("CC_SkinDivision", bSkin);
+	Fn_ShowPicker("CC_SkinColor", bSkin, 2);
+	Fn_ShowSlider("CC_Slider_skin_age", bSkin);
+	Fn_ShowSlider("CC_Slider_skin_shine", bSkin);
+	Fn_ShowSlider("CC_Slider_skin_freckles", bSkin);
+
+	m_pView->Set_SlotVisible("CC_AdornDivision", bAdorn);
+	static constexpr const char_t* ADORN_SUB_IDS[] = {
+		"CC_AdornSubLip", "CC_AdornSubTouch", "CC_AdornSubEyeLine", "CC_AdornSubEyeBrow" };
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(ADORN_SUB_IDS)); ++i)
+	{
+		Fn_ShowSubTab(ADORN_SUB_IDS[i], bAdorn, i == m_iSelectedAdornSub);
+		if (!bAdorn)
+			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (Get_SlotRect((string(ADORN_SUB_IDS[i]) + "_Bg").c_str(),
+			fX, fY, fWidth, fHeight) &&
+			Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedAdornSub = i;
+		}
+	}
+	Fn_ShowList("CC_AdornItem", ADORN_ITEM_COUNT, bAdorn);
+	if (bAdorn)
+	{
+		const std::vector<std::string>& Page = Get_AdornPage();
+		m_iAdornScrollRow = Clamp_ScrollRow(m_iAdornScrollRow,
+			static_cast<int32_t>(Page.size()), ADORN_ITEM_COUNT);
+		Fill_ScrollingGrid("CC_AdornItem", ADORN_ITEM_COUNT, m_iAdornScrollRow, Page);
+	}
+	Fn_ShowSlider("CC_Slider_adorn_strength", bAdorn);
+	Fn_ShowPicker("CC_AdornColor", bAdorn);
+	/* Only the eye-line page carries the second slider/chip pair. */
+	const bool_t bAdornShadow = bAdorn && 2 == m_iSelectedAdornSub;
+	Fn_ShowSlider("CC_Slider_adorn_shadow", bAdornShadow);
+	Fn_ShowPicker("CC_AdornShadowColor", bAdornShadow);
+
+	if (bHair)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		for (int32_t i = 0; i < 2; ++i)
+		{
+			const char_t* pId = 0 == i ? "CC_HairSubBasic" : "CC_HairSubTwoTone";
+			if (Get_SlotRect((string(pId) + "_Bg").c_str(), fX, fY, fWidth, fHeight) &&
+				Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_isHairTwoTone = 1 == i;
+			}
+		}
+	}
+	if (bEye)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		for (int32_t i = 0; i < 2; ++i)
+		{
+			const char_t* pId = 0 == i ? "CC_EyeSubIris" : "CC_EyeSubOdd";
+			if (Get_SlotRect((string(pId) + "_Bg").c_str(), fX, fY, fWidth, fHeight) &&
+				Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_isEyeOddSelected = 1 == i;
+			}
+		}
+	}
+}
+
+void Client::CCustomizingView::Apply_FacePreset(
+	const shared_ptr<CCharacter>& pCharacter, const int32_t iPreset)
+{
+	if (nullptr == pCharacter || !pCharacter->Has_FaceMorphs())
+		return;
+
+	/* Every preset states a weight for every morph, so clearing first is only needed for the
+	no-preset case; doing it always keeps the two paths identical and cheap (a weight that
+	does not actually change is dropped by the applier). */
+	pCharacter->Reset_FaceMorphs();
+	if (iPreset < 0)
+		return;
+
+	const auto* pPresets = m_FacePresetDocument.Find(m_strIconClassAssetId);
+	if (nullptr == pPresets || static_cast<size_t>(iPreset) >= pPresets->size())
+		return;
+	for (const std::pair<std::string, f32_t>& Morph : (*pPresets)[iPreset].Morphs)
+		pCharacter->Set_FaceMorphWeight(Morph.first, Morph.second);
+}
+
 void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCharacter)
 {
 	const bool_t bFaceTab = FACE_TAB_INDEX == m_iSelectedTab;
@@ -659,17 +1366,35 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 	m_pView->Set_SlotVisible("CC_DefaultDivision", bDefaultOpen);
 	m_pView->Set_SlotVisible("CC_FaceRandomBtn", bDefaultOpen);
 	m_pView->Set_SlotVisible("CC_FaceResetBtn", bDefaultOpen);
+	const auto* pFacePresets = m_FacePresetDocument.Find(m_strIconClassAssetId);
+	const int32_t iFacePresetCount = nullptr != pFacePresets ?
+		static_cast<int32_t>(pFacePresets->size()) : 0;
 	for (int32_t i = 0; i < FACE_PRESET_COUNT; ++i)
 	{
 		const string strId = "CC_FacePreset" + std::to_string(i);
 		m_pView->Set_SlotVisible(strId, bDefaultOpen);
 		m_pView->Set_SlotVisible(strId + "_Plate", bDefaultOpen);
+		if (!bDefaultOpen || i >= iFacePresetCount)
+			continue;
+
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!Get_SlotRect(strId.c_str(), fX, fY, fWidth, fHeight))
+			continue;
+		if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedFacePreset = i;
+			Apply_FacePreset(pCharacter, i);
+		}
 	}
+
 	m_pView->Set_SlotVisible("CC_FoldDetail_Bg", bFaceTab);
 	m_pView->Set_SlotVisible("CC_FoldDetail_Arrow", bFaceTab);
 	m_pView->Set_SlotVisible("CC_DetailDivision", bDetailOpen);
-	Update_FaceCategoryHeader("CC_FoldDefault_Bg", m_isFaceDefaultExpanded, bFaceTab);
-	Update_FaceCategoryHeader("CC_FoldDetail_Bg", m_isFaceDetailExpanded, bFaceTab);
+	Update_FaceCategoryHeader("CC_FoldDefault_Bg",
+		m_isFaceDefaultExpanded, m_isFaceDetailExpanded, bFaceTab);
+	Update_FaceCategoryHeader("CC_FoldDetail_Bg",
+		m_isFaceDetailExpanded, m_isFaceDefaultExpanded, bFaceTab);
 
 	for (int32_t i = 0; i < FACE_PART_COUNT; ++i)
 	{
@@ -784,10 +1509,33 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 		const size_t iCount = pCharacter->Get_FaceCustomize().Get_SliderCount();
 		for (size_t i = 0; i < iCount; ++i)
 			pCharacter->Set_FaceSliderWeight(i, Distribution(m_Random));
+
+		/* The face is both halves: the additive slider poses and the preset's MorphTargets.
+		Randomising only the sliders left the shape itself untouched. */
+		const auto* pPresets = m_FacePresetDocument.Find(m_strIconClassAssetId);
+		if (nullptr != pPresets && !pPresets->empty())
+		{
+			std::uniform_int_distribution<int32_t> PresetDistribution(
+				0, static_cast<int32_t>(pPresets->size()) - 1);
+			m_iSelectedFacePreset = PresetDistribution(m_Random);
+			Apply_FacePreset(pCharacter, m_iSelectedFacePreset);
+		}
 	};
+
+	/* Set_SlotVisible only stops a slot being drawn; the rect stays where it was authored.
+	These two belong to the face tab's first section, so without this they kept taking clicks
+	from whatever tab was actually on screen. */
+	const bool_t bFaceDefaultOpen =
+		FACE_TAB_INDEX == m_iSelectedTab && m_isFaceDefaultExpanded;
 
 	for (const TEXT_BUTTON& Button : BUTTONS)
 	{
+		if (!bFaceDefaultOpen &&
+			(0 == std::strcmp(Button.pSlotId, "CC_FaceRandomBtn") ||
+			 0 == std::strcmp(Button.pSlotId, "CC_FaceResetBtn")))
+		{
+			continue;
+		}
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
 			continue;
@@ -805,6 +1553,10 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 		{
 			if (nullptr != pCharacter)
 				pCharacter->Reset_FaceSliders();
+			/* Same reason as the randomise path: the shape is the preset's MorphTargets, so
+			a reset that only cleared the sliders left the previous face on screen. */
+			m_iSelectedFacePreset = -1;
+			Apply_FacePreset(pCharacter, -1);
 		}
 		else if (0 == std::strcmp(Button.pSlotId, "CC_CreateBtn"))
 			m_bDecideRequested = true;
@@ -823,17 +1575,25 @@ void Client::CCustomizingView::Render_Text()
 	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
 	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
 
-	/* fSize is a reference-resolution pixel height; Draw_Text scales relative to the font's
-	own measured height, the same way every other runtime screen's text pass does. */
-	const auto Fn_Draw = [&](const wstring& strFont, f32_t fX, f32_t fY, f32_t fSize,
+	/* fSize is the em size the .gfx text field carries, brought into reference units. Two things
+	follow from that. Measure_Text returns a string's line spacing, not its em, so dividing by it
+	drew every label about a fifth short -- and by that string's own tallest glyph, so two labels
+	asking for the same size did not come out the same. And the shipped sprite fonts are baked at
+	32-42 px, which SpriteBatch resamples into a blur at label sizes. UILabelFont::Resolve answers
+	both: it normalises on one reference glyph and hands back a pre-downsampled font drawn 1:1
+	wherever one is baked for that size. */
+	const auto Fn_Resolve = [&](const wstring& strFamily, f32_t fSize, f32_t& outScale)
+	{
+		return UILabelFont::Resolve(
+			strFamily, fSize * EM_TO_LINE_SPACING * fUiScale, outScale);
+	};
+	const auto Fn_Draw = [&](const wstring& strFamily, f32_t fX, f32_t fY, f32_t fSize,
 		const fvector_t& vColor, const wchar_t* pText, const float2_t& vPivot)
 	{
 		if (nullptr == pText || L'\0' == pText[0])
 			return;
-		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
-		if (vMeasured.y <= 0.f)
-			return;
-		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
+		f32_t fScale = 1.f;
+		const wstring strFont = Fn_Resolve(strFamily, fSize, fScale);
 		const float2_t vPos(fX * fScaleX, fY * fScaleY);
 		CGameInstance::Get().Draw_Text(strFont, pText,
 			float2_t(vPos.x + 1.f, vPos.y + 1.f),
@@ -847,27 +1607,25 @@ void Client::CCustomizingView::Render_Text()
 	const auto Fn_DrawRuns = [&](const wstring& strFont, f32_t fCenterX, f32_t fCenterY,
 		f32_t fSize, const TEXT_RUN* pRuns, size_t iNumRuns)
 	{
+		f32_t fScale = 1.f;
+		const wstring strResolved = Fn_Resolve(strFont, fSize, fScale);
 		f32_t fTotalWidth = 0.f;
-		f32_t fScale = 0.f;
 		for (size_t i = 0; i < iNumRuns; ++i)
 		{
-			const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pRuns[i].pText);
-			if (vMeasured.y <= 0.f)
-				return;
-			fScale = (fSize / vMeasured.y) * fUiScale;
-			fTotalWidth += vMeasured.x * fScale;
+			fTotalWidth +=
+				CGameInstance::Get().Measure_Text(strResolved, pRuns[i].pText).x * fScale;
 		}
 		f32_t fPenX = fCenterX * fScaleX - fTotalWidth * 0.5f;
 		const f32_t fPenY = fCenterY * fScaleY;
 		for (size_t i = 0; i < iNumRuns; ++i)
 		{
-			const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pRuns[i].pText);
-			CGameInstance::Get().Draw_Text(strFont, pRuns[i].pText,
+			CGameInstance::Get().Draw_Text(strResolved, pRuns[i].pText,
 				float2_t(fPenX + 1.f, fPenY + 1.f), XMVectorSet(0.f, 0.f, 0.f, 0.85f),
 				0.f, float2_t(0.f, 0.5f), fScale);
-			CGameInstance::Get().Draw_Text(strFont, pRuns[i].pText, float2_t(fPenX, fPenY),
+			CGameInstance::Get().Draw_Text(strResolved, pRuns[i].pText, float2_t(fPenX, fPenY),
 				pRuns[i].vColor, 0.f, float2_t(0.f, 0.5f), fScale);
-			fPenX += vMeasured.x * fScale;
+			fPenX += CGameInstance::Get().Measure_Text(
+				strResolved, pRuns[i].pText).x * fScale;
 		}
 	};
 
@@ -981,14 +1739,17 @@ void Client::CCustomizingView::Render_Text()
 
 	if (FACE_TAB_INDEX != m_iSelectedTab)
 	{
+		/* Only a tab with nothing behind it says so. Hair, eye, skin and adorn all draw
+		their own captions now and the line sat on top of them. */
 		f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelWidth = 0.f, fPanelHeight = 0.f;
-		if (Get_SlotRect("CC_RightBg", fPanelX, fPanelY, fPanelWidth, fPanelHeight))
+		if (VOICE_TAB_INDEX == m_iSelectedTab &&
+			Get_SlotRect("CC_RightBg", fPanelX, fPanelY, fPanelWidth, fPanelHeight))
 		{
 			Fn_Draw(TEXT("Font_YG760"), fPanelX + fPanelWidth * 0.5f, 200.f, 12.f,
 				vDimColor, LABEL_NOT_READY, float2_t(0.5f, 0.5f));
 		}
 	}
-	else
+	else if (m_isFaceDetailExpanded)
 	{
 		f32_t fDivX = 0.f, fDivY = 0.f, fDivWidth = 0.f, fDivHeight = 0.f;
 		if (Get_SlotRect("CC_DetailDivision", fDivX, fDivY, fDivWidth, fDivHeight))
@@ -1029,6 +1790,28 @@ void Client::CCustomizingView::Render_Text()
 				vRowColor, Row.pLabel, float2_t(0.f, 0.5f));
 		}
 
+	}
+
+	if (PICKER_SURFACE_NONE != m_iPickerSurface)
+	{
+		struct PICKER_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+		constexpr PICKER_LABEL PICKER_LABELS[] = {
+			{ "CC_PickerApply", LABEL_PICKER_APPLY },
+			{ "CC_PickerCancel", LABEL_PICKER_CANCEL },
+		};
+		for (const PICKER_LABEL& Entry : PICKER_LABELS)
+		{
+			f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+			if (!Get_SlotRect(Entry.pSlotId, fX, fY, fW, fH))
+				continue;
+			Fn_Draw(TEXT("Font_YG760"), fX + fW * 0.5f, fY + fH * 0.5f, 11.f,
+				vDescColor, Entry.pLabel, float2_t(0.5f, 0.5f));
+		}
+	}
+
+	/* These two sit under the preset grid, so they follow the first section, not the second. */
+	if (FACE_TAB_INDEX == m_iSelectedTab && m_isFaceDefaultExpanded)
+	{
 		struct PANEL_BUTTON_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
 		constexpr PANEL_BUTTON_LABEL PANEL_BUTTONS[] = {
 			{ "CC_FaceRandomBtn", LABEL_FACE_RANDOM },
@@ -1041,6 +1824,80 @@ void Client::CCustomizingView::Render_Text()
 				continue;
 			Fn_Draw(TEXT("Font_YG760"), fX + fWidth * 0.5f, fY + fHeight * 0.5f, 11.f,
 				vDescColor, Button.pLabel, float2_t(0.5f, 0.5f));
+		}
+	}
+
+	/* Everything on the hair, eye, skin and adorn tabs. Each entry is one authored slot and
+	the retail caption that belongs on it -- centred inside a chip or a button, left-aligned
+	above a swatch or a slider track, which is where the source screen puts them. */
+	{
+		struct TAB_LABEL
+		{
+			int32_t iTab;
+			const char_t* pSlotId;
+			const wchar_t* pLabel;
+			bool_t isCentred;
+			bool_t isSectionHeader;
+		};
+		constexpr TAB_LABEL TAB_LABELS[] = {
+			{ HAIR_TAB_INDEX,  "CC_HairSubBasic_Bg",       LABEL_HAIR_SUB_BASE,      true  , false },
+			{ HAIR_TAB_INDEX,  "CC_HairSubTwoTone_Bg",     LABEL_HAIR_SUB_TWOTONE,   true  , false },
+			{ HAIR_TAB_INDEX,  "CC_HairDivision",          LABEL_HAIR_DESC,          false , true  },
+			{ HAIR_TAB_INDEX,  "CC_HairColor",             LABEL_HAIR_COLOR,         false , false },
+			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_STRENGTH,      false , false },
+			{ HAIR_TAB_INDEX,  "CC_Slider_hair_range_Track",    LABEL_RANGE,         false , false },
+
+			{ EYE_TAB_INDEX,   "CC_EyeSubIris_Bg",         LABEL_EYE_SUB_BOTH,       true  , false },
+			{ EYE_TAB_INDEX,   "CC_EyeSubOdd_Bg",          LABEL_EYE_SUB_ODD,        true  , false },
+			{ EYE_TAB_INDEX,   "CC_EyeDivision",           LABEL_EYE_DESC,           false , true  },
+			{ EYE_TAB_INDEX,   "CC_EyeColor",              LABEL_EYE_COLOR,          false , false },
+			{ EYE_TAB_INDEX,   "CC_EyeIrisColor",          LABEL_EYE_IRIS_COLOR,     false , false },
+			{ EYE_TAB_INDEX,   "CC_Slider_eye_scale_Track",      LABEL_EYE_SIZE,     false , false },
+			{ EYE_TAB_INDEX,   "CC_Slider_eye_definition_Track", LABEL_ALPHA,        false , false },
+
+			{ SKIN_TAB_INDEX,  "CC_SkinDivision",          LABEL_SKIN_DESC,          false , true  },
+			{ SKIN_TAB_INDEX,  "CC_SkinColor",             LABEL_SKIN_COLOR,         false , false },
+			{ SKIN_TAB_INDEX,  "CC_Slider_skin_age_Track",      LABEL_SKIN_WRINKLE,  false , false },
+			{ SKIN_TAB_INDEX,  "CC_Slider_skin_shine_Track",    LABEL_SKIN_GLOSS,    false , false },
+			{ SKIN_TAB_INDEX,  "CC_Slider_skin_freckles_Track", LABEL_SKIN_FRECKLE,  false , false },
+
+			{ ADORN_TAB_INDEX, "CC_AdornSubLip_Bg",        LABEL_ADORN_SUB_LIP,      true  , false },
+			{ ADORN_TAB_INDEX, "CC_AdornSubTouch_Bg",      LABEL_ADORN_SUB_CHEEK,    true  , false },
+			{ ADORN_TAB_INDEX, "CC_AdornSubEyeLine_Bg",    LABEL_ADORN_SUB_EYEMAKE,  true  , false },
+			{ ADORN_TAB_INDEX, "CC_AdornSubEyeBrow_Bg",    LABEL_ADORN_SUB_EYEBROW,  true  , false },
+			{ ADORN_TAB_INDEX, "CC_AdornDivision",         LABEL_ADORN_DESC,         false , true  },
+			{ ADORN_TAB_INDEX, "CC_AdornColor",            LABEL_ADORN_COLOR,        false , false },
+			{ ADORN_TAB_INDEX, "CC_AdornShadowColor",      LABEL_ADORN_SHADOW_COLOR, false , false },
+			{ ADORN_TAB_INDEX, "CC_Slider_adorn_strength_Track", LABEL_STRENGTH,     false , false },
+			{ ADORN_TAB_INDEX, "CC_Slider_adorn_shadow_Track",   LABEL_ALPHA,        false , false },
+		};
+		for (const TAB_LABEL& Entry : TAB_LABELS)
+		{
+			/* The picker covers the panel, so the captions underneath would read through it. */
+			if (Entry.iTab != m_iSelectedTab || PICKER_SURFACE_NONE != m_iPickerSurface)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!Get_SlotRect(Entry.pSlotId, fX, fY, fWidth, fHeight))
+				continue;
+			if (Entry.isCentred)
+			{
+				/* A sub-tab chip carries its caption inside itself. */
+				Fn_Draw(TEXT("Font_YG760"), fX + fWidth * 0.5f, fY + fHeight * 0.5f, 11.f,
+					vDescColor, Entry.pLabel, float2_t(0.5f, 0.5f));
+			}
+			else if (Entry.isSectionHeader)
+			{
+				/* A section caption sits above its divider line. */
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY - 12.f, 11.f,
+					vDescColor, Entry.pLabel, float2_t(0.f, 0.5f));
+			}
+			else
+			{
+				/* A row caption is left-aligned against the panel edge and vertically
+				centred on the swatch or slider track it names. */
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+					vDescColor, Entry.pLabel, float2_t(0.f, 0.5f));
+			}
 		}
 	}
 

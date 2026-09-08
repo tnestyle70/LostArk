@@ -64,8 +64,16 @@ private:
 	rest of the (static, place-once) chrome pieces. */
 	shared_ptr<class CUI_Sprite>	m_pProgressFill = { nullptr };
 	shared_ptr<class CUI_Sprite>	m_pProgressGlow = { nullptr };
-	f32_t							m_fProgressTrackX = 0.f, m_fProgressTrackY = 0.f, m_fProgressTrackWidth = 0.f, m_fProgressTrackHeight = 0.f;
-	/* Authored size of the ProgressGlow slot itself (distinct from the track it slides along). */
+	/* The reveal window, from the ProgressMask marker: retail's crashLoadingTarget clip, whose
+	left edge is fixed and whose width is the progress ratio times the track length. */
+	f32_t							m_fProgressMaskLeft = 0.f, m_fProgressMaskWidth = 0.f;
+	/* The fill sprite's own placement. It is wider and taller than both the mask and the track
+	plate -- the art carries a glow falloff past the bar on every side -- so it keeps its own
+	rect and is revealed by a UV window rather than by resizing. */
+	f32_t							m_fProgressFillLeft = 0.f, m_fProgressFillWidth = 0.f;
+	f32_t							m_fProgressFillCenterY = 0.f, m_fProgressFillHeight = 0.f;
+	/* The mark art's own placement. Its x is driven every frame; the rest is authored. */
+	f32_t							m_fProgressGlowCenterY = 0.f;
 	f32_t							m_fProgressGlowWidth = 40.f, m_fProgressGlowHeight = 23.f;
 
 	/* The bar is determinate only when its current denominator is known.  While
@@ -85,6 +93,9 @@ private:
 	bool_t							m_hasDeterminateProgress = false;
 
 	wstring_t						m_strTitleText;
+	/* The gold label above the tip. Retail's own field swaps between a "scenario" and a "tip"
+	string by frame, so it belongs with the per-level text rather than being fixed. */
+	wstring_t						m_strScenarioLabel;
 	wstring_t						m_strTipText;
 
 	/* Text draw positions only -- color/scale/alignment stay code-owned. Defaults match the

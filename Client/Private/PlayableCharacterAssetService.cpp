@@ -18,9 +18,10 @@ namespace
 	struct CHARACTER_PROTOTYPE_TAGS final
 	{
 		const tchar_t* pBody = nullptr;
-		/* Eight, not five: Warlord's body does not draw hair, so its hair rides
-		along as an equipment part next to the five armour pieces, and a class
-		with an avatar head/armor slot adds two more next to its own five. */
+		/* Eight, not five: hair rides along as an equipment part next to the five
+		armour pieces -- every class wears its hairstyle as a part rather than
+		drawing one from the body -- and a class with an avatar head/armor slot
+		adds two more next to its own five. */
 		std::array<const tchar_t*, 8> Equipment{};
 		size_t iEquipmentCount = 0;
 		std::array<const tchar_t*, 4> Weapons{};
@@ -44,9 +45,10 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
-				TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko")
+				TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
+				TEXT("Prototype_Component_Model_LanceMaster_Hair")
 			},
-			7u,
+			8u,
 			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
 			  TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short") },
 			2u
@@ -87,17 +89,18 @@ namespace
 				TEXT("Prototype_Component_Model_Artist_Lower"),
 				TEXT("Prototype_Component_Model_Artist_Arm"),
 				TEXT("Prototype_Component_Model_Artist_Shoulder"),
-				TEXT("Prototype_Component_Model_Artist_Helmet")
+				TEXT("Prototype_Component_Model_Artist_Helmet"),
+				TEXT("Prototype_Component_Model_Artist_Hair")
 			},
-			5u,
+			6u,
 			{ TEXT("Prototype_Component_Model_Artist_Weapon") },
 			1u
 		};
 		static const CHARACTER_PROTOTYPE_TAGS DIMENSIONMASTER
 		{
 			TEXT("Prototype_Component_Model_DimensionMaster"),
-			{},
-			0u,
+			{ TEXT("Prototype_Component_Model_DimensionMaster_Hair") },
+			1u,
 			{
 				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_L"),
 				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_S"),

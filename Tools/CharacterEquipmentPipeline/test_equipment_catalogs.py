@@ -39,31 +39,46 @@ class EquipmentCatalogTests(unittest.TestCase):
         self.assertEqual(SLOTS, self.catalog["slotIds"])
 
         visual_sets = self.catalog["visualSets"]
-        self.assertEqual(len(self.selection["sets"]), len(visual_sets))
-        self.assertEqual(
-            sum(len(item["parts"]) for item in self.selection["sets"]),
-            sum(len(item["parts"]) for item in visual_sets),
-        )
         self.assertEqual(CLASSES, {item["classId"] for item in visual_sets})
 
+        # RepresentativeCharacterEquipment.json is formatVersion 2 (team-lead approved,
+        # 2026-09-08): its own catalogRelationship is REPRESENTATIVE_CURATED_SUBSET, not an
+        # enumeration of every visualSet the runtime catalog may hold. The catalog legitimately
+        # carries additional sets from other extraction pipelines -- e.g. the character-creation
+        # costume/hairstyle intake, association state NORMALIZED_RAW_COOK_V1 via
+        # normalize_character_equipment_gltf.py -- validated by their own pipeline's tests.
+        # Every set this file does name is still compared field for field against the catalog,
+        # and every set in the catalog is still checked structurally below.
+        # See RepresentativeCharacterEquipment.json's catalogRelationshipNote and
+        # .md/GB/09-01/2026-09-01_SIX_CLASS_EQUIPMENT_EXTRACTION_AND_LOADOUT_*.md, G00.
+        self.assertEqual(2, self.selection["formatVersion"])
+        self.assertEqual("REPRESENTATIVE_CURATED_SUBSET", self.selection["catalogRelationship"])
         selected_by_id = {
             item["visualSetId"]: item for item in self.selection["sets"]
         }
-        self.assertEqual(set(selected_by_id), {item["visualSetId"] for item in visual_sets})
+        catalog_by_id = {item["visualSetId"]: item for item in visual_sets}
+        self.assertEqual(len(catalog_by_id), len(visual_sets), "duplicate visualSetId")
+        self.assertLessEqual(set(selected_by_id), set(catalog_by_id))
+
         for visual_set in visual_sets:
-            source = selected_by_id[visual_set["visualSetId"]]
-            self.assertEqual(source["classId"], visual_set["classId"])
-            self.assertEqual(source["catalogStatus"], visual_set["catalogStatus"])
-            self.assertEqual(source["primarySlot"], visual_set["primarySlot"])
-            self.assertEqual(source["coverageSlots"], visual_set["occupiedSlots"])
             self.assertIn(visual_set["primarySlot"], visual_set["occupiedSlots"])
-            source_parts = {item["partId"]: item for item in source["parts"]}
-            self.assertEqual(set(source_parts), {item["partId"] for item in visual_set["parts"]})
-            for part in visual_set["parts"]:
+            source = selected_by_id.get(visual_set["visualSetId"])
+            if source is not None:
+                self.assertEqual(source["classId"], visual_set["classId"])
+                self.assertEqual(source["catalogStatus"], visual_set["catalogStatus"])
+                self.assertEqual(source["primarySlot"], visual_set["primarySlot"])
+                self.assertEqual(source["coverageSlots"], visual_set["occupiedSlots"])
+                source_parts = {item["partId"]: item for item in source["parts"]}
                 self.assertEqual(
-                    source_parts[part["partId"]]["targetModelAssetId"],
-                    part["modelAssetId"],
+                    set(source_parts), {item["partId"] for item in visual_set["parts"]}
                 )
+            # Path shape is checked for every set, curated or cooked.
+            for part in visual_set["parts"]:
+                if source is not None:
+                    self.assertEqual(
+                        source_parts[part["partId"]]["targetModelAssetId"],
+                        part["modelAssetId"],
+                    )
                 path = PurePosixPath(part["modelAssetId"])
                 self.assertFalse(path.is_absolute())
                 self.assertNotIn("..", path.parts)
