@@ -178,6 +178,14 @@ void CEffectAuthoringV2Pane::Render_ToolContents()
     ImGui::SameLine();
     if (ImGui::Button("Revert##V2CurrentEffect")) m_Edit.Revert(m_Status);
     if (m_Edit.Dirty()) { ImGui::SameLine(); ImGui::TextUnformatted("Unsaved"); }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(m_Edit.Dirty());
+    if (ImGui::Button("Attach / Spawn Target##V2CurrentEffect"))
+        m_Status = m_Editor.Open_Attach(Current_Key()) ?
+            "Attach window opened for the saved Effect." : m_Editor.Document_Status();
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Spawn an NPC / boss / preview body target, follow a bone and save bindings. Save the Effect first.");
     if (m_Edit.Empty()) return;
     if (leaf)
     {
@@ -336,6 +344,11 @@ void CEffectAuthoringV2Pane::Render_WorldObjects()
         }
         ImGui::PopID();
     }
+}
+
+void CEffectAuthoringV2Pane::Render_AttachWindow()
+{
+    m_Editor.Render_Attach(ImGui::GetIO().DeltaTime);
 }
 
 void CEffectAuthoringV2Pane::Render_ResourceContents()

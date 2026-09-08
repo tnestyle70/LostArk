@@ -2056,6 +2056,24 @@ bool_t Client::CEffect_Tool_V2::Open_Resource(
 	return false;
 }
 
+bool_t Client::CEffect_Tool_V2::Open_Attach(const EFFECT_RESOURCE_KEY& Key)
+{
+	if (!Open_Resource(Key))
+		return false;
+	if (EFFECT_RESOURCE_OWNER_KIND::V2_GROUP == Key.eOwnerKind)
+		m_strBindingGroupId = Key.strStableId;
+	else
+		m_strBindingGroupId.clear();
+	m_bAttachWindowOpen = true;
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Render_Attach(const f32_t fTimeDelta)
+{
+	Update_Attach(fTimeDelta);
+	Render_AttachWindow();
+}
+
 bool_t Client::CEffect_Tool_V2::Schedule_ValtanTreeReloadRetry()
 {
 	if (m_iValtanTreeAutomaticRetryCount >=

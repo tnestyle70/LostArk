@@ -126,6 +126,9 @@ public:
 	/* Version-neutral browser dispatch. Only V2 owner keys are admitted; the
 	   concrete leaf/group loaders remain private codec implementation details. */
 	bool_t Open_Resource(const EFFECT_RESOURCE_KEY& Key);
+	bool_t Open_Attach(const EFFECT_RESOURCE_KEY& Key);
+	void Render_Attach(f32_t fTimeDelta);
+	const std::string& Document_Status() const { return m_strDocumentStatus; }
 
 public:
     // Reused by the composition pane; the CPU draft remains editable without

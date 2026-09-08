@@ -4,6 +4,7 @@
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
 #include "EffectAuthoringV2Pane.h"
+#include "Effect_Tool_V2.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
@@ -3772,6 +3773,8 @@ void Client::CEffect_Tool::Render()
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.AuthoringWindow");
         Render_EffectToolWindow();
+        if (m_bLegacyV2Window && m_pLegacyV2) m_pLegacyV2->Render();
+        else if (m_pAuthoringV2) m_pAuthoringV2->Render_AttachWindow();
     }
     {
         Engine::CProfilerScope WindowProfile(
@@ -3816,6 +3819,24 @@ void Client::CEffect_Tool::Render_EffectToolWindow()
     {
         ImGui::End();
         return;
+    }
+    if (m_pLegacyV2)
+    {
+        if (ImGui::RadioButton("V1##EffectToolCodec", !m_bLegacyV2Window))
+            m_bLegacyV2Window = false;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("V2##EffectToolCodec", m_bLegacyV2Window) && !m_bLegacyV2Window)
+        {
+            m_bLegacyV2Window = true;
+            Release_WorldPreview(true);
+        }
+        ImGui::Separator();
+        if (m_bLegacyV2Window)
+        {
+            ImGui::TextUnformatted("V2 editor is open in its own windows (Effect Resource Library).");
+            ImGui::End();
+            return;
+        }
     }
     if (m_bAuthoringV2Selected && m_pAuthoringV2)
     {

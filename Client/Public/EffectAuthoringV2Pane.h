@@ -22,6 +22,7 @@ public:
     void Render_ToolContents();
     void Render_DetailContents();
     void Render_ResourceContents();
+    void Render_AttachWindow();
     bool Snapshot(EFFECT_RESOURCE_KEY& outKey,
         std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& outSnapshot, std::string& error) const;
     bool Consume_Saved(EFFECT_RESOURCE_KEY& outKey, std::string& outName);

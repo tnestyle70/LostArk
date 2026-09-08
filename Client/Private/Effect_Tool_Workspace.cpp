@@ -26,6 +26,7 @@ std::string Parent_Key(const EFFECT_RESOURCE_KEY& key)
 void CEffect_Tool::Configure_AuthoringWorkspace(CEffect_Tool_V2& editor, CKoukuSaydonPresentationPlayer* player)
 {
     if (!m_pAuthoringResources) m_pAuthoringResources = std::make_unique<CEffectAuthoringResourceTree>();
+    m_pLegacyV2 = &editor;
     if (!m_pAuthoringV2) m_pAuthoringV2 = std::make_unique<CEffectAuthoringV2Pane>(editor);
     if (!m_pAuthoringSequencer)
     {

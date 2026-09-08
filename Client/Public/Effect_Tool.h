@@ -1483,6 +1483,8 @@ private:
     std::unordered_map<std::string, std::string> m_AuthoringParents;
     std::string m_strAuthoringParentId, m_strAuthoringWorldStatus;
     bool m_bAuthoringV2Selected = false, m_bAuthoringWorldLoaded = false;
+    CEffect_Tool_V2* m_pLegacyV2 = nullptr;
+    bool m_bLegacyV2Window = false;
     int m_iAuthoringResourceSource = 0;
     uint64_t m_iAuthoringV2PreviewGeneration = 0u;
 };
