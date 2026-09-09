@@ -966,8 +966,13 @@ start/duration만 재사용하며, 다른 타격 구간은 독립 window를 생�
 Collider Box Detail의 position/rotation/scale·치수 편집은 stable Pattern/occurrence의 geometry만
 즉시 Preview하며 Apply/Save 전에는 draft나 원본을 바꾸지 않는다. active Pattern/Bundle member의
 clock·actor·Effect/SFX session을 유지하고 inactive만 현재 cursor에서 paused Preview를 준비한다.
-Revert geometry/선택 변경은 적용된 geometry로 복구하고 Reset은 임시 요청을 폐기한다.
+Collider geometry 편집은 선택 전환 뒤에도 보존하며 Apply 없이 Save 후보에 모아 CAS 저장한다.
+Revert geometry는 선택한 box를 적용된 값으로 복구하고 Reset은 임시 요청을 폐기한다.
+Save는 저장할 변경이 있을 때 활성화한다. 미적용 시간·Anchor·Logic은 기존 Apply를 사용한다.
 Logic이 연결된 지면 gameplay Collider는 Yaw만 편집하며 X/Z 기울기는 Publish All Patterns의 실행 검증에서 거절한다.
+이 gameplay Collider의 SECTOR 크기는 Radius로 X/Z를 함께 변경한다. 기존 X/Z 불일치 값은
+Detail에 이유를 표시하고 Radius에서 수정한다. 잘못된 geometry의 Save 실패는 편집값과 이전
+원본을 보존한다. Publish 성공은 정상 항목의 배포 성공이며 재생 불가 항목은 F1의 사유를 확인한다.
 
 V2 Effect Box Detail의 Position/Rotation/Scale은 같은 Pattern/Bundle의 현재 actor·bone·WORLD와
 clock에서 즉시 Preview한다. Box Preview도 그 소유자를 사용하며 독립 Resource Preview는 별도다.

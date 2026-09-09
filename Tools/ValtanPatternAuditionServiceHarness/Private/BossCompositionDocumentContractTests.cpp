@@ -2347,7 +2347,7 @@ namespace
 		expectTransport(KOUKU_PREVIEW_TRANSPORT::PAUSE, bundleDuration);
 		auto laterGeometry = laterCollider; laterGeometry.Scale = {2.0, 3.0, 4.0};
 		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, laterGeometry, status), status, "switch live Collider selection");
-		expectGeometry(collider); expectGeometry(laterGeometry); expectNoRestart();
+		expectGeometry(laterGeometry); expectNoRestart();
 		RequireEditorStep(workbench.Select_PatternById(patternId, status), status, "switch Bundle hierarchy to Pattern");
 		Require(!workbench.Consume_PresentationGeometryPreviewRequest(noGeometry), "hierarchy Reset kept a stale geometry request");
 		expectTransport(KOUKU_PREVIEW_TRANSPORT::STOP, 0u);
@@ -2355,9 +2355,15 @@ namespace
 		workbench.Set_PreviewState(state);
 		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, laterGeometry, status), status, "geometry before Detail selection sync");
 		expectGeometry(laterGeometry);
-		RequireEditorStep(workbench.Select_PatternById(patternId, status), status, "selection synchronization restores geometry");
-		expectGeometry(laterCollider); expectNoRestart();
-		Require(!workbench.Consume_PresentationGeometryPreviewRequest(noGeometry), "selection left a stale geometry request");
+		RequireEditorStep(workbench.Select_PatternById(patternId, status), status, "selection synchronization preserves pending Collider geometry");
+		expectNoRestart();
+		Require(workbench.Is_Dirty() && !workbench.Consume_PresentationGeometryPreviewRequest(noGeometry),
+			"selection discarded pending Collider geometry or queued a revert");
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, laterGeometry, status), status, "select later Collider before explicit Revert");
+		expectGeometry(laterGeometry); workbench.Cancel_PresentationGeometryPreview(); expectGeometry(laterCollider);
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, edited, status), status, "select first Collider before explicit Revert");
+		expectGeometry(edited); workbench.Cancel_PresentationGeometryPreview(); expectGeometry(collider);
+		Require(!workbench.Is_Dirty(), "explicit Collider Revert left pending geometry");
 
 		workbench.Set_PreviewState({});
 		RequireEditorStep(workbench.Request_PatternScrub(patternId, 321u, status), status, "set inactive geometry cursor");
@@ -2521,6 +2527,158 @@ namespace
 		Require(!EditorPattern(workbench, patternId).Stages.front().bRetargetOnEnter &&
 			findCollider(collider.strOccurrenceId).strLogicOccurrenceId == firstWindow,
 			"false retarget roundtrip dropped a saved Collider connection");
+		// Collider P/R/S survives selection and another committed edit, then Save without Apply.
+		const auto beforeColliderSave = workbench.Get_Composition();
+		const auto beforeColliderBytes = ReadText(sourcePath);
+		const auto beforeColliderGeneration = workbench.Get_DraftGeneration();
+		state.strPatternId = patternId; state.bPlaying = true; state.bPaused = true; state.iClockMs = 543u;
+		workbench.Set_PreviewState(state);
+		auto firstColliderEdit = findCollider(collider.strOccurrenceId);
+		firstColliderEdit.PositionOffset = {1.25, -2.5, 3.75};
+		firstColliderEdit.RotationDegrees = {0.0, 45.0, 0.0}; firstColliderEdit.Scale = {2.0, 3.0, 2.0};
+		auto secondColliderEdit = findCollider(laterCollider.strOccurrenceId);
+		secondColliderEdit.PositionOffset = {-4.0, 5.0, 6.0};
+		secondColliderEdit.RotationDegrees = {0.0, -30.0, 0.0}; secondColliderEdit.Scale = {4.0, 5.0, 4.0};
+		auto colliderDetail = firstColliderEdit; colliderDetail.iStartMs = 999999u; colliderDetail.iDurationMs = 0u;
+		colliderDetail.strBone = "unapplied_bone"; colliderDetail.strLogicOccurrenceId = "unapplied.logic";
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, colliderDetail, status), status,
+			"stage Collider geometry without applying unrelated Detail fields");
+		Require(workbench.Is_Dirty() && workbench.Get_Composition() == beforeColliderSave &&
+			workbench.Get_DraftGeneration() == beforeColliderGeneration && ReadText(sourcePath) == beforeColliderBytes,
+			"Collider geometry failed to enable Save or prematurely changed applied source");
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, secondColliderEdit, status), status,
+			"stage a second Collider geometry without Apply");
+		RequireEditorStep(workbench.Select_BundleById(bundle.strBundleId, status), status, "switch hierarchy with pending Collider geometry");
+		RequireEditorStep(workbench.Select_PatternById(patternId, status), status, "return to edited Collider Pattern");
+		RequireEditorStep(workbench.Set_StageRetargetOnEnter(patternId, stageId, true, status), status,
+			"commit a separate Stage edit while both Collider geometries are pending");
+		Require(ReadText(sourcePath) == beforeColliderBytes, "a separate Stage edit wrote pending Collider geometry to disk");
+		auto expectedColliderSave = workbench.Get_Composition(); ++expectedColliderSave.iRevision;
+		for (auto& pattern : expectedColliderSave.Patterns) if (pattern.strPatternId == patternId)
+			for (auto& row : pattern.PresentationOccurrences)
+				for (const auto* value : {&firstColliderEdit, &secondColliderEdit})
+					if (row.strOccurrenceId == value->strOccurrenceId)
+					{ row.PositionOffset = value->PositionOffset; row.RotationDegrees = value->RotationDegrees; row.Scale = value->Scale; }
+		RequireEditorStep(workbench.Save(status), status, "Save all Collider geometry without Apply after selection and separate commit");
+		Require(!workbench.Is_Dirty() && workbench.Get_Composition() == expectedColliderSave,
+			"Collider Save lost P/R/S or changed unapplied timing, Bone or Logic fields");
+		CKoukuSaydonActionWorkbench reopenedCollider;
+		RequireEditorStep(reopenedCollider.Reload(status), status, "open saved Collider geometry in a new Workbench instance");
+		Require(reopenedCollider.Get_Composition() == expectedColliderSave,
+			"new Workbench lost saved Collider geometry or the separately committed Stage edit");
+
+		const auto colliderSavedBytes = ReadText(sourcePath);
+		const auto colliderSavedGeneration = workbench.Get_DraftGeneration();
+		workbench.Set_PreviewState(state);
+		auto invalidCollider = firstColliderEdit; invalidCollider.Scale[0] = 0.0;
+		Require(!workbench.Request_PresentationGeometryPreview(patternId, invalidCollider, status),
+			"zero Collider scale was admitted for preview");
+		Require(!workbench.Save(status) && !status.empty() && workbench.Is_Dirty() &&
+			workbench.Get_Composition() == expectedColliderSave && workbench.Get_DraftGeneration() == colliderSavedGeneration &&
+			ReadText(sourcePath) == colliderSavedBytes, "invalid Collider Save changed applied draft or last saved source");
+		CKoukuSaydonActionWorkbench reopenedAfterRejectedCollider;
+		RequireEditorStep(reopenedAfterRejectedCollider.Reload(status), status, "reopen last saved source after invalid Collider Save");
+		Require(reopenedAfterRejectedCollider.Get_Composition() == expectedColliderSave,
+			"invalid Collider Save corrupted the source seen by a new Workbench");
+		RequireEditorStep(workbench.Request_PresentationGeometryPreview(patternId, firstColliderEdit, status), status,
+			"correct invalid Collider geometry to the saved values");
+		RequireEditorStep(workbench.Save(status), status, "Save after correcting rejected Collider geometry");
+		Require(!workbench.Is_Dirty() && ReadText(sourcePath) == colliderSavedBytes,
+			"correcting Collider geometry to saved values unnecessarily rewrote the source");
+		while (workbench.Consume_PresentationGeometryPreviewRequest(noGeometry)) {}
+
+		// A linked circular Sector cannot persist an ellipse that the publisher rejects.
+		{
+			const auto sectorDataRoot = scratchRoot / "Sector/Data";
+			const auto sectorSourcePath = sectorDataRoot / relativeSource;
+			for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00" })
+			{
+				const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+					(std::string(profile) + ".actionreference.json");
+				Require(CopyFixture(dataRoot / relative, sectorDataRoot / relative), "could not copy Sector fixture action reference");
+			}
+			auto sectorSource = expectedColliderSave;
+			const auto originalResource = std::find_if(sectorSource.PresentationResources.begin(), sectorSource.PresentationResources.end(),
+				[&](const auto& row) { return row.strResourceId == firstColliderEdit.strResourceId; });
+			Require(originalResource != sectorSource.PresentationResources.end(), "Sector fixture lost its source Collider resource");
+			auto sectorResource = *originalResource;
+			sectorResource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(sectorSource.iNextPresentationResourceOrdinal++);
+			sectorResource.strDisplayName = "Native linked Sector save"; sectorResource.strShape = "SECTOR";
+			sectorSource.PresentationResources.push_back(sectorResource);
+			auto sectorBox = firstColliderEdit; sectorBox.strResourceId = sectorResource.strResourceId;
+			for (auto& pattern : sectorSource.Patterns) if (pattern.strPatternId == patternId)
+				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == sectorBox.strOccurrenceId) row = sectorBox;
+			Require(!sectorBox.strLogicOccurrenceId.empty(), "Sector save fixture needs an applied Logic link");
+			Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(sectorSource)), "could not write isolated Sector save fixture");
+			SCOPED_ENVIRONMENT_VARIABLE sectorEnvironment(L"LOSTARK_PROJECT_DATA_ROOT");
+			Require(sectorEnvironment.Set(sectorDataRoot), "could not select isolated Sector save fixture");
+			CKoukuSaydonActionWorkbench sectorWorkbench;
+			RequireEditorStep(sectorWorkbench.Reload(status), status, "load linked Sector save fixture");
+			const auto sectorBaseline = sectorWorkbench.Get_Composition();
+			const auto sectorBytes = ReadText(sectorSourcePath);
+			const auto sectorGeneration = sectorWorkbench.Get_DraftGeneration();
+			sectorWorkbench.Set_PreviewState(state);
+			auto ellipse = sectorBox; ellipse.Scale = {3.0, 1.0, 1.0};
+			ellipse.strLogicOccurrenceId.clear(); // Unapplied Detail fields cannot bypass the saved link.
+			Require(!sectorWorkbench.Request_PresentationGeometryPreview(patternId, ellipse, status) && !status.empty(),
+				"linked Sector accepted unequal X/Z preview scale by clearing only its unapplied Detail link");
+			Require(!sectorWorkbench.Save(status) && !status.empty() && sectorWorkbench.Is_Dirty() &&
+				sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
+				ReadText(sectorSourcePath) == sectorBytes, "elliptical Sector Save changed the applied draft or previous source");
+			KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST sectorPreview;
+			Require(!sectorWorkbench.Consume_PresentationGeometryPreviewRequest(sectorPreview), "rejected Sector ellipse replaced the visible geometry");
+			auto appliedEllipse = ellipse; appliedEllipse.strLogicOccurrenceId = sectorBox.strLogicOccurrenceId;
+			const auto requireRejectedSectorApply = [&](const bool accepted, const char* message) {
+				Require(!accepted && !status.empty() && sectorWorkbench.Is_Dirty() &&
+					sectorWorkbench.Get_Composition() == sectorBaseline && sectorWorkbench.Get_DraftGeneration() == sectorGeneration &&
+					ReadText(sectorSourcePath) == sectorBytes, message);
+				Require(!sectorWorkbench.Save(status) && ReadText(sectorSourcePath) == sectorBytes,
+					"rejected Sector Apply discarded the pending invalid geometry and enabled Save");
+			};
+			requireRejectedSectorApply(sectorWorkbench.Set_PresentationBox(patternId, appliedEllipse, status),
+				"Collider Apply bypassed the linked Sector scale constraint or changed the previous source");
+			requireRejectedSectorApply(sectorWorkbench.Set_ColliderLogicValues(patternId, appliedEllipse, contact, status),
+				"Logic Apply committed an invalid linked Sector or consumed its pending geometry");
+			requireRejectedSectorApply(sectorWorkbench.Set_ColliderTriggerDamage(patternId, appliedEllipse, 25u, status),
+				"Trigger Damage Apply committed an invalid linked Sector or changed its Logic definitions");
+			auto circular = sectorBox; circular.Scale = {3.0, 1.0, 3.0};
+			RequireEditorStep(sectorWorkbench.Request_PresentationGeometryPreview(patternId, circular, status), status,
+				"restore equal X/Z Sector scale to enlarge its circular radius");
+			RequireEditorStep(sectorWorkbench.Save(status), status, "Save corrected circular Sector geometry without Apply");
+			auto expectedSector = sectorBaseline; ++expectedSector.iRevision;
+			for (auto& pattern : expectedSector.Patterns) if (pattern.strPatternId == patternId)
+				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == circular.strOccurrenceId) row.Scale = circular.Scale;
+			CKoukuSaydonActionWorkbench reopenedSector;
+			RequireEditorStep(reopenedSector.Reload(status), status, "reopen corrected Sector geometry in a new Workbench");
+			Require(!sectorWorkbench.Is_Dirty() && sectorWorkbench.Get_Composition() == expectedSector &&
+				reopenedSector.Get_Composition() == expectedSector, "Sector Save/Reload lost equal X/Z scale or its applied Logic link");
+
+			// Geometry becomes gameplay-owned when Apply connects the first Logic window.
+			auto unlinkedSource = expectedSector;
+			auto unlinkedEllipse = ellipse;
+			for (auto& pattern : unlinkedSource.Patterns) if (pattern.strPatternId == patternId)
+				for (auto& row : pattern.PresentationOccurrences) if (row.strOccurrenceId == unlinkedEllipse.strOccurrenceId) row = unlinkedEllipse;
+			Require(WriteText(sectorSourcePath, CKoukuSaydonCompositionDocument::Serialize(unlinkedSource)),
+				"could not write unlinked Sector connection fixture");
+			CKoukuSaydonActionWorkbench unlinkedSector;
+			RequireEditorStep(unlinkedSector.Reload(status), status, "load unlinked elliptical Sector authoring fixture");
+			const auto unlinkedBaseline = unlinkedSector.Get_Composition();
+			const auto unlinkedBytes = ReadText(sectorSourcePath);
+			const auto unlinkedGeneration = unlinkedSector.Get_DraftGeneration();
+			const auto requireRejectedSectorConnect = [&](const bool accepted, const char* message) {
+				Require(!accepted && !status.empty() && !unlinkedSector.Is_Dirty() &&
+					unlinkedSector.Get_Composition() == unlinkedBaseline && unlinkedSector.Get_DraftGeneration() == unlinkedGeneration &&
+					ReadText(sectorSourcePath) == unlinkedBytes, message);
+			};
+			requireRejectedSectorConnect(unlinkedSector.Connect_ColliderLogic(patternId, unlinkedEllipse, contact.strLogicId, status),
+				"connecting the first Logic window admitted unequal Sector X/Z scale");
+			requireRejectedSectorConnect(unlinkedSector.Set_ColliderLogicValues(patternId, unlinkedEllipse, contact, status),
+				"Logic Apply created a window for an unlinked elliptical Sector");
+			requireRejectedSectorConnect(unlinkedSector.Set_ColliderTriggerDamage(patternId, unlinkedEllipse, 25u, status),
+				"Trigger Damage Apply created a damage window for an unlinked elliptical Sector");
+		}
+		Require(ReadText(sourcePath) == colliderSavedBytes, "Sector fixture changed the separate Collider source");
+
 		// Save collects geometry from every edited Effect box, without a separate Apply.
 		const auto beforeEffectSave = workbench.Get_Composition();
 		const auto beforeEffectBytes = ReadText(sourcePath);
@@ -2909,7 +3067,7 @@ int Run_KoukuPreviewTransportContractTests()
 	{
 		VerifyKoukuPreviewTransportContracts();
 		VerifyKoukuAllLaneDuplicateContracts();
-		std::cout << "KoukuPreviewTransportContractTests: pause-clock/cold-live-end-scrub/Play-restart/paused-Collider/one-shot/Collider-Apply-window-link/Stage-retarget/source-preservation/all-lane-segment-copy/linked-definition-COW passed\n";
+		std::cout << "KoukuPreviewTransportContractTests: pause-clock/cold-live-end-scrub/Play-restart/paused-Collider/one-shot/Collider-Apply-window-link/Collider-save-without-Apply/linked-Sector-scale/Stage-retarget/source-preservation/all-lane-segment-copy/linked-definition-COW passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

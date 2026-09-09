@@ -162,7 +162,7 @@ namespace Client
 		[[nodiscard]] bool_t Has_Composition() const noexcept {
 			return m_bHasDraft;
 		}
-		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty || !m_StagedEffectGeometry.empty(); }
+		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty || !m_StagedPresentationGeometry.empty(); }
 		[[nodiscard]] std::uint64_t Get_DraftGeneration() const noexcept { return m_iDraftGeneration; }
 		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT&
 			Get_Composition() const noexcept { return m_Draft; }
@@ -190,7 +190,7 @@ namespace Client
 		bool_t Request_PresentationGeometryPreview(std::string_view patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Consume_PresentationGeometryPreviewRequest(KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST& outRequest);
-		void Cancel_PresentationGeometryPreview(bool_t discardEffectGeometry = true);
+		void Cancel_PresentationGeometryPreview(bool_t discardStagedGeometry = true);
 		bool_t Consume_PatternPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_PATTERN& outPattern,
 			std::uint32_t& outStartClockMs,
@@ -679,7 +679,7 @@ namespace Client
 		bool_t m_bColliderDamageDirty = false;
 
 		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_PendingPresentationGeometryPreviews;
-		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_StagedEffectGeometry;
+		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_StagedPresentationGeometry;
 		std::string m_strPresentationGeometryPreviewPatternId;
 		std::string m_strPresentationGeometryPreviewOccurrenceId;
 		KOUKU_PRESENTATION_PREVIEW_REQUEST m_PendingPresentationPreviewRequest;
