@@ -172,6 +172,34 @@ public:
 	bool_t Play_Animation(f32_t fTimeDelta);
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
+	/* Repaints one texture slot of every material whose name contains pMaterialNameFragment,
+	for the character-creation choices that change a face's look without changing its mesh.
+	Matching by name fragment rather than by index keeps the caller out of the material order,
+	which differs per class rig. Returns how many materials took it, so a caller can tell an
+	empty match from a successful one. A null view restores the authored texture. */
+	uint32_t Override_MaterialTexture(
+		const char_t* pMaterialNameFragment,
+		aiTextureType eType,
+		uint32_t iTextureIndex,
+		ComPtr<ID3D11ShaderResourceView> pTexture);
+	void Clear_MaterialTextureOverrides();
+	/* The same match by name fragment, for the dyed colour rather than the texture. Only
+	materials that actually dye take it, so the count says whether the choice landed on
+	anything. Clear restores what the asset shipped. */
+	uint32_t Override_MaterialDyeColor(
+		const char_t* pMaterialNameFragment,
+		const float4_t& vDiffuse,
+		const float4_t& vRegionA);
+	void Clear_MaterialDyeColorOverrides();
+	/* Hair only; see CMaterial::Set_DyeTwoTone. */
+	uint32_t Override_MaterialDyeTwoTone(
+		const char_t* pMaterialNameFragment, f32_t fStrength, f32_t fRange);
+	/* See CMaterial::Set_DiffuseTint. Unlike the dye overrides this takes on any material,
+	because a plain multiply needs no mask to ride on. */
+	uint32_t Override_MaterialDiffuseTint(
+		const char_t* pMaterialNameFragment, const float4_t& vTint);
+	/* Null when the mesh or its material is out of range. */
+	const float4_t* Get_MaterialDiffuseTint(uint32_t iMeshIndex) const;
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
 	/* Null when the mesh or its material is out of range; identity tint (its
 	isEnabled false) when the material simply has no colour mask. */
@@ -181,8 +209,36 @@ public:
 	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType);
+	// Returns the preserved source material slot, independently of mesh order.
+	bool_t Try_GetSourceMaterialIndex(uint32_t iMeshIndex, uint32_t& iOutMaterialIndex) const;
 	const string& Get_MaterialName(uint32_t iMeshIndex) const;
 	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
+
+public:
+	/* Face MorphTarget application (character-creation base tab). A vertex is addressed as
+	(iMeshIndex, iVertexIndex): iMeshIndex indexes this CModel's own m_Meshes -- one CMesh per
+	submesh, in the exact order CModel::Ready_Meshes built them in, which is the same order
+	the .wmodel's own SUBMESH_DESC table lists them (see
+	Tools/CharacterCustomizing/build_face_morph_vertex_map.py's global_to_local(), which
+	produces the (meshIndex, localIndex) pairs a .facemorphmap on disk stores). iVertexIndex
+	is local to that one CMesh's own vertex buffer, 0..Get_MeshVertexCount(iMeshIndex)-1.
+	Nothing here is opt-in at load time and no model pays for it until
+	Make_MeshVertexBuffer_Unique() is actually called on it. */
+	uint32_t Get_MeshCount() const {
+		return m_iNumMeshes;
+	}
+	uint32_t Get_MeshVertexCount(uint32_t iMeshIndex) const;
+	bool_t Has_MorphBaseVertices(uint32_t iMeshIndex) const;
+	bool_t Get_MorphBaseVertex(uint32_t iMeshIndex, uint32_t iVertexIndex,
+		float3_t& OutPosition, float3_t& OutNormal) const;
+	/* Must be called once (per CModel instance, i.e. per clone) before Update_Mesh_Vertices()
+	targets that mesh; a no-op if already unique. */
+	HRESULT Make_MeshVertexBuffer_Unique(uint32_t iMeshIndex);
+	HRESULT Update_Mesh_Vertices(uint32_t iMeshIndex, const vector<uint32_t>& iVertexIndices,
+		const vector<float3_t>& Positions, const vector<float3_t>& Normals);
+	/* Restores every vertex Update_Mesh_Vertices() has touched on this mesh back to its
+	unmorphed rest state (weight-0). */
+	HRESULT Reset_Mesh_Vertices(uint32_t iMeshIndex);
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };

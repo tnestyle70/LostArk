@@ -2533,7 +2533,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_04_tr",
-        "renderProfile": "alpha_one_sided_depth_read",
+        "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77",
@@ -5900,7 +5900,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
@@ -9358,7 +9358,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_me_ringrainbow_01_2_ts_tr",
-        "renderProfile": "alpha_one_sided_depth_read",
+        "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
@@ -24666,7 +24666,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_me_ringmaster_11_01_ts_fs_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.ad.f754ad06cfe6",
@@ -32634,7 +32634,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ringmaster_12_03_dt_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.ad.f754ad06cfe6",
@@ -33952,7 +33952,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ringmaster_12_04_dt_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.ad.f754ad06cfe6",
@@ -35270,7 +35270,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_customparticle_02_01_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967",
@@ -36698,7 +36698,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_customparticle_02_01_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967",
@@ -38126,7 +38126,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_customparticle_02_01_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967",
@@ -40808,7 +40808,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",
@@ -41810,7 +41810,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_slice_01_02_tr",
-        "renderProfile": "alpha_one_sided_depth_read",
+        "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.slice.01.tr.afc439ecf232",
@@ -43125,7 +43125,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_slice_01_02_tr",
-        "renderProfile": "alpha_one_sided_depth_read",
+        "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.slice.01.tr.afc439ecf232",
@@ -51022,7 +51022,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",

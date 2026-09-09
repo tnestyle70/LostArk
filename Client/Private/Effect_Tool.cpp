@@ -2813,8 +2813,7 @@ namespace
 		// only lacks proven material semantics.  It previews so the artist can
 		// tune it; product admission is refused elsewhere and is unaffected.
 		return Element.bVisible &&
-			Client::Is_EffectAuthoringExecutionTarget(
-				Element.Material.Execution);
+			Client::Is_EffectElementAuthoringExecutionTarget(Element);
 	}
 
     struct PARTICLE_LAYER_SUMMARY final
@@ -3426,6 +3425,8 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 {
     ++m_iFrameNumber;
+	const bool_t bSkipPreviewAdvance = m_bSkipNextWorldPreviewDelta;
+	m_bSkipNextWorldPreviewDelta = false;
 	Process_PendingValtanGraphRefresh();
 	Update_ValtanServerPatternAudition();
 	Update_ValtanPatternProductEffectUnlink();
@@ -3548,8 +3549,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 			}))
         return;
     f32_t fSequentialAdvance = 0.f;
-    bool_t bSeekAfterLoop = bValtanPatternDraftTimelineRebound;
-    if (m_bPreviewPlaying)
+    bool_t bSeekAfterLoop = bValtanPatternDraftTimelineRebound || bSkipPreviewAdvance;
+    if (m_bPreviewPlaying && !bSkipPreviewAdvance)
     {
         const f32_t fPreviousTime = m_fPreviewTimeSeconds;
         const f32_t fPreviousEffectTime =
@@ -3702,8 +3703,9 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	   playback tick reflects the newly selected animation pose, not the final
 	   pose from the previous loop. */
 	const EFFECT_DOCUMENT_DESC& SourceAnchorDocument =
-		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
-			*m_SourcePreviewDocument : *m_ActiveDocument;
+		m_WorldPreviewDocument.has_value() ? *m_WorldPreviewDocument :
+		(m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
+			*m_SourcePreviewDocument : *m_ActiveDocument);
 	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
 	std::string SourceAnchorError;
 	const bool_t bSourceAnchorsResolved = Resolve_ToolSourceAnchorWorlds(
@@ -5498,9 +5500,10 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 				else
 				{
 					const EFFECT_DOCUMENT_DESC& SourceAnchorDocument =
-						m_ProductPreview.has_value() &&
+						m_WorldPreviewDocument.has_value() ? *m_WorldPreviewDocument :
+						(m_ProductPreview.has_value() &&
 						m_SourcePreviewDocument.has_value() ?
-							*m_SourcePreviewDocument : *m_ActiveDocument;
+							*m_SourcePreviewDocument : *m_ActiveDocument);
 					const f32_t fEffectSampleSeconds =
 						Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
 					std::string HistoryError;
@@ -6492,8 +6495,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     ImGui::EndDisabled();
     ImGui::SameLine();
 	const bool_t bDetailExecutionTarget =
-		Is_EffectAuthoringExecutionTarget(
-			m_DetailDraft->Material.Execution);
+		Is_EffectElementAuthoringExecutionTarget(*m_DetailDraft);
 	const bool_t bDetailPreviewLocked =
 		m_bDetailDraftCapabilityDeferred || !bDetailExecutionTarget ||
 		!m_DetailDraft->bVisible;
@@ -7109,7 +7111,7 @@ void Client::CEffect_Tool::Render_Detail(
 	const bool_t bMissingBaseSourceDecal =
 		Is_MissingBaseSourceDecal(Element);
 	const bool_t bAuthoringExecutionTarget =
-		Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
+		Is_EffectElementAuthoringExecutionTarget(Element);
 	if (m_bDetailDraftCapabilityDeferred)
 	{
 		bool_t bLockedVisible = false;
@@ -7208,7 +7210,8 @@ void Client::CEffect_Tool::Render_Detail(
 		bParticleMasterNamedEmission,
 		bLockProjectTunedCarrierColor);
 	Render_LinearRevealDetail(Element, bChanged);
-	Render_AuthoringMaterialParameters(Element, bChanged);
+	if (Element.Detail.Mesh.SourceMaterialSlots.empty())
+		Render_AuthoringMaterialParameters(Element, bChanged);
 	if (ImGui::CollapsingHeader("Advanced Authoring"))
 	{
 		Render_UVDetail(Element.Detail, bChanged);
@@ -7219,11 +7222,25 @@ void Client::CEffect_Tool::Render_Detail(
 	}
 	if (!ImGui::CollapsingHeader("Material / Render"))
 		return;
+	if (!Element.Detail.Mesh.SourceMaterialSlots.empty())
+	{
+		ImGui::TextWrapped(
+			"This mesh uses the source material slots below. The primary material is retained as source evidence and is not used for drawing. Slot materials are read-only here; shared Transform, Timing and Color remain editable.");
+		for (const EFFECT_SOURCE_MATERIAL_SLOT_DESC& Slot :
+			Element.Detail.Mesh.SourceMaterialSlots)
+		{
+			ImGui::SeparatorText(
+				("Source material slot " + std::to_string(Slot.iSourceMaterialIndex)).c_str());
+			ImGui::TextWrapped("%s", Slot.Material.strSourceMaterialPath.c_str());
+			ImGui::TextDisabled("%s", Profile_Label(Slot.Material.eRenderProfile));
+		}
+		return;
+	}
     ImGui::TextDisabled("Material Template: %s",
         Element.Material.strTemplateId.c_str());
 	const EFFECT_MATERIAL_EXECUTION_DESC& MaterialExecution =
 		Element.Material.Execution;
-	if (!Is_EffectAuthoringExecutionTarget(MaterialExecution) &&
+	if (!Is_EffectElementAuthoringExecutionTarget(Element) &&
 		!bMissingBaseSourceDecal)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
@@ -11772,7 +11789,7 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 	return true;
 }
 
-bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
+bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
 {
     if (!m_ActiveDocument || !m_pAuthoringSequencer)
     { m_strPreviewStatus = "Load the recovery Effect and its authoring workspace first."; return false; }
@@ -11784,18 +11801,6 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     const char_t* modelAsset = Animation_AssetName(binding->eCharacterClass);
     if (!modelAsset)
     { m_strPreviewStatus = "The recovery Effect class has no admitted model."; return false; }
-    EFFECT_DOCUMENT_DESC preview = *m_ActiveDocument;
-    if ((m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(preview)) ||
-        (m_bDetailDraftDirty && !Apply_DetailDraft(preview)) ||
-        (m_bModelCueDraftDirty && !Apply_ModelCueDraft(preview)))
-    { m_strPreviewStatus = "Recovery preview could not apply the current draft."; return false; }
-    float durationSeconds = 1.f;
-    for (const auto& element : preview.Elements)
-        if (element.bVisible) durationSeconds = (std::max)(durationSeconds, Element_PreviewEndSeconds(element));
-    for (const auto& cue : preview.ModelCues)
-        if (cue.bVisible) durationSeconds = (std::max)(durationSeconds, cue.fStartDelaySeconds + cue.fDurationSeconds);
-    const uint32_t duration = static_cast<uint32_t>(
-        (std::clamp)(std::ceil(durationSeconds * 1000.f), 1.f, 600000.f));
     const uint32_t skillId = static_cast<uint32_t>(binding->iSkillId);
     std::optional<uint32_t> stageIndex;
     std::string productOwnerId = assetId;
@@ -11827,6 +11832,27 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     }
     if (!m_pAuthoringSequencer->Select_CharacterSkill(modelAsset, skillId, stageIndex))
     { m_strPreviewStatus = m_pAuthoringSequencer->Status(); return false; }
+    return true;
+}
+
+bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
+{
+    if (!m_ActiveDocument || !m_pAuthoringSequencer)
+    { m_strPreviewStatus = "Load the recovery Effect and its authoring workspace first."; return false; }
+    const std::string assetId = m_ActiveDocument->strEffectAssetId;
+    EFFECT_DOCUMENT_DESC preview = *m_ActiveDocument;
+    if ((m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(preview)) ||
+        (m_bDetailDraftDirty && !Apply_DetailDraft(preview)) ||
+        (m_bModelCueDraftDirty && !Apply_ModelCueDraft(preview)))
+    { m_strPreviewStatus = "Recovery preview could not apply the current draft."; return false; }
+    float durationSeconds = 1.f;
+    for (const auto& element : preview.Elements)
+        if (element.bVisible) durationSeconds = (std::max)(durationSeconds, Element_PreviewEndSeconds(element));
+    for (const auto& cue : preview.ModelCues)
+        if (cue.bVisible) durationSeconds = (std::max)(durationSeconds, cue.fStartDelaySeconds + cue.fDurationSeconds);
+    const uint32_t duration = static_cast<uint32_t>(
+        (std::clamp)(std::ceil(durationSeconds * 1000.f), 1.f, 600000.f));
+    if (!Prepare_RecoveryPreviewTarget()) return false;
     // Prepare only the sequencer occurrence. A disposable complete World
     // Preview here duplicated model/texture staging before every Play All.
     const bool result = m_pAuthoringSequencer->Preview(
@@ -25340,8 +25366,7 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 	if (!Is_ElementPreviewAdmitted(*Element))
 	{
 		m_strPreviewStatus =
-			!Is_EffectAuthoringExecutionTarget(
-				Element->Material.Execution) ?
+			!Is_EffectElementAuthoringExecutionTarget(*Element) ?
 			"Element Solo is locked by material/runtime fail-closed admission; editing and Save remain available." :
 			"Element Solo is unavailable while the authored Element is hidden.";
 		return false;
@@ -25743,8 +25768,7 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
 	if (!Is_ElementPreviewAdmitted(*Selected))
 	{
 		m_strPreviewStatus =
-			!Is_EffectAuthoringExecutionTarget(
-				Selected->Material.Execution) ?
+			!Is_EffectElementAuthoringExecutionTarget(*Selected) ?
 			"Element audition is locked by material/runtime fail-closed admission; editing and Save remain available." :
 			"Element audition is unavailable while the authored Element is hidden.";
 		return false;
@@ -26766,6 +26790,13 @@ bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
 			"Use a Play Family button before choosing Family preview.";
 		return false;
 	}
+
+	// Loading an authored document is CPU-only. Solo must select its own
+	// character before resolving player-root or bone attachments.
+	if (m_pAuthoringSequencer && !m_ProductPreview &&
+		m_ActiveDocument->strEffectAssetId.ends_with(".restore") &&
+		!Prepare_RecoveryPreviewTarget())
+		return false;
 
     const EFFECT_PREVIEW_FILTER ePrevious = m_ePreviewFilter;
     const f32_t fPreviousTime = m_fPreviewTimeSeconds;
@@ -30233,7 +30264,7 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		if (!Element.bVisible ||
-			!Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+			!Is_EffectElementAuthoringExecutionTarget(Element))
 		{
 			continue;
 		}
@@ -30805,6 +30836,10 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
         return false;
     }
+	// Follow/seek must consume exactly the filtered, draft-applied document
+	// that was staged, rather than anchors belonging to excluded siblings.
+	m_WorldPreviewDocument = PreviewDocument;
+	m_bSkipNextWorldPreviewDelta = true;
 	m_pVisualPreviewProjection = bExactVisualProjection ?
 		pCatalogProjection : nullptr;
 	m_bReconstructedDiagnosticActive = false;
@@ -30895,6 +30930,19 @@ Client::CEffect_Tool::Build_PreviewDocument(
 	const EFFECT_DOCUMENT_DESC& Document) const
 {
     EFFECT_DOCUMENT_DESC Preview = Document;
+	const auto PreserveModelCueAnchors = [&Preview]()
+	{
+		std::erase_if(Preview.ModelCues,
+			[&Preview](const EFFECT_MODEL_CUE_DESC& Cue)
+			{
+				return std::none_of(Preview.Elements.begin(), Preview.Elements.end(),
+					[&Cue](const EFFECT_ELEMENT_DESC& Element)
+					{ return Element.ActionCueAttachment.strModelCueId == Cue.strCueId; });
+			});
+		// Hidden model cues still supply their animated bones to child Elements.
+		for (EFFECT_MODEL_CUE_DESC& Cue : Preview.ModelCues)
+			Cue.bVisible = false;
+	};
 	if (!m_bPreviewScreenPostEnabled)
 	{
 		std::erase_if(Preview.Elements,
@@ -30928,8 +30976,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 				return Resolve_AuthoringFamily(Element) !=
 					m_ePreviewIsolationAuthoringFamily;
 			});
-		for (EFFECT_MODEL_CUE_DESC& Cue : Preview.ModelCues)
-			Cue.bVisible = false;
+		PreserveModelCueAnchors();
 		return Preview;
 	}
     if (EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM == m_ePreviewFilter)
@@ -30939,7 +30986,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
             {
                 return EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind;
             });
-        Preview.ModelCues.clear();
+        PreserveModelCueAnchors();
         return Preview;
     }
 	if (EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES == m_ePreviewFilter ||
@@ -30953,7 +31000,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 			{
 				return Element.eKind != eRequired;
 			});
-		Preview.ModelCues.clear();
+		PreserveModelCueAnchors();
 		return Preview;
 	}
 	if (EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
@@ -30969,7 +31016,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 				return EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind ||
 					Resolve_CascadeRendererKind(Element) != eRequired;
 			});
-		Preview.ModelCues.clear();
+		PreserveModelCueAnchors();
 		return Preview;
 	}
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter ||
@@ -30994,7 +31041,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
                     m_ePreviewFilter ? !bSelectedGroup : bSelectedGroup;
             });
         if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter)
-            Preview.ModelCues.clear();
+            PreserveModelCueAnchors();
         return Preview;
     }
     if (EFFECT_PREVIEW_FILTER::COMPLETE == m_ePreviewFilter ||
@@ -31017,7 +31064,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
                 !bSelected : bSelected;
         });
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED == m_ePreviewFilter)
-        Preview.ModelCues.clear();
+        PreserveModelCueAnchors();
     return Preview;
 }
 
@@ -31127,8 +31174,7 @@ bool_t Client::CEffect_Tool::Apply_DetailDraft(
             continue;
         Apply_EffectElementDetailDraft(Element, *m_DetailDraft);
 		if (m_bDetailDraftCapabilityDeferred ||
-			!Is_EffectAuthoringExecutionTarget(
-				Element.Material.Execution))
+			!Is_EffectElementAuthoringExecutionTarget(Element))
 			Element.bVisible = false;
         return true;
     }
@@ -31910,6 +31956,9 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 {
+    // Resource preparation in the UI frame must not consume a short Solo
+    // effect's lifetime before its first playback update.
+    m_bSkipNextWorldPreviewDelta = true;
     if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId.ends_with(".restore") &&
         !m_ProductPreview && m_ePreviewFilter == EFFECT_PREVIEW_FILTER::COMPLETE)
     {
@@ -33268,6 +33317,8 @@ void Client::CEffect_Tool::Release_WorldPreview(
             m_iWorldPreviewLevel, PREVIEW_LAYER, pObject);
     }
     m_pWorldPreviewObject.reset();
+	m_WorldPreviewDocument.reset();
+	m_bSkipNextWorldPreviewDelta = false;
 	m_pVisualPreviewProjection.reset();
 	m_iWorldPreviewLevel = UINT32_MAX;
 	m_bReconstructedDiagnosticActive = false;

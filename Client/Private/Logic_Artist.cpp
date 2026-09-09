@@ -39,6 +39,12 @@ namespace
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Artist_Upper"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
+		/* The hairstyle is a part, not something the body draws: character creation
+		picks one and swaps this out for it. Style 0 of this class's list is what a
+		character that has never been through that screen wears. */
+		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Artist_Hair"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 	};
 
 	/* The cook lays the body out 0 face / 1 eye_ao / 2 eye / 3 hair /
@@ -53,6 +59,11 @@ namespace
 	Re-cooking the body with different content invalidates these bits. */
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 4) | (1u << 5) | (1u << 6) | (1u << 7);
+
+	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
+	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
+	off the cooked model's material order, like the mask above. 3 is pc_sp_06_hair. */
+	constexpr uint32_t BAKED_HAIR = (1u << 3);
 
 	/* Chains picked by parsing what the shipped meshes actually skin, not by
 	what the rig offers: the capatcloth chains and the long b_hair chains have
@@ -80,35 +91,39 @@ namespace
 	constexpr f32_t TASSEL_MAX_DISPLACEMENT = 0.15f;
 	constexpr f32_t TASSEL_WIND_RESPONSE = 2.f;
 
+	/* Swing cones from this class's own body PhysicsAsset. Our cone is one
+	symmetric half-angle per chain, so each value is that chain's first simulated
+	link's authored Swing1LimitAngle -- the link that sets the silhouette. PC_SP_00_Physics authors
+	b_hair_b as two independent sub-chains (_01.. and _11..) and add_tail as 30/45/45. */
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_fl_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_fr_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_l_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_r_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_b_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_bl_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_br_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 40.0f },
 
 		{ "b_add_tail_1_01", 3u, ROBE_STIFFNESS, ROBE_DAMPING,
-		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE, 30.0f },
 
 		{ "b_armwing_l_01", 5u, WING_STIFFNESS, WING_DAMPING,
-		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE },
+		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE, 40.0f },
 		{ "b_armwing_r_01", 5u, WING_STIFFNESS, WING_DAMPING,
-		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE },
+		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE, 40.0f },
 
 		{ "b_hair_b_11", 4u, TASSEL_STIFFNESS, TASSEL_DAMPING,
-		  TASSEL_GRAVITY, TASSEL_MAX_DISPLACEMENT, TASSEL_WIND_RESPONSE },
+		  TASSEL_GRAVITY, TASSEL_MAX_DISPLACEMENT, TASSEL_WIND_RESPONSE, 30.0f },
 	};
 
 	unique_ptr<ICharacterLogic> Create_Logic()
@@ -136,6 +151,7 @@ const CHARACTER_SPEC Spec_Artist =
 	TEXT("Prototype_Component_Model_Artist"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
+	BAKED_HAIR,
 
 	/* Item 1061002 is this class's default weapon and names WP_WSDM_09-1, which
 	is a material variant of the one mesh in WP_WSDM_09 -- the -1..-9 instances

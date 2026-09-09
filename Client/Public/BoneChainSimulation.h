@@ -47,6 +47,13 @@ struct BONE_CHAIN_SPEC
 	speed. The velocity feeding it is low-pass filtered, so the cloth leans
 	back over a few frames of running and eases home after a stop. */
 	f32_t fWindResponse = 0.f;
+	/* Half-angle of the cone a link may swing inside, measured from where the animation put
+	it, in degrees. Zero leaves the chain unlimited, which is how it behaved before this
+	existed. The original game authors this per chain as a PhysX swing limit on the body's
+	PhysicsAsset -- 40 for hair and helmet plumes, 50 for skirts, 60 for the longest coat
+	panels -- and it is what stops retail cloth at a believable angle instead of letting it
+	trail indefinitely. */
+	f32_t fSwingLimitDegrees = 0.f;
 };
 
 /* Runs the chains of one model. Bone indices resolve once against the model
@@ -96,6 +103,10 @@ private:
 	float3_t m_vPreviousWorldPosition = {};
 	float3_t m_vFilteredWorldVelocity = {};
 	bool_t m_hasWorldSample = false;
+	/* The same, for turning on the spot. A character that spins without going anywhere
+	still drags its cloth around, and travel alone cannot see that. */
+	f32_t m_fPreviousYawDegrees = 0.f;
+	f32_t m_fFilteredYawRateRadians = 0.f;
 };
 
 NS_END

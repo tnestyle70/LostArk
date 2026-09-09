@@ -58,6 +58,11 @@ namespace
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 0) | (1u << 1) | (1u << 2) | (1u << 3);
 
+	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
+	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
+	off the cooked model's material order, like the mask above. This body ships no hair submesh. */
+	constexpr uint32_t BAKED_HAIR = 0u;
+
 	/* Defence stance is a posture, not a weapon swap: the class crouches behind
 	the shield and keeps that pose until it leaves the stance, so idle and run
 	both belong to the stance rather than to the class. */
@@ -104,34 +109,47 @@ namespace
 	constexpr f32_t PLUME_MAX_DISPLACEMENT = 0.25f;
 	constexpr f32_t PLUME_WIND_RESPONSE = 3.f;
 
+	/* Swing cones from this class's own body PhysicsAsset. Our cone is one
+	symmetric half-angle per chain, so each value is that chain's first simulated
+	link's authored Swing1LimitAngle -- the link that sets the silhouette. PC_WR_00_Physics
+	authors helmet_b 30/40/45/50 down its four links; b_hair01_b has no bodies in
+	that asset at all, so its 40 is this project's own. */
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_fl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_fr_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_l_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_r_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_b_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_bl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 		{ "b_skirt_br_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE, 40.0f },
 
 		{ "b_capatcloth_l_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE, 40.0f },
 		{ "b_capatcloth_b_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE, 40.0f },
 		{ "b_capatcloth_r_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE, 40.0f },
 
 		{ "b_helmet_b_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
-		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE },
+		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 30.0f },
+
+		/* The loose hairstyle and the belt tail. Both are in this body's own palette but
+		were never solved, so they rode the animation rigidly while the cape beside them
+		swung. Same treatment as the plume: they hang off fast parents. */
+		{ "b_hair01_b_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
+		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 40.0f },
+		{ "b_add_tail_1_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
+		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 40.0f },
 	};
 
 	unique_ptr<ICharacterLogic> Create_Logic()
@@ -159,6 +177,7 @@ const CHARACTER_SPEC Spec_Warlord =
 	TEXT("Prototype_Component_Model_Warlord"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
+	BAKED_HAIR,
 
 	/* Item 1013002 is this class's default weapon and names WP_WWGL_04. That
 	package holds two meshes, the gunlance and the shield the class carries in

@@ -161,6 +161,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 	m_BoneChains.Initialize(
 		m_pBodyModel, m_pSpec->pBoneChains, m_pSpec->iNumBoneChains);
 	Load_FaceSliders();
+	Load_FaceMorphs();
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -1173,10 +1174,18 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 	else
 		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
 
+	/* The creation screen turns the model rather than orbiting the camera, which is what
+	makes a cape or a skirt swing when the player spins it. The offset rides on top of the
+	server's yaw instead of replacing it, so replication stays authoritative. */
 	m_pTransformCom->Rotation(
 		0.f,
-		m_fPresentationYawDegrees,
+		m_fPresentationYawDegrees + m_fCreationPreviewYawOffsetDegrees,
 		0.f);
+}
+
+void CCharacter::Set_CreationPreviewYawOffset(const f32_t fDegrees)
+{
+	m_fCreationPreviewYawOffsetDegrees = isfinite(fDegrees) ? fDegrees : 0.f;
 }
 
 bool_t CCharacter::Apply_NetworkAttachment(
@@ -1932,10 +1941,14 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 {
 	if (nullptr == m_pSpec)
 		return;
+	/* Hair is worn, never drawn by the body. The cook put a hairstyle onto three of the
+	bodies for convenience before character creation existed; those meshes are hidden for
+	good and the class's hair part draws instead. */
 	if (auto pBody = dynamic_cast<CPart_Body*>(
 		__super::Find_PartObject(TEXT("Part_00_Body"))))
 	{
-		pBody->Set_HiddenMeshes(m_pSpec->iBodyHiddenMeshMask);
+		pBody->Set_HiddenMeshes(
+			m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask);
 	}
 
 	/* An avatar piece the player hid (Set_AvatarPartVisible) neither renders nor covers
@@ -1981,6 +1994,15 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		}
 		if (0u != (occupiedSlotsMask &
 			EquipmentPresentationSlotMask(equipment.ePresentationSlot)))
+		{
+			isVisible = false;
+		}
+		/* Character creation shows the head bare so a hairstyle can be chosen on it.
+		Set_CreationPreviewActive takes the default head pieces off once; deriving it here
+		too keeps them off when a later apply re-runs this rule with the head slot free --
+		otherwise picking a costume put the default helmet back on mid-screen. */
+		if (m_isCreationPreviewActive &&
+			EQUIPMENT_PRESENTATION_SLOT::HEAD == equipment.ePresentationSlot)
 		{
 			isVisible = false;
 		}
@@ -2264,7 +2286,171 @@ void CCharacter::Load_FaceSliders()
 		return;
 	}
 	if (!m_FaceCustomize.Initialize(m_pBodyModel, m_FaceSliderDocument))
+	{
 		OutputDebugStringA("[Character] face sliders: no slider bone matched the body skeleton.\n");
+		return;
+	}
+	/* Says so on success too: a class whose sliders are simply absent looks the same on
+	screen as one whose bones did not match, and only this tells the two apart. */
+	OutputDebugStringA(("[Character] face sliders ready for " +
+		std::string(m_pSpec->pFaceSliderRace) + ": " +
+		std::to_string(m_FaceCustomize.Get_SliderCount()) + " sliders\n").c_str());
+}
+
+bool_t CCharacter::Set_DyeColor(
+	const DYE_SURFACE eSurface, const float4_t& vColor, const float4_t& vTwoTone)
+{
+	if (nullptr == m_pBodyModel || eSurface >= DYE_SURFACE::END)
+		return false;
+
+	/* One fragment per surface, chosen the same way the iris override picks the eye: these
+	read on every class rig and none of them catches another surface's material. */
+	static constexpr const char_t* SURFACE_FRAGMENT[] = { "_hair", "_eye_", "_face" };
+	const char_t* const pFragment = SURFACE_FRAGMENT[ETOI(eSurface)];
+
+	/* Hair dyes through its region mask; skin and eyes are a plain multiply on their own
+	diffuse, which is how the source game tints them -- their materials carry no mask to
+	dye through, so forcing one on them would flatten the texture. */
+	const bool_t isTintSurface = DYE_SURFACE::HAIR != eSurface;
+	const float4_t vApplied = vColor.w < 0.f ?
+		float4_t(1.f, 1.f, 1.f, 1.f) : vColor;
+
+	uint32_t iMatched = 0u;
+	if (isTintSurface)
+	{
+		iMatched = m_pBodyModel->Override_MaterialDiffuseTint(pFragment, vApplied);
+	}
+	else if (vColor.w < 0.f)
+	{
+		/* Restoring is all-or-nothing on this model: the authored colours come back and the
+		other surfaces are re-applied by their own owners on the next choice. */
+		m_pBodyModel->Clear_MaterialDyeColorOverrides();
+		iMatched = 1u;
+	}
+	else
+	{
+		iMatched = m_pBodyModel->Override_MaterialDyeColor(pFragment, vColor, vTwoTone);
+	}
+	/* Hair is worn as its own part, so the body alone is not enough. */
+	if (DYE_SURFACE::HAIR == eSurface)
+	{
+		for (const auto& [partTag, requiredStance] : m_EquipmentPreviewPartStances)
+		{
+			(void)requiredStance;
+			auto pPart = dynamic_cast<CPart_Equipment*>(
+				__super::Find_PartObject(partTag.c_str()));
+			if (nullptr == pPart)
+				continue;
+			const shared_ptr<CModel> pModel = pPart->Get_Model();
+			if (nullptr == pModel)
+				continue;
+			if (vColor.w < 0.f)
+				pModel->Clear_MaterialDyeColorOverrides();
+			else
+				iMatched += pModel->Override_MaterialDyeColor(pFragment, vColor, vTwoTone);
+		}
+	}
+	OutputDebugStringA(("[Dye] fragment " + std::string(pFragment) + " -> " +
+		std::to_string(iMatched) + " material(s)" +
+		(isTintSurface ? " (tint)" : " (dye)") + "\n").c_str());
+	return 0u != iMatched;
+}
+
+bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)
+{
+	if (nullptr == m_pBodyModel)
+		return false;
+	static constexpr const char_t* HAIR_FRAGMENT = "_hair";
+	uint32_t iMatched =
+		m_pBodyModel->Override_MaterialDyeTwoTone(HAIR_FRAGMENT, fStrength, fRange);
+	for (const auto& [partTag, requiredStance] : m_EquipmentPreviewPartStances)
+	{
+		(void)requiredStance;
+		auto pPart = dynamic_cast<CPart_Equipment*>(
+			__super::Find_PartObject(partTag.c_str()));
+		if (nullptr == pPart)
+			continue;
+		const shared_ptr<CModel> pModel = pPart->Get_Model();
+		if (nullptr != pModel)
+			iMatched += pModel->Override_MaterialDyeTwoTone(HAIR_FRAGMENT, fStrength, fRange);
+	}
+	return 0u != iMatched;
+}
+
+bool_t CCharacter::Set_FaceIrisTexture(const std::string& strTextureAssetId)
+{
+	if (nullptr == m_pBodyModel)
+		return false;
+
+	/* "_eye_" and not "eye": the same rigs also carry pc_*_eyeao_mi (an ambient-occlusion
+	map) and pc_ft_eyelashes_mi, and neither of those is the iris. Every class's actual eye
+	material is pc_<race>_eye_mi / pc_sp_av_eye_05_mi, which all contain "_eye_" while the
+	other two do not. */
+	static constexpr const char_t* EYE_MATERIAL_FRAGMENT = "_eye_";
+
+	if (strTextureAssetId.empty())
+	{
+		m_pBodyModel->Override_MaterialTexture(
+			EYE_MATERIAL_FRAGMENT, aiTextureType_DIFFUSE, 0, nullptr);
+		return true;
+	}
+
+	ComPtr<ID3D11ShaderResourceView>& pTexture = m_FaceIrisTextures[strTextureAssetId];
+	if (nullptr == pTexture)
+	{
+		const std::filesystem::path path = CRuntimeAssetRoot::Resolve(strTextureAssetId);
+		if (path.empty() || !std::filesystem::exists(path))
+		{
+			OutputDebugStringA(("[FaceIris] no file for " + strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+		/* The iris is a colour slot, so it decodes as sRGB exactly like the authored diffuse
+		CMaterial replaces here -- loading it any other way would light a different colour
+		than the eye had a moment ago. */
+		if (FAILED(DirectX::CreateDDSTextureFromFileEx(
+			m_pDevice.Get(), path.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+			DirectX::DDS_LOADER_FORCE_SRGB, nullptr, &pTexture)))
+		{
+			OutputDebugStringA(("[FaceIris] DDS decode failed for " +
+				strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+	}
+
+	const uint32_t iMatched = m_pBodyModel->Override_MaterialTexture(
+		EYE_MATERIAL_FRAGMENT, aiTextureType_DIFFUSE, 0, pTexture);
+	return 0u != iMatched;
+}
+
+void CCharacter::Load_FaceMorphs()
+{
+	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName || nullptr == m_pBodyModel)
+		return;
+
+	const std::string strClassId = m_pSpec->pAssetName;
+	const std::filesystem::path FaceMorphsPath = CRuntimeAssetRoot::Resolve(
+		"Character/" + strClassId + "/FaceMorphs/" + strClassId + ".facemorphs");
+	const std::filesystem::path FaceMorphMapPath = CRuntimeAssetRoot::Resolve(
+		"Character/" + strClassId + "/FaceMorphs/" + strClassId + ".facemorphmap");
+	if (FaceMorphsPath.empty() || FaceMorphMapPath.empty() ||
+		!std::filesystem::exists(FaceMorphsPath) || !std::filesystem::exists(FaceMorphMapPath))
+	{
+		/* Not every class has this yet (no dedicated face model loaded for LanceMaster,
+		no source data cooked at all for Gunslinger/Slayer) -- silently absent, same as a
+		class with no face slider race. */
+		return;
+	}
+	if (!m_FaceMorph.Initialize(m_pBodyModel, FaceMorphsPath, FaceMorphMapPath))
+	{
+		OutputDebugStringA(("[Character] face morphs failed for " + strClassId +
+			"\n").c_str());
+		return;
+	}
+	OutputDebugStringA(("[Character] face morphs ready for " + strClassId + ": " +
+		std::to_string(m_FaceMorph.Get_MorphCount()) + " morphs\n").c_str());
 }
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
@@ -2275,7 +2461,10 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 	run before the chains so a hair chain hanging off the head sees the final
 	head pose. */
 	if (nullptr != m_pBodyModel)
+	{
 		m_FaceCustomize.Apply(m_pBodyModel);
+		m_FaceMorph.Apply(m_pBodyModel);
+	}
 
 	/* The chains solve here and not in Update because snapshot application
 	runs in the level update, between the two: a skill seek replays the clip
@@ -2285,9 +2474,12 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
 		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
 	{
+		/* The yaw the model is actually drawn at, not the server's alone: the creation
+		screen turns the model with the drag offset, and the cloth has to see that turn
+		the same way it sees a turn the server sent. */
 		m_BoneChains.Update(m_pBodyModel, fTimeDelta,
 			m_pTransformCom->Get_State(STATE::POSITION),
-			m_fPresentationYawDegrees);
+			m_fPresentationYawDegrees + m_fCreationPreviewYawOffsetDegrees);
 	}
 
 #ifdef _DEBUG
@@ -2638,7 +2830,8 @@ HRESULT CCharacter::Ready_PartObjects()
 	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 	bodyDesc.strModelTag = m_pSpec->pBodyModelTag;
 	bodyDesc.strShaderTag = m_pSpec->pShaderTag;
-	bodyDesc.iHiddenMeshMask = m_pSpec->iBodyHiddenMeshMask;
+	bodyDesc.iHiddenMeshMask =
+		m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask;
 	bodyDesc.pInitialAnimation = m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::IDLE)];
 	bodyDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
 

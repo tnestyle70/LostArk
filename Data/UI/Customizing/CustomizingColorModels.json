@@ -1,0 +1,1243 @@
+{
+  "schema": "lostark.customizing-color-models",
+  "formatVersion": 1,
+  "sourceKind": "Decoded from the CharacterCustomizingRule .loa documents. Each entry is one authored colour variable: the model type the document names for it, the uint32 that precedes the colour, the four floats that follow in source order, and the three uint32 that trail them. Array position is source order within the document; the variable name is the identity. The trailing three uint32 are zero in every record read and the documents do not name them.",
+  "classes": {
+    "LanceMaster": {
+      "sourceDocument": "EFDLChar_PC_FT.PC_FT.loa",
+      "modelPrefix": "PC_FT",
+      "colorVariables": [
+        {
+          "variable": "var_base_skincolor_ui",
+          "colorModel": "SkinColor",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_makeup_lipcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyelinecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyeshadowcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheekcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_base_skinfrecklecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Skin tab exposes FreckleIntensity, a slider, and no freckle colour; no scalar named for freckle intensity exists in these documents"
+          }
+        },
+        {
+          "variable": "var_eye_browcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decalcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            0.0,
+            0.729919,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.64,
+            0.42,
+            0.28,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_basecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "BaseColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.64,
+            0.42,
+            0.28,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisColor; reached through Eye/Index, not its own category1"
+          }
+        },
+        {
+          "variable": "var_eye_basecolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart; the movie exposes one BaseColor picker plus an Index (0/1) that chooses the eye, so no distinct category1 exists for it"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_haircolor_base_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.032876,
+            0.025371,
+            0.024223,
+            1.0
+          ],
+          "trailingUint32": [
+            10,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ]
+    },
+    "Warlord": {
+      "sourceDocument": "EFDLChar_PC_WR.PC_WR.loa",
+      "modelPrefix": "PC_WR",
+      "colorVariables": [
+        {
+          "variable": "var_base_skincolor_ui",
+          "colorModel": "SkinColor",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_makeup_lipcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyelinecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyeshadowcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheekcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_base_skinfrecklecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Skin tab exposes FreckleIntensity, a slider, and no freckle colour; no scalar named for freckle intensity exists in these documents"
+          }
+        },
+        {
+          "variable": "var_eye_browcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decalcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_basecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.751354,
+            0.751354,
+            0.751354,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "BaseColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisColor; reached through Eye/Index, not its own category1"
+          }
+        },
+        {
+          "variable": "var_eye_basecolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.751354,
+            0.751354,
+            0.751354,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart; the movie exposes one BaseColor picker plus an Index (0/1) that chooses the eye, so no distinct category1 exists for it"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_haircolor_base_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.701632,
+            0.535339,
+            0.457426,
+            1.0
+          ],
+          "trailingUint32": [
+            10,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ]
+    },
+    "Artist": {
+      "sourceDocument": "EFDLCHAR_PC_SP.PC_SP.loa",
+      "modelPrefix": "PC_SP",
+      "colorVariables": [
+        {
+          "variable": "var_base_skincolor_ui",
+          "colorModel": "GN_F_SkinColor",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_makeup_lipcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.602188,
+            0.0,
+            0.034439,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyelinecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.016574,
+            0.012362,
+            0.013633,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyeshadowcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.055247,
+            0.028019,
+            0.017399,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheekcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_base_skinfrecklecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Skin tab exposes FreckleIntensity, a slider, and no freckle colour; no scalar named for freckle intensity exists in these documents"
+          }
+        },
+        {
+          "variable": "var_eye_browcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decalcolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            0.0,
+            0.730496,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_basecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.801075,
+            0.801075,
+            0.801075,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "BaseColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisColor; reached through Eye/Index, not its own category1"
+          }
+        },
+        {
+          "variable": "var_eye_basecolorleft_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart; the movie exposes one BaseColor picker plus an Index (0/1) that chooses the eye, so no distinct category1 exists for it"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonecolor_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_haircolor_base_ui",
+          "colorModel": "HSVColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.071761,
+            0.047776,
+            0.042987,
+            1.0
+          ],
+          "trailingUint32": [
+            10,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ]
+    },
+    "DimensionMaster": {
+      "sourceDocument": "EFDLCHAR_PC_SP_M.PC_SP_M.loa",
+      "modelPrefix": "PC_SP_M",
+      "colorVariables": [
+        {
+          "variable": "var_base_hairtwotonecolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.330866,
+            1.330866,
+            1.330866,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_haircolor_base_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.65191,
+            0.600485,
+            0.590683,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.795551,
+            0.795551,
+            0.795551,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_basecolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.801075,
+            0.801075,
+            0.801075,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "BaseColor",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iriscolorleft_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.789314,
+            0.789314,
+            0.789314,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisColor; reached through Eye/Index, not its own category1"
+          }
+        },
+        {
+          "variable": "var_eye_basecolorleft_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            0.796917,
+            0.796917,
+            0.796917,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart; the movie exposes one BaseColor picker plus an Index (0/1) that chooses the eye, so no distinct category1 exists for it"
+          }
+        },
+        {
+          "variable": "var_base_skincolor_ui",
+          "colorModel": "SkinColor_USA",
+          "leadingUint32": 0,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "Color",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_makeup_lipcolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.602188,
+            0.0,
+            0.034439,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyelinecolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.016574,
+            0.012362,
+            0.013633,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyeshadowcolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.055247,
+            0.028019,
+            0.017399,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheekcolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        },
+        {
+          "variable": "var_base_skinfrecklecolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Skin tab exposes FreckleIntensity, a slider, and no freckle colour; no scalar named for freckle intensity exists in these documents"
+          }
+        },
+        {
+          "variable": "var_eye_browcolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "trailingUint32": [
+            0,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decalcolor_ui",
+          "colorModel": "HsvColorModel",
+          "leadingUint32": 1,
+          "defaultRgba": [
+            1.0,
+            0.0,
+            0.730496,
+            1.0
+          ],
+          "trailingUint32": [
+            10,
+            0,
+            0
+          ],
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the Deco tab exposes HeadColor1 and HeadColor2; neither source says which of the decal and cheek colours each one drives"
+          }
+        }
+      ]
+    }
+  }
+}

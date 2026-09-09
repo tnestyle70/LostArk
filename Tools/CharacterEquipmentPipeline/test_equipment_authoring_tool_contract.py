@@ -233,9 +233,12 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
         self.assertIn("enum class EQUIPMENT_PRESENTATION_SLOT", self.character_spec_h)
         self.assertIn("ePresentationSlot", self.character_spec_h)
 
+        # Hair is a HEAD part on every class that has cooked hairstyle sets, so that the
+        # hairstyle chosen in character creation replaces it instead of stacking on top of
+        # a hairstyle the body draws. GunSlinger and Slayer have no cooked hair sets yet.
         expected_slots = {
             "LanceMaster": {
-                "HEAD": 2, "SHOULDER": 1, "UPPER": 2,
+                "HEAD": 3, "SHOULDER": 1, "UPPER": 2,
                 "LOWER": 1, "HANDS": 1,
             },
             "GunSlinger": {
@@ -247,8 +250,11 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
                 "LOWER": 1, "HANDS": 1,
             },
             "Artist": {
-                "HEAD": 1, "SHOULDER": 1, "UPPER": 1,
+                "HEAD": 2, "SHOULDER": 1, "UPPER": 1,
                 "LOWER": 1, "HANDS": 1,
+            },
+            "DimensionMaster": {
+                "HEAD": 1,
             },
             "Warlord": {
                 "HEAD": 2, "SHOULDER": 1, "UPPER": 1,
@@ -275,9 +281,9 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
                     f"{class_name}:{slot}",
                 )
 
+        # The combined body wears no armour parts, but it does wear its hairstyle.
         dimension_master = self.logic_cpp["DimensionMaster"]
-        self.assertNotIn("constexpr EQUIPMENT_PART_SPEC Equipment[]", dimension_master)
-        self.assertNotIn("size(Equipment)", dimension_master)
+        self.assertIn("Part_10_Equip_Hair", dimension_master)
 
         for catalog_slot in (
             "HEAD", "SHOULDER", "UPPER", "LOWER", "HANDS", "WEAPON",
@@ -292,6 +298,12 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
         )
         self.assertIn(
             "Apply_DefaultEquipmentVisibility(occupiedSlotsMask)",
+            self.character_cpp,
+        )
+        # The body never draws hair; the class's hair part does.
+        self.assertIn("iBodyHairMeshMask", self.character_spec_h)
+        self.assertIn(
+            "m_pSpec->iBodyHiddenMeshMask | m_pSpec->iBodyHairMeshMask",
             self.character_cpp,
         )
         self.assertIn(

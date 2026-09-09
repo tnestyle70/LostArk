@@ -8,7 +8,10 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "EstherActionSoundCueDocument.h"
 #include "FaceCustomizeApplier.h"
+#include "FaceMorphApplier.h"
 #include "NavPathFollower.h"
+
+#include <unordered_map>
 #include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
 
@@ -239,10 +242,49 @@ public:
 	void Reset_FaceSliders() {
 		m_FaceCustomize.Reset_Weights();
 	}
+	/* Character-creation base tab face MorphTargets. Empty unless the class' body model was
+	loaded with MODEL_ASSET_LOAD_DESC::retainMorphBaseVertices = true (see
+	PlayableCharacterAssetService.cpp) and its <Class>.facemorphs/.facemorphmap exist. */
+	bool_t Has_FaceMorphs() const {
+		return m_FaceMorph.Get_MorphCount() > 0;
+	}
+	const CFaceMorphApplier& Get_FaceMorph() const {
+		return m_FaceMorph;
+	}
+	bool_t Set_FaceMorphWeight(size_t iMorph, f32_t fWeight) {
+		return m_FaceMorph.Set_Weight(iMorph, fWeight);
+	}
+	bool_t Set_FaceMorphWeight(const std::string& strName, f32_t fWeight) {
+		return m_FaceMorph.Set_Weight_ByName(strName, fWeight);
+	}
+	void Reset_FaceMorphs() {
+		m_FaceMorph.Reset_Weights();
+	}
+	/* Swaps the eye material's diffuse for one of the class's cooked iris textures
+	(Character/<Class>/FaceTextures/iris/...). An empty id puts the authored one back. The
+	texture is loaded once and kept, so re-picking an iris does not reload it. Returns false
+	when the id will not load or the model has no eye material -- the eye then keeps what it
+	had rather than turning blank. */
+	bool_t Set_FaceIrisTexture(const std::string& strTextureAssetId);
+	/* Which dyed surface a creation-screen colour choice repaints. The value is the material
+	name fragment that selects it on every class rig. */
+	enum class DYE_SURFACE { HAIR, EYE, SKIN, END };
+	/* Repaints one dyed surface. vTwoTone is the second hair colour and is ignored by the
+	surfaces that have only one. Returns false when nothing on this rig dyes that way, so the
+	caller can tell an unpainted class from a successful choice. An unset colour (w < 0)
+	restores what the asset shipped. */
+	bool_t Set_DyeColor(DYE_SURFACE eSurface, const float4_t& vColor,
+		const float4_t& vTwoTone);
+	/* The hair tab's two sliders. Leaves the authored colours alone and moves only how much
+	of the second one blends and how far up the strand it reaches. */
+	bool_t Set_HairTwoTone(f32_t fStrength, f32_t fRange);
 	/* Character-creation preview appearance: the class's own default outfit with no helmet,
 	no avatar costume and no weapon, so the face and the plain silhouette are what the player
 	judges. false restores the weapons and whatever avatar pieces were worn before. */
 	void Set_CreationPreviewActive(bool_t isActive);
+	/* Degrees added to the replicated facing while the creation screen is up. Presentation
+	only: the server's yaw is untouched, and the bone chains see the turn so cloth swings. */
+	void Set_CreationPreviewYawOffset(f32_t fDegrees);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
 	}
@@ -372,12 +414,18 @@ private:
 	CBoneChainSimulation m_BoneChains;
 	FACE_SLIDER_DOCUMENT m_FaceSliderDocument;
 	CFaceCustomizeApplier m_FaceCustomize;
+	CFaceMorphApplier m_FaceMorph;
+	/* Iris diffuse overrides this character has loaded, by Resources-relative id. Kept so
+	stepping through the iris list does not reload the same texture every click, and so the
+	SRV outlives the call that handed it to the material. */
+	std::unordered_map<std::string, ComPtr<ID3D11ShaderResourceView>> m_FaceIrisTextures;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
 	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */
 	bool_t m_isAvatarHeadHidden = false;
 	/* Avatar pieces this class was wearing when the creation preview started, so leaving the
 	preview puts back exactly what the player had on. */
+	f32_t m_fCreationPreviewYawOffsetDegrees = { 0.f };
 	bool_t m_isCreationPreviewActive = false;
 	bool_t m_isCreationPreviewAvatarHeadRestored = false;
 	bool_t m_isCreationPreviewAvatarArmorRestored = false;
@@ -391,6 +439,7 @@ private:
 	/* Loads the spec's face slider document and resolves it against the body
 	skeleton. Failure is isolated: the character keeps working without sliders. */
 	void Load_FaceSliders();
+	void Load_FaceMorphs();
 	void Set_Locomotion(bool_t isMoving);
 	/* Applies the state Set_Locomotion decided on. Idle arrives here only after
 	LOCOMOTION_IDLE_DELAY_SECONDS without a run in between. */

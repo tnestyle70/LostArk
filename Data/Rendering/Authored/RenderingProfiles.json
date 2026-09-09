@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 19,
+  "revision": 24,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -365,7 +365,7 @@
     },
     {
       "profileId": "scene.character-select.customizing-dark.v1",
-      "exposureMultiplier": 0.870000005,
+      "exposureMultiplier": 1,
       "bloomIntensityMultiplier": 0.850000024,
       "light": {
         "type": "directional",
@@ -376,15 +376,15 @@
           0
         ],
         "diffuse": [
-          0.03,
-          0.033,
-          0.041,
+          1.29999995,
+          1.29999995,
+          1.35000002,
           1.0
         ],
         "ambient": [
-          0.09,
-          0.088,
-          0.085,
+          0.529999971,
+          0.529999971,
+          0.550000012,
           1.0
         ],
         "specular": [

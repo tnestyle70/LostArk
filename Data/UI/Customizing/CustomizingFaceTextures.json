@@ -1,0 +1,1963 @@
+{
+ "schema": "lostark.customizing-face-textures",
+ "formatVersion": 1,
+ "classes": {
+  "LanceMaster": {
+   "iris": [
+    {
+     "index": 0,
+     "sourceName": "PC_FT_00_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_00_EYEiris_D.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "PC_FT_01_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_01_EYEiris_D.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "PC_FT_02_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_02_EYEiris_D.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "PC_FT_03_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_03_EYEiris_D.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "PC_FT_04_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_04_EYEiris_D.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "PC_FT_05_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_05_EYEiris_D.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "PC_FT_06_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_06_EYEiris_D.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "PC_FT_07_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_07_EYEiris_D.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "PC_FT_08_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_08_EYEiris_D.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "PC_FT_09_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_09_EYEiris_D.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "PC_FT_10_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_10_EYEiris_D.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "PC_FT_11_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_11_EYEiris_D.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "PC_FT_12_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_12_EYEiris_D.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "PC_FT_13_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_13_EYEiris_D.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "PC_FT_14_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_14_EYEiris_D.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "PC_FT_15_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_15_EYEiris_D.dds"
+    },
+    {
+     "index": 16,
+     "sourceName": "PC_FT_16_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_16_EYEiris_D.dds"
+    },
+    {
+     "index": 17,
+     "sourceName": "PC_FT_17_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_17_EYEiris_D.dds"
+    },
+    {
+     "index": 18,
+     "sourceName": "PC_FT_18_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_18_EYEiris_D.dds"
+    },
+    {
+     "index": 19,
+     "sourceName": "PC_FT_19_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_19_EYEiris_D.dds"
+    },
+    {
+     "index": 20,
+     "sourceName": "PC_FT_20_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_20_EYEiris_D.dds"
+    },
+    {
+     "index": 21,
+     "sourceName": "PC_FT_21_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_21_EYEiris_D.dds"
+    },
+    {
+     "index": 22,
+     "sourceName": "PC_FT_22_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_22_EYEiris_D.dds"
+    },
+    {
+     "index": 23,
+     "sourceName": "PC_FT_23_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_23_EYEiris_D.dds"
+    },
+    {
+     "index": 24,
+     "sourceName": "PC_FT_24_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_24_EYEiris_D.dds"
+    },
+    {
+     "index": 25,
+     "sourceName": "PC_FT_25_EYEiris_D",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/iris/PC_FT_25_EYEiris_D.dds"
+    }
+   ],
+   "eyemake": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_eyemake_00",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/eyemake/CC_FT_eyemake_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_eyemake_01",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/eyemake/CC_FT_eyemake_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_eyemake_02",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/eyemake/CC_FT_eyemake_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_eyemake_03",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/eyemake/CC_FT_eyemake_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_eyemake_04",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/eyemake/CC_FT_eyemake_04.dds"
+    }
+   ],
+   "cheek": [
+    {
+     "index": 0,
+     "sourceName": "CC_FT_Cheek_Null",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_Null.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Cheek_00",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Cheek_01",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Cheek_02",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Cheek_03",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_Cheek_04",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_FT_Cheek_05",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_05.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_FT_Cheek_06",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/cheek/CC_FT_Cheek_06.dds"
+    }
+   ],
+   "lip": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Lip_00",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/lip/CC_FT_Lip_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Lip_01",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/lip/CC_FT_Lip_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Lip_02",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/lip/CC_FT_Lip_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Lip_03",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/lip/CC_FT_Lip_03.dds"
+    }
+   ],
+   "decal13": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Decal_00",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Decal_01",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Decal_03",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_03.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Decal_04",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_04.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_Decal_07",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_07.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_FT_Decal_08",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_08.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_FT_Decal_10",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_10.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_FT_Decal_11",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_11.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_FT_Decal_12",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_12.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_FT_Decal_13",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_13.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_FT_Decal_15",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_15.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_FT_Decal_16",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_16.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_FT_Decal_17",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_17.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_FT_Decal_18",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_18.dds"
+    }
+   ],
+   "decal14": [
+    {
+     "index": 0,
+     "sourceName": "CC_FT_Decal_02",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_02.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Decal_05",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_05.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Decal_06",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_06.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Decal_09",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_09.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Decal_14",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_14.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_Decal_34",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_34.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_FT_Decal_35",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_35.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_FT_Decal_36",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_36.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_FT_Decal_37",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_37.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_FT_Decal_38",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_38.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_FT_Decal_39",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_39.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_FT_Decal_43",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_43.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_FT_Decal_51",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_51.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_FT_Decal_52",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_52.dds"
+    }
+   ],
+   "decal15": [
+    {
+     "index": 0,
+     "sourceName": "CC_FT_Decal_19",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_19.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Decal_21",
+     "textureAssetId": null
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Decal_22",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_22.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Decal_29",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Decal_30",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_Decal_31",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_FT_Decal_32",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_FT_Decal_33",
+     "textureAssetId": null
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_FT_Decal_40",
+     "textureAssetId": null
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_FT_Decal_41",
+     "textureAssetId": null
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_FT_Decal_42",
+     "textureAssetId": null
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_FT_Decal_53",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_53.dds"
+    }
+   ],
+   "decal16": [
+    {
+     "index": 0,
+     "sourceName": "CC_FT_Decal_20",
+     "textureAssetId": "Character/LanceMaster/FaceTextures/decal/CC_FT_Decal_20.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_FT_Decal_23",
+     "textureAssetId": null
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_FT_Decal_24",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_FT_Decal_25",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_FT_Decal_26",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_FT_Decal_27",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_FT_Decal_28",
+     "textureAssetId": null
+    }
+   ]
+  },
+  "Warlord": {
+   "iris": [
+    {
+     "index": 0,
+     "sourceName": "PC_WR_00_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_00_EYEiris_D.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "PC_WR_01_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_01_EYEiris_D.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "PC_WR_02_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_02_EYEiris_D.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "PC_WR_03_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_03_EYEiris_D.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "PC_WR_04_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_04_EYEiris_D.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "PC_WR_05_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_05_EYEiris_D.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "PC_WR_06_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_06_EYEiris_D.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "PC_WR_07_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_07_EYEiris_D.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "PC_WR_08_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_08_EYEiris_D.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "PC_WR_09_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_09_EYEiris_D.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "PC_WR_10_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_10_EYEiris_D.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "PC_WR_11_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_11_EYEiris_D.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "PC_WR_12_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_12_EYEiris_D.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "PC_WR_13_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_13_EYEiris_D.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "PC_WR_14_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_14_EYEiris_D.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "PC_WR_15_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_15_EYEiris_D.dds"
+    },
+    {
+     "index": 16,
+     "sourceName": "PC_WR_16_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_16_EYEiris_D.dds"
+    },
+    {
+     "index": 17,
+     "sourceName": "PC_WR_17_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_17_EYEiris_D.dds"
+    },
+    {
+     "index": 18,
+     "sourceName": "PC_WR_18_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_18_EYEiris_D.dds"
+    },
+    {
+     "index": 19,
+     "sourceName": "PC_WR_19_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_19_EYEiris_D.dds"
+    },
+    {
+     "index": 20,
+     "sourceName": "PC_WR_20_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_20_EYEiris_D.dds"
+    },
+    {
+     "index": 21,
+     "sourceName": "PC_WR_21_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_21_EYEiris_D.dds"
+    },
+    {
+     "index": 22,
+     "sourceName": "PC_WR_22_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_22_EYEiris_D.dds"
+    },
+    {
+     "index": 23,
+     "sourceName": "PC_WR_23_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_23_EYEiris_D.dds"
+    },
+    {
+     "index": 24,
+     "sourceName": "PC_WR_24_EYEiris_D",
+     "textureAssetId": "Character/Warlord/FaceTextures/iris/PC_WR_24_EYEiris_D.dds"
+    }
+   ],
+   "eyemake": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_eyemake_00",
+     "textureAssetId": "Character/Warlord/FaceTextures/eyemake/CC_WR_eyemake_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_eyemake_01",
+     "textureAssetId": "Character/Warlord/FaceTextures/eyemake/CC_WR_eyemake_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_eyemake_02",
+     "textureAssetId": "Character/Warlord/FaceTextures/eyemake/CC_WR_eyemake_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_eyemake_03",
+     "textureAssetId": "Character/Warlord/FaceTextures/eyemake/CC_WR_eyemake_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_eyemake_04",
+     "textureAssetId": "Character/Warlord/FaceTextures/eyemake/CC_WR_eyemake_04.dds"
+    }
+   ],
+   "cheek": [
+    {
+     "index": 0,
+     "sourceName": "CC_WR_Cheek_Null",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_Null.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Cheek_00",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Cheek_01",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Cheek_02",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_Cheek_03",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_Cheek_04",
+     "textureAssetId": "Character/Warlord/FaceTextures/cheek/CC_WR_Cheek_04.dds"
+    }
+   ],
+   "lip": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Lip_00",
+     "textureAssetId": "Character/Warlord/FaceTextures/lip/CC_WR_Lip_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Lip_01",
+     "textureAssetId": "Character/Warlord/FaceTextures/lip/CC_WR_Lip_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Lip_02",
+     "textureAssetId": "Character/Warlord/FaceTextures/lip/CC_WR_Lip_02.dds"
+    }
+   ],
+   "decal13": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Decal_03",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_03.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Decal_04",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_04.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Decal_05",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_05.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_Decal_06",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_06.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_Decal_07",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_07.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_WR_Decal_08",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_08.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_WR_Decal_09",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_09.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_WR_Decal_10",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_10.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_WR_Decal_11",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_11.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_WR_Decal_13",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_13.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_WR_Decal_14",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_14.dds"
+    }
+   ],
+   "decal14": [
+    {
+     "index": 0,
+     "sourceName": "CC_WR_Decal_00",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_00.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Decal_01",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_01.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Decal_02",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_02.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Decal_12",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_12.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_Decal_19",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_19.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_Decal_20",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_20.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_WR_Decal_21",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_21.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_WR_Decal_22",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_22.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_WR_Decal_23",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_23.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_WR_Decal_29",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_29.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_WR_Decal_30",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_30.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_WR_Decal_31",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_31.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_WR_Decal_32",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_32.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_WR_Decal_33",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_33.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_WR_Decal_40",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_40.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_WR_Decal_51",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_51.dds"
+    },
+    {
+     "index": 16,
+     "sourceName": "CC_WR_Decal_52",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_52.dds"
+    }
+   ],
+   "decal15": [
+    {
+     "index": 0,
+     "sourceName": "CC_WR_Decal_17",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_17.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Decal_18",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_18.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Decal_35",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Decal_36",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_Decal_37",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_Decal_38",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_WR_Decal_39",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_WR_Decal_41",
+     "textureAssetId": null
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_WR_Decal_42",
+     "textureAssetId": null
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_WR_Decal_43",
+     "textureAssetId": null
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_WR_Decal_53",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_53.dds"
+    }
+   ],
+   "decal16": [
+    {
+     "index": 0,
+     "sourceName": "CC_WR_Decal_15",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_15.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_WR_Decal_16",
+     "textureAssetId": "Character/Warlord/FaceTextures/decal/CC_WR_Decal_16.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_WR_Decal_24",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_WR_Decal_25",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_WR_Decal_26",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_WR_Decal_27",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_WR_Decal_28",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_WR_Decal_34",
+     "textureAssetId": null
+    }
+   ]
+  },
+  "Artist": {
+   "iris": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_EyeIris_00_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_EyeIris_01_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_EyeIris_02_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_EyeIris_03_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_EyeIris_04_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_EyeIris_05_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_EyeIris_06_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_EyeIris_07_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_SP_EyeIris_08_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_SP_EyeIris_09_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_SP_EyeIris_10_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_SP_EyeIris_11_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_SP_EyeIris_12_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_SP_EyeIris_13_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_SP_EyeIris_14_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_SP_EyeIris_15_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 16,
+     "sourceName": "CC_SP_EyeIris_16_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 17,
+     "sourceName": "CC_SP_EyeIris_17_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 18,
+     "sourceName": "CC_SP_EyeIris_18_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 19,
+     "sourceName": "CC_SP_EyeIris_19_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 20,
+     "sourceName": "PC_SP_EyeIris_20_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_20_D.dds"
+    },
+    {
+     "index": 21,
+     "sourceName": "PC_SP_EyeIris_21_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_21_D.dds"
+    },
+    {
+     "index": 22,
+     "sourceName": "PC_SP_EyeIris_22_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_22_D.dds"
+    },
+    {
+     "index": 23,
+     "sourceName": "PC_SP_EyeIris_23_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_23_D.dds"
+    },
+    {
+     "index": 24,
+     "sourceName": "PC_SP_EyeIris_24_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_24_D.dds"
+    },
+    {
+     "index": 25,
+     "sourceName": "PC_SP_EyeIris_25_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_25_D.dds"
+    },
+    {
+     "index": 26,
+     "sourceName": "PC_SP_EyeIris_26_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_26_D.dds"
+    },
+    {
+     "index": 27,
+     "sourceName": "PC_SP_EyeIris_27_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_27_D.dds"
+    },
+    {
+     "index": 28,
+     "sourceName": "PC_SP_EyeIris_28_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_28_D.dds"
+    },
+    {
+     "index": 29,
+     "sourceName": "PC_SP_EyeIris_29_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_29_D.dds"
+    },
+    {
+     "index": 30,
+     "sourceName": "PC_SP_EyeIris_30_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_30_D.dds"
+    },
+    {
+     "index": 31,
+     "sourceName": "PC_SP_EyeIris_31_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_31_D.dds"
+    },
+    {
+     "index": 32,
+     "sourceName": "PC_SP_EyeIris_33_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_33_D.dds"
+    },
+    {
+     "index": 33,
+     "sourceName": "PC_SP_EyeIris_34_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_34_D.dds"
+    },
+    {
+     "index": 34,
+     "sourceName": "PC_SP_EyeIris_35_D",
+     "textureAssetId": "Character/Artist/FaceTextures/iris/PC_SP_EyeIris_35_D.dds"
+    }
+   ],
+   "eyemake": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_eyemake_00",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_eyemake_01",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_eyemake_02",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_eyemake_03",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_eyemake_04",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_eyemake_05",
+     "textureAssetId": "Character/Artist/FaceTextures/eyemake/CC_SP_eyemake_05.dds"
+    }
+   ],
+   "cheek": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_Cheek_Null",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_Null.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Cheek_00",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Cheek_01",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Cheek_02",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Cheek_03",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_Cheek_04",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_Cheek_05",
+     "textureAssetId": "Character/Artist/FaceTextures/cheek/CC_SP_Cheek_05.dds"
+    }
+   ],
+   "lip": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Lip_00",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Lip_01",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Lip_02",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Lip_03",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_Lip_04",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_Lip_05",
+     "textureAssetId": "Character/Artist/FaceTextures/lip/CC_SP_Lip_05.dds"
+    }
+   ],
+   "decal13": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Decal_23",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_23.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Decal_26",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_26.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Decal_28",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_28.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Decal_29",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_29.dds"
+    }
+   ],
+   "decal14": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_Decal_24",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_24.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Decal_25",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_25.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Decal_27",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_27.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Decal_30",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_30.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Decal_31",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_31.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_Decal_32",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_32.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_Decal_33",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_33.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_Decal_34",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_34.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_SP_Decal_35",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_35.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_SP_Decal_36",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_36.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_SP_Decal_37",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_37.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_SP_Decal_38",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_38.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_SP_Decal_39",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_39.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_SP_Decal_40",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_40.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_SP_Decal_45",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_45.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_SP_Decal_46",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_46.dds"
+    }
+   ],
+   "decal15": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_Decal_00",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_00.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Decal_01",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_01.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Decal_03",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_03.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Decal_04",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_04.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Decal_05",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_05.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_Decal_06",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_06.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_Decal_13",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_13.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_Decal_14",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_14.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_SP_Decal_15",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_15.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_SP_Decal_16",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_16.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_SP_Decal_17",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_17.dds"
+    },
+    {
+     "index": 11,
+     "sourceName": "CC_SP_Decal_18",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_18.dds"
+    },
+    {
+     "index": 12,
+     "sourceName": "CC_SP_Decal_19",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_19.dds"
+    },
+    {
+     "index": 13,
+     "sourceName": "CC_SP_Decal_20",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_20.dds"
+    },
+    {
+     "index": 14,
+     "sourceName": "CC_SP_Decal_21",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_21.dds"
+    },
+    {
+     "index": 15,
+     "sourceName": "CC_SP_Decal_22",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_22.dds"
+    },
+    {
+     "index": 16,
+     "sourceName": "CC_SP_Decal_47",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_47.dds"
+    }
+   ],
+   "decal16": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_Decal_02",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_02.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_Decal_07",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_07.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_Decal_08",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_08.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_Decal_09",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_09.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_Decal_11",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_11.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_Decal_12",
+     "textureAssetId": "Character/Artist/FaceTextures/decal/CC_SP_Decal_12.dds"
+    }
+   ]
+  },
+  "DimensionMaster": {
+   "iris": [
+    {
+     "index": 0,
+     "sourceName": "PC_SP_M_00_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "PC_SP_M_01_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 2,
+     "sourceName": "PC_SP_M_02_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 3,
+     "sourceName": "PC_SP_M_03_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 4,
+     "sourceName": "PC_SP_M_04_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 5,
+     "sourceName": "PC_SP_M_05_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 6,
+     "sourceName": "PC_SP_M_06_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 7,
+     "sourceName": "PC_SP_M_07_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 8,
+     "sourceName": "PC_SP_M_08_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 9,
+     "sourceName": "PC_SP_M_09_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 10,
+     "sourceName": "PC_SP_M_10_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 11,
+     "sourceName": "PC_SP_M_11_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 12,
+     "sourceName": "PC_SP_M_12_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 13,
+     "sourceName": "PC_SP_M_13_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 14,
+     "sourceName": "PC_SP_M_14_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 15,
+     "sourceName": "PC_SP_M_15_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 16,
+     "sourceName": "PC_SP_M_16_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 17,
+     "sourceName": "PC_SP_M_17_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 18,
+     "sourceName": "PC_SP_M_18_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 19,
+     "sourceName": "PC_SP_M_19_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 20,
+     "sourceName": "PC_SP_M_20_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 21,
+     "sourceName": "PC_SP_M_21_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 22,
+     "sourceName": "PC_SP_M_22_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 23,
+     "sourceName": "PC_SP_M_23_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 24,
+     "sourceName": "PC_SP_M_24_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 25,
+     "sourceName": "PC_SP_M_25_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 26,
+     "sourceName": "PC_SP_M_26_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 27,
+     "sourceName": "PC_SP_M_27_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 28,
+     "sourceName": "PC_SP_M_28_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 29,
+     "sourceName": "PC_SP_M_29_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 30,
+     "sourceName": "PC_SP_M_30_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 31,
+     "sourceName": "PC_SP_M_31_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 32,
+     "sourceName": "PC_SP_M_32_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 33,
+     "sourceName": "PC_SP_M_33_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 34,
+     "sourceName": "PC_SP_M_34_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 35,
+     "sourceName": "PC_SP_M_35_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 36,
+     "sourceName": "PC_SP_M_36_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 37,
+     "sourceName": "PC_SP_M_37_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 38,
+     "sourceName": "PC_SP_M_38_EYEiris_D",
+     "textureAssetId": null
+    },
+    {
+     "index": 39,
+     "sourceName": "PC_SP_M_39_EYEiris_D",
+     "textureAssetId": null
+    }
+   ],
+   "eyemake": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_eyemake_00",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_eyemake_01",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_eyemake_02",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_eyemake_03",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_eyemake_04",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_M_eyemake_05",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_05.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_M_eyemake_06",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/eyemake/CC_SP_M_eyemake_06.dds"
+    }
+   ],
+   "cheek": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_M_Cheek_Null",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_Null.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Cheek_00",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Cheek_01",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Cheek_02",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_Cheek_03",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_Cheek_04",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_M_Cheek_05",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_05.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_M_Cheek_06",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_06.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_SP_M_Cheek_07",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_07.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_SP_M_Cheek_08",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/cheek/CC_SP_M_Cheek_08.dds"
+    }
+   ],
+   "lip": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Lip_00",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Lip_01",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_01.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Lip_02",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_02.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_Lip_03",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_03.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_Lip_04",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_04.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_M_Lip_05",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_05.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_M_Lip_06",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/lip/CC_SP_M_Lip_06.dds"
+    }
+   ],
+   "decal13": [
+    {
+     "index": 0,
+     "sourceName": null,
+     "textureAssetId": null
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Decal_00",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_00.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Decal_19",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_19.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Decal_22",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_22.dds"
+    }
+   ],
+   "decal14": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_M_Decal_12",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_12.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Decal_13",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_13.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Decal_17",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_17.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Decal_18",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_18.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_Decal_23",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_23.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_Decal_24",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_24.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_M_Decal_25",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_25.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_M_Decal_26",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_26.dds"
+    }
+   ],
+   "decal15": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_M_Decal_01",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_01.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Decal_02",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_02.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Decal_03",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_03.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Decal_04",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_04.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_Decal_05",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_05.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_Decal_10",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_10.dds"
+    },
+    {
+     "index": 6,
+     "sourceName": "CC_SP_M_Decal_11",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_11.dds"
+    },
+    {
+     "index": 7,
+     "sourceName": "CC_SP_M_Decal_14",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_14.dds"
+    },
+    {
+     "index": 8,
+     "sourceName": "CC_SP_M_Decal_15",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_15.dds"
+    },
+    {
+     "index": 9,
+     "sourceName": "CC_SP_M_Decal_16",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_16.dds"
+    },
+    {
+     "index": 10,
+     "sourceName": "CC_SP_M_Decal_27",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_27.dds"
+    }
+   ],
+   "decal16": [
+    {
+     "index": 0,
+     "sourceName": "CC_SP_M_Decal_06",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_06.dds"
+    },
+    {
+     "index": 1,
+     "sourceName": "CC_SP_M_Decal_07",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_07.dds"
+    },
+    {
+     "index": 2,
+     "sourceName": "CC_SP_M_Decal_08",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_08.dds"
+    },
+    {
+     "index": 3,
+     "sourceName": "CC_SP_M_Decal_09",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_09.dds"
+    },
+    {
+     "index": 4,
+     "sourceName": "CC_SP_M_Decal_20",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_20.dds"
+    },
+    {
+     "index": 5,
+     "sourceName": "CC_SP_M_Decal_21",
+     "textureAssetId": "Character/DimensionMaster/FaceTextures/decal/CC_SP_M_Decal_21.dds"
+    }
+   ]
+  }
+ }
+}

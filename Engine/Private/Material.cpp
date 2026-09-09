@@ -433,6 +433,9 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	m_ColorTint = material.colorTint;
 	m_ColorTint.isEnabled = material.colorTint.isEnabled &&
 		Has_Texture(aiTextureType_BASE_COLOR);
+	m_ColorTint.isHairMask = !material.colorMaskPath.empty() &&
+		material.colorMaskPath == material.diffusePath;
+	m_AuthoredColorTint = m_ColorTint;
 	m_Surface = material.surface;
     if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
     {
@@ -552,10 +555,75 @@ bool_t CMaterial::Has_Texture(aiTextureType eType, uint32_t iTextureIndex) const
 		iTextureIndex < m_Textures[eType].size();
 }
 
+namespace
+{
+	/* One key per (slot, index) pair; the index is small in every shipped material. */
+	constexpr uint32_t Texture_OverrideKey(
+		const aiTextureType eType, const uint32_t iTextureIndex)
+	{
+		return (static_cast<uint32_t>(eType) << 8) | (iTextureIndex & 0xFFu);
+	}
+}
+
+void CMaterial::Set_TextureOverride(
+	const aiTextureType eType,
+	const uint32_t iTextureIndex,
+	ComPtr<ID3D11ShaderResourceView> pTexture)
+{
+	if (eType >= AI_TEXTURE_TYPE_MAX)
+		return;
+	const uint32_t key = Texture_OverrideKey(eType, iTextureIndex);
+	if (nullptr == pTexture)
+		m_TextureOverrides.erase(key);
+	else
+		m_TextureOverrides[key] = pTexture;
+}
+
+void CMaterial::Clear_TextureOverrides()
+{
+	m_TextureOverrides.clear();
+}
+
+void CMaterial::Set_DyeColorOverride(
+	const float4_t& vDiffuse, const float4_t& vRegionA)
+{
+	if (!m_ColorTint.isEnabled)
+		return;
+	m_ColorTint.vDiffuse = vDiffuse;
+	m_ColorTint.vRegionA = vRegionA;
+}
+
+void CMaterial::Clear_DyeColorOverride()
+{
+	m_ColorTint = m_AuthoredColorTint;
+}
+
+void CMaterial::Set_DyeTwoTone(const f32_t fStrength, const f32_t fRange)
+{
+	if (!m_ColorTint.isEnabled || !m_ColorTint.isHairMask)
+		return;
+	m_ColorTint.vDiffuse.w = isfinite(fStrength) ? max(0.f, min(1.f, fStrength)) : 0.f;
+	m_ColorTint.vRegionA.w = isfinite(fRange) ? max(0.f, min(1.f, fRange)) : 0.f;
+}
+
 HRESULT CMaterial::Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, aiTextureType eType, uint32_t iTextureIndex)
 {
-	if (eType >= AI_TEXTURE_TYPE_MAX ||
-		iTextureIndex >= m_Textures[eType].size())
+	if (eType >= AI_TEXTURE_TYPE_MAX)
+		return E_FAIL;
+	/* An override may exist for a slot the authored material left empty -- a face that never
+	shipped a decal still has to be able to wear one. */
+	if (const auto found = m_TextureOverrides.find(Texture_OverrideKey(eType, iTextureIndex));
+		found != m_TextureOverrides.end())
+	{
+		if (aiTextureType_DIFFUSE == eType)
+		{
+			const uint32_t disabled = 0u;
+			pShader->Bind_RawValue("g_SurfaceProgram", &disabled, sizeof(disabled));
+			pShader->Bind_RawValue("g_HasSurfaceDefinition", &disabled, sizeof(disabled));
+		}
+		return pShader->Bind_Texture(pConstantName, found->second);
+	}
+	if (iTextureIndex >= m_Textures[eType].size())
 		return E_FAIL;
 
 	if (aiTextureType_DIFFUSE == eType)
@@ -659,6 +727,12 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
             (void)pShader->Bind_RawValue(name, &zero, sizeof(zero));
     }
 	ComPtr<ID3D11ShaderResourceView> texture;
+	/* The surface program reads slot 0 of the same type, so one override covers both paths. */
+	if (const auto found = m_TextureOverrides.find(Texture_OverrideKey(eType, 0u));
+		found != m_TextureOverrides.end())
+	{
+		return pShader->Bind_Texture(pConstantName, found->second);
+	}
 	switch (eType)
 	{
 	case aiTextureType_DIFFUSE: texture = m_SurfaceDiffuse; break;

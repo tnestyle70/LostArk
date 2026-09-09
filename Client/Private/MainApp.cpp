@@ -5825,10 +5825,10 @@ HRESULT CMainApp::Ready_Fonts()
 		bar-count text, which are both pure digits/ASCII. User picked this one from the same 8-font
 		comparison gallery that settled Font_EventDamage. */
 		{ TEXT("Font_159"), L"159.spritefont" },
-		/* Was BMKkubulim.spritefont (a casual hand-lettering font, "BM꾸불림체" -- wrong for
-		combat numbers), then briefly 159.spritefont. User compared all 8 Resources/Fonts
-		candidates rendered side by side and picked YoonGasiIIM. */
-		{ TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont" },
+		/* Back to the retail mapping: font.lpk's Korean Binaries/Fonts/FontMap.xml binds
+		$eventDamageFont to BMKkubulimTTF.ttf. This tag was on YoonGasiIIM after a side-by-side
+		of all 8 Resources/Fonts candidates, before that map was recovered. */
+		{ TEXT("Font_EventDamage"), L"BMKkubulim.spritefont" },
 	};
 
 	for (const SOURCE_FONT& sourceFont : sourceFonts)
@@ -9708,5 +9708,6 @@ void CMainApp::Free()
 	m_pImGuiLayer.reset();
 	CGameInstance::Get().Release_Engine();
 	CEffectPresentationService::Release_PreparedResources();
+	CEffectV2Runtime::Release_Resources();
 	CEffectCatalog::Clear();
 }

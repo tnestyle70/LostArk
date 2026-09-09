@@ -1,0 +1,680 @@
+{
+  "schema": "lostark.customizing-mesh-types",
+  "formatVersion": 1,
+  "sourceKind": "Decoded from the CharacterCustomizingRule .loa documents. meshTypeArrays holds the MM_<family>_MeshType_NN_UI slot names in source order, and each name carries its own index. textureVariables holds each authored texture variable with the material parameter it drives and the Texture2D object the document names as its default. sourceTexture is a retail package object path, not a Resources-relative asset id: no cooked Resources asset exists for these yet, so none is stated.",
+  "classes": {
+    "LanceMaster": {
+      "sourceDocument": "EFDLChar_PC_FT.PC_FT.loa",
+      "modelPrefix": "PC_FT",
+      "meshTypeArrays": {
+        "Eye": [
+          "MM_Eye_MeshType_01_UI",
+          "MM_Eye_MeshType_02_UI",
+          "MM_Eye_MeshType_03_UI",
+          "MM_Eye_MeshType_04_UI",
+          "MM_Eye_MeshType_05_UI",
+          "MM_Eye_MeshType_06_UI",
+          "MM_Eye_MeshType_07_UI",
+          "MM_Eye_MeshType_08_UI",
+          "MM_Eye_MeshType_09_UI",
+          "MM_Eye_MeshType_10_UI"
+        ],
+        "HeadBase": [
+          "MM_HeadBase_MeshType_01_UI",
+          "MM_HeadBase_MeshType_02_UI",
+          "MM_HeadBase_MeshType_03_UI",
+          "MM_HeadBase_MeshType_04_UI",
+          "MM_HeadBase_MeshType_05_UI",
+          "MM_HeadBase_MeshType_06_UI",
+          "MM_HeadBase_MeshType_07_UI",
+          "MM_HeadBase_MeshType_08_UI",
+          "MM_HeadBase_MeshType_09_UI",
+          "MM_HeadBase_MeshType_10_UI",
+          "MM_HeadBase_MeshType_11_UI",
+          "MM_HeadBase_MeshType_12_UI",
+          "MM_HeadBase_MeshType_13_UI",
+          "MM_HeadBase_MeshType_14_UI",
+          "MM_HeadBase_MeshType_15_UI"
+        ],
+        "MouthLip": [
+          "MM_MouthLip_MeshType_01_UI",
+          "MM_MouthLip_MeshType_02_UI",
+          "MM_MouthLip_MeshType_03_UI",
+          "MM_MouthLip_MeshType_04_UI",
+          "MM_MouthLip_MeshType_05_UI",
+          "MM_MouthLip_MeshType_06_UI",
+          "MM_MouthLip_MeshType_07_UI",
+          "MM_MouthLip_MeshType_08_UI",
+          "MM_MouthLip_MeshType_09_UI",
+          "MM_MouthLip_MeshType_10_UI"
+        ],
+        "Nose": [
+          "MM_Nose_MeshType_01_UI",
+          "MM_Nose_MeshType_02_UI",
+          "MM_Nose_MeshType_03_UI",
+          "MM_Nose_MeshType_04_UI",
+          "MM_Nose_MeshType_05_UI",
+          "MM_Nose_MeshType_06_UI",
+          "MM_Nose_MeshType_07_UI",
+          "MM_Nose_MeshType_08_UI",
+          "MM_Nose_MeshType_09_UI",
+          "MM_Nose_MeshType_10_UI"
+        ]
+      },
+      "textureVariables": [
+        {
+          "variable": "var_headbase_speculartexture_ui",
+          "materialParameter": "CC_FT_Specular",
+          "sourceTexture": "PC_FT_00_Face.Tex.PC_FT_Face_01_S",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_diffusetexture_ui",
+          "materialParameter": "CC_FT_Face",
+          "sourceTexture": "PC_FT_00_Face.Tex.PC_FT_Face_05_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_liptexture_ui",
+          "materialParameter": "CC_FT_Lip",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyetexture_ui",
+          "materialParameter": "CC_FT_EyeMake",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheektexture_ui",
+          "materialParameter": "CC_FT_Cheek",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decaltexture_ui",
+          "materialParameter": "CC_FT_Decal",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormaltexture_ui",
+          "materialParameter": "CC_FT_Overlay",
+          "sourceTexture": "PC_FT_00_Face.Tex.PC_FT_Wrinkle_00_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_normaltexture_ui",
+          "materialParameter": "CC_FT_Overlay",
+          "sourceTexture": "PC_FT_00_Face.Tex.PC_FT_Face_02_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_iristexture_ui",
+          "materialParameter": "CC_FT_EYE",
+          "sourceTexture": "PC_FT_00_Face.Tex.PC_FT_00_EyeIris_D",
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisTexture",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iristextureleft_ui",
+          "materialParameter": "CC_FT_EYE",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Diffuse",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisTexture; reached through Eye/Index, not its own category1"
+          }
+        }
+      ]
+    },
+    "Warlord": {
+      "sourceDocument": "EFDLChar_PC_WR.PC_WR.loa",
+      "modelPrefix": "PC_WR",
+      "meshTypeArrays": {
+        "Eye": [
+          "MM_Eye_MeshType_01_UI",
+          "MM_Eye_MeshType_02_UI",
+          "MM_Eye_MeshType_03_UI",
+          "MM_Eye_MeshType_04_UI",
+          "MM_Eye_MeshType_05_UI",
+          "MM_Eye_MeshType_06_UI",
+          "MM_Eye_MeshType_07_UI",
+          "MM_Eye_MeshType_08_UI",
+          "MM_Eye_MeshType_09_UI",
+          "MM_Eye_MeshType_10_UI"
+        ],
+        "HeadBase": [
+          "MM_HeadBase_MeshType_01_UI",
+          "MM_HeadBase_MeshType_02_UI",
+          "MM_HeadBase_MeshType_03_UI",
+          "MM_HeadBase_MeshType_04_UI",
+          "MM_HeadBase_MeshType_05_UI",
+          "MM_HeadBase_MeshType_06_UI",
+          "MM_HeadBase_MeshType_07_UI",
+          "MM_HeadBase_MeshType_08_UI",
+          "MM_HeadBase_MeshType_09_UI",
+          "MM_HeadBase_MeshType_10_UI",
+          "MM_HeadBase_MeshType_11_UI",
+          "MM_HeadBase_MeshType_12_UI",
+          "MM_HeadBase_MeshType_13_UI",
+          "MM_HeadBase_MeshType_14_UI",
+          "MM_HeadBase_MeshType_15_UI",
+          "MM_HeadBase_MeshType_16_UI",
+          "MM_HeadBase_MeshType_17_UI",
+          "MM_HeadBase_MeshType_18_UI",
+          "MM_HeadBase_MeshType_19_UI",
+          "MM_HeadBase_MeshType_20_UI",
+          "MM_HeadBase_MeshType_21_UI",
+          "MM_HeadBase_MeshType_22_UI"
+        ],
+        "MouthLip": [
+          "MM_MouthLip_MeshType_01_UI",
+          "MM_MouthLip_MeshType_02_UI",
+          "MM_MouthLip_MeshType_03_UI",
+          "MM_MouthLip_MeshType_04_UI",
+          "MM_MouthLip_MeshType_05_UI",
+          "MM_MouthLip_MeshType_06_UI",
+          "MM_MouthLip_MeshType_07_UI",
+          "MM_MouthLip_MeshType_08_UI",
+          "MM_MouthLip_MeshType_09_UI",
+          "MM_MouthLip_MeshType_10_UI"
+        ],
+        "Nose": [
+          "MM_Nose_MeshType_01_UI",
+          "MM_Nose_MeshType_02_UI",
+          "MM_Nose_MeshType_03_UI",
+          "MM_Nose_MeshType_04_UI",
+          "MM_Nose_MeshType_05_UI",
+          "MM_Nose_MeshType_06_UI",
+          "MM_Nose_MeshType_07_UI",
+          "MM_Nose_MeshType_08_UI",
+          "MM_Nose_MeshType_09_UI",
+          "MM_Nose_MeshType_10_UI"
+        ]
+      },
+      "textureVariables": [
+        {
+          "variable": "var_headbase_speculartexture_ui",
+          "materialParameter": "CC_WR_Specular",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_Face_S",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_diffusetexture_ui",
+          "materialParameter": "CC_WR_Face",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_Face_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormaltexture_ui",
+          "materialParameter": "CC_WR_Overlay",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_Face_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_normaltexture_ui",
+          "materialParameter": "CC_WR_Overlay",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_Face_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_liptexture_ui",
+          "materialParameter": "CC_WR_Lip",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyetexture_ui",
+          "materialParameter": "CC_WR_EyeMake",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheektexture_ui",
+          "materialParameter": "CC_WR_Cheek",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decaltexture_ui",
+          "materialParameter": "CC_WR_Decal",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_iristexture_ui",
+          "materialParameter": "CC_WR_Eye",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_EYEiris_D",
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisTexture",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iristextureleft_ui",
+          "materialParameter": "CC_WR_Eye",
+          "sourceTexture": "PC_WR_00_Face.Tex.PC_WR_00_EYEiris_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisTexture; reached through Eye/Index, not its own category1"
+          }
+        }
+      ]
+    },
+    "Artist": {
+      "sourceDocument": "EFDLCHAR_PC_SP.PC_SP.loa",
+      "modelPrefix": "PC_SP",
+      "meshTypeArrays": {
+        "Eye": [
+          "MM_Eye_MeshType_01_UI",
+          "MM_Eye_MeshType_02_UI",
+          "MM_Eye_MeshType_03_UI",
+          "MM_Eye_MeshType_04_UI",
+          "MM_Eye_MeshType_05_UI",
+          "MM_Eye_MeshType_06_UI",
+          "MM_Eye_MeshType_07_UI",
+          "MM_Eye_MeshType_08_UI",
+          "MM_Eye_MeshType_09_UI",
+          "MM_Eye_MeshType_10_UI",
+          "MM_Eye_MeshType_11_UI"
+        ],
+        "HeadBase": [
+          "MM_HeadBase_MeshType_01_UI",
+          "MM_HeadBase_MeshType_02_UI",
+          "MM_HeadBase_MeshType_03_UI",
+          "MM_HeadBase_MeshType_04_UI",
+          "MM_HeadBase_MeshType_05_UI",
+          "MM_HeadBase_MeshType_06_UI",
+          "MM_HeadBase_MeshType_07_UI",
+          "MM_HeadBase_MeshType_08_UI",
+          "MM_HeadBase_MeshType_09_UI",
+          "MM_HeadBase_MeshType_10_UI",
+          "MM_HeadBase_MeshType_11_UI",
+          "MM_HeadBase_MeshType_12_UI",
+          "MM_HeadBase_MeshType_13_UI"
+        ],
+        "MouthLip": [
+          "MM_MouthLip_MeshType_01_UI",
+          "MM_MouthLip_MeshType_02_UI",
+          "MM_MouthLip_MeshType_03_UI",
+          "MM_MouthLip_MeshType_04_UI",
+          "MM_MouthLip_MeshType_05_UI",
+          "MM_MouthLip_MeshType_06_UI",
+          "MM_MouthLip_MeshType_07_UI",
+          "MM_MouthLip_MeshType_08_UI"
+        ],
+        "Nose": [
+          "MM_Nose_MeshType_01_UI",
+          "MM_Nose_MeshType_02_UI",
+          "MM_Nose_MeshType_03_UI",
+          "MM_Nose_MeshType_04_UI",
+          "MM_Nose_MeshType_05_UI",
+          "MM_Nose_MeshType_06_UI",
+          "MM_Nose_MeshType_07_UI",
+          "MM_Nose_MeshType_08_UI"
+        ]
+      },
+      "textureVariables": [
+        {
+          "variable": "var_headbase_speculartexture_ui",
+          "materialParameter": "CC_SP_Specular",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_00_Face_S",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_diffusetexture_ui",
+          "materialParameter": "CC_SP_Face",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_00_Face_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_liptexture_ui",
+          "materialParameter": "CC_SP_Lip",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyetexture_ui",
+          "materialParameter": "CC_SP_EyeMake",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheektexture_ui",
+          "materialParameter": "CC_SP_Cheek",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decaltexture_ui",
+          "materialParameter": "CC_SP_Decal",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormaltexture_ui",
+          "materialParameter": "CC_SP_Overlay",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_00_Face_N_Wingkle",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_normaltexture_ui",
+          "materialParameter": "CC_SP_Overlay",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_00_Face_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_iristexture_ui",
+          "materialParameter": "CC_SP_Eye",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_EyeIris_00_D",
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisTexture",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iristextureleft_ui",
+          "materialParameter": "CC_SP_Eye",
+          "sourceTexture": "PC_SP_00_Face.Tex.PC_SP_EyeIris_00_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisTexture; reached through Eye/Index, not its own category1"
+          }
+        }
+      ]
+    },
+    "DimensionMaster": {
+      "sourceDocument": "EFDLCHAR_PC_SP_M.PC_SP_M.loa",
+      "modelPrefix": "PC_SP_M",
+      "meshTypeArrays": {
+        "Eye": [
+          "MM_Eye_MeshType_01_UI",
+          "MM_Eye_MeshType_02_UI",
+          "MM_Eye_MeshType_03_UI",
+          "MM_Eye_MeshType_04_UI",
+          "MM_Eye_MeshType_05_UI",
+          "MM_Eye_MeshType_06_UI",
+          "MM_Eye_MeshType_07_UI",
+          "MM_Eye_MeshType_08_UI",
+          "MM_Eye_MeshType_09_UI",
+          "MM_Eye_MeshType_10_UI"
+        ],
+        "HeadBase": [
+          "MM_HeadBase_MeshType_01_UI",
+          "MM_HeadBase_MeshType_02_UI",
+          "MM_HeadBase_MeshType_03_UI",
+          "MM_HeadBase_MeshType_04_UI",
+          "MM_HeadBase_MeshType_05_UI",
+          "MM_HeadBase_MeshType_06_UI",
+          "MM_HeadBase_MeshType_07_UI",
+          "MM_HeadBase_MeshType_08_UI",
+          "MM_HeadBase_MeshType_09_UI",
+          "MM_HeadBase_MeshType_10_UI"
+        ],
+        "MouthLip": [
+          "MM_MouthLip_MeshType_01_UI",
+          "MM_MouthLip_MeshType_02_UI",
+          "MM_MouthLip_MeshType_03_UI",
+          "MM_MouthLip_MeshType_04_UI",
+          "MM_MouthLip_MeshType_05_UI",
+          "MM_MouthLip_MeshType_06_UI",
+          "MM_MouthLip_MeshType_07_UI",
+          "MM_MouthLip_MeshType_08_UI"
+        ],
+        "Nose": [
+          "MM_Nose_MeshType_01_UI",
+          "MM_Nose_MeshType_02_UI",
+          "MM_Nose_MeshType_03_UI",
+          "MM_Nose_MeshType_04_UI",
+          "MM_Nose_MeshType_05_UI",
+          "MM_Nose_MeshType_06_UI",
+          "MM_Nose_MeshType_07_UI",
+          "MM_Nose_MeshType_08_UI"
+        ]
+      },
+      "textureVariables": [
+        {
+          "variable": "var_eye_iristexture_ui",
+          "materialParameter": "CC_SP_M_Eye",
+          "sourceTexture": "PC_SP_AV_BaseBody.Tex.PC_SP_AV_EyeIris_D",
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisTexture",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_iristextureleft_ui",
+          "materialParameter": "CC_SP_M_Eye",
+          "sourceTexture": "PC_SP_AV_BaseBody.Tex.PC_SP_AV_EyeIris_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "left-eye counterpart of IrisTexture; reached through Eye/Index, not its own category1"
+          }
+        },
+        {
+          "variable": "var_headbase_speculartexture_ui",
+          "materialParameter": "CC_SP_M_Spcular",
+          "sourceTexture": "PC_SP_M_AV_BaseBody.Tex.PC_SP_M_AV_Face_00_S",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_diffusetexture_ui",
+          "materialParameter": "CC_SP_M_Face",
+          "sourceTexture": "PC_SP_M_AV_BaseBody.Tex.PC_SP_M_AV_Face_00_D",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_liptexture_ui",
+          "materialParameter": "CC_SP_M_Lip",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_eyetexture_ui",
+          "materialParameter": "CC_SP_M_Eyemake",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_makeup_cheektexture_ui",
+          "materialParameter": "CC_SP_M_Cheek",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_decaltexture_ui",
+          "materialParameter": "CC_SP_M_Decal",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Null",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormaltexture_ui",
+          "materialParameter": "CC_SP_M_Overlay",
+          "sourceTexture": "EFMaster_Material_Prologue.Tex.Normal",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_normaltexture_ui",
+          "materialParameter": "CC_SP_M_Overlay",
+          "sourceTexture": "PC_SP_M_AV_BaseBody.Tex.PC_SP_M_AV_Face_00_N",
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ]
+    }
+  }
+}

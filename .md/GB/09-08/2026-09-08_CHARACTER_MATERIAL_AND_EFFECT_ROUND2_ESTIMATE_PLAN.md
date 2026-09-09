@@ -988,3 +988,62 @@ vcxproj/filters 신규 등록은 없다.
 다른 세션의 제품 빌드와 같은 IntDir/OutDir를 쓰지 않으며 Client/UI 실행·화면 판정은 하지 않는다.
 최종 source diff·실행 결과·아직 제품 EXE에 포함되지 않은 경계는
 `09-09/2026-09-09_DIMENSIONMASTER_S_MATERIAL_FORENSIC_RESULT.md`에 기록한다.
+
+## G32. 09-09 재개: Solo·운동·검격·반구·박스 복원 2차와 수명 정리
+
+사용자가 최신 main pull, 제품 빌드, 메모리 누수 교정과 S/R/A 검격, D/V 반구·crack,
+V 파편, Alt V box의 두 번째 복원 및 PR/merge를 요청했다. 기준은 PR344를 포함한
+`94e90fd9`이며 `codex/dimensionmaster-effect-round2`에서 구현한다. 기존 full에서 사용자가
+선별한 행·Transform과 제품 `.unified`를 보존하며, 원본 입력이 확인된 소비 누락만 고친다.
+
+`CEffectTool::Build_PreviewDocument`의 Element/Group Solo는 선택 요소가 참조하는
+model cue까지 지워 Alt V child의 codec 검증을 실패시킨다. 필요한 model cue를 숨긴 pose
+공급자로 유지하고 실제로 stage한 preview 문서를 Update/Seek의 anchor 수집에도 사용한다.
+리소스 준비 직후 첫 delta를 건너뛰어 짧은 검격의 수명이 준비 시간으로 소모되지 않게 한다.
+V1/V2의 F1 entry·focus·draft·typed open owner를 기존 호출자와 focused 검사로 다시 확인한다.
+
+`CEffectPlayback`은 실제 source 모듈과 CDO를 대조해 cylinder spin의 축/방향 선택,
+vector field의 원본 XYZ와 Client XZ 좌표 변환, 보류 Orbit 옵션을 단계별로 연결한다.
+`CEffectDocumentRenderer`와 native material descriptor는 선택 MIC의 two-sided override와
+실제 draw 입력을 함께 검사한다. V70 반구의 원본 `overridedtwosided=true`는 parent만 읽은
+기존 one-sided 상태를 교정하는 근거다. 재질·geometry·수명 검증을 우회해 hidden 행을
+일괄 활성화하지 않는다. 필요한 데이터 수정은 exact 발생별로 기존 문서에 반영한다.
+
+`CEffectV2Runtime::Release_Resources`는 shutdown owner다. Loader와 Level의 객체가
+해제된 뒤 target/group callback·snapshot·document를 비우고 마지막에 기존 V2 GPU cache와
+particle buffer pool을 정리한다. `CMainApp::Free`에서 호출하며 tool close나 world transfer의
+일반 Reset과 구분한다. 종료 시 의도치 않은 cache 잔류와 실행 중 지속 증가 누수를 별도로
+검증·보고한다. 새 C++ 파일과 프로젝트/filter 등록은 현재 변경안에 필요하지 않다.
+
+검증은 Debug 제품 빌드, 실제 codec Load/Save/Reload와 선택 발생의 fixed-step·finite·
+draw 입력, 기존 focused tool 계약, shutdown의 CPU/COM 수명 검사와 변경 JSON/XML parse,
+diff 공백 검사다. Release도 제품 빌드를 수행한다. Client/UI는 실행·조작·캡처하지 않고
+사용자가 F1에서 직접 재생할 경로와 미완료 원본 입력을 RESULT에 남긴다. 검증된 변경을
+기능 PR로 올리고 해당 head를 확인한 뒤 merge한다. 화면 일치와 누수 전체 부재를 자동
+검증 성공만으로 완료 처리하지 않는다.
+
+### G32 추가 연결: D crack의 원본 재질 슬롯 두 개
+
+D full의 `7508b2684fd272292d7b`는 `fm_d_crack_037`의 source materialIndex0/1에
+LocalCrack과 Ice를 각각 적용한다. 실제 모델도 두 슬롯으로 나뉘므로 한 재질을 전체 mesh에
+덮는 방식으로 활성화하지 않는다. 기존 `detail.mesh`에 선택적
+`sourceMaterialSlots[{sourceMaterialIndex, material}]`을 추가한다. index는 WModel에 보존된
+원본 재질 슬롯 번호이며 현재 mesh vector의 위치나 새로운 placement 저장 ID가 아니다.
+
+각 슬롯의 material은 기존 `EFFECT_MATERIAL_DESC` parse·validation·resource 준비 경로를
+재사용한다. `CModel`은 특정 mesh의 원본 materialIndex를 읽기 전용으로 제공한다.
+Renderer는 같은 CModel과 한 번 평가한 particle/clock/transform을 공유하고, 슬롯별 준비
+자원을 기존 `Render_Mesh`에서 해당 source materialIndex에만 적용한다. 중복·없는 슬롯,
+원본 MeshMaterial ObjectPath 불일치, 미지원 재질과 리소스 누락은 이유를 보존한다.
+실제 모델의 모든 슬롯을 검증·준비한 뒤에만 commit하며 실패하면 기존 preview를 유지한다.
+
+slot0은 기존 V66 LocalCrack을 사용한다. slot1의 Ice는 선택 PS
+`046f090de8eb2f408bbb8debf92fd28f`, flocal VS `8562847977cf324b900feff85799f43a`의
+확보한 식을 기존 SD native324에 추가한다. 일반 2D sampler3개와 tangentView를 사용하며
+다른 유리의 SceneColor/Depth나 임의 donor 식을 끼우지 않는다. 기존 SD descriptor/HLSLI와
+mesh shader entry를 확장하므로 새 C++/HLSL 파일과 project/filter 등록은 없다.
+
+실제 D 모델의 두 슬롯·형상 보존, source uniforms/texture 경로·원본 PS 수치, 두 재질의
+분리 draw, codec 왕복·잘못된 슬롯의 실패 보존을 확인한다. Engine/Client와 변경 shader를
+다시 빌드하고 새 Resources 설치 여부를 RESULT에 기록한다. 최종 하늘색 crack/Ice 모양은
+사용자의 실제 Solo/Play 관찰로 판단한다.

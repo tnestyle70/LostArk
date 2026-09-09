@@ -140,6 +140,14 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	error. It still has to be attempted every mesh, or a dyed mesh would leave
 	the flag stuck on for the undyed mesh that follows. */
 	pShader->Bind_RawValue("g_HasDyeMask", &iHasDyeMask, sizeof(iHasDyeMask));
+	const uint32_t iDyeMode = nullptr != pColorTint && pColorTint->isHairMask ? 1u : 0u;
+	pShader->Bind_RawValue("g_DyeIsHair", &iDyeMode, sizeof(iDyeMode));
+	/* Identity on every material the creation screen has not repainted, so this is a no-op
+	everywhere else. Bound every mesh for the same reason the dye flag is. */
+	static constexpr float4_t IDENTITY_TINT{ 1.f, 1.f, 1.f, 1.f };
+	const float4_t* pDiffuseTint = Model.Get_MaterialDiffuseTint(iMeshIndex);
+	pShader->Bind_RawValue("g_DiffuseTint",
+		nullptr != pDiffuseTint ? pDiffuseTint : &IDENTITY_TINT, sizeof(float4_t));
 	if (0u != iHasDyeMask &&
 		(BindFailed(Model.Bind_Material(pShader, "g_DyeMaskTexture",
 			iMeshIndex, aiTextureType_BASE_COLOR, 0)) ||

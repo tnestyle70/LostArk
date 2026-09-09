@@ -929,6 +929,140 @@ float4 SDNative323(SD_NATIVE_INPUT input)
     return output;
 }
 
+// Exact D Ice MIC map dcf57a2f..., flocal PS046f090de8eb2f408bbb8debf92fd28f.
+// RT0 only: source actor opacity is one; TEXCOORD4 fog is the neutral project adapter.
+float4 SDNative324(SD_NATIVE_INPUT input)
+{
+    float4 source[10]; [unroll] for (uint i=0u; i<10u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1]=input.color; // Native mesh particle color prefix.
+    source[2] = g_SDSourceMaterialParameters[6u];
+    source[3] = SDNativeAppend(g_SDSourceMaterialParameters[1u].yyyy,g_SDSourceMaterialParameters[1u].zzzz,1u);
+    source[4] = SDNativeAppend(g_SDSourceMaterialParameters[0u].xxxx,g_SDSourceMaterialParameters[0u].zzzz,1u);
+    source[5] = g_SDSourceMaterialParameters[4u];
+    source[6] = g_SDSourceMaterialParameters[3u];
+    source[7] = input.dynamicParameter;
+    source[8].x = (g_SDSourceMaterialParameters[0u].yyyy).x;
+    source[8].y = (g_SDSourceMaterialParameters[1u].wwww).x;
+    source[8].z = (g_SDSourceMaterialParameters[2u].xxxx).x;
+    source[8].w = (g_SDSourceMaterialParameters[2u].yyyy).x;
+    source[9].x = (g_SDSourceMaterialParameters[0u].wwww).x;
+    source[9].y = (g_SDSourceMaterialParameters[1u].xxxx).x;
+    source[9].z = (g_SDSourceMaterialParameters[2u].zzzz).x;
+    float4 passValues[4]={float4(.5f,-.5f,.5f,.5f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f),float4(0.f,0.f,0.f,0.f)};
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = input.vertexColor; // native color0
+    float4 v3 = float4(0.f,0.f,0.f,0.f); // native color1
+    float4 v4 = float4(input.uv,input.uv1); // native texcoord0
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f;
+    // 1: dp3 r0.x, v6.xyzx, v6.xyzx
+    r0.x = (dot((v6.xyzx).xyz,(v6.xyzx).xyz).xxxx).x;
+    // 2: rsq r0.x, r0.x
+    r0.x = (rsqrt(r0.xxxx)).x;
+    // 3: mul r0.yzw, r0.xxxx, v6.xxyz
+    r0.yzw = ((r0.xxxx)*(v6.xxyz)).yzw;
+    // 4: mul r1.xy, v4.xyxx, cb0[4].xyxx
+    r1.xy = ((v4.xyxx)*(source[4].xyxx)).xy;
+    // 5: sample_b_indexable(texture2d)(float,float,float,float) r2.xyz, r1.xyxx, t1.xyzw, s0, l(0.000000)
+    r2.xyz = (SDNativeSample0((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 6: mul r3.xyz, r2.xxyx, cb0[8].wxxw
+    r3.xyz = ((r2.xxyx)*(source[8].wxxw)).xyz;
+    // 7: mad r1.z, r3.x, l(0.100000), l(-0.100000)
+    r1.z = ((r3.xxxx)*(float4(0.100000,0.100000,0.100000,0.100000))+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).z;
+    // 8: mad r3.xy, -r0.yzyy, cb0[3].xyxx, r3.yzyy
+    r3.xy = ((-(r0.yzyy))*(source[3].xyxx)+(r3.yzyy)).xy;
+    // 9: sample_b_indexable(texture2d)(float,float,float,float) r3.xyz, r3.xyxx, t2.xyzw, s1, l(0.000000)
+    r3.xyz = (SDNativeSample1((r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 10: mad r0.yz, r1.zzzz, r0.yyzy, r1.xxyx
+    r0.yz = ((r1.zzzz)*(r0.yyzy)+(r1.xxyx)).yz;
+    // 11: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r0.wwww, t0.yzwx, s2, l(0.000000)
+    r0.w = (SDNativeSample2((r0.wwww).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
+    // 12: sample_b_indexable(texture2d)(float,float,float,float) r1.xyz, r0.yzyy, t1.xyzw, s0, l(0.000000)
+    r1.xyz = (SDNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 13: add r4.xyzw, -r2.xxyz, r1.xxyz
+    r4.xyzw = ((-(r2.xxyz))+(r1.xxyz)).xyzw;
+    // 14: mad r2.xyzw, r4.xyzw, l(0.750000, 0.750000, 0.750000, 0.750000), r2.xxyz
+    r2.xyzw = ((r4.xyzw)*(float4(0.750000,0.750000,0.750000,0.750000))+(r2.xxyz)).xyzw;
+    // 15: mad r2.xyzw, r0.wwww, l(0.174400, 0.174400, 0.174400, 0.174400), r2.xyzw
+    r2.xyzw = ((r0.wwww)*(float4(0.174400,0.174400,0.174400,0.174400))+(r2.xyzw)).xyzw;
+    // 16: mad r1.xyzw, r1.xxyz, r1.xxyz, -r2.xyzw
+    r1.xyzw = ((r1.xxyz)*(r1.xxyz)+(-(r2.xyzw))).xyzw;
+    // 17: mad r1.xyzw, r0.wwww, r1.xyzw, r2.xyzw
+    r1.xyzw = ((r0.wwww)*(r1.xyzw)+(r2.xyzw)).xyzw;
+    // 18: dp3 r0.y, r1.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r0.y = (dot((r1.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).y;
+    // 19: add r0.yzw, -r1.yyzw, r0.yyyy
+    r0.yzw = ((-(r1.yyzw))+(r0.yyyy)).yzw;
+    // 20: mad r0.yzw, cb0[9].xxxx, r0.yyzw, r1.yyzw
+    r0.yzw = ((source[9].xxxx)*(r0.yyzw)+(r1.yyzw)).yzw;
+    // 21: max r0.yzw, |r0.yyzw|, l(0.000000, 0.000001, 0.000001, 0.000001)
+    r0.yzw = (max(abs(r0.yyzw),float4(0.000000,0.000001,0.000001,0.000001))).yzw;
+    // 22: log r0.yzw, r0.yyzw
+    r0.yzw = (log2(r0.yyzw)).yzw;
+    // 23: mul r0.yzw, r0.yyzw, cb0[9].yyyy
+    r0.yzw = ((r0.yyzw)*(source[9].yyyy)).yzw;
+    // 24: exp r0.yzw, r0.yyzw
+    r0.yzw = (exp2(r0.yyzw)).yzw;
+    // 25: mul r0.yzw, r0.yyzw, cb0[6].xxyz
+    r0.yzw = ((r0.yyzw)*(source[6].xxyz)).yzw;
+    // 26: dp3 r1.y, r3.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.y = (dot((r3.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).y;
+    // 27: add r1.yzw, -r3.xxyz, r1.yyyy
+    r1.yzw = ((-(r3.xxyz))+(r1.yyyy)).yzw;
+    // 28: mad r1.yzw, cb0[8].yyyy, r1.yyzw, r3.xxyz
+    r1.yzw = ((source[8].yyyy)*(r1.yyzw)+(r3.xxyz)).yzw;
+    // 29: max r1.yzw, |r1.yyzw|, l(0.000000, 0.000001, 0.000001, 0.000001)
+    r1.yzw = (max(abs(r1.yyzw),float4(0.000000,0.000001,0.000001,0.000001))).yzw;
+    // 30: log r1.yzw, r1.yyzw
+    r1.yzw = (log2(r1.yyzw)).yzw;
+    // 31: mul r1.yzw, r1.yyzw, cb0[8].zzzz
+    r1.yzw = ((r1.yyzw)*(source[8].zzzz)).yzw;
+    // 32: exp r1.yzw, r1.yyzw
+    r1.yzw = (exp2(r1.yyzw)).yzw;
+    // 33: mul r2.xyz, cb0[5].xyzx, cb0[5].wwww
+    r2.xyz = ((source[5].xyzx)*(source[5].wwww)).xyz;
+    // 34: mad r0.yzw, r1.yyzw, r2.xxyz, r0.yyzw
+    r0.yzw = ((r1.yyzw)*(r2.xxyz)+(r0.yyzw)).yzw;
+    // 35: mad r0.yzw, r0.yyzw, cb0[1].xxyz, cb0[2].xxyz
+    r0.yzw = ((r0.yyzw)*(source[1].xxyz)+(source[2].xxyz)).yzw;
+    // 36: mad o0.xyz, r0.yzwy, v5.wwww, v5.xyzx
+    output.xyz = ((r0.yzwy)*(v5.wwww)+(v5.xyzx)).xyz;
+    // 37: mad_sat r0.x, v6.z, r0.x, r1.x
+    r0.x = (saturate((v6.zzzz)*(r0.xxxx)+(r1.xxxx))).x;
+    // 38: add r0.y, -r1.x, l(2.000000)
+    r0.y = ((-(r1.xxxx))+(float4(2.000000,2.000000,2.000000,2.000000))).y;
+    // 39: log r0.z, r0.x
+    r0.z = (log2(r0.xxxx)).z;
+    // 40: lt r0.x, r0.x, l(0.000001)
+    r0.x = asfloat((r0.x < 0.000001f) ? 0xffffffffu : 0u);
+    // 41: mul r0.z, r0.z, cb0[9].z
+    r0.z = ((r0.zzzz)*(source[9].zzzz)).z;
+    // 42: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 43: min r0.z, r0.z, l(1.000000)
+    r0.z = (min(r0.zzzz,float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 44: add r0.w, -cb0[7].y, l(1.000000)
+    r0.w = ((-(source[7].yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
+    // 45: add_sat r0.y, -r0.w, r0.y
+    r0.y = (saturate((-(r0.wwww))+(r0.yyyy))).y;
+    // 46: mul r0.y, r0.y, r0.z
+    r0.y = ((r0.yyyy)*(r0.zzzz)).y;
+    // 47: mul_sat r0.y, r0.y, cb0[1].w
+    r0.y = (saturate((r0.yyyy)*(source[1].wwww))).y;
+    // 48: mul r0.y, r0.y, cb0[0].x
+    r0.y = ((r0.yyyy)*(source[0].xxxx)).y;
+    // 49: movc o0.w, r0.x, l(0), r0.y
+    output.w = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).w;
+    return output;
+}
+
+
 EFFECT_PS_OUT Shade_EffectDimensionMasterSDNative(uint profile, SD_NATIVE_INPUT input)
 {
     EFFECT_PS_OUT output=(EFFECT_PS_OUT)0;
@@ -940,6 +1074,7 @@ EFFECT_PS_OUT Shade_EffectDimensionMasterSDNative(uint profile, SD_NATIVE_INPUT 
     case 321u: nativeColor=SDNative321(input); additive=false; break;
     case 322u: nativeColor=SDNative322(input); additive=false; break;
     case 323u: nativeColor=SDNative323(input); additive=true; break;
+    case 324u: nativeColor=SDNative324(input); additive=false; break;
     default: clip(-1.f); return output;
     }
     output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity, additive ? 1.f : nativeColor.a);

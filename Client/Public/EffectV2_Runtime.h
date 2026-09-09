@@ -141,6 +141,10 @@ public:
 	   spawned effects keep their authored stop policy; the next occurrence reads
 	   the newly saved Data/Effects/V2 documents. */
 	static void Invalidate_Caches();
+	/* Shutdown only: call after the level loader has joined and all level/tool
+	   objects have been destroyed, so their destructors cannot refill the GPU
+	   buffer pool. Releases retained occurrence snapshots and GPU caches. */
+	static void Release_Resources();
 	static uint64_t Cache_Generation();
 	static const std::string& Last_Error();
 
