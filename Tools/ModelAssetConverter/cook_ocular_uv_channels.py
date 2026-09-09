@@ -12,14 +12,18 @@ rows to `CharacterCatalog.json` failed the whole body load.
 Read off the retail meshes and off the DimensionMaster body this project already ships,
 rather than assumed.
 
-* Slot 1 is the model's own UV0. That is what the shipped DimensionMaster cook holds -- its
-  UV1 equals its UV0 on all 242 eye vertices -- and it is how every retail face SkeletalMesh
-  ships its second set as well, a byte-identical copy of the first.
-* Slot 2 is the source mesh's extra channel: the eye's own UV layout, which program 5 reads
-  as the iris coordinate and as the odd-eye selector. On a three-set mesh that is TEXCOORD_2;
-  the FT body carries only two sets and its second one is that same channel -- real values on
-  the head sections (face 694, eyelash 306, eye 75 distinct) and a constant near-zero on the
-  sections that do not use it.
+Program 5 samples the eye base texture twice, once at UV0 and once at UV1, and reads UV2 as
+the odd-eye selector.  So slot 1 has to be a channel of its own: making it a copy of UV0
+collapses the two samples onto one place, which is what a class whose eye and iris read as
+one flat colour is showing.
+
+* Slot 2 is the source mesh's extra channel -- the eye's own UV layout.
+* Slot 1 is whatever the source mesh puts before it.  A three-set body (WR, SP, SP_M) has a
+  slot of its own there and the shipped DimensionMaster cook keeps the model's UV0 in it,
+  which is also how every retail face SkeletalMesh ships its second set: a byte-identical
+  copy of the first.  The FT body carries only two sets, so its second one *is* the extra
+  channel and there is nothing else to put in slot 1; UE3 resolves a material's TexCoord[2]
+  on such a mesh by clamping to the last set it has, so both slots take that channel.
 
 ## Reaching a vertex
 
@@ -99,7 +103,7 @@ def read_source(path: Path):
         rows += list(zip(accessor(attributes["POSITION"], 3),
                          accessor(attributes["TEXCOORD_0"], 2),
                          accessor(attributes[extra], 2)))
-    return rows
+    return rows, "TEXCOORD_2" in gltf["meshes"][0]["primitives"][0]["attributes"]
 
 
 def place(position, sign):
@@ -211,14 +215,15 @@ def main() -> int:
     submesh = selected[0]
 
     parsed = _cook.parse_skinned_uv_wmodel(data)
-    source = read_source(args.body_gltf)
+    source, has_third_set = read_source(args.body_gltf)
     sign, scored = fit_lateral_sign(parsed, source)
     cooked = read_cooked_vertices(parsed, submesh)
     extra, missing, ambiguous = resolve_extra(source, sign, cooked)
 
-    print("%s: submesh %d (%s), %d vertices from %s, lateral %+d (%d vs %d)"
+    print("%s: submesh %d (%s), %d vertices from %s, lateral %+d (%d vs %d), "
+          "slot1=%s"
           % (model_path.name, submesh, args.material, len(cooked), args.body_gltf.name,
-             sign, scored[sign], scored[-sign]))
+             sign, scored[sign], scored[-sign], "UV0" if has_third_set else "extra channel"))
     if missing:
         raise SystemExit("  %d of %d vertices are not in the source, so their UVs have no "
                          "origin (vertices %d..%d)"
@@ -227,7 +232,8 @@ def main() -> int:
         raise SystemExit("  %d vertices resolve to source vertices that disagree on the extra "
                          "channel" % len(ambiguous))
 
-    slot1 = [tuple(uv) for _position, uv in cooked]
+    # A two-set body has no slot of its own before the extra channel, so both slots take it.
+    slot1 = [tuple(uv) for _position, uv in cooked] if has_third_set else list(extra)
     if args.verify:
         row = parsed["uvRows"][submesh]
         for name, values in (("TEXCOORD_1", slot1), ("TEXCOORD_2", extra)):

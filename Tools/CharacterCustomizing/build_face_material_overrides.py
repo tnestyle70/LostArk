@@ -124,7 +124,15 @@ TEXTURE_ROOTS = {
 # to the same program. Adding it would be a guess about which shader draws an arm.
 ROWS = [
     ("LanceMaster", "pc_ft_face_mi", "pc_ft_face_mi", HEAD_FAMILY),
-    ("Warlord", "pc_wr_face_mi", "pc_wr_face_mi_high", HEAD_FAMILY),
+    # Warlord's head is out. Its body names pc_wr_face_mi, whose chain is the old pc_head_opa
+    # master with no make-up parameter at all, so the row above substituted the chain of a
+    # different MIC -- pc_wr_face_mi_high -- to get a make-up capable one. That substitution is
+    # what the screen showed: the face came out blown to white, and it is the only class whose
+    # resolved values are far off the other three (skin_metalicness_power 5.0 against 0.5/1.0,
+    # skin_roughness_power 2.0 against 1.0, var_base_skinspecularintensity_ui 1.0 against
+    # 0.4/0.6). Driving program 4 with one MIC's values while the mesh draws another is not
+    # something to tune out; the row comes back when Warlord's own chain is read.
+    #   ("Warlord", "pc_wr_face_mi", "pc_wr_face_mi_high", HEAD_FAMILY),
     ("Artist", "pc_sp_face_mi_high", "pc_sp_face_mi_high", HEAD_FAMILY),
 
     ("LanceMaster", "pc_ft_01_upper_mi", "pc_ft_01_upper_mi", SKIN_FAMILY),
