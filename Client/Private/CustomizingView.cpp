@@ -59,6 +59,18 @@ namespace
 	constexpr const char_t* EYESHADOW_COLOR_PARAMETER = "var_makeup_eyeshadowcolor_ui";
 	constexpr const char_t* SKIN_COLOR_PARAMETER = "var_base_skincolor_ui";
 
+	/* The left column's five action cells, in the order the table lists them.
+	EFTable_CharacterCustomizing SecondaryKey 2 gives this class' row as icons 50, 5, 7, 12,
+	23 with Object_Unit 0..4, and EFTable_CommonAction's creation block 85000..85004 carries
+	the same five in the same order -- CharCustomizing, SC_Charming_1, SC_Greet_3, SC_Dance_1,
+	SC_GroupDance_3, whose NameDev is the clip name. Three of the four action icons agree
+	between the two tables (5, 7, 12); the creation screen draws its own art for the first and
+	last cells. All five clips exist in every class' body AnimSet and are cooked into
+	<Class>_CustomizingAnimSet.wmodel by Tools/CharacterCustomizing/trim_psa_clip.py.
+	A null clip is cell 0: the pose the screen already stands in. */
+	constexpr const char_t* CREATION_ACTION_CLIPS[] = {
+		nullptr, "sc_charming_1", "sc_greet_3", "sc_dance_1", "sc_groupdance_3" };
+
 	/* The eye tab drives the retail eye material's own variables. The movie exposes one pair of
 	swatches plus an index that chooses which eye, so the odd-eye sub-tab both flips
 	`var_eye_useordeyecolor_bool_ui` and points the same two swatches at the left-eye twins. */
@@ -709,6 +721,9 @@ void Client::CCustomizingView::Update_Tabs()
 				m_bCostumeChanged = true;
 			m_iSelectedCostume = i;
 		}
+		const string strActionId = "CC_LeftAction" + std::to_string(i);
+		m_pView->Set_SlotTint(strActionId, i == m_iSelectedAction ?
+			float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.7f, 0.7f, 0.7f, 1.f));
 	}
 	/* The six preset slots. An empty one is dimmed the same way an unsupported tab is, and
 	the one the save and load buttons act on is the bright one. */
@@ -1061,6 +1076,62 @@ bool_t Client::CCustomizingView::Load_Slot(
 	return true;
 }
 
+void Client::CCustomizingView::Update_ActionList(const shared_ptr<CCharacter>& pCharacter)
+{
+	if (nullptr == pCharacter)
+		return;
+	static_assert(std::size(CREATION_ACTION_CLIPS) == COSTUME_COUNT,
+		"one clip per action cell");
+	for (int32_t i = 0; i < COSTUME_COUNT; ++i)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!Get_SlotRect(("CC_LeftAction" + std::to_string(i)).c_str(),
+			fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
+		if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
+			continue;
+		CMainApp::Play_UIButtonClickSound();
+		m_iSelectedAction = i;
+		/* An action plays once; the pose cell just goes back to what the screen stands in,
+		which Set_Animation(IDLE) already resolves to the creation clip while the preview is
+		up (see CCharacter::Set_Animation). */
+		if (nullptr == CREATION_ACTION_CLIPS[i])
+			pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+		else if (!pCharacter->Set_Animation(CREATION_ACTION_CLIPS[i], false))
+		{
+			OutputDebugStringA(("[CustomizingAction] this class' animation set has no " +
+				string(CREATION_ACTION_CLIPS[i]) + "\n").c_str());
+			m_iSelectedAction = 0;
+		}
+	}
+
+	/* Back to the pose when the action runs out. The model keeps playing the last frame of a
+	non-looping clip, so the end is read from its own progress rather than waited on. */
+	if (0 == m_iSelectedAction)
+		return;
+	const shared_ptr<Engine::CModel> pModel = pCharacter->Get_BodyModel();
+	if (nullptr == pModel)
+		return;
+	const uint32_t iAnimation = pModel->Get_CurrentAnimIndex();
+	const char_t* pPlaying = pModel->Get_AnimationName(iAnimation);
+	if (nullptr == pPlaying ||
+		0 != std::strcmp(pPlaying, CREATION_ACTION_CLIPS[m_iSelectedAction]))
+	{
+		/* Something else took the model over -- a class change, a costume swap. */
+		m_iSelectedAction = 0;
+		return;
+	}
+	f32_t fPosition = 0.f, fDuration = 0.f;
+	if (pModel->Get_AnimationProgress(iAnimation, fPosition, fDuration) &&
+		fDuration > 0.f && fPosition >= fDuration)
+	{
+		m_iSelectedAction = 0;
+		pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+	}
+}
+
 void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacter)
 {
 	if (nullptr == pCharacter)
@@ -1096,6 +1167,11 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 	{
 		m_iSelectedCostume = 0;
 		m_bCostumeChanged = true;
+	}
+	if (0 != m_iSelectedAction)
+	{
+		m_iSelectedAction = 0;
+		pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
 	}
 	Seed_MaterialControls(pCharacter);
 }
@@ -2140,6 +2216,8 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 
 void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCharacter)
 {
+	Update_ActionList(pCharacter);
+
 	struct TEXT_BUTTON
 	{
 		const char_t* pSlotId;

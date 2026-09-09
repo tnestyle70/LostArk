@@ -243,6 +243,10 @@ private:
 	/* The bottom bar's reset. The face button next to the preset grid resets the face only;
 	this one is the retail avatar reset and puts colour, make-up, hair and eyes back too. */
 	void Reset_All(const shared_ptr<CCharacter>& pCharacter);
+	/* The left column's action row. Cell 0 is the creation pose the screen stands in; the
+	other four play a social action once and fall back to it. */
+	int32_t m_iSelectedAction = 0;
+	void Update_ActionList(const shared_ptr<CCharacter>& pCharacter);
 	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
 	and a non-native skin, a named head-material parameter for everything else. */
 	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,
