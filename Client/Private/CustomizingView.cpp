@@ -1368,8 +1368,12 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 				float4_t(fSize, fSize, fSize, fSize));
 		}
 	}
-	Fn_ShowPicker("CC_EyeColor", bEye, bEye ? EYE_BASE_SURFACE_INDEX : -1);
-	Fn_ShowPicker("CC_EyeIrisColor", bEye, bEye ? EYE_IRIS_SURFACE_INDEX : -1);
+	/* A class whose eye submesh is not on the retail eye program has no eye variables to
+	write, so its swatches draw without opening the wheel -- the same honest state every
+	other unbound control here is in. */
+	const bool_t bEyeMaterial = bEye && m_fEyeIrisAlpha >= 0.f;
+	Fn_ShowPicker("CC_EyeColor", bEye, bEyeMaterial ? EYE_BASE_SURFACE_INDEX : -1);
+	Fn_ShowPicker("CC_EyeIrisColor", bEye, bEyeMaterial ? EYE_IRIS_SURFACE_INDEX : -1);
 	{
 		f32_t fAlpha = m_fEyeIrisAlpha < 0.f ? 0.f : m_fEyeIrisAlpha;
 		const bool_t bBound = bEye && nullptr != pCharacter && m_fEyeIrisAlpha >= 0.f;

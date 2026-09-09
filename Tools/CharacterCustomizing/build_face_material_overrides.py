@@ -138,9 +138,14 @@ ROWS = [
     ("Artist", "pc_sp_01-1_arm_mi", "pc_sp_01-1_arm_mi", SKIN_FAMILY),
     ("Artist", "pc_sp_01-1_lower_mi", "pc_sp_01-1_lower_mi", SKIN_FAMILY),
 
-    ("LanceMaster", "pc_ft_eye_mi", "pc_ft_eye_mi", EYE_FAMILY),
-    ("Warlord", "pc_wr_eye_mi", "pc_wr_eye_mi", EYE_FAMILY),
-    ("Artist", "pc_sp_eye_mi", "pc_sp_eye_mi", EYE_FAMILY),
+    # The eye family is program 5, and CModel rejects a program 5 override on a submesh
+    # without native UV1 and UV2 (Model.cpp, "source character requires native extra UV
+    # channels"). Only DimensionMaster's body is cooked at WModel 1.3, which is the version
+    # that carries skinned UV1/UV2; LanceMaster, Warlord and Artist are 1.0, so their eye
+    # rows fail the whole model load. Re-cook those three bodies at 1.3 before adding them.
+    #   ("LanceMaster", "pc_ft_eye_mi", "pc_ft_eye_mi", EYE_FAMILY),
+    #   ("Warlord", "pc_wr_eye_mi", "pc_wr_eye_mi", EYE_FAMILY),
+    #   ("Artist", "pc_sp_eye_mi", "pc_sp_eye_mi", EYE_FAMILY),
     ("LanceMaster", "pc_ft_eyelashes_mi", "pc_ft_eyelashes_mi", EYELASH_FAMILY),
     ("Artist", "pc_sp_eyeao_mi", "pc_sp_eyeao_mi", EYELASH_FAMILY),
 ]
