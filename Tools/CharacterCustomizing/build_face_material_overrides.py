@@ -141,15 +141,8 @@ ROWS = [
     # The eye family is program 5, and CModel rejects a program 5 override on a submesh
     # without native UV1 and UV2 (Model.cpp, "source character requires native extra UV
     # channels"). Those channels live in a WModel cooked at 1.3, which
-    # Tools/ModelAssetConverter/cook_ocular_uv_channels.py appends from the retail face mesh.
-    #
-    # LanceMaster is left out. Its cooked eye submesh is 265 vertices: 155 are the retail eye
-    # (they match pc_ft_00_sk primitive 5 exactly, position and UV0, delta 0) and 110 are a
-    # head-shaped patch of 86 drawn triangles that no extracted retail mesh contains -- the
-    # nearest candidate, the same body's primitive 7, is a different mesh (median 0.36, worst
-    # 3.03 units on an 11-unit head). Those 110 have no UV source, so the submesh cannot be
-    # completed without inventing one. Re-cook that body's eye section before adding the row.
-    #   ("LanceMaster", "pc_ft_eye_mi", "pc_ft_eye_mi", EYE_FAMILY),
+    # Tools/ModelAssetConverter/cook_ocular_uv_channels.py appends from the retail body.
+    ("LanceMaster", "pc_ft_eye_mi", "pc_ft_eye_mi", EYE_FAMILY),
     ("Warlord", "pc_wr_eye_mi", "pc_wr_eye_mi", EYE_FAMILY),
     ("Artist", "pc_sp_eye_mi", "pc_sp_eye_mi", EYE_FAMILY),
     ("LanceMaster", "pc_ft_eyelashes_mi", "pc_ft_eyelashes_mi", EYELASH_FAMILY),
