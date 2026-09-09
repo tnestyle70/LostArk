@@ -26,6 +26,8 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::Run_ServerGameplayContractTests(false, false, true);
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--card-maze-contract-test")
 		return LostArk::Server::Run_ServerCardMazeContractTests();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--bingo-contract-test")
+		return LostArk::Server::Run_ServerBingoContractTests();
 	if (2 == argumentCount &&
 		std::string_view(arguments[1]) == "--debug-teleport-contract-test")
 	{
@@ -141,6 +143,7 @@ int main(const int argumentCount, char** arguments)
 		std::cerr << "Usage: Server [--contract-test | "
 			"--kouku-object-overlap-contract-test | --kouku-support-surface-contract-test | "
 			"--kouku-bundle-contract-test | --card-maze-contract-test | "
+			"--bingo-contract-test | "
 			"--navigation-contract-test | --debug-teleport-contract-test | "
 			"--dimensionmaster-ground-target-contract | "
 			"--reset-valtan-runtime-to-packaged | "

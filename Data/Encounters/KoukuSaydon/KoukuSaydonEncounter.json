@@ -5,7 +5,7 @@
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "authority": "server",
   "fixedTickHz": 30,
-  "sourceRevision": 176,
+  "sourceRevision": 178,
   "madnessPolicy": {
     "maximum": 100,
     "clownHoldMs": 15000
@@ -21,7 +21,9 @@
     "KAKULSAYDON_G1_PATTERN_9",
     "KAKULSAYDON_G1_PATTERN_12",
     "KAKULSAYDON_G1_PATTERN_13",
-    "KAKULSAYDON_G1_PATTERN_14"
+    "KAKULSAYDON_G1_PATTERN_14",
+    "KAKULSAYDON_G1_PATTERN_18",
+    "KAKULSAYDON_G1_PATTERN_19"
   ],
   "patterns": [
     {
@@ -12768,6 +12770,3928 @@
       "logicWindows": [],
       "mechanicTriggers": [],
       "worldSequences": [],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_18",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "3관문_외곽불회전_갈고리대각선_시각테스트",
+      "actionId": "kakulsaydon.g1.pattern.18",
+      "sourceActionIds": [
+        0
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.3",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_5",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.5",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_6",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.6",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_7",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.7",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_8",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.8",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_9",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.9",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_10",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.10",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_11",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.11",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_12",
+          "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.12",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.1",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              12.6,
+              0.05,
+              942.08
+            ],
+            "rotationDegrees": [
+              0,
+              90.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.2",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              12.530975881640243,
+              0.05,
+              943.3970586371724
+            ],
+            "rotationDegrees": [
+              0,
+              84.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.3",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              12.324659769245951,
+              0.05,
+              944.6996873043038
+            ],
+            "rotationDegrees": [
+              0,
+              78.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.4",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.983312105318934,
+              0.05,
+              945.9736141291244
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.5",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.510672766296771,
+              0.05,
+              947.2048817027551
+            ],
+            "rotationDegrees": [
+              0,
+              -24.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.6",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              10.911920087683928,
+              0.05,
+              948.38
+            ],
+            "rotationDegrees": [
+              0,
+              -29.999999999999996,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.7",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              10.193614129124338,
+              0.05,
+              949.4860941788852
+            ],
+            "rotationDegrees": [
+              0,
+              54.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.8",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              9.363624801015167,
+              0.05,
+              950.5110456401217
+            ],
+            "rotationDegrees": [
+              0,
+              48.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.9",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              8.431045640121614,
+              0.05,
+              951.4436248010152
+            ],
+            "rotationDegrees": [
+              0,
+              42.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.10",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.406094178885161,
+              0.05,
+              952.2736141291243
+            ],
+            "rotationDegrees": [
+              0,
+              36.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.11",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              6.300000000000002,
+              0.05,
+              952.991920087684
+            ],
+            "rotationDegrees": [
+              0,
+              -59.99999999999999,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.12",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              5.124881702755085,
+              0.05,
+              953.5906727662968
+            ],
+            "rotationDegrees": [
+              0,
+              -65.99999999999999,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.13",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.893614129124338,
+              0.05,
+              954.063312105319
+            ],
+            "rotationDegrees": [
+              0,
+              18.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.14",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              2.619687304303766,
+              0.05,
+              954.404659769246
+            ],
+            "rotationDegrees": [
+              0,
+              11.999999999999986,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.15",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              1.3170586371724335,
+              0.05,
+              954.6109758816402
+            ],
+            "rotationDegrees": [
+              0,
+              6.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.16",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.569289505518227e-15,
+              0.05,
+              954.6800000000001
+            ],
+            "rotationDegrees": [
+              0,
+              1.4210854715202004e-14,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.17",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -1.317058637172432,
+              0.05,
+              954.6109758816403
+            ],
+            "rotationDegrees": [
+              0,
+              -96.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.18",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -2.619687304303768,
+              0.05,
+              954.404659769246
+            ],
+            "rotationDegrees": [
+              0,
+              -102.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.19",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -3.8936141291243365,
+              0.05,
+              954.063312105319
+            ],
+            "rotationDegrees": [
+              0,
+              -18.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.20",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -5.124881702755081,
+              0.05,
+              953.5906727662968
+            ],
+            "rotationDegrees": [
+              0,
+              -24.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.21",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -6.299999999999997,
+              0.05,
+              952.991920087684
+            ],
+            "rotationDegrees": [
+              0,
+              -29.999999999999986,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.22",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -7.4060941788851595,
+              0.05,
+              952.2736141291243
+            ],
+            "rotationDegrees": [
+              0,
+              -36.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.23",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -8.43104564012161,
+              0.05,
+              951.4436248010152
+            ],
+            "rotationDegrees": [
+              0,
+              -131.99999999999997,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.24",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -9.363624801015165,
+              0.05,
+              950.5110456401217
+            ],
+            "rotationDegrees": [
+              0,
+              -138.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.25",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -10.193614129124336,
+              0.05,
+              949.4860941788852
+            ],
+            "rotationDegrees": [
+              0,
+              -54.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.26",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -10.911920087683928,
+              0.05,
+              948.38
+            ],
+            "rotationDegrees": [
+              0,
+              -60.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.27",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -11.510672766296771,
+              0.05,
+              947.2048817027551
+            ],
+            "rotationDegrees": [
+              0,
+              -66.00000000000003,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.28",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -11.983312105318934,
+              0.05,
+              945.9736141291244
+            ],
+            "rotationDegrees": [
+              0,
+              -72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.29",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -12.324659769245951,
+              0.05,
+              944.6996873043038
+            ],
+            "rotationDegrees": [
+              0,
+              -168.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.30",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -12.530975881640245,
+              0.05,
+              943.3970586371724
+            ],
+            "rotationDegrees": [
+              0,
+              -174.00000000000003,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.31",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -12.6,
+              0.05,
+              942.08
+            ],
+            "rotationDegrees": [
+              0,
+              -89.99999999999997,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.32",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -12.530975881640245,
+              0.05,
+              940.7629413628276
+            ],
+            "rotationDegrees": [
+              0,
+              -95.99999999999997,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.33",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -12.324659769245951,
+              0.05,
+              939.4603126956963
+            ],
+            "rotationDegrees": [
+              0,
+              -102.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.34",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -11.983312105318936,
+              0.05,
+              938.1863858708757
+            ],
+            "rotationDegrees": [
+              0,
+              -108.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.35",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -11.510672766296771,
+              0.05,
+              936.955118297245
+            ],
+            "rotationDegrees": [
+              0,
+              -204.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.36",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -10.911920087683928,
+              0.05,
+              935.7800000000001
+            ],
+            "rotationDegrees": [
+              0,
+              -210.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.37",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -10.193614129124338,
+              0.05,
+              934.6739058211149
+            ],
+            "rotationDegrees": [
+              0,
+              -126.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.38",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -9.363624801015167,
+              0.05,
+              933.6489543598784
+            ],
+            "rotationDegrees": [
+              0,
+              -132.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.39",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -8.431045640121617,
+              0.05,
+              932.7163751989849
+            ],
+            "rotationDegrees": [
+              0,
+              -138.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.40",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -7.406094178885163,
+              0.05,
+              931.8863858708758
+            ],
+            "rotationDegrees": [
+              0,
+              -144.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.41",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -6.300000000000005,
+              0.05,
+              931.1680799123161
+            ],
+            "rotationDegrees": [
+              0,
+              -239.99999999999997,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.42",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -5.124881702755092,
+              0.05,
+              930.5693272337032
+            ],
+            "rotationDegrees": [
+              0,
+              -245.99999999999997,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.43",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -3.893614129124339,
+              0.05,
+              930.096687894681
+            ],
+            "rotationDegrees": [
+              0,
+              -162.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.44",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -2.619687304303773,
+              0.05,
+              929.7553402307541
+            ],
+            "rotationDegrees": [
+              0,
+              -168.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.45",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -1.3170586371724433,
+              0.05,
+              929.5490241183599
+            ],
+            "rotationDegrees": [
+              0,
+              -173.99999999999994,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.46",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              -2.3145824503884972e-15,
+              0.05,
+              929.48
+            ],
+            "rotationDegrees": [
+              0,
+              -180.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.47",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              1.3170586371724275,
+              0.05,
+              929.5490241183597
+            ],
+            "rotationDegrees": [
+              0,
+              -276.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.48",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              2.6196873043037687,
+              0.05,
+              929.7553402307541
+            ],
+            "rotationDegrees": [
+              0,
+              -282.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.49",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.893614129124335,
+              0.05,
+              930.096687894681
+            ],
+            "rotationDegrees": [
+              0,
+              -198.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.50",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              5.124881702755077,
+              0.05,
+              930.5693272337032
+            ],
+            "rotationDegrees": [
+              0,
+              -204.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.51",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              6.300000000000002,
+              0.05,
+              931.1680799123161
+            ],
+            "rotationDegrees": [
+              0,
+              -210.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.52",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.406094178885159,
+              0.05,
+              931.8863858708758
+            ],
+            "rotationDegrees": [
+              0,
+              -216.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.53",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              8.431045640121617,
+              0.05,
+              932.7163751989849
+            ],
+            "rotationDegrees": [
+              0,
+              -312.00000000000006,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.54",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              9.363624801015167,
+              0.05,
+              933.6489543598784
+            ],
+            "rotationDegrees": [
+              0,
+              -318.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.55",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              10.193614129124336,
+              0.05,
+              934.6739058211149
+            ],
+            "rotationDegrees": [
+              0,
+              -234.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.56",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              10.911920087683928,
+              0.05,
+              935.7800000000001
+            ],
+            "rotationDegrees": [
+              0,
+              -240.00000000000006,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.57",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.510672766296771,
+              0.05,
+              936.955118297245
+            ],
+            "rotationDegrees": [
+              0,
+              -246.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.58",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.983312105318934,
+              0.05,
+              938.1863858708757
+            ],
+            "rotationDegrees": [
+              0,
+              -252.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.59",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              12.324659769245951,
+              0.05,
+              939.4603126956963
+            ],
+            "rotationDegrees": [
+              0,
+              -348.00000000000006,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.60",
+          "startMs": 0,
+          "durationMs": 36000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              12.530975881640243,
+              0.05,
+              940.7629413628276
+            ],
+            "rotationDegrees": [
+              0,
+              -354.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.61",
+          "startMs": 1000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.62",
+          "startMs": 1350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.63",
+          "startMs": 1700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.64",
+          "startMs": 1175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.65",
+          "startMs": 1525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.66",
+          "startMs": 1875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.67",
+          "startMs": 10000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.68",
+          "startMs": 10350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.69",
+          "startMs": 10700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.70",
+          "startMs": 10175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.71",
+          "startMs": 10525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.72",
+          "startMs": 10875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.73",
+          "startMs": 19000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.74",
+          "startMs": 19350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.75",
+          "startMs": 19700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.76",
+          "startMs": 19175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.77",
+          "startMs": 19525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.world.78",
+          "startMs": 19875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ],
+      "sceneProfiles": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_19",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 1,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "displayName": "3관문_갈고리만_확인용_불없음",
+      "actionId": "kakulsaydon.g1.pattern.19",
+      "sourceActionIds": [
+        0
+      ],
+      "bossArchetypeIds": [
+        "BOSS_KAKULSAYDON_BINGO_SAYDON",
+        "BOSS_KAKULSAYDON_G1_SAYDON",
+        "BOSS_KAKULSAYDON_G3_SAYDON"
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 1.0,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_3",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.3",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_4",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.4",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_5",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.5",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_6",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.6",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_7",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.7",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_8",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.8",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_9",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.9",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_10",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.10",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_11",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.11",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        },
+        {
+          "stageId": "STAGE_12",
+          "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.12",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "resetBossToSpawn": false,
+      "logicWindows": [],
+      "mechanicTriggers": [],
+      "worldSequences": [
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.1",
+          "startMs": 1000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.2",
+          "startMs": 1350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.3",
+          "startMs": 1700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.4",
+          "startMs": 1175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.5",
+          "startMs": 1525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.6",
+          "startMs": 1875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.7",
+          "startMs": 10000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.8",
+          "startMs": 10350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.9",
+          "startMs": 10700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.10",
+          "startMs": 10175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.11",
+          "startMs": 10525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.12",
+          "startMs": 10875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.13",
+          "startMs": 19000,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              22.643896,
+              1.2,
+              933.177546
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.14",
+          "startMs": 19350,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              23.475542,
+              1.2,
+              937.090136
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.15",
+          "startMs": 19700,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              24.307189,
+              1.2,
+              941.002727
+            ],
+            "rotationDegrees": [
+              0,
+              12.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.16",
+          "startMs": 19175,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              3.612182,
+              1.2,
+              918.018593
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.17",
+          "startMs": 19525,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              7.416408,
+              1.2,
+              919.254661
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "sequenceInstanceId": "world.sequence.instance.kouku.g3.fire_hook.hook_diagonal",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.world.18",
+          "startMs": 19875,
+          "durationMs": 8000,
+          "playbackSpeed": 1.0,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "anchorKind": "NONE",
+          "anchorPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "placement": {
+            "position": [
+              11.220634,
+              1.2,
+              920.490729
+            ],
+            "rotationDegrees": [
+              0,
+              72.0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ],
       "sceneProfiles": []
     }
   ],

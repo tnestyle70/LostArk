@@ -37,6 +37,10 @@ public:
 
 	bool Request_InteractionSlot(std::uint32_t sequence,
 		LostArk::Shared::INTERACTION_SLOT slot) override;
+	bool Request_DebugBingoFill(std::uint32_t sequence,
+		std::uint32_t cellMask, bool reset) override;
+	bool Request_DebugBingoBomb(std::uint32_t sequence) override;
+	bool Request_DebugBingoHammer(std::uint32_t sequence) override;
 	bool Request_DebugKoukuHudMode(std::uint32_t sequence,
 		LostArk::Shared::KOUKU_HUD_MODE mode) override;
 	bool Consume_DebugKoukuHudModeResult(

@@ -1897,6 +1897,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::MARIO_MOVE:
 			Handle_MarioMove(command.iSessionId, command.MarioMove);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_BINGO_FILL:
+			Handle_DebugBingoFill(command.iSessionId, command.DebugBingoFill);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_BINGO_BOMB:
+			Handle_DebugBingoBomb(command.iSessionId, command.DebugBingoBomb);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_BINGO_HAMMER:
+			Handle_DebugBingoHammer(command.iSessionId, command.DebugBingoHammer);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM:
 			Handle_DebugSetMadnessForm(
 				command.iSessionId, command.DebugSetMadnessForm);
@@ -2007,6 +2016,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_Players(fixedDeltaSeconds);
 	Update_CardMaze(updateTick);
+	Update_KoukuBingo(updateTick);
 	m_CombatObjectRuntime.Update(
 		m_Players, m_WorldEntities, m_GameplayCatalog,
 		fixedDeltaSeconds, updateTick, m_TickDamageEvents);
@@ -2071,6 +2081,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	}
 	for (const SERVER_INTERACT_PROMPT_EDGE& edge : promptEdges)
 		Send_InteractPrompt(edge);
+	Cleanup_EmptyMarioStages();
 	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
@@ -3406,6 +3417,140 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 #endif
 }
 
+void LostArk::Server::CGameRoom::Handle_DebugBingoFill(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_BINGO_FILL& request)
+{
+#ifdef _DEBUG
+	using namespace LostArk::Shared;
+	/* The board only exists in the Kouku arena, and only a session that owns
+	a player in this room may paint it. */
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		request.eWorldId != m_eWorldId ||
+		m_PlayerIdBySessionId.end() == m_PlayerIdBySessionId.find(sessionId))
+	{
+		return;
+	}
+	if (request.bReset)
+		m_KoukuBingo.Reset();
+	m_KoukuBingo.Fill(request.iCellMask);
+	m_strStatus = "Bingo board filled by Debug request";
+#else
+	(void)sessionId;
+	(void)request;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugBingoBomb(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_BINGO_BOMB& request)
+{
+#ifdef _DEBUG
+	using namespace LostArk::Shared;
+	/* Same admission as the board fill: the Kouku arena only, and only a
+	session that owns a living player in this room. */
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		request.eWorldId != m_eWorldId)
+	{
+		return;
+	}
+	const auto session = m_PlayerIdBySessionId.find(sessionId);
+	if (m_PlayerIdBySessionId.end() == session)
+		return;
+	const auto player = m_Players.find(session->second);
+	if (m_Players.end() == player || 0u == player->second.iCurrentHp)
+		return;
+	/* The mark duration converted to fixed 30 Hz room ticks. */
+	const std::uint32_t detonateTick = m_iServerTick +
+		(KOUKU_BINGO_BOMB_MARK_MS * SERVER_TICK_HZ + 999u) / 1000u;
+	m_strStatus = m_KoukuBingo.Start_Bomb(
+		player->second.iNetEntityId, detonateTick) ?
+		"Bingo bomb marked by Debug request" :
+		"Bingo bomb refused: already marked or no free slot";
+#else
+	(void)sessionId;
+	(void)request;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugBingoHammer(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_BINGO_HAMMER& request)
+{
+#ifdef _DEBUG
+	using namespace LostArk::Shared;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		request.eWorldId != m_eWorldId ||
+		m_PlayerIdBySessionId.end() == m_PlayerIdBySessionId.find(sessionId))
+	{
+		return;
+	}
+	/* One of the twenty row/column ends. The diagonals stay a bingo rule
+	and are never swept. */
+	const std::int32_t anchor = static_cast<std::int32_t>(
+		Mix_DeterministicRandom(
+			static_cast<std::uint64_t>(m_iServerTick) * 1099511628211ull +
+			static_cast<std::uint64_t>(sessionId)) %
+		static_cast<std::uint64_t>(KOUKU_BINGO_HAMMER_ANCHOR_COUNT));
+	m_strStatus = m_KoukuBingo.Start_Hammer(anchor, m_iServerTick,
+		m_iServerTick +
+			(KOUKU_BINGO_HAMMER_RAISE_MS * SERVER_TICK_HZ + 999u) / 1000u) ?
+		"Bingo hammer started by Debug request" :
+		"Bingo hammer refused: one is already running";
+#else
+	(void)sessionId;
+	(void)request;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+		return;
+	(void)m_KoukuBingo.Advance_Hammer(tick);
+	const auto& bombs = m_KoukuBingo.Get_Bombs();
+	for (std::size_t slot = 0u; slot < bombs.size(); ++slot)
+	{
+		if (BINGO_BOMB_PHASE::PLANTED == bombs[slot].ePhase)
+		{
+			/* The fuse. Painting the cross is the bomb's whole effect, so the
+			slot is freed in the same step; the cells it lit stay on the board,
+			and Fill promotes any line the cross completed. */
+			if (tick < bombs[slot].iDetonateTick)
+				continue;
+			m_KoukuBingo.Detonate(Kouku_BingoCrossMask(Kouku_BingoCellAt(
+				bombs[slot].fPositionX, bombs[slot].fPositionZ)));
+			m_KoukuBingo.Clear_Bomb(slot);
+			continue;
+		}
+		if (BINGO_BOMB_PHASE::MARKED != bombs[slot].ePhase)
+			continue;
+		/* The carrier owns the drop position, so a carrier that died or
+		left cancels its own mark instead of planting at a stale place. */
+		const SERVER_PLAYER* carrier = nullptr;
+		for (const auto& entry : m_Players)
+		{
+			if (entry.second.iNetEntityId == bombs[slot].iCarrierNetEntityId &&
+				0u != entry.second.iCurrentHp)
+			{
+				carrier = &entry.second;
+				break;
+			}
+		}
+		if (nullptr == carrier)
+		{
+			m_KoukuBingo.Clear_Bomb(slot);
+			continue;
+		}
+		if (tick >= bombs[slot].iDetonateTick)
+		{
+			m_KoukuBingo.Plant_Bomb(slot, carrier->fPositionX, carrier->fPositionZ,
+				tick + (KOUKU_BINGO_BOMB_FUSE_MS * SERVER_TICK_HZ + 999u) / 1000u);
+		}
+	}
+}
+
 void LostArk::Server::CGameRoom::Handle_DebugSetMadnessForm(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request)
@@ -3509,6 +3654,10 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 		KOUKU_HUD_MODE::NONE == player->second.eKoukuHudMode)
 		return;
 	SERVER_PLAYER& state = player->second;
+	if (KOUKU_HUD_MODE::MARIO == state.eKoukuHudMode &&
+		(0u == state.iMarioStage || !state.isCombatReady || state.TriggerMove.isActive ||
+		 (state.iSilenceEndTick && !Has_ReachedServerTick(m_iServerTick, state.iSilenceEndTick))))
+		return;
 	const std::int8_t skillIndex =
 		state.ModeSkillIndexBySlot[static_cast<std::size_t>(request.eSlot)];
 	if (skillIndex < 0)
@@ -3928,7 +4077,9 @@ bool LostArk::Server::CGameRoom::Configure_MarioRail(
 		{ return candidate.stage == player.iMarioStage && arrivalPlacementId == candidate.arrival; });
 	const auto* arrival = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->arrival);
 	const auto* exit = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->exit);
-	if (nullptr == arrival || nullptr == exit || !arrival->isEnabled || !exit->isEnabled ||
+	// The admitted stage uses arrival as rail metadata, not as a new trigger entry.
+	// Disabled go boxes remain excluded by ServerTriggerSystem (including F1 entry).
+	if (nullptr == arrival || nullptr == exit || !exit->isEnabled ||
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != arrival->eKind ||
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != exit->eKind || arrival->TriggerActions.size() != 1u ||
 		WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER != arrival->TriggerActions.front().eKind)
@@ -3957,6 +4108,76 @@ bool LostArk::Server::CGameRoom::Configure_MarioRail(
 	return true;
 }
 
+std::uint8_t LostArk::Server::CGameRoom::Begin_MarioStageObjects(const std::uint8_t stage)
+{
+	if (stage < 1u || stage > 4u) return 0u;
+	for (const auto& [id, participant] : m_Players)
+	{
+		(void)id;
+		if (participant.iMarioStage == stage && participant.iCurrentHp && participant.iMarioLayoutVariant)
+			return participant.iMarioLayoutVariant;
+	}
+	const std::string groupId = "spawn.mario" + std::to_string(stage) + ".source";
+	const auto& groups = m_SpawnGroupBootstrap.Get_Groups();
+	const auto definition = std::find_if(groups.begin(), groups.end(), [&groupId](const auto& group) {
+		return group.strSpawnGroupId == groupId;
+	});
+	if (definition == groups.end())
+	{
+		m_strStatus = "Mario source spawn group missing: " + groupId;
+		return 0u;
+	}
+	// Validate every anchor before changing the old group or admitting this run.
+	for (const auto& wave : definition->Waves)
+		for (const auto& entry : wave.Entries)
+		{
+			const auto* anchor = m_SpawnGroupBootstrap.Find_Anchor(entry.strAnchorId);
+			SERVER_NAV_POINT ground{};
+			if (!anchor || !m_SpawnGroupBootstrap.Find_Profile(entry.strArchetypeId) ||
+				!m_ServerNavigation.Sample_Position(anchor->fPositionX, anchor->fPositionZ, ground) ||
+				std::abs(ground.y - anchor->fPositionY) > .25f)
+			{
+				m_strStatus = "Mario source anchor/profile rejected: " + entry.strAnchorId;
+				return 0u;
+			}
+		}
+	Reset_MarioStageObjects(stage);
+	if (!m_SpawnGroupRuntime.Activate(groupId))
+	{
+		m_strStatus = "Mario source spawn activation failed: " + groupId;
+		return 0u;
+	}
+	const auto roll = std::uniform_int_distribution<unsigned>{0u, 99u}(m_MarioLayoutRandom);
+	return roll < 34u ? 1u : (roll < 67u ? 2u : 3u);
+}
+
+void LostArk::Server::CGameRoom::Reset_MarioStageObjects(const std::uint8_t stage)
+{
+	const std::string groupId = "spawn.mario" + std::to_string(stage) + ".source";
+	for (auto entity = m_WorldEntities.begin(); entity != m_WorldEntities.end();)
+	{
+		if (entity->strSpawnGroupId != groupId) { ++entity; continue; }
+		m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);
+		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
+		entity = m_WorldEntities.erase(entity);
+	}
+	if (!Broadcast_CombatObjectLifecycle()) Mark_RuntimeFailure("mario.reset.combat-object-lifecycle");
+	(void)m_SpawnGroupRuntime.Reset_Group(groupId);
+}
+
+void LostArk::Server::CGameRoom::Cleanup_EmptyMarioStages()
+{
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA) return;
+	for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
+	{
+		const bool occupied = std::any_of(m_Players.begin(), m_Players.end(), [stage](const auto& pair) {
+			return pair.second.iMarioStage == stage && pair.second.iCurrentHp;
+		});
+		if (!occupied && m_SpawnGroupRuntime.Is_ActiveOrCompleted("spawn.mario" + std::to_string(stage) + ".source"))
+			Reset_MarioStageObjects(stage);
+	}
+}
+
 void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
@@ -3969,13 +4190,19 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 	}
 	if (0u != player.iMarioStage)
 	{
-		/* Every authored finish moves back to the corresponding go box. The
-		Server-owned target, not a Client camera/rectangle, ends this mode. */
+		/* A finish is the terminal exit in this stage's authored lane graph.
+		Its destination can be edited to the arena rather than the old go box. */
+		const bool terminalExit = player.TriggerMove.isActive &&
+			std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& lane) {
+				return lane.stage == player.iMarioStage && player.TriggerMove.strSourcePlacementId == lane.exit;
+			}) && !std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& lane) {
+				return lane.stage == player.iMarioStage && player.TriggerMove.strSourcePlacementId == lane.arrival;
+			});
 		const auto* entrance = Find_Placement("Mario" + std::to_string(player.iMarioStage) + "_go");
-		if (player.TriggerMove.isActive && nullptr != entrance &&
+		if (terminalExit || (player.TriggerMove.isActive && nullptr != entrance &&
 			std::abs(player.TriggerMove.fTargetX - entrance->fPositionX) < 0.05f &&
 			std::abs(player.TriggerMove.fTargetY - entrance->fPositionY) < 0.05f &&
-			std::abs(player.TriggerMove.fTargetZ - entrance->fPositionZ) < 0.05f)
+			std::abs(player.TriggerMove.fTargetZ - entrance->fPositionZ) < 0.05f))
 		{
 			player.Clear_MarioControl();
 			return;
@@ -3995,6 +4222,13 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 		if (nullptr == intro || !intro->isEnabled || WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != intro->eKind ||
 			!CServerTriggerSystem::Contains_Placement(*intro, player))
 			continue;
+		const std::uint8_t layout = Begin_MarioStageObjects(stage);
+		if (!layout)
+		{
+			if ((m_iServerTick % 30u) == 0u) std::cerr << "[MarioLayout] " << m_strStatus << '\n';
+			return;
+		}
+		player.iMarioLayoutVariant = layout;
 		player.ePreMarioForm = player.eMadnessForm;
 		player.iMarioStage = stage;
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
@@ -4008,7 +4242,8 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 		player.PendingCommand.Clear();
 		if (!player.TriggerMove.isActive)
 			(void)Configure_MarioRail(player, player.strMarioRailArrivalId);
-		std::cout << "[MarioControl] player=" << player.iPlayerId << " stage=" << static_cast<unsigned>(stage) << '\n';
+		std::cout << "[MarioControl] player=" << player.iPlayerId << " stage=" << static_cast<unsigned>(stage)
+			<< " layout=" << static_cast<unsigned>(layout) << '\n';
 		return;
 	}
 }
@@ -10807,6 +11042,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		for (std::size_t slot = 0u; slot < KOUKU_HUD_SLOT_COUNT; ++slot)
 			snapshot.ModeSkillIndexBySlot[slot] = player.ModeSkillIndexBySlot[slot];
 		snapshot.iMarioStage = player.iMarioStage;
+		snapshot.iMarioLayoutVariant = player.iMarioLayoutVariant;
 		snapshot.eCardMazeRole = player.eCardMazeRole;
 		snapshot.eCardMazeSuit = player.eCardMazeSuit;
 		snapshot.iCardMazeKills = player.iCardMazeKills;
@@ -10924,6 +11160,20 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		message.Entities.push_back(std::move(snapshot));
 	}
 	message.DamageEvents = m_TickDamageEvents;
+	message.Bingo.iWhiteMask = m_KoukuBingo.Get_WhiteMask();
+	message.Bingo.iRedMask = m_KoukuBingo.Get_RedMask();
+	message.Bingo.Hammer = m_KoukuBingo.Get_Hammer();
+	message.Bingo.iBombCount = 0u;
+	for (const auto& bomb : m_KoukuBingo.Get_Bombs())
+	{
+		if (LostArk::Shared::BINGO_BOMB_PHASE::NONE == bomb.ePhase)
+			continue;
+		auto& packed = message.Bingo.Bombs[message.Bingo.iBombCount++];
+		packed.ePhase = bomb.ePhase;
+		packed.iCarrierNetEntityId = bomb.iCarrierNetEntityId;
+		packed.fPositionX = bomb.fPositionX;
+		packed.fPositionZ = bomb.fPositionZ;
+	}
 	message.BossCombatEvents = m_TickBossCombatEvents;
 	if (!m_CombatObjectRuntime.Build_Snapshots(message.CombatObjects))
 		return;
@@ -13908,7 +14158,18 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 
 	SERVER_NAV_POINT projected{
 		anchor.fPositionX, anchor.fPositionY, anchor.fPositionZ };
-	if (m_ServerNavigation.Is_Loaded() &&
+	const bool marioSource = entry.strAnchorId.starts_with("anchor.mario") &&
+		spawnGroupId.starts_with("spawn.mario") && spawnGroupId.ends_with(".source");
+	if (marioSource)
+	{
+		if (!m_ServerNavigation.Sample_Position(anchor.fPositionX, anchor.fPositionZ, projected) ||
+			std::abs(projected.y - anchor.fPositionY) > .25f)
+		{
+			m_strStatus = "Mario source anchor floor mismatch: " + entry.strAnchorId;
+			return false;
+		}
+	}
+	else if (m_ServerNavigation.Is_Loaded() &&
 		!m_ServerNavigation.Project_Point(
 			anchor.fPositionX, anchor.fPositionZ, projected))
 	{
@@ -13940,6 +14201,45 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.fSpawnPositionY = projected.y;
 	staged.fSpawnPositionZ = projected.z;
 	staged.fYawDegrees = anchor.fYawDegrees;
+	if (marioSource)
+	{
+		float bestDistance = (std::numeric_limits<float>::max)();
+		for (const auto& lane : MARIO_LANES)
+		{
+			if (spawnGroupId != "spawn.mario" + std::to_string(lane.stage) + ".source") continue;
+			const auto* arrival = Find_Placement(lane.arrival);
+			const auto* exit = Find_Placement(lane.exit);
+			if (!arrival || !exit || arrival->TriggerActions.size() != 1u ||
+				arrival->TriggerActions.front().eKind != WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER) continue;
+			const auto& start = arrival->TriggerActions.front();
+			if (std::abs(start.fTargetY - projected.y) > 1.f) continue;
+			const float dx = exit->fPositionX - start.fTargetX;
+			const float dz = exit->fPositionZ - start.fTargetZ;
+			const float length = std::hypot(dx, dz);
+			if (length < .1f) continue;
+			const float axisX = dx / length, axisZ = dz / length;
+			const float along = (projected.x - start.fTargetX) * axisX +
+				(projected.z - start.fTargetZ) * axisZ;
+			const float clamped = (std::clamp)(along, 0.f, length);
+			const float distance = std::hypot(projected.x - start.fTargetX - axisX * clamped,
+				projected.z - start.fTargetZ - axisZ * clamped);
+			if (distance >= bestDistance) continue;
+			bestDistance = distance;
+			staged.iMarioPatrolStage = lane.stage;
+			staged.fMarioPatrolAxisX = axisX;
+			staged.fMarioPatrolAxisZ = axisZ;
+			staged.fMarioPatrolMinimum = (std::min)(0.f, -along);
+			staged.fMarioPatrolMaximum = (std::max)(0.f, length - along);
+		}
+		if (!staged.iMarioPatrolStage)
+		{
+			m_strStatus = "Mario monster has no same-floor authored patrol lane: " + entry.strAnchorId;
+			return false;
+		}
+		const float yaw = anchor.fYawDegrees * .0174532925f;
+		staged.bMarioPatrolForward = std::sin(yaw) * staged.fMarioPatrolAxisX +
+			std::cos(yaw) * staged.fMarioPatrolAxisZ >= 0.f;
+	}
 	staged.iCurrentHp = profile.iMaxHp;
 	staged.iMaximumHp = profile.iMaxHp;
 	staged.iAttackPower = profile.iAttackPower;
@@ -14076,6 +14376,39 @@ void LostArk::Server::CGameRoom::Despawn_CardMazeTargets()
 			Mark_RuntimeFailure("card-maze.combat-object-lifecycle");
 		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
 		m_WorldEntities.erase(entity);
+	}
+}
+
+void LostArk::Server::CGameRoom::Resolve_MarioHammerHit(
+	SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (!player.iMarioStage || !player.iCurrentHp || !player.isCombatReady || player.TriggerMove.isActive)
+		return;
+	const float yaw = player.fYawDegrees * DEGREES_TO_RADIANS;
+	const float forwardX = std::sin(yaw), forwardZ = std::cos(yaw);
+	for (auto& entity : m_WorldEntities)
+	{
+		if (WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind ||
+			entity.iMarioPatrolStage != player.iMarioStage || !entity.iCurrentHp ||
+			std::abs(entity.fPositionY - player.fPositionY) > .8f)
+			continue;
+		const float dx = entity.fPositionX - player.fPositionX;
+		const float dz = entity.fPositionZ - player.fPositionZ;
+		const float distance = std::hypot(dx, dz);
+		// The Mario Q uses the same authored clown hammer as the maze Q.
+		if (distance > CKoukuCardMazeRuntime::HAMMER_RANGE_M + entity.fCollisionRadius ||
+			(distance > .01f && (dx * forwardX + dz * forwardZ) / distance <
+				CKoukuCardMazeRuntime::HAMMER_HALF_ANGLE_COS))
+			continue;
+		SERVER_PLAYER_TO_WORLD_HIT hit{};
+		hit.iSourcePlayerId = player.iPlayerId;
+		hit.iSkillId = CKoukuCardMazeRuntime::HAMMER_SKILL_ID;
+		hit.iRawDamage = CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
+		hit.fSourceX = player.fPositionX; hit.fSourceZ = player.fPositionZ;
+		hit.fFallbackDirectionX = forwardX; hit.fFallbackDirectionZ = forwardZ;
+		hit.iServerTick = updateTick;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(entity, hit, m_TickDamageEvents);
 	}
 }
 
@@ -14724,11 +15057,30 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
 		{
 			return entity.iNetEntityId == ownerEntityId;
 		});
-	const bool validOwner = m_WorldEntities.end() != owner &&
+	const bool liveOwner = m_WorldEntities.end() != owner &&
 		WORLD_BOOTSTRAP_KIND::BOSS == owner->eKind &&
 		SERVER_ENTITY_ACTION::DEAD != owner->eAction &&
 		0u != owner->iCurrentHp && 0u != owner->iPatternSequence &&
-		player.iAttachmentPatternSequence == owner->iPatternSequence &&
+		player.iAttachmentPatternSequence == owner->iPatternSequence;
+	/* A World Object carries this player, not a boss bone. The KoukuSaydon logic
+	runtime writes the transform from the authored region every tick it runs, so
+	the pose it wrote stands; all that is owned here is the deadline that region
+	gave us and the ordinary release once it passes. */
+	if (PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP == player.eAttachmentSlot)
+	{
+		if (!liveOwner || 0u == player.iAttachmentReleaseTick ||
+			CKoukuSaydonLogicRuntime::Has_ReachedTick(
+				serverTick, player.iAttachmentReleaseTick))
+		{
+			(void)Release_PlayerAttachment(
+				player, ownerEntityId, 0.f, 0u, false, 0u,
+				0u == serverTick ? 1u : serverTick);
+			return false;
+		}
+		player.isCombatReady = false;
+		return true;
+	}
+	const bool validOwner = liveOwner &&
 		PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND == player.eAttachmentSlot &&
 		std::isfinite(owner->fPositionX) &&
 		std::isfinite(owner->fPositionY) &&
@@ -15049,6 +15401,13 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)
 		{
 			Resolve_CardMazeHammerHit(player, updateTick);
+		}
+		if (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
+			LostArk::Shared::KOUKU_HUD_MODE::MARIO == player.eKoukuHudMode &&
+			0u == player.iCurrentSkillId &&
+			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)
+		{
+			Resolve_MarioHammerHit(player, updateTick);
 		}
 		/* A KoukuSaydon interaction press is the same kind of fixed lock. */
 		const bool interactionElapsed =

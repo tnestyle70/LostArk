@@ -49,6 +49,7 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::uint8_t iMarioStage = 0u;
+		std::uint8_t iMarioLayoutVariant = 0u;
 		bool isCombatReady = true;
 		/* Pattern status is replicated by the Server. Bind affects locomotion/action
 		state while silence is projected through the existing quick-slot cooldown
@@ -268,6 +269,12 @@ namespace Client
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
 		/* Room-shared raid Esther gauge straight from the world snapshot. A
 		maximum of 0 means this world has no Esther and the HUD draws nothing. */
+		/* Room state, not per player: the bingo board as the Server owns it. */
+		void Apply_BingoBoard(
+			const LostArk::Shared::BINGO_BOARD_SNAPSHOT& board)
+		{
+			m_BingoBoard = board;
+		}
 		void Apply_EstherGauge(
 			std::uint32_t gauge,
 			std::uint32_t gaugeMaximum)
@@ -349,6 +356,10 @@ namespace Client
 		}
 #endif
 		HUD_KOUKU_GIMMICK_STATE Get_KoukuGimmick() const;
+		const LostArk::Shared::BINGO_BOARD_SNAPSHOT& Get_BingoBoard() const
+		{
+			return m_BingoBoard;
+		}
 
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		/* Display-only attack power from Data/Balance/PlayerProfiles.json for the character info
@@ -416,6 +427,7 @@ namespace Client
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmick;
+		LostArk::Shared::BINGO_BOARD_SNAPSHOT m_BingoBoard;
 		HUD_BOSS_STATE m_Boss;
 		std::string m_strInteractPromptTriggerId;
 		bool m_bBossDeadRaw = false;

@@ -215,6 +215,9 @@ public:
 		std::uint32_t requestSequence, LostArk::Shared::PLAYER_MADNESS_FORM form);
 	bool Send_InteractionSlot(std::uint32_t sequence, LostArk::Shared::INTERACTION_SLOT slot);
 	bool Send_DebugKoukuHudMode(std::uint32_t sequence, LostArk::Shared::KOUKU_HUD_MODE mode);
+	bool Send_DebugBingoFill(std::uint32_t sequence, std::uint32_t cellMask, bool reset);
+	bool Send_DebugBingoBomb(std::uint32_t sequence);
+	bool Send_DebugBingoHammer(std::uint32_t sequence);
 	bool Try_Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result);
 	bool Try_Consume_DebugMadnessFormResult(

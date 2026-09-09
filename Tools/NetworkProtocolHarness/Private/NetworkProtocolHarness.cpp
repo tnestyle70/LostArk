@@ -2282,7 +2282,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION >= 66u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 66");
@@ -2338,6 +2338,33 @@ namespace
 				unchanged.Players.size() == 1u && unchanged.Players[0].iMarioStage == 3u,
 				"Unknown Mario stage preserves the previous snapshot");
 		}
+		snapshot.Players[0].iMarioStage = 3u;
+		for (std::uint8_t layout = 0u; layout <= 3u; ++layout)
+		{
+			snapshot.Players[0].iMarioLayoutVariant = layout;
+			CPacketWriter writer;
+			const bool written = Write_Message(writer, snapshot);
+			CPacketReader reader{writer.Get_Buffer()};
+			S2C_WORLD_SNAPSHOT decoded;
+			testRunner.Require(written && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+				decoded.Players.size() == 1u && decoded.Players[0].iMarioLayoutVariant == layout &&
+				decoded.Players[0].iMarioStage == 3u, "Mario original layout round trip");
+			if (written && marioStageByte + 1u < writer.Get_Buffer().size())
+			{
+				auto malformed = writer.Get_Buffer(); malformed[marioStageByte + 1u] = 4u;
+				CPacketReader invalid{malformed}; decoded.iServerTick = 99u;
+				testRunner.Require(!Read_Message(invalid, decoded) && decoded.iServerTick == 99u,
+					"Unknown Mario layout preserves destination snapshot");
+			}
+		}
+		snapshot.Players[0].iMarioLayoutVariant = 4u;
+		CPacketWriter badLayout;
+		testRunner.Require(!Write_Message(badLayout, snapshot) && badLayout.Get_Buffer().empty(),
+			"Mario layout rejects values above three before writing");
+		snapshot.Players[0].iMarioStage = 0u;
+		snapshot.Players[0].iMarioLayoutVariant = 1u;
+		CPacketWriter orphanLayout;
+		testRunner.Require(!Write_Message(orphanLayout, snapshot), "Mario layout cannot survive leaving the stage");
 	}
 
 	void Test_CardMazeSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2611,7 +2638,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION >= 68u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2679,7 +2706,7 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 72u, "World Object owner lifecycle protocol is 69");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 73u, "World Object owner lifecycle protocol is 69");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -2687,7 +2714,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK) == 75u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT) == 76u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE) == 77u,
-			"Protocol 72 preserves main identities and bundle state");
+			"Protocol 73 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3027,8 +3054,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 72u,
-			"Protocol 72 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 73u,
+			"Protocol 73 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)

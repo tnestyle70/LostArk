@@ -1,118 +1,118 @@
 {
-  "schema": "lostark.sequence-viewer-labels",
-  "formatVersion": 1,
-  "entries": [
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "1Stage_Final",
-      "displayName": "1스테이지 마무리 연출",
-      "location": "1스테이지"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "2-1Stage_Move",
-      "displayName": "책 펼침 컷신",
-      "location": "스테이지 전환"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "paper.1",
-      "displayName": "종이 레버 1 · 다리 펼침",
-      "location": "종이무대"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "paper.2",
-      "displayName": "종이 레버 2 · 다리 펼침",
-      "location": "종이무대"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "Mario1_Intro",
-      "displayName": "1마리오 입장 컷신",
-      "location": "1마리오 시작"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "Mario2_Intro",
-      "displayName": "2마리오 입장 컷신",
-      "location": "2마리오 시작"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "Mario3_Intro",
-      "displayName": "3마리오 입장 컷신",
-      "location": "3마리오 시작"
-    },
-    {
-      "areaId": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "trigger",
-      "targetId": "Mario4_Intro",
-      "displayName": "4마리오 입장 컷신",
-      "location": "4마리오 시작"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_1",
-      "displayName": "1구역 몬스터 소환",
-      "location": "Stage_1"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_2",
-      "displayName": "2구역 몬스터 소환",
-      "location": "Stage_2"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_3",
-      "displayName": "3구역 이동",
-      "location": "Stage_3"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_Boss",
-      "displayName": "보스 전투 활성화",
-      "location": "보스 구역"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_Boss_ArenaEntry",
-      "displayName": "보스 아레나 진입 이동",
-      "location": "보스 구역 입구"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "Stage_MiniBoss",
-      "displayName": "중간 보스 그룹 소환",
-      "location": "중간 보스 구역"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "player.spawn.editor",
-      "displayName": "편집 시작점 이동",
-      "location": "편집 시작점"
-    },
-    {
-      "areaId": "LV_LUT_HEARTRB_ED",
-      "kind": "trigger",
-      "targetId": "player_Move.1",
-      "displayName": "플레이어 이동 1",
-      "location": "player_Move.1"
-    }
-  ]
+    "schema":  "lostark.sequence-viewer-labels",
+    "formatVersion":  1,
+    "entries":  [
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "1Stage_Final",
+                        "displayName":  "1스테이지 마무리 연출",
+                        "location":  "1스테이지"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "2-1Stage_Move",
+                        "displayName":  "책 펼침 컷신",
+                        "location":  "스테이지 전환"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "paper.1",
+                        "displayName":  "종이 레버 1 · 다리 펼침",
+                        "location":  "종이무대"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "paper.2",
+                        "displayName":  "종이 레버 2 · 다리 펼침",
+                        "location":  "종이무대"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Mario1_Intro",
+                        "displayName":  "1마리오 입장 컷신",
+                        "location":  "1마리오 시작"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Mario2_Intro",
+                        "displayName":  "2마리오 입장 컷신",
+                        "location":  "2마리오 시작"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Mario3_Intro",
+                        "displayName":  "3마리오 입장 컷신",
+                        "location":  "3마리오 시작"
+                    },
+                    {
+                        "areaId":  "LV_LUT_MIDNIGHTC_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Mario4_Intro",
+                        "displayName":  "4마리오 입장 컷신",
+                        "location":  "4마리오 시작"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_1",
+                        "displayName":  "1구역 몬스터 소환",
+                        "location":  "Stage_1"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_2",
+                        "displayName":  "2구역 몬스터 소환",
+                        "location":  "Stage_2"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_3",
+                        "displayName":  "3구역 이동",
+                        "location":  "Stage_3"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_Boss",
+                        "displayName":  "보스 전투 활성화",
+                        "location":  "보스 구역"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_Boss_ArenaEntry",
+                        "displayName":  "보스 아레나 진입 이동",
+                        "location":  "보스 구역 입구"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "Stage_MiniBoss",
+                        "displayName":  "중간 보스 그룹 소환",
+                        "location":  "중간 보스 구역"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "player.spawn.editor",
+                        "displayName":  "편집 시작점 이동",
+                        "location":  "편집 시작점"
+                    },
+                    {
+                        "areaId":  "LV_LUT_HEARTRB_ED",
+                        "kind":  "trigger",
+                        "targetId":  "player_Move.1",
+                        "displayName":  "플레이어 이동 1",
+                        "location":  "player_Move.1"
+                    }
+                ]
 }

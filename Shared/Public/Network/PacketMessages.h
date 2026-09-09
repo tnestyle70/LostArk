@@ -651,6 +651,50 @@ namespace LostArk::Shared
 
 	/* Debug F1 "Change to Clown" / "Return to Player". The Server owns the
 	form and replicates it in PLAYER_SNAPSHOT; this only asks for it. */
+	/* Debug F1 bingo check: paints cells white and lets the Server promote any
+	line that completes. Release ignores it. The board comes back on the next
+	world snapshot, so there is no separate result message. */
+	struct C2S_DEBUG_BINGO_FILL
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		// Bits 0..24. Cells already painted stay painted.
+		std::uint32_t iCellMask = 0u;
+		// Clears the board before painting, so one button can restart the check.
+		bool bReset = false;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_BINGO_FILL& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_BINGO_FILL& message);
+
+	/* Debug bingo bomb: marks the requesting session's own player. The
+	Server picks the carrier, so the request names no entity. */
+	struct C2S_DEBUG_BINGO_BOMB
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_BINGO_BOMB& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_BINGO_BOMB& message);
+
+	/* Debug bingo hammer. The Server rolls the anchor, so the request
+	carries nothing but its own identity. */
+	struct C2S_DEBUG_BINGO_HAMMER
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_BINGO_HAMMER& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_BINGO_HAMMER& message);
+
 	struct C2S_DEBUG_SET_MADNESS_FORM
 	{
 		std::uint32_t iRequestSequence = 0u;
@@ -788,6 +832,255 @@ namespace LostArk::Shared
 	action ends. Only the cooldown is shortened, so a hunter who cancels the
 	recovery with their own next input can swing again at once. */
 	constexpr std::uint32_t KOUKU_MAZE_HAMMER_COOLDOWN_MS = 400u;
+
+	/* The KoukuSaydon bingo board. The authored FLOOR03 floor tiles already
+	form it: 25 tiles at yaw 0, 3.04 m apart, x -6.08..6.08 and z
+	1140.80..1152.96. Nothing is rotated, so a world position resolves to a
+	cell with two divisions. The diamond look in game is the camera, not the
+	board. Cell index is row * 5 + column, row along +Z and column along +X,
+	so cell 0 is the -X/-Z corner and cell 24 the +X/+Z corner. Server and
+	Client both call these; neither keeps a second copy of the arithmetic. */
+	constexpr std::int32_t KOUKU_BINGO_SIDE = 5;
+	constexpr std::int32_t KOUKU_BINGO_CELL_COUNT = KOUKU_BINGO_SIDE * KOUKU_BINGO_SIDE;
+	constexpr float KOUKU_BINGO_CELL_SIZE_M = 3.04f;
+	/* Centre of cell 0. */
+	constexpr float KOUKU_BINGO_ORIGIN_X = -6.08f;
+	constexpr float KOUKU_BINGO_ORIGIN_Z = 1140.8f;
+	constexpr std::int32_t KOUKU_BINGO_OFF_BOARD = -1;
+	/* Bits 0..24, one per cell. Anything above bit 24 is not a cell. */
+	constexpr std::uint32_t KOUKU_BINGO_ALL_CELLS_MASK = 0x1FFFFFFu;
+	/* Five rows, five columns and both diagonals all count as a bingo. */
+	constexpr std::int32_t KOUKU_BINGO_LINE_COUNT = 12;
+
+	constexpr bool Is_KoukuBingoCell(const std::int32_t cell) noexcept
+	{
+		return cell >= 0 && cell < KOUKU_BINGO_CELL_COUNT;
+	}
+
+	constexpr float Kouku_BingoCellCenterX(const std::int32_t cell) noexcept
+	{
+		return KOUKU_BINGO_ORIGIN_X +
+			KOUKU_BINGO_CELL_SIZE_M * static_cast<float>(cell % KOUKU_BINGO_SIDE);
+	}
+
+	constexpr float Kouku_BingoCellCenterZ(const std::int32_t cell) noexcept
+	{
+		return KOUKU_BINGO_ORIGIN_Z +
+			KOUKU_BINGO_CELL_SIZE_M * static_cast<float>(cell / KOUKU_BINGO_SIDE);
+	}
+
+	/* The cell containing this position, or KOUKU_BINGO_OFF_BOARD. Shifting by
+	half a cell before truncating makes the nearest centre and containment the
+	same answer on a uniform grid. The comparisons are written so a NaN falls
+	out as off board rather than truncating to an arbitrary index. */
+	inline std::int32_t Kouku_BingoCellAt(const float x, const float z) noexcept
+	{
+		const float column =
+			(x - KOUKU_BINGO_ORIGIN_X) / KOUKU_BINGO_CELL_SIZE_M + 0.5f;
+		const float row =
+			(z - KOUKU_BINGO_ORIGIN_Z) / KOUKU_BINGO_CELL_SIZE_M + 0.5f;
+		const float side = static_cast<float>(KOUKU_BINGO_SIDE);
+		if (!(column >= 0.f) || !(row >= 0.f) || !(column < side) || !(row < side))
+			return KOUKU_BINGO_OFF_BOARD;
+		return static_cast<std::int32_t>(row) * KOUKU_BINGO_SIDE +
+			static_cast<std::int32_t>(column);
+	}
+
+	/* A cell stepped by whole rows and columns. Stepping a column must not
+	carry into the neighbouring row, which is why this is not index math. */
+	/* The cells of one line. Row r fills five adjacent bits; column c takes
+	every fifth bit; the last two are the diagonals. Zero for a line that
+	does not exist, so a caller cannot complete a line by accident. */
+	constexpr std::uint32_t Kouku_BingoLineMask(const std::int32_t line) noexcept
+	{
+		if (line < 0 || line >= KOUKU_BINGO_LINE_COUNT)
+			return 0u;
+		if (line < KOUKU_BINGO_SIDE)
+			return 0x1Fu << (line * KOUKU_BINGO_SIDE);
+		if (line < KOUKU_BINGO_SIDE * 2)
+			return 0x108421u << (line - KOUKU_BINGO_SIDE);
+		/* 0, 6, 12, 18, 24 and 4, 8, 12, 16, 20. */
+		return (KOUKU_BINGO_SIDE * 2 == line) ? 0x1041041u : 0x111110u;
+	}
+
+	constexpr std::int32_t Kouku_BingoNeighbour(const std::int32_t cell,
+		const std::int32_t rowStep, const std::int32_t columnStep) noexcept
+	{
+		if (!Is_KoukuBingoCell(cell))
+			return KOUKU_BINGO_OFF_BOARD;
+		const std::int32_t row = cell / KOUKU_BINGO_SIDE + rowStep;
+		const std::int32_t column = cell % KOUKU_BINGO_SIDE + columnStep;
+		if (row < 0 || row >= KOUKU_BINGO_SIDE ||
+			column < 0 || column >= KOUKU_BINGO_SIDE)
+		{
+			return KOUKU_BINGO_OFF_BOARD;
+		}
+		return row * KOUKU_BINGO_SIDE + column;
+	}
+
+	/* The five cells one bomb paints: its own and the four orthogonal
+	neighbours. Neighbours that fall off the board are dropped, and a bomb
+	that did not land on the board paints nothing at all. */
+	constexpr std::uint32_t Kouku_BingoCrossMask(const std::int32_t cell) noexcept
+	{
+		if (!Is_KoukuBingoCell(cell))
+			return 0u;
+		std::uint32_t mask = 1u << cell;
+		const std::int32_t steps[4][2] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
+		for (const auto& step : steps)
+		{
+			const std::int32_t neighbour =
+				Kouku_BingoNeighbour(cell, step[0], step[1]);
+			if (Is_KoukuBingoCell(neighbour))
+				mask |= 1u << neighbour;
+		}
+		return mask;
+	}
+
+	/* Bingo bomb. The Server owns the whole clock: the mark rides one
+	player, and when it expires the bomb is planted at wherever that player
+	was standing. The Client draws only the phase the snapshot names. */
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_MARK_MS = 3000u;
+	/* How long the planted bomb burns before it paints its cross. */
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_FUSE_MS = 2000u;
+	/* One mark per player in a full room. */
+	constexpr std::int32_t KOUKU_BINGO_MAX_BOMBS = 4;
+
+	enum class BINGO_BOMB_PHASE : std::uint8_t
+	{
+		NONE = 0,
+		/* Riding the carrier. */
+		MARKED,
+		/* Dropped where the carrier stood. */
+		PLANTED,
+		END
+	};
+
+	struct BINGO_BOMB_SNAPSHOT
+	{
+		/* MARKED only; the Client reads the carrier's own transform. */
+		NET_ENTITY_ID iCarrierNetEntityId = INVALID_NET_ENTITY_ID;
+		/* PLANTED only. */
+		float fPositionX = 0.f;
+		float fPositionZ = 0.f;
+		BINGO_BOMB_PHASE ePhase = BINGO_BOMB_PHASE::NONE;
+	};
+
+	/* Bingo hammer. It only ever runs a row or a column, so it picks one of
+	the first ten lines that Kouku_BingoLineMask already numbers that way;
+	the two diagonals stay a bingo rule and are never swept. Each line has
+	two ends, which is where the twenty anchors come from. Nothing here is
+	authored: every anchor falls out of the board constants. */
+	constexpr std::int32_t KOUKU_BINGO_HAMMER_LINE_COUNT = KOUKU_BINGO_SIDE * 2;
+	constexpr std::int32_t KOUKU_BINGO_HAMMER_ANCHOR_COUNT =
+		KOUKU_BINGO_HAMMER_LINE_COUNT * 2;
+	/* Hangs in the sky, comes down slowly, then whips down the line. */
+	constexpr std::uint32_t KOUKU_BINGO_HAMMER_RAISE_MS = 2000u;
+	constexpr std::uint32_t KOUKU_BINGO_HAMMER_DESCEND_MS = 1400u;
+	constexpr std::uint32_t KOUKU_BINGO_HAMMER_SWEEP_MS = 1600u;
+	/* How high above the board the hammer waits. */
+	constexpr float KOUKU_BINGO_HAMMER_SKY_Y = 9.f;
+	/* The head never comes back up during the sweep. It tips this far past
+	hanging, into the direction of travel, as if flung on its chain. The
+	authored model already hangs with its head at the origin and its chain
+	running up, so nothing else has to be rotated to make it hang. */
+	constexpr float KOUKU_BINGO_HAMMER_LEAN_DEGREES = 40.f;
+	/* How much of the sweep the lean takes to reach full. */
+	constexpr float KOUKU_BINGO_HAMMER_LEAN_RATIO = 0.3f;
+
+	enum class BINGO_HAMMER_PHASE : std::uint8_t
+	{
+		NONE = 0,
+		/* Waiting in the sky over its entry point. */
+		RAISED,
+		/* Coming down onto the board. */
+		DESCENDING,
+		/* Running the line from entry to exit. */
+		SWEEPING,
+		END
+	};
+
+	constexpr bool Is_KoukuBingoHammerAnchor(const std::int32_t anchor) noexcept
+	{
+		return anchor >= 0 && anchor < KOUKU_BINGO_HAMMER_ANCHOR_COUNT;
+	}
+
+	/* Where one anchor's sweep begins and ends, both one cell outside the
+	board so the whole line is covered. Even anchors run along the axis,
+	odd anchors run back the other way. */
+	struct BINGO_HAMMER_PATH
+	{
+		float fStartX = 0.f;
+		float fStartZ = 0.f;
+		float fEndX = 0.f;
+		float fEndZ = 0.f;
+	};
+
+	constexpr BINGO_HAMMER_PATH Kouku_BingoHammerPath(
+		const std::int32_t anchor) noexcept
+	{
+		BINGO_HAMMER_PATH path{};
+		if (!Is_KoukuBingoHammerAnchor(anchor))
+			return path;
+		const std::int32_t line = anchor / 2;
+		const bool reversed = 0 != (anchor % 2);
+		const float outside = KOUKU_BINGO_CELL_SIZE_M;
+		const float low = -outside;
+		const float high =
+			KOUKU_BINGO_CELL_SIZE_M * static_cast<float>(KOUKU_BINGO_SIDE);
+		if (line < KOUKU_BINGO_SIDE)
+		{
+			/* A row: the hammer travels along X at that row's Z. */
+			const float z = Kouku_BingoCellCenterZ(line * KOUKU_BINGO_SIDE);
+			path.fStartX = KOUKU_BINGO_ORIGIN_X + (reversed ? high : low);
+			path.fEndX = KOUKU_BINGO_ORIGIN_X + (reversed ? low : high);
+			path.fStartZ = z;
+			path.fEndZ = z;
+			return path;
+		}
+		/* A column: the hammer travels along Z at that column's X. */
+		const float x = Kouku_BingoCellCenterX(line - KOUKU_BINGO_SIDE);
+		path.fStartX = x;
+		path.fEndX = x;
+		path.fStartZ = KOUKU_BINGO_ORIGIN_Z + (reversed ? high : low);
+		path.fEndZ = KOUKU_BINGO_ORIGIN_Z + (reversed ? low : high);
+		return path;
+	}
+
+	/* The cells one anchor's sweep passes over: its whole line. */
+	constexpr std::uint32_t Kouku_BingoHammerLineMask(
+		const std::int32_t anchor) noexcept
+	{
+		return Is_KoukuBingoHammerAnchor(anchor) ?
+			Kouku_BingoLineMask(anchor / 2) : 0u;
+	}
+
+	struct BINGO_HAMMER_SNAPSHOT
+	{
+		/* -1 while idle. */
+		std::int32_t iAnchor = -1;
+		/* The Client interpolates the current phase between these two, so
+		no per-tick position needs to ride the wire. */
+		std::uint32_t iPhaseStartTick = 0u;
+		std::uint32_t iPhaseEndTick = 0u;
+		BINGO_HAMMER_PHASE ePhase = BINGO_HAMMER_PHASE::NONE;
+	};
+
+	constexpr bool Is_Valid_BingoHammerSnapshot(
+		const BINGO_HAMMER_SNAPSHOT& hammer) noexcept
+	{
+		if (BINGO_HAMMER_PHASE::NONE == hammer.ePhase)
+			return -1 == hammer.iAnchor;
+		if (hammer.ePhase >= BINGO_HAMMER_PHASE::END ||
+			!Is_KoukuBingoHammerAnchor(hammer.iAnchor))
+		{
+			return false;
+		}
+		/* An empty or backwards window would make the Client divide by
+		zero or run the sweep in reverse. */
+		return hammer.iPhaseEndTick > hammer.iPhaseStartTick;
+	}
+
 	/* Reserved interaction cooldown identity. It is separate from the mode's
 	zero-based animation index and from product character skill IDs. */
 	constexpr SKILL_ID Kouku_InteractionCooldownSkillId(
@@ -940,6 +1233,11 @@ namespace LostArk::Shared
 	{
 		NONE,
 		BOSS_LEFT_HAND,
+		/* A world object carries the player instead of a boss bone: the Gate 3
+		hook hangs whoever it sweeps from its point. The owner id still names the
+		boss that owns the running pattern, because that is what release and
+		despawn key on, but the Client must not look for a hand socket. */
+		WORLD_HOOK_TIP,
 		END
 	};
 
@@ -1026,6 +1324,8 @@ namespace LostArk::Shared
 			{ -1, -1, -1, -1, -1, -1, -1, -1 };
 		// 0 outside Mario; 1..4 identify the Server-owned side-scroll stage.
 		std::uint8_t iMarioStage = 0u;
+		// Server-selected source layout: 0 unselected, 1..3 original cases.
+		std::uint8_t iMarioLayoutVariant = 0u;
 		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
 		carries the suit it was dealt and kills <= the kill target. */
 		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;
@@ -1180,6 +1480,48 @@ namespace LostArk::Shared
 		std::uint32_t iPartMask = 0;
 	};
 
+	/* The whole bingo board in eight bytes. A set white bit is a skull; a set
+	red bit is a skull on a completed line, which is why red is always a
+	subset of white. Both are room state, not per player. */
+	struct BINGO_BOARD_SNAPSHOT
+	{
+		std::uint32_t iWhiteMask = 0u;
+		std::uint32_t iRedMask = 0u;
+		/* Live bombs, packed into the first iBombCount slots. */
+		std::uint8_t iBombCount = 0u;
+		BINGO_BOMB_SNAPSHOT Bombs[KOUKU_BINGO_MAX_BOMBS]{};
+		/* At most one hammer runs at a time. */
+		BINGO_HAMMER_SNAPSHOT Hammer{};
+	};
+
+	constexpr bool Is_Valid_BingoBoardSnapshot(
+		const BINGO_BOARD_SNAPSHOT& board) noexcept
+	{
+		if (0u != (board.iWhiteMask & ~KOUKU_BINGO_ALL_CELLS_MASK) ||
+			board.iRedMask != (board.iRedMask & board.iWhiteMask) ||
+			static_cast<std::int32_t>(board.iBombCount) > KOUKU_BINGO_MAX_BOMBS)
+		{
+			return false;
+		}
+		/* A packed slot always names a live phase, and a mark without a
+		carrier would leave the Client with nothing to follow. */
+		for (std::uint8_t index = 0u; index < board.iBombCount; ++index)
+		{
+			const BINGO_BOMB_SNAPSHOT& bomb = board.Bombs[index];
+			if (BINGO_BOMB_PHASE::NONE == bomb.ePhase ||
+				bomb.ePhase >= BINGO_BOMB_PHASE::END)
+			{
+				return false;
+			}
+			if (BINGO_BOMB_PHASE::MARKED == bomb.ePhase &&
+				INVALID_NET_ENTITY_ID == bomb.iCarrierNetEntityId)
+			{
+				return false;
+			}
+		}
+		return Is_Valid_BingoHammerSnapshot(board.Hammer);
+	}
+
 	struct COMBAT_OBJECT_SNAPSHOT
 	{
 		COMBAT_OBJECT_ID iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
@@ -1199,6 +1541,7 @@ namespace LostArk::Shared
 		std::vector<PLAYER_SNAPSHOT> Players;
 		std::vector<WORLD_ENTITY_SNAPSHOT> Entities;
 		std::vector<DAMAGE_EVENT> DamageEvents;
+		BINGO_BOARD_SNAPSHOT Bingo;
 		std::vector<BOSS_COMBAT_EVENT> BossCombatEvents;
 		// Full live set, sorted by iCombatObjectId. Reliable spawn/despawn
 		// frames remain ordering barriers around this 30 Hz transform level.

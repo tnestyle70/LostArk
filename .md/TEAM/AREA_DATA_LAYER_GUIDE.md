@@ -199,6 +199,41 @@ Physics의 `Apply Vertical Arc`는 높이 H와 Lifetime T로 기존 velocity Y=4
 acceleration Y=-8H/T²를 저장한다. 생성 개수·간격을 보존하고 첫 생성의 높이 곡선을 Timeline에
 표시한다. 이후 생성도 전체 상태 종료시각을 공유한다. 별도 PhysX simulation이나 저장 곡선 schema는 없다.
 
+쿠크 마리오의 줄무늬 공은 `world.sequence.instance.mario.striped_ball.bounce`의 기존
+MAP_PLACEMENT track을 Level이 순환 Seek하는 순수 외형이다. Server-replicated `iMarioStage`
+1~4일 때만 같은 Server tick 시계로 재생하며 마리오 밖에서는 원래 배치를 복원한다.
+각 track의 상대 Y 키가 높이와 위상을 소유한다. 이는 일반 MAP_PLACEMENT의 `motionEnd=LOOP`
+지원이나 이동 collider/피해 판정이 아니다. 같은 placement에 다른 활성 시퀀스를 동시에 적용하지
+않으며, 활성 시퀀스의 기존 Preview/Reload guard를 풀려면 마리오 밖으로 나간다.
+
+원본 마리오 색 공은 `source:37081:npc:<actorId>` provenance와 imported placement ID로 저장한다.
+117개 후보는 기본 hidden이며 `world.sequence.instance.marioN.source.layoutC` 12개 시퀀스에서
+선택된 배치만 보여준다. MAP_PLACEMENT의 STOP은 마지막 가시성을 유지하며 명시적 Stop(true)가
+hidden baseline을 복구한다. 일반 공 13개의 bounce와 고정 해골 폭탄 7개는 별도 공통 배치다.
+MapTool의 World Sequence에서 원본 배치 이름을 검색해 특정 Case를 미리 볼 수 있다.
+placement와 시퀀스는 Map publisher, 몬스터 anchor/group은 WorldGameplay publisher로 내보낸다.
+선택·수명·프로토콜은 팀 사용서 4.3을 따른다.
+
+마리오 플레이어의 광대 외형은 replication의 `iMarioStage` 1~4에서만
+`CCharacter::Apply_MarioPresentation`이 body part local scale을 적용한다. 기본 대기 자세의
+머리 장식 포함 높이 1.5m가 기준이며 자세에 따른 높이 변화는 유지한다. stage를 벗어나면
+광대 body scale 1로 복구하고 일반 클래스, 공통 모델 prototype과 Server 충돌 크기는 변경하지 않는다.
+
+마리오 2~4의 `Mario2_Boom`, `Mario2_Boom_1/2`, `Mario3_Boom`, `Mario3_Boom_1/2`,
+`Mario4_Boom`은 밟는 action 없이 disabled triggerBox로 저장하는 발사 위치 marker다.
+World Gameplay에서 위치를 저장한 뒤 `Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Publish`로
+내보내고 Client에 재진입한다. 제품은 published `World/LV_LUT_MIDNIGHTC_ED.viewer.world.json`의
+marker와 기존 마리오 진행선 끝점을 읽으며 source 직접 fallback을 사용하지 않는다.
+해당 Server `iMarioStage`의 살아 있는 로컬 플레이어가 있을 때만 4초 간격·약 3m/s로
+기존 `world.object.mario.clown_face_ball`을 WorldSequenceObject/CModel 경로에 생성한다.
+marker에서 같은 진행선의 먼 끝점까지 수평 직진하고 도착·퇴장·사망 때 제거한다.
+광대 얼굴 공의 모델 +X 앞축을 실제 비행 방향으로 회전시키며 world-up을 유지한다.
+비대칭 모델의 바닥 중심 보정도 함께 회전한다. 카메라 추적 billboard는 아니다.
+발사마다 stable marker/Server 시각 해시로 기본 바닥 정렬 높이에 +0.05m 또는 +0.90m를 더한다.
+box halfExtents는 모델 scale이 아니며 모델은 기존 resource scale을 유지한다.
+이는 피해 없는 Client 비행 표현이고 충돌·폭발·Server combat-object spawn은 포함하지 않는다.
+위치/라인 데이터는 진입 시 읽고, 속도·간격·두 높이는 현재 Level WorldObjects의 MARIO_BOMB 상수다.
+
 F1 `World Object Tool`은 이 Area source와 부모의 optional `defaultMotionInstanceId`를 편집·저장한다.
 명시한 기본 상태는 enabled인 같은 Object의 단일 binding이어야 한다. 기존 Map alias는 원래 sequence ID를 사용한다.
 Action Workbench는 부모 Object를 선택해 기본 상태로 Append하며, WORLD definition의 optional

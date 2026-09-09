@@ -108,6 +108,128 @@ namespace
 			LostArk::Server::SERVER_ENTITY_ACTION::CHASE == action)
 			monster.strActionId.clear();
 	}
+
+	void UpdateMarioPatrol(LostArk::Server::SERVER_WORLD_ENTITY& monster,
+		std::map<LostArk::Shared::PLAYER_ID, LostArk::Server::SERVER_PLAYER>& players,
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const LostArk::Server::CServerNavigation& navigation,
+		const LostArk::Server::CServerCollisionSystem& collision,
+		const float deltaSeconds, const std::uint32_t tick,
+		std::vector<LostArk::Shared::DAMAGE_EVENT>& damageEvents)
+	{
+		using namespace LostArk::Server;
+		using namespace LostArk::Shared;
+		const auto validTarget = [&monster](const SERVER_PLAYER& player) {
+			return IsAvailableCombatTarget(player) && player.iMarioStage == monster.iMarioPatrolStage &&
+				!player.TriggerMove.isActive && std::abs(player.fPositionY - monster.fPositionY) <= .8f;
+		};
+		monster.fActionElapsedSeconds += deltaSeconds;
+		const bool attacking = monster.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP ||
+			monster.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE ||
+			monster.eAction == SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
+		SERVER_PLAYER* target = nullptr;
+		if (attacking)
+		{
+			for (auto& [id, player] : players)
+				if (player.iNetEntityId == monster.iTargetEntityId && validTarget(player)) target = &player;
+			if (monster.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP &&
+				monster.fActionElapsedSeconds >= monster.iPatternTelegraphMs * MILLISECONDS_TO_SECONDS)
+				Transition(monster, SERVER_ENTITY_ACTION::PATTERN_ACTIVE, tick);
+			else if (monster.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE)
+			{
+				if (!monster.hasAppliedPatternDamage)
+				{
+					monster.hasAppliedPatternDamage = true;
+					const float reach = monster.fAttackRange + monster.fCollisionRadius;
+					if (target && DistanceSquared(monster, *target) <= reach * reach)
+					{
+						const float dx = target->fPositionX - monster.fPositionX;
+						const float dz = target->fPositionZ - monster.fPositionZ;
+						const float yaw = monster.fYawDegrees * DEGREES_TO_RADIANS;
+						// A locked forward strike, not a hit behind the turned model.
+						if (dx * std::sin(yaw) + dz * std::cos(yaw) >= 0.f)
+						{
+							SERVER_WORLD_TO_PLAYER_HIT hit{};
+							hit.iRawDamage = monster.iAttackPower;
+							hit.fSourceX = monster.fPositionX; hit.fSourceZ = monster.fPositionZ;
+							hit.fPushRangeM = monster.fAttackPushRangeM; hit.iPushMs = monster.iAttackPushMs;
+							hit.bKnockdown = monster.bAttackKnockdown; hit.iDownMs = monster.iAttackDownMs;
+							hit.iServerTick = tick;
+							(void)CServerCombatHitRuntime::Apply_WorldToPlayer(*target, hit, catalog, damageEvents);
+						}
+					}
+				}
+				if (monster.fActionElapsedSeconds >= monster.iPatternActiveMs * MILLISECONDS_TO_SECONDS)
+					Transition(monster, SERVER_ENTITY_ACTION::PATTERN_RECOVERY, tick);
+			}
+			else if (monster.eAction == SERVER_ENTITY_ACTION::PATTERN_RECOVERY &&
+				monster.fActionElapsedSeconds >= monster.iPatternRecoveryMs * MILLISECONDS_TO_SECONDS)
+				Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
+			return;
+		}
+		float nearest = monster.fEngageDistance * monster.fEngageDistance;
+		for (auto& [id, player] : players)
+		{
+			if (!validTarget(player)) continue;
+			const float distance = DistanceSquared(monster, player);
+			if (distance <= nearest) { nearest = distance; target = &player; }
+		}
+		float direction = monster.bMarioPatrolForward ? 1.f : -1.f;
+		if (target)
+		{
+			const float along = (target->fPositionX - monster.fPositionX) * monster.fMarioPatrolAxisX +
+				(target->fPositionZ - monster.fPositionZ) * monster.fMarioPatrolAxisZ;
+			direction = along >= 0.f ? 1.f : -1.f;
+			monster.bMarioPatrolForward = direction > 0.f;
+		}
+		const float desiredYaw = std::atan2(monster.fMarioPatrolAxisX * direction,
+			monster.fMarioPatrolAxisZ * direction) * RADIANS_TO_DEGREES;
+		const float difference = NormalizeDegrees(desiredYaw - monster.fYawDegrees);
+		const float maxTurn = monster.fTurnSpeedDegreesPerSecond * deltaSeconds;
+		monster.fYawDegrees = NormalizeDegrees(monster.fYawDegrees + (std::clamp)(difference, -maxTurn, maxTurn));
+		if (std::abs(NormalizeDegrees(desiredYaw - monster.fYawDegrees)) > 2.f)
+		{
+			if (monster.eAction != SERVER_ENTITY_ACTION::IDLE) Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
+			return;
+		}
+		if (target)
+		{
+			monster.iTargetEntityId = target->iNetEntityId;
+			Transition(monster, SERVER_ENTITY_ACTION::PATTERN_WINDUP, tick);
+			return;
+		}
+		monster.iTargetEntityId = INVALID_NET_ENTITY_ID;
+		const float along = (monster.fPositionX - monster.fSpawnPositionX) * monster.fMarioPatrolAxisX +
+			(monster.fPositionZ - monster.fSpawnPositionZ) * monster.fMarioPatrolAxisZ;
+		const float goal = monster.bMarioPatrolForward ? monster.fMarioPatrolMaximum : monster.fMarioPatrolMinimum;
+		if (std::abs(goal - along) < .1f)
+		{
+			monster.bMarioPatrolForward = !monster.bMarioPatrolForward;
+			Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
+			return;
+		}
+		if (monster.eAction != SERVER_ENTITY_ACTION::CHASE) Transition(monster, SERVER_ENTITY_ACTION::CHASE, tick);
+		monster.fCurrentMoveSpeed = Approach(monster.fCurrentMoveSpeed, monster.fMoveSpeed,
+			monster.fMoveAcceleration * deltaSeconds);
+		const float next = along + direction * (std::min)(std::abs(goal - along), monster.fCurrentMoveSpeed * deltaSeconds);
+		const float x = monster.fSpawnPositionX + monster.fMarioPatrolAxisX * next;
+		const float z = monster.fSpawnPositionZ + monster.fMarioPatrolAxisZ * next;
+		SERVER_NAV_POINT ground{};
+		float resolvedX = 0.f, resolvedY = 0.f, resolvedZ = 0.f;
+		bool blocked = false;
+		if (!navigation.Resolve_TraversalStep(monster.fPositionX, monster.fPositionZ, x, z, ground) ||
+			std::hypot(ground.x - x, ground.z - z) > .01f || std::abs(ground.y - monster.fPositionY) > .25f ||
+			!collision.Resolve_CircleMove(monster.fPositionX, monster.fPositionY, monster.fPositionZ,
+				ground.x, ground.y, ground.z, monster.fCollisionRadius, monster.fCollisionRadius,
+				monster.fCollisionRadius, resolvedX, resolvedY, resolvedZ, blocked, monster.iNetEntityId, false) || blocked)
+		{
+			monster.bMarioPatrolForward = !monster.bMarioPatrolForward;
+			Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
+			return;
+		}
+		// Never accept collision tangent sliding off the Mario line.
+		monster.fPositionX = ground.x; monster.fPositionY = ground.y; monster.fPositionZ = ground.z;
+	}
 }
 
 void LostArk::Server::CMonsterBrain::Update(
@@ -143,6 +265,12 @@ void LostArk::Server::CMonsterBrain::Update(
 			Transition(monster, SERVER_ENTITY_ACTION::DEAD, serverTick);
 		else
 			monster.fActionElapsedSeconds += fixedDeltaSeconds;
+		return;
+	}
+
+	if (monster.iMarioPatrolStage != 0u)
+	{
+		UpdateMarioPatrol(monster, players, catalog, navigation, collision, fixedDeltaSeconds, serverTick, outDamageEvents);
 		return;
 	}
 

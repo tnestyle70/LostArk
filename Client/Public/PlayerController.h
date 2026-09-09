@@ -474,6 +474,12 @@ namespace Client
 		madness form of this player. The snapshot swaps the body; the typed
 		result only reports the verdict here. */
 		bool_t Request_DebugKoukuHudMode(LostArk::Shared::KOUKU_HUD_MODE mode);
+		/* Debug bingo board fill; the board replicates on the world snapshot. */
+		bool_t Request_DebugBingoFill(std::uint32_t cellMask, bool_t reset);
+		/* Debug bingo bomb; the Server marks this session's own player. */
+		bool_t Request_DebugBingoBomb();
+		/* Debug bingo hammer; the Server rolls one of the twenty anchors. */
+		bool_t Request_DebugBingoHammer();
 		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
 		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }

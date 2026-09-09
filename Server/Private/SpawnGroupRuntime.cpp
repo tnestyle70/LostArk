@@ -34,6 +34,16 @@ bool LostArk::Server::CSpawnGroupRuntime::Initialize(
 	return true;
 }
 
+bool LostArk::Server::CSpawnGroupRuntime::Reset_Group(const std::string& spawnGroupId)
+{
+	RUNTIME_GROUP* group = Find(spawnGroupId);
+	if (!group || !group->pDefinition) return false;
+	const auto* definition = group->pDefinition;
+	*group = {};
+	group->pDefinition = definition;
+	return true;
+}
+
 bool LostArk::Server::CSpawnGroupRuntime::Activate(const std::string& spawnGroupId)
 {
 	RUNTIME_GROUP* group = Find(spawnGroupId);

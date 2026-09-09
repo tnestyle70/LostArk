@@ -178,7 +178,7 @@ void Client::CPlayerController::Update(
 		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
 			static_cast<uint8_t>(key)) & 0x80);
 		m_CaptureInputGate.Observe(key, down, isControlCaptured);
-		if (isControlCaptured || marioControlsActive)
+		if (isControlCaptured || (marioControlsActive && key != DIK_Q && key != DIK_W))
 			m_wasKeyDown[key] = down;
 	}
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
@@ -195,18 +195,24 @@ void Client::CPlayerController::Update(
 			isLeftMousePhysicallyDown, false, std::chrono::steady_clock::now());
 		m_wasRightMouseDown = isRightMousePhysicallyDown;
 		(void)Poll_EstherSlot(true, true);
-		/* Mario owns arrows only; normal click/skill commands stay consumed.
+		/* Mario owns arrows and its interaction Q/W; class/mouse commands stay consumed.
 		Capture likewise never releases an interrupted hold through the sink.
 		An interact-gated box is neither: a capture still answers nothing, but
 		a Mario stage must be able to answer one, so only the same conditions
 		Mario already gates its own arrows on suppress the press here. */
-		Submit_InteractIfOffered(
-			isControlCaptured || !gameplayCommandsEnabled ||
+		const bool_t suppressMarioInput = isControlCaptured || !gameplayCommandsEnabled ||
 			GetForegroundWindow() != g_hWnd ||
 			CGameInstance::Get().IsKeyboardInputBlocked() ||
 			ImGui::GetIO().WantTextInput ||
-			CUIInputRouter::Get().Is_TextInputActive(),
-			true);
+			CUIInputRouter::Get().Is_TextInputActive();
+		if (marioControlsActive &&
+			LostArk::Shared::KOUKU_HUD_MODE::MARIO == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
+		{
+			LostArk::Shared::SKILL_ID unusedSkill = LostArk::Shared::INVALID_SKILL_ID;
+			LostArk::Shared::SKILL_ID unusedRelease = LostArk::Shared::INVALID_SKILL_ID;
+			Poll_SkillSlots(suppressMarioInput, true, m_pLocalCharacter.lock(), unusedSkill, unusedRelease);
+		}
+		Submit_InteractIfOffered(suppressMarioInput, true);
 		return;
 	}
 
@@ -922,6 +928,34 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	m_debugPlacementReplyDelayed = false;
 	m_debugPlacementStatus = "Waiting for Server gate placement approval...";
 	return true;
+}
+
+bool_t Client::CPlayerController::Request_DebugBingoFill(
+ const std::uint32_t cellMask, const bool_t reset)
+{
+ if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+  !m_pCommandSink->Request_DebugBingoFill(m_iNextActionSequence, cellMask, reset))
+  return false;
+ if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+ return true;
+}
+
+bool_t Client::CPlayerController::Request_DebugBingoBomb()
+{
+ if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+  !m_pCommandSink->Request_DebugBingoBomb(m_iNextActionSequence))
+  return false;
+ if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+ return true;
+}
+
+bool_t Client::CPlayerController::Request_DebugBingoHammer()
+{
+ if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+  !m_pCommandSink->Request_DebugBingoHammer(m_iNextActionSequence))
+  return false;
+ if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+ return true;
 }
 
 bool_t Client::CPlayerController::Request_DebugKoukuHudMode(

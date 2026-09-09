@@ -222,6 +222,14 @@ namespace LostArk::Server
 		float fSpawnPositionX = 0.f;
 		float fSpawnPositionY = 0.f;
 		float fSpawnPositionZ = 0.f;
+		/* Mario source monsters patrol the published lane through their spawn.
+		Server-only bounds are signed distances from the unchanged source anchor. */
+		std::uint8_t iMarioPatrolStage = 0u;
+		float fMarioPatrolAxisX = 0.f;
+		float fMarioPatrolAxisZ = 0.f;
+		float fMarioPatrolMinimum = 0.f;
+		float fMarioPatrolMaximum = 0.f;
+		bool bMarioPatrolForward = true;
 		/* Where the current authored leap started. No jump clip exists in the
 		converted Valtan model, so the Server owns the whole arc and the Client
 		only presents the replicated transform. */

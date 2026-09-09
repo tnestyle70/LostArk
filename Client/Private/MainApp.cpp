@@ -7412,6 +7412,61 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		ImGui::TextDisabled("KoukuSaydon Arena Level instance is unavailable.");
 		return;
 	}
+#ifdef _DEBUG
+	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
+	and 4, which completes the first row and turns those five red. The Server
+	owns both masks, so these only ask. */
+	ImGui::SeparatorText("Bingo Board");
+	ImGui::TextDisabled(
+		"Play1 paints cells 0-2, Play2 paints 3-4 and completes row 0. Rows, columns and both diagonals count.");
+	{
+		CPlayerController& bingoController = pArena->Get_DebugPlayerController();
+		if (ImGui::Button("Bingo_Play1", ImVec2(160.f, 0.f)))
+			(void)bingoController.Request_DebugBingoFill(0x7u, false);
+		ImGui::SameLine();
+		if (ImGui::Button("Bingo_Play2", ImVec2(160.f, 0.f)))
+			(void)bingoController.Request_DebugBingoFill(0x18u, false);
+		ImGui::SameLine();
+		if (ImGui::Button("Bingo_Reset", ImVec2(160.f, 0.f)))
+			(void)bingoController.Request_DebugBingoFill(0u, true);
+		/* Bomb: the Server marks this player, holds it for
+		KOUKU_BINGO_BOMB_MARK_MS and then plants the bomb where the player
+		was standing. Nothing paints the board yet. */
+		if (ImGui::Button("Bingo_Bomb", ImVec2(160.f, 0.f)))
+			(void)bingoController.Request_DebugBingoBomb();
+		ImGui::SameLine();
+		/* Hammer: the Server rolls one of the twenty row/column ends, holds
+		it in the sky, drops it and sweeps that line. Diagonals are never
+		swept. */
+		if (ImGui::Button("Bingo_Hammer", ImVec2(160.f, 0.f)))
+			(void)bingoController.Request_DebugBingoHammer();
+		const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
+		ImGui::TextDisabled("white 0x%07X   red 0x%07X   bombs %u",
+			board.iWhiteMask, board.iRedMask,
+			static_cast<std::uint32_t>(board.iBombCount));
+		for (std::uint8_t iBomb = 0u; iBomb < board.iBombCount; ++iBomb)
+		{
+			const auto& bomb = board.Bombs[iBomb];
+			ImGui::TextDisabled("  bomb %u  %s  carrier %u  x %.2f  z %.2f",
+				static_cast<std::uint32_t>(iBomb),
+				LostArk::Shared::BINGO_BOMB_PHASE::MARKED == bomb.ePhase ?
+					"MARKED" : "PLANTED",
+				static_cast<std::uint32_t>(bomb.iCarrierNetEntityId),
+				bomb.fPositionX, bomb.fPositionZ);
+		}
+		if (LostArk::Shared::BINGO_HAMMER_PHASE::NONE != board.Hammer.ePhase)
+		{
+			const char* phase =
+				LostArk::Shared::BINGO_HAMMER_PHASE::RAISED == board.Hammer.ePhase ? "RAISED" :
+				LostArk::Shared::BINGO_HAMMER_PHASE::DESCENDING == board.Hammer.ePhase ? "DESCENDING" :
+				"SWEEPING";
+			ImGui::TextDisabled("  hammer anchor %d (line %d)  %s  ticks %u..%u",
+				board.Hammer.iAnchor, board.Hammer.iAnchor / 2, phase,
+				board.Hammer.iPhaseStartTick, board.Hammer.iPhaseEndTick);
+		}
+	}
+	ImGui::Separator();
+#endif
 	const auto& gates = CLevel_KakulSaydonArena::Get_DebugGates();
 	/* No gate may be pressed while the previous player move is unanswered:
 	   the Server would replace the bosses but refuse the second move, leaving

@@ -131,6 +131,9 @@ public:
 	}
 
 	void Set_Position(fvector_t vPosition);
+	/* Replication owns Mario admission. Resize only the clown body, not its
+	   network transform/collider; leaving Mario restores the normal body size. */
+	bool_t Apply_MarioPresentation(bool_t isMario);
 	//charcter represent function
 	bool_t Apply_NetworkState(
 		const float3_t& position,
