@@ -14,6 +14,11 @@ float4 g_ColorMul = float4(1.f, 1.f, 1.f, 1.f);
 float4 g_ColorOffset = float4(0.f, 0.f, 0.f, 0.f);
 float g_ColorClip = 0.f;
 uint g_ColorClipChannel = 1;
+/* Angular clip on the raw quad UV (before tiling/scroll), measured from the
+   texture top (+Z for Decal) clockwise. g_SectorDegrees 0 or >= 360 = off. */
+float g_SectorStartDegrees = 0.f;
+float g_SectorDegrees = 0.f;
+float g_SectorSoftness = 0.f;
 float g_BloomIntensity = 1.f;
 float g_DistortionIntensity = 0.f;
 float2 g_UVStart = float2(0.f, 0.f);
@@ -239,6 +244,18 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	PS_EFFECT_OUT output;
 	const float2 uv = Effect_UV(input.vTexcoord);
 
+	float sectorFade = 1.f;
+	if (g_SectorDegrees > 0.f && g_SectorDegrees < 360.f)
+	{
+		const float2 centered = input.vTexcoord - 0.5f;
+		float angle = degrees(atan2(centered.x, -centered.y));
+		angle = fmod(angle - g_SectorStartDegrees + 720.f, 360.f);
+		const float edge = min(angle, g_SectorDegrees - angle);
+		if (edge < 0.f)
+			discard;
+		sectorFade = saturate(edge / max(g_SectorSoftness, 0.001f));
+	}
+
 	float fresnel = 0.f;
 	if (dot(input.vWorldNormal, input.vWorldNormal) > 0.f)
 	{
@@ -281,6 +298,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 		float3(0.f, 0.f, 0.f));
 	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a * input.vInstanceColor.a +
 		g_ColorOffset.a);
+	color.a *= sectorFade;
 	color.a *= lerp(1.f, fresnel, saturate(g_GhostAlpha));
 	if (g_SoftFadeDistance > 0.f && input.vProjPos.w > 0.f)
 	{

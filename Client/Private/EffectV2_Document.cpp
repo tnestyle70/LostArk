@@ -731,6 +731,9 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Enum(*pParams, "colorClipChannel", CLIP_CHANNEL_KEYS,
 			_countof(CLIP_CHANNEL_KEYS), iClipChannel, strOutError) ||
 		!Read_Number(*pParams, "colorClip", P.fColorClip, strOutError) ||
+		!Read_Number(*pParams, "sectorStartDegrees", P.fSectorStartDegrees, strOutError) ||
+		!Read_Number(*pParams, "sectorDegrees", P.fSectorDegrees, strOutError) ||
+		!Read_Number(*pParams, "sectorSoftness", P.fSectorSoftness, strOutError) ||
 		!Read_FloatArray(*pParams, "rimColor", &P.vRimColor.x, 4u, strOutError) ||
 		!Read_Number(*pParams, "rimPower", P.fRimPower, strOutError) ||
 		!Read_Number(*pParams, "rimIntensity", P.fRimIntensity, strOutError) ||
@@ -1372,6 +1375,9 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"colorClipChannel\": " + Json_String(
 		CLIP_CHANNEL_KEYS[static_cast<size_t>(P.eColorClipChannel)]) + ",\n";
 	Text += "    \"colorClip\": " + Json_Number(P.fColorClip) + ",\n";
+	Text += "    \"sectorStartDegrees\": " + Json_Number(P.fSectorStartDegrees) + ",\n";
+	Text += "    \"sectorDegrees\": " + Json_Number(P.fSectorDegrees) + ",\n";
+	Text += "    \"sectorSoftness\": " + Json_Number(P.fSectorSoftness) + ",\n";
 	Text += "    \"rimColor\": " + Json_Float4(P.vRimColor) + ",\n";
 	Text += "    \"rimPower\": " + Json_Number(P.fRimPower) + ",\n";
 	Text += "    \"rimIntensity\": " + Json_Number(P.fRimIntensity) + ",\n";

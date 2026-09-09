@@ -4802,6 +4802,19 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
 	ImGui::SliderFloat("Color Clip", &P.fColorClip, 0.f, 1.f);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Pixels whose max(RGB) or A is <= this value are discarded. 0 = off.");
+	if (CEffectV2Object::SHAPE::SPRITE == eShape || CEffectV2Object::SHAPE::DECAL == eShape ||
+		CEffectV2Object::SHAPE::MESH == eShape)
+	{
+		ImGui::SliderFloat("Sector Degrees", &P.fSectorDegrees, 0.f, 360.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Keep only this angular range of the quad, measured from the texture top (+Z on Decal) clockwise. 0 or 360 = off.");
+		ImGui::SliderFloat("Sector Start", &P.fSectorStartDegrees, 0.f, 360.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Start angle of the kept range in degrees (0 = texture top / +Z).");
+		ImGui::SliderFloat("Sector Softness", &P.fSectorSoftness, 0.f, 45.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Alpha fade width at both edges of the range, in degrees.");
+	}
 
 	if (CEffectV2Object::SHAPE::MESH == eShape)
 	{
