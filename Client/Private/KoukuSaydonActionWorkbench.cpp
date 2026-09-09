@@ -869,6 +869,13 @@ namespace
 			finite(value.RotationDegrees, -36000.0, 36000.0) && finite(value.Scale, 0.001, 10000.0);
 	}
 
+	bool Valid_GameplaySectorScale(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+		const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value)
+	{
+		return resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource.strShape != "SECTOR" ||
+			value.strLogicOccurrenceId.empty() || std::abs(value.Scale[0] - value.Scale[2]) <= 0.0001;
+	}
+
 	void Copy_PresentationGeometry(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& source,
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& target)
 	{
@@ -960,15 +967,24 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 	if (Is_Dirty())
 	{
 		auto candidate = m_Draft;
-		for (const auto& edit : m_StagedEffectGeometry)
+		for (const auto& edit : m_StagedPresentationGeometry)
 		{
 			auto* pattern = Find_Pattern(candidate, edit.strPatternId);
 			const auto* source = pattern ? Find_PresentationBox(*pattern, edit.Occurrence.strOccurrenceId) : nullptr;
 			const auto* resource = source ? Find_PresentationResource(candidate, source->strResourceId) : nullptr;
 			if (!source || source->strResourceId != edit.Occurrence.strResourceId || !resource ||
-				resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || !Valid_PresentationGeometry(edit.Occurrence))
+				(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) ||
+				!Valid_PresentationGeometry(edit.Occurrence))
 			{
-				outStatus = m_strStatus = "Save rejected: correct or revert the pending Effect geometry. Applied draft and source are unchanged.";
+				outStatus = m_strStatus = "Save rejected: correct or revert the pending presentation geometry. Applied draft and source are unchanged.";
+				return false;
+			}
+			auto geometry = *source;
+			Copy_PresentationGeometry(edit.Occurrence, geometry);
+			if (!Valid_GameplaySectorScale(*resource, geometry))
+			{
+				outStatus = m_strStatus = "Save rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m) for " +
+					edit.Occurrence.strOccurrenceId + ". Pending edits and previous source are preserved.";
 				return false;
 			}
 			for (auto& box : pattern->PresentationOccurrences)
@@ -981,7 +997,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		m_ResourceReferences = m_Document.Get_References();
 		m_bResourceTreeDirty = true;
 		m_bDirty = false;
-		m_StagedEffectGeometry.clear();
+		m_StagedPresentationGeometry.clear();
 		++m_iDraftGeneration;
 		Normalize_Selection();
 		Synchronize_EditorFields();
@@ -2878,7 +2894,7 @@ void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()
 void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 {
 	Cancel_PresentationGeometryPreview(false);
-	std::erase_if(m_StagedEffectGeometry, [&](const auto& row) {
+	std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) {
 		const auto* owner = Find_Pattern(m_Draft, row.strPatternId);
 		const auto* box = owner ? Find_PresentationBox(*owner, row.Occurrence.strOccurrenceId) : nullptr;
 		return !box || box->strResourceId != row.Occurrence.strResourceId ||
@@ -2911,9 +2927,9 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 	if (const auto* box = Find_PresentationBox(*pattern, m_strSelectedPresentationOccurrenceId))
 	{
 		m_PresentationBoxEdit = *box;
-		const auto staged = std::find_if(m_StagedEffectGeometry.begin(), m_StagedEffectGeometry.end(),
+		const auto staged = std::find_if(m_StagedPresentationGeometry.begin(), m_StagedPresentationGeometry.end(),
 			[&](const auto& row) { return row.strPatternId == pattern->strPatternId && row.Occurrence.strOccurrenceId == box->strOccurrenceId; });
-		if (staged != m_StagedEffectGeometry.end()) Copy_PresentationGeometry(staged->Occurrence, m_PresentationBoxEdit);
+		if (staged != m_StagedPresentationGeometry.end()) Copy_PresentationGeometry(staged->Occurrence, m_PresentationBoxEdit);
 	}
 	if (const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* const logicBox =
 			Find_LogicBox(*pattern, m_strSelectedLogicOccurrenceId);
@@ -2982,7 +2998,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Toolbar()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(publishing || !m_bHasDraft || !m_Document.Is_Fresh());
+	ImGui::BeginDisabled(publishing || !m_bHasDraft || !m_Document.Is_Fresh() || !Is_Dirty());
 	if (ImGui::Button("Save"))
 	{
 		std::string status;
@@ -3150,7 +3166,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Link_BundlePattern(const std::string
 void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 {
 	ImGui::SeparatorText(m_bSequenceWorkspace ? "Sequences by Gate" : "Patterns by Gate");
-	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh());
+	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh() || !Is_Dirty());
 	if (ImGui::Button("Save##PatternsByGate"))
 	{
 		std::string status;
@@ -3350,10 +3366,19 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_BundlePreview(const std::uin
 	m_strPresentationGeometryPreviewOccurrenceId.clear();
 	m_bPatternPreviewRequestPending = false; m_bPreviewRequestPending = false; m_bPresentationPreviewRequestPending = false;
 	m_bBundlePreviewRequestPending = true; m_strPendingBundlePreviewId = bundle->strBundleId;
-	for (const auto& edit : m_StagedEffectGeometry)
-		if (Valid_PresentationGeometry(edit.Occurrence) && std::any_of(bundle->Members.begin(), bundle->Members.end(),
-			[&](const auto& member) { return member.strPatternId == edit.strPatternId; }))
-			m_PendingPresentationGeometryPreviews.push_back(edit);
+	for (const auto& edit : m_StagedPresentationGeometry)
+	{
+		if (!Valid_PresentationGeometry(edit.Occurrence) || !std::any_of(bundle->Members.begin(), bundle->Members.end(),
+			[&](const auto& member) { return member.strPatternId == edit.strPatternId; })) continue;
+		const auto* owner = Find_Pattern(m_Draft, edit.strPatternId);
+		const auto* source = owner ? Find_PresentationBox(*owner, edit.Occurrence.strOccurrenceId) : nullptr;
+		const auto* resource = source ? Find_PresentationResource(m_Draft, source->strResourceId) : nullptr;
+		if (!source || source->strResourceId != edit.Occurrence.strResourceId || !resource) continue;
+		KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request{ edit.strPatternId, *source };
+		Copy_PresentationGeometry(edit.Occurrence, request.Occurrence);
+		if (Valid_GameplaySectorScale(*resource, request.Occurrence))
+			m_PendingPresentationGeometryPreviews.push_back(std::move(request));
+	}
 	m_iPendingPreviewStartMs = paused ? (std::min)(clockMs, Bundle_DurationMs(m_Draft, *bundle)) :
 		(clockMs < Bundle_DurationMs(m_Draft, *bundle) ? clockMs : 0);
 	m_bPendingPreviewStartPaused = paused; m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::NONE;
@@ -3389,7 +3414,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_BundleTimeline()
 	const auto* selected = Find_Bundle(m_Draft, m_strSelectedBundleId);
 	if (!selected) { ImGui::TextDisabled("The selected bundle is unavailable."); return; }
 	const auto bundle = *selected;
-	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh());
+	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh() || !Is_Dirty());
 	if (ImGui::Button("Save##BundleSequence")) { std::string status; (void)Save(status); }
 	ImGui::EndDisabled(); ImGui::SameLine(); Render_BundleTransport();
 	const auto duration = Bundle_DurationMs(m_Draft, bundle);
@@ -3986,11 +4011,17 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 	m_bPresentationPreviewRequestPending = false;
 	m_PendingPresentationPreviewRequest = {};
 	m_PendingPatternPreview = *pattern;
-	for (const auto& edit : m_StagedEffectGeometry)
+	for (const auto& edit : m_StagedPresentationGeometry)
 		if (edit.strPatternId == patternId && Valid_PresentationGeometry(edit.Occurrence))
 			for (auto& box : m_PendingPatternPreview.PresentationOccurrences)
 				if (box.strOccurrenceId == edit.Occurrence.strOccurrenceId && box.strResourceId == edit.Occurrence.strResourceId)
-				{ Copy_PresentationGeometry(edit.Occurrence, box); break; }
+				{
+					const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+					auto geometry = box;
+					Copy_PresentationGeometry(edit.Occurrence, geometry);
+					if (resource && Valid_GameplaySectorScale(*resource, geometry)) box = std::move(geometry);
+					break;
+				}
 	m_strPendingPreviewTargetAsset.clear();
 	m_bPatternPreviewRequestPending = true;
 	m_bPreviewRequestPending = false;
@@ -4066,13 +4097,12 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 	if (!source || source->strResourceId != value.strResourceId || !resource ||
 		(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT))
 		return reject("Presentation geometry preview needs an owned Collider or Effect box.");
-	if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
 	{
-		const auto staged = std::find_if(m_StagedEffectGeometry.begin(), m_StagedEffectGeometry.end(),
+		const auto staged = std::find_if(m_StagedPresentationGeometry.begin(), m_StagedPresentationGeometry.end(),
 			[&](const auto& row) { return row.strPatternId == patternId && row.Occurrence.strOccurrenceId == value.strOccurrenceId; });
 		if (value.PositionOffset == source->PositionOffset && value.RotationDegrees == source->RotationDegrees && value.Scale == source->Scale)
 		{
-			if (staged != m_StagedEffectGeometry.end()) m_StagedEffectGeometry.erase(staged);
+			if (staged != m_StagedPresentationGeometry.end()) m_StagedPresentationGeometry.erase(staged);
 		}
 		else
 		{
@@ -4080,12 +4110,16 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 			pending.Occurrence.PositionOffset = value.PositionOffset;
 			pending.Occurrence.RotationDegrees = value.RotationDegrees;
 			pending.Occurrence.Scale = value.Scale;
-			if (staged == m_StagedEffectGeometry.end()) m_StagedEffectGeometry.push_back(std::move(pending));
+			if (staged == m_StagedPresentationGeometry.end()) m_StagedPresentationGeometry.push_back(std::move(pending));
 			else *staged = std::move(pending);
 		}
 	}
 	if (!Valid_PresentationGeometry(value))
 		return reject("Geometry requires a finite position, rotation and positive scale. Save keeps the last applied source until corrected.");
+	auto geometry = *source;
+	Copy_PresentationGeometry(value, geometry);
+	if (!Valid_GameplaySectorScale(*resource, geometry))
+		return reject("Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous source are preserved.");
 
 	// Other unapplied Detail fields must not change timing, anchors or Logic during a drag.
 	KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request{ std::string(patternId), *source };
@@ -4124,9 +4158,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 		[&](const auto& row) { return row.strPatternId == patternId && row.Occurrence.strOccurrenceId == value.strOccurrenceId; });
 	if (queued == m_PendingPresentationGeometryPreviews.end()) m_PendingPresentationGeometryPreviews.push_back(std::move(request));
 	else *queued = std::move(request);
-	outStatus = m_strStatus = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ?
-		"Effect geometry updated at the actor cursor. Save keeps the edited geometry." :
-		"Collider geometry preview updated at the current cursor. Apply and Save keep the values.";
+	outStatus = m_strStatus = "Presentation geometry updated at the actor cursor. Save keeps the edited geometry.";
 	return true;
 }
 
@@ -4139,21 +4171,22 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_PresentationGeometryPreviewR
 	return true;
 }
 
-void Client::CKoukuSaydonActionWorkbench::Cancel_PresentationGeometryPreview(const bool_t discardEffectGeometry)
+void Client::CKoukuSaydonActionWorkbench::Cancel_PresentationGeometryPreview(const bool_t discardStagedGeometry)
 {
 	if (m_strPresentationGeometryPreviewPatternId.empty()) return;
 	const auto* pattern = Find_Pattern(m_Draft, m_strPresentationGeometryPreviewPatternId);
 	const auto* source = pattern ? Find_PresentationBox(*pattern, m_strPresentationGeometryPreviewOccurrenceId) : nullptr;
 	const auto* resource = source ? Find_PresentationResource(m_Draft, source->strResourceId) : nullptr;
-	if (resource && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+	if (resource && (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+		resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER))
 	{
-		if (!discardEffectGeometry)
+		if (!discardStagedGeometry)
 		{
 			m_strPresentationGeometryPreviewPatternId.clear();
 			m_strPresentationGeometryPreviewOccurrenceId.clear();
 			return;
 		}
-		std::erase_if(m_StagedEffectGeometry, [&](const auto& row) {
+		std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) {
 			return row.strPatternId == m_strPresentationGeometryPreviewPatternId &&
 				row.Occurrence.strOccurrenceId == m_strPresentationGeometryPreviewOccurrenceId; });
 	}
@@ -4535,11 +4568,14 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 		auto& row = pattern->PresentationOccurrences[index];
 		remap(row.strLogicOccurrenceId, ids); remap(row.strWorldOccurrenceId, ids);
 		if (!row.strRegionId.empty()) { const auto old = row.strRegionId; row.strRegionId = row.strOccurrenceId + ".region"; regionIds.emplace(old, row.strRegionId); }
-		for (const auto& pending : m_StagedEffectGeometry)
+		for (const auto& pending : m_StagedPresentationGeometry)
 			if (pending.strPatternId == targetId && ids.contains(pending.Occurrence.strOccurrenceId) && ids.at(pending.Occurrence.strOccurrenceId) == row.strOccurrenceId)
 			{
-				if (!Valid_PresentationGeometry(pending.Occurrence)) return reject("Correct or revert the selected Effect geometry before Duplicate.");
+				if (!Valid_PresentationGeometry(pending.Occurrence)) return reject("Correct or revert the selected presentation geometry before Duplicate.");
 				Copy_PresentationGeometry(pending.Occurrence, row);
+				const auto* resource = Find_PresentationResource(candidate, row.strResourceId);
+				if (resource && !Valid_GameplaySectorScale(*resource, row))
+					return reject("Circular SECTOR requires equal X/Z scale. Adjust Radius (m) before Duplicate.");
 			}
 	}
 	// Copy-on-write for typed references in reusable Logic definitions. Shared
@@ -4658,7 +4694,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_TimelineSelection(
 		std::erase_if(stage.AnimationOccurrences, [&](const auto& row) { return boxes.contains(row.strOccurrenceId); });
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate), "Deleted selected timeline boxes. Press Save.", outStatus)) return false;
-	std::erase_if(m_StagedEffectGeometry, [&](const auto& row) { return row.strPatternId == targetId && boxes.contains(row.Occurrence.strOccurrenceId); });
+	std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) { return row.strPatternId == targetId && boxes.contains(row.Occurrence.strOccurrenceId); });
 	Clear_TimelineSelection();
 	return true;
 }
@@ -4764,7 +4800,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		m_PreviewState.strPatternId == patternId;
 	const bool_t canPlayPattern = patternReady && durationMs > 0u;
 	const bool_t publishing = Is_PublishRunning();
-	ImGui::BeginDisabled(publishing || !m_bHasDraft || !m_Document.Is_Fresh());
+	ImGui::BeginDisabled(publishing || !m_bHasDraft || !m_Document.Is_Fresh() || !Is_Dirty());
 	const bool_t saveRequested = ImGui::Button("Save##KoukuSequencer");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -6988,6 +7024,12 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PresentationBox(
 	if (found == pattern->PresentationOccurrences.end() || found->strResourceId != value.strResourceId)
 	{ outStatus = m_strStatus = "Presentation box identity changed; previous row preserved."; return false; }
 	*found = value;
+	const auto* resource = Find_PresentationResource(candidate, found->strResourceId);
+	if (resource && !Valid_GameplaySectorScale(*resource, *found))
+	{
+		outStatus = m_strStatus = "Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.";
+		return false;
+	}
 	if (!value.strLogicOccurrenceId.empty())
 	{
 		auto* linked = Find_LogicBox(*pattern, value.strLogicOccurrenceId);
@@ -7069,6 +7111,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderLogicValues(
 	*collider = occurrence;
 	collider->strLogicOccurrenceId = window->strOccurrenceId;
 	collider->iStartMs = window->iStartMs; collider->iDurationMs = window->iDurationMs;
+	if (!Valid_GameplaySectorScale(*resource, *collider))
+		return reject("Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.");
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate), "Applied Collider values, Logic definition and window link together. Save keeps the connection.", outStatus)) return false;
 	m_strColliderExecutionEditId.clear();
@@ -7176,6 +7220,11 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	linked->iDurationMs = occurrence.iDurationMs;
 	*collider = occurrence;
 	collider->strLogicOccurrenceId = windowId;
+	if (!Valid_GameplaySectorScale(*resource, *collider))
+	{
+		outStatus = m_strStatus = "Apply rejected: Circular SECTOR requires equal X/Z scale. Adjust Radius (m); pending edits and previous draft are preserved.";
+		return false;
+	}
 	for (auto& other : pattern->PresentationOccurrences)
 		if (other.strLogicOccurrenceId == windowId)
 		{ other.iStartMs = occurrence.iStartMs; other.iDurationMs = occurrence.iDurationMs; }
@@ -7682,7 +7731,16 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	}
 	else if (!cameraBox) geometryChanged |= vectorControl("Rotation (degrees)##PresentationBox", edit.RotationDegrees, -36000.f, 36000.f);
 	const bool light = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT;
-	if (!light && !cameraBox) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
+	const bool gameplaySector = gameplayCollider && definition.strShape == "SECTOR";
+	if (!light && !cameraBox && !gameplaySector) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
+	if (gameplaySector)
+	{
+		float heightScale = static_cast<float>(edit.Scale[1]);
+		if (ImGui::DragFloat("Height scale##PresentationBox", &heightScale, 0.05f, 0.001f, 10000.f, "%.3f"))
+		{ edit.Scale[1] = heightScale; geometryChanged = true; }
+		if (std::abs(edit.Scale[0] - edit.Scale[2]) > 0.0001)
+			ImGui::TextWrapped("Circular SECTOR requires equal X/Z scale (X %.3f, Z %.3f). Adjust Radius (m) below to set both together; existing values are preserved until you edit them.", edit.Scale[0], edit.Scale[2]);
+	}
 	const auto previewGeometry = [&]() {
 		std::string status;
 		(void)Request_PresentationGeometryPreview(patternId, edit, status);
@@ -7957,19 +8015,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		ImGui::SameLine();
 		if (ImGui::Button("Revert geometry##PresentationBox"))
 		{
-			if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
-			{
-				std::string status;
-				(void)Request_PresentationGeometryPreview(patternId, *box, status);
-			}
-			else Cancel_PresentationGeometryPreview();
+			std::string status;
+			(void)Request_PresentationGeometryPreview(patternId, *box, status);
 			edit.PositionOffset = box->PositionOffset;
 			edit.RotationDegrees = box->RotationDegrees;
 			edit.Scale = box->Scale;
 		}
-		ImGui::TextDisabled(definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ?
-			"Geometry previews at the actor cursor. Save keeps geometry from all edited Effect boxes; Apply keeps other fields." :
-			"Geometry previews immediately; Apply and Save keep it. Revert restores the applied geometry.");
+		ImGui::TextDisabled("Geometry previews at the actor cursor. Save keeps geometry from all edited Effect and Collider boxes; Apply keeps other fields.");
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Delete##PresentationBox"))
@@ -9596,8 +9648,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_ReloadConfirmation()
 	if (ImGui::Button("Discard and Reload"))
 	{
 		const bool_t wasDirty = m_bDirty;
-		auto geometry = std::move(m_StagedEffectGeometry);
-		m_StagedEffectGeometry.clear();
+		auto geometry = std::move(m_StagedPresentationGeometry);
+		m_StagedPresentationGeometry.clear();
 		m_bDirty = false;
 		std::string status;
 		if (Reload(status))
@@ -9605,7 +9657,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_ReloadConfirmation()
 		else
 		{
 			m_bDirty = wasDirty;
-			m_StagedEffectGeometry = std::move(geometry);
+			m_StagedPresentationGeometry = std::move(geometry);
 		}
 	}
 	ImGui::SameLine();

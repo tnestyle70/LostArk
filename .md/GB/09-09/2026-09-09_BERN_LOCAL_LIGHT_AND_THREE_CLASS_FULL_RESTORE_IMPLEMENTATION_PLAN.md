@@ -185,3 +185,30 @@ G21의 실패 참조 거절·쿠크 배포 owner·재생 오류 표시·bootstra
 복원한 실행 데이터의 참조 일치를 검증한다. Git 정책·문서 변경은 추가 C++ 컴파일을
 요구하지 않으며, G21의 실제 Debug compile/link 증거를 보존한다. 사용자 화면 확인은
 자동 검사와 분리한다. 커밋된 변경을 독립 검토한 뒤 PR을 생성하고 main에 병합한다.
+
+## G23. Collider Detail의 Save 누락과 부채꼴 편집 규칙 교정
+
+사용자는 대형세이튼 잡기의 콜라이더 위치·방향·크기를 바꾼 뒤 Save와 Publish를
+반복해도 값이 유지되지 않는다고 보고했다. 현재 Detail geometry는 Effect만 저장 대기
+목록에 넣고 Collider는 미리보기만 요청한다. Save는 이 Collider 편집 버퍼를 읽지 않는다.
+기존 geometry 저장 경로를 Collider에도 적용해 선택 변경과 Save 후에도 값을 보존한다.
+잘못된 geometry는 저장 성공으로 표시하지 않고 수정할 편집값과 이전 저장 파일을 유지한다.
+Composition의 Save 버튼은 실제 변경이 있을 때 활성화하고, 실패 이유를 유지한다.
+
+첨부 화면의 실제 재생 불가 사유는 Circular SECTOR requires equal X/Z scale이다.
+현재 사용자 파일에는 해당 occurrence scale이 [3, 1, 1]로 저장되어 있다. 실행용 원형
+부채꼴 계약을 바꾸지 않고 편집 UI의 반경 입력이 X/Z를 함께 변경하도록 한다.
+기존의 잘못된 크기는 즉시 이유와 반경 수정 경로를 표시하며 사용자 데이터를 자동
+변환하거나 되돌리지 않는다. Publish는 저장된 원본을 실행용으로 투영하고 F1 inventory를
+갱신하며, 실행 중 Server는 재시작이 필요하다는 기존 계약을 유지한다.
+
+기존 Workbench 계약 검사에 Collider의 Apply 없는 수정·선택 변경·Save·Reload와
+잘못된 geometry의 원본 보존을 추가한다. 기존 테스트로 재현한 뒤 수정 후 통과를
+확인하고 변경 Client 단위의 최소 컴파일 및 git diff --check를 실행한다. 새 제품 파일과
+project/filter 등록은 필요 없다. 사용자 저작 JSON과 Publish로 갱신된 파생 JSON은
+현재 작업의 코드 커밋에 포함하지 않는다. Client/UI 실행과 최종 화면 확인은 사용자가 한다.
+
+후속 요청으로 확인된 오류 전체를 교정한다. 실행 중인 Client 종료를 확인한 뒤,
+사용자가 저장한 잡기 occurrence의 위치·Yaw·반경 9m는 유지하고 Z scale만 X와 같은
+3으로 복구한다. 원본 bytes를 백업하고 최신 source 일치를 확인한 뒤 revision을 올려
+기존 KoukuSaydon domain owner로 배포한다. 미작성 스테이지·빈 묶음은 임의로 채우지 않는다.

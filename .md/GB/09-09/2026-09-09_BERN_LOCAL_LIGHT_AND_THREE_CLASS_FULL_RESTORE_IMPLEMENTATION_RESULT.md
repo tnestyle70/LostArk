@@ -622,3 +622,68 @@ build owner/출력/rollback/receipt와 bootstrap 검사 7개가 모두 통과했
 G21의 최종 Client Debug 빌드·native 로더 전후·Area Check 증거를 보존했다.
 정책·문서 변경으로 추가 C++ 컴파일은 하지 않았다. 사용자 실제 재생·FPS·화면 확인은
 여전히 미완료이며 자동 검사를 visual PASS로 취급하지 않는다.
+
+## G23. Collider 저장 누락과 잡기 SECTOR 배포 오류 교정 (2026-09-10)
+
+사용자는 대형세이튼 잡기의 콜라이더 위치·방향·크기를 여러 번 저장해도 되돌아가고,
+Publish 뒤에도 실행이 불가능하다고 보고했다. 두 문제가 겹쳐 있었다.
+
+- Detail의 Collider TRS 변경은 preview 요청만 만들었다. Effect만 pending geometry와
+  Is_Dirty에 포함되어, Collider만 바꾼 Save는 파일을 쓰지 않고 성공 문구를 표시했다.
+  선택 변경·다른 Apply/Save·재실행의 동기화가 이전 draft 값을 다시 보여 주었다.
+- 실제 revision 231에는 P17.presentation.1의 위치 [0, 1.149999976158142, 0],
+  회전 [0, 90, 0], scale [3, 1, 1]이 저장되어 있었다. Publish는 이 비원형 SECTOR를
+  `Circular SECTOR requires equal X/Z scale`로 격리했다. 서버 용량 부족이 아니다.
+  Publish 완료 자체는 Composition 원본을 Reload하지 않고 F1 inventory만 갱신한다.
+
+### 구현 완료
+
+기존 Effect geometry 보관을 presentation geometry로 일반화해 Collider도 Apply 없이
+여러 box의 TRS를 Save 후보에 합친다. 선택 전환과 다른 draft commit은 pending 값을
+유지하며, Revert는 선택한 box만 복구한다. 저장할 변경이 없으면 Save 네 버튼은 비활성이다.
+잘못된 값의 Save는 편집값과 기존 파일을 유지하며 실패 이유를 표시한다.
+
+Logic에 연결된 SECTOR는 반경 입력으로 X/Z를 함께 변경하고 자유 XYZ scale 입력을
+제공하지 않는다. 기존 불일치는 이유와 Radius 수정 경로를 표시한다. 같은 0.0001 허용치를
+Save·preview·Pattern/Bundle overlay·Duplicate에 적용한다. 검토에서 발견된 Apply 우회도
+Set_PresentationBox, Set_ColliderLogicValues, Set_ColliderTriggerDamage의 최종 candidate
+검사로 막았다. 기존 미편집 오류 항목 전체를 Save의 선행조건으로 확대하지 않았다.
+
+### 검증 완료
+
+- 최종 Client Debug 컴파일·링크 성공. 현재 Client/Bin/Debug/Client.exe는 08:22:25 생성,
+  51,331,072 bytes다. 최초 별도 TargetName 빌드는 Shared 참조 출력 이름까지 바꿔 실패했고,
+  Client Link 출력만 바꾼 임시 candidate 검사와 기본 이름의 최종 빌드는 모두 성공했다.
+- 기존 `--kouku-preview-transport-contract` 통과. Collider 두 개의 Apply 없는 TRS Save,
+  선택 전환·다른 commit 후 보존, 새 Workbench Reload, invalid Save의 원본 보존,
+  SECTOR [3,1,1] 거절 및 [3,1,3] 복구, 세 Apply 경로와 첫 Logic 연결 우회를 확인했다.
+- 기존 `--kouku-composition-editor-contract` 통과. 기존 Save/Reload/CAS와 편집 경로를 확인했다.
+- UTF-8 BOM 없음·C++ CRLF 유지 및 `git diff --check` 통과. 기존 인코딩/PDB 경고는 남아 있다.
+- 로그는 `out/KoukuColliderSave20260910/`의 `client-installed-build.log`,
+  `harness-build-final.log`, `preview-transport-final.log`, `composition-editor-final.log`다.
+
+### 사용자 작업 데이터 복구와 배포
+
+후속 전체 오류 수정 요청에 따라 Client와 Server가 종료된 것을 확인하고, 최신 source SHA가
+준비한 백업과 같은지 검사했다. 사용자 파일의 다른 값은 모두 유지하고 P17의 scale Z만
+1에서 3으로 바꾸어 반경 9m와 위치·방향을 보존했다. revision 231→232와 이 필드 외에는
+JSON 의미상 차이가 없음을 확인했고 원본 bytes는 `composition-repair-backup.json`에 보관했다.
+에디터 자체가 기존 데이터를 임의 보정하는 동작은 추가하지 않았다.
+
+기존 domain owner `-Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 232` 배포 성공.
+실행 가능 패턴 21→22, 묶음 5→6, stage 175→179로 잡기와 해당 묶음이 다시 포함됐다.
+배포 로그는 `publish-repaired.log`다. 작업 시작 전부터 dirty였던 Composition과 publisher의
+Encounter/patternbindings 세 JSON은 코드 PR에 섞지 않고 사용자의 작업 파일로 보존한다.
+
+### 남은 저작·화면 경계
+
+P3 세이튼 무력화실패, P16 대형세이튼 거미카운터, P20 대형세이튼 레이저, P26 대형세이튼
+피자는 이전 이력부터 stage가 없는 미작성 패턴이다. 카드미로 동시 묶음도 처음부터
+member가 없었다. 나머지 세 묶음은 미작성 자식을 참조한다. PR350이 내용을 삭제한
+문제가 아니므로 임의 스테이지나 연출을 만들지 않았다.
+
+Publish 후 F1 목록은 자동 갱신하지만 Kouku의 실행 중 Server 적용은 재시작 계약이다.
+Valtan 전용 hot reload를 단순 허용 목록 변경으로 확대하지 않았다. Server의 기존 진행 중
+Kouku revision 보존과 Client의 단일 presentation 세대 교체가 충돌할 수 있기 때문이다.
+에이전트는 Client/UI를 실행·조작하지 않았다. 사용자가 Server + Client profile로 다시 실행해
+F1의 잡기와 Collider Save→재실행 결과를 확인해야 하며 실제 화면 PASS는 아직 없다.
