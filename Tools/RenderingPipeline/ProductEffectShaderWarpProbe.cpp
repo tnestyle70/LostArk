@@ -35,6 +35,7 @@ namespace
         float Tangent[3];
         float Binormal[3];
         float Texcoord[2];
+        float Texcoord1[2];
     };
 
     struct RENDER_TARGETS final
@@ -706,7 +707,7 @@ namespace
             OutError = "compiled effect pass signature is unavailable";
             return false;
         }
-        const std::array<D3D11_INPUT_ELEMENT_DESC, 5> Elements = {{
+        const std::array<D3D11_INPUT_ELEMENT_DESC, 6> Elements = {{
             {"POSITION", 0u, DXGI_FORMAT_R32G32B32_FLOAT, 0u,
                 static_cast<UINT>(offsetof(VERTEX, Position)),
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
@@ -721,6 +722,9 @@ namespace
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
             {"TEXCOORD", 0u, DXGI_FORMAT_R32G32_FLOAT, 0u,
                 static_cast<UINT>(offsetof(VERTEX, Texcoord)),
+                D3D11_INPUT_PER_VERTEX_DATA, 0u},
+            {"TEXCOORD", 1u, DXGI_FORMAT_R32G32_FLOAT, 0u,
+                static_cast<UINT>(offsetof(VERTEX, Texcoord1)),
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
         }};
         ComPtr<ID3D11InputLayout> InputLayout;
@@ -884,11 +888,11 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
     }
     const std::array<VERTEX, 3> Vertices = {{
         {{-0.8f, -0.8f, 0.5f}, {0.f, 0.f, -1.f}, {1.f, 0.f, 0.f},
-            {0.f, -1.f, 0.f}, {0.f, 1.f}},
+            {0.f, -1.f, 0.f}, {0.f, 1.f}, {0.f, 1.f}},
         {{0.f, 0.8f, 0.5f}, {0.f, 0.f, -1.f}, {1.f, 0.f, 0.f},
-            {0.f, -1.f, 0.f}, {0.5f, 0.f}},
+            {0.f, -1.f, 0.f}, {0.5f, 0.f}, {0.5f, 0.f}},
         {{0.8f, -0.8f, 0.5f}, {0.f, 0.f, -1.f}, {1.f, 0.f, 0.f},
-            {0.f, -1.f, 0.f}, {1.f, 1.f}},
+            {0.f, -1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f}},
     }};
     D3D11_BUFFER_DESC BufferDesc{};
     BufferDesc.ByteWidth = sizeof(Vertices);

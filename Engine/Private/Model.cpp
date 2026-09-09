@@ -1014,6 +1014,18 @@ HRESULT CModel::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 		m_Materials[materialIndex]->Bind_SurfaceTexture(pShader, pConstantName, eType) : E_FAIL;
 }
 
+bool_t CModel::Try_GetSourceMaterialIndex(
+    const uint32_t iMeshIndex, uint32_t& iOutMaterialIndex) const
+{
+    if (iMeshIndex >= m_Meshes.size() || nullptr == m_Meshes[iMeshIndex])
+        return false;
+    const uint32_t iMaterialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+    if (iMaterialIndex >= m_Materials.size())
+        return false;
+    iOutMaterialIndex = iMaterialIndex;
+    return true;
+}
+
 const string& CModel::Get_MaterialName(uint32_t iMeshIndex) const
 {
 	static const string Empty;

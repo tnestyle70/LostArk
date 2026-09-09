@@ -4,6 +4,7 @@
 #include "Shader_EffectDimensionMasterVNative.hlsli"
 #include "Shader_EffectDimensionMasterALTVNative.hlsli"
 #include "Shader_EffectDimensionMasterWRNative.hlsli"
+#include "Shader_EffectDimensionMasterSDNative.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
 #include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
@@ -108,7 +109,8 @@ VS_OUT VS_MAIN(VS_IN input)
         263u == g_SourceMaterialProfile ||
         277u == g_SourceMaterialProfile ||
         279u == g_SourceMaterialProfile ||
-        280u == g_SourceMaterialProfile)
+        280u == g_SourceMaterialProfile ||
+        324u == g_SourceMaterialProfile)
     {
         // Native VS transforms camera-to-vertex into object space before the
         // tangent dot products. Preserve that order under nonuniform scale.
@@ -260,6 +262,17 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
         nativeInput.dynamicParameter = g_EffectDynamicParameter;
         nativeInput.frontFace = frontFace;
         return Shade_EffectDimensionMasterWRNative(g_SourceMaterialProfile, nativeInput);
+    }
+    if (324u == g_SourceMaterialProfile)
+    {
+        SD_NATIVE_INPUT nativeInput = (SD_NATIVE_INPUT)0;
+        nativeInput.uv = input.carrierUV;
+        // Selected flocal Ice RT0 reads UV0, tangent view, mesh color and
+        // mesh dynamic parameters; its other varyings belong to GBuffer RTs.
+        nativeInput.tangentView = input.sourceTangentView;
+        nativeInput.color = g_ColorMultiply + g_ColorOffset;
+        nativeInput.dynamicParameter = g_EffectDynamicParameter;
+        return Shade_EffectDimensionMasterSDNative(g_SourceMaterialProfile, nativeInput);
     }
     if (9 == g_SourceMaterialProfile)
     {

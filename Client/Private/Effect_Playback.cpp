@@ -1130,8 +1130,7 @@ namespace
 		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
 		{
 			if (!Element.bVisible ||
-				!Client::Is_EffectAuthoringExecutionTarget(
-					Element.Material.Execution) ||
+				!Client::Is_EffectElementAuthoringExecutionTarget(Element) ||
 				!Is_PortableAuthoredEmitterCarrier(Element))
 			{
 				continue;
@@ -2066,7 +2065,7 @@ bool_t Client::CEffectPlayback::Is_PlaybackElementAdmitted(
 {
 	if (!Element.bVisible)
 		return false;
-	if (Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+	if (Is_EffectElementAuthoringExecutionTarget(Element))
 		return true;
 	return Is_EffectFailClosedSourceGeometryCarrier(Element) &&
 		Is_SourceVisualProgramElementAdmitted(Element);
@@ -2634,8 +2633,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		StagedStates.emplace(Element.strElementId, std::move(State));
 		const bool_t bElementPlaybackAdmitted =
 			Element.bVisible &&
-			(Is_EffectAuthoringExecutionTarget(
-				Element.Material.Execution) ||
+			(Is_EffectElementAuthoringExecutionTarget(Element) ||
 			 (Is_EffectFailClosedSourceGeometryCarrier(Element) &&
 				bElementSourceVisualActive));
 		if (!bElementPlaybackAdmitted)
@@ -4579,8 +4577,18 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			{
 				const f32_t fVelocityScale = Evaluate_ModuleFloat(
 					State, Module, "velocityscale", fEmitterTimeSeconds, 0.f);
+				float3_t VelocityOffset = Offset;
+				if (SourceBool(Module, "radialvelocity", false))
+				{
+					if (Axis.ends_with("_x"))
+						VelocityOffset.x = 0.f;
+					else if (Axis.ends_with("_y"))
+						VelocityOffset.y = 0.f;
+					else
+						VelocityOffset.z = 0.f;
+				}
 				Particle.vVelocity = Add3(Particle.vVelocity,
-					Scale3(UE3_CentimetersToClient(Offset), fVelocityScale));
+					Scale3(UE3_CentimetersToClient(VelocityOffset), fVelocityScale));
 			}
 		}
 		else if (SourceClass_Matches(
@@ -5132,14 +5140,18 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				SourceNumber(Module, "relativescale3d.x", 1.f),
 				SourceNumber(Module, "relativescale3d.y", 1.f),
 				SourceNumber(Module, "relativescale3d.z", 1.f)), 0.01f);
-			const float3_t Translation = Scale3(float3_t(
+			const float3_t Translation = UE3_CentimetersToClient(float3_t(
 				SourceNumber(Module, "relativetranslation.x", 0.f),
 				SourceNumber(Module, "relativetranslation.y", 0.f),
-				SourceNumber(Module, "relativetranslation.z", 0.f)), 0.01f);
-			const matrix_t FieldRotation = XMMatrixRotationRollPitchYaw(
-				XMConvertToRadians(Rotation.x),
-				XMConvertToRadians(Rotation.y),
-				XMConvertToRadians(Rotation.z));
+				SourceNumber(Module, "relativetranslation.z", 0.f)));
+			// WVF1 retains source XYZ sample order. Convert the field domain and
+			// sampled vectors together before comparing them with Client particles.
+			const matrix_t FieldRotation = XMMatrixSet(
+				1.f, 0.f, 0.f, 0.f,
+				0.f, 0.f, -1.f, 0.f,
+				0.f, 1.f, 0.f, 0.f,
+				0.f, 0.f, 0.f, 1.f) *
+				UE3_EulerDegreesToClientRotation(Rotation);
 			const matrix_t FieldToEmitter = XMMatrixScaling(
 				FieldScale.x, FieldScale.y, FieldScale.z) *
 				FieldRotation * XMMatrixTranslation(

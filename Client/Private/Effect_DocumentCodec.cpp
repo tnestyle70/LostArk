@@ -4899,6 +4899,154 @@ namespace
 				strOutError);
 	}
 
+	bool_t Read_Material(const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_MATERIAL_DESC& Out, const uint32_t iSourceVersion,
+		const bool_t bSourceContract, std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pTemplateId = Value.Find("templateId");
+		if (const Client::DATA_JSON_VALUE* pColorTexturesSRGB =
+			Value.Find("colorTexturesSRGB"))
+		{
+			if (!pColorTexturesSRGB->Is_Boolean())
+			{
+				strOutError = "Effect Material colorTexturesSRGB must be a boolean.";
+				return false;
+			}
+			Out.bColorTexturesSRGB = pColorTexturesSRGB->Get_Boolean();
+		}
+		if (iSourceVersion >= 6u)
+		{
+			if (nullptr == pTemplateId || !pTemplateId->Is_String())
+			{
+				strOutError = "Effect Material Template ID is invalid.";
+				return false;
+			}
+			Out.strTemplateId = pTemplateId->Get_String();
+		}
+		if (iSourceVersion >= 10u)
+		{
+			const Client::DATA_JSON_VALUE* pSourceMaterialPath =
+				Value.Find("sourceMaterialPath");
+			if (nullptr == pSourceMaterialPath ||
+				!pSourceMaterialPath->Is_String())
+			{
+				strOutError = "Effect source Material path is invalid.";
+				return false;
+			}
+			Out.strSourceMaterialPath =
+				pSourceMaterialPath->Get_String();
+		}
+		if (iSourceVersion >= 11u)
+		{
+			const Client::DATA_JSON_VALUE* pSourceProfile =
+				Value.Find("sourceProfile");
+			if (nullptr == pSourceProfile ||
+				!Read_SourceMaterialProfile(*pSourceProfile,
+					Out.SourceMaterial, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect source Material profile is invalid.";
+				return false;
+			}
+		}
+		if (const Client::DATA_JSON_VALUE* pExecution =
+			Value.Find("execution"))
+		{
+			if (!pExecution->Is_Object() ||
+				!Read_MaterialExecution(*pExecution,
+					Out.Execution, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect authored Material execution is invalid.";
+				return false;
+			}
+		}
+		const Client::DATA_JSON_VALUE* pProfile = Value.Find("renderProfile");
+		if (nullptr == pProfile || !pProfile->Is_String() ||
+			!Parse_Token(pProfile->Get_String(), PROFILE_TOKENS, std::size(PROFILE_TOKENS), Out.eRenderProfile))
+		{
+			strOutError = "Effect render profile is invalid.";
+			return false;
+		}
+		if (!bSourceContract && iSourceVersion >= 11u &&
+			Out.strTemplateId ==
+				Client::EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
+			!Out.SourceMaterial.bEnabled)
+		{
+			strOutError =
+				"Effect source Material template requires a staged profile.";
+			return false;
+		}
+		return true;
+	}
+
+	void Write_Material(std::ostringstream& Output,
+		const Client::EFFECT_MATERIAL_DESC& Material)
+	{
+		Output << "{ \"templateId\": \""
+			<< Client::CDataJson::Escape(Material.strTemplateId)
+			<< "\", \"sourceMaterialPath\": \""
+			<< Client::CDataJson::Escape(Material.strSourceMaterialPath)
+			<< "\", \"renderProfile\": \""
+			<< Client::CEffectDocumentCodec::To_Token(Material.eRenderProfile)
+			<< "\", \"sourceProfile\": ";
+		Write_SourceMaterialProfile(Output, Material.SourceMaterial);
+		if (Material.bColorTexturesSRGB)
+			Output << ", \"colorTexturesSRGB\": true";
+		if (Material.Execution.bEnabled || Material.Execution.bFailClosed)
+		{
+			Output << ", \"execution\": ";
+			Write_MaterialExecution(Output, Material.Execution);
+		}
+		Output << " }";
+	}
+
+	bool_t Read_SourceMaterialSlots(const Client::DATA_JSON_VALUE& Mesh,
+		std::vector<Client::EFFECT_SOURCE_MATERIAL_SLOT_DESC>& Out,
+		std::string& strOutError)
+	{
+		const auto* pSlots = Mesh.Find("sourceMaterialSlots");
+		if (nullptr == pSlots)
+			return true;
+		if (!pSlots->Is_Array() || pSlots->Get_Array().empty() ||
+			pSlots->Get_Array().size() > 32u)
+		{
+			strOutError = "Mesh sourceMaterialSlots must contain 1 to 32 source slots.";
+			return false;
+		}
+		std::vector<Client::EFFECT_SOURCE_MATERIAL_SLOT_DESC> Staged;
+		std::unordered_set<uint32_t> Indices;
+		for (const auto& Value : pSlots->Get_Array())
+		{
+			Client::EFFECT_SOURCE_MATERIAL_SLOT_DESC Slot;
+			const auto* pIndex = Value.Find("sourceMaterialIndex");
+			const auto* pMaterial = Value.Find("material");
+			if (!Value.Is_Object() ||
+				!Validate_ExactFields(Value, { "sourceMaterialIndex", "material" },
+					"Mesh source material slot", strOutError) ||
+				nullptr == pIndex || !pIndex->Is_Number() ||
+				!std::isfinite(pIndex->Get_Number()) || pIndex->Get_Number() < 0.0 ||
+				pIndex->Get_Number() > static_cast<double>(UINT32_MAX) ||
+				std::floor(pIndex->Get_Number()) != pIndex->Get_Number() ||
+				nullptr == pMaterial || !pMaterial->Is_Object())
+			{
+				strOutError = "Mesh source material slot/index/material is invalid.";
+				return false;
+			}
+			Slot.iSourceMaterialIndex = static_cast<uint32_t>(pIndex->Get_Number());
+			if (!Indices.insert(Slot.iSourceMaterialIndex).second ||
+				!Read_Material(*pMaterial, Slot.Material,
+					Client::EFFECT_AUTHORING_FORMAT_VERSION, false, strOutError))
+			{
+				if (strOutError.empty()) strOutError = "Mesh source material slot is duplicated.";
+				return false;
+			}
+			Staged.push_back(std::move(Slot));
+		}
+		Out = std::move(Staged);
+		return true;
+	}
+
 	bool_t Read_CommonDetail(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DETAIL_DESC& Out,
@@ -4954,6 +5102,7 @@ namespace
 				Out.Timing.fTransformMotionDurationSeconds, strOutError) &&
 			Read_Float(*pTiming, "afterImageSeconds", Out.Timing.fAfterImageSeconds, strOutError) &&
 			Read_Float(*pTiming, "dissolveStartNormalized", Out.Timing.fDissolveStartNormalized, strOutError) &&
+			Read_SourceMaterialSlots(*pMesh, Out.Mesh.SourceMaterialSlots, strOutError) &&
 			Read_Bool(*pMesh, "useModelMaterial", Out.Mesh.bUseModelMaterial, strOutError) &&
 			Read_OptionalFloat(*pMesh, "modelPreScale",
 				Out.Mesh.fModelPreScale, strOutError) &&
@@ -5283,6 +5432,19 @@ namespace
 		   non-default scale such as Artist F's 0.01. */
 		if (Detail.Mesh.fModelPreScale != 1.f)
 			Output << ", \"modelPreScale\": " << Detail.Mesh.fModelPreScale;
+		if (!Detail.Mesh.SourceMaterialSlots.empty())
+		{
+			Output << ", \"sourceMaterialSlots\": [";
+			for (size_t i = 0u; i < Detail.Mesh.SourceMaterialSlots.size(); ++i)
+			{
+				const auto& Slot = Detail.Mesh.SourceMaterialSlots[i];
+				Output << (i == 0u ? "" : ", ") << "{ \"sourceMaterialIndex\": "
+					<< Slot.iSourceMaterialIndex << ", \"material\": ";
+				Write_Material(Output, Slot.Material);
+				Output << " }";
+			}
+			Output << "]";
+		}
 		Output << ", \"sourceTypeDataRotationDegrees\": ";
 		Write_Float3(Output, Detail.Mesh.vSourceTypeDataRotationDegrees);
 		if (Detail.Mesh.RingFill.bEnabled)
@@ -6344,6 +6506,386 @@ bool_t Client::CEffectDocumentCodec::Is_SafeModelCueAssetId(
 	return Is_SafeModelCueAssetIdInternal(strAssetId);
 }
 
+namespace
+{
+	bool_t Validate_ElementMaterial(const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bSourceContract, std::string& strOutError)
+	{
+		using namespace Client;
+		const EFFECT_MATERIAL_TEMPLATE_DESC* pMaterialTemplate =
+			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
+		if (nullptr == pMaterialTemplate)
+		{
+			strOutError = "Effect Material Template is not registered: " +
+				Element.Material.strTemplateId;
+			return false;
+		}
+		if (Element.Material.bColorTexturesSRGB &&
+			(Element.Material.strTemplateId != EFFECT_STANDARD_MATERIAL_TEMPLATE_ID ||
+			 Element.Material.SourceMaterial.bEnabled ||
+			 Element.Material.Execution.bEnabled ||
+			 Element.Material.Execution.bFailClosed || Element.SourceRecipe.bEnabled))
+		{
+			strOutError =
+				"colorTexturesSRGB requires an ordinary authored standard material: " +
+				Element.strElementId;
+			return false;
+		}
+		if (Element.Material.strSourceMaterialPath.size() > 512u ||
+			(Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
+				(Element.Material.strSourceMaterialPath.empty() ||
+					!Has_VisibleCharacter(
+						Element.Material.strSourceMaterialPath))))
+		{
+			strOutError = "Effect source Material identity is invalid.";
+			return false;
+		}
+		if (!Validate_MaterialExecution(Element.Material.Execution,
+			strOutError))
+		{
+			strOutError += " Element: " + Element.strElementId + ".";
+			return false;
+		}
+		const bool_t bStandardColorBackend =
+			Element.Material.Execution.bEnabled &&
+			Element.Material.Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+		const bool_t bStandardColorTemplate =
+			Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID;
+		const bool_t bStandardColorMeshCarrier =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Element.ResourceBindings.size() == 1u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			!Element.ResourceBindings[0u].strAssetId.empty();
+		const bool_t bStandardColorResourceContract =
+			bStandardColorMeshCarrier ||
+			(Element.ResourceBindings.empty() &&
+			 ((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			   Element.SourceRecipe.bEnabled &&
+			   Element.SourceRecipe.strRendererShape == "sprite") ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::TRAIL));
+		if (bStandardColorBackend != bStandardColorTemplate ||
+			(bStandardColorBackend &&
+			 (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+			  Element.eKind != EFFECT_ELEMENT_KIND::DECAL &&
+			  Element.eKind != EFFECT_ELEMENT_KIND::TRAIL)) ||
+			(bStandardColorBackend &&
+			 (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+			  Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)) ||
+			(bStandardColorBackend && !bStandardColorResourceContract) ||
+			(bStandardColorBackend && Element.Material.SourceMaterial.bEnabled) ||
+			(bStandardColorBackend &&
+			 Element.Material.eRenderProfile ==
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE) ||
+			(bStandardColorBackend &&
+			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			 (!Element.SourceRecipe.bEnabled ||
+			  (Element.SourceRecipe.strRendererShape != "sprite" &&
+			   Element.SourceRecipe.strRendererShape != "mesh"))) ||
+			(bStandardColorBackend &&
+			 (0.f != Element.Detail.Color.fDistortionIntensity ||
+			  Element.Detail.Color.bDistortionOnBaseMaterial ||
+			  0.f != Element.Detail.Color.fRadialTime ||
+			  0.f != Element.Detail.Color.fRadialIntensity)))
+		{
+			strOutError =
+				"StandardColorV1 template, carrier, or generic-only state is invalid: " +
+				Element.strElementId + ".";
+			return false;
+		}
+		const bool_t bAuthoringExecutionTarget =
+			Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
+		const bool_t bGeometryOnlySourceCarrier =
+			Is_EffectFailClosedSourceGeometryCarrier(Element);
+		if (Element.bVisible && !bAuthoringExecutionTarget &&
+			!bGeometryOnlySourceCarrier)
+		{
+			strOutError =
+				"Hard fail-closed authored Element is not a typed source geometry carrier: " +
+				Element.strElementId + ".";
+			return false;
+		}
+		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+			Element.Material.SourceMaterial;
+		if (SourceMaterial.eSourceBlendClass >=
+			EFFECT_SOURCE_BLEND_CLASS::END ||
+			(!SourceMaterial.bEnabled &&
+			 SourceMaterial.eSourceBlendClass !=
+				EFFECT_SOURCE_BLEND_CLASS::UNKNOWN))
+		{
+			strOutError =
+				"Effect source Material blend evidence is invalid.";
+			return false;
+		}
+		if (SourceMaterial.bEnabled)
+		{
+			if (!Is_StableId(SourceMaterial.strProfileId) ||
+				!Is_StableId(SourceMaterial.strRuntimeShaderProfileId) ||
+				!Is_SupportedEffectSourceRuntimeShaderProfile(
+					SourceMaterial.strRuntimeShaderProfileId) ||
+				SourceMaterial.strParentMaterialPath.empty() ||
+				SourceMaterial.strParentMaterialPath.size() > 512u ||
+				!Has_VisibleCharacter(
+					SourceMaterial.strParentMaterialPath) ||
+				SourceMaterial.eStatus >=
+					EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED ||
+				!Is_StableId(SourceMaterial.strSubUVMode) ||
+				!Is_SupportedEffectSourceSubUVMode(
+					SourceMaterial.strSubUVMode) ||
+				SourceMaterial.Textures.size() > 32u ||
+				SourceMaterial.Scalars.size() > 128u ||
+				SourceMaterial.Vectors.size() > 128u ||
+				SourceMaterial.StaticSwitches.size() > 128u)
+			{
+				strOutError = "Effect source Material profile metadata is invalid.";
+				return false;
+			}
+			std::unordered_set<std::string> TextureNames;
+			for (const EFFECT_NAMED_TEXTURE_DESC& Texture :
+				SourceMaterial.Textures)
+			{
+				EFFECT_RESOURCE_FILE_KIND eActualKind =
+					EFFECT_RESOURCE_FILE_KIND::END;
+				if (Texture.strName.empty() || Texture.strName.size() > 128u ||
+					!Has_VisibleCharacter(Texture.strName) ||
+					Texture.strGroup.size() > 128u ||
+					(!Texture.strGroup.empty() &&
+						!Has_VisibleCharacter(Texture.strGroup)) ||
+					Texture.strSourceObjectPath.size() > 512u ||
+					(!Texture.strSourceObjectPath.empty() &&
+						!Has_VisibleCharacter(Texture.strSourceObjectPath)) ||
+					(!Texture.strAssetId.empty() &&
+						Texture.strSourceObjectPath.empty()) ||
+					(!Texture.strAssetId.empty() &&
+						(!CEffectDocumentCodec::Is_SafeResourceAssetId(Texture.strAssetId, &eActualKind) ||
+							eActualKind != EFFECT_RESOURCE_FILE_KIND::TEXTURE)) ||
+					Texture.eAddressU >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
+					Texture.eAddressV >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
+					Texture.eColorSpace >= EFFECT_TEXTURE_COLOR_SPACE::END ||
+					Texture.strSamplingEvidence.empty() ||
+					Texture.strSamplingEvidence.size() > 128u ||
+					!Is_StableId(Texture.strSamplingEvidence) ||
+					!TextureNames.insert(Texture.strName).second)
+				{
+					strOutError = "Effect source Material texture is invalid: " +
+						Texture.strName + " (" + Texture.strAssetId + ").";
+					return false;
+				}
+			}
+			std::unordered_set<std::string> ScalarNames;
+			for (const EFFECT_NAMED_FLOAT_DESC& Scalar :
+				SourceMaterial.Scalars)
+			{
+				if (Scalar.strName.empty() || Scalar.strName.size() > 128u ||
+					!Has_VisibleCharacter(Scalar.strName) ||
+					Scalar.strGroup.size() > 128u ||
+					(!Scalar.strGroup.empty() &&
+						!Has_VisibleCharacter(Scalar.strGroup)) ||
+					!std::isfinite(Scalar.fValue) ||
+					!ScalarNames.insert(Scalar.strName).second)
+				{
+					strOutError = "Effect source Material scalar is invalid.";
+					return false;
+				}
+			}
+			std::unordered_set<std::string> VectorNames;
+			for (const EFFECT_NAMED_FLOAT4_DESC& Vector :
+				SourceMaterial.Vectors)
+			{
+				if (Vector.strName.empty() || Vector.strName.size() > 128u ||
+					!Has_VisibleCharacter(Vector.strName) ||
+					Vector.strGroup.size() > 128u ||
+					(!Vector.strGroup.empty() &&
+						!Has_VisibleCharacter(Vector.strGroup)) ||
+					!Is_Finite(Vector.vValue) ||
+					!VectorNames.insert(Vector.strName).second)
+				{
+					strOutError = "Effect source Material vector is invalid.";
+					return false;
+				}
+			}
+			std::unordered_set<std::string> SwitchNames;
+			for (const EFFECT_NAMED_BOOL_DESC& Switch :
+				SourceMaterial.StaticSwitches)
+			{
+				if (Switch.strName.empty() || Switch.strName.size() > 128u ||
+					!Has_VisibleCharacter(Switch.strName) ||
+					Switch.strGroup.size() > 128u ||
+					(!Switch.strGroup.empty() &&
+						!Has_VisibleCharacter(Switch.strGroup)) ||
+					!SwitchNames.insert(Switch.strName).second)
+				{
+					strOutError = "Effect source Material switch is invalid.";
+					return false;
+				}
+			}
+			for (const std::string& Semantic :
+				SourceMaterial.DynamicParameterSemantics)
+			{
+				if (!Is_StableId(Semantic) ||
+					!Is_SupportedEffectSourceDynamicParameterSemantic(Semantic))
+				{
+					strOutError =
+						"Effect source Material Dynamic Parameter semantic is invalid.";
+					return false;
+				}
+			}
+		}
+
+		std::unordered_set<std::string> Slots;
+		for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)
+		{
+			const bool_t bMeshShape =
+				Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+			const EFFECT_MATERIAL_INPUT_SLOT_DESC* pInput = bMeshShape ?
+				nullptr : Find_EffectMaterialInput(
+					*pMaterialTemplate, Binding.strSlotId);
+			const EFFECT_RESOURCE_SLOT eRuntimeSlot = bMeshShape ?
+				EFFECT_RESOURCE_SLOT::MESH_MODEL :
+				(nullptr == pInput ? EFFECT_RESOURCE_SLOT::END :
+					pInput->eRuntimeSlot);
+			EFFECT_RESOURCE_FILE_KIND eActualKind = EFFECT_RESOURCE_FILE_KIND::END;
+			const EFFECT_RESOURCE_FILE_KIND eExpectedKind = bMeshShape ?
+				EFFECT_RESOURCE_FILE_KIND::MODEL :
+				(nullptr == pInput ? EFFECT_RESOURCE_FILE_KIND::END :
+					pInput->eAllowedResourceKind);
+			if (!CEffectDocumentCodec::Is_ResourceSlotAllowed(Element.eKind, eRuntimeSlot) ||
+				eExpectedKind == EFFECT_RESOURCE_FILE_KIND::END ||
+				!Slots.insert(Binding.strSlotId).second ||
+				!CEffectDocumentCodec::Is_SafeElementResourceAssetId(Element.eKind,
+					Binding.strSlotId, Binding.strAssetId, &eActualKind) ||
+				eActualKind != eExpectedKind)
+			{
+				strOutError = "Effect resource slot, path, file, or duplicate is invalid.";
+				return false;
+			}
+		}
+		/* Hard fail-closed rows remain loadable source evidence.  Every execution
+		   target, including an authoring-approximate preview, must satisfy the
+		   same source-profile/resource contract before it can be activated. */
+		if (!bSourceContract && bAuthoringExecutionTarget)
+		{
+			bool_t bSourceMaterialOwnsDrawableContract = false;
+			if (!Validate_ExecutableSourceMaterialCarrier(
+					Element, bSourceMaterialOwnsDrawableContract, strOutError))
+			{
+				strOutError =
+					"Ordinary authored source Material is not admitted: " +
+					Element.strElementId + ": " + strOutError;
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Validate_ElementSourceMaterialSlots(const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		const auto& Slots = Element.Detail.Mesh.SourceMaterialSlots;
+		if (Slots.empty())
+			return Validate_ElementMaterial(Element, false, strOutError);
+		if (Slots.size() > 32u || Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+			!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "mesh" ||
+			Element.Detail.Mesh.bUseModelMaterial || !Element.RuntimeCarrier.Is_Empty())
+		{
+			strOutError = "Source material slots require an ordinary source mesh particle carrier.";
+			return false;
+		}
+		const EFFECT_SOURCE_MODULE_DESC* pModule = nullptr;
+		for (const auto& Module : Element.SourceRecipe.Modules)
+		{
+			if (Normalize_SourceModuleClass(Module.strClassName) == "particlemodulemeshmaterial")
+			{
+				if (nullptr != pModule || !Module.Distributions.empty())
+				{
+					strOutError = "Source material slots require one static MeshMaterial module.";
+					return false;
+				}
+				pModule = &Module;
+			}
+			if (Normalize_SourceModuleClass(Module.strClassName) == "particlemoduletypedatamesh")
+			{
+				for (const auto& Literal : Module.Literals)
+				{
+					if (Literal.strPropertyPath == "boverridematerial" &&
+						(Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN || Literal.bBoolean))
+					{
+						strOutError = "Mesh TypeData override conflicts with source material slots.";
+						return false;
+					}
+				}
+			}
+		}
+		if (nullptr == pModule)
+		{
+			strOutError = "Source material slots lack their MeshMaterial source module.";
+			return false;
+		}
+		size_t iSourcePathCount = 0u;
+		for (const auto& Literal : pModule->Literals)
+		{
+			if (Literal.strPropertyPath == "benabled" &&
+				(Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN || !Literal.bBoolean))
+			{
+				strOutError = "Source MeshMaterial module is disabled or invalid.";
+				return false;
+			}
+			if (Literal.strPropertyPath.starts_with("meshmaterials[") &&
+				Literal.strPropertyPath.ends_with("].objectpath"))
+				++iSourcePathCount;
+		}
+		if (iSourcePathCount != Slots.size())
+		{
+			strOutError = "Source material slots do not cover the MeshMaterial source array.";
+			return false;
+		}
+		// The inactive Required.Material is preserved and checked as evidence;
+		// it is never promoted to a fallback for a missing source slot.
+		EFFECT_ELEMENT_DESC Leaf = Element;
+		Leaf.Detail.Mesh.SourceMaterialSlots.clear();
+		Leaf.bVisible = false;
+		if (!Validate_ElementMaterial(Leaf, false, strOutError))
+			return false;
+		Leaf.bVisible = Element.bVisible;
+		std::unordered_set<uint32_t> Indices;
+		for (const auto& Slot : Slots)
+		{
+			const std::string Path = "meshmaterials[" +
+				std::to_string(Slot.iSourceMaterialIndex) + "].objectpath";
+			const auto iMatchingPaths = std::count_if(pModule->Literals.begin(),
+				pModule->Literals.end(), [&](const auto& Literal)
+				{
+					return Literal.strPropertyPath == Path &&
+						Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::STRING &&
+						Literal.strString == Slot.Material.strSourceMaterialPath;
+				});
+			Leaf.Material = Slot.Material;
+			if (!Indices.insert(Slot.iSourceMaterialIndex).second || iMatchingPaths != 1 ||
+				Slot.Material.strTemplateId != EFFECT_SOURCE_MATERIAL_TEMPLATE_ID ||
+				!Slot.Material.SourceMaterial.bEnabled || Slot.Material.Execution.bEnabled ||
+				Slot.Material.Execution.bFailClosed || Slot.Material.Execution.bAuthoringApproximate ||
+				!(Has_DimensionMasterQMaterialContract(Leaf) ||
+				  Has_DimensionMasterVMaterialContract(Leaf) ||
+				  Has_DimensionMasterALTVMaterialContract(Leaf) ||
+				  Has_DimensionMasterWRMaterialContract(Leaf) ||
+				  Has_DimensionMasterSDMaterialContract(Leaf)))
+			{
+				strOutError = "Source material slot identity or exact native material contract is invalid: " +
+					Element.strElementId + " slot " + std::to_string(Slot.iSourceMaterialIndex);
+				return false;
+			}
+			if (!Validate_ElementMaterial(Leaf, false, strOutError))
+				return false;
+		}
+		return true;
+	}
+
+}
+
 bool_t Client::CEffectDocumentCodec::Validate(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -6609,272 +7151,10 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Effect Action cue attachment contract is invalid.";
 			return false;
 		}
-		const EFFECT_MATERIAL_TEMPLATE_DESC* pMaterialTemplate =
-			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
-		if (nullptr == pMaterialTemplate)
-		{
-			strOutError = "Effect Material Template is not registered: " +
-				Element.Material.strTemplateId;
-			return false;
-		}
-		if (Element.Material.bColorTexturesSRGB &&
-			(Element.Material.strTemplateId != EFFECT_STANDARD_MATERIAL_TEMPLATE_ID ||
-			 Element.Material.SourceMaterial.bEnabled ||
-			 Element.Material.Execution.bEnabled ||
-			 Element.Material.Execution.bFailClosed || Element.SourceRecipe.bEnabled))
-		{
-			strOutError =
-				"colorTexturesSRGB requires an ordinary authored standard material: " +
-				Element.strElementId;
-			return false;
-		}
-		if (Element.Material.strSourceMaterialPath.size() > 512u ||
-			(Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
-				(Element.Material.strSourceMaterialPath.empty() ||
-					!Has_VisibleCharacter(
-						Element.Material.strSourceMaterialPath))))
-		{
-			strOutError = "Effect source Material identity is invalid.";
-			return false;
-		}
-		if (!Validate_MaterialExecution(Element.Material.Execution,
-			strOutError))
-		{
-			strOutError += " Element: " + Element.strElementId + ".";
-			return false;
-		}
-		const bool_t bStandardColorBackend =
-			Element.Material.Execution.bEnabled &&
-			Element.Material.Execution.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
-		const bool_t bStandardColorTemplate =
-			Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID;
-		const bool_t bStandardColorMeshCarrier =
-			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.SourceRecipe.bEnabled &&
-			Element.SourceRecipe.strRendererShape == "mesh" &&
-			Element.ResourceBindings.size() == 1u &&
-			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
-			!Element.ResourceBindings[0u].strAssetId.empty();
-		const bool_t bStandardColorResourceContract =
-			bStandardColorMeshCarrier ||
-			(Element.ResourceBindings.empty() &&
-			 ((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			   Element.SourceRecipe.bEnabled &&
-			   Element.SourceRecipe.strRendererShape == "sprite") ||
-			  Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
-			  Element.eKind == EFFECT_ELEMENT_KIND::TRAIL));
-		if (bStandardColorBackend != bStandardColorTemplate ||
-			(bStandardColorBackend &&
-			 (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
-			  Element.eKind != EFFECT_ELEMENT_KIND::DECAL &&
-			  Element.eKind != EFFECT_ELEMENT_KIND::TRAIL)) ||
-			(bStandardColorBackend &&
-			 (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
-			  Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)) ||
-			(bStandardColorBackend && !bStandardColorResourceContract) ||
-			(bStandardColorBackend && Element.Material.SourceMaterial.bEnabled) ||
-			(bStandardColorBackend &&
-			 Element.Material.eRenderProfile ==
-				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE) ||
-			(bStandardColorBackend &&
-			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			 (!Element.SourceRecipe.bEnabled ||
-			  (Element.SourceRecipe.strRendererShape != "sprite" &&
-			   Element.SourceRecipe.strRendererShape != "mesh"))) ||
-			(bStandardColorBackend &&
-			 (0.f != Element.Detail.Color.fDistortionIntensity ||
-			  Element.Detail.Color.bDistortionOnBaseMaterial ||
-			  0.f != Element.Detail.Color.fRadialTime ||
-			  0.f != Element.Detail.Color.fRadialIntensity)))
-		{
-			strOutError =
-				"StandardColorV1 template, carrier, or generic-only state is invalid: " +
-				Element.strElementId + ".";
-			return false;
-		}
 		const bool_t bAuthoringExecutionTarget =
-			Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
-		const bool_t bGeometryOnlySourceCarrier =
-			Is_EffectFailClosedSourceGeometryCarrier(Element);
-		if (Element.bVisible && !bAuthoringExecutionTarget &&
-			!bGeometryOnlySourceCarrier)
-		{
-			strOutError =
-				"Hard fail-closed authored Element is not a typed source geometry carrier: " +
-				Element.strElementId + ".";
+			Is_EffectElementAuthoringExecutionTarget(Element);
+		if (!Validate_ElementSourceMaterialSlots(Element, strOutError))
 			return false;
-		}
-		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
-			Element.Material.SourceMaterial;
-		if (SourceMaterial.eSourceBlendClass >=
-			EFFECT_SOURCE_BLEND_CLASS::END ||
-			(!SourceMaterial.bEnabled &&
-			 SourceMaterial.eSourceBlendClass !=
-				EFFECT_SOURCE_BLEND_CLASS::UNKNOWN))
-		{
-			strOutError =
-				"Effect source Material blend evidence is invalid.";
-			return false;
-		}
-		if (SourceMaterial.bEnabled)
-		{
-			if (!Is_StableId(SourceMaterial.strProfileId) ||
-				!Is_StableId(SourceMaterial.strRuntimeShaderProfileId) ||
-				!Is_SupportedEffectSourceRuntimeShaderProfile(
-					SourceMaterial.strRuntimeShaderProfileId) ||
-				SourceMaterial.strParentMaterialPath.empty() ||
-				SourceMaterial.strParentMaterialPath.size() > 512u ||
-				!Has_VisibleCharacter(
-					SourceMaterial.strParentMaterialPath) ||
-				SourceMaterial.eStatus >=
-					EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED ||
-				!Is_StableId(SourceMaterial.strSubUVMode) ||
-				!Is_SupportedEffectSourceSubUVMode(
-					SourceMaterial.strSubUVMode) ||
-				SourceMaterial.Textures.size() > 32u ||
-				SourceMaterial.Scalars.size() > 128u ||
-				SourceMaterial.Vectors.size() > 128u ||
-				SourceMaterial.StaticSwitches.size() > 128u)
-			{
-				strOutError = "Effect source Material profile metadata is invalid.";
-				return false;
-			}
-			std::unordered_set<std::string> TextureNames;
-			for (const EFFECT_NAMED_TEXTURE_DESC& Texture :
-				SourceMaterial.Textures)
-			{
-				EFFECT_RESOURCE_FILE_KIND eActualKind =
-					EFFECT_RESOURCE_FILE_KIND::END;
-				if (Texture.strName.empty() || Texture.strName.size() > 128u ||
-					!Has_VisibleCharacter(Texture.strName) ||
-					Texture.strGroup.size() > 128u ||
-					(!Texture.strGroup.empty() &&
-						!Has_VisibleCharacter(Texture.strGroup)) ||
-					Texture.strSourceObjectPath.size() > 512u ||
-					(!Texture.strSourceObjectPath.empty() &&
-						!Has_VisibleCharacter(Texture.strSourceObjectPath)) ||
-					(!Texture.strAssetId.empty() &&
-						Texture.strSourceObjectPath.empty()) ||
-					(!Texture.strAssetId.empty() &&
-						(!Is_SafeResourceAssetId(Texture.strAssetId, &eActualKind) ||
-							eActualKind != EFFECT_RESOURCE_FILE_KIND::TEXTURE)) ||
-					Texture.eAddressU >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
-					Texture.eAddressV >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
-					Texture.eColorSpace >= EFFECT_TEXTURE_COLOR_SPACE::END ||
-					Texture.strSamplingEvidence.empty() ||
-					Texture.strSamplingEvidence.size() > 128u ||
-					!Is_StableId(Texture.strSamplingEvidence) ||
-					!TextureNames.insert(Texture.strName).second)
-				{
-					strOutError = "Effect source Material texture is invalid: " +
-						Texture.strName + " (" + Texture.strAssetId + ").";
-					return false;
-				}
-			}
-			std::unordered_set<std::string> ScalarNames;
-			for (const EFFECT_NAMED_FLOAT_DESC& Scalar :
-				SourceMaterial.Scalars)
-			{
-				if (Scalar.strName.empty() || Scalar.strName.size() > 128u ||
-					!Has_VisibleCharacter(Scalar.strName) ||
-					Scalar.strGroup.size() > 128u ||
-					(!Scalar.strGroup.empty() &&
-						!Has_VisibleCharacter(Scalar.strGroup)) ||
-					!std::isfinite(Scalar.fValue) ||
-					!ScalarNames.insert(Scalar.strName).second)
-				{
-					strOutError = "Effect source Material scalar is invalid.";
-					return false;
-				}
-			}
-			std::unordered_set<std::string> VectorNames;
-			for (const EFFECT_NAMED_FLOAT4_DESC& Vector :
-				SourceMaterial.Vectors)
-			{
-				if (Vector.strName.empty() || Vector.strName.size() > 128u ||
-					!Has_VisibleCharacter(Vector.strName) ||
-					Vector.strGroup.size() > 128u ||
-					(!Vector.strGroup.empty() &&
-						!Has_VisibleCharacter(Vector.strGroup)) ||
-					!Is_Finite(Vector.vValue) ||
-					!VectorNames.insert(Vector.strName).second)
-				{
-					strOutError = "Effect source Material vector is invalid.";
-					return false;
-				}
-			}
-			std::unordered_set<std::string> SwitchNames;
-			for (const EFFECT_NAMED_BOOL_DESC& Switch :
-				SourceMaterial.StaticSwitches)
-			{
-				if (Switch.strName.empty() || Switch.strName.size() > 128u ||
-					!Has_VisibleCharacter(Switch.strName) ||
-					Switch.strGroup.size() > 128u ||
-					(!Switch.strGroup.empty() &&
-						!Has_VisibleCharacter(Switch.strGroup)) ||
-					!SwitchNames.insert(Switch.strName).second)
-				{
-					strOutError = "Effect source Material switch is invalid.";
-					return false;
-				}
-			}
-			for (const std::string& Semantic :
-				SourceMaterial.DynamicParameterSemantics)
-			{
-				if (!Is_StableId(Semantic) ||
-					!Is_SupportedEffectSourceDynamicParameterSemantic(Semantic))
-				{
-					strOutError =
-						"Effect source Material Dynamic Parameter semantic is invalid.";
-					return false;
-				}
-			}
-		}
-
-		std::unordered_set<std::string> Slots;
-		for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)
-		{
-			const bool_t bMeshShape =
-				Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
-			const EFFECT_MATERIAL_INPUT_SLOT_DESC* pInput = bMeshShape ?
-				nullptr : Find_EffectMaterialInput(
-					*pMaterialTemplate, Binding.strSlotId);
-			const EFFECT_RESOURCE_SLOT eRuntimeSlot = bMeshShape ?
-				EFFECT_RESOURCE_SLOT::MESH_MODEL :
-				(nullptr == pInput ? EFFECT_RESOURCE_SLOT::END :
-					pInput->eRuntimeSlot);
-			EFFECT_RESOURCE_FILE_KIND eActualKind = EFFECT_RESOURCE_FILE_KIND::END;
-			const EFFECT_RESOURCE_FILE_KIND eExpectedKind = bMeshShape ?
-				EFFECT_RESOURCE_FILE_KIND::MODEL :
-				(nullptr == pInput ? EFFECT_RESOURCE_FILE_KIND::END :
-					pInput->eAllowedResourceKind);
-			if (!Is_ResourceSlotAllowed(Element.eKind, eRuntimeSlot) ||
-				eExpectedKind == EFFECT_RESOURCE_FILE_KIND::END ||
-				!Slots.insert(Binding.strSlotId).second ||
-				!Is_SafeElementResourceAssetId(Element.eKind,
-					Binding.strSlotId, Binding.strAssetId, &eActualKind) ||
-				eActualKind != eExpectedKind)
-			{
-				strOutError = "Effect resource slot, path, file, or duplicate is invalid.";
-				return false;
-			}
-		}
-		/* Hard fail-closed rows remain loadable source evidence.  Every execution
-		   target, including an authoring-approximate preview, must satisfy the
-		   same source-profile/resource contract before it can be activated. */
-		if (!Document.bSourceContract && bAuthoringExecutionTarget)
-		{
-			bool_t bSourceMaterialOwnsDrawableContract = false;
-			if (!Validate_ExecutableSourceMaterialCarrier(
-					Element, bSourceMaterialOwnsDrawableContract, strOutError))
-			{
-				strOutError =
-					"Ordinary authored source Material is not admitted: " +
-					Element.strElementId + ": " + strOutError;
-				return false;
-			}
-		}
 		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
 		if (Recipe.bEnabled)
 		{
@@ -7832,7 +8112,8 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 		{
 			return false;
 		}
-		if (Element.Material.SourceMaterial.bEnabled ||
+		if (!Element.Detail.Mesh.SourceMaterialSlots.empty() ||
+			Element.Material.SourceMaterial.bEnabled ||
 			Element.Material.Execution.bEnabled ||
 			Element.Material.Execution.bFailClosed)
 		{
@@ -8360,8 +8641,7 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		[](const EFFECT_ELEMENT_DESC& Element)
 		{
 			return Element.bVisible &&
-				(Is_EffectAuthoringExecutionTarget(
-					Element.Material.Execution) ||
+				(Is_EffectElementAuthoringExecutionTarget(Element) ||
 				 Is_EffectPresentationExecutionTarget(Element));
 		});
 	const bool_t bHasVisibleModelCue = std::any_of(
@@ -8379,7 +8659,7 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		if (!Element.bVisible ||
-			(!Is_EffectAuthoringExecutionTarget(Element.Material.Execution) &&
+			(!Is_EffectElementAuthoringExecutionTarget(Element) &&
 			 !Is_EffectPresentationExecutionTarget(Element)))
 			continue;
 		if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
@@ -8387,6 +8667,8 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		{
 			continue;
 		}
+		if (!Element.Detail.Mesh.SourceMaterialSlots.empty())
+			continue;
 		const EFFECT_MATERIAL_TEMPLATE_DESC* pTemplate =
 			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
 		const EFFECT_MATERIAL_INPUT_SLOT_DESC* pBaseInput =
@@ -10995,16 +11277,28 @@ namespace
 			std::string_view strChainMode;
 			if (!ReadPortableStringLiteral(Module, "chainmode",
 					"eochainmode_add", strChainMode) ||
-				strChainMode != "eochainmode_add" ||
+				(strChainMode != "eochainmode_add" &&
+				 strChainMode != "eochainmode_link") ||
 				std::ranges::any_of(Module.Literals,
 					[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
 					{
-						return Literal.strPropertyPath.starts_with(
-							"offsetoptions.") ||
-							Literal.strPropertyPath.starts_with(
-								"rotationoptions.") ||
-							Literal.strPropertyPath.starts_with(
-								"rotationrateoptions.");
+						const std::string_view Path = Literal.strPropertyPath;
+						if (!Path.starts_with("offsetoptions.") &&
+							!Path.starts_with("rotationoptions.") &&
+							!Path.starts_with("rotationrateoptions."))
+						{
+							return false;
+						}
+						// These decoded source options match the existing one-time
+						// relative-time spawn sampling. Raw or live options stay closed.
+						if (Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
+							return true;
+						const std::string_view Option = Path.substr(Path.find('.') + 1u);
+						if (Option == "bprocessduringspawn")
+							return !Literal.bBoolean;
+						if (Option == "bprocessduringupdate" || Option == "buseemittertime")
+							return Literal.bBoolean;
+						return true;
 					}))
 			{
 				strOutError =
@@ -11094,7 +11388,12 @@ namespace
 				NormalizePortableParticleModuleClass(Module.strClassName);
 			const bool_t bAdmittedDecalTypeData = bDecal &&
 				NormalizedClass == "particlemoduletypedatadecal";
-			if ((!bAdmittedDecalTypeData && std::ranges::find(
+			// Its static slot array is consumed by the existing CModel material
+			// stage; it contributes no second simulation or distribution state.
+			const bool_t bAdmittedMeshMaterial = bMesh &&
+				!Element.Detail.Mesh.SourceMaterialSlots.empty() &&
+				Module.strClassName == "particlemodulemeshmaterial";
+			if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && std::ranges::find(
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,
 					NormalizedClass) ==
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end()) ||
@@ -11211,6 +11510,21 @@ namespace
 			const auto Iterator = ModuleClassCounts.find(std::string(ClassName));
 			return Iterator == ModuleClassCounts.end() ? 0u : Iterator->second;
 		};
+		if (CountClass("particlemoduleorbit") > 1u &&
+			std::ranges::any_of(Element.SourceRecipe.Modules,
+				[](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					if (Module.strClassName != "particlemoduleorbit")
+						return false;
+					const auto* pChain = FindPortableSourceLiteral(Module, "chainmode");
+					return nullptr != pChain && pChain->strString == "eochainmode_link";
+				}))
+		{
+			// A sole LINK starts from an empty chain and uses the current additive
+			// state. Linked chains require per-module orbit state before admission.
+			strOutError = "Portable authored particle multi-module Orbit LINK is unsupported.";
+			return false;
+		}
 		for (const auto& [ClassName, Count] : ModuleClassCounts)
 		{
 			/* UE3 can retain renderer-irrelevant modules in an emitter.  The
@@ -13523,80 +13837,9 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					UnboundValue.Get_String());
 			}
 		}
-		const DATA_JSON_VALUE* pTemplateId = pMaterial->Find("templateId");
-		if (const DATA_JSON_VALUE* pColorTexturesSRGB =
-			pMaterial->Find("colorTexturesSRGB"))
-		{
-			if (!pColorTexturesSRGB->Is_Boolean())
-			{
-				strOutError = "Effect Material colorTexturesSRGB must be a boolean.";
-				return false;
-			}
-			Element.Material.bColorTexturesSRGB = pColorTexturesSRGB->Get_Boolean();
-		}
-		if (iSourceVersion >= 6u)
-		{
-			if (nullptr == pTemplateId || !pTemplateId->Is_String())
-			{
-				strOutError = "Effect Material Template ID is invalid.";
-				return false;
-			}
-			Element.Material.strTemplateId = pTemplateId->Get_String();
-		}
-		if (iSourceVersion >= 10u)
-		{
-			const DATA_JSON_VALUE* pSourceMaterialPath =
-				pMaterial->Find("sourceMaterialPath");
-			if (nullptr == pSourceMaterialPath ||
-				!pSourceMaterialPath->Is_String())
-			{
-				strOutError = "Effect source Material path is invalid.";
-				return false;
-			}
-			Element.Material.strSourceMaterialPath =
-				pSourceMaterialPath->Get_String();
-		}
-		if (iSourceVersion >= 11u)
-		{
-			const DATA_JSON_VALUE* pSourceProfile =
-				pMaterial->Find("sourceProfile");
-			if (nullptr == pSourceProfile ||
-				!Read_SourceMaterialProfile(*pSourceProfile,
-					Element.Material.SourceMaterial, strOutError))
-			{
-				if (strOutError.empty())
-					strOutError = "Effect source Material profile is invalid.";
-				return false;
-			}
-		}
-		if (const DATA_JSON_VALUE* pExecution =
-			pMaterial->Find("execution"))
-		{
-			if (!pExecution->Is_Object() ||
-				!Read_MaterialExecution(*pExecution,
-					Element.Material.Execution, strOutError))
-			{
-				if (strOutError.empty())
-					strOutError = "Effect authored Material execution is invalid.";
-				return false;
-			}
-		}
-		const DATA_JSON_VALUE* pProfile = pMaterial->Find("renderProfile");
-		if (nullptr == pProfile || !pProfile->Is_String() ||
-			!Parse_Token(pProfile->Get_String(), PROFILE_TOKENS, std::size(PROFILE_TOKENS), Element.Material.eRenderProfile))
-		{
-			strOutError = "Effect render profile is invalid.";
+		if (!Read_Material(*pMaterial, Element.Material,
+			iSourceVersion, bSourceContract, strOutError))
 			return false;
-		}
-		if (!bSourceContract && iSourceVersion >= 11u &&
-			Element.Material.strTemplateId ==
-				EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
-			!Element.Material.SourceMaterial.bEnabled)
-		{
-			strOutError =
-				"Effect source Material template requires a staged profile.";
-			return false;
-		}
 		if (iSourceVersion >= 4u)
 		{
 			const DATA_JSON_VALUE* pDetail = ElementValue.Find("detail");
@@ -13874,23 +14117,9 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			}
 			Output << "\n      ],\n";
 		}
-		Output << "      \"material\": { \"templateId\": \""
-			<< CDataJson::Escape(Element.Material.strTemplateId)
-			<< "\", \"sourceMaterialPath\": \""
-			<< CDataJson::Escape(Element.Material.strSourceMaterialPath)
-			<< "\", \"renderProfile\": \""
-			<< To_Token(Element.Material.eRenderProfile)
-			<< "\", \"sourceProfile\": ";
-		Write_SourceMaterialProfile(Output, Element.Material.SourceMaterial);
-		if (Element.Material.bColorTexturesSRGB)
-			Output << ", \"colorTexturesSRGB\": true";
-		if (Element.Material.Execution.bEnabled ||
-			Element.Material.Execution.bFailClosed)
-		{
-			Output << ", \"execution\": ";
-			Write_MaterialExecution(Output, Element.Material.Execution);
-		}
-		Output << " },\n"
+		Output << "      \"material\": ";
+		Write_Material(Output, Element.Material);
+		Output << ",\n"
 			<< "      \"actionCueAttachment\": { \"enabled\": "
 			<< (Element.ActionCueAttachment.bEnabled ? "true" : "false")
 			<< ", \"follow\": "

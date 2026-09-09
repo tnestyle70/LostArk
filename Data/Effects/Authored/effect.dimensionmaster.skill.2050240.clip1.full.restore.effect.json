@@ -30747,7 +30747,7 @@
       "displayName": "particlespriteemitter_7",
       "groupId": "authored.source-particle.full-d",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050240.clip1.full.restore|source:effect.dimensionmaster.skill.2050240.imported|element:fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -30768,15 +30768,331 @@
         }
       ],
       "material": {
-        "templateId": "effect.standard",
+        "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read",
+        "renderProfile": "alpha_one_sided_depth_read",
         "sourceProfile": {
-          "enabled": false
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+          "runtimeShaderProfileId": "effect.ue3.e-master-01-04-native.v1",
+          "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "06.map",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "02.map_e",
+              "sourceObjectPath": "fx_tex_04.fx_i_noise_03",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "12.map_f",
+              "sourceObjectPath": "fx_tex_06.fx_j_environment_tile_02",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_02.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "21.map_c",
+              "sourceObjectPath": "fx_tex_04.fx_j_flowsmoke_01_cl",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "21.uvscale.x",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "22.uvscale.y",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "time",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "05.map_e_panning_x",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "03.map_e_uvscale_r",
+              "group": "None",
+              "value": 0.699999988
+            },
+            {
+              "name": "04.map_e_uvscale_g",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "09.map_d_panning_x",
+              "group": "None",
+              "value": 0.600000024
+            },
+            {
+              "name": "07.map_d_uvscale_r",
+              "group": "None",
+              "value": 2
+            },
+            {
+              "name": "08.map_d_uvscale_g",
+              "group": "None",
+              "value": 1.5
+            },
+            {
+              "name": "10.map_d_panning_y",
+              "group": "None",
+              "value": 0.400000006
+            },
+            {
+              "name": "05.distort_str",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "06.map_e_panning_y",
+              "group": "None",
+              "value": 0.100000001
+            },
+            {
+              "name": "15.map_f_panning_x",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "13.map_f_uvscale_r",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "14.map_f_uvscale_g",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "16.map_f_panning_y",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "91.desaturation",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "92.emissiion_power",
+              "group": "None",
+              "value": 1.29999995
+            },
+            {
+              "name": "29.cmap.direct",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "30.cmap.time(rotrate)",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "36.str",
+              "group": "None",
+              "value": 4
+            },
+            {
+              "name": "37.power",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "01.depthbiasdalpha_bias",
+              "group": "None",
+              "value": 50
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            {
+              "name": "93.emissiion_color",
+              "group": "None",
+              "value": [
+                4,
+                4,
+                4,
+                15
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "00.usedistortion",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.usemesh",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "31.mapch.r",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "32.mapch.g",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "20.use_clampmap",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "25.use_yclamp",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.use_uvdistort",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "10.use_mapb",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.use_mapa",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "30.usefresnal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.checkisdepthbiasalpha",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "00.use_emission",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "50.usefresemission",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.use_emissionmap",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "10.use_mapf",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "11.map_e + map_f",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.usespecullar",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "20.usefresspec",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "40.use_clampmap",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "48.use_yclamp",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "41.map_e + map_f",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "60.twist",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "60.usedissolveemission",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "31.fresnal.invert",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "33.mapch.b",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "34.mapch.a",
+              "group": "None",
+              "value": true
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
         }
       },
       "actionCueAttachment": {
@@ -42823,7 +43139,7 @@
       "displayName": "particlespriteemitter_2",
       "groupId": "authored.source-particle.full-d",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050240.clip1.full.restore|source:effect.dimensionmaster.skill.2050240.imported|element:fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -42844,15 +43160,331 @@
         }
       ],
       "material": {
-        "templateId": "effect.standard",
+        "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read",
+        "renderProfile": "alpha_one_sided_depth_read",
         "sourceProfile": {
-          "enabled": false
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+          "runtimeShaderProfileId": "effect.ue3.e-master-01-04-native.v1",
+          "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "06.map",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "02.map_e",
+              "sourceObjectPath": "fx_tex_04.fx_i_noise_03",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "12.map_f",
+              "sourceObjectPath": "fx_tex_06.fx_j_environment_tile_02",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_02.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "21.map_c",
+              "sourceObjectPath": "fx_tex_04.fx_j_flowsmoke_01_cl",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "21.uvscale.x",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "22.uvscale.y",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "time",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "05.map_e_panning_x",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "03.map_e_uvscale_r",
+              "group": "None",
+              "value": 0.699999988
+            },
+            {
+              "name": "04.map_e_uvscale_g",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "09.map_d_panning_x",
+              "group": "None",
+              "value": 0.600000024
+            },
+            {
+              "name": "07.map_d_uvscale_r",
+              "group": "None",
+              "value": 2
+            },
+            {
+              "name": "08.map_d_uvscale_g",
+              "group": "None",
+              "value": 1.5
+            },
+            {
+              "name": "10.map_d_panning_y",
+              "group": "None",
+              "value": 0.400000006
+            },
+            {
+              "name": "05.distort_str",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "06.map_e_panning_y",
+              "group": "None",
+              "value": 0.100000001
+            },
+            {
+              "name": "15.map_f_panning_x",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "13.map_f_uvscale_r",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "14.map_f_uvscale_g",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "16.map_f_panning_y",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "91.desaturation",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "92.emissiion_power",
+              "group": "None",
+              "value": 1.29999995
+            },
+            {
+              "name": "29.cmap.direct",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "30.cmap.time(rotrate)",
+              "group": "None",
+              "value": 0
+            },
+            {
+              "name": "36.str",
+              "group": "None",
+              "value": 4
+            },
+            {
+              "name": "37.power",
+              "group": "None",
+              "value": 1
+            },
+            {
+              "name": "01.depthbiasdalpha_bias",
+              "group": "None",
+              "value": 50
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            {
+              "name": "93.emissiion_color",
+              "group": "None",
+              "value": [
+                4,
+                4,
+                4,
+                15
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "00.usedistortion",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.usemesh",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "31.mapch.r",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "32.mapch.g",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "20.use_clampmap",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "25.use_yclamp",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.use_uvdistort",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "10.use_mapb",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.use_mapa",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "30.usefresnal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.checkisdepthbiasalpha",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "00.use_emission",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "50.usefresemission",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "01.use_emissionmap",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "10.use_mapf",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "11.map_e + map_f",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "00.usespecullar",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "20.usefresspec",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "40.use_clampmap",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "48.use_yclamp",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "41.map_e + map_f",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "60.twist",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "60.usedissolveemission",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "31.fresnal.invert",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "33.mapch.b",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "34.mapch.a",
+              "group": "None",
+              "value": true
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
         }
       },
       "actionCueAttachment": {
@@ -51971,7 +52603,7 @@
       "displayName": "particlespriteemitter_0",
       "groupId": "authored.source-particle.full-d",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050240.clip1.full.restore|source:effect.dimensionmaster.skill.2050240.imported|element:fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -52101,7 +52733,368 @@
         },
         "mesh": {
           "useModelMaterial": false,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.01,
+          "sourceMaterialSlots": [
+            {
+              "sourceMaterialIndex": 0,
+              "material": {
+                "templateId": "effect.source_material",
+                "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
+                "renderProfile": "alpha_one_sided_depth_read",
+                "sourceProfile": {
+                  "enabled": true,
+                  "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.me.localcrack.01.tr.a0e83a46fef9",
+                  "runtimeShaderProfileId": "effect.ue3.v-fx-j-me-localcrack-01-07-tr-native.v1",
+                  "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_me_localcrack_01_tr",
+                  "semanticStatus": "reconstructed_profile",
+                  "textures": [
+                    {
+                      "name": "normal_tex",
+                      "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "linear",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    },
+                    {
+                      "name": "refle_tex",
+                      "sourceObjectPath": "fx_tex_00.fx_b_atypical_004_cube",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "srgb",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    },
+                    {
+                      "name": "native_texture_2",
+                      "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "srgb",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    }
+                  ],
+                  "scalars": [
+                    {
+                      "name": "refle_panspeed",
+                      "group": "None",
+                      "value": 0.10000000149011612
+                    },
+                    {
+                      "name": "normal_tileu",
+                      "group": "None",
+                      "value": 0.5
+                    },
+                    {
+                      "name": "normal_tilev",
+                      "group": "None",
+                      "value": 0.5
+                    },
+                    {
+                      "name": "refle_vector_divide",
+                      "group": "None",
+                      "value": 3.0
+                    },
+                    {
+                      "name": "refle_tileu",
+                      "group": "None",
+                      "value": 1.0
+                    },
+                    {
+                      "name": "refle_tilev",
+                      "group": "None",
+                      "value": 1.0
+                    },
+                    {
+                      "name": "refle_offsetx",
+                      "group": "None",
+                      "value": 0.5
+                    },
+                    {
+                      "name": "refle_offsety",
+                      "group": "None",
+                      "value": 0.5
+                    },
+                    {
+                      "name": "refle_desaturation",
+                      "group": "None",
+                      "value": 0.6000000238418579
+                    },
+                    {
+                      "name": "refle_pow",
+                      "group": "None",
+                      "value": 2.0
+                    },
+                    {
+                      "name": "fresnel_pow",
+                      "group": "None",
+                      "value": 0.20000000298023224
+                    },
+                    {
+                      "name": "distortion",
+                      "group": "None",
+                      "value": 10.0
+                    }
+                  ],
+                  "vectors": [
+                    {
+                      "name": "selectioncolor",
+                      "group": "None",
+                      "value": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "refle_color",
+                      "group": "None",
+                      "value": [
+                        10.0,
+                        10.0,
+                        10.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "meshemitterdynamicparameter",
+                      "group": "None",
+                      "value": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "in_color",
+                      "group": "None",
+                      "value": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "out_color",
+                      "group": "None",
+                      "value": [
+                        0.10000000149011612,
+                        0.10000000149011612,
+                        0.10000000149011612,
+                        1.0
+                      ]
+                    }
+                  ],
+                  "staticSwitches": [
+                    {
+                      "name": "use_depth",
+                      "group": "None",
+                      "value": false
+                    },
+                    {
+                      "name": "use_dissolve",
+                      "group": "None",
+                      "value": false
+                    }
+                  ],
+                  "dynamicParameterSemantics": [
+                    "unbound",
+                    "unbound",
+                    "unbound",
+                    "unbound"
+                  ],
+                  "subUVMode": "none"
+                }
+              }
+            },
+            {
+              "sourceMaterialIndex": 1,
+              "material": {
+                "templateId": "effect.source_material",
+                "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_ice_01_02_tr",
+                "renderProfile": "alpha_one_sided_depth_read",
+                "sourceProfile": {
+                  "enabled": true,
+                  "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.me.ice.01.tr.b5fca778c01f",
+                  "runtimeShaderProfileId": "effect.ue3.sd-324-native.v1",
+                  "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_ice_01_tr",
+                  "semanticStatus": "reconstructed_profile",
+                  "textures": [
+                    {
+                      "name": "01.icemap",
+                      "sourceObjectPath": "fx_tex_02.fx_d_environ_018",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_018.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "srgb",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    },
+                    {
+                      "name": "01.specmap",
+                      "sourceObjectPath": "fx_tex_02.fx_d_environ_035",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_035.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "srgb",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    },
+                    {
+                      "name": "native_texture_2",
+                      "sourceObjectPath": "fx_tex_00.fx_a_atypical_043",
+                      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_043.dds",
+                      "addressU": "wrap",
+                      "addressV": "wrap",
+                      "colorSpace": "srgb",
+                      "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+                    }
+                  ],
+                  "scalars": [
+                    {
+                      "name": "05.specmap_uvscale.x",
+                      "group": "None",
+                      "value": 1.0
+                    },
+                    {
+                      "name": "06.specmap_uvscale.y",
+                      "group": "None",
+                      "value": 1.0
+                    },
+                    {
+                      "name": "02.icemap_uv.x",
+                      "group": "None",
+                      "value": 2.0
+                    },
+                    {
+                      "name": "03.icemap_uv.y",
+                      "group": "None",
+                      "value": 2.0
+                    },
+                    {
+                      "name": "02.specmap_str",
+                      "group": "None",
+                      "value": 1.0
+                    },
+                    {
+                      "name": "07.desaturation",
+                      "group": "None",
+                      "value": 0.800000011920929
+                    },
+                    {
+                      "name": "08.specmap_power",
+                      "group": "None",
+                      "value": 2.0
+                    },
+                    {
+                      "name": "09.ice_deep",
+                      "group": "None",
+                      "value": -15.0
+                    },
+                    {
+                      "name": "04.desaturation",
+                      "group": "None",
+                      "value": 0.8999999761581421
+                    },
+                    {
+                      "name": "05.icemap_power",
+                      "group": "None",
+                      "value": 2.5
+                    },
+                    {
+                      "name": "51.fresnal_power",
+                      "group": "None",
+                      "value": 1.2000000476837158
+                    }
+                  ],
+                  "vectors": [
+                    {
+                      "name": "selectioncolor",
+                      "group": "None",
+                      "value": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "09.specmap_color",
+                      "group": "None",
+                      "value": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "06.icemap_color",
+                      "group": "None",
+                      "value": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    },
+                    {
+                      "name": "meshemitterdynamicparameter",
+                      "group": "None",
+                      "value": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ],
+                  "staticSwitches": [
+                    {
+                      "name": "00.usedistortion",
+                      "group": "None",
+                      "value": false
+                    },
+                    {
+                      "name": "00.checkisdepthbiasalpha",
+                      "group": "None",
+                      "value": false
+                    },
+                    {
+                      "name": "10.usesnow",
+                      "group": "None",
+                      "value": false
+                    },
+                    {
+                      "name": "00.useshadow",
+                      "group": "None",
+                      "value": false
+                    },
+                    {
+                      "name": "--usespecullar",
+                      "group": "None",
+                      "value": true
+                    },
+                    {
+                      "name": "00.useemission",
+                      "group": "None",
+                      "value": false
+                    }
+                  ],
+                  "dynamicParameterSemantics": [
+                    "unbound",
+                    "unbound",
+                    "unbound",
+                    "unbound"
+                  ],
+                  "subUVMode": "none"
+                }
+              }
+            }
+          ]
         },
         "sprite": {
           "billboard": true
