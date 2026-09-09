@@ -28,8 +28,8 @@ void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* 
     {
         m_pAuthoringSequencer = std::make_unique<CEffectAuthoringSequencer>(m_pDevice, m_pContext, m_pCharacterPreviewPanel);
         m_pAuthoringSequencer->Set_V1Callbacks(
-            [this](const EFFECT_RESOURCE_KEY& key, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, std::string& error)
-            { return Create_AuthoringOccurrence(key, root, object, error); },
+            [this](const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root, std::shared_ptr<CEffectObject>& object, std::string& error)
+            { return Create_AuthoringOccurrence(key, elementId, root, object, error); },
             [this](const std::shared_ptr<CEffectObject>& object)
             {
                 const auto found = m_AuthoringOccurrenceLevels.find(object.get());
@@ -184,7 +184,7 @@ void CEffect_Tool::Attach_AuthoringSaved()
         m_strDocumentStatus += " Effect saved; tree placement needs retry: " + status;
 }
 
-bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const float4x4_t& root,
+bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root,
     std::shared_ptr<CEffectObject>& object, std::string& error)
 {
     if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || !key.Is_Valid())
@@ -208,6 +208,12 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     }
     if (document.strEffectAssetId != key.strStableId)
     { error = "Saved Effect identity does not match the selected row."; return false; }
+    if (!elementId.empty())
+    {
+        EFFECT_DOCUMENT_DESC selected;
+        if (!Build_ElementPreviewDocument(document, elementId, selected, error)) return false;
+        document = std::move(selected);
+    }
     if (!CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
     const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
     CEffectObject::EFFECT_OBJECT_DESC desc{};

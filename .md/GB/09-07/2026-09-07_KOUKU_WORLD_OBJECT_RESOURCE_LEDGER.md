@@ -37,8 +37,8 @@
 - 근거: 사용자 지정 MN_RHCN_00 텍스처에 맞춰 revision 367에서 기존 세토 계열 서커스 공 연결을 교정했다. `FX_MN_RPCZ_00_U.par_u_rpcz_ballshoot_ball_01/02`의 TypeDataMesh와 mn_rhcn_00_mi 참조가 이 모델이다. 원본 MN_RHCN_00_SK와 위치 보정 후 전체 716 vertex shape가 일치한다. 이름의 fm_d만으로 파편이라고 분류하지 않는다.
 - 단위/배수: modelPreScale=0.01, scale=1.
 - 애니메이션: 0; transform/motion.
-- 텍스처: WModel 자체 texture가 비어 있어 `Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_d.dds`를 명시 diffuse override한다.
-- 원본 상하 이동은 위 particle의 local 위치 곡선 21개 표본에서 -20→150→-20cm로 확인했다. 모델 자체 clip은 0개다. 정확한 세이튼 등장 occurrence 연결은 확정하지 않았으며, 사용자 저작은 Object Tool의 기존 Motion으로 조절한다. 기존 Transform과 높이는 보존했다. 근거 `out/KoukuPatternStaging/ball-mn-rhcn-00-source-audit.json`.
+- 텍스처: WModel material0 `mn_rhcn_00_mi`에 원본 MIC의 `Effect/KoukuSaydon/Textures/MN_RHCN_00/tex/mn_rhcn_00_{d,n,s,e}.dds` 네 입력을 연결했다. 기존 diffuse override도 같은 D를 사용한다. 실제 CModel의 단일 mesh/material0에서 D/N/S/E 네 texture 로드를 확인했다. mesh section과 dummy material, Transform은 보존했다. 원본 PBR·emissive 시간 공식 전체 복원을 뜻하지 않는다.
+- 원본 상하 이동은 위 particle의 local 위치 곡선 21개 표본에서 -20→150→-20cm로 확인했다. 모델 자체 clip은 0개다. 현재 revision412에서 `KAKULSAYDON_G1_PATTERN_8 → world.object.instance.kouku.ball_bounce → world.object.kouku.ball` 소비를 확인했고, 사용자 저작 Motion과 occurrence 타이밍은 바꾸지 않았다. 근거 `out/KoukuPatternStaging/ball-mn-rhcn-00-source-audit.json`, `out/ThreeClassFullRestore20260909/kouku-ball-textures.json`.
 
 ### 월드오브젝트_세토
 

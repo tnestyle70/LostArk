@@ -1777,6 +1777,8 @@ namespace
 			return "Zoom Blur (Reconstructed v1)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
 			return "Film Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::MOTION_BLUR_RECONSTRUCTED_V1:
+			return "Motion Blur (Native)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::END:
 		default:
 			return "Unresolved";
@@ -2814,6 +2816,42 @@ namespace
 		// tune it; product admission is refused elsewhere and is unaffected.
 		return Element.bVisible &&
 			Client::Is_EffectElementAuthoringExecutionTarget(Element);
+	}
+
+	const char* ElementPreviewAdmissionReason(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (!Element.bVisible)
+			return "Hidden Element: enable Visible before Solo.";
+		if (Element.eKind == Client::EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::SCREEN_POST)
+		{
+			return Is_ElementPreviewAdmitted(Element) ?
+				"Presentation payload is eligible; Solo checks its preview preparation." :
+				"Presentation payload is not admitted for preview; document validation does not make it playable.";
+		}
+		if (!Client::Is_EffectElementAuthoringExecutionTarget(Element))
+		{
+			return Element.Detail.Mesh.SourceMaterialSlots.empty() ?
+				"Material execution is fail-closed; editing and Save remain available." :
+				"A source material slot is not admitted; inspect the Material slot list.";
+		}
+		return "Eligible for Solo; resources and source dependencies are checked when Solo is pressed.";
+	}
+
+	void Prune_MissingElementMarks(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::set<std::string, std::less<>>& Marks)
+	{
+		if (Marks.empty())
+			return;
+		// This view lives only during pruning: no pointers survive a document edit.
+		std::unordered_set<std::string_view> ElementIds;
+		ElementIds.reserve(Document.Elements.size());
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			ElementIds.insert(Element.strElementId);
+		std::erase_if(Marks, [&ElementIds](const std::string& Id)
+			{ return !ElementIds.contains(Id); });
 	}
 
     struct PARTICLE_LAYER_SUMMARY final
@@ -5365,6 +5403,14 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 	ImGui::TextDisabled("A/B isolate without editing the Authored document");
 
     ImGui::SeparatorText("Timeline");
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active() && m_pAuthoringSequencer->Is_ElementPreview())
+    {
+        m_fPreviewTimeSeconds = static_cast<float>(m_pAuthoringSequencer->ClockMs()) * .001f;
+        ImGui::Text("Element preview: %.3f s", m_fPreviewTimeSeconds);
+        ImGui::TextWrapped("Use Play, Pause and Time in the Effect Sequencer to inspect this element. Stop returns to the saved sequence.");
+    }
+    else
+    {
     if (ImGui::Button(m_bPreviewPlaying ? "Pause" : "Play"))
     {
         if (m_bPreviewPlaying)
@@ -5541,6 +5587,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 			Set_SynchronizedAnimationPaused(true);
 		}
 	}
+    }
 	if (m_ActiveDocument.has_value())
 	{
 		const std::string& SelectedEmitter =
@@ -6251,7 +6298,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 		ImGui::EndPopup();
 	}
 	if (!m_strDocumentStatus.empty())
-		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+		ImGui::TextWrapped("Last document operation: %s", m_strDocumentStatus.c_str());
 	if (!bEditableSource)
 	{
 		if (bMigrationReference)
@@ -6410,6 +6457,19 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		m_bDetailDraftPreviewRestartRequested = false;
         m_strDetailStatus.clear();
     }
+	ImGui::TextWrapped("Selected Element Solo: %s",
+		ElementPreviewAdmissionReason(*pCurrent));
+    if (m_pAuthoringSequencer && !m_ProductPreview &&
+        m_ActiveDocument->strEffectAssetId.ends_with(".restore"))
+    {
+        if (ImGui::Button("Timeline Solo##SelectedElement"))
+            (void)Try_PreviewElementTimeline(pCurrent->strElementId);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show only this Element in the Sequencer, paused at its original start time. Scrub or Play there.");
+    }
+	if (m_bDetailDraftCapabilityDeferred)
+		ImGui::TextWrapped("Portable copy restriction: %s",
+			m_strDetailDraftCapabilityReason.c_str());
     const f32_t fElementStart =
         m_DetailDraft->Detail.Timing.fStartDelaySeconds;
 	const f32_t fNativeEmitterDelay = m_DetailDraft->SourceRecipe.bEnabled ?
@@ -8157,6 +8217,12 @@ void Client::CEffect_Tool::Render_SizeDetail(
 		}
 		bChanged |= ImGui::DragFloat("Life x", &Tuning.fLifeTime,
 			0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Life x multiplies each source particle lifetime; 16 means 16 times, not 16 seconds.\n"
+				"The editor and saved-document validator both allow up to 16x. Timing > Life Time is a separate duration in seconds.");
+		}
 		bChanged |= ImGui::DragFloat("Speed x", &Tuning.fSpeed,
 			0.01f, -16.f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::IsItemHovered())
@@ -10970,7 +11036,7 @@ bool_t Client::CEffect_Tool::Refresh_UnifiedEffectCache(
 	Staged.bPreviewReady = Validate_UnifiedEffectPreviewReadiness(
 		Staged.Document, Staged.strPreviewReadinessError);
 	Staged.strStatus = Staged.bPreviewReady ?
-		"Editable Skill Effect is ready." :
+		"Document validation passed; individual Element Solo eligibility is shown on its row." :
 		("Editable Skill Effect is not ready for preview: " +
 		 Staged.strPreviewReadinessError);
 	Cache = std::move(Staged);
@@ -11870,6 +11936,49 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_PreviewElementTimeline(const std::string& strElementId)
+{
+    if (!m_ActiveDocument || !m_pAuthoringSequencer || m_ProductPreview)
+    { m_strPreviewStatus = "Open an authored Effect before using Timeline Solo."; return false; }
+    if (!Validate_ActiveRegistryBoundAuditionFreshness(m_strPreviewStatus)) return false;
+    EFFECT_DOCUMENT_DESC draft = *m_ActiveDocument;
+    if ((m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(draft)) ||
+        (m_bDetailDraftDirty && !Apply_DetailDraft(draft)) ||
+        (m_bModelCueDraftDirty && !Apply_ModelCueDraft(draft)))
+    { m_strPreviewStatus = "Element preview could not apply the current draft."; return false; }
+    EFFECT_DOCUMENT_DESC preview;
+    if (!Build_ElementPreviewDocument(draft, strElementId, preview, m_strPreviewStatus)) return false;
+    const auto& element = preview.Elements.front();
+    const float startSeconds = element.Detail.Timing.fStartDelaySeconds +
+        (element.SourceRecipe.bEnabled ? element.SourceRecipe.fEmitterDelaySeconds : 0.f);
+    const float endSeconds = Element_PreviewEndSeconds(element);
+    if (!std::isfinite(startSeconds) || !std::isfinite(endSeconds) || startSeconds < 0.f ||
+        endSeconds <= startSeconds || endSeconds > 600.f)
+    { m_strPreviewStatus = "Element Timeline Solo needs a finite playback window within 600 seconds."; return false; }
+    const uint32_t duration = static_cast<uint32_t>(std::ceil(endSeconds * 1000.f));
+    const uint32_t focus = (std::min)(duration - 1u, static_cast<uint32_t>(std::ceil(startSeconds * 1000.f)));
+    const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, preview.strEffectAssetId};
+    // Reusing the current document must not reselect its animation: selection
+    // stops the existing preview before the replacement can be staged.
+    if (key.strStableId.ends_with(".restore") && !m_pAuthoringSequencer->Uses_Resource(key) &&
+        !Prepare_RecoveryPreviewTarget()) return false;
+    const bool result = m_pAuthoringSequencer->Preview_Element(key, strElementId,
+        element.strDisplayName, duration, focus);
+    m_strPreviewStatus = m_pAuthoringSequencer->Status();
+    if (!result) return false;
+    Release_WorldPreview(true);
+    Set_SynchronizedAnimationPaused(true);
+    Reset_SynchronizedAnimationSequence();
+    m_bPreviewPlaying = false;
+    m_bPreviewVisibleRequested = false;
+    m_ePreviewFilter = EFFECT_PREVIEW_FILTER::SOLO_SELECTED;
+    m_strPreviewIsolationElementId = strElementId;
+    m_strPreviewIsolationGroupId.clear();
+    m_fPreviewTimeSeconds = static_cast<float>(focus) * .001f;
+    m_fPreviewDurationSeconds = endSeconds;
+    return true;
+}
+
 void Client::CEffect_Tool::Render_RecoveryEffectForProduct(const std::string& strProductEffectId)
 {
     const std::string_view suffix = strProductEffectId.ends_with(".unified") ? ".unified" : ".restore";
@@ -12382,16 +12491,11 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::SameLine();
 	/* Marks are keyed by stable Element ID, so drop any that a document
 	   reload, rollback or delete removed instead of carrying a stale count. */
-	std::erase_if(m_MarkedElementIds,
-		[this](const std::string& strElementId)
-		{
-			return std::none_of(m_ActiveDocument->Elements.begin(),
-				m_ActiveDocument->Elements.end(),
-				[&strElementId](const EFFECT_ELEMENT_DESC& Element)
-				{
-					return Element.strElementId == strElementId;
-				});
-		});
+	if (m_bMarkedElementIdsNeedPrune)
+	{
+		Prune_MissingElementMarks(*m_ActiveDocument, m_MarkedElementIds);
+		m_bMarkedElementIdsNeedPrune = false;
+	}
 	const bool_t bCanDeleteSelected = !Has_UnappliedDetailDraft() &&
 		(!m_MarkedElementIds.empty() ||
 			(EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
@@ -12495,25 +12599,32 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	{
 		return;
 	}
+	// Build the visible family rows once after all document-edit commands above.
+	// The view is frame-local, so reload/delete/reorder cannot leave a stale cache.
+	std::array<std::vector<const EFFECT_ELEMENT_DESC*>,
+		static_cast<size_t>(EFFECT_AUTHORING_FAMILY::END)> ElementFamilies;
+	std::array<size_t, static_cast<size_t>(EFFECT_AUTHORING_FAMILY::END)>
+		PlayLockedCounts{};
+	for (const EFFECT_ELEMENT_DESC& Element : m_ActiveDocument->Elements)
+	{
+		const size_t iFamily = static_cast<size_t>(Resolve_AuthoringFamily(Element));
+		if (iFamily >= ElementFamilies.size())
+			continue;
+		ElementFamilies[iFamily].push_back(&Element);
+		if (!Is_ElementPreviewAdmitted(Element))
+			++PlayLockedCounts[iFamily];
+	}
 	for (int32_t iFamily = 0;
 		iFamily < static_cast<int32_t>(EFFECT_AUTHORING_FAMILY::END);
 		++iFamily)
 	{
 		const EFFECT_AUTHORING_FAMILY eFamily =
 			static_cast<EFFECT_AUTHORING_FAMILY>(iFamily);
-		const size_t iCount = static_cast<size_t>(std::count_if(
-			m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
-			[eFamily](const EFFECT_ELEMENT_DESC& Element)
-			{ return Resolve_AuthoringFamily(Element) == eFamily; }));
+		const auto& FamilyElements = ElementFamilies[static_cast<size_t>(iFamily)];
+		const size_t iCount = FamilyElements.size();
 		if (0u == iCount)
 			continue;
-		const size_t iPlayLockedCount = static_cast<size_t>(std::count_if(
-			m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
-			[eFamily](const EFFECT_ELEMENT_DESC& Element)
-			{
-				return Resolve_AuthoringFamily(Element) == eFamily &&
-					!Is_ElementPreviewAdmitted(Element);
-			}));
+		const size_t iPlayLockedCount = PlayLockedCounts[static_cast<size_t>(iFamily)];
 		const bool_t bFamilyPreviewAdmitted = iPlayLockedCount < iCount;
 		ImGui::PushID(iFamily);
 		const std::string FamilyLabel = std::string(
@@ -12540,11 +12651,6 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		}
 		if (bFamilyOpen)
 		{
-			std::vector<const EFFECT_ELEMENT_DESC*> FamilyElements;
-			FamilyElements.reserve(iCount);
-			for (const EFFECT_ELEMENT_DESC& Element : m_ActiveDocument->Elements)
-				if (Resolve_AuthoringFamily(Element) == eFamily)
-					FamilyElements.push_back(&Element);
 			ImGuiListClipper Clipper;
 			Clipper.Begin(static_cast<int>(FamilyElements.size()), ImGui::GetTextLineHeightWithSpacing());
 			while (Clipper.Step())
@@ -12591,11 +12697,9 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 						}
 					}
 					if (ImGui::IsItemHovered())
-						ImGui::SetTooltip(
-							"Stable Element: %s%s",
+						ImGui::SetTooltip("Stable Element: %s\n%s",
 							Element.strElementId.c_str(),
-							Is_ElementPreviewAdmitted(Element) ? "" :
-								"\nPlay locked: hidden or hard material/runtime admission; editing and Save remain available.");
+							ElementPreviewAdmissionReason(Element));
 					ImGui::SameLine();
 					const bool_t bElementPreviewAdmitted =
 						Is_ElementPreviewAdmitted(Element);
@@ -12609,8 +12713,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 					if (!bElementPreviewAdmitted && ImGui::IsItemHovered(
 							ImGuiHoveredFlags_AllowWhenDisabled))
 					{
-						ImGui::SetTooltip(
-							"Solo is play-locked; select the row to edit and Save this Element.");
+						ImGui::SetTooltip("%s", ElementPreviewAdmissionReason(Element));
 					}
 					ImGui::PopID();
 				}
@@ -18882,7 +18985,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								Cache->second.bObserved &&
 								!Cache->second.strStatus.empty())
 							{
-								ImGui::TextWrapped("Last explicit validation: %s",
+								ImGui::TextWrapped("Last document validation (not an Element Solo check): %s",
 									Cache->second.strStatus.c_str());
 							}
 							ImGui::TreePop();
@@ -20016,7 +20119,9 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
 
 void Client::CEffect_Tool::Render_DataFilesWindow()
 {
-    if (m_pAuthoringResources) { Render_AuthoringResourceTree(); return; }
+    // Saved tree placement/Sequencer commands retain their typed owner. The
+    // Data Files browser also exposes the existing per-Element copy workflow.
+    if (m_pAuthoringResources) Render_AuthoringResourceTree();
     ImGui::SetNextWindowPos(ImVec2(10.f, 705.f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(760.f, 560.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Data Files"))
@@ -20037,8 +20142,6 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
         }
         ImGui::EndCombo();
     }
-    ImGui::TextDisabled(
-        "Category changes filter the cached index; Refresh Index rescans disk.");
     if (ImGui::CollapsingHeader("Advanced Document Commands"))
     {
         ImGui::InputText("Effect Asset ID", m_NewAssetId.data(),
@@ -20118,29 +20221,10 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
     }
     if (m_ActiveDocument.has_value())
     {
-        const PARTICLE_LAYER_SUMMARY ParticleSummary =
-            Summarize_ParticleLayers(*m_ActiveDocument);
-        ImGui::Text("Active: %s | %s | %s | Elements %zu | Model Cues %zu%s",
-            m_ActiveDocument->strEffectAssetId.c_str(),
-            m_ActiveDocument->strDisplayName.c_str(),
-            Source_Label(m_eActiveDocumentSource),
-            m_ActiveDocument->Elements.size(),
-            m_ActiveDocument->ModelCues.size(),
-            Has_UnsavedWork() ? " | DIRTY" : "");
-        ImGui::TextDisabled(
-            "Subtypes: Standalone Mesh %zu | Mesh Particle %zu | Standalone Sprite %zu | Sprite Particle %zu",
-            ParticleSummary.iStandaloneMeshCount,
-            ParticleSummary.iMeshRendererCount,
-            ParticleSummary.iStandaloneSpriteCount,
-            ParticleSummary.iSpriteRendererCount);
-        ImGui::TextDisabled(
-            "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu | Unresolved %zu | Budget %llu",
-            ParticleSummary.iSourceSystemCount,
-            ParticleSummary.iSourceEmitterCount,
-            ParticleSummary.iLayerCount,
-            ParticleSummary.iUnresolvedRendererCount,
-            static_cast<unsigned long long>(
-                ParticleSummary.iParticleBudget));
+        const std::string& CurrentName = m_ActiveDocument->strDisplayName.empty() ?
+            m_ActiveDocument->strEffectAssetId : m_ActiveDocument->strDisplayName;
+        ImGui::Text("Current: %s | %zu Elements%s", CurrentName.c_str(),
+            m_ActiveDocument->Elements.size(), Has_UnsavedWork() ? " | DIRTY" : "");
     }
     ImGui::InputTextWithHint("##DataFilesSearch",
 		"Search skill name or Effect ID", m_DataFilesSearch.data(),
@@ -20267,11 +20351,16 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 		}
 	}
 	ImGui::SeparatorText("Saved Skill Effects");
-	ImGui::TextDisabled("%s: %zu saved Effects, including Unassigned/Test. Each row opens one complete multi-Element Effect.",
-		m_strSelectedAuthoringDomainId.c_str(), iVisibleSavedEffects);
-	ImGui::TextDisabled(
-		"Character is selected above; skills are grouped below. Internal asset IDs are available in tooltips.");
-	ImGui::BeginChild("SavedEffectDataFileList", ImVec2(0.f, 190.f), true);
+	ImGui::TextDisabled("%zu saved Effects", iVisibleSavedEffects);
+	const bool_t bReferenceFilesOpen = ImGui::GetStateStorage()->GetInt(
+		ImGui::GetID("Reference Files (read-only)"), 0) != 0;
+	const f32_t fFooterHeight = 3.f * ImGui::GetFrameHeightWithSpacing() +
+		(m_strDocumentStatus.empty() ? 0.f : ImGui::GetTextLineHeightWithSpacing()) +
+		(bReferenceFilesOpen ? 110.f + ImGui::GetFrameHeightWithSpacing() +
+			ImGui::GetStyle().ItemSpacing.y : 0.f);
+	const f32_t fSavedListHeight = (std::max)(180.f,
+		ImGui::GetContentRegionAvail().y - fFooterHeight);
+	ImGui::BeginChild("SavedEffectDataFileList", ImVec2(0.f, fSavedListHeight), true);
 	const auto RenderSavedEffectRow = [this](
 		EFFECT_DATA_FILE_ENTRY& DataFile,
 		const EFFECT_SKILL_TREE_ENTRY* pSkill)
@@ -20567,7 +20656,7 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 		SelectedDataFile != m_DataFiles.end() &&
 		IsLegacyMigrationReference(*SelectedDataFile);
 	ImGui::BeginDisabled(!bCanAppendSavedElement);
-	if (ImGui::Button("Load Saved Element for Editing") &&
+	if (ImGui::Button("Add Element to Current Effect") &&
 		SelectedDataFile != m_DataFiles.end())
 	{
 		Try_AppendSavedElementToActiveDocument(
@@ -20579,8 +20668,8 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
 		ImGui::SetTooltip(
-			"Select one Mesh, Sprite, Particle, Decal, or Trail child row and open/create a Current Effect with no unapplied Detail draft. The source Effect will stay closed. "
-			"Native owner-yaw Sprite Particles copy emitter settings with bone attachment reset; select a target bone and attach again.");
+			"Select one self-contained Mesh, Sprite, Particle, or Decal child row. Apply or Revert the open Detail draft before adding it to Current Effect. "
+			"Elements with owner or transform-history dependencies require the complete Effect.");
 	}
 	ImGui::SameLine();
     ImGui::BeginDisabled(!bSelectedSavedEffect);
@@ -20593,7 +20682,6 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
             SelectedDataFile->strAssetId);
     }
     ImGui::EndDisabled();
-	ImGui::SameLine();
 	ImGui::BeginDisabled(!bSelectedMigrationReference);
 	if (ImGui::Button("Load Migration Reference") &&
 		SelectedDataFile != m_DataFiles.end())
@@ -20619,15 +20707,9 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 		Refresh_AllEffects(true);
 		Refresh_DataFiles();
 	}
-    ImGui::TextDisabled(
-        "Load opens the existing name as Current Effect and selects its first Element. Edit in Effect Details, then Save Changes.");
-    ImGui::TextDisabled(
-        "Unload = remove it from the screen, never delete the file");
 	if (ImGui::CollapsingHeader(
 		"Reference Files (read-only)"))
     {
-		ImGui::TextDisabled(
-			"Imported, runtime, and extraction rows are read-only sources; they are not saved Current Effects.");
         ImGui::BeginChild("AdvancedEffectDataFileList",
             ImVec2(0.f, 110.f), true);
         for (const EFFECT_DATA_FILE_ENTRY& Entry : m_DataFiles)
@@ -20687,10 +20769,15 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
         }
         ImGui::EndDisabled();
     }
-	ImGui::TextDisabled(
-		"After opening a saved row, use Effect Tool > Current Effect for Family/Element selection, Play All, Family, and Solo.");
     if (!m_strDocumentStatus.empty())
-        ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+    {
+        const size_t iFirstLineEnd = m_strDocumentStatus.find_first_of("\r\n");
+        const char* pStatus = m_strDocumentStatus.c_str();
+        ImGui::TextUnformatted(pStatus, pStatus +
+            (iFirstLineEnd == std::string::npos ? m_strDocumentStatus.size() : iFirstLineEnd));
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", m_strDocumentStatus.c_str());
+    }
     ImGui::End();
 }
 
@@ -20731,6 +20818,7 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Document);
+    m_bMarkedElementIdsNeedPrune = true;
 	m_ActiveRegistryBoundAuditionProvenance.reset();
     Set_ActiveDocumentDrawableStatus(bDrawable, std::move(DrawableError));
     m_ActiveDocumentPath.clear();
@@ -21192,6 +21280,7 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
     }
 
     m_ActiveDocument = std::move(Staged);
+    m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
@@ -22003,6 +22092,8 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 				Refresh_DetailDraftAdmission(*pCommitted);
 			}
 			m_bDetailDraftDirty = false;
+			m_bDetailDraftPreviewPending = false;
+			m_bDetailDraftPreviewRestartRequested = false;
 		}
 		if (bModelCueDraft)
 		{
@@ -22017,13 +22108,21 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 			"Already saved. No new Effect source changes are pending.";
 		return true;
 	}
-	const bool_t bSaved = Try_SaveDocument();
+	const bool_t bSaved = Try_SaveDocument(
+		(bParticleDraft || bDetailDraft || bModelCueDraft) &&
+		m_bActiveDocumentDrawable);
 	if (bSaved)
 		m_strDetailStatus = m_strDocumentStatus;
 	return bSaved;
 }
 
 bool_t Client::CEffect_Tool::Try_SaveDocument()
+{
+	return Try_SaveDocument(false);
+}
+
+bool_t Client::CEffect_Tool::Try_SaveDocument(
+	const bool_t bPreviewCommittedByApply)
 {
     const bool bSequencerActive = m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active();
     if (bSequencerActive) m_pAuthoringSequencer->Preserve_ClockDuringAuthoring();
@@ -22138,14 +22237,13 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
 		PreviousCommittedDocument = std::move(Previous);
 	}
 
-    const std::string SavedCanonical =
-        CEffectDocumentCodec::Serialize(*m_ActiveDocument);
+    std::string SavedCanonical;
     std::string Error;
     if (Path.empty() || !CEffectDocumentCodec::Save_AtomicIfUnchanged(
         Path, *m_ActiveDocument,
         bWasAuthored ? std::string_view(PreviousBaselineCanonical) :
             std::string_view{},
-        Error))
+        Error, &SavedCanonical))
     {
         m_strDocumentStatus = Path.empty() ?
             "Effect authoring path escaped Data/Effects/Authored." : Error;
@@ -22227,17 +22325,28 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
     const EFFECT_RESOURCE_KEY SavedKey{ EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
         m_ActiveDocument->strEffectAssetId };
     const bool bSequencerUsesSaved = bSequencerActive && m_pAuthoringSequencer->Uses_Resource(SavedKey);
+	// Apply has already prepared this exact ordinary authored document, through
+	// either Stage_WorldPreview or its active Sequencer Refresh_Effects path.
+	// Product/registry/Valtan sessions retain their separate reload gates.
+	const bool_t bReuseAppliedPreview = bPreviewCommittedByApply &&
+		!bRegisteredDirectProduct && !bJoinedValtanPatternDocument &&
+		!m_ProductPreview.has_value() &&
+		!m_ActiveRegistryBoundAuditionProvenance.has_value();
     if (m_bActiveDocumentDrawable)
     {
         if (bSequencerUsesSaved)
         {
-            bLocalPreviewUpdated = m_pAuthoringSequencer->Refresh_Effects(&SavedKey);
+            bLocalPreviewUpdated = bReuseAppliedPreview ||
+				m_pAuthoringSequencer->Refresh_Effects(&SavedKey);
             m_strPreviewStatus = m_pAuthoringSequencer->Status();
         }
         else if (!bSequencerActive)
         {
             Recalculate_PreviewDuration(*m_ActiveDocument);
-            bLocalPreviewUpdated = Stage_WorldPreview(*m_ActiveDocument);
+            bLocalPreviewUpdated = (bReuseAppliedPreview &&
+				m_WorldPreviewDocument.has_value() &&
+				!m_pWorldPreviewObject.expired()) ||
+				Stage_WorldPreview(*m_ActiveDocument);
             if (bLocalPreviewUpdated)
                 Start_WorldPreviewFromBeginning();
         }
@@ -22246,6 +22355,17 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
     m_strSelectedDataFileAssetId =
         m_ActiveDocument->strEffectAssetId;
     m_strSelectedDataFileElementId.clear();
+	// Invalidate only the saved document's lazy Element tree. Other expanded
+	// Data Files keep their parsed snapshots, including a failed source row.
+	for (EFFECT_DATA_FILE_ENTRY& Entry : m_DataFiles)
+	{
+		if (Entry.eSource != EFFECT_DOCUMENT_SOURCE::AUTHORED ||
+			Entry.strAssetId != m_ActiveDocument->strEffectAssetId)
+			continue;
+		Entry.pParsedDocument.reset();
+		Entry.bDocumentParseAttempted = false;
+		Entry.strDocumentParseStatus.clear();
+	}
     if (bLocalPreviewUpdated)
     {
 		m_strDocumentStatus = bRegisteredDirectProduct ?
@@ -22374,6 +22494,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     std::string PreviousDrawableError = m_strActiveDocumentDrawableError;
     Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Staged);
+    m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(
         bWasDrawable, std::move(PreviousDrawableError));
     m_ActiveDocumentPath = Path;
@@ -22484,6 +22605,7 @@ bool_t Client::CEffect_Tool::
 
 	Clear_ProductCuePreview();
 	m_ActiveDocument = std::move(Staged);
+	m_bMarkedElementIdsNeedPrune = true;
 	Set_ActiveDocumentDrawableStatus(true, {});
 	m_ActiveDocumentPath = Path;
 	m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
@@ -22604,6 +22726,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
     }
     Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Staged);
+    m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
@@ -23026,6 +23149,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
+	m_bMarkedElementIdsNeedPrune = true;
 	m_ActiveRegistryBoundAuditionProvenance =
 		std::move(StagedAuditionProvenance);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
@@ -25306,6 +25430,8 @@ bool_t Client::CEffect_Tool::Try_SelectElement(
             "Save, Apply, or Revert the open Detail/tuning work before selecting another Element.";
         return false;
     }
+	if (!bChangesSelection)
+		return true;
     if (!m_ActiveDocument.has_value() ||
         m_ActiveDocument->strEffectAssetId != strEffectAssetId)
     {
@@ -25371,6 +25497,9 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 			"Element Solo is unavailable while the authored Element is hidden.";
 		return false;
 	}
+	if (m_pAuthoringSequencer && !m_ProductPreview &&
+		m_ActiveDocument->strEffectAssetId.ends_with(".restore"))
+		return Try_PreviewElementTimeline(strElementId);
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
 	const std::string strPreviousGroup = m_strPreviewIsolationGroupId;
 	m_strPreviewIsolationElementId = strElementId;
@@ -26717,6 +26846,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
     if (!CEffectDocumentCodec::Validate_Drawable(Staged, DrawableError))
     {
         m_ActiveDocument = std::move(Staged);
+        m_bMarkedElementIdsNeedPrune = true;
         Set_ActiveDocumentDrawableStatus(false, DrawableError);
         m_bDocumentDirty = true;
         m_bActiveDocumentMatchesRuntime = false;
@@ -26735,6 +26865,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
         return false;
     }
     m_ActiveDocument = std::move(Staged);
+    m_bMarkedElementIdsNeedPrune = true;
     Set_ActiveDocumentDrawableStatus(true, {});
     m_bDocumentDirty = true;
     m_bActiveDocumentMatchesRuntime = false;
@@ -30925,6 +31056,39 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	return true;
 }
 
+bool Client::CEffect_Tool::Build_ElementPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
+    const std::string& elementId, EFFECT_DOCUMENT_DESC& preview, std::string& error) const
+{
+    const auto selected = std::find_if(document.Elements.begin(), document.Elements.end(),
+        [&elementId](const auto& element) { return element.strElementId == elementId; });
+    if (elementId.empty() || selected == document.Elements.end())
+    { error = "Element Timeline Solo rejected a missing stable Element ID."; return false; }
+    if (!Is_ElementPreviewAdmitted(*selected))
+    { error = ElementPreviewAdmissionReason(*selected); return false; }
+    if (Is_EffectSimulationOnlyParticle(*selected))
+    { error = "This source provider only simulates positions and has no pixels. Select a dependent petal for Timeline Solo."; return false; }
+    if (!CEffectPlayback::Validate_SourceParticleProviders(document, error)) return false;
+    std::string providerId;
+    for (const auto& module : selected->SourceRecipe.Modules)
+    {
+        if (module.strClassName != "particlemodulelocationemitter" &&
+            module.strClassName != "efparticlemodulelocationemitter") continue;
+        for (const auto& literal : module.Literals)
+            if (literal.strPropertyPath == "runtime.providerelementid")
+                providerId = literal.strString;
+    }
+    preview = document;
+    std::erase_if(preview.Elements, [&elementId, &providerId](const auto& element)
+        { return element.strElementId != elementId && element.strElementId != providerId; });
+    std::erase_if(preview.ModelCues, [&preview](const auto& cue)
+        { return std::none_of(preview.Elements.begin(), preview.Elements.end(),
+            [&cue](const auto& element) { return element.ActionCueAttachment.strModelCueId == cue.strCueId; }); });
+    // Preserve source order and clock. A petal's ERM_None provider simulates
+    // without drawing, just as the hidden summon supplies its animated anchor.
+    for (auto& cue : preview.ModelCues) cue.bVisible = false;
+    return true;
+}
+
 Client::EFFECT_DOCUMENT_DESC
 Client::CEffect_Tool::Build_PreviewDocument(
 	const EFFECT_DOCUMENT_DESC& Document) const
@@ -31124,7 +31288,11 @@ bool_t Client::CEffect_Tool::Stage_DetailDraftPreview()
 	if (m_bDetailDraftPreviewRestartRequested)
 	{
 		m_bDetailDraftPreviewRestartRequested = false;
-		Start_WorldPreviewFromBeginning();
+        // Refresh_Effects already rebuilt and sampled the selected element at
+        // the Sequencer cursor. Keep that clock while editing its curves.
+        if (!m_pAuthoringSequencer || !m_pAuthoringSequencer->Is_Active() ||
+            !m_pAuthoringSequencer->Is_ElementPreview())
+            Start_WorldPreviewFromBeginning();
 	}
     return true;
 }
@@ -31959,6 +32127,13 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     // Resource preparation in the UI frame must not consume a short Solo
     // effect's lifetime before its first playback update.
     m_bSkipNextWorldPreviewDelta = true;
+    if (m_pAuthoringSequencer && m_ActiveDocument && !m_ProductPreview &&
+        m_ActiveDocument->strEffectAssetId.ends_with(".restore") &&
+        m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED)
+    {
+        if (Try_PreviewElementTimeline(m_strPreviewIsolationElementId)) m_pAuthoringSequencer->Pause(false);
+        return;
+    }
     if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId.ends_with(".restore") &&
         !m_ProductPreview && m_ePreviewFilter == EFFECT_PREVIEW_FILTER::COMPLETE)
     {

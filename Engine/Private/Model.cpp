@@ -13,6 +13,8 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <new>
+#include <stdexcept>
 
 namespace
 {
@@ -67,6 +69,10 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumMeshes { Prototype.m_iNumMeshes }
     , m_Meshes { Prototype.m_Meshes }
     , m_PreTransformMatrix { Prototype.m_PreTransformMatrix }
+    , m_bRetainOrderedStaticGeometry { Prototype.m_bRetainOrderedStaticGeometry }
+    , m_pOrderedStaticGeometrySource { Prototype.m_pOrderedStaticGeometrySource }
+    , m_OrderedStaticGeometry { Prototype.m_OrderedStaticGeometry }
+    , m_iNextOrderedStaticGeometryHandle { Prototype.m_iNextOrderedStaticGeometryHandle }
     , m_iNumMaterials { Prototype.m_iNumMaterials }
     , m_Materials { Prototype.m_Materials }
    // , m_Bones { Prototype.m_Bones }
@@ -136,6 +142,7 @@ bool_t CModel::Set_Animation(
         if (i != m_iCurrentAnimIndex)
             Begin_AnimBlend(fBlendSeconds);
 
+        m_bExplicitAnimationPose = false;
         m_iCurrentAnimIndex = i;
         m_isAnimLoop = isLoop;
         return true;
@@ -283,6 +290,69 @@ bool_t CModel::Sample_AnimationBoneCombinedMatrices(
 			BoneIndices, OutCombinedMatrices);
 }
 
+bool_t CModel::Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose,
+    vector<float4x4_t>& local, vector<float4x4_t>& combined, float3_t* unscaledRoot) const
+{
+    if (m_Bones.empty() || m_BoneRestLocalTransforms.size() != m_Bones.size() ||
+        !std::isfinite(pose.durationSeconds) || pose.durationSeconds <= 0.f || pose.durationSeconds > 1.f ||
+        !std::isfinite(pose.elapsedSeconds) || pose.elapsedSeconds < 0.f ||
+        !std::isfinite(pose.playRate) || pose.playRate <= 0.f || !Is_FiniteMatrix(m_PreTransformMatrix)) return false;
+    auto sample = [&](uint32_t index, float ticks, vector<float4x4_t>& out)
+    {
+        if (!std::isfinite(ticks) || ticks < 0.f) return false;
+        out = m_BoneRestLocalTransforms;
+        if (index == UINT32_MAX) return ticks == 0.f;
+        return index < m_Animations.size() && m_Animations[index] &&
+            std::isfinite(m_Animations[index]->Get_Duration()) && ticks <= m_Animations[index]->Get_Duration() &&
+            m_Animations[index]->Sample_LocalBoneTransforms(ticks, out);
+    };
+    vector<float4x4_t> from;
+    if (!sample(pose.sourceIndex, pose.sourceTicks, from) || !sample(pose.targetIndex, pose.targetTicks, local)) return false;
+    const float alpha = (std::min)(pose.elapsedSeconds / pose.durationSeconds, 1.f);
+    for (size_t i = 0; i < local.size(); ++i)
+        if (!m_Bones[i] || !Is_FiniteMatrix(from[i]) || !Is_FiniteMatrix(local[i]) ||
+            (alpha < 1.f && !Try_BlendLocalMatrix(from[i], alpha, local[i]))) return false;
+    if (m_iRootMotionBoneIndex >= 0)
+    {
+        if (size_t(m_iRootMotionBoneIndex) >= local.size()) return false;
+        const auto& root = local[m_iRootMotionBoneIndex];
+        if (unscaledRoot) *unscaledRoot = {root._41, root._42, root._43};
+        Apply_RootMotionTranslation(local[m_iRootMotionBoneIndex]);
+    }
+    combined.resize(local.size());
+    for (size_t i = 0; i < local.size(); ++i)
+    {
+        const int parent = m_Bones[i]->Get_ParentBoneIndex();
+        if (parent < -1 || (parent >= 0 && size_t(parent) >= i)) return false;
+        XMStoreFloat4x4(&combined[i], XMLoadFloat4x4(&local[i]) *
+            (parent == -1 ? XMLoadFloat4x4(&m_PreTransformMatrix) : XMLoadFloat4x4(&combined[parent])));
+        if (!Is_FiniteMatrix(combined[i])) return false;
+    }
+    return true;
+}
+
+bool_t CModel::Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose)
+{
+    vector<float4x4_t> local, combined;
+    float3_t unscaledRoot = m_vRootMotionUnscaledTranslation;
+    if (!Build_AnimationTransitionPose(pose, local, combined, &unscaledRoot)) return false;
+    // Admission completes before touching either the cursor or live palette.
+    if (pose.targetIndex != UINT32_MAX)
+    {
+        m_iCurrentAnimIndex = pose.targetIndex;
+        m_Animations[pose.targetIndex]->Set_TrackPosition(pose.targetTicks);
+    }
+    for (size_t i = 0; i < local.size(); ++i)
+        m_Bones[i]->Update_TransformationMatrix(XMLoadFloat4x4(&local[i]));
+    Refresh_BoneCombinedMatrices();
+    m_vRootMotionUnscaledTranslation = unscaledRoot;
+    Skip_Blend();
+    m_isAnimLoop = false;
+    m_ExplicitAnimationPose = pose;
+    m_bExplicitAnimationPose = true;
+    return true;
+}
+
 bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 	const uint32_t iExpectedAnimationIndex,
 	const f32_t fTrackPositionTicks,
@@ -301,6 +371,22 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 	const std::span<const uint32_t> BoneIndices,
 	const std::span<float4x4_t> OutCombinedMatrices) const
 {
+	if (m_bExplicitAnimationPose && iExpectedAnimationIndex == m_iCurrentAnimIndex)
+	{
+		if (BoneIndices.empty() || BoneIndices.size() != OutCombinedMatrices.size() ||
+			iExpectedAnimationIndex >= m_Animations.size()) return false;
+		auto pose = m_ExplicitAnimationPose;
+		const float tps = Get_AnimationTickPerSecond(iExpectedAnimationIndex);
+		if (!std::isfinite(tps) || tps <= 0.f) return false;
+		pose.elapsedSeconds = (std::max)(0.f, pose.elapsedSeconds +
+			(fTrackPositionTicks - pose.targetTicks) / (tps * pose.playRate));
+		pose.targetTicks = fTrackPositionTicks;
+		vector<float4x4_t> local, combined;
+		if (!Build_AnimationTransitionPose(pose, local, combined)) return false;
+		for (const auto index : BoneIndices) if (index >= combined.size()) return false;
+		for (size_t i = 0; i < BoneIndices.size(); ++i) OutCombinedMatrices[i] = combined[BoneIndices[i]];
+		return true;
+	}
 	return Sample_BoneCombinedMatricesForAnimation(
 		iExpectedAnimationIndex, fTrackPositionTicks, true, fBlendElapsedSeconds,
 		BoneIndices, OutCombinedMatrices);
@@ -597,6 +683,7 @@ bool_t CModel::Start_Animation(
 {
 	if (iAnimIndex >= m_Animations.size())
 		return false;
+	m_bExplicitAnimationPose = false;
 	m_iCurrentAnimIndex = iAnimIndex;
 	m_isAnimLoop = isLoop;
 	m_isAnimPaused = false;
@@ -677,6 +764,8 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
     XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
     m_eType = eType;
 	Reset_LocalBounds();
+	m_pOrderedStaticGeometrySource.reset();
+	m_OrderedStaticGeometry.clear();
 
     string extension = filesystem::path(pModelFilePath).extension().string();
     transform(extension.begin(), extension.end(), extension.begin(),
@@ -719,6 +808,8 @@ HRESULT CModel::Initialize_Prototype(
 	XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
 	m_eType = eType;
 	Reset_LocalBounds();
+	m_pOrderedStaticGeometrySource.reset();
+	m_OrderedStaticGeometry.clear();
 	return Ready_BinaryModel(loadDesc);
 }
 
@@ -740,7 +831,8 @@ HRESULT CModel::Render(uint32_t iMeshIndex)
 }
 
 HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
-    ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride, uint32_t iNumInstances)
+    ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride, uint32_t iNumInstances,
+    uint32_t iInstanceByteOffset)
 {
     if (iMeshIndex >= m_Meshes.size() ||
         nullptr == m_Meshes[iMeshIndex])
@@ -749,11 +841,147 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
     }
 
     return m_Meshes[iMeshIndex]->Render_Instanced(
-        pInstanceBuffer, iInstanceStride, iNumInstances);
+        pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset);
+}
+
+bool_t CModel::Can_UseOrderedStaticGeometry(
+    const uint32_t iFirstMesh, const uint32_t iMeshCount) const
+{
+    if (MODEL::NONANIM != m_eType || nullptr == m_pOrderedStaticGeometrySource ||
+        iMeshCount < 2u || iFirstMesh >= m_Meshes.size() ||
+        iMeshCount > m_Meshes.size() - iFirstMesh ||
+        m_pOrderedStaticGeometrySource->size() != m_Meshes.size())
+        return false;
+    for (uint32_t i = iFirstMesh; i < iFirstMesh + iMeshCount; ++i)
+    {
+        if (nullptr == m_Meshes[i] || m_Meshes[i]->Has_MorphBaseVertices() ||
+            (*m_pOrderedStaticGeometrySource)[i].vertexKind != MODEL_VERTEX_KIND::STATIC)
+            return false;
+    }
+    return true;
+}
+
+HRESULT CModel::Prepare_OrderedStaticGeometry(
+    const uint32_t iFirstMesh, const uint32_t iMeshCount, uint32_t& iOutHandle)
+{
+    if (iMeshCount == 0u || iFirstMesh >= m_Meshes.size() ||
+        iMeshCount > m_Meshes.size() - iFirstMesh)
+        return E_INVALIDARG;
+    if (!Can_UseOrderedStaticGeometry(iFirstMesh, iMeshCount))
+        return S_FALSE;
+    for (const auto& Existing : m_OrderedStaticGeometry)
+    {
+        if (Existing->iFirstMesh == iFirstMesh && Existing->iMeshCount == iMeshCount)
+        {
+            iOutHandle = Existing->iHandle;
+            return S_OK;
+        }
+    }
+    if (m_iNextOrderedStaticGeometryHandle == UINT32_MAX)
+        return E_OUTOFMEMORY;
+    try
+    {
+        MODEL_MESH_DATA Combined;
+        Combined.name = "ordered-static-geometry";
+        Combined.vertexKind = MODEL_VERTEX_KIND::STATIC;
+        // Material identity belongs to the preserved ranges, not this carrier.
+        Combined.materialIndex = UINT32_MAX;
+        Combined.hasColor0 = true;
+        uint64_t iVertices = 0u, iIndices = 0u;
+        for (uint32_t i = iFirstMesh; i < iFirstMesh + iMeshCount; ++i)
+        {
+            const auto& Source = (*m_pOrderedStaticGeometrySource)[i];
+            if (Source.vertices.empty() || Source.indices.empty() ||
+                Source.indices.size() % 3u != 0u ||
+                (Source.hasColor0 && Source.color0Rgba8.size() != Source.vertices.size()))
+                return E_INVALIDARG;
+            iVertices += Source.vertices.size();
+            iIndices += Source.indices.size();
+        }
+        if (iVertices > UINT32_MAX / sizeof(VTXMESH) ||
+            iIndices > UINT32_MAX / sizeof(uint32_t))
+            return E_INVALIDARG;
+        Combined.vertices.reserve(static_cast<size_t>(iVertices));
+        Combined.indices.reserve(static_cast<size_t>(iIndices));
+        Combined.color0Rgba8.reserve(static_cast<size_t>(iVertices));
+        auto Staged = make_shared<ORDERED_STATIC_GEOMETRY>();
+        Staged->iHandle = m_iNextOrderedStaticGeometryHandle;
+        Staged->iFirstMesh = iFirstMesh;
+        Staged->iMeshCount = iMeshCount;
+        Staged->Ranges.reserve(iMeshCount);
+        for (uint32_t i = iFirstMesh; i < iFirstMesh + iMeshCount; ++i)
+        {
+            const auto& Source = (*m_pOrderedStaticGeometrySource)[i];
+            const uint32_t iBaseVertex = static_cast<uint32_t>(Combined.vertices.size());
+            Staged->Ranges.push_back({ i, Source.materialIndex, iBaseVertex,
+                static_cast<uint32_t>(Source.vertices.size()),
+                static_cast<uint32_t>(Combined.indices.size()),
+                static_cast<uint32_t>(Source.indices.size()) });
+            Combined.vertices.insert(Combined.vertices.end(),
+                Source.vertices.begin(), Source.vertices.end());
+            for (size_t v = 0u; v < Source.vertices.size(); ++v)
+                Combined.color0Rgba8.push_back(
+                    Source.hasColor0 ? Source.color0Rgba8[v] : 0xffffffffu);
+            for (const uint32_t iIndex : Source.indices)
+            {
+                if (iIndex >= Source.vertices.size())
+                    return E_INVALIDARG;
+                Combined.indices.push_back(iBaseVertex + iIndex);
+            }
+            Combined.hasTexcoord1 |= Source.hasTexcoord1;
+            Combined.hasTexcoord2 |= Source.hasTexcoord2;
+        }
+        // Reuse the exact existing CMesh static conversion and pretransform.
+        // No readback, disk decode, or alternate model runtime is introduced.
+        Staged->pMesh = shared_ptr<CMesh>(new CMesh(m_pDevice, m_pContext));
+        const MODEL_SKELETON_DATA NoSkeleton{};
+        const HRESULT Result = Staged->pMesh->Initialize_Prototype(
+            MODEL::NONANIM, Combined, NoSkeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
+        if (FAILED(Result))
+            return Result;
+        m_OrderedStaticGeometry.push_back(Staged);
+        ++m_iNextOrderedStaticGeometryHandle;
+        iOutHandle = Staged->iHandle;
+        return S_OK;
+    }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const std::length_error&) { return E_OUTOFMEMORY; }
+}
+
+bool_t CModel::Get_OrderedStaticGeometryRanges(const uint32_t iHandle,
+    std::span<const ORDERED_STATIC_GEOMETRY_RANGE>& OutRanges) const
+{
+    for (const auto& Geometry : m_OrderedStaticGeometry)
+    {
+        if (Geometry->iHandle != iHandle)
+            continue;
+        if (!Can_UseOrderedStaticGeometry(Geometry->iFirstMesh, Geometry->iMeshCount))
+            return false;
+        OutRanges = Geometry->Ranges;
+        return true;
+    }
+    return false;
+}
+
+HRESULT CModel::Render_OrderedStaticGeometryInstanced(const uint32_t iHandle,
+    ID3D11Buffer* pInstanceBuffer, const uint32_t iInstanceStride,
+    const uint32_t iNumInstances, const uint32_t iInstanceByteOffset)
+{
+    for (const auto& Geometry : m_OrderedStaticGeometry)
+    {
+        if (Geometry->iHandle != iHandle)
+            continue;
+        if (!Can_UseOrderedStaticGeometry(Geometry->iFirstMesh, Geometry->iMeshCount))
+            return S_FALSE;
+        return Geometry->pMesh->Render_Instanced(
+            pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset);
+    }
+    return E_INVALIDARG;
 }
 
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
+    if (m_bExplicitAnimationPose && m_isAnimPaused) return false;
     if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())
         return false;
 
@@ -1230,7 +1458,7 @@ HRESULT CModel::Ready_BinaryModel(
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 9u || mask == 0u ||
+            if (source.program == 0u || source.program > 14u || mask == 0u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
                 replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
@@ -1541,6 +1769,19 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
             return E_FAIL;
         m_Meshes.push_back(pMesh);
     }
+    // Keep source geometry only for explicitly opted-in multi-submesh effects.
+    // Clones share it; ordinary map/character models pay no retained CPU cost.
+    if (m_bRetainOrderedStaticGeometry && MODEL::NONANIM == m_eType &&
+        asset.meshes.size() > 1u)
+    {
+        try
+        {
+            m_pOrderedStaticGeometrySource =
+                make_shared<const vector<MODEL_MESH_DATA>>(asset.meshes);
+        }
+        catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+        catch (const std::length_error&) { return E_OUTOFMEMORY; }
+    }
     return S_OK;
 }
 
@@ -1639,9 +1880,11 @@ HRESULT CModel::Attach_AnimationSet(const CModel& animationSet)
 	return S_OK;
 }
 
-unique_ptr<CModel> CModel::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix)
+unique_ptr<CModel> CModel::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix,
+    const bool_t bRetainOrderedStaticGeometry)
 {
     auto pInstance = unique_ptr<CModel>(new CModel(pDevice, pContext));
+    pInstance->m_bRetainOrderedStaticGeometry = bRetainOrderedStaticGeometry;
 
     if (FAILED(pInstance->Initialize_Prototype(eType, pModelFilePath, PreTransformMatrix)))
     {
@@ -1657,10 +1900,12 @@ unique_ptr<CModel> CModel::Create(
 	ComPtr<ID3D11DeviceContext> pContext,
 	const MODEL eType,
 	const MODEL_ASSET_LOAD_DESC& loadDesc,
-	fmatrix_t PreTransformMatrix)
+	fmatrix_t PreTransformMatrix,
+	const bool_t bRetainOrderedStaticGeometry)
 {
 	auto pInstance = unique_ptr<CModel>(
 		new CModel(pDevice, pContext));
+	pInstance->m_bRetainOrderedStaticGeometry = bRetainOrderedStaticGeometry;
 	if (FAILED(pInstance->Initialize_Prototype(
 		eType, loadDesc, PreTransformMatrix)))
 	{

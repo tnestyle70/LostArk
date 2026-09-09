@@ -25,6 +25,7 @@ namespace Client
 		std::uint32_t iStartOffsetMs = 0u;
 		std::uint32_t iSourceStartMs = 0u;
 		std::uint32_t iPlayMs = 0u;
+		std::uint32_t iBlendInMs = 0u;
 		f32_t fPlayRate = 1.f;
 		std::string strEndPolicy;
 
@@ -48,12 +49,12 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 7u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL" };
-	inline constexpr std::array<const char_t*, 8u> KOUKU_SAYDON_OUTCOME_KINDS = {
+	inline constexpr std::array<const char_t*, 9u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD" };
+	inline constexpr std::array<const char_t*, 10u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
-		"CLOWN_TRANSFORM", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
-		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW" };
+		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
+		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER" };
 	inline constexpr std::array<const char_t*, 4u> KOUKU_SAYDON_CARD_SYMBOLS = {
 		"HEART", "SPADE", "CLUB", "DIAMOND" };
 	inline constexpr std::size_t KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT = 4u;
@@ -79,10 +80,11 @@ namespace Client
 		const std::string_view judgementKind,
 		const KOUKU_SAYDON_OUTCOME_SLOT slot)
 	{
+		if (judgementKind == "ATTACHMENT_HOLD") return false;
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
 			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
 		if (KOUKU_SAYDON_OUTCOME_SLOT::FAIL == slot)
-			return judgementKind != "STAGGER_WINDOW" && judgementKind != "ENTER_AREA" &&
+			return judgementKind != "STAGGER_WINDOW" && judgementKind != "COUNTER_WINDOW" && judgementKind != "ENTER_AREA" &&
 				judgementKind != "OBJECT_CONTACT" && judgementKind != "EXTERNAL_SIGNAL";
 		return true;
 	}
@@ -124,11 +126,19 @@ namespace Client
 		std::uint32_t iPercent = 0u;
 		std::uint32_t iDurationMs = 0u;
 		std::string strFollowupPatternId;
+		std::string strSceneProfileId;
+		std::string strEffectResourceId;
+		std::string strLightResourceId;
+		std::uint32_t iEffectDelayMs = 0u;
+		std::string strAttachmentSlot;
+		// Metres in the owner's facing basis: forward, up, right.
+		std::array<double, 3u> GripLocalOffset{};
 		std::string strTargetWorldInstanceId;
 		std::string strMotionInstanceId;
 		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
+		double fBossChargeDistanceM = 0.0;
 		std::string strHudMode;
 		std::array<double, 3> TeleportPosition{};
 		std::string strClonePatternId;
@@ -147,12 +157,12 @@ namespace Client
 
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return logic.strLogicType == "DURATION" ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "ATTACHMENT_HOLD") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "EXTERNAL_SIGNAL") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
@@ -175,6 +185,8 @@ namespace Client
 		std::vector<std::string> OnSuccessLogicIds;
 		std::vector<std::string> OnFailLogicIds;
 		std::vector<std::string> OnTimeoutLogicIds;
+		// ENTER_AREA capture uses this same-pattern ATTACHMENT_HOLD deadline.
+		std::string strHoldLogicOccurrenceId;
 
 		std::vector<std::string>& Outcomes(const KOUKU_SAYDON_OUTCOME_SLOT slot)
 		{
@@ -295,6 +307,7 @@ namespace Client
 		KOUKU_SAYDON_PRESENTATION_KIND eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 		std::string strAssetId;
 		std::string strResourceKind = "GROUP";
+		std::string strElementId;
 		std::string strDefaultAnchorKind = "BOSS";
 		std::uint32_t iDurationMs = 1000u;
 		std::string strShape = "BOX";
@@ -490,6 +503,8 @@ namespace Client
 		explicit CKoukuSaydonCompositionDocument(std::filesystem::path path);
 
 		static std::filesystem::path Resolve_Path();
+		// Separate authoring owner; never a Product publisher input.
+		static std::filesystem::path Resolve_SequencePath();
 		static bool_t Is_KnownProfile(std::string_view profileId);
 		static bool_t Is_KnownGate(std::string_view gateId);
 		static std::string_view Resolve_DefaultPlacementId(std::string_view gateId, std::string_view actorProfileId);

@@ -3,6 +3,8 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/World',
+    [ValidateSet('ALL', 'KAKULSAYDON_ARENA')]
+    [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0
 )
@@ -140,6 +142,15 @@ function Get-EncounterProfiles {
 				if ($null -ne $document.PSObject.Properties[$field]) {
 					$encounterProperties += $field
 					if ($document.$field -isnot [Array]) { throw "KoukuSaydon $field must be an array." }
+				}
+			}
+			if ($null -ne $document.PSObject.Properties['patternInventory']) {
+				$encounterProperties += 'patternInventory'
+				Assert-ExactProperties $document.patternInventory @('folders','patterns','bundles') 'KoukuSaydon saved Pattern inventory'
+				foreach ($field in @('folders','patterns','bundles')) {
+					if ($document.patternInventory.$field -isnot [Array] -or @($document.patternInventory.$field).Count -gt 4096) {
+						throw "KoukuSaydon saved Pattern inventory $field must be a bounded array."
+					}
 				}
 			}
 		}
@@ -1306,6 +1317,12 @@ $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
 $monsterProfiles = Get-MonsterProfiles
 $kakulStageMarkers = Convert-KakulStageMarkersDocument
+if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+    $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
+    $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId))
+    $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
+}
+else {
 $spawnDocuments = @(
     (Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
@@ -1329,6 +1346,7 @@ $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.TRAINING_GROUND.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.CHARACTER_SELECT_ARENA.GroupIds)
 )
+}
 
 if ($Mode -eq 'Publish') {
     $resolvedOutputRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

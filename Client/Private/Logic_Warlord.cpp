@@ -205,6 +205,7 @@ const CHARACTER_SPEC Spec_Warlord =
 		"wgl_act_estherskill_1",
 		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
 		"idle_charactercustomizing_1",
+		"wgl_abn_fear_1",
 	},
 
 	&Create_Logic,

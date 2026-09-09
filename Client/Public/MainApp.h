@@ -74,6 +74,7 @@ private:
 		CAMERA,
 		EQUIPMENT,
 		SEQUENCER,
+		SEQUENCER_BENCHMARK,
 		PROFILER,
 		WORLD_OBJECT,
 		EFFECT_COMPOSITION,
@@ -391,6 +392,8 @@ private:
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
+	void ClaimCompositionPreviewOwner(DEBUG_TOOL owner);
+	void StopCompositionPreview(DEBUG_TOOL owner);
 	void RenderDeveloperTools();
 	void RenderSequenceViewer();
 	void UpdateSequenceViewer();
@@ -697,6 +700,13 @@ private:
 	uint64_t m_iWorldObjectCatalogGeneration = UINT64_MAX;
 	uint32_t m_iWorldObjectCatalogRevision = 0;
 	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
+	unique_ptr<CKoukuSaydonActionWorkbench> m_pSequenceActionWorkbench;
+	unique_ptr<CSequencerTool> m_pSequenceBenchmarkTool;
+	// The shared preview clock belongs to its starting session, independently of UI focus.
+	DEBUG_TOOL m_eCompositionPreviewOwner = DEBUG_TOOL::NONE;
+	DEBUG_TOOL m_eColliderAuthoringOwner = DEBUG_TOOL::NONE;
+	uint64_t m_iColliderAuthoringDraftGeneration = UINT64_MAX;
+	uint64_t m_iColliderAuthoringSerial = 0;
 	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
 	unique_ptr<CRenderingBenchmark> m_pRenderingBenchmark = { nullptr };
 	bool_t m_bF1Down = false;

@@ -186,6 +186,7 @@ const CHARACTER_SPEC Spec_LanceMaster =
 		"flm_act_estherskill_1",
 		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
 		"idle_charactercustomizing_1",
+		"flm_abn_fear_1",
 	},
 
 	&Create_Logic,

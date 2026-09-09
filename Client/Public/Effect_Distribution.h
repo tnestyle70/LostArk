@@ -65,6 +65,8 @@ struct EFFECT_DISTRIBUTION_DESC final
 	f32_t fLookupTableStartTime = 0.f;
 	float4_t vDefaultMinimum = { 0.f, 0.f, 0.f, 0.f };
 	float4_t vDefaultMaximum = { 0.f, 0.f, 0.f, 0.f };
+	// Operation 4 preserves unbaked DistributionVectorUniformRange:
+	// two range scalars, then MaxHigh/MaxLow/MinHigh/MinLow XYZ vectors.
 	std::vector<f32_t> LookupTable;
 	std::vector<EFFECT_DISTRIBUTION_KEY_DESC> Keys;
 };

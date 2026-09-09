@@ -1169,6 +1169,115 @@ namespace
 	the verdict rules never depend on which pattern the composition authors.
 	A function of its own keeps these rooms and players off the contract
 	frame, which already sits close to the 1 MiB production stack. */
+    void Run_KoukuFearAndCounterContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
+    {
+        using namespace LostArk::Shared;
+        using namespace LostArk::Server;
+        auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+        boss->iNetEntityId = 4000u; boss->iPatternSequence = 5u;
+        boss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+        boss->strPatternId = "fear.pattern"; boss->strActionId = "fear.action";
+        boss->iCurrentHp = boss->iMaximumHp = 10000u;
+        SERVER_PLAYER player{};
+        player.iPlayerId = 1u; player.iNetEntityId = 100u;
+        player.iCurrentHp = player.iMaximumHp = 1000u;
+        player.fPositionZ = -5.f; player.fYawDegrees = 180.f;
+        player.hasMoveGoal = true; player.iComboStage = 2u;
+        player.hasBufferedComboInput = true;
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, player}};
+        players[2u] = player; players[2u].iPlayerId = 2u;
+        players[2u].fYawDegrees = 0.f;
+        BOSS_PATTERN_LOGIC_RESULT fear{};
+        fear.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR;
+        fear.iDurationMs = 3000u; fear.strFearPresentationId = "fear.result";
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = boss->strPatternId;
+        BOSS_PATTERN_LOGIC_WINDOW gaze{};
+        gaze.strWindowId = "gaze.1"; gaze.eKind = BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS;
+        gaze.iDurationMs = 1000u; gaze.fHalfAngleDegrees = 45.f; gaze.fMaxDistanceM = 50.f;
+        gaze.OnFail = {fear}; pattern.LogicWindows = {gaze};
+        KOUKUSAYDON_LOGIC_LEDGER ledger;
+        KOUKUSAYDON_LOGIC_OUTPUT output;
+        std::vector<DAMAGE_EVENT> events;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 130u, events, output);
+        auto& afraid = players.at(1u);
+        tests.Require(afraid.eAction == PLAYER_ACTION_STATE::FEAR && afraid.iActionStartTick == 130u &&
+            afraid.iFearEndTick == 220u && afraid.strFearPresentationId == "fear.result" &&
+            afraid.iCurrentHp == 1000u && !afraid.hasMoveGoal && afraid.iComboStage == 0u &&
+            !afraid.hasBufferedComboInput && players.at(2u).eAction == PLAYER_ACTION_STATE::NONE,
+            "A failed boss gaze fears only the failing player for 90 ticks and cancels movement/combo without killing");
+        CKoukuSaydonLogicRuntime::Apply_Result(afraid, fear, *boss, catalog, nullptr, 150u, events);
+        CPlayerSkillSystem::Arm_PlayerHitReaction(afraid, 0.f, 0.f, 2.f, 500u, true, 1000u, 151u);
+        tests.Require(afraid.iFearEndTick == 220u && afraid.eAction == PLAYER_ACTION_STATE::FEAR &&
+            afraid.fKnockbackRemainingSeconds == 0.f &&
+            CKoukuSaydonLogicRuntime::Update_PlayerFear(afraid, 219u) &&
+            !CKoukuSaydonLogicRuntime::Update_PlayerFear(afraid, 220u) &&
+            afraid.eAction == PLAYER_ACTION_STATE::NONE && afraid.strFearPresentationId.empty(),
+            "Overlapping fear/hit does not rearm its deadline; the exact deadline clears the lock and presentation identity");
+        CKoukuSaydonLogicRuntime::Apply_Result(afraid, fear, *boss, catalog, nullptr, 300u, events);
+        afraid.iCurrentHp = 0u;
+        tests.Require(!CKoukuSaydonLogicRuntime::Update_PlayerFear(afraid, 301u) &&
+            afraid.eAction == PLAYER_ACTION_STATE::DEAD && afraid.iFearEndTick == 0u,
+            "Death cancels fear without reviving the player");
+
+        BOSS_PATTERN_LOGIC_WINDOW counter{};
+        counter.strWindowId = "counter.1"; counter.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW;
+        counter.iDurationMs = 1000u; counter.bEndsPatternOnSuccess = true;
+        BOSS_PATTERN_LOGIC_RESULT followup{};
+        followup.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+        followup.strPatternId = "groggy.pattern"; counter.OnSuccess = {followup};
+        pattern.LogicWindows = {counter};
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 400u, ledger);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 400u, events, output);
+        SERVER_PLAYER_TO_WORLD_HIT hit{};
+        hit.iSourcePlayerId = 2u; hit.iSkillId = 34010u; hit.iRawDamage = 1u; hit.iServerTick = 400u;
+        (void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, events);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 400u, events, output);
+        tests.Require(!output.bEndPatternEarly && output.FollowupPatternIds.empty(),
+            "Ordinary HP damage cannot succeed a counter window");
+        hit.iCounterPower = 1u; hit.iServerTick = 401u;
+        (void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, events);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 401u, events, output);
+        tests.Require(output.bEndPatternEarly && output.FollowupPatternIds == std::vector<std::string>{"groggy.pattern"} &&
+            !CBossCombatRuntime::Has_Flag(boss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE),
+            "A counter-power hit consumes the Server counter outcome once, ends spider, and queues groggy");
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 402u, events, output);
+        tests.Require(output.FollowupPatternIds.empty(), "A closed counter window cannot queue groggy twice");
+
+        BOSS_PATTERN_LOGIC_WINDOW charge{};
+        charge.strWindowId = "charge.1"; charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        charge.iStartMs = 101u; charge.iDurationMs = 1001u; charge.fBossChargeDistanceM = 7.f;
+        BOSS_LOGIC_REGION body{};
+        body.strRegionId = "charge.body"; body.bCircle = true;
+        body.fRadiusM = 1.f; body.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+        charge.CardRegions = {body}; charge.OnSuccess = {fear};
+        pattern.LogicWindows = {charge};
+        players.clear(); player.eAction = PLAYER_ACTION_STATE::NONE;
+        player.fPositionX = 0.f; player.fPositionZ = 10.f;
+        players.emplace(1u, player);
+        boss->fPositionX = boss->fPositionZ = 0.f;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 500u, ledger);
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 504u, events, output);
+        players.at(1u).fPositionX = 10.f; players.at(1u).fPositionZ = 0.f;
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 519u, events, output);
+        tests.Require(std::abs(boss->fPositionX) < .001f && boss->fPositionZ > 3.f && boss->fPositionZ < 4.f &&
+            std::abs(boss->fYawDegrees) < .001f && boss->fPatternTargetLastPositionZ == 10.f,
+            "Boss charge captures one target position and keeps its direction after that player moves");
+        players.at(1u).fPositionX = 0.f; players.at(1u).fPositionZ = 7.f;
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 534u, events, output);
+        tests.Require(std::abs(boss->fPositionZ - 7.f) < .001f && std::abs(boss->fPositionX) < .001f &&
+            players.at(1u).eAction == PLAYER_ACTION_STATE::FEAR && players.at(1u).iActionStartTick == 534u,
+            "Boss charge reaches exactly seven metres on its pattern-clock deadline and its body collider follows before fear overlap");
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 550u, events, output);
+        tests.Require(std::abs(boss->fPositionZ - 7.f) < .001f && players.at(1u).iActionStartTick == 534u,
+            "A completed charge neither moves nor reapplies its fear again");
+    }
+
 	void Run_KoukuSaydonLogicRuntimeContracts(
 		TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
 	{
@@ -1753,8 +1862,120 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 	const CGameplayCatalog catalog;
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
+	Run_KoukuFearAndCounterContracts(tests, catalog);
 	Run_KoukuWorldPlacementContracts(tests, catalog);
 	Run_KoukuBoneContactContracts(tests, catalog);
+#ifdef _DEBUG
+    {
+        using namespace LostArk::Shared;
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        // The room constructor loads published placements. This fixture owns exactly two synthetic bosses.
+        room->m_WorldEntities.clear();
+        auto bossValue = std::make_unique<SERVER_WORLD_ENTITY>();
+        bossValue->iNetEntityId = 4000u; bossValue->iPatternSequence = 5u;
+        bossValue->strPatternId = "grab.pattern"; bossValue->strActionId = "grab.action";
+        bossValue->eKind = WORLD_BOOTSTRAP_KIND::BOSS; bossValue->eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+        bossValue->iCurrentHp = bossValue->iMaximumHp = 1000u;
+        room->m_WorldEntities.push_back(*bossValue);
+        bossValue->iNetEntityId = 5000u;
+        room->m_WorldEntities.push_back(*bossValue);
+        auto& boss = room->m_WorldEntities.front();
+        for (PLAYER_ID id = 1u; id <= 3u; ++id)
+        {
+            SERVER_PLAYER player{}; player.iPlayerId = id; player.iNetEntityId = static_cast<NET_ENTITY_ID>(100u + id);
+            player.iCurrentHp = player.iMaximumHp = 1000u; player.fPositionZ = 2.f;
+            player.fPositionX = id == 1u ? 0.f : 50.f;
+            room->m_PlayerIdByEntityId.emplace(player.iNetEntityId, id);
+            room->m_Players.emplace(id, player);
+        }
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = boss.strPatternId;
+        BOSS_PATTERN_LOGIC_WINDOW trigger{};
+        trigger.strWindowId = "grab.trigger"; trigger.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        trigger.iStartMs = 2029u; trigger.iDurationMs = 788u; trigger.strHoldLogicOccurrenceId = "grab.hold";
+        BOSS_PATTERN_LOGIC_RESULT capture{}; capture.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+        capture.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND; trigger.OnSuccess = {capture};
+        BOSS_LOGIC_REGION sector{}; sector.strRegionId = "grab.fan"; sector.bSector = true;
+        sector.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT; sector.fRadiusM = 10.f; sector.fHalfAngleDegrees = 45.f;
+        trigger.CardRegions = {sector};
+        BOSS_PATTERN_LOGIC_WINDOW hold{};
+        hold.strWindowId = "grab.hold"; hold.eKind = BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD;
+        hold.iStartMs = 2029u; hold.iDurationMs = 5455u;
+        pattern.LogicWindows = {trigger, hold};
+        CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER member;
+        member.strMemberId = "grab.member"; member.iBossEntityId = boss.iNetEntityId;
+        member.PatternIds = {pattern.strPatternId}; member.iPatternSequence = boss.iPatternSequence;
+        CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, member.LogicLedger);
+        room->m_KoukuSaydonPatternAudition.Members.push_back(std::move(member));
+        auto& ledger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
+        auto& first = room->m_Players.at(1u); auto& late = room->m_Players.at(2u); auto& other = room->m_Players.at(3u);
+        std::vector<DAMAGE_EVENT> events;
+        const auto runTick = [&](const std::uint32_t tick) {
+            KOUKUSAYDON_LOGIC_OUTPUT output;
+            CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, room->m_Players, catalog, nullptr, tick, events, output);
+            (void)room->Apply_KoukuLogicOutput(output, boss, tick);
+        };
+        KOUKUSAYDON_LOGIC_OUTPUT rejected;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, room->m_Players, catalog, nullptr, 161u, events, rejected);
+        first.isCombatReady = false;
+        (void)room->Apply_KoukuLogicOutput(rejected, boss, 161u);
+        tests.Require(rejected.CaptureRequests.size() == 1u && first.eAction == PLAYER_ACTION_STATE::NONE &&
+            ledger.Windows.front().Answers[1u] != KOUKUSAYDON_LOGIC_ANSWER::SUCCESS,
+            "A room-rejected grab remains unanswered instead of losing the retryable capture candidate");
+        first.isCombatReady = true; runTick(162u);
+        late.fPositionX = 0.f; runTick(171u);
+        tests.Require(first.eAction == PLAYER_ACTION_STATE::GRABBED && late.eAction == PLAYER_ACTION_STATE::GRABBED &&
+            first.iAttachmentEndTick == 325u && late.iAttachmentEndTick == 325u &&
+            first.iActionStartTick == 162u && late.iActionStartTick == 171u,
+            "Early and late captures use the same authored 7484ms Hold endpoint through the actual room attachment transaction");
+        const bool duplicateRejected = !room->Capture_PlayerAttachment(first.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 172u, 400u);
+        runTick(186u);
+        boss.fPositionX = 5.f;
+        const bool follows = room->Update_PlayerAttachment(first, 186u) && room->Update_PlayerAttachment(late, 186u);
+        tests.Require(duplicateRejected && follows && first.iAttachmentEndTick == 325u && first.fPositionX == 5.f,
+            "The short Collider closing cannot release a held player, and duplicate capture cannot extend its deadline");
+        const bool otherCaptured = room->Capture_PlayerAttachment(other.iNetEntityId, 5000u,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 186u, 400u);
+        const bool heldUntilEnd = room->Update_PlayerAttachment(first, 324u);
+        const bool releasedAtEnd = !room->Update_PlayerAttachment(first, 325u) && !room->Update_PlayerAttachment(late, 325u);
+        tests.Require(otherCaptured && heldUntilEnd && releasedAtEnd && first.eAction == PLAYER_ACTION_STATE::NONE &&
+            first.iAttachmentEndTick == 0u && first.isCombatReady && first.fKnockbackRemainingSeconds == 0.f &&
+            first.iKnockdownEndTick == 0u && other.eAction == PLAYER_ACTION_STATE::GRABBED,
+            "Hold expiry releases without push/down effects and leaves another boss's held player intact");
+        const bool capturedAgain = room->Capture_PlayerAttachment(first.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 330u, 390u);
+        ++boss.iPatternSequence;
+        const bool staleReleased = !room->Update_PlayerAttachment(first, 331u);
+        const bool capturedForDeath = room->Capture_PlayerAttachment(first.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 332u, 390u);
+        first.iCurrentHp = 0u;
+        const bool deathReleased = !room->Update_PlayerAttachment(first, 333u);
+        tests.Require(capturedAgain && staleReleased && capturedForDeath && deathReleased &&
+            first.eAction == PLAYER_ACTION_STATE::DEAD && first.iAttachmentEndTick == 0u,
+            "An owner sequence change or player death clears a timed attachment without reviving its player");
+        first.iCurrentHp = 1000u; first.eAction = PLAYER_ACTION_STATE::FEAR; first.isCombatReady = true;
+        first.iActionStartTick = 333u; first.iFearEndTick = 423u; first.strFearPresentationId = "fear.result";
+        tests.Require(!room->Capture_PlayerAttachment(first.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 334u, 390u) && first.iFearEndTick == 423u,
+            "Capture cannot replace an active fear action or shorten its deadline");
+        first.eAction = PLAYER_ACTION_STATE::NONE; first.iFearEndTick = 0u; first.strFearPresentationId.clear();
+        const bool capturedForOwnerDeath = room->Capture_PlayerAttachment(first.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 334u, 390u);
+        boss.iCurrentHp = 0u;
+        const bool ownerDeathReleased = !room->Update_PlayerAttachment(first, 335u);
+        tests.Require(capturedForOwnerDeath && ownerDeathReleased && first.eAction == PLAYER_ACTION_STATE::NONE &&
+            first.iCurrentHp == 1000u && first.isCombatReady && other.eAction == PLAYER_ACTION_STATE::GRABBED,
+            "Boss death releases its held player without damage or affecting another owner");
+        boss.iCurrentHp = 1000u;
+        const bool capturedForStop = room->Capture_PlayerAttachment(late.iNetEntityId, boss.iNetEntityId,
+            PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 334u, 390u);
+        room->m_iServerTick = 335u;
+        room->Clear_KoukuSaydonPatternAudition();
+        tests.Require(capturedForStop && late.eAction == PLAYER_ACTION_STATE::NONE && late.iAttachmentEndTick == 0u &&
+            other.eAction == PLAYER_ACTION_STATE::GRABBED && room->m_KoukuSaydonPatternAudition.Members.empty(),
+            "The Stop/Restart/disconnect cleanup releases its own grab and preserves unrelated boss attachments");
+    }
+#endif
 	std::cout << "failures : " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
 }
@@ -3966,6 +4187,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	Run_KoukuSaydonLogicRuntimeContracts(tests, catalog);
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
+	Run_KoukuFearAndCounterContracts(tests, catalog);
 	Run_KoukuWorldPlacementContracts(tests, catalog);
 	Run_KoukuBoneContactContracts(tests, catalog);
 	{

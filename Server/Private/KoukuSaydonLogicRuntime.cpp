@@ -1,6 +1,8 @@
 #include "KoukuSaydonLogicRuntime.h"
 
 #include "ServerCombatHitRuntime.h"
+#include "KoukuSaydonBrain.h"
+#include "ServerCollisionSystem.h"
 #include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
@@ -104,6 +106,17 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 		state.iStartTick = Add_Ticks(startTick, Ticks_FromMs(window.iStartMs));
 		state.iEndTick = Add_Ticks(startTick,
 			Ticks_FromMs(window.iStartMs + window.iDurationMs));
+        if (!window.strHoldLogicOccurrenceId.empty())
+        {
+            const auto hold = std::find_if(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [&](const auto& row) {
+                return row.strWindowId == window.strHoldLogicOccurrenceId && row.eKind == BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD;
+            });
+            if (hold != pattern.LogicWindows.end())
+            {
+                state.iHoldStartTick = Add_Ticks(startTick, Ticks_FromMs(hold->iStartMs));
+                state.iHoldEndTick = Add_Ticks(startTick, Ticks_FromMs(hold->iStartMs + hold->iDurationMs));
+            }
+        }
 		if (BOSS_PATTERN_LOGIC_KIND::POSE_INPUT == window.eKind)
 		{
 			ledger.bDanceActive = true;
@@ -294,6 +307,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
 		pBoss->bKoukuShieldActive = false;
 		pBoss->fKoukuShieldArcDegrees = 0.f;
 		pBoss->KoukuShieldRegions.clear();
+        (void)CBossCombatRuntime::Set_Flag(pBoss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+        CBossCombatRuntime::Clear_PatternOutcomes(*pBoss);
 	}
 	ledger = {};
 }
@@ -317,6 +332,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 			if (Is_Judgeable(player))
 				state.Answers[playerId] = KOUKUSAYDON_LOGIC_ANSWER::NONE;
 		break;
+    case BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW:
+        (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
+        break;
 	case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 		boss.bKoukuShieldActive = window.fShieldArcDegrees > 0.f;
 		boss.fKoukuShieldArcDegrees = window.fShieldArcDegrees;
@@ -326,6 +344,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	case BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP:
 	case BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT:
 	case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
+    case BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD:
 		// One world object is judged independently of the party roster.
 		break;
 	case BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS:
@@ -348,6 +367,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
 {
 	using namespace LostArk::Shared;
 	state.bClosed = true;
+    if (window.eKind == BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW)
+        (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
 	(void)players;
 	if (BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind)
 	{
@@ -477,6 +498,27 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Transform_ToClown(
 	player.iCurrentMadness = 0u;
 }
 
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerFear(
+    SERVER_PLAYER& player, const std::uint32_t serverTick)
+{
+    using namespace LostArk::Shared;
+    if (PLAYER_ACTION_STATE::FEAR == player.eAction &&
+        (Has_ReachedTick(serverTick, player.iFearEndTick) || player.iCurrentHp == 0u))
+    {
+        player.eAction = player.iCurrentHp == 0u ? PLAYER_ACTION_STATE::DEAD : PLAYER_ACTION_STATE::NONE;
+        player.iActionStartTick = 0u;
+        player.fActionElapsedSeconds = 0.f;
+        player.PendingCommand.Clear();
+    }
+    if (PLAYER_ACTION_STATE::FEAR != player.eAction)
+    {
+        player.iFearEndTick = 0u;
+        player.strFearPresentationId.clear();
+        return false;
+    }
+    return true;
+}
+
 void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	SERVER_PLAYER& player,
 	const BOSS_PATTERN_LOGIC_RESULT& result,
@@ -519,6 +561,30 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 			Transform_ToClown(player, pMadnessPolicy, serverTick, 0u);
 		break;
 	}
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR:
+        if (Is_Judgeable(player) && !player.bPatternBound &&
+            PLAYER_ACTION_STATE::GRABBED != player.eAction &&
+            PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+            PLAYER_ACTION_STATE::FEAR != player.eAction)
+        {
+            player.eAction = PLAYER_ACTION_STATE::FEAR;
+            player.iActionStartTick = serverTick == 0u ? 1u : serverTick;
+            player.iFearEndTick = Add_Ticks(player.iActionStartTick, Ticks_FromMs(result.iDurationMs));
+            player.strFearPresentationId = result.strFearPresentationId;
+            player.iCurrentSkillId = INVALID_SKILL_ID;
+            player.Clear_SkillTarget();
+            player.iComboStage = 0u;
+            player.hasBufferedComboInput = false;
+            player.hasReleasedHold = false;
+            player.PendingCommand.Clear();
+            player.hasMoveGoal = false;
+            player.MovePath.clear();
+            player.iMovePathIndex = 0u;
+            player.fActionElapsedSeconds = 0.f;
+            player.iKnockdownEndTick = 0u;
+            player.fKnockbackRemainingSeconds = 0.f;
+        }
+        break;
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::CLOWN_TRANSFORM:
 		Transform_ToClown(player, pMadnessPolicy, serverTick, result.iDurationMs);
 		break;
@@ -546,6 +612,16 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 {
 	for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 	{
+        if (BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER == result.eKind)
+        {
+            if (pPlayer && Is_Judgeable(*pPlayer) && pPlayer->eAction != LostArk::Shared::PLAYER_ACTION_STATE::FEAR && state.iHoldEndTick &&
+                Has_ReachedTick(serverTick, state.iHoldStartTick) && !Has_ReachedTick(serverTick, state.iHoldEndTick) &&
+                std::none_of(outOutput.CaptureRequests.begin(), outOutput.CaptureRequests.end(), [&](const auto& request) {
+                    return request.iPlayerNetEntityId == pPlayer->iNetEntityId;
+                }))
+                outOutput.CaptureRequests.push_back({pPlayer->iNetEntityId, result.eAttachmentSlot, state.iHoldEndTick, state.iWindowIndex});
+            continue;
+        }
 		if (BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind)
 		{
 			if (state.AppliedWorldMotions.emplace(result.strTargetWorldInstanceId, result.strMotionInstanceId).second)
@@ -590,7 +666,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 	const BOSS_ENCOUNTER_MADNESS_POLICY* const pMadnessPolicy,
 	const std::uint32_t serverTick,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-	KOUKUSAYDON_LOGIC_OUTPUT& outOutput)
+	KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
+	const CServerNavigation* navigation, const CServerCollisionSystem* collision)
 {
 	if (!ledger.Is_Active() || ledger.strPatternId != pattern.strPatternId)
 		return;
@@ -625,6 +702,62 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		}
 		outOutput.WorldSequencePlays.push_back(std::move(play));
 	}
+    // Capture a charge once at trigger entry, then sample the existing boss-motion
+    // path before the body-follow contact regions inspect this tick's position.
+    for (auto& state : ledger.Windows)
+    {
+        if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size() ||
+            !Has_ReachedTick(serverTick, state.iStartTick)) continue;
+        const auto& window = pattern.LogicWindows[state.iWindowIndex];
+        if (window.fBossChargeDistanceM <= 0.f || state.bChargeStopped) continue;
+        if (!state.bChargeCaptured)
+        {
+            state.bChargeCaptured = true;
+            std::vector<const SERVER_PLAYER*> candidates;
+            for (const auto& [id, player] : players)
+                if (Is_Judgeable(player)) candidates.push_back(&player);
+            if (candidates.empty())
+            { state.bChargeStopped = true; outOutput.strStatus = "boss charge has no living target"; continue; }
+            const auto* target = candidates[Mix(static_cast<std::uint64_t>(boss.iPatternSequence) << 32u ^
+                boss.iNetEntityId ^ state.iStartTick) % candidates.size()];
+            const float dx = target->fPositionX - boss.fPositionX, dz = target->fPositionZ - boss.fPositionZ;
+            const float length = std::sqrt(dx * dx + dz * dz);
+            if (!std::isfinite(length) || length <= .0001f)
+            { state.bChargeStopped = true; outOutput.strStatus = "boss charge target has no direction"; continue; }
+            BOSS_PATTERN_BOSS_MOTION motion;
+            motion.iStartMs = window.iStartMs; motion.iEndMs = window.iStartMs + window.iDurationMs;
+            motion.StartPosition = {boss.fPositionX, boss.fPositionY, boss.fPositionZ};
+            motion.EndPosition = {boss.fPositionX + dx / length * window.fBossChargeDistanceM,
+                boss.fPositionY, boss.fPositionZ + dz / length * window.fBossChargeDistanceM};
+            motion.fYawDegrees = static_cast<float>(std::atan2(dx, dz) * DEGREES_PER_RADIAN);
+            state.ChargeMotion = motion;
+            boss.iTargetEntityId = target->iNetEntityId;
+            boss.iPatternTargetEntityId = target->iNetEntityId;
+            boss.bHasPatternTargetLastPosition = true;
+            boss.fPatternTargetLastPositionX = target->fPositionX;
+            boss.fPatternTargetLastPositionY = target->fPositionY;
+            boss.fPatternTargetLastPositionZ = target->fPositionZ;
+        }
+        if (!state.ChargeMotion) continue;
+        const auto& motion = *state.ChargeMotion;
+        const auto position = CKoukuSaydonBrain::Sample_BossMotion(motion, serverTick - ledger.iPatternStartTick);
+        SERVER_NAV_POINT destination{position[0], position[1], position[2]};
+        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
+            destination.x, destination.z, destination))
+        { state.bChargeStopped = true; outOutput.strStatus = "boss charge stopped at navigation boundary"; continue; }
+        bool blocked = false;
+        if (collision && !collision->Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
+            destination.x, destination.y, destination.z, boss.fCollisionRadius, boss.fCollisionRadius,
+            boss.fCollisionRadius, destination.x, destination.y, destination.z, blocked, boss.iNetEntityId, false))
+        { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision resolution failed"; continue; }
+        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
+            destination.x, destination.z, destination))
+        { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision destination is not navigable"; continue; }
+        boss.fPositionX = destination.x; boss.fPositionY = destination.y; boss.fPositionZ = destination.z;
+        boss.fYawDegrees = motion.fYawDegrees;
+        state.bChargeStopped = blocked || Has_ReachedTick(serverTick, state.iEndTick);
+        if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
+    }
 	// Resolve all contacts before any duration timeout, including the final tick.
 	// A group's priority order is fixed at Build; one card consumes one result per strike.
 	std::set<std::string> completedWindows;
@@ -702,6 +835,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		{
 		case BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT:
 			break; // Contact phase above owns the complete short window.
+		case BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD:
+            if (reachedEnd) Close_Window(boss, window, state, players);
+            break;
 		case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
 			if (reachedEnd)
 			{
@@ -711,6 +847,33 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				outOutput.strStatus = "external signal window timed out";
 			}
 			break;
+        case BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW:
+        {
+            auto& signals = boss.BossCombat.PendingOutcomes;
+            const auto counter = std::find_if(signals.begin(), signals.end(), [&](const auto& signal) {
+                return signal.iPatternSequence == ledger.iPatternSequence &&
+                    signal.strPatternId == boss.strPatternId &&
+                    signal.eOutcome == BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT &&
+                    Has_ReachedTick(signal.iServerTick, state.iStartTick) &&
+                    !Has_ReachedTick(signal.iServerTick, Add_Ticks(state.iEndTick, 1u));
+            });
+            if (counter != signals.end())
+            {
+                signals.erase(counter);
+                Close_Window(boss, window, state, players);
+                Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
+                    pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+                if (window.bEndsPatternOnSuccess) outOutput.bEndPatternEarly = true;
+                outOutput.strStatus = "counter window succeeded";
+            }
+            else if (reachedEnd)
+            {
+                Close_Window(boss, window, state, players);
+                Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog,
+                    pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+            }
+            break;
+        }
 		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 		{
 			const std::uint32_t lost = state.iBossHpAtOpen > boss.iCurrentHp ?
@@ -803,8 +966,12 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				const bool inside = std::any_of(window.CardRegions.begin(), window.CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& region) { return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick); });
 				if (!inside && !reachedEnd) continue;
-				state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
-					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
+                const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
+                    window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+                // Capture is committed by the room; an ineligible candidate remains retryable.
+                if (!captureCandidate)
+				    state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
+				        KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
 				Apply_Results(inside ? (window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
 			}

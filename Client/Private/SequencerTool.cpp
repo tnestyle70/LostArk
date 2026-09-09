@@ -33,8 +33,14 @@ namespace
         BOSS::VALTAN, BOSS::KOUKU_SAYDON, BOSS::KOUKU_SAYDON_GATE2,
         BOSS::KOUKU_SAYDON_GATE3, BOSS::KOUKU_SAYDON_ENCORE };
 
-    const char* PaneLabel(const PANE pane)
+    const char* PaneLabel(const PANE pane, const bool sequenceWorkspace)
     {
+        if (sequenceWorkspace && pane == PANE::PATTERNS)
+            return "Sequences";
+        if (sequenceWorkspace && pane == PANE::BOSS_PATTERN)
+            return "Boss Sequences";
+        if (sequenceWorkspace && pane == PANE::TOOLBAR)
+            return "Sequencer Benchmark";
         switch (pane)
         {
         case PANE::SEQUENCER: return "Sequencer";
@@ -65,8 +71,22 @@ namespace
             }) != text.end();
     }
 
-    const char* PaneWindowId(const PANE pane)
+    const char* PaneWindowId(const PANE pane, const bool sequenceWorkspace)
     {
+        if (sequenceWorkspace)
+        {
+            switch (pane)
+            {
+            case PANE::SEQUENCER: return "Composition Sequencer###SequenceBenchmarkSequencerWindow";
+            case PANE::PATTERNS: return "Composition Sequencer###SequenceBenchmarkSequencesWindow";
+            case PANE::RESOURCES: return "Composition Resources###SequenceBenchmarkResourcesWindow";
+            case PANE::DETAILS: return "Box Detail###SequenceBenchmarkDetailsWindow";
+            case PANE::PREVIEW: return "Composition Preview###SequenceBenchmarkPreviewWindow";
+            case PANE::BOSS_PATTERN: return "Composition Sequences###SequenceBenchmarkBossPatternWindow";
+            case PANE::TOOLBAR: return "Sequencer Benchmark###SequenceBenchmarkSessionWindow";
+            default: return "Unavailable pane###SequenceBenchmarkUnavailableWindow";
+            }
+        }
         switch (pane)
         {
         case PANE::SEQUENCER:
@@ -138,17 +158,45 @@ namespace
 
 Client::CSequencerTool::CSequencerTool(
     ICompositionWorkbenchSession* pValtanSession,
-    ICompositionWorkbenchSession* pKoukuSaydonSession)
+    ICompositionWorkbenchSession* pKoukuSaydonSession,
+    const bool sequenceWorkspace)
     : m_pValtanSession(pValtanSession)
     , m_pKoukuSaydonSession(pKoukuSaydonSession)
+    , m_eSelectedBoss(sequenceWorkspace ? BOSS::KOUKU_SAYDON : BOSS::VALTAN)
+    , m_bSequenceWorkspace(sequenceWorkspace)
 {
+}
+
+void Client::CSequencerTool::Open()
+{
+    m_bOpen = true;
+    m_bSequencerMaximized = false;
+    m_PaneVisible[static_cast<std::size_t>(PANE::PATTERNS)] = true;
+    m_PaneVisible[static_cast<std::size_t>(PANE::RESOURCES)] = true;
+    m_PaneVisible[static_cast<std::size_t>(PANE::DETAILS)] = true;
+    m_bRestoreAuthoringPanesRequested = true;
+}
+
+void Client::CSequencerTool::Open(const COMPOSITION_WORKBENCH_BOSS boss)
+{
+    Select_Boss(boss);
+    Open();
+}
+
+void Client::CSequencerTool::Select_Boss(const COMPOSITION_WORKBENCH_BOSS boss)
+{
+    if (m_bSequenceWorkspace && boss == BOSS::VALTAN)
+        return;
+    m_eSelectedBoss = boss;
+    if (ICompositionWorkbenchSession* session = Selected_Session())
+        session->Select_WorkbenchBoss(boss);
 }
 
 Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session() const noexcept
 {
     switch (m_eSelectedBoss)
     {
-    case BOSS::VALTAN: return m_pValtanSession;
+    case BOSS::VALTAN: return m_bSequenceWorkspace ? nullptr : m_pValtanSession;
     case BOSS::KOUKU_SAYDON:
     case BOSS::KOUKU_SAYDON_GATE2:
     case BOSS::KOUKU_SAYDON_GATE3:
@@ -340,7 +388,8 @@ void Client::CSequencerTool::Render_WindowMenu()
     if (ImGui::BeginMenu("Windows"))
     {
         for (const PANE pane : PANES)
-            ImGui::MenuItem(PaneLabel(pane), nullptr, &m_PaneVisible[static_cast<std::size_t>(pane)]);
+            ImGui::MenuItem(PaneLabel(pane, m_bSequenceWorkspace), nullptr, &m_PaneVisible[static_cast<std::size_t>(pane)]);
+        ImGui::MenuItem("Physical Animation Browser", nullptr, &m_bPhysicalAnimationBrowserVisible);
         ImGui::Separator();
         if (ImGui::MenuItem("Show All"))
             m_PaneVisible.fill(true);
@@ -368,13 +417,11 @@ void Client::CSequencerTool::Render_BossSelector()
     {
         for (const BOSS boss : BOSS_ENTRIES)
         {
+            if (m_bSequenceWorkspace && boss == BOSS::VALTAN)
+                continue;
             const bool selected = boss == m_eSelectedBoss;
             if (ImGui::Selectable(BossLabel(boss), selected))
-            {
-                m_eSelectedBoss = boss;
-                if (ICompositionWorkbenchSession* session = Selected_Session())
-                    session->Select_WorkbenchBoss(boss);
-            }
+                Select_Boss(boss);
             if (selected)
                 ImGui::SetItemDefaultFocus();
         }
@@ -411,6 +458,9 @@ void Client::CSequencerTool::Render_Pane(
     const ImGuiCond condition = m_bApplyResetLayoutThisFrame ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
     ImGui::SetNextWindowPos(placement.position, condition);
     ImGui::SetNextWindowSize(placement.size, condition);
+    if (m_bRestoreAuthoringPanesRequested &&
+        (pane == PANE::PATTERNS || pane == PANE::RESOURCES || pane == PANE::DETAILS))
+        ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     if (pane == PANE::RESOURCES && m_bExpandResourcesRequested && nullptr != viewport)
     {
@@ -433,11 +483,11 @@ void Client::CSequencerTool::Render_Pane(
             viewport->WorkSize.y * 0.96f), ImGuiCond_Always);
         ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
     }
-    const bool expanded = ImGui::Begin(PaneWindowId(pane), &visible, ImGuiWindowFlags_MenuBar);
+    const bool expanded = ImGui::Begin(PaneWindowId(pane, m_bSequenceWorkspace), &visible, ImGuiWindowFlags_MenuBar);
     Render_WindowMenu();
     if (expanded)
     {
-        if (pane == PANE::RESOURCES)
+        if (pane == PANE::RESOURCES && m_bPhysicalAnimationBrowserVisible)
             Render_PhysicalAnimationBrowser(session);
         ImGui::PushID(static_cast<int>(m_eSelectedBoss));
         session.Render_WorkbenchPane(pane);
@@ -460,7 +510,12 @@ void Client::CSequencerTool::Render()
     const ImGuiCond condition = m_bApplyResetLayoutThisFrame ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
     ImGui::SetNextWindowPos(placement.position, condition);
     ImGui::SetNextWindowSize(placement.size, condition);
-    const bool expanded = ImGui::Begin(PaneWindowId(PANE::TOOLBAR), &m_bOpen, ImGuiWindowFlags_MenuBar);
+    if (m_bRestoreAuthoringPanesRequested)
+    {
+        ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+        ImGui::SetNextWindowFocus();
+    }
+    const bool expanded = ImGui::Begin(PaneWindowId(PANE::TOOLBAR, m_bSequenceWorkspace), &m_bOpen, ImGuiWindowFlags_MenuBar);
     Render_WindowMenu();
     if (expanded)
         Render_BossSelector();
@@ -491,4 +546,5 @@ void Client::CSequencerTool::Render()
     session->End_WorkbenchFrame();
     Apply_ViewRequest(*session);
     m_bApplyResetLayoutThisFrame = false;
+    m_bRestoreAuthoringPanesRequested = false;
 }

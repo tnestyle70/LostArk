@@ -460,6 +460,66 @@ namespace
 			"Save/Reload changed Stage, occurrence, profile, timing or stable ID");
 	}
 
+	void VerifyKoukuSequenceDocumentIsolation(const std::filesystem::path& actionPath,
+		const std::filesystem::path& sequencePath)
+	{
+		using namespace Client;
+		const auto actionBytes = ReadText(actionPath);
+		const auto sequenceBytes = ReadText(sequencePath);
+		std::string status;
+		CKoukuSaydonCompositionDocument action(actionPath), sequence(sequencePath);
+		Require(CKoukuSaydonCompositionDocument::Resolve_Path() == actionPath &&
+			CKoukuSaydonCompositionDocument::Resolve_SequencePath() == sequencePath,
+			"Action and Sequence resolvers do not select their independent Data files");
+		RequireEditorStep(action.Reload(status), status, "load Action owner for isolation");
+		RequireEditorStep(sequence.Reload(status), status, "load independent Sequence seed");
+		const auto actionGood = action.Get_LastGood();
+		const auto sequenceGood = sequence.Get_LastGood();
+		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
+			sequenceGood.iRevision == 1u && sequenceGood.Patterns.size() == 2u &&
+			std::all_of(sequenceGood.Patterns.begin(), sequenceGood.Patterns.end(), [](const auto& row) {
+				return row.strLoadError.empty() && row.strAuthoringStatus == "DRAFT" &&
+					!row.WorldOccurrences.empty() && !row.PresentationOccurrences.empty(); }),
+			"Sequence seed did not retain both valid World/Camera DRAFT timelines");
+		auto wrongAction = actionGood;
+		wrongAction.strCompositionId = sequenceGood.strCompositionId;
+		Require(!action.Save_Atomic(wrongAction, status) && action.Get_LastGood() == actionGood &&
+			action.Is_Fresh() && ReadText(actionPath) == actionBytes,
+			"Sequence identity overwrote the Action source or invalidated a valid baseline");
+		auto wrongSequence = sequenceGood;
+		wrongSequence.strCompositionId = actionGood.strCompositionId;
+		Require(!sequence.Save_Atomic(wrongSequence, status) && sequence.Get_LastGood() == sequenceGood &&
+			sequence.Is_Fresh() && ReadText(sequencePath) == sequenceBytes,
+			"Action identity overwrote the independent Sequence source");
+
+		auto candidate = sequenceGood;
+		candidate.Patterns.front().strDisplayName = "Native independent Sequence save";
+		RequireEditorStep(sequence.Save_Atomic(candidate, status), status, "save independent Sequence");
+		const auto saved = sequence.Get_LastGood();
+		const auto savedBytes = ReadText(sequencePath);
+		Require(saved.iRevision == sequenceGood.iRevision + 1u && ReadText(actionPath) == actionBytes,
+			"Sequence Save changed the Action source or failed to advance only its own revision");
+		const auto externalBytes = savedBytes + "\n";
+		Require(WriteText(sequencePath, externalBytes), "could not stage Sequence CAS conflict");
+		Require(!sequence.Save_Atomic(saved, status) && !sequence.Is_Fresh() &&
+			sequence.Get_LastGood() == saved && ReadText(sequencePath) == externalBytes &&
+			ReadText(actionPath) == actionBytes,
+			"Sequence CAS conflict did not preserve the external file and last-good state");
+		RequireEditorStep(sequence.Reload(status), status, "reload Sequence after CAS conflict");
+		Require(sequence.Get_LastGood() == saved, "Sequence CAS recovery changed the saved timeline");
+
+		Require(WriteText(sequencePath, actionBytes), "could not stage wrong identity at Sequence path");
+		Require(!sequence.Reload(status) && sequence.Get_LastGood() == saved &&
+			ReadText(sequencePath) == actionBytes && ReadText(actionPath) == actionBytes,
+			"Sequence Reload admitted Action identity or overwrote either source");
+		Require(WriteText(actionPath, sequenceBytes), "could not stage wrong identity at Action path");
+		Require(!action.Reload(status) && action.Get_LastGood() == actionGood &&
+			ReadText(actionPath) == sequenceBytes,
+			"Action Reload admitted Sequence identity or replaced its last-good state");
+		Require(WriteText(actionPath, actionBytes) && WriteText(sequencePath, sequenceBytes),
+			"could not restore isolated scratch documents");
+	}
+
 	void VerifyLegacyEditorMigration(const std::filesystem::path& sourcePath)
 	{
 		using namespace Client;
@@ -999,6 +1059,11 @@ namespace
 		};
 		const auto first = findBox(circleBox.strOccurrenceId);
 		const auto firstWindow = findWindow(first.strLogicOccurrenceId);
+		const auto& damageLogics = workbench.Get_Composition().Logics;
+		const auto damageTrigger = std::find_if(damageLogics.begin(), damageLogics.end(),
+			[&](const auto& logic) { return logic.strLogicId == firstWindow.strLogicId; });
+		Require(damageTrigger != damageLogics.end() && damageTrigger->fBossChargeDistanceM == 0.0,
+			"automatic Collider damage inherited another Pattern's boss charge");
 		Require(!first.bDebugRender && firstWindow.OnSuccessLogicIds.size() == 1u, "Circle debug flag or Trigger damage Result was lost");
 		const auto firstDamage = firstWindow.OnSuccessLogicIds.front();
 		const auto ordinal = workbench.Get_Composition().iNextLogicOrdinal;
@@ -1538,6 +1603,31 @@ namespace
 			edited.LogicOccurrences[0].iDurationMs == 1250u,
 			"Logic editing changed animation content or lost box identity/window");
 		RequireEditorRoundtrip(workbench);
+		const auto nameOnlyDefinition = *std::find_if(workbench.Get_Composition().Logics.begin(),
+			workbench.Get_Composition().Logics.end(), [&](const auto& logic) { return logic.strLogicId == referencedLogicId; });
+		auto playableDefinition = nameOnlyDefinition;
+		playableDefinition.strJudgementKind = "EXTERNAL_SIGNAL";
+		RequireEditorStep(workbench.Set_LogicDefinitionValues(referencedLogicId, playableDefinition, status),
+			status, "complete the referenced duration judgement");
+		RequireEditorStep(workbench.Set_PatternAuthoringStatus(patternId, "PRODUCT", status),
+			status, "retain an existing PRODUCT Pattern for Logic re-editing");
+		RequireEditorRoundtrip(workbench);
+		const auto beforeNameOnlyEdit = workbench.Get_Composition();
+		RequireEditorStep(workbench.Set_LogicDefinitionValues(referencedLogicId, nameOnlyDefinition, status),
+			status, "apply name-only Logic to a previously PRODUCT Pattern");
+		Require(workbench.Is_Dirty() && EditorPattern(workbench, patternId).strAuthoringStatus == "DRAFT" &&
+			EditorPattern(workbench, patternId).Stages == animationStages &&
+			EditorPattern(workbench, patternId).LogicOccurrences == edited.LogicOccurrences,
+			"name-only Logic edit retained PRODUCT restrictions or changed its saved sequence");
+		for (const auto& previous : beforeNameOnlyEdit.Patterns)
+			if (previous.strPatternId != patternId)
+				Require(EditorPattern(workbench, previous.strPatternId) == previous,
+					"referenced Logic edit changed an unrelated Pattern");
+		RequireEditorRoundtrip(workbench);
+		Require(std::find(workbench.Get_Composition().Logics.begin(), workbench.Get_Composition().Logics.end(),
+			nameOnlyDefinition) != workbench.Get_Composition().Logics.end() &&
+			EditorPattern(workbench, patternId).strAuthoringStatus == "DRAFT" && !workbench.Is_PublishRunning(),
+			"name-only Logic Save/Reload lost the draft or started publication");
 		const auto validDraft = workbench.Get_Composition();
 		const std::string validBytes = ReadText(sourcePath);
 		Require(!workbench.Set_LogicBoxWindow(patternId, boxId, 4000u, 1000u, status) &&
@@ -2456,30 +2546,55 @@ namespace
 			workbench.Get_Composition() == expectedEffectSave && workbench.Get_DraftGeneration() == effectSavedGeneration &&
 			ReadText(sourcePath) == externalBytes, "CAS rejected Effect Save overwrote source or committed pending draft");
 
-		// The real Save launcher uses an absolute hidden PowerShell and refreshes only after child success.
+		// Save preserves editable source; only Publish All launches the hidden child and refreshes after success.
 		CKoukuSaydonActionWorkbench promoter;
-		RequireEditorStep(promoter.Reload(status), status, "reload source for PRODUCT Save launch contract");
+		Require(!promoter.Publish_AllPatterns(status) && !status.empty() && !promoter.Is_PublishRunning(),
+			"Publish All accepted an unloaded Composition");
+		RequireEditorStep(promoter.Reload(status), status, "reload source for separate Save and Publish All contract");
 		const auto& promotionBoxes = EditorPattern(promoter, patternId).PresentationOccurrences;
 		const auto promotionCollider = *std::find_if(promotionBoxes.begin(), promotionBoxes.end(),
 			[&](const auto& box) { return box.strOccurrenceId == collider.strOccurrenceId; });
 		auto invalidRotation = promotionCollider; invalidRotation.RotationDegrees[2] = -0.25;
 		RequireEditorStep(promoter.Set_PresentationBox(patternId, invalidRotation, status), status, "stage unsupported gameplay Collider roll");
-		RequireEditorStep(promoter.Set_PatternAuthoringStatus(patternId, "PRODUCT", status), status, "request PRODUCT before roll correction");
-		const auto rejectedProductDraft = promoter.Get_Composition();
-		Require(!promoter.Save(status) && status.find("Yaw") != std::string::npos &&
-			status.find(collider.strOccurrenceId) != std::string::npos && promoter.Get_Composition() == rejectedProductDraft &&
-			ReadText(sourcePath) == externalBytes && !promoter.Is_PublishRunning(),
-			"PRODUCT Save did not explain gameplay Collider roll or changed existing source");
+		RequireEditorStep(promoter.Set_PatternAuthoringStatus(patternId, "PRODUCT", status), status, "retain PRODUCT metadata while saving editable roll");
+		auto savedRoll = promoter.Get_Composition(); ++savedRoll.iRevision;
+		RequireEditorStep(promoter.Save(status), status, "Save preserves roll for later runtime eligibility assessment");
+		Require(promoter.Get_Composition() == savedRoll && !promoter.Is_Dirty() &&
+			!promoter.Is_PublishRunning() && !promoter.Consume_ProductInventoryRefreshRequest(),
+			"source-only Save rejected editable roll, launched publish, or changed authored metadata");
+		RequireEditorStep(promoter.Reload(status), status, "reload saved Collider roll");
+		Require(promoter.Get_Composition() == savedRoll, "Save/Reload lost the authored Collider roll");
 		RequireEditorStep(promoter.Set_PresentationBox(patternId, promotionCollider, status), status, "restore supported Collider geometry");
-		RequireEditorStep(promoter.Set_PatternAuthoringStatus(patternId, "PRODUCT", status), status, "promote corrected Pattern");
+		RequireEditorStep(promoter.Set_PatternAuthoringStatus(patternId, "DRAFT", status), status, "leave every Pattern as DRAFT for full-tree publish");
 		const auto publishScript = scratchRoot / "Tools/Build/Invoke-BuildDomainOwner.ps1";
 		const std::string successScript = "param([string]$Owner,[uint32]$ExpectedKoukuSaydonSourceRevision)\n"
 			"Write-Output ('Owner=' + $Owner + '; Revision=' + $ExpectedKoukuSaydonSourceRevision)\nexit 0\n";
 		Require(WriteText(publishScript, successScript), "could not write isolated publisher process fixture");
 		Require(!promoter.Consume_ProductInventoryRefreshRequest(), "fresh Workbench requested an inventory refresh");
-		RequireEditorStep(promoter.Save(status), status, "Save starts actual isolated publisher process");
-		Require(promoter.Is_PublishRunning() && !promoter.Is_Dirty() && !promoter.Consume_ProductInventoryRefreshRequest(),
-			"PRODUCT Save failed to launch the process or refreshed inventory before success");
+		const auto unsavedPublishDraft = promoter.Get_Composition();
+		const auto unsavedPublishBytes = ReadText(sourcePath);
+		Require(promoter.Is_Dirty() && !promoter.Publish_AllPatterns(status) && !status.empty() &&
+			!promoter.Is_PublishRunning() && promoter.Get_Composition() == unsavedPublishDraft &&
+			ReadText(sourcePath) == unsavedPublishBytes && !promoter.Consume_ProductInventoryRefreshRequest(),
+			"Publish All accepted unsaved edits or changed the source while rejecting them");
+		RequireEditorStep(promoter.Save(status), status, "Save source without starting the available publisher");
+		const auto savedPublishDraft = promoter.Get_Composition();
+		const auto savedPublishBytes = ReadText(sourcePath);
+		Require(!promoter.Is_PublishRunning() && !promoter.Is_Dirty() && savedPublishDraft.PlayAllPatternIds.empty() &&
+			!promoter.Consume_ProductInventoryRefreshRequest(),
+			"Save launched publish, changed DRAFT eligibility, or refreshed inventory");
+		RequireEditorStep(promoter.Save(status), status, "repeat source-only Save with a clean draft");
+		Require(promoter.Get_Composition() == savedPublishDraft && ReadText(sourcePath) == savedPublishBytes &&
+			!promoter.Is_PublishRunning() && !promoter.Consume_ProductInventoryRefreshRequest(),
+			"clean Save rewrote the source or started publish");
+		RequireEditorStep(promoter.Publish_AllPatterns(status), status, "Publish All starts actual isolated process with an all-DRAFT tree");
+		Require(promoter.Is_PublishRunning() && !promoter.Is_Dirty() && !promoter.Consume_ProductInventoryRefreshRequest() &&
+			promoter.Get_Composition() == savedPublishDraft && ReadText(sourcePath) == savedPublishBytes,
+			"Publish All failed to launch, rewrote source statuses, or refreshed inventory before success");
+		Require(!promoter.Publish_AllPatterns(status) && !status.empty() && promoter.Is_PublishRunning(),
+			"Publish All started a second process while the first was still observed");
+		Require(!promoter.Save(status) && promoter.Get_Composition() == savedPublishDraft &&
+			ReadText(sourcePath) == savedPublishBytes, "Save wrote during the observed publication");
 		const auto waitForPublish = [&]() {
 			const auto deadline = GetTickCount64() + 10000u;
 			while (promoter.Is_PublishRunning() && GetTickCount64() < deadline) { Sleep(10u); promoter.Tick_Background(); }
@@ -2492,12 +2607,23 @@ namespace
 		for (const auto& entry : std::filesystem::directory_iterator(scratchRoot / "out/KoukuSaydon"))
 			if (entry.is_regular_file()) capturedPublisherOutput |= ReadText(entry.path()).find(
 				"Owner=KoukuSaydon; Revision=" + std::to_string(promoter.Get_Composition().iRevision)) != std::string::npos;
-		Require(capturedPublisherOutput, "Save publisher log did not capture the owner and saved source revision");
+		Require(capturedPublisherOutput, "Publish All log did not capture the owner and saved source revision");
+		Require(promoter.Get_Composition() == savedPublishDraft && ReadText(sourcePath) == savedPublishBytes,
+			"successful Publish All rewrote authored statuses or source bytes");
 		Require(WriteText(publishScript, "param([string]$Owner,[uint32]$ExpectedKoukuSaydonSourceRevision)\nWrite-Output 'fixture publish rejected'\nexit 7\n"),
 			"could not write isolated publisher rejection fixture");
-		RequireEditorStep(promoter.Publish_Product(status), status, "retry actual isolated publisher process");
+		RequireEditorStep(promoter.Publish_AllPatterns(status), status, "retry actual isolated Publish All process");
 		waitForPublish();
-		Require(!promoter.Consume_ProductInventoryRefreshRequest(), "failed publisher completion refreshed the Product inventory");
+		Require(!promoter.Consume_ProductInventoryRefreshRequest() && promoter.Get_Composition() == savedPublishDraft &&
+			ReadText(sourcePath) == savedPublishBytes, "failed publisher completion refreshed inventory or changed source");
+		Require(WriteText(sourcePath, "{invalid source"), "could not stage a failed Composition reload");
+		Require(!promoter.Reload(status) && !promoter.Is_Dirty() && promoter.Get_Composition() == savedPublishDraft,
+			"failed reload did not retain the clean last-good Composition");
+		Require(WriteText(sourcePath, savedPublishBytes), "could not restore the saved Composition fixture");
+		Require(!promoter.Publish_AllPatterns(status) && !status.empty() && !promoter.Is_PublishRunning() &&
+			!promoter.Consume_ProductInventoryRefreshRequest() && ReadText(sourcePath) == savedPublishBytes,
+			"Publish All accepted a stale last-good Composition without a successful reload");
+		RequireEditorStep(promoter.Reload(status), status, "reopen the saved source after stale publish rejection");
 	}
 
 	void VerifyKoukuEditorRoundtrip()
@@ -2512,6 +2638,10 @@ namespace
 		const auto sourcePath = dataRoot / relativeSource;
 		Require(CopyFixture(sourceRoot / relativeSource, sourcePath),
 			"could not copy real Kouku composition source");
+		const auto relativeSequence = std::filesystem::path("Compositions/Sequences/KoukuSaydonSequenceComposition.json");
+		const auto sequencePath = dataRoot / relativeSequence;
+		Require(CopyFixture(sourceRoot / relativeSequence, sequencePath),
+			"could not copy independent Sequence composition seed");
 		for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06",
 			"MN_RPCT_07", "MN_RPCZ_00" })
 		{
@@ -2524,6 +2654,7 @@ namespace
 		Require(environment.Set(dataRoot), "could not select the scratch Data root");
 		std::cout << "Kouku editor fixture: " << sourcePath.string() << '\n';
 
+		VerifyKoukuSequenceDocumentIsolation(sourcePath, sequencePath);
 		VerifyLegacyEditorMigration(sourcePath);
 		VerifyKoukuGateBundleStorage(sourcePath);
 		VerifyKoukuPresentationDocument(sourcePath);
@@ -2700,13 +2831,40 @@ namespace
 	}
 }
 
+int Run_KoukuSequenceDocumentContractTests()
+{
+	try
+	{
+		const auto sourceRoot = Client::CProjectDataRoot::Get();
+		const auto scratchRoot = std::filesystem::temp_directory_path() /
+			("LostArkKoukuSequenceDocument-" + std::to_string(GetCurrentProcessId()) +
+			 "-" + std::to_string(GetTickCount64()));
+		const auto dataRoot = scratchRoot / "Data";
+		const auto relativeAction = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+		const auto relativeSequence = std::filesystem::path("Compositions/Sequences/KoukuSaydonSequenceComposition.json");
+		Require(CopyFixture(sourceRoot / relativeAction, dataRoot / relativeAction) &&
+			CopyFixture(sourceRoot / relativeSequence, dataRoot / relativeSequence),
+			"could not copy the real Action and Sequence authoring documents");
+		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+		Require(environment.Set(dataRoot), "could not select the isolated Sequence test Data root");
+		VerifyKoukuSequenceDocumentIsolation(dataRoot / relativeAction, dataRoot / relativeSequence);
+		std::cout << "KoukuSequenceDocumentContractTests: real-seed/isolated-path/identity-rejection/atomic-save/reload/CAS/action-source-preservation passed\n";
+		return 0;
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << "KoukuSequenceDocumentContractTests: FAIL: " << error.what() << '\n';
+		return 1;
+	}
+}
+
 int Run_KoukuCompositionEditorContractTests()
 {
 	try
 	{
 		VerifyKoukuEditorRoundtrip();
 		std::cout << "KoukuCompositionEditorContractTests: append/action-zero/model-owners/"
-			"gate-bundle-storage/249-stage/batch-delete/duration/multi-duplicate/preview-request/logic/presentation/region-link/quarantine/save-reload/CAS passed\n";
+			"sequence-path-identity/sequence-CAS/action-source-preservation/gate-bundle-storage/249-stage/batch-delete/duration/multi-duplicate/preview-request/logic/presentation/region-link/quarantine/save-reload/CAS passed\n";
 		return 0;
 	}
 	catch (const std::exception& error)

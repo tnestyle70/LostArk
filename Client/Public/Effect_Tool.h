@@ -830,6 +830,7 @@ private:
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
+	bool_t Try_SaveDocument(bool_t bPreviewCommittedByApply);
     size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
     bool_t Try_SaveDocumentAs(const std::string& strAssetId,
@@ -934,6 +935,7 @@ private:
 	bool_t Try_PlayActiveUnifiedEffect();
 	bool_t Prepare_RecoveryPreviewTarget();
 	bool_t Try_PlayRecoveryEffect();
+	bool_t Try_PreviewElementTimeline(const std::string& strElementId);
 	void Render_RecoveryEffectForProduct(const std::string& strProductEffectId);
 	bool_t Try_PlaySavedUnifiedEffect(
 		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
@@ -1030,6 +1032,8 @@ private:
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
 		const EFFECT_DOCUMENT_DESC& Document) const;
+    bool Build_ElementPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
+        const std::string& elementId, EFFECT_DOCUMENT_DESC& preview, std::string& error) const;
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
@@ -1317,6 +1321,8 @@ private:
 	   means the single m_strSelectedElementId is the delete target, which is
 	   the behaviour every other command still assumes. */
 	std::set<string, std::less<>> m_MarkedElementIds;
+	// Document replacement invalidates marks; row marking never changes IDs.
+	bool_t m_bMarkedElementIdsNeedPrune = false;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
@@ -1473,7 +1479,7 @@ private:
     void Render_AuthoringCommands();
     bool Render_WorldObjectResourceGrid(bool draft);
     bool Is_AuthoringWorldResource(const std::string& id, EFFECT_RESOURCE_FILE_KIND kind) const;
-    bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const float4x4_t& root,
+    bool Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, const std::string& elementId, const float4x4_t& root,
         std::shared_ptr<CEffectObject>& object, std::string& error);
     void Attach_AuthoringSaved();
     bool Resolve_AuthoringSourceAnchors(const std::shared_ptr<CEffectObject>& object,

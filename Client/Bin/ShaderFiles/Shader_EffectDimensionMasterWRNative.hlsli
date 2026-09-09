@@ -1,7 +1,7 @@
 // W/R selected source RT0 operations; exact ALT_V matches reuse existing programs.
 #ifndef EFFECT_DIMENSIONMASTER_WR_NATIVE_HLSLI
 #define EFFECT_DIMENSIONMASTER_WR_NATIVE_HLSLI
-#include "Shader_EffectDimensionMasterVNative.hlsli"
+#include "Shader_EffectDimensionMasterVNativeShared.hlsli"
 // Mutually exclusive W/R draws reuse V parameter transport and sampler helpers.
 struct WR_NATIVE_INPUT
 {
@@ -6482,8 +6482,9 @@ float4 WRNative260(WR_NATIVE_INPUT input)
     source[7] = VNativeAppend(g_VSourceMaterialParameters[3u].wwww,g_VSourceMaterialParameters[4u].xxxx,1u);
     source[8] = VNativeAppend(cos(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))),1u);
     source[9] = VNativeAppend(sin(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),cos(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),1u);
-    source[10] = VNativeAppend(cos((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))),1u);
-    source[11] = VNativeAppend(sin((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),cos((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),1u);
+    // Original CPU uniform sin/cos; packet row13 is prepared from the editable dissolve rotator.
+    source[10] = float4(g_VSourceMaterialParameters[13u].x, -g_VSourceMaterialParameters[13u].y, 0.f, 0.f);
+    source[11] = float4(g_VSourceMaterialParameters[13u].y, g_VSourceMaterialParameters[13u].x, 1.f, 1.f);
     source[12] = g_VSourceMaterialParameters[10u];
     source[13].x = ((float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))))).x;
     source[13].y = (cos(((g_VSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))).x;
@@ -6512,9 +6513,9 @@ float4 WRNative260(WR_NATIVE_INPUT input)
     source[19].x = (g_VSourceMaterialParameters[0u].wwww).x;
     source[19].y = (g_VSourceMaterialParameters[1u].wwww).x;
     source[19].z = ((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))).x;
-    source[19].w = (sin((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))).x;
-    source[20].x = ((float4(-1.0, 0.0, 0.0, 0.0)*sin((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))))).x;
-    source[20].y = (cos((g_VSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))).x;
+    source[19].w = g_VSourceMaterialParameters[13u].y;
+    source[20].x = -g_VSourceMaterialParameters[13u].y;
+    source[20].y = g_VSourceMaterialParameters[13u].x;
     source[20].z = (g_VSourceMaterialParameters[5u].wwww).x;
     source[20].w = (g_VSourceMaterialParameters[6u].yyyy).x;
     source[21].x = (g_VSourceMaterialParameters[6u].zzzz).x;

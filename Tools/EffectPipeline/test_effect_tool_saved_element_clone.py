@@ -183,7 +183,7 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         positions = [render.index(token) for token in ordered]
         self.assertEqual(positions, sorted(positions))
         self.assertIn('ImGui::Button("Load Saved Effect for Editing")', render)
-        self.assertIn('ImGui::Button("Load Saved Element for Editing")', render)
+        self.assertIn('ImGui::Button("Add Element to Current Effect")', render)
 
     def test_click_reparses_exact_source_and_never_opens_or_saves_it(self) -> None:
         append = function_slice(

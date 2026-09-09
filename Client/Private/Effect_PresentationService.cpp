@@ -1,4 +1,7 @@
 #include "Effect_PresentationService.h"
+#include "EffectRecoveryCamera.h"
+#include "Camera_Free.h"
+#include <charconv>
 
 #include "Character.h"
 #include "Effect_Catalog.h"
@@ -143,14 +146,7 @@ namespace
 		bool_t Try_Get_PresentationRoot(float4x4_t& Out) const
 		{
 			if (nullptr != pCharacter)
-			{
-				const std::shared_ptr<Engine::CTransform> pTransform =
-					pCharacter->Get_Transform();
-				if (nullptr == pTransform)
-					return false;
-				Out = *pTransform->Get_WorldMatrixPtr();
-				return true;
-			}
+				return pCharacter->Try_Get_PresentationRootMatrix(&Out);
 			return nullptr != pBoss &&
 				pBoss->Try_Get_PresentationRootMatrix(&Out);
 		}
@@ -172,6 +168,15 @@ namespace
 				(nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr);
 		}
 	};
+
+
+    struct PRODUCT_CAMERA_PREPARED final
+    {
+        std::string asset;
+        uint32_t skillId = 0u;
+        std::vector<Client::EFFECT_CAMERA_ROW> rows;
+        std::vector<std::string> localOnlyElementIds;
+    };
 
     struct ACTIVE_EFFECT final
     {
@@ -209,6 +214,8 @@ namespace
 		float4x4_t WorldRoot{};
 		bool_t bLevelOwned = false;
 		bool_t bExternallySampled = false;
+		Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
+		bool_t bExternalHistorySampled = false;
 		std::string strLevelPlacementId;
     };
 
@@ -303,6 +310,53 @@ namespace
 	uint64_t g_iArtist31470ToolPreviewConsumeCount = 0u;
 	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
 	std::string g_strStatus = "Effect presentation service is idle.";
+
+    struct PRODUCT_CAMERA_CACHE_ENTRY final
+    {
+        uint64_t revision = 0u;
+        std::shared_ptr<const PRODUCT_CAMERA_PREPARED> value;
+    };
+    std::map<std::string, PRODUCT_CAMERA_CACHE_ENTRY, std::less<>> g_ProductCameraCache;
+    constexpr uint64_t PRODUCT_CAMERA_OWNER = 0x45464650524f4341ull;
+    std::weak_ptr<Client::CCamera_Free> g_FrameCamera;
+    std::weak_ptr<Client::CEffectObject> g_CameraEffect;
+    std::weak_ptr<Client::CCharacter> g_CameraCharacter;
+    uint32_t g_FrameCameraLevel = UINT32_MAX;
+
+    void Release_ProductCamera()
+    {
+        if (const auto camera = g_FrameCamera.lock(); camera && camera->Is_PresentationOverrideOwnedBy(PRODUCT_CAMERA_OWNER))
+            camera->End_PresentationOverride(PRODUCT_CAMERA_OWNER);
+        g_CameraEffect.reset(); g_CameraCharacter.reset();
+    }
+
+    void Prepare_ProductCamera(const std::string& effectId, const uint64_t revision, const bool force = false)
+    {
+        if (!effectId.ends_with(".restore")) return;
+        auto& entry = g_ProductCameraCache[effectId];
+        if (!force && entry.revision == revision) return;
+        entry.revision = revision;
+        Client::EFFECT_RECOVERY_CAMERA_DOCUMENT source; std::string error;
+        if (!Client::CEffectRecoveryCamera::Load(effectId, source, error))
+        {
+            // A broken optional camera does not destroy an admitted Effect or a prior camera definition.
+            OutputDebugStringA(("[Client][EffectCamera] " + effectId + ": " + error + "\n").c_str());
+            return;
+        }
+        if (!source.exists || (source.rows.empty() && source.localOnlyElementIds.empty())) { entry.value.reset(); return; }
+        constexpr std::string_view prefix = "skill.";
+        uint32_t skillId = 0u;
+        const auto first = source.sequence.data() + (std::min)(prefix.size(), source.sequence.size());
+        const auto last = source.sequence.data() + source.sequence.size();
+        const auto parsed = std::from_chars(first, last, skillId);
+        if (!source.sequence.starts_with(prefix) || parsed.ec != std::errc{} || parsed.ptr != last || !skillId)
+        { OutputDebugStringA("[Client][EffectCamera] Recovery sequence has no Product skill identity.\n"); return; }
+        auto prepared = std::make_shared<PRODUCT_CAMERA_PREPARED>();
+        prepared->asset = std::move(source.asset); prepared->skillId = skillId; prepared->rows = std::move(source.rows);
+        prepared->localOnlyElementIds = std::move(source.localOnlyElementIds);
+        entry.value = std::move(prepared);
+    }
+
 
 	bool_t SourceModuleClassMatches(
 		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
@@ -670,6 +724,9 @@ namespace
 			return false;
 		}
 
+		// Optional camera parsing belongs to preparation, never Spawn or the frame loop.
+		for (const auto& target : g_ProductPrewarmQueue.Get_Targets())
+			Prepare_ProductCamera(target, iCatalogRevision);
 		if (nullptr != pOutCurrentTargets)
 			*pOutCurrentTargets = std::move(CurrentTargets);
 		strOutStatus = QueueStatus;
@@ -1200,6 +1257,10 @@ namespace
 		if ("skill_target" == strAnchorSlotId)
 			return nullptr != Owner.pCharacter &&
 				Owner.pCharacter->Try_Get_SkillTargetRoot(Out);
+		/* Character root cues retain world units; bone anchors below follow
+		   the enlarged visual. Boss root cues keep their existing scale policy. */
+		if ("root" == strAnchorSlotId && nullptr != Owner.pCharacter)
+			return Owner.Try_Get_OwnerWorld(Out);
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =
@@ -2385,6 +2446,7 @@ namespace
     void Remove_At(const size_t iIndex)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iIndex];
+        if (g_CameraEffect.lock() == Effect.pObject) Release_ProductCamera();
         if (nullptr != Effect.pObject &&
             Effect.iLevelIndex == CGameInstance::Get().Get_CurrentLevelID())
         {
@@ -3271,6 +3333,7 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	g_ProductEffectPlaybackDurations = std::move(StagedPlaybackDurations);
 	g_ProductScreenOverlayTemplates =
 		std::move(StagedScreenOverlayTemplates);
+    Prepare_ProductCamera(strEffectAssetId, iCatalogRevision, true);
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -4295,6 +4358,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 
 	EFFECT_SPAWN_DESC spawn;
 	spawn.strEffectAssetId = Desc.strEffectAssetId;
+	spawn.strElementId = Desc.strElementId;
 	spawn.strAnchorSlotId = "level-placement";
 	spawn.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
 	spawn.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
@@ -4346,7 +4410,9 @@ bool_t Client::CEffectPresentationService::Update_WorldRoot(
 
 bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	const EFFECT_WORLD_ROOT_HANDLE Handle,
-	const f32_t fSampleTimeSeconds)
+	const f32_t fSampleTimeSeconds,
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+	const bool_t bRebuildHistory)
 {
 	if (!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
 		fSampleTimeSeconds < 0.f)
@@ -4357,7 +4423,9 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	{
 		if (pending.Desc.iWorldRootHandle == Handle.iValue)
 		{
+			if (TransformProvider && !pending.Desc.bExternallySampled) return false;
 			pending.Desc.fInitialSampleTimeSeconds = fSampleTimeSeconds;
+			pending.Desc.ExternalTransformProvider = TransformProvider;
 			return true;
 		}
 	}
@@ -4365,9 +4433,12 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	{
 		if (effect.iWorldRootHandle == Handle.iValue && nullptr != effect.pObject)
 		{
+			if (TransformProvider && !effect.bExternallySampled) return false;
 			effect.fPendingInitialSampleTimeSeconds = fSampleTimeSeconds;
 			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
 			effect.bPendingInitialSeek = true;
+			effect.ExternalTransformProvider = TransformProvider;
+			if (bRebuildHistory || !TransformProvider) effect.bExternalHistorySampled = false;
 			return true;
 		}
 	}
@@ -4661,6 +4732,39 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
+    if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+        g_strStatus = strOutStatus;
+        return false;
+    }
+    if (Owner.pCharacter && !Owner.pCharacter->Is_LocallyControlled())
+    {
+        const auto cameraDefinition = g_ProductCameraCache.find(Desc.strEffectAssetId);
+        if (cameraDefinition != g_ProductCameraCache.end() && cameraDefinition->second.value &&
+            !cameraDefinition->second.value->localOnlyElementIds.empty())
+        {
+            const auto& localIds = cameraDefinition->second.value->localOnlyElementIds;
+            for (const auto& id : localIds)
+                if (std::none_of(pDocument->Elements.begin(), pDocument->Elements.end(),
+                    [&id](const auto& element) { return element.strElementId == id; }))
+                {
+                    CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+                    strOutStatus = "Recovery local-only visibility names an absent source element: " + id;
+                    g_strStatus = strOutStatus; return false;
+                }
+            std::vector<std::string> allowed; allowed.reserve(pDocument->Elements.size());
+            for (const auto& element : pDocument->Elements)
+                if (!std::binary_search(localIds.begin(), localIds.end(), element.strElementId) &&
+                    (Desc.strElementId.empty() || Desc.strElementId == element.strElementId))
+                    allowed.push_back(element.strElementId);
+            if (!pEffect->Set_SubmissionElementSet(std::move(allowed), strOutStatus))
+            {
+                CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+                g_strStatus = strOutStatus; return false;
+            }
+        }
+    }
     ACTIVE_EFFECT Active;
     Active.pObject = pEffect;
 	Active.pOwner = Owner.pCharacter;
@@ -4689,11 +4793,63 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.WorldRoot = Desc.WorldRoot;
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
+	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
 	Active.strLevelPlacementId = Desc.strLevelPlacementId;
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
     return true;
+}
+
+
+void Client::CEffectPresentationService::Set_FrameCamera(const std::shared_ptr<CCamera_Free>& camera)
+{
+    if (g_FrameCamera.lock() != camera) { Release_ProductCamera(); g_FrameCamera = camera; }
+    g_FrameCameraLevel = CGameInstance::Get().Get_CurrentLevelID();
+}
+
+void Client::CEffectPresentationService::Prepare_FrameCamera(const f32_t timeDelta)
+{
+    const auto camera = g_FrameCamera.lock();
+    if (!camera || !camera->Is_FollowEnabled() ||
+        g_FrameCameraLevel != CGameInstance::Get().Get_CurrentLevelID())
+    { Release_ProductCamera(); return; }
+    const auto target = camera->Get_FollowTarget();
+    // Reverse creation order lets clip2 own the rounded boundary shared with clip1.
+    for (auto it = g_ActiveEffects.rbegin(); it != g_ActiveEffects.rend(); ++it)
+    {
+        const auto& effect = *it;
+        const auto owner = effect.pOwner.lock();
+        if (!owner || !owner->Is_LocallyControlled() || owner->Get_Transform() != target ||
+            !owner->Is_EffectActionCurrent(effect.iActionStartTick) || effect.bFollowAnchorMissing ||
+            effect.bExternallySampled || effect.iLevelIndex != g_FrameCameraLevel || !effect.pObject ||
+            effect.pObject->Is_RenderFailureIsolated()) continue;
+        const auto cached = g_ProductCameraCache.find(effect.strEffectAssetId);
+        if (cached == g_ProductCameraCache.end() || !cached->second.value) continue;
+        const auto& definition = *cached->second.value;
+        if (!owner->Get_Spec() || !owner->Get_Spec()->pAssetName || definition.asset != owner->Get_Spec()->pAssetName ||
+            definition.skillId != static_cast<uint32_t>(owner->Get_PlayingSkillId())) continue;
+        // Predict exactly the clock consumed by Update below: the first sample does not consume dt twice.
+        const float age = effect.bPendingInitialSeek ? effect.fPendingInitialSampleTimeSeconds :
+            effect.fElapsedCueTimeSeconds + (std::max)(0.f, timeDelta) * effect.fPlaybackRate;
+        if (!std::isfinite(age) || age < 0.f || age > 600.f) continue;
+        const auto clockMs = static_cast<uint32_t>(age * 1000.f);
+        for (const auto& row : definition.rows)
+        {
+            if (row.muted || clockMs < row.startMs || clockMs >= row.startMs + row.cue.iDurationMs) continue;
+            float4x4_t root; VALTAN_CINEMATIC_CAMERA_POSE pose; float3_t up; std::string error;
+            if (!owner->Try_Get_PresentationRootMatrix(&root) ||
+                !CEffectRecoveryCamera::Sample(row, clockMs, root, camera->Get_AspectRatio(), pose, up, error))
+            { g_strStatus = "Product recovery camera sample failed: " + error; Release_ProductCamera(); return; }
+            if (!camera->Begin_PresentationOverride(PRODUCT_CAMERA_OWNER, Engine::CCamera::PRESENTATION_PRIORITY::DEFAULT))
+            { g_CameraEffect.reset(); g_CameraCharacter.reset(); return; }
+            if (!camera->Apply_PresentationPoseWithUp(PRODUCT_CAMERA_OWNER, pose.vEye, pose.vLookAt, up, pose.fFovYDegrees))
+            { g_strStatus = "Product recovery camera pose was rejected."; Release_ProductCamera(); return; }
+            g_CameraEffect = effect.pObject; g_CameraCharacter = owner;
+            return;
+        }
+    }
+    Release_ProductCamera();
 }
 
 void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
@@ -4769,6 +4925,34 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 				static_cast<f32_t>(fCommittedClock);
 			Effect.bPendingInitialSeek = false;
 		}
+		else if (Effect.bExternallySampled && Effect.ExternalTransformProvider &&
+			Effect.bPendingInitialSeek && nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
+		{
+			const f32_t fTarget = std::clamp(Effect.fPendingInitialSampleTimeSeconds,
+				0.f, Effect.pObject->Get_PreviewDurationSeconds());
+			const f64_t fClock = Effect.pObject->Get_PreviewFixedStepClockSeconds();
+			const f64_t fDelta = static_cast<f64_t>(fTarget) - fClock;
+			std::string strHistoryError;
+			// Replay only on first sample, rewind, large seek, or an authored
+			// placement edit. Normal frames consume only their new fixed steps.
+			const bool_t bSeek = !Effect.bExternalHistorySampled ||
+				!std::isfinite(fClock) || fDelta < -0.000001 || fDelta > 0.5;
+			const bool_t bCommitted = bSeek ?
+				Effect.pObject->Set_SampleTimeWithTransformHistory(fTarget,
+					Effect.ExternalTransformProvider, strHistoryError) :
+				Effect.pObject->Advance_PreviewWithTransformHistory(static_cast<f32_t>((std::max)(0.0, fDelta)),
+					Effect.ExternalTransformProvider, strHistoryError);
+			if (!bCommitted)
+			{
+				g_strStatus = "External Effect transform-history playback failed: " + strHistoryError;
+				OutputDebugStringA(("[Client][EffectPresentation] " + g_strStatus + "\n").c_str());
+				Remove_At(iEffect);
+				continue;
+			}
+			Effect.bExternalHistorySampled = true;
+			Effect.bPendingInitialSeek = false;
+			Effect.fElapsedCueTimeSeconds = fTarget;
+		}
 		else if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
 			!Effect.bFollowAnchorMissing)
 		{
@@ -4787,9 +4971,11 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
         const bool bCueEnded =
             EFFECT_STOP_POLICY::CUE_END == Effect.eStopPolicy &&
             Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs;
+        // An external timeline owns this handle until Stop_WorldRoot. Keeping
+        // the finished object permits backward seeks within the same box.
         if (!Owner.Is_Valid() || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel || bCueEnded ||
-            Effect.pObject->Is_Finished() || Effect.bFollowAnchorMissing)
+            (!Effect.bExternallySampled && Effect.pObject->Is_Finished()) || Effect.bFollowAnchorMissing)
         {
             Remove_At(iEffect);
             continue;
@@ -4868,6 +5054,7 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 void Client::CEffectPresentationService::Stop_Owner(
     const std::shared_ptr<CCharacter>& pOwner)
 {
+    if (g_CameraCharacter.lock() == pOwner) Release_ProductCamera();
 	if (nullptr == pOwner)
 		return;
 	g_PendingEffectSpawns.erase(std::remove_if(
@@ -4945,6 +5132,7 @@ void Client::CEffectPresentationService::Stop_BossOwner(
 void Client::CEffectPresentationService::Clear_Level(
     const uint32_t iLevelIndex)
 {
+    if (g_FrameCameraLevel == iLevelIndex) { Release_ProductCamera(); g_FrameCamera.reset(); g_FrameCameraLevel = UINT32_MAX; }
 	g_PendingEffectSpawns.erase(std::remove_if(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
 		[iLevelIndex](const PENDING_EFFECT_SPAWN& Pending)
@@ -4960,6 +5148,7 @@ void Client::CEffectPresentationService::Clear_Level(
 
 void Client::CEffectPresentationService::Clear_All()
 {
+    Release_ProductCamera();
 	g_PendingEffectSpawns.clear();
     while (!g_ActiveEffects.empty())
         Remove_At(g_ActiveEffects.size() - 1u);
@@ -4968,6 +5157,7 @@ void Client::CEffectPresentationService::Clear_All()
 
 void Client::CEffectPresentationService::Release_PreparedResources()
 {
+    Release_ProductCamera(); g_ProductCameraCache.clear();
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();
 	g_ProductEffectPlaybackDurations.clear();

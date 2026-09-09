@@ -20,6 +20,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CMapLightPresentationRuntime;
 class CTrigger_Box;
 class IPlayerCommandSink;
 
@@ -167,6 +168,8 @@ private:
 	/*베른성 맵 객체들의 생성과 제거는 기존 Map Runtime이 담당한다.
 	Network Player 수명과 섞지 않는다.*/
 	CMapPlacementRuntime m_MapRuntime;
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	bool_t m_bMapLightSubmissionFailureReported = false;
 
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 

@@ -353,6 +353,9 @@ private:
 		unique_ptr<CWorldSequencePlayer> player;
 	};
 	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> m_CompositionWorldPreviewCues;
+	// Preview borrows only its bound Deploy states and the exclusive arena visibility.
+	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> m_CompositionWorldPreviewDeployStates;
+	std::vector<std::pair<uint64_t, bool_t>> m_CompositionWorldPreviewArenaVisibility;
 	std::string m_strCompositionWorldPreviewPattern;
 	bool_t m_bCompositionWorldPreviewClockBound = false;
 #endif

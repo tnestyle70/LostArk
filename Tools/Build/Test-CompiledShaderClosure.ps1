@@ -20,6 +20,7 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 $repositoryPath = [System.IO.Path]::GetFullPath($RepositoryRoot)
 $platform = "x64"
 $script:failures = [System.Collections.Generic.List[string]]::new()
+$script:effectShaderProgramCount = 0
 
 function Add-Failure {
     param([string]$Message)
@@ -163,6 +164,31 @@ function Get-DirectShaderConsumers {
             'TEXT\(\s*"[^"]*(Shader_[^"/\\]+\.hlsl)"\s*\)')) {
             [void]$result.Add($match.Groups[1].Value)
         }
+    }
+
+    $familyPath = Join-Path $repositoryPath "Client\Public\Effect_ShaderFamily.h"
+    if (-not (Test-Path -LiteralPath $familyPath -PathType Leaf)) {
+        Add-Failure "Effect shader family executable table is missing: $familyPath"
+    }
+    else {
+        $familySource = [System.IO.File]::ReadAllText($familyPath)
+        $familyPattern = 'EFFECT_SHADER_PROGRAM_ROW\(\s*(MESH|PARTICLE)\s*,\s*([A-Z_]+)\s*,\s*(\d+)u\s*,\s*(\d+)u\s*,\s*"(Shader_[^"/\\]+\.hlsl)"\s*\)'
+        $familyRows = @([regex]::Matches($familySource, $familyPattern))
+        $declaredCount = [regex]::Match($familySource, 'array<EFFECT_SHADER_PROGRAM_DESC,\s*(\d+)u>')
+        if (-not $declaredCount.Success -or $familyRows.Count -ne [int]$declaredCount.Groups[1].Value) {
+            Add-Failure "Effect shader family executable rows do not match their declared count."
+        }
+        if ($declaredCount.Success -and $familyRows.Count -eq [int]$declaredCount.Groups[1].Value) {
+            $script:effectShaderProgramCount = $familyRows.Count
+        }
+        $familyNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($row in $familyRows) {
+            $name = $row.Groups[5].Value
+            if (-not $familyNames.Add($name)) { Add-Failure "Duplicate Effect family shader basename: $name" }
+            if ([uint64]$row.Groups[3].Value -gt [uint64]$row.Groups[4].Value) { Add-Failure "Invalid Effect family profile interval: $name" }
+            [void]$result.Add($name)
+        }
+        Write-Host "  Effect shader executable consumers : $($familyRows.Count)"
     }
 
     return @($result | Sort-Object)
@@ -435,6 +461,8 @@ function Invoke-ProductEffectShaderWarpProbe {
             [int64]$result.v1LitPixels -le 0 -or
             [int64]$result.v2LitPixels -le 0 -or
             $result.assetPathBoundaryValidated -ne $true -or
+            $script:effectShaderProgramCount -le 0 -or
+            [int64]$result.familyProgramsValidated -ne $script:effectShaderProgramCount -or
             [string]::IsNullOrWhiteSpace([string]$result.resourceRoot)) {
             Add-Failure (
                 "Product Effect shader WARP result is incomplete: " +

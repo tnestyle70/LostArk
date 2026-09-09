@@ -395,7 +395,12 @@ def build_animations(
                 # scale keeps translation keys in the same unit as the bind pose.
                 unit = 0.01 * translation_scale
                 translations.append((key[0] * unit, key[2] * unit, -key[1] * unit))
-                rotation = normalize_quaternion((key[3], key[5], -key[4], key[6]))
+                # ActorX mirrors source quaternion Y and W. Undo that mirror,
+                # then use UModel glTF's Y/Z swap and root-only conjugation.
+                # The root is equivalent to the old tuple up to quaternion sign;
+                # non-root W must be negated or the skin rotates the wrong way.
+                rotation_w = -key[6] if psa["parents"][bone_index] >= 0 else key[6]
+                rotation = normalize_quaternion((key[3], key[5], -key[4], rotation_w))
                 if previous_rotation is not None and sum(
                     a * b for a, b in zip(previous_rotation, rotation)
                 ) < 0.0:

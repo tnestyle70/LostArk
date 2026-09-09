@@ -3052,10 +3052,23 @@ if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 # checks above: K's first slice owns animation clocks, not inferred combat data.
 $koukuEncounterDocument = Read-JsonDocument `
 	'Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json'
-Assert-ExactProperties $koukuEncounterDocument @(
+$koukuInventoryProperties = @()
+if ($null -ne $koukuEncounterDocument.PSObject.Properties['patternInventory']) {
+	$koukuInventoryProperties += 'patternInventory'
+	Assert-ExactProperties $koukuEncounterDocument.patternInventory @('folders','patterns','bundles') 'KoukuSaydon saved Pattern inventory'
+	foreach ($field in @('folders','patterns','bundles')) {
+		if ($koukuEncounterDocument.patternInventory.$field -isnot [Array] -or
+			@($koukuEncounterDocument.patternInventory.$field).Count -gt 4096) {
+			throw "KoukuSaydon saved Pattern inventory $field must be a bounded array."
+		}
+	}
+	# The projector validation above compares the complete inventory and ready
+	# graph with the saved composition. It is display metadata, never Server rows.
+}
+Assert-ExactProperties $koukuEncounterDocument (@(
 	'schema','formatVersion','encounterId','bossArchetypeId','authority',
 	'fixedTickHz','sourceRevision','madnessPolicy','playAllPatternIds',
-	'patterns','folders','bundles') `
+	'patterns','folders','bundles') + $koukuInventoryProperties) `
 	'KoukuSaydon encounter Product'
 foreach ($field in @('schema','encounterId','bossArchetypeId','authority')) {
 	Assert-JsonString $koukuEncounterDocument.$field `
@@ -3403,6 +3416,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$koukuWindowIds =
 		[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	$koukuContactGroups = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+	$koukuHoldRows = [Collections.Generic.List[string]]::new()
+	$koukuCaptureGrip = $null
 	for ($windowIndex = 0;
 		$windowIndex -lt @($koukuPattern.logicWindows).Count; ++$windowIndex) {
 		$window = $koukuPattern.logicWindows[$windowIndex]
@@ -3411,6 +3426,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			'centerX','centerZ','outerRadiusM','stopYawDegrees','halfAngleDegrees',
 			'maxDistanceM','poseIndex','threshold','shieldArcDegrees',
 			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
+		if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) { $windowProperties += 'bossChargeDistanceM' }
+		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) { $windowProperties += 'holdLogicOccurrenceId' }
 		if ($window.kind -ceq 'OBJECT_OVERLAP') { $windowProperties += @('targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') }
 		if ($window.kind -ceq 'OBJECT_CONTACT') { $windowProperties += @('contactTargets','contactGroupId','contactPriority') }
 		Assert-ExactProperties $window $windowProperties 'KoukuSaydon logic window'
@@ -3431,7 +3448,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL') -or
+				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or
@@ -3455,16 +3472,32 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			throw "KoukuSaydon logic window is invalid: $($koukuPattern.patternId)/$($window.windowId)"
 		}
 		# Kind rules mirror CKoukuSaydonBrain::Validate_AnimationOnlyPattern.
+		if ($windowKind -ceq 'ATTACHMENT_HOLD' -and (@($window.onSuccess).Count -ne 0 -or
+			@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or
+			@($window.cardRegions).Count -ne 0 -or $window.endsPatternOnSuccess)) {
+			throw 'ATTACHMENT_HOLD has no regions or outcomes and cannot end the Pattern'
+		}
+		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) {
+			Assert-JsonString $window.holdLogicOccurrenceId 'Capture Hold window ID'
+			Assert-StableId $window.holdLogicOccurrenceId 'Capture Hold window ID'
+			$holds = @($koukuPattern.logicWindows | Where-Object { $_.windowId -ceq $window.holdLogicOccurrenceId })
+			if ($windowKind -cne 'ENTER_AREA' -or $holds.Count -ne 1 -or $holds[0].kind -cne 'ATTACHMENT_HOLD' -or
+				$holds[0].startMs -gt $window.startMs -or ([uint64]$holds[0].startMs + [uint64]$holds[0].durationMs) -lt $windowEndMs) {
+				throw 'Capture Hold must be a same-pattern ATTACHMENT_HOLD covering the complete Trigger window'
+			}
+			$koukuHoldRows.Add((@('PATTERNLOGICHOLD', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+				$window.windowId, $window.holdLogicOccurrenceId) -join "`t"))
+		}
 		if ($windowKind -ceq 'GAZE_REAL_BOSS' -and
 			@($window.onTimeout).Count -ne 0) {
 			throw "KoukuSaydon end-tick window cannot carry a Timeout outcome: $($window.windowId)"
 		}
-		if ($windowKind -cin @('STAGGER_WINDOW','ENTER_AREA','OBJECT_CONTACT','EXTERNAL_SIGNAL') -and @($window.onFail).Count -ne 0) {
+		if ($windowKind -cin @('STAGGER_WINDOW','COUNTER_WINDOW','ENTER_AREA','OBJECT_CONTACT','EXTERNAL_SIGNAL') -and @($window.onFail).Count -ne 0) {
 			throw "KoukuSaydon window cannot carry a Fail outcome: $($window.windowId)"
 		}
 		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onTimeout).Count -ne 0) { throw 'OBJECT_CONTACT has no Timeout results' }
 		if ($windowKind -ceq 'OBJECT_CONTACT' -and @($window.onSuccess | Where-Object { $_.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION' }).Count -gt 1) { throw 'OBJECT_CONTACT takes at most one contact motion result' }
-		if ($windowKind -cnotin @('STAGGER_WINDOW','EXTERNAL_SIGNAL') -and $window.endsPatternOnSuccess) { throw 'Only stagger or external signal may end the pattern on success' }
+		if ($windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL') -and $window.endsPatternOnSuccess) { throw 'Only stagger or external signal may end the pattern on success' }
 		if ($windowKind -ceq 'ROULETTE_CARD_MATCH' -and @($window.cardRegions).Count -ne 8) {
 			throw "KoukuSaydon roulette window needs eight explicit regions: $($window.windowId)"
 		}
@@ -3507,6 +3540,13 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			[uint32]$window.poseIndex, [uint32]$window.threshold,
 			(Format-InvariantFloat $window.shieldArcDegrees 'KoukuSaydon logic window shieldArcDegrees'),
 			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) + $objectTargetFields -join "`t"))
+        if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) {
+            Assert-JsonNumber $window.bossChargeDistanceM 'Boss charge distance'
+            if ($windowKind -cne 'ENTER_AREA' -or $window.bossChargeDistanceM -le 0 -or $window.bossChargeDistanceM -gt 1000 -or
+                $null -ne $koukuPattern.PSObject.Properties['bossMotion']) { throw 'Boss charge needs ENTER_AREA and 0..1000 m without absolute bossMotion' }
+            $patternRows.Add((@('PATTERNLOGICCHARGE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+                $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance')) -join "`t"))
+        }
 		$contactTargetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		if ($windowKind -ceq 'OBJECT_CONTACT') {
 			Assert-JsonString $window.contactGroupId 'OBJECT_CONTACT group ID'
@@ -3637,6 +3677,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			for ($ordinal = 0; $ordinal -lt $outcomes.Count; ++$ordinal) {
 				$outcome = $outcomes[$ordinal]
 				$outcomeProperties = @('kind','percent','durationMs','patternId')
+				if ($outcome.kind -ceq 'FEAR') { $outcomeProperties += 'presentationId' }
+				if ($outcome.kind -ceq 'CAPTURE_PLAYER') { $outcomeProperties += @('attachmentSlot','gripLocalOffset') }
 				if ($outcome.kind -ceq 'PLAY_WORLD_OBJECT_MOTION') { $outcomeProperties += @('targetWorldInstanceId','motionInstanceId') }
 				if ($outcome.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') { $outcomeProperties += 'contactMotions' }
 				if ($outcome.kind -ceq 'COMPLETE_LOGIC_WINDOW') { $outcomeProperties += @('targetLogicOccurrenceId','contactTargetWorldOccurrenceId') }
@@ -3658,9 +3700,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$hasFollowup = -not [string]::IsNullOrEmpty($followup)
 				if ($outcomeKind -cnotin @(
 						'INSTANT_DEATH','MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT',
-						'CLOWN_TRANSFORM','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW') -or
+						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER') -or
 					$isFollowup -ne $hasFollowup -or
-					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','EXTERNAL_SIGNAL')) -or
+					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL')) -or
 					($outcomeKind -cin @('MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT') -and
 						[uint32]$outcome.percent -eq 0)) {
 					throw "KoukuSaydon logic outcome is invalid: $($window.windowId)/$slotName/$ordinal"
@@ -3676,6 +3718,29 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					if ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0) { throw 'World Object motion outcome does not take percent or durationMs' }
 					if (@($koukuPattern.worldSequences | Where-Object { $_.sequenceInstanceId -ceq $outcome.targetWorldInstanceId }).Count -gt 1) { throw 'Legacy World motion target is ambiguous; use contact occurrence binding' }
 					$motionIds = @($outcome.targetWorldInstanceId, $outcome.motionInstanceId)
+				}
+                if ($outcomeKind -ceq 'FEAR') {
+                    Assert-JsonString $outcome.presentationId 'Fear presentation ID'
+                    Assert-StableId $outcome.presentationId 'Fear presentation ID'
+                    if ($outcome.durationMs -eq 0 -or $outcome.percent -ne 0) { throw 'Fear needs a positive duration and no percent' }
+                    $motionIds = @($outcome.presentationId)
+                }
+				if ($outcomeKind -ceq 'CAPTURE_PLAYER') {
+					if ($windowKind -cne 'ENTER_AREA' -or $slotName -cne 'SUCCESS' -or $outcomes.Count -ne 1 -or
+						$null -eq $window.PSObject.Properties['holdLogicOccurrenceId'] -or
+						$outcome.percent -ne 0 -or $outcome.durationMs -ne 0 -or $outcome.attachmentSlot -cne 'BOSS_LEFT_HAND') {
+						throw 'CAPTURE_PLAYER must be the sole ENTER_AREA Success with Hold and BOSS_LEFT_HAND, without percent or duration'
+					}
+					Assert-ExactProperties $outcome.gripLocalOffset @('forwardM','upM','rightM') 'Capture gripLocalOffset'
+					$motionIds = @($outcome.attachmentSlot)
+					foreach ($axis in @('forwardM','upM','rightM')) {
+						Assert-JsonNumber $outcome.gripLocalOffset.$axis "Capture gripLocalOffset $axis"
+						if ([Math]::Abs([double]$outcome.gripLocalOffset.$axis) -gt 10) { throw 'Capture gripLocalOffset must stay in -10..10 m' }
+						$motionIds += Format-InvariantSignedFloat $outcome.gripLocalOffset.$axis "Capture gripLocalOffset $axis"
+					}
+					$gripKey = $motionIds -join '|'
+					if ($null -ne $koukuCaptureGrip -and $koukuCaptureGrip -cne $gripKey) { throw 'A Pattern requires one consistent capture grip offset' }
+					$koukuCaptureGrip = $gripKey
 				}
 				$followupText = if ($hasFollowup) { $followup } else { '-' }
 				$patternRows.Add((@(
@@ -3717,6 +3782,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 		}
 	}
+	# Forward Hold references resolve only after every PATTERNLOGIC row exists.
+	foreach ($holdRow in $koukuHoldRows) { $patternRows.Add($holdRow) }
 	if ($koukuPattern.mechanicTriggers -isnot [Array] -or @($koukuPattern.mechanicTriggers).Count -gt 64) {
 		throw "KoukuSaydon mechanic trigger list is invalid"
 	}

@@ -1,0 +1,35 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.kouku.fear.face",
+  "durationMs": 2000,
+  "children": [
+    {
+      "childId": "fear.face.fullscreen",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.kouku.fear.face_1"
+      },
+      "startMs": 0,
+      "durationMs": 2000,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ]
+}

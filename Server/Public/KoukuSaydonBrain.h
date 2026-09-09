@@ -2,6 +2,7 @@
 
 #include "ServerWorldEntity.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -86,6 +87,8 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			std::string& status) const;
 		// Idempotent absolute sampling also runs before room Logic observes position.
+		static std::array<float, 3u> Sample_BossMotion(const BOSS_PATTERN_BOSS_MOTION& motion,
+			std::uint32_t elapsedTicks) noexcept;
 		static void Apply_BossMotion(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick) noexcept;
 		void Abort_Pattern(

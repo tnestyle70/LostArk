@@ -1047,3 +1047,363 @@ mesh shader entry를 확장하므로 새 C++/HLSL 파일과 project/filter 등�
 분리 draw, codec 왕복·잘못된 슬롯의 실패 보존을 확인한다. Engine/Client와 변경 shader를
 다시 빌드하고 새 Resources 설치 여부를 RESULT에 기록한다. 최종 하늘색 crack/Ice 모양은
 사용자의 실제 Solo/Play 관찰로 판단한다.
+
+
+## G33. 사용자 화면 피드백 이후 선택·저장 병목과 R/S/F 재생 연결
+
+기준 HEAD는 PR345 병합 `591012db`이며 새 branch는 `codex/dimensionmaster-tool-round3`이다.
+시작 시 타 작업 Kouku 변경 및 사용자가 저장한 Q/R/S/F 등의26개 dirty 파일을
+`out/DimensionMasterRound3_20260909/initial_worktree/`에 원문 보존했다. 타 작업 파일은 수정하거나
+자동 stage하지 않는다. 현재 사용자 튜닝을 데이터 기준으로 삼고 삭제한 occurrence를 무차별 복구하지 않는다.
+
+첨부 R 원본은 이어진 넓은 검은 중심과 보라색 발광이고 현재 R tuning은 여러 검은 선과 점무늬다.
+A 초승달과 S 바닥/유리/주변 효과는 사용자 관찰상 합격이며 현재 상태를 보존한다.
+48 mesh와26/38번은 Q가 아닌 A full에 있어 4회 편성의 대상은 사용자 질문 응답을 따른다.
+마지막 정정대로 Q 유리는 S mesh01/02의 fm_d_crack_037을 금색으로 재사용한다.
+
+### Effect_Tool.cpp / Effect_Tool.h
+
+기존 `Render_DataFilesWindow`는 authoring resource tree 분기의 조기 return 때문에 그 아래
+category/search/element/family/Add Element UI에 도달하지 않는다. 같은 창에서 기존 typed facade를
+유지하면서 Data Files 선택지를 다시 노출하고, 기존 복사·stable ID 생성·의존 cue remap 경로를 사용한다.
+Shift 선택의 표시 상태 변경은 문서 내용 mutation과 분리한다. 선택만으로 전 문서 validation,
+prepared resource 교체 또는 전체 JSON serialize를 반복하지 않게 현재 호출자/무효화 지점을 확인해 고친다.
+Save는 현재 bytes 비교와 validate→stage→commit 및 실패 시 이전 파일/preview 보존 계약을 유지하며
+중복 serialize·전역 색인 재구축·동일 자원 재준비를 줄인다. 마지막 명시 검증 문구를 실제 화면/모든
+Element의 실행 성공처럼 표시하지 않는다. Life x는 UI와 codec 모두 현재16배 상한이며 초가 아니다.
+
+### Q / R tuning authored JSON
+
+`2050100.tuning`의 기존 cube/검격/튜닝을 보존한다. 기존 glass-ring 위치에 S crack01 복사본을
+연결하고 crack02를 별도 stable ID로 추가한다. 두 행은 기존 mesh/material/source module 경로를
+재사용하며 금색 in/out/reflection 재질 파라미터와 중심에서 원형으로 퍼지는 cylinder/radial velocity
+저작 override를 사용한다. 원본 S 복사 제공자는 이 변경으로 수정하지 않는다.
+
+`2050180.tuning`의 세 slash와 cube는 사용자 위치·타이밍을 기준으로 삼는다. 대응 full의 WR260
+swing mesh 세 행을 각 slash 시작 시각에 복사하고, S crack 두 행을 보라색으로 각 검격 양옆에
+연결한다. 기존 cube도 같은 시간의 방출을 유지하며 검격 주변으로 퍼지는 속도를 준다.
+복사 시 stable ID와 group을 새로 부여하고 sourceNode는 복사 원본을 기록한다. raw 추출 정본 대신
+저작 override라는 상태를 명시한다. A 합격 재질은 수정하지 않는다.
+
+### Playback / Renderer / source shader 연결
+
+현재 F mesh15개 중14개는 저장된 failClosed hold이며12개에는 native profile ID가 없다.
+BA의 ready 문구나 grouped proxy 통과를 원작 재생 성공으로 보지 않는다. 각 막힌 행에서 필요한
+source module과 material/geometry를 확인하고, 같은 MIC의 이미 연결된 runtime은 재사용한다.
+S sprite24 중 ALT129 한 행은 burst500/local vector field를 사용한다. 기존 실제 Playback의
+focused 수치 측정으로 비용을 분리한 뒤, 동일 입력을 입자마다 다시 해석하거나 과거부터 반복 적분하는
+비용을 줄인다. 입력/Seek/loop 결과와 자원 stage 실패 보존은 유지한다.
+R 줄무늬와 S 메인검격/screw의 실제 source→geometry→shader 호출을 대조한 뒤 구체 변경을
+이 G에 추가하고 구현한다. shader/재질 연결 누락을 운동 문제로 가정해 hold만 해제하지 않는다.
+
+검증은 변경 기능 최소 컴파일, 현재 JSON의 Load/Save/Reload, Solo/시간 sweep의 유한수·발생수,
+선택/저장/Playback 전후 CPU 비용과 실패 시 기존 항목 보존, diff-check다. 새로운 광역 admission
+체계는 만들지 않는다. Client/UI는 실행하지 않으며 최종 화면은 사용자가 같은 F1 V1 경로에서 판단한다.
+
+
+### G33 R 중심 면과 S 기존 저작 연결 확정
+
+R tuning은 Q51 glass-hole PS의 원형/polar 마스크를 긴 sprite로 늘려 사용한다. 원본과 비교한
+31개 named parameter의 차이는 aura 색뿐이며, alpha 입력 texture의 빈 구간이 긴 선으로 보인다.
+Q51 native 식을 바꾸지 않고 R에만 `effect.project-tuned.dimensionmaster-r-glasshole-solid-core.v1`
+식별자를 연결한다. 기존 Q51 descriptor/texture/packet을 재사용하는 alias이며 여유 parameter11.x/y에
+`blackCoreWidth/blackCoreSoftness`를 바인딩한다. wrapper는 중심 alpha를 native alpha와 합성하고
+premultiplied 기여를 나누어 기존 보라색 aura를 보존한다. 기존 Q alias parameter0은 정확히 이전 경로다.
+원본 shader 누락 복구로 표기하지 않고 사용자 요청의 R 전용 저작 조정으로 기록한다.
+
+S 현재 full의 source occurrence는 crack mesh2개뿐이다. unified에 이미 저장된 사용자의 cone003
+하나와 helix036 둘은 full에 연결돼 있지 않다. 해당 standard material·texture·transform·particle
+계약을 기존 CModel renderer로 복사하고, 새 stable ID/sourceNode와 명확한 main/screw 표시 이름을 둔다.
+현재 S hit의1.09361696초에 맞춰 full의 기존27행을 유지하며3행을 추가한다. burst 입자 수명과
+scale lerp를 실제 Playback으로 확인한다. 이3행은 원본 native 증거가 아닌 기존 저작 복사임을 명시한다.
+
+S Playback의 ElementWorld는 같은 fixed tick/element 안에서 입자마다 반복 계산되고 있다.
+입자 의존 입력이 없는 계산만 element loop로 올리고 실제 이전/이후 frame 값과 CPU 시간을 대조한다.
+R의 Life16은 duration과 particle lifetime/normalized curve에 이미 반영되므로 별도 early-expiry 수정을
+추측으로 추가하지 않는다.
+
+
+### G33 F crack와 broken의 기존 runtime 재사용
+
+F의 `93c317e4f8a6ce1fb9c3/68431dd9f54ea0fd1110`은 D `7508b2684fd272292d7b`와 같은
+fm_d_crack_037 및 동일 MeshMaterial_2 원본 슬롯을 참조한다. 두 행에 D의 V66/SD324
+`detail.mesh.sourceMaterialSlots`를 복사해 실제 materialIndex0/1을 함께 연결하고 visible을 켠다.
+원본 primary hold와 F의 각 time/source recipe는 보존한다. `6bc633623ba8718a150d/ab69f8cb4c04d30fe391`
+broken 둘은 현재 R의 동일 MIC WR263 native material을 재사용해 hold를 해제한다. 이 네 행은 새
+shader나 우회 renderer 없이 기존 stage/codec/Playback 경로로 검사한다. 나머지 미연결 profile을
+이 네 행의 성공과 합쳐 전체 F 복원 완료라고 기록하지 않는다.
+
+
+### G33 실제 재현된 저장 중복과 1ms burst 누락
+
+Save는 새 문서를 Tool과 Codec이 각각 serialize하고, 저장 기준본도 이미 canonical인 디스크 bytes를
+다시 Parse→Serialize한다. Codec은 성공 시 실제 기록한 canonical bytes를 optional output으로
+돌려 Tool의 baseline/rollback 키로 재사용한다. 기준본 bytes가 기대 canonical과 같으면 바로 통과하고,
+다르면 기존 Parse→Serialize 비교를 수행한다. 임시 파일 왕복 검증과 외부 변경 거부는 유지한다.
+
+S main-slash는 시작1.09361696초/방출창1ms여서 다음 fixed tick1.1초가 창 끝을 지나 실제 입자0을
+만든다. 이미 존재하는 `Is_ManualBurstOnlyParticle/Calculate_ManualBurstFirstSpawnStep`을 Step에서도
+사용해 수동 burst가 최초 해당 tick에 정확히 한 번 태어나게 한다. 이후 중복 방출은 막고 emitter
+창과 실제 particle life.3초를 구분한다. 1ms 데이터를 임의로 늘려 근본 원인을 숨기지 않는다.
+
+
+S500 파편은 실제 Debug CPU fixed-tick 검사에서 평균26ms 수준이며 단순 ElementWorld hoist만으로는
+차이가 작다. LocalVectorField의 동일 module literal, field lookup, field transform/inverse는
+같은 element/tick에서 공통이므로 tick-local context로 한 번 계산해 기존 입자 update에 전달한다.
+입자별 field sample, age curve, RNG와 속도/위치 결과는 유지한다. 영구 cache나 두 번째 simulation을
+만들지 않고 이전 frame hash/유한수/방출수를 비교해 검증한다.
+
+
+### G33 F의 남은10 mesh /8 native material 연결 확정
+
+남은8 MIC의 실제 selected shader map/flocal VS·PS를 기존 추출 도구로 읽었다.10행 모두 선택이
+유일하고 PS는8개(31~88 RT0명령), 공통 VS는 D324와 같은 `8562847977cf324b900feff85799f43a`다.
+SceneColor/Depth sample은0이며 named texture21개는 모두 현재 Resources에 존재한다.
+
+기존 `Effect_DimensionMasterSDMaterial.h`와 SDNative HLSLI에 SD325~332를 추가하고 기존32float4
+packet, shader mesh dispatch, renderer material classification만 범위를 확장한다. 원본의 named
+texture/CB0식·sampler·tangentView·particle color를 사용한다. MIC의 two-sided override를 parent보다
+우선해8개 모두 양면 상태를 사용한다. 별도 runtime, shader파일, 프로젝트 등록, Resources payload는
+추가하지 않는다. 각 F행에는 exact source MIC에 대응하는 descriptor/material을 연결하고 남아 있는
+module/lifetime/geometry gate를 실제 codec/Playback으로 확인한다. 실패한 행을 generic fallback으로
+활성화하지 않는다. 원본 RT0 수식과 현재 PS 최소컴파일, 유한 출력/기존D320~324 보존을 검사한다.
+
+
+#### G33 F disabled CircleSurface와 effective slot 복사 경계
+
+F의 두 CircleSurface module은 원본에서 `benabled=false`이고 Playback도 해당 모듈을 건너뛴다. portable module validator가 유효한 false까지 거부하던 조건만 제거하고 boolean type, axis, split, geometry 검사는 유지한다. SD325–332는 공통 mesh VS의 UV1 evidence를 전달하되 실제 PS에 scene depth sample이 없으므로 scene-depth 필수 조건은 확장하지 않는다.
+
+Data Files의 Add Element는 실제 mesh material slot들이 실행 가능한 경우에도 사용하지 않는 primary material의 hold를 보고 거부하던 단일 gate를 `Is_EffectElementAuthoringExecutionTarget`으로 통일한다. 복사된 Detail과 SourceRecipe 보존, FOLLOW/Trail/history 차단, 최종 canonical parse/validation은 유지한다. F 두 slot crack의 복사 성공 및 어느 slot 하나라도 hold이면 거부되는지 기존 focused probe에서 확인한다.
+
+S full의 mesh 01/02도 사용자 최종 요청에 맞춰 Q tuning에 복사한 동일 crack의 금색 `refle_color/in_color/out_color`로 맞춘다. S의 원래 양방향 source velocity, 개수, 시점은 보존하며, R에 복사된 여섯 crack은 별도의 보라색 tuning을 유지한다.
+
+
+#### G33 저장 잔여 병목: JSON DOM 배열 성장
+
+Debug MSVC에서 DATA_JSON_VALUE의 map 멤버 때문에 move가 noexcept가 아니므로 vector의 자동 재할당은 자식 DOM을 깊게 복사한다. A104 문서에서 generic parse 2.18초/1,074만 allocation을 재현했다. Client/Private/DataJson.cpp ReadArray의 배열 성장만 별도 vector에 reserve 후 기존 node를 명시 move하고 swap하도록 바꾸어 공개 타입/ABI와 파서 문법, 오류, limit, 외부 out commit 정책을 보존한다. out-only 비교에서 0.84초/370만 allocation으로 감소했다. 전체 JSON 차등 및 기존 Save 성공·외부변경 거절·원자 rollback 검사를 거쳐 실제 값으로 RESULT를 갱신한다.
+
+
+#### G33 사용자 확인: Q에 A 검격을 가져와 4회 재생
+
+사용자가 A 자체 수정이 아니라 Q에 검격을 가져오는 쪽으로 확인했다. Q tuning 첫 타격 0.27초를 기준으로 A WR279/280 두 검격의 네 타격 간격을 보존하여 0.27/0.62/0.92/1.32초에 각각 복사한다. Q 금색 crack 2개도 각 타격마다 독립 occurrence로 복사해 같은 group ID로 묶는다. 기존 Q 사용자 cube와 slice 4행은 보존하고 A 원본은 바꾸지 않는다. 새 stable ID와 authored-copy sourceNode로 출처를 남기며 기존 CModel, source material, SourceRecipe 운동을 재사용한다.
+
+R 양옆 crack은 S 원본 02의 반전 yaw와 음의 source velocity가 서로 상쇄하므로 그대로 복사하면 같은 방향이 된다. R에서는 두 donor 모두 R 검격과 같은 snapshot yaw0/rotation0을 사용하고 02의 sphere X 반구도 음의 방향으로 바꾼다. +X/-X source velocity와 반구 시작 분산이 검격 중심 양쪽으로 일치한다. S는 기존 forward 운동을 보존하므로 대칭이라고 보고하지 않는다.
+
+
+#### G33 F LocationEmitter의 독립 저작 복원
+
+F SD329 sphere는 실제로 `ppp`라는 다른 emitter의 위치를 읽는 enabled LocationEmitter이며 원본 owner는 회전 Orbit 입자다. 이 의존성을 무시하거나 원본 운동 복원 완료라고 표시하지 않는다. 현재 요청의 Solo 저작 복원을 위해 해당 한 행을 명시적인 `authored-copy` + `F orbit-path tuning`으로 바꾸고, LocationEmitter만 기존 `particlemodulelocation/startlocation` 곡선으로 치환한다. owner의 실제 lookup 해석은 offset(-240,0,0)cm, yaw rate -4.5turn/s이다. target source delay0.05초를 더한 owner age에서 원형 경로를 600Hz/121개 점으로 저작하며 선형 보간 최대 편차는0.067cm다. 원본 cross-emitter 위치/RNG/rotation 상속과 동등하다고 주장하지 않는다. 재질·시점·생성 rate50·크기·수명 입력은 보존하고 원본은 기존 Git/초기 snapshot에 남는다. 새 runtime 경로나 source-particle 참조 프로토콜을 만들지 않고 기존 curve evaluator를 사용한다.
+
+
+#### G33 Play All 렌더 제출의 반복 계산
+
+실제 S ALT129의500 sprite는 기존 instancing으로 하나의 draw를 쓴다. source SubUV의 immutable module/literal 설정을500회 재검색하던 CPU 비용은 Debug 약3.0ms, Release0.068ms다. Render_Particles batch에서 설정을 한 번 resolve하고 입자별 frame/flip만 계산하도록 hoist한다. 입자 수·순서·atlas 보간·flip·운동은 유지한다. FX11 변수 lookup의24draw 비용은0.5ms 미만이므로 광역 Engine shader 캐시 수정으로 범위를 넓히지 않는다. GPU 비용과 실제 Client FPS를 이 부분 측정만으로 확정하지 않는다.
+
+Add Element의 portable carrier 복사 helper도 이미 문서 validator가 허용하는 mesh material slot 모듈을 같은 조건(PARTICLE/mesh/nonempty sourceMaterialSlots/exact module class)에서 보존한다. 현재 validator와 copy helper 사이의 whitelist 불일치만 고치며 최종 전체 material slot 계약 검사는 유지한다.
+
+
+#### G33 최종 사용자 정정 — Q는 한 번, A는 네 번
+
+앞의 Q4회 복사안은 사용자 최신 정정으로 폐기한다. Q tuning에 잘못 추가했던 A 검격8행과 반복 crack6행 및 두 번째 crack1행을 제거해, 기존 Q cube/slice4행과 금색 crack1행만 남긴다. crack은0.27초 burst1회이며 하나의 element가 원형 전체를 덮도록 cylinder의 positive_x/negative_x를 모두 true로 한다. A full의 기존 WR279/280 검격은0.25/0.60/0.90/1.30초 네 발생을 그대로 보존하고, 각 타격에 이미 있는 q-local-crack와WR238 유리 두 재질 층의 색3벡터만 보라색으로 맞춘다. A의 검격 shape/운동/시간/개수는 바꾸지 않는다. 사용자 빌드 중이므로 C++/shader 소스는 그대로 두며 데이터만 수정한다.
+
+#### G33 A 검은 dustparticle 보강 누락 수정
+
+A full의 Q51 glass-hole sprite 네 행에는 R에서 추가한 검은 중심 면 보강이 빠져 있었다.
+동일한 MIC를 쓰는 6449356759fd8f684f81, f23886dd0742331c9546,
+99d30eff4c2c88e26aaf, a91256889932fbe55fef 행에 기존 solid-core runtime alias와
+blackCoreWidth=0.38, blackCoreSoftness=0.12만 연결한다. 기존 native 입력과 source module,
+초승달 mesh, 네 발생 시점은 보존한다. alias 이름의 R은 최초 적용 대상을 뜻하며 실제 계약과
+shader dispatch에 스킬 제한은 없다. 현재 빌드에 이미 포함된 재질을 재사용하므로 추가 C++ 또는
+shader 컴파일은 하지 않는다. JSON 변경 범위와 기존 Codec/Playback 실행 파일의 네 occurrence
+생성·유한수를 검사하며, 원본 PS의 정확 복원이나 사용자 화면 확인 완료로 기록하지 않는다.
+
+
+#### G33 Saved Skill Effects 목록 정리
+
+Saved Skill Effects 목록의 고정190px 높이를 창의 남은 공간에 맞춘 가용 높이로 바꾸고,
+작업 버튼·Reference Files 접기 영역·상태 한 줄의 공간을 남긴다. Data Files의 상시 장문
+안내와 반복되는 Subtypes/Cascade 진단 요약을 제거하고 현재 Effect/개수 표시는 간결하게
+유지한다. 저장/복사 실패 메시지는 제거하지 않고 첫 줄을 표시하며 전체 메시지는 툴팁으로
+확인하게 한다. 검색, Add Element, Load, Unload, Refresh와 기존 typed 소유권·저장/실패
+처리는 바꾸지 않는다. 해당 렌더 함수만 수정하고 기존 Data Files/clone 검사를 실행한다.
+
+#### G33 S 원본 Shine 입력과 출력 추적 재개
+
+손튜닝 cone/helix 연결을 원본 복원 결과로 취급하지 않는다. 현재 S2050220의 enabled notify와
+첫 LOD에 연결된 Shine4행 및 주변 선의 원본 VS/PS와 현재 sourceRecipe→Playback frame→
+renderer packet→shader 출력 경로를 비교한다. 기존 원본 조사와 수치 검사를 재사용하고,
+불일치를 재현한 입력/수식만 기존 소비자에서 수정한다. 원본 선택 프로그램이 이미 있는
+상태에서 근거 없는 새 shader나 형상 대체를 추가하지 않는다. 단독/전체 재생의 실제 입자
+입력·유한수·shader 출력을 확인하고 제품 빌드는 다른 compile/link와 겹치지 않게 순차 실행한다.
+
+
+#### G33 R 검은 중심 무늬 분리와 full restore 미지원 요소 정리
+
+사용자가 제공한 현재 R 이미지에는 검은 중심 면 위에 밝은 점과 띠가 남는다. 기존 native Q51과
+A/기존 solid-core alias는 보존하고 R의 마지막 dust 저작 조정을 위해 동일34params/profile51의
+clean-core alias를 추가한다. 새 alias만 core packet row11.z=1을 설정하며 기존xy bounds를
+공유한다. Fill helper의 cleanSurface 기본값0은 기존 계산을 유지한다. 새 모드에서는 coverage
+내부의 RGB 기여만 (1-saturate(coverage*cleanSurface))로 줄여 검은 면을 만들고 외곽 빛과
+깊이·입자 fade를 유지한다. 이 조정은 원본 PS 복원으로 기록하지 않는다. 사용자가 직접 복원한
+voronoi 검격은 변경하지 않는다.
+
+사용자는 Solo 미재생 제거 범위를 차원술사 full restore 전체로 확정했다. 현재 Tool의 유효
+material slot·visible·presentation gate로 명확한 미지원 항목을 추리고 기존 저장 내용을 백업한
+뒤 해당 element만 제거한다. 정상 요소가 참조하는 owner와 model cue는 보존한다. 각 문서의
+최신 hash를 적용 직전 확인하고 다른 편집이 있으면 최신 내용을 다시 읽어 제거 목록을 검토한다.
+생성 직후 크기/alpha0이나 본 준비가 필요한 정상 요소를 삭제 근거로 삼지 않는다.
+
+
+#### G33 S splitline의 Null Dynamic 입력 누락 수정
+
+S e49(V69)는 실제39개 재생 입력의 Dynamic이 전부0이며, 원본 PS의 floor(textureR+Dynamic.z)
+때문에972조건 중 해당117조건 모두alpha0이었다. 원본의 선택 dynamic VF/VS는 Q45/49와 같고,
+이미 확인한 Null Dynamic stream 계약은 모듈 부재 시(1,1,1,1)이다. Apply_SourceSpawnModules의
+기존 no-enabled-Dynamic 기본값 분기에 V69만 추가한다. 원본 PS와 JSON 모듈을 바꾸지 않고
+실제 Dynamic 모듈이 있는 항목의 값은 보존한다. 같은 전체 재생에서 변경 전후 입자 입력을
+비교하고 실제 원본 PS가 양의 alpha를 만드는지 WARP 수치로 재검사한다.
+
+
+### G34 R 원본 검격과 Q에서 가져온 dust의 입력·출력 대조
+
+사용자는 추가적인 clean-core 보강 대신 원본 경로 복원을 요구했다. R 튜닝의 세 dust 행은
+Q nailstrike emitter13의 Q51 glasshole을 복사한 저작 입력이다. 원본 Q의 PSA_Velocity,
+offsetCenterY=.9, StartSize20×130cm가 R에서는 PSA_Rectangle, offset 해제,260×35cm로
+바뀌었다. 따라서 이 행의 모양을 R 원본 셰이더 복원 결과로 취급하지 않는다. 새로 시도한
+superellipse/.46/.08 강화는 적용 전 값과 byte 단위로 동일하게 되돌렸다. 기존 사용자
+Voronoi와 다른 occurrence는 보존한다.
+
+원본 R full의 foldcut WR259 sprite3행·WR260 mesh3행은 별도로 추적한다. 현재 저장된
+원본 selected 재질과 named parameter25/40개의 일치, 실제 Dynamic module 및 sampler
+mapping을 확인했다. 임의 검은 면을 넣기 전에 현재 실제 frame 입력과 원본 PS 출력을 대조한다.
+Q51은 보존된 원본 DXBC와 변환 QNative51에 동일 재질·UV·color·dynamic·scene 입력을
+공급해 수치 차이를 찾는다. R은 원본 six occurrence의 시간별 실제 playback 평가와 원본
+WR259/260 PS 출력의 alpha·finite 상태를 확인한다. synthetic depth/fog fixture는 원작 장면
+확보와 구분하며 이 검사를 visual PASS로 기록하지 않는다.
+
+확정된 입력/계산 결함만 기존 native owner에 수정한다. 차이가 재현되지 않은 PS를 새로운
+모양으로 바꾸거나 불가능한 element로 분류하지 않는다. source·native RT0·engine adapter·
+실제 장면 소비 범위를 RESULT에 나누어 기록한다. out-only 비교 코드는 Resources나 별도
+runtime에 추가하지 않으며 compile/link는 Product 작업과 순차 실행한다.
+
+### G35 A 네 타격에 보라색 cube와 기존 crack 동반 배치
+
+사용자의 원본 관찰에서 가로로 깨지는 경계는 정상 표현이다. 검은 중심 면과 보라색 외곽의
+시간별 형성·소멸을 복원 기준으로 두며, 정지 이미지로 실제 element 수나 발생 순서를 확정하지
+않는다. 이번 마무리 변경은 A의 cube 동반 배치에 한정한다. 검은 면/외곽 셰이더의 추가 보정은 없다.
+
+A full의 crack emitter4/24는 이미 각각 네 타격에 보라색으로 연결돼 있다. 이8행과 기존62행을
+보존하고 R tuning의 purple-glass-sequence에서 cube mesh/재질/크기/수명을 복사한4행만 추가한다.
+각각 A의0.25/0.60/0.90/1.30초 occurrence와 crack의 emitter delay0.1초를 사용한다.
+R의 세 burst를 각 행의 단발6개로 바꿔12회 중복 발생을 피하며 maxParticles도6으로 맞춘다.
+각 A crack emitter24의 root attachment·transform·localSpace와 sphere/cylinder-spin 위치 모듈을
+사용해 초승달 주변에 놓는다. A의 생성 위치·초기 속도를 차용하며 이후 감속·가속 전체를
+동일하게 복제하는 변경은 아니다. R donor 자체와 Q, 기존 검격·crack의 다른 값은 수정하지 않는다.
+
+기존 문서 bytes를 보존하여4행을 append하고 쓰기 직전 내용 일치를 확인한다. JSON parse,
+기존62행의 구조 동일성, stable ID와 네 timing, 기존 실제 Codec/Playback의 전체 A Load/Stage 및
+새 cube/기존 crack의 네 발생 구간·유한 운동을 확인한다. 이번 조합은 사용자 요청의 저작 배치이며
+원본 A cube emitter를 특정해 완전히 복원했다는 판정과 구분한다. 최종 화면은 사용자가 확인한다.
+
+### G36 R/A dust 경계와 S 메인 검격의 원본 입력 재검증
+
+사용자는 R·S 원본 이미지와 A의 시간별 깨짐 관찰을 제공했다. 정상 유지 구간의 검은 중심과
+보라 경계까지 잘게 갈라지는 결함을 특정 시점의 의도된 분열과 구분한다. 기존 clean-core/solid-core
+면 보강을 원본 계산으로 간주하지 않는다. S는 현재 설치 LOA의 활성 발생과 V63의 실제 입력을
+다시 대조하며, 기존 cone/helix 손작업을 원본 스크류로 간주하지 않는다.
+
+먼저 확정한 변경은 `Shader_EffectDimensionMasterQNative.hlsli`의 `QNative51` 내부10개
+instruction에 한정한다. 원본 DXBC immediate32와 다른11개 상수 lane을 원본 bit 값으로 복구한다.
+극좌표 상수, 반경의0에 가까운 값 분기 및 두 depth fade 상수가 대상이며 기존 native 함수,
+입력 packet,7개 texture sampler,geometry,draw pass와 R/A 저작 보강은 유지한다. 새 파일·프로젝트
+등록·두 번째 runtime은 필요 없다. 현재 dirty 파일 전체를 후보로 덮지 않고 함수 내부 차이만
+대조한 뒤 반영한다.
+
+원본 PS와 제품 함수에 같은 material/UV/color/Dynamic/depth를 공급하는 기존 headless 검사를
+재사용한다. 원본 literal 후보는120조건/491520픽셀에서 기존 오차 기준 초과2460픽셀을0으로
+줄였다. 제품 반영 후 같은 검사를 다시 실행해 후보와 제품의 일치를 확인한다. 이 증거는
+통제된 RT0 수치 비교이며 정상 구간의 전체 모양이나 원작 화면 일치 판정이 아니다. S 입력과
+R/A texture·시간·occurrence 차이는 실제 근거를 확보한 항목만 후속 수정한다.
+
+Q51의 `cracknormal_tex=fx_j_normal_bc5_09`는 현재 설치 UPK에10개 mip이 있지만 Resources의
+BC5 DDS에는 mip0 하나만 있다. 두 `SampleBias(0)`가 축소 시에도 고해상도 noise를 소비하는
+입력 차이다. 기존 파일을 보존한 뒤 원본의 mip1~9를 직접 회수해 같은 Resources 상대 asset ID에
+연결한다. mip0은 byte 단위로 유지하고 새 축소 이미지를 임의 생성하지 않는다. 기존
+`Load_SourceTexture`의 DDS loader는 파일에 든 mip을 모두 소비하므로 별도 runtime이나
+source-profile 변경은 하지 않는다. 원본 payload·DDS layout·실제 GPU mip 수와 축소 sampling을
+검사하고 UI의 최종 자글거림 감소 판정은 사용자에게 남긴다.
+
+같은 조사에서 S V63의 `fx_d_noise_009/014/021`도 원본은128→1의8개 mip, 현재 DDS는 mip0
+하나임을 확인했다. 원본 PS 세 texture instruction 모두 `SampleBias(0)`이므로 이3개도 원본
+BC1 mip chain을 회수한다. Q51 normal과 마찬가지로 mip0을 보존하고 current Resources 상대
+경로에서 교체한다. S V63의 native 수식·색·정렬·발생 수를 임의 수정하지 않고 원본과 같은
+입력의120조건 RT0 비교 및 실제 DDS mip 수로 검증한다.
+
+Q51 sprite의 원본 VS는 U·V·normal에 대한 시선 내적을 넘긴다. 현재 rect는 localY=.5-v이므로
+원본 V와 normal은 각각 current world1/world2의 반대다. `Shader_VtxEffectParticle.hlsl`의
+기존 tangentView 계산 직후 profile51에만 yz 부호를 교정한다. source camera-facing normal
+기본 분기를 대상으로 하며 이 값은 Q51의 환경반사 UV에 소비된다. geometry/UV/alpha/dynamic을
+바꾸지 않는다. 실제 source VS 연산과 camera·회전·크기가 다른 수치 입력으로 비교하고 제품
+VS_MAIN을 최소 컴파일한다. 이 변경을 마스크 자글거림 해결의 단독 근거로 사용하지 않는다.
+
+사용자의 전체 반영 승인에 따라 R/S의 실제 animevents asset 참조를 각각 현재 full.restore로
+연결하고 EffectCatalog에 그 두 문서를 등록한다. 기존 unified/tuning 문서는 보존한다. 원본 R
+full의 WR260 세 행에서만 SourceScale.lifeTime16→1, 마지막 행의size2→1로 원본 진행을 회복한다.
+다른 저작 위치·색·배치와 R tuning의 Q donor는 이번 연결 변경으로 덮지 않는다. 문서 identity,
+stable element ID·source module·Resources 상대 참조 및 실제 Codec/Playback 준비를 검증한다.
+
+원본 R의 WR208/259/260 핵심9행에서도 SampleBias용8개 texture에 하위66mip이 빠져 있음을
+확인했다. caustic05/electric008/noise03/environment02/cloud021/noise030/auratile02/atypical03_1의
+원본 mip을 같은 방식으로 회수하고 mip0을 보존한다. WR260 main trail007은 명시적 LOD -1이므로
+이번 축소 입력 결함과 구분한다. 새로 설치한 mip에 대해 실제 DDS/SRV의 개수, sRGB 형식과
+공유 asset 소비 목록을 확인한다. 원본 R 핵심 PS의 immediate32도 실제 DXBC와 대조하되,
+현재 수식에서 차이가 없는 부분은 다시 쓰지 않는다.
+
+WR259 Required의 `psortmode_viewprojdepth`는 원본 sprite가 translucent일 때 clip-Z 큰 값부터
+그리는 계약이다. 현 renderer는 이를 읽지 않고 생성 순서로 업로드한다. 기존 Render_Particles의
+한 element span 안에서 원본 Particle.Location에 해당하는 Particle.World translation을 현재
+View×Projection으로 변환해 정렬하고 기존 sprite instance 업로드에 연결한다. billboard pivot,
+camera offset과 quad 크기를 sort key에 섞지 않는다. 같은 깊이는 입력 순서를 유지하는 엄격한
+비교 규칙을 사용하고 비유한 값은 draw 실패 이유로 보존한다. mesh·additive·sortmode 미지정
+행과 문서의 element 순서는 바꾸지 않는다. 새 공개 인터페이스/파일/project 등록은 필요 없다.
+원본과 현재 actual frame의 순서 차이, helper 수치 검사, 현재 renderer 최소 컴파일을 확인하고
+진행 중 Product가 이 C++ 변경을 놓친 경우 shader 빌드 종료 후 Client compile/link를 이어간다.
+
+
+WR260 actual61 frame의 원본 CPU uniform을 양쪽 PS에 동일 공급하면 RGBA가 일치하지만,
+현재 GPU uniform prefix는 dissolvetex_rotator의 sin/cos6lane에서 차이가 났다. 편집 가능한
+rotator를 원본과 같은 float 연산 순서로 CPU에서 평가해 기존 native 파라미터 전송에 연결한다.
+고정된 원본 기본값을 HLSL에 넣는 방식은 쓰지 않는다. 기존 파라미터 미사용 lane과 소비 경계를
+확인한 뒤 해당 prefix만 연결하며 원본 raw PS 수식은 보존한다. actual61 frame과 rotator 변경
+입력으로 비교하고 최종 Product는 이 변경과 source depth 정렬을 포함해 새로 컴파일한다.
+
+### G37. R 원본 보라 경계, D 세로 잘림, S 검격 가독성 후속 복구
+
+2026-09-10 사용자는 R full의 원본 보라 경계가 아직 없다고 관찰했고, F1의 D full은 검격이
+세로로 잘리며 S 검격도 다시 확인하도록 요청했다. 실제 R/S binding과 F1 D full을 각각 소비
+정본으로 삼는다. R tuning의 Q51 보라 경계 보강을 R full의 원본 복원으로 대체하지 않는다.
+
+R의 WR208/259/260 핵심9행과 빠진 body109/110·RGBNoise·ZoomBlur·Light의 source occurrence를
+대조한다. 같은 MIC·PS·VS·VF가 이미 지원된 native 재질이면 기존 descriptor와 renderer를 재사용해
+재연결하고, 각 요소의 실제 역할·경계 기여·제외 이유·남은 입력을 RESULT에 표로 기록한다.
+부재 원본 요소를 임의 이름이나 generic 후처리로 대신하지 않는다.
+
+D는 현재 full25행의 실제 Q51/WR259 occurrence를 추적한다. 원본 UV panning과 generic UVOffset의
+중복, clamp alpha mask, billboard velocity basis와 source texture 입력을 분리해서 대조한다.
+원인이 재현된 full 문서의 행만 교정하고 사용자가 별도로 편집한 unified와 실제 D binding은 보존한다.
+
+S는 중심 V63과 시작부 SD320~323, 원본 size 누적·cm→m·pivot·velocity alignment 및 shader alpha
+coverage를 실제 Playback의 World와 함께 측정한다. 복원 오류를 먼저 교정하고, 크기 확대가 필요한
+경우에는 중심 검격의 SourceScale.size만 명시적인 사용자 가독성 보정으로 조정한다. 원본
+SourceRecipe와 PS·발생 시간은 보존한다. 큰 원판·주변 요소를 함께 확대해 성능 문제를 키우지 않는다.
+
+기존 out 수치 probe를 재사용해 변경 전후 실제 Codec/Playback, 원본 shader 입력과 UV·alpha
+coverage, 필요한 최소 C++/FX를 확인한다. 새 C++ 파일은 제안하지 않는다. Client/UI 실행·캡처는
+수행하지 않으며 현재 정식 EXE 잠금과 별도 링크 산출물을 구분한다. Alt V318요소의 재생 성능은
+09-09 Effect Shader Build and Play All Performance PLAN/RESULT의 G06이 소유한다.
+
+D 원본 startsize의 비베이크 DistributionVectorUniformRange는 두 개의 분리된 범위 중 하나를
+먼저 고르고 XYZ 난수 세 개를 소비한다. 기존2개 min/max로 축약하면 빈 구간까지 생성하므로
+CEffectDistribution operation4에 원본4벡터를 담아 같은 Playback 경로에서 평가한다. Codec의
+기존 Validate 위임으로 형태·component·시간·유한값을 거부하고, alpha의 비베이크 cubic keys도
+실제 원본에서 회수한다. RNG 순서·signed flip·birth geometry와 기존 operation0~3를 확인한다.

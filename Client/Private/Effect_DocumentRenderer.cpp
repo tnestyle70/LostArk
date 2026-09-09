@@ -5,10 +5,12 @@
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
+#include "Effect_NativeScreenPostMaterial.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_RuntimeAuthority.h"
 #include "GameInstance.h"
+#include "Presentation_Manager.h"
 #include "Model.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Profiler.h"
@@ -41,6 +43,31 @@
 
 namespace
 {
+    // Copy the current CModel vertex ABI. Instance data never changes map/model vertices.
+    const auto NativeMeshInstanceElements = []
+    {
+        std::array<D3D11_INPUT_ELEMENT_DESC, Engine::VTXMESH::iNumElements + 13u> Rows{};
+        std::copy_n(Engine::VTXMESH::Elements, Engine::VTXMESH::iNumElements, Rows.begin());
+        size_t i = Engine::VTXMESH::iNumElements;
+        for (uint32_t Row = 0u; Row < 4u; ++Row)
+            Rows[i++] = { "WORLD", Row, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, Row * 16u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        for (uint32_t Row = 0u; Row < 4u; ++Row)
+            Rows[i++] = { "WORLDINVTRANSPOSE", Row, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, 64u + Row * 16u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        Rows[i++] = { "INSTANCE_COLOR", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1u, 128u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        Rows[i++] = { "DYNAMIC", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1u, 144u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        Rows[i++] = { "UVTRANSFORM", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1u, 160u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        Rows[i++] = { "UVTRANSFORM", 1u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1u, 176u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        Rows[i++] = { "PARTICLEDATA", 0u, DXGI_FORMAT_R32G32_FLOAT,
+            1u, 192u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+        return Rows;
+    }();
+
 	bool_t Is_ZeroFloatBits(const FLOAT fValue)
 	{
 		return std::bit_cast<uint32_t>(fValue) == 0u;
@@ -3556,6 +3583,13 @@ namespace
 				A.strModelAssetId != B.strModelAssetId ||
 				A.strClipName != B.strClipName ||
 				A.eAlphaMode != B.eAlphaMode ||
+				A.Material.has_value() != B.Material.has_value() ||
+				(A.Material && (A.Material->strTemplateId != B.Material->strTemplateId ||
+				 A.Material->strSourceMaterialPath != B.Material->strSourceMaterialPath ||
+				 A.Material->eRenderProfile != B.Material->eRenderProfile ||
+				 !Same_MaterialExecutionResourceSignature(A.Material->Execution, B.Material->Execution) ||
+				 !Client::Is_EffectSourceMaterialStagingSignatureEqual(
+					 A.Material->SourceMaterial, B.Material->SourceMaterial))) ||
 				A.vAssetPreScale.x != B.vAssetPreScale.x ||
 				A.vAssetPreScale.y != B.vAssetPreScale.y ||
 				A.vAssetPreScale.z != B.vAssetPreScale.z ||
@@ -3575,6 +3609,7 @@ namespace
 				A.Renderer.eType != B.Renderer.eType ||
 				A.Renderer.eSourceSpace != B.Renderer.eSourceSpace ||
 				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
+				A.SourceRecipe.bSimulationOnly != B.SourceRecipe.bSimulationOnly ||
 				A.SourceRecipe.strRendererShape !=
 					B.SourceRecipe.strRendererShape ||
 				!Same_TypedDynamicParameterResourceSignature(
@@ -3757,7 +3792,10 @@ namespace
 				 iSourceMaterialProfile == 194u || iSourceMaterialProfile == 195u ||
 				 iSourceMaterialProfile == 196u || iSourceMaterialProfile == 200u ||
 				 iSourceMaterialProfile == 201u || iSourceMaterialProfile == 202u ||
-				 (iSourceMaterialProfile >= 208u && iSourceMaterialProfile <= 263u || (iSourceMaterialProfile >= 277u && iSourceMaterialProfile <= 280u)));
+				 (iSourceMaterialProfile >= 208u && iSourceMaterialProfile <= 263u || (iSourceMaterialProfile >= 277u && iSourceMaterialProfile <= 280u)) ||
+				 nullptr != Client::Find_ArtistProgram(Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId) ||
+				 nullptr != Client::Find_WarlordNativeProgram(Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId) ||
+				 nullptr != Client::Find_LanceMasterVAProgram(Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId));
 			if (bNativeVelocityBasis)
 			{
 				const vector_t ToCamera = CameraWorldWithTranslation.r[3] - Translation;
@@ -3940,6 +3978,71 @@ namespace
 		return {};
 	}
 
+	struct SOURCE_SPRITE_DEPTH_ORDER final
+	{
+		const Client::EFFECT_EVALUATED_PARTICLE* pParticle = nullptr;
+		f32_t fClipDepth = 0.f;
+	};
+
+	bool_t Requires_SourceSpriteDepthSort(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		using PROFILE = Client::EFFECT_RENDER_PROFILE;
+		return Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			(Element.Material.eRenderProfile == PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+			 Element.Material.eRenderProfile == PROFILE::ALPHA_ONE_SIDED_DEPTH_READ) &&
+			SourceLiteralString(Element, "sortmode") == "psortmode_viewprojdepth";
+	}
+
+	bool_t Build_SourceSpriteDepthOrder(
+		const std::span<const Client::EFFECT_EVALUATED_PARTICLE> Particles,
+		const Client::EFFECT_ELEMENT_DESC& Source,
+		const float4x4_t& View, const float4x4_t& Projection,
+		std::vector<SOURCE_SPRITE_DEPTH_ORDER>& OutOrder,
+		std::string& OutError)
+	{
+		OutOrder.clear();
+		const matrix_t ViewProjection = XMLoadFloat4x4(&View) *
+			XMLoadFloat4x4(&Projection);
+		for (const vector_t& Row : ViewProjection.r)
+		{
+			if (XMVector4IsNaN(Row) || XMVector4IsInfinite(Row))
+			{
+				OutError = "Source sprite depth sort view-projection is non-finite.";
+				return false;
+			}
+		}
+		OutOrder.reserve(Particles.size());
+		for (const Client::EFFECT_EVALUATED_PARTICLE& Particle : Particles)
+		{
+			if (nullptr == Particle.pElement ||
+				Particle.pElement->strElementId != Source.strElementId)
+			{
+				OutError = "Source sprite depth sort element span is invalid.";
+				return false;
+			}
+			const vector_t Position = XMVectorSet(Particle.World._41,
+				Particle.World._42, Particle.World._43, 1.f);
+			const f32_t ClipDepth = XMVectorGetZ(
+				XMVector4Transform(Position, ViewProjection));
+			if (XMVector4IsNaN(Position) || XMVector4IsInfinite(Position) ||
+				!std::isfinite(ClipDepth))
+			{
+				OutError = "Source sprite depth sort particle center is non-finite.";
+				return false;
+			}
+			OutOrder.push_back({ &Particle, ClipDepth });
+		}
+		// UE3 ViewProjDepth uses center clip-Z before camera offset/pivot.
+		// Preserve input order on ties; the original comparator had no stable tie contract.
+		std::stable_sort(OutOrder.begin(), OutOrder.end(),
+			[](const SOURCE_SPRITE_DEPTH_ORDER& Left,
+				const SOURCE_SPRITE_DEPTH_ORDER& Right)
+			{ return Left.fClipDepth > Right.fClipDepth; });
+		return true;
+	}
+
 	bool_t SourceMaterialIdentityMatches(
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
 		const std::string_view strProfileId,
@@ -3956,6 +4059,12 @@ namespace
 			Source.strRuntimeShaderProfileId ==
 				"effect.ue3.reconstructed-standard.v1")
 			return 0u;
+		if (const auto* pNative = Client::Find_LanceMasterVAProgram(Source.strRuntimeShaderProfileId))
+			return pNative->iProfileIndex;
+		if (const auto* pNative = Client::Find_ArtistProgram(Source.strRuntimeShaderProfileId))
+			return pNative->iProfileIndex;
+		if (const auto* pNative = Client::Find_WarlordNativeProgram(Source.strRuntimeShaderProfileId))
+			return pNative->iProfileIndex;
 		if (const auto* pNativeSD = Client::Find_DimensionMasterSDProgram(Source.strRuntimeShaderProfileId))
 			return pNativeSD->iProfileIndex;
 		if (const auto* pNativeWR = Client::Find_DimensionMasterWRProgram(Source.strRuntimeShaderProfileId))
@@ -4303,6 +4412,12 @@ namespace
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
 			Element.Material.SourceMaterial;
 		const uint32_t iStoredProfile = SourceMaterialProfileIndex(Source);
+		if (nullptr != Client::Find_LanceMasterVAProgram(Source.strRuntimeShaderProfileId))
+			return Client::Has_LanceMasterVAMaterialContract(Element) ? iStoredProfile : UINT32_MAX;
+		if (nullptr != Client::Find_ArtistProgram(Source.strRuntimeShaderProfileId))
+			return Client::Has_ArtistMaterialContract(Element) ? iStoredProfile : UINT32_MAX;
+		if (nullptr != Client::Find_WarlordNativeProgram(Source.strRuntimeShaderProfileId))
+			return Client::Has_WarlordNativeMaterialContract(Element) ? iStoredProfile : UINT32_MAX;
 		if (nullptr != Client::Find_DimensionMasterSDProgram(Source.strRuntimeShaderProfileId))
 			return Client::Has_DimensionMasterSDMaterialContract(Element) ? iStoredProfile : UINT32_MAX;
 		if (iStoredProfile >= 208u && iStoredProfile <= 263u || (iStoredProfile >= 277u && iStoredProfile <= 280u))
@@ -4835,8 +4950,42 @@ namespace
 		return true;
 	}
 
+	struct SOURCE_SUBUV_LAYOUT final
+	{
+		const Client::EFFECT_ELEMENT_DESC* pElement = nullptr;
+		uint32_t iColumns = 1u;
+		uint32_t iRows = 1u;
+		bool_t bEnabled = false;
+		bool_t bLinearBlend = false;
+	};
+
+	SOURCE_SUBUV_LAYOUT Resolve_SourceSubUVLayout(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		SOURCE_SUBUV_LAYOUT Layout;
+		Layout.pElement = &Element;
+		if (!Element.SourceRecipe.bEnabled)
+			return Layout;
+		// Required's atlas layout is immutable for the whole particle batch.
+		const std::string_view strSubUVMode = SourceLiteralString(
+			Element, "interpolationmethod");
+		Layout.iColumns = static_cast<uint32_t>((std::max)(1.f,
+			SourceLiteralNumber(Element, "subimages_horizontal", 1.f)));
+		Layout.iRows = static_cast<uint32_t>((std::max)(1.f,
+			SourceLiteralNumber(Element, "subimages_vertical", 1.f)));
+		const uint64_t iFrameCount =
+			static_cast<uint64_t>(Layout.iColumns) * Layout.iRows;
+		Layout.bEnabled = iFrameCount > 1u && iFrameCount <= UINT32_MAX &&
+			!strSubUVMode.empty() && strSubUVMode != "none" &&
+			strSubUVMode != "psuvim_none";
+		Layout.bLinearBlend = Client::Is_EffectSourceLinearBlendSubUVMode(
+			strSubUVMode);
+		return Layout;
+	}
+
 	Client::EFFECT_SUBUV_FRAME_DESC Resolve_SubUVFrames(
-		const Client::EFFECT_EVALUATED_PARTICLE& Particle)
+		const Client::EFFECT_EVALUATED_PARTICLE& Particle,
+		const SOURCE_SUBUV_LAYOUT& BatchLayout)
 	{
 		if (nullptr == Particle.pElement)
 		{
@@ -4884,30 +5033,20 @@ namespace
 		   intentionally clear native SourceMaterial after lowering to a typed
 		   execution packet, so requiring that profile here discarded otherwise
 		   complete 6x6/2x2 frame programs. */
-		const std::string_view strSubUVMode = SourceLiteralString(
-			*Particle.pElement, "interpolationmethod");
-		const uint32_t iColumns = static_cast<uint32_t>((std::max)(1.f,
-			SourceLiteralNumber(*Particle.pElement,
-				"subimages_horizontal", 1.f)));
-		const uint32_t iRows = static_cast<uint32_t>((std::max)(1.f,
-			SourceLiteralNumber(*Particle.pElement,
-				"subimages_vertical", 1.f)));
-		const uint64_t iFrameCount =
-			static_cast<uint64_t>(iColumns) * static_cast<uint64_t>(iRows);
-		if (iFrameCount <= 1u || iFrameCount > UINT32_MAX ||
-			strSubUVMode.empty() || strSubUVMode == "none" ||
-			strSubUVMode == "psuvim_none")
-		{
+		// Submission groups particles by element. Preserve the standalone
+		// particle contract if a caller ever supplies a different owner.
+		const SOURCE_SUBUV_LAYOUT Layout =
+			BatchLayout.pElement == Particle.pElement ? BatchLayout :
+			Resolve_SourceSubUVLayout(*Particle.pElement);
+		if (!Layout.bEnabled)
 			return {};
-		}
 		/* The evaluated signed Size is the sole image-flip authority.  Build an
 		   unmirrored atlas frame here; the shared Playback helper applies those
 		   signs once after billboard geometry uses positive extents. */
 		return Client::CEffectPlayback::Resolve_SourceSubUVFrame(
-			iColumns, iRows, Particle.fSubImageIndex,
+			Layout.iColumns, Layout.iRows, Particle.fSubImageIndex,
 			false, false, Particle.fDistributionRandom,
-			Client::Is_EffectSourceLinearBlendSubUVMode(
-				strSubUVMode));
+			Layout.bLinearBlend);
 	}
 }
 
@@ -5001,8 +5140,10 @@ namespace
 {
 	struct EFFECT_RENDERER_CORE final
 	{
+		std::array<shared_ptr<Engine::CShader>, Client::EFFECT_SHADER_PROGRAMS.size()> ShaderPrograms;
 		shared_ptr<Engine::CShader> pMeshShader;
 		shared_ptr<Engine::CShader> pAnimatedModelShader;
+		shared_ptr<Engine::CShader> pNativeScreenPostShader;
 		shared_ptr<Engine::CShader> pRectShader;
 		shared_ptr<Engine::CShader> pParticleShader;
 		shared_ptr<Engine::CShader> pTrailShader;
@@ -5500,6 +5641,8 @@ namespace
 			Document.Elements.begin(), Document.Elements.end(),
 			[](const Client::EFFECT_ELEMENT_DESC& Element)
 			{
+				if (Client::Is_EffectSimulationOnlyParticle(Element))
+					return false;
 				if (Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
 					return true;
 				/* An admitted source recipe preserves its source carrier kind while
@@ -5579,23 +5722,33 @@ namespace
 		if (nullptr == pDevice || nullptr == pContext)
 			return nullptr;
 		auto Core = std::make_shared<EFFECT_RENDERER_CORE>();
-		Core->pMeshShader = Engine::CShader::Create(
-			pDevice, pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl"),
-			VTXMESH::Elements, VTXMESH::iNumElements);
+        for (size_t i = 0u; i < Client::EFFECT_SHADER_PROGRAMS.size(); ++i)
+        {
+            const auto& Program = Client::EFFECT_SHADER_PROGRAMS[i];
+            const bool Mesh = Program.eCarrier == Client::EFFECT_SHADER_CARRIER::MESH;
+            const bool NativeMesh = Mesh && Program.eFamily != Client::EFFECT_SHADER_FAMILY::GENERIC;
+            Core->ShaderPrograms[i] = Engine::CShader::Create(pDevice, pContext,
+                Program.pLogicalShaderPath,
+                NativeMesh ? NativeMeshInstanceElements.data() :
+                    (Mesh ? VTXMESH::Elements : Engine::VTXEFFECT_PARTICLE::Elements),
+                NativeMesh ? static_cast<uint32_t>(NativeMeshInstanceElements.size()) :
+                    (Mesh ? VTXMESH::iNumElements : Engine::VTXEFFECT_PARTICLE::iNumElements));
+            if (nullptr == Core->ShaderPrograms[i]) return nullptr;
+        }
+        Core->pMeshShader = Core->ShaderPrograms[Client::Find_EffectShaderProgramIndex(
+            Client::EFFECT_SHADER_CARRIER::MESH, Client::EFFECT_SHADER_FAMILY::GENERIC, 0u)];
+        Core->pParticleShader = Core->ShaderPrograms[Client::Find_EffectShaderProgramIndex(
+            Client::EFFECT_SHADER_CARRIER::PARTICLE, Client::EFFECT_SHADER_FAMILY::GENERIC, 0u)];
 		Core->pAnimatedModelShader = Engine::CShader::Create(
 			pDevice, pContext,
 			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
 			VTXANIMMESH::Elements, VTXANIMMESH::iNumElements);
+		Core->pNativeScreenPostShader = Engine::CShader::Create(pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectNativeScreenPost.hlsl"), VTXTEX::Elements, VTXTEX::iNumElements);
 		Core->pRectShader = Engine::CShader::Create(
 			pDevice, pContext,
 			TEXT("../Bin/ShaderFiles/Shader_VtxEffectRectPreview.hlsl"),
 			VTXTEX::Elements, VTXTEX::iNumElements);
-		Core->pParticleShader = Engine::CShader::Create(
-			pDevice, pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxEffectParticle.hlsl"),
-			Engine::VTXEFFECT_PARTICLE::Elements,
-			Engine::VTXEFFECT_PARTICLE::iNumElements);
 		Core->pTrailShader = Engine::CShader::Create(
 			pDevice, pContext,
 			TEXT("../Bin/ShaderFiles/Shader_VtxEffectTrail.hlsl"),
@@ -5614,6 +5767,7 @@ namespace
 			pDevice, pContext, 2048u);
 		if (nullptr == Core->pMeshShader ||
 			nullptr == Core->pAnimatedModelShader ||
+			nullptr == Core->pNativeScreenPostShader ||
 			nullptr == Core->pRectShader ||
 			nullptr == Core->pParticleShader ||
 			nullptr == Core->pTrailShader ||
@@ -5741,8 +5895,10 @@ HRESULT Client::CEffectDocumentRenderer::Initialize()
 		return E_FAIL;
 	}
 
+	m_ShaderPrograms = Core->ShaderPrograms;
 	m_pMeshShader = Core->pMeshShader;
 	m_pAnimatedModelShader = Core->pAnimatedModelShader;
+	m_pNativeScreenPostShader = Core->pNativeScreenPostShader;
 	m_pRectShader = Core->pRectShader;
 	m_pParticleShader = Core->pParticleShader;
 	m_pTrailShader = Core->pTrailShader;
@@ -5876,6 +6032,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 				return E_FAIL;
 			}
 			Staged.bSourceRequiresSceneColor |= pLeaf->bSourceRequiresSceneColor;
+			Staged.bSourceRequiresSceneDepth |= pLeaf->bSourceRequiresSceneDepth;
 			Staged.SourceMaterialSlots.push_back({ Slot.iSourceMaterialIndex, std::move(pLeaf) });
 		}
 		std::unordered_set<uint32_t> ActualSlots;
@@ -5901,6 +6058,9 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 		(EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind &&
+		 nullptr == Find_LanceMasterVAProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId) &&
+		 nullptr == Find_ArtistProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId) &&
+		 nullptr == Find_WarlordNativeProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId) &&
 		 nullptr == Find_DimensionMasterVProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId) &&
 		 nullptr == Find_DimensionMasterALTVProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId)))
 	{
@@ -5933,6 +6093,27 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			return E_FAIL;
 		}
 	}
+    if (Element.eKind == EFFECT_ELEMENT_KIND::MESH || Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+    {
+        EFFECT_SHADER_FAMILY Family = EFFECT_SHADER_FAMILY::GENERIC;
+        if (Find_LanceMasterVAProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::LANCE_MASTER;
+        else if (Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::ARTIST;
+        else if (Find_WarlordNativeProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::WARLORD;
+        else if (Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::DIMENSIONMASTER_SD;
+        else if (Find_DimensionMasterWRProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::DIMENSIONMASTER_WR;
+        else if (Find_DimensionMasterALTVProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::DIMENSIONMASTER_ALTV;
+        else if (Find_DimensionMasterVProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::DIMENSIONMASTER_V;
+        else if (Find_DimensionMasterQProgram(SourceMaterial.strRuntimeShaderProfileId)) Family = EFFECT_SHADER_FAMILY::DIMENSIONMASTER_Q;
+        const EFFECT_SHADER_CARRIER Carrier = Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+            nullptr != Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) ?
+            EFFECT_SHADER_CARRIER::MESH : EFFECT_SHADER_CARRIER::PARTICLE;
+        Staged.iShaderProgramIndex = Find_EffectShaderProgramIndex(Carrier, Family, Staged.iSourceMaterialProfile);
+        if (UINT32_MAX == Staged.iShaderProgramIndex)
+        {
+            strOutError = "Admitted source material has no compiled family/carrier program: " + Element.strElementId;
+            return E_INVALIDARG;
+        }
+    }
 	for (size_t iScalar = 0u;
 		iScalar < SourceMaterial.Scalars.size() && iScalar < 8u; ++iScalar)
 	{
@@ -6115,6 +6296,36 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Build_FlowTrail01Constants(
 			SourceMaterial, Staged.TypedTrailParameters);
 	}
+	if (const auto* pNative = Find_LanceMasterVAProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!Build_LanceMasterVAParameters(SourceMaterial, Staged.LanceVASourceMaterialParameters))
+		{
+			strOutError = "Native Lance Master material parameter names or values are invalid: " + Element.strElementId;
+			return E_INVALIDARG;
+		}
+		Staged.bSourceRequiresSceneColor = pNative->bNeedsSceneColor;
+		Staged.bSourceRequiresSceneDepth = pNative->bNeedsDepthSample || pNative->bNeedsSceneColor;
+	}
+	if (const auto* pNative = Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!Build_ArtistParameters(SourceMaterial, Staged.ArtistSourceMaterialParameters))
+		{
+			strOutError = "Native Artist material parameter names or values are invalid: " + Element.strElementId;
+			return E_INVALIDARG;
+		}
+		Staged.bSourceRequiresSceneColor = pNative->bNeedsSceneColor;
+		Staged.bSourceRequiresSceneDepth = pNative->bNeedsDepthSample || pNative->bNeedsSceneColor;
+	}
+	if (const auto* pNative = Find_WarlordNativeProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!Build_WarlordNativeParameters(SourceMaterial, Staged.VSourceMaterialParameters))
+		{
+			strOutError = "Native Warlord material parameter names or values are invalid: " + Element.strElementId;
+			return E_INVALIDARG;
+		}
+		Staged.bSourceRequiresSceneColor = pNative->bNeedsSceneColor;
+		Staged.bSourceRequiresSceneDepth = pNative->bNeedsDepthSample || pNative->bNeedsSceneColor;
+	}
 	if (const auto* pNativeWR = Find_DimensionMasterWRProgram(SourceMaterial.strRuntimeShaderProfileId))
 	{
 		// W/R uses the existing V packet: at most 15 of its 32 float4 rows.
@@ -6242,7 +6453,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
 				m_pDevice, m_pContext, MODEL::NONANIM,
 				ModelPath.string().c_str(), XMMatrixScaling(
-					fModelPreScale, fModelPreScale, fModelPreScale));
+					fModelPreScale, fModelPreScale, fModelPreScale), true);
 			if (nullptr == Model)
 			{
 				strOutError = "CModel load failed: " +
@@ -6256,11 +6467,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		}
 	}
 
-	if (nullptr != Staged.pModel &&
-		((Staged.iSourceMaterialProfile == 324u) ||
-		 (Staged.iSourceMaterialProfile >= 44u && Staged.iSourceMaterialProfile <= 76u) ||
-		 (Staged.iSourceMaterialProfile >= 80u && Staged.iSourceMaterialProfile <= 205u) ||
-		 (Staged.iSourceMaterialProfile >= 208u && Staged.iSourceMaterialProfile <= 263u || (Staged.iSourceMaterialProfile >= 277u && Staged.iSourceMaterialProfile <= 280u))))
+	if (nullptr != Staged.pModel)
 	{
 		Staged.iSourceMeshHasUV1 =
 			0u != (Staged.pModel->Get_GeometryEvidenceFlags() &
@@ -6375,7 +6582,19 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		}
 		return true;
 	};
-	if (const auto* pNativeSD = Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId))
+	if (const auto* pLance = Find_LanceMasterVAProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!StageRequiredNamedTextureContract(pLance->TextureNames)) return E_FAIL;
+	}
+	else if (const auto* pNative = Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!StageRequiredNamedTextureContract(pNative->TextureNames)) return E_FAIL;
+	}
+	else	if (const auto* pNative = Find_WarlordNativeProgram(SourceMaterial.strRuntimeShaderProfileId))
+	{
+		if (!StageRequiredNamedTextureContract(pNative->TextureNames)) return E_FAIL;
+	}
+	else if (const auto* pNativeSD = Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId))
 	{
 		if (!StageRequiredNamedTextureContract(pNativeSD->TextureNames)) return E_FAIL;
 	}
@@ -6788,6 +7007,9 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		return E_FAIL;
 	}
 	const bool_t bStrictTypedApproximateProfile =
+		nullptr != Find_LanceMasterVAProgram(SourceMaterial.strRuntimeShaderProfileId) ||
+		nullptr != Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId) ||
+		nullptr != Find_WarlordNativeProgram(SourceMaterial.strRuntimeShaderProfileId) ||
 		nullptr != Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId) ||
 		14u == Staged.iSourceMaterialProfile ||
 		16u == Staged.iSourceMaterialProfile ||
@@ -8356,7 +8578,58 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	Model->Play_Animation(0.f);
 	if (nullptr != pSharedAssets)
 		pSharedAssets->AnimatedModelPrototypes.emplace(CacheKey, Model);
+
+	std::shared_ptr<const ELEMENT_RESOURCE> MaterialResource;
+	if (Cue.Material)
+	{
+		if (!Has_ArtistModelCueMaterialContract(Cue) && !Has_LanceMasterVAModelCueMaterialContract(Cue))
+		{
+			strOutError = "Animated Model Cue native material is invalid: " + Cue.strCueId;
+			return E_INVALIDARG;
+		}
+		for (uint32_t iMesh = 0u; iMesh < Model->Get_NumMeshes(); ++iMesh)
+		{
+			uint32_t iMaterial = 0u;
+			if (!Model->Try_GetSourceMaterialIndex(iMesh, iMaterial) || iMaterial != 0u)
+			{
+				strOutError = "Recovered skeletal material requires the original single slot: " + Cue.strCueId;
+				return E_FAIL;
+			}
+		}
+		const auto& Source = Cue.Material->SourceMaterial;
+		const auto* ArtistProgram = Find_ArtistProgram(Source.strRuntimeShaderProfileId);
+		const auto* LanceProgram = Find_LanceMasterVAProgram(Source.strRuntimeShaderProfileId);
+		auto StagedMaterial = std::make_shared<ELEMENT_RESOURCE>();
+		const auto Names = ArtistProgram ? ArtistProgram->TextureNames : LanceProgram ? LanceProgram->TextureNames : std::span<const std::string_view>{};
+		const bool ParametersValid = ArtistProgram ? Build_ArtistParameters(Source, StagedMaterial->ArtistSourceMaterialParameters) :
+			LanceProgram && Build_LanceMasterVAParameters(Source, StagedMaterial->LanceVASourceMaterialParameters);
+		if (!ParametersValid || Names.size() > StagedMaterial->SourceTextures.size())
+		{
+			strOutError = "Animated Model Cue native parameter stage failed: " + Cue.strCueId;
+			return E_FAIL;
+		}
+		StagedMaterial->iSourceMaterialProfile = ArtistProgram ? ArtistProgram->iProfileIndex : LanceProgram->iProfileIndex;
+		StagedMaterial->bSourceRequiresSceneDepth = ArtistProgram ? ArtistProgram->bNeedsDepthSample : LanceProgram->bNeedsDepthSample;
+		for (size_t iLane = 0u; iLane < Names.size(); ++iLane)
+		{
+			const auto* Texture = Find_EffectUniqueNamedTexture(Source, Names[iLane]);
+			if (!Texture || FAILED(Load_SourceTexture(*Texture, StagedMaterial->SourceTextures[iLane], pSharedAssets)))
+			{
+				strOutError = "Animated Model Cue source DDS stage failed: " + Cue.strCueId +
+					" / " + std::string(Names[iLane]);
+				return E_FAIL;
+			}
+			const uint32_t iBit = 1u << static_cast<uint32_t>(iLane);
+			StagedMaterial->iSourceTextureMask |= iBit;
+			if (Texture->eAddressU == EFFECT_TEXTURE_ADDRESS_MODE::CLAMP)
+				StagedMaterial->iSourceTextureClampUMask |= iBit;
+			if (Texture->eAddressV == EFFECT_TEXTURE_ADDRESS_MODE::CLAMP)
+				StagedMaterial->iSourceTextureClampVMask |= iBit;
+		}
+		MaterialResource = std::move(StagedMaterial);
+	}
 	OutResource.pModel = std::move(Model);
+	OutResource.pMaterialResource = std::move(MaterialResource);
 	OutResource.iAnimationIndex = iAnimation;
 	OutResource.fTicksPerSecond = fTicksPerSecond;
 	OutResource.fDurationSeconds = fDurationTicks / fTicksPerSecond;
@@ -8461,7 +8734,8 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	}
 	if (!CEffectPlayback::Prepare_DocumentResources(
 		Document, Staged->pPlaybackResources, strOutError,
-		Staged->pImmutableDocument))
+		Staged->pImmutableDocument,
+		nullptr != pVisualProgramProjection || nullptr != pPreparation))
 	{
 		return false;
 	}
@@ -15209,9 +15483,10 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			nullptr == pVisualProgramProjection &&
 			Element.Material.Execution.bFailClosed &&
 			!Element.Material.Execution.bAuthoringApproximate;
-		if (bOrdinaryFailClosed)
+		if (bOrdinaryFailClosed || Is_EffectSimulationOnlyParticle(Element))
 		{
-			// An ordinary fail-closed carrier remains in the playback document,
+			// Source ERM_None simulation providers and ordinary fail-closed
+			// carriers remain in the playback document,
 			// but cannot submit a GPU occurrence.  Avoid requiring resources for
 			// that dormant carrier; clearing fail-closed changes the resource
 			// signature and forces a full rebuild above.
@@ -15516,6 +15791,7 @@ bool_t Client::CEffectDocumentRenderer::Clone_ModelCueResources(
 		Model->Play_Animation(0.f);
 		MODEL_CUE_RESOURCE Resource;
 		Resource.pModel = Model;
+		Resource.pMaterialResource = Prototype.pMaterialResource;
 		Resource.iAnimationIndex = Prototype.iAnimationIndex;
 		Resource.fTicksPerSecond = Prototype.fTicksPerSecond;
 		Resource.fDurationSeconds = Prototype.fDurationSeconds;
@@ -17663,7 +17939,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedDiagnostic(
 			const std::string ModelPathString = ModelPath.string();
 			unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
 				m_pDevice, m_pContext, MODEL::NONANIM, ModelPathString.c_str(),
-				XMMatrixScaling(fPreScale, fPreScale, fPreScale));
+				XMMatrixScaling(fPreScale, fPreScale, fPreScale), true);
 			if (nullptr == Model || Model->Get_NumMeshes() != Geometry.iSubmeshCount ||
 				Sha256Hex(Model->Get_GeometryPayloadSha256()) !=
 					Geometry.strPayloadSha256 ||
@@ -17732,6 +18008,44 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedDiagnostic(
 		"Reconstructed diagnostic GPU resources committed; waiting for draw.";
 	strOutError.clear();
 	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Select_OccurrenceElement(
+    const std::string_view elementId, std::string& status)
+{
+    if (!m_pPreparedDocument || elementId.empty())
+    { status = "An occurrence element requires a prepared document and stable ID."; return false; }
+    const auto& elements = Get_StagedDocument().Elements;
+    const auto found = std::find_if(elements.begin(), elements.end(),
+        [elementId](const auto& element) { return element.strElementId == elementId; });
+    if (found == elements.end() || !found->bVisible)
+    { status = "The selected occurrence element is absent or disabled."; return false; }
+    EFFECT_PREVIEW_SUBMISSION_ISOLATION selection;
+    selection.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+    selection.ElementIds.emplace_back(elementId);
+    m_PreviewSubmissionIsolation = std::move(selection);
+    m_bOccurrenceElementSelected = true;
+    status.clear();
+    return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Set_SubmissionElementSet(std::vector<std::string> elementIds, std::string& error)
+{
+    if (!m_pPreparedDocument || m_pReconstructedDiagnostic)
+    { error = "Element submission visibility requires a prepared document."; return false; }
+    const auto& elements = Get_StagedDocument().Elements;
+    std::sort(elementIds.begin(), elementIds.end());
+    if (std::adjacent_find(elementIds.begin(), elementIds.end()) != elementIds.end())
+    { error = "Element submission visibility contains duplicate IDs."; return false; }
+    for (const auto& id : elementIds)
+        if (id.empty() || std::none_of(elements.begin(), elements.end(),
+            [&id](const auto& element) { return element.strElementId == id; }))
+        { error = "Element submission visibility names a missing row."; return false; }
+    EFFECT_PREVIEW_SUBMISSION_ISOLATION selection;
+    selection.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+    selection.ElementIds = std::move(elementIds); // Empty means submit no Elements, never ALL.
+    m_PreviewSubmissionIsolation = std::move(selection);
+    error.clear(); return true;
 }
 
 bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
@@ -17926,6 +18240,7 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 void Client::CEffectDocumentRenderer::Reset_PreviewSubmissionIsolation()
 {
 	m_PreviewSubmissionIsolation = {};
+	m_bOccurrenceElementSelected = false;
 }
 
 bool_t Client::CEffectDocumentRenderer::Should_SubmitPreviewOccurrence(
@@ -18224,11 +18539,12 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource,
 	const f32_t fAlphaScale,
-	const EFFECT_MATERIAL_DESC* pMaterialOverride)
+	const EFFECT_MATERIAL_DESC* pMaterialOverride,
+    const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram)
 {
 	return Bind_Common(pShader, *Element.pElement, Element.Color,
 		Element.fLocalTimeSeconds, Element.fNormalizedLife,
-		Resource, fAlphaScale, pMaterialOverride);
+		Resource, fAlphaScale, pMaterialOverride, pShaderProgram);
 }
 
 HRESULT Client::CEffectDocumentRenderer::Bind_Common(
@@ -18239,7 +18555,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 	const f32_t fNormalizedLife,
 	const ELEMENT_RESOURCE& Resource,
 	const f32_t fAlphaScale,
-	const EFFECT_MATERIAL_DESC* pMaterialOverride)
+	const EFFECT_MATERIAL_DESC* pMaterialOverride,
+    const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram)
 {
 	if (nullptr == pShader)
 		return Fail_RenderOperation(
@@ -18254,7 +18571,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Common shader bind failed: g_ProjMatrix.", hResult);
-	if (pShader == m_pParticleShader)
+	if ((nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE))
 	{
 		const float4_t CameraPosition = *CGameInstance::Get().Get_CamPosition();
 		hResult = pShader->Bind_RawValue("g_CameraPosition",
@@ -18264,7 +18581,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 				"Particle camera-position shader binding failed.", hResult);
 	}
 	return Bind_MaterialInputs(pShader, Element, Color,
-		fLocalTimeSeconds, fNormalizedLife, Resource, fAlphaScale, pMaterialOverride);
+		fLocalTimeSeconds, fNormalizedLife, Resource, fAlphaScale, pMaterialOverride, pShaderProgram);
 }
 
 HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
@@ -18275,7 +18592,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	const f32_t fNormalizedLife,
 	const ELEMENT_RESOURCE& Resource,
 	const f32_t fAlphaScale,
-	const EFFECT_MATERIAL_DESC* pMaterialOverride)
+	const EFFECT_MATERIAL_DESC* pMaterialOverride,
+    const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram)
 {
 	const EFFECT_MATERIAL_DESC& Material = nullptr != pMaterialOverride ?
 		*pMaterialOverride : Element.Material;
@@ -18291,25 +18609,98 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			hFirstBindFailure = hResult;
 		return true;
 	};
-	if (pShader == m_pMeshShader || pShader == m_pParticleShader)
+    const bool_t bGenericCarrierShader = nullptr != pShaderProgram &&
+        pShaderProgram->eFamily == EFFECT_SHADER_FAMILY::GENERIC;
+	if ((nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH) || (nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE))
 	{
-		if (BindFailed(pShader->Bind_RawValue("g_ALTVSourceMaterialParameters",
-			Resource.ALTVSourceMaterialParameters.data(), sizeof(Resource.ALTVSourceMaterialParameters))) ||
-			BindFailed(pShader->Bind_RawValue("g_ALTVSourceMaterialTime",
-				&fLocalTimeSeconds, sizeof(fLocalTimeSeconds))))
-			return Fail_RenderOperation("Native ALT_V material parameter binding failed.", hFirstBindFailure);
-		if (BindFailed(pShader->Bind_RawValue("g_VSourceMaterialParameters",
-			Resource.VSourceMaterialParameters.data(), sizeof(Resource.VSourceMaterialParameters))) ||
-			BindFailed(pShader->Bind_RawValue("g_VSourceMaterialTime",
-				&fLocalTimeSeconds, sizeof(fLocalTimeSeconds))))
-			return Fail_RenderOperation("Native V material parameter binding failed.", hFirstBindFailure);
-		if (BindFailed(pShader->Bind_RawValue("g_QSourceMaterialParameters",
-			Resource.QSourceMaterialParameters.data(),
-			sizeof(Resource.QSourceMaterialParameters))) ||
-			BindFailed(pShader->Bind_RawValue("g_QSourceMaterialTime",
-				&fLocalTimeSeconds, sizeof(fLocalTimeSeconds))))
-			return Fail_RenderOperation(
-				"Native Q material parameter binding failed.", hFirstBindFailure);
+        const auto BindNativePacket = [&](const char* pParameters, const char* pTime,
+            const auto& Parameters)
+        {
+            return BindFailed(pShader->Bind_RawValue(pParameters, Parameters.data(), static_cast<uint32_t>(sizeof(Parameters)))) ||
+                BindFailed(pShader->Bind_RawValue(pTime, &fLocalTimeSeconds, sizeof(fLocalTimeSeconds)));
+        };
+        bool NativeBindFailed = false;
+        switch (pShaderProgram->eFamily)
+        {
+        case EFFECT_SHADER_FAMILY::GENERIC: break;
+        case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_Q:
+            NativeBindFailed = BindNativePacket("g_QSourceMaterialParameters", "g_QSourceMaterialTime", Resource.QSourceMaterialParameters); break;
+        case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_V:
+        case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_WR:
+        case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_SD:
+            NativeBindFailed = BindNativePacket("g_VSourceMaterialParameters", "g_VSourceMaterialTime", Resource.VSourceMaterialParameters); break;
+        case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_ALTV:
+            NativeBindFailed = BindNativePacket("g_ALTVSourceMaterialParameters", "g_ALTVSourceMaterialTime", Resource.ALTVSourceMaterialParameters); break;
+        case EFFECT_SHADER_FAMILY::ARTIST:
+            NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", Resource.ArtistSourceMaterialParameters); break;
+        case EFFECT_SHADER_FAMILY::LANCE_MASTER:
+            NativeBindFailed = BindNativePacket("g_LanceVASourceMaterialParameters", "g_LanceVASourceMaterialTime", Resource.LanceVASourceMaterialParameters); break;
+        case EFFECT_SHADER_FAMILY::WARLORD:
+        {
+            NativeBindFailed = BindNativePacket("g_WarlordSourceMaterialParameters", "g_WarlordSourceMaterialTime", Resource.VSourceMaterialParameters);
+            float4_t SceneAmbient{0.f, 0.f, 0.f, 1.f};
+            const float4_t NoHemisphere{};
+            for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                if (Light.eType == LIGHT::DIRECTIONAL)
+                { SceneAmbient.x += Light.vAmbient.x; SceneAmbient.y += Light.vAmbient.y; SceneAmbient.z += Light.vAmbient.z; }
+            NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordSkyUpper", &NoHemisphere, sizeof(NoHemisphere))) || NativeBindFailed;
+            NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordSkyLower", &NoHemisphere, sizeof(NoHemisphere))) || NativeBindFailed;
+            NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordAmbient", &SceneAmbient, sizeof(SceneAmbient))) || NativeBindFailed;
+            if (Resource.iSourceMaterialProfile == 1122u || Resource.iSourceMaterialProfile == 1123u)
+            {
+                // Current committed contracts: at most 16 scene + 64 transient lights.
+                // Preserve the same scene-then-transient order as CLight_Manager::Render_Lights.
+                std::array<float4_t, 80> Directions{};
+                std::array<float4_t, 80> Positions{};
+                std::array<float4_t, 80> Colors{};
+                std::array<float4_t, 80> SpotCones{};
+                uint32_t iLightCount = 0u;
+                const auto AppendLight = [&](const LIGHT_DESC& Light) -> HRESULT
+                {
+                    if (iLightCount == Directions.size())
+                        return Fail_RenderOperation("Guardian PBR light packet exceeds the 16 scene + 64 transient contract.", E_INVALIDARG);
+                    float4_t Direction{};
+                    if (Light.eType == LIGHT::DIRECTIONAL || Light.eType == LIGHT::SPOT)
+                    {
+                        const float fLengthSquared = Light.vDirection.x * Light.vDirection.x +
+                            Light.vDirection.y * Light.vDirection.y + Light.vDirection.z * Light.vDirection.z;
+                        if (!std::isfinite(fLengthSquared) || fLengthSquared <= 1.e-12f)
+                            return Fail_RenderOperation("Guardian PBR light has an invalid direction.", E_INVALIDARG);
+                        const float fInverseLength = 1.f / std::sqrt(fLengthSquared);
+                        const float fSign = Light.eType == LIGHT::DIRECTIONAL ? -1.f : 1.f;
+                        Direction = float4_t(Light.vDirection.x * fInverseLength * fSign,
+                            Light.vDirection.y * fInverseLength * fSign, Light.vDirection.z * fInverseLength * fSign, 0.f);
+                    }
+                    else if (Light.eType != LIGHT::POINT)
+                        return Fail_RenderOperation("Guardian PBR light has an unsupported type.", E_INVALIDARG);
+                    Direction.w = Light.eType == LIGHT::DIRECTIONAL ? 0.f : (Light.eType == LIGHT::POINT ? 1.f : 2.f);
+                    Directions[iLightCount] = Direction;
+                    Positions[iLightCount] = float4_t(Light.vPosition.x, Light.vPosition.y, Light.vPosition.z, Light.fRange);
+                    Colors[iLightCount] = float4_t(Light.vDiffuse.x, Light.vDiffuse.y, Light.vDiffuse.z, Light.fFalloffExponent);
+                    SpotCones[iLightCount] = float4_t(Light.fSpotInnerCos, Light.fSpotOuterCos, 0.f, 0.f);
+                    ++iLightCount;
+                    return S_OK;
+                };
+                for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                    if (FAILED(AppendLight(Light)))
+                        return E_INVALIDARG;
+                for (const auto& Light : CPresentation_Manager::Get().Get_TransientLights())
+                    if (FAILED(AppendLight(Light)))
+                        return E_INVALIDARG;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordGuardianLightCount", &iLightCount, sizeof(iLightCount))) || NativeBindFailed;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordGuardianDirections", Directions.data(), static_cast<uint32_t>(sizeof(Directions)))) || NativeBindFailed;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordGuardianPositions", Positions.data(), static_cast<uint32_t>(sizeof(Positions)))) || NativeBindFailed;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordGuardianColors", Colors.data(), static_cast<uint32_t>(sizeof(Colors)))) || NativeBindFailed;
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_WarlordGuardianSpotCones", SpotCones.data(), static_cast<uint32_t>(sizeof(SpotCones)))) || NativeBindFailed;
+            }
+            break;
+        }
+        default: return Fail_RenderOperation("Native shader family is invalid.", E_INVALIDARG, true);
+        }
+        if (NativeBindFailed)
+            return Fail_RenderOperation("Selected native family material parameter binding failed.", hFirstBindFailure);
+        if (bGenericCarrierShader)
+        {
 		if (BindFailed(pShader->Bind_RawValue(
 			"g_ReconstructedMaterialEvaluatorEnabled",
 			&Resource.iReconstructedMaterialEvaluatorEnabled,
@@ -18350,9 +18741,9 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 				"Material bind failed: reconstructed evaluator block.",
 				hFirstBindFailure);
 		}
+        }
 	}
-	const bool_t bRuntimeMaterialV2Shader = pShader == m_pMeshShader ||
-		pShader == m_pParticleShader || pShader == m_pDecalShader ||
+	const bool_t bRuntimeMaterialV2Shader = bGenericCarrierShader || pShader == m_pDecalShader ||
 		pShader == m_pTrailShader || pShader == m_pRectShader;
 	if (bRuntimeMaterialV2Shader)
 	{
@@ -18452,8 +18843,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: RuntimeMaterialV2 vector block.",
 			hFirstBindFailure);
 	}
-	const bool_t bStandardColorV1Shader = pShader == m_pMeshShader ||
-		pShader == m_pParticleShader ||
+	const bool_t bStandardColorV1Shader = bGenericCarrierShader ||
 		pShader == m_pDecalShader || pShader == m_pTrailShader;
 	if (bStandardColorV1Shader &&
 		(BindFailed(pShader->Bind_RawValue("g_StandardColorV1Enabled",
@@ -18491,7 +18881,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		iSourceSubUVFrameCount > 1u && iSourceSubUVFrameCount <= UINT32_MAX &&
 		!strSourceSubUVMode.empty() && strSourceSubUVMode != "none" &&
 		strSourceSubUVMode != "psuvim_none";
-	const bool_t bParticleLifeSubUV = pShader == m_pParticleShader &&
+	const bool_t bParticleLifeSubUV = (nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE) &&
 		!Element.SourceRecipe.bEnabled && Element.Detail.Particle.bSubUVOverLife;
 	const bool_t bParticleOwnsAtlas = bSourceSubUV || bParticleLifeSubUV;
 
@@ -18552,8 +18942,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::NOISE2_TEXTURE) ? 1u : 0u;
 	const uint32_t iDistortionOnBase =
 		Element.Detail.Color.bDistortionOnBaseMaterial ? 1u : 0u;
-	if ((pShader == m_pParticleShader || pShader == m_pMeshShader ||
-		 pShader == m_pTrailShader) &&
+	if ((bGenericCarrierShader || pShader == m_pTrailShader) &&
 		(BindFailed(pShader->Bind_RawValue("g_SourceMaterialProfile",
 			&Resource.iSourceMaterialProfile,
 			sizeof(Resource.iSourceMaterialProfile))) ||
@@ -18638,6 +19027,19 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: source-profile block.",
 			hFirstBindFailure);
 	}
+    if (nullptr != pShaderProgram && !bGenericCarrierShader &&
+        (BindFailed(pShader->Bind_RawValue("g_SourceMaterialProfile",
+            &Resource.iSourceMaterialProfile, sizeof(Resource.iSourceMaterialProfile))) ||
+         BindFailed(pShader->Bind_RawValue("g_SourceTextureMask",
+            &Resource.iSourceTextureMask, sizeof(Resource.iSourceTextureMask))) ||
+         BindFailed(pShader->Bind_RawValue("g_SourceTextureClampUMask",
+            &Resource.iSourceTextureClampUMask, sizeof(Resource.iSourceTextureClampUMask))) ||
+         BindFailed(pShader->Bind_RawValue("g_SourceTextureClampVMask",
+            &Resource.iSourceTextureClampVMask, sizeof(Resource.iSourceTextureClampVMask)))))
+    {
+        return Fail_RenderOperation(
+            "Material bind failed: native source texture profile block.", hFirstBindFailure);
+    }
 	if (pShader == m_pRectShader && 0u != Resource.iRuntimeMaterialV2Enabled &&
 		BindFailed(pShader->Bind_RawValue("g_SourceTextureMask",
 			&Resource.iSourceTextureMask,
@@ -18647,7 +19049,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: typed sprite rect source texture mask.",
 			hFirstBindFailure);
 	}
-	if (pShader == m_pMeshShader)
+	if (bGenericCarrierShader && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH)
 	{
 		uint32_t iRingFillEnabled = 0u;
 		uint32_t iRingFillDirection = 0u;
@@ -18714,7 +19116,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 				hFirstBindFailure);
 		}
 	}
-	if (pShader == m_pParticleShader || pShader == m_pRectShader)
+	if ((bGenericCarrierShader && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE) || pShader == m_pRectShader)
 	{
 		uint32_t iLinearRevealEnabled = 0u;
 		uint32_t iLinearRevealAxis = 1u;
@@ -18730,7 +19132,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		const bool_t bDirectHandAuthored = Element.strSourceNode.empty() ||
 			Element.strSourceNode.starts_with("authored-copy:");
 		const bool_t bExpectedSpriteCarrier =
-			(pShader == m_pParticleShader &&
+			((nullptr != pShaderProgram && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE) &&
 			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
 			 nullptr == Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
 			 nullptr == Resource.pModel) ||
@@ -18857,7 +19259,11 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		BindFailed(pShader->Bind_Texture("g_SourceTexture5",
 			Resource.SourceTextures[5] ? Resource.SourceTextures[5] : m_pBlackTexture)) ||
 		BindFailed(pShader->Bind_Texture("g_SourceTexture6",
-			Resource.SourceTextures[6] ? Resource.SourceTextures[6] : m_pBlackTexture));
+			Resource.SourceTextures[6] ? Resource.SourceTextures[6] : m_pBlackTexture)) ||
+		BindFailed(pShader->Bind_Texture("g_SourceTexture7",
+			Resource.SourceTextures[7] ? Resource.SourceTextures[7] : m_pBlackTexture)) ||
+		BindFailed(pShader->Bind_Texture("g_SourceTexture8",
+			Resource.SourceTextures[8] ? Resource.SourceTextures[8] : m_pBlackTexture));
 	if (bBindFailed)
 	{
 		return Fail_RenderOperation(
@@ -18870,6 +19276,25 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	return S_OK;
 }
 
+shared_ptr<Engine::CShader> Client::CEffectDocumentRenderer::Resolve_DrawShader(
+    const ELEMENT_RESOURCE& Resource, const EFFECT_SHADER_CARRIER eCarrier,
+    const EFFECT_SHADER_PROGRAM_DESC*& pOutProgram) const
+{
+    pOutProgram = Get_EffectShaderProgram(Resource.iShaderProgramIndex);
+    if (nullptr == pOutProgram || pOutProgram->eCarrier != eCarrier ||
+        Resource.iShaderProgramIndex >= m_ShaderPrograms.size())
+        return nullptr;
+    // Native contracts reject authored execution. Keep that stage invariant at
+    // the actual draw boundary, including reconstructed and material-slot rows.
+    if (pOutProgram->eFamily != EFFECT_SHADER_FAMILY::GENERIC &&
+        (0u != Resource.iStandardColorV1Enabled ||
+         0u != Resource.iRuntimeMaterialV2Enabled ||
+         0u != Resource.iArtistVisualV4Opcode ||
+         0u != Resource.iReconstructedMaterialEvaluatorEnabled))
+        return nullptr;
+    return m_ShaderPrograms[Resource.iShaderProgramIndex];
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource,
@@ -18878,10 +19303,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const float4_t* pDynamicParameter,
 	const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride,
 	const EFFECT_MATERIAL_DESC* pMaterialOverride,
-	const uint32_t iSourceMaterialIndex)
+	const uint32_t iSourceMaterialIndex,
+	const std::span<const EFFECT_NATIVE_MESH_INSTANCE> Instances,
+	const uint32_t iInstanceByteOffset,
+	const uint32_t iOrderedGeometryHandle)
 {
-	if (nullptr == Resource.pModel || nullptr == Element.pElement ||
-		nullptr == m_pMeshShader)
+	if (nullptr == Resource.pModel || nullptr == Element.pElement)
 		return Fail_RenderOperation(
 			"Mesh resource/model/shader contract is missing.", E_FAIL, true);
 	if (!Resource.SourceMaterialSlots.empty())
@@ -18906,8 +19333,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		}
 		return bSubmitted ? S_OK : S_FALSE;
 	}
+    const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram = nullptr;
+    const shared_ptr<Engine::CShader> pDrawShader = Resolve_DrawShader(
+        Resource, EFFECT_SHADER_CARRIER::MESH, pShaderProgram);
+    if (nullptr == pDrawShader)
+        return Fail_RenderOperation("Prepared mesh shader family is unavailable.", E_FAIL, true);
 	const EFFECT_MATERIAL_DESC& Material = nullptr != pMaterialOverride ?
 		*pMaterialOverride : Element.pElement->Material;
+	const auto& NativeProfile = Material.SourceMaterial.strRuntimeShaderProfileId;
+	const bool_t bNativeMesh = Find_ArtistProgram(NativeProfile) ||
+		Find_WarlordNativeProgram(NativeProfile) || Find_LanceMasterVAProgram(NativeProfile);
 	uint32_t iPass = Select_Pass(
 		Material.eRenderProfile);
 	if (UINT32_MAX == iPass)
@@ -19079,7 +19514,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	// occurrence boundary.  It must not abort the whole effect frame.
 	if (std::abs(fDeterminant) <= std::numeric_limits<f32_t>::epsilon())
 		return S_FALSE;
-	if ((nullptr != pMaterialProgramBinding || 42u == Resource.iSourceMaterialProfile ||
+	if ((bNativeMesh || nullptr != pMaterialProgramBinding || 42u == Resource.iSourceMaterialProfile ||
 		50u == Resource.iSourceMaterialProfile || 60u == Resource.iSourceMaterialProfile ||
 		66u == Resource.iSourceMaterialProfile || 70u == Resource.iSourceMaterialProfile) && fDeterminant < 0.f)
 	{
@@ -19093,26 +19528,28 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	}
 	XMStoreFloat4x4(&NormalMatrix,
 		XMMatrixTranspose(XMMatrixInverse(nullptr, LoadedWorld)));
-	HRESULT hResult = m_pMeshShader->Bind_Matrix("g_WorldMatrix", &World);
+	HRESULT hResult = pDrawShader->Bind_Matrix("g_WorldMatrix", &World);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh shader bind failed: g_WorldMatrix.", hResult);
-	hResult = m_pMeshShader->Bind_Matrix("g_NormalMatrix", &NormalMatrix);
+	hResult = pDrawShader->Bind_Matrix("g_NormalMatrix", &NormalMatrix);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh shader bind failed: g_NormalMatrix.", hResult);
-	hResult = m_pMeshShader->Bind_RawValue("g_CameraPosition",
+	hResult = pDrawShader->Bind_RawValue("g_CameraPosition",
 		&CameraPosition, sizeof(CameraPosition));
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh shader bind failed: g_CameraPosition.", hResult);
-	hResult = m_pMeshShader->Bind_RawValue("g_EffectDynamicParameter",
+	hResult = pDrawShader->Bind_RawValue("g_EffectDynamicParameter",
 		&DynamicParameter, sizeof(DynamicParameter));
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh shader bind failed: g_EffectDynamicParameter.", hResult);
-	const bool_t bStandardColorSubUV =
-		0u != Resource.iStandardColorV1Enabled && nullptr != pSubUVOverride;
+	// Native local-mesh VS programs preserve geometry UVs. A computed SubUV
+	// payload alone does not prove that the selected source shader consumes it.
+	const bool_t bStandardColorSubUV = nullptr != pSubUVOverride &&
+		0u != Resource.iStandardColorV1Enabled;
 	const uint32_t iStandardColorSubUVEnabled =
 		bStandardColorSubUV ? 1u : 0u;
 	const EFFECT_SUBUV_FRAME_DESC IdentitySubUV{};
@@ -19133,22 +19570,22 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			"Mesh StandardColorV1 SubUV carrier is invalid.",
 			E_INVALIDARG, true);
 	}
-	hResult = m_pMeshShader->Bind_RawValue(
+	hResult = pDrawShader->Bind_RawValue(
 		"g_StandardColorV1MeshSubUVEnabled",
 		&iStandardColorSubUVEnabled,
 		sizeof(iStandardColorSubUVEnabled));
 	if (SUCCEEDED(hResult))
-		hResult = m_pMeshShader->Bind_RawValue(
+		hResult = pDrawShader->Bind_RawValue(
 			"g_StandardColorV1MeshSubUVCurrent",
 			&StandardColorSubUV.Current,
 			sizeof(StandardColorSubUV.Current));
 	if (SUCCEEDED(hResult))
-		hResult = m_pMeshShader->Bind_RawValue(
+		hResult = pDrawShader->Bind_RawValue(
 			"g_StandardColorV1MeshSubUVNext",
 			&StandardColorSubUV.Next,
 			sizeof(StandardColorSubUV.Next));
 	if (SUCCEEDED(hResult))
-		hResult = m_pMeshShader->Bind_RawValue(
+		hResult = pDrawShader->Bind_RawValue(
 			"g_StandardColorV1MeshSubUVBlend",
 			&StandardColorSubUV.fBlend,
 			sizeof(StandardColorSubUV.fBlend));
@@ -19158,7 +19595,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			"Mesh shader bind failed: StandardColorV1 SubUV packet.",
 			hResult, true);
 	}
-	hResult = Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale, pMaterialOverride);
+	hResult = Bind_Common(pDrawShader, Element, Resource, fAlphaScale, pMaterialOverride, pShaderProgram);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh common/material shader bind failed.", hResult);
@@ -19167,12 +19604,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	{
 		if (nullptr == m_pStartingSceneCapture)
 			return Fail_RenderOperation("Native capture box has no starting scene snapshot.", E_FAIL, true);
-		hResult = m_pMeshShader->Bind_Texture("g_SourceTexture2", m_pStartingSceneCapture);
+		hResult = pDrawShader->Bind_Texture("g_SourceTexture2", m_pStartingSceneCapture);
 		if (FAILED(hResult))
 			return Fail_RenderOperation("Native capture box snapshot binding failed.", hResult, true);
 	}
 
-	hResult = m_pMeshShader->Bind_RawValue("g_SourceMeshHasUV1",
+	hResult = pDrawShader->Bind_RawValue("g_SourceMeshHasUV1",
 		&Resource.iSourceMeshHasUV1, sizeof(Resource.iSourceMeshHasUV1));
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Native Q mesh UV-set binding failed.", hResult, true);
@@ -19186,7 +19623,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			return Fail_RenderOperation("CubeSample scene-color snapshot is unavailable.", E_FAIL, true);
 	}
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
-	if ((Resource.iSourceMaterialProfile == 324u) ||
+	if (Resource.bSourceRequiresSceneDepth || (Resource.iSourceMaterialProfile == 324u) ||
 		(Resource.iSourceMaterialProfile >= 44u && Resource.iSourceMaterialProfile <= 76u) ||
 		(Resource.iSourceMaterialProfile >= 80u && Resource.iSourceMaterialProfile <= 205u) ||
 		(Resource.iSourceMaterialProfile >= 208u && Resource.iSourceMaterialProfile <= 263u || (Resource.iSourceMaterialProfile >= 277u && Resource.iSourceMaterialProfile <= 280u)))
@@ -19195,12 +19632,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		if (nullptr == SourceSceneDepth)
 			return Fail_RenderOperation("Native Q mesh scene-depth input is unavailable.", E_FAIL, true);
 	}
-	hResult = m_pMeshShader->Bind_Texture("g_EffectSceneDepthTexture", SourceSceneDepth);
+	hResult = pDrawShader->Bind_Texture("g_EffectSceneDepthTexture", SourceSceneDepth);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Native Q mesh scene-depth binding failed.", hResult, true);
 	// Also clear the FX resource for every other mesh, so the prior Q binding
 	// cannot become an implicit input of another material.
-	hResult = m_pMeshShader->Bind_Texture("g_EffectSceneColorTexture", SceneColorSnapshot);
+	hResult = pDrawShader->Bind_Texture("g_EffectSceneColorTexture", SceneColorSnapshot);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("CubeSample scene-color shader binding failed.", hResult, true);
 
@@ -19209,7 +19646,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		(Element.pElement->Detail.Mesh.bUseModelMaterial ? nullptr :
 		 Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::BASE_TEXTURE));
 	const uint32_t iUseBaseOverride = nullptr != BaseOverride ? 1u : 0u;
-	hResult = m_pMeshShader->Bind_RawValue(
+	hResult = pDrawShader->Bind_RawValue(
 		"g_UseBaseOverride", &iUseBaseOverride, sizeof(iUseBaseOverride));
 	if (FAILED(hResult))
 	{
@@ -19217,7 +19654,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			"Mesh shader bind failed: g_UseBaseOverride.", hResult);
 	}
 	bool_t bSubmitted = false;
-	for (uint32_t iMesh = 0u; iMesh < Resource.pModel->Get_NumMeshes(); ++iMesh)
+	const uint32_t iMeshDrawCount = Instances.empty() ? Resource.pModel->Get_NumMeshes() : 1u;
+	for (uint32_t iMesh = 0u; iMesh < iMeshDrawCount; ++iMesh)
 	{
 		if (iSourceMaterialIndex != UINT32_MAX)
 		{
@@ -19229,20 +19667,20 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		}
 		if (iUseBaseOverride)
 		{
-			hResult = m_pMeshShader->Bind_Texture("g_BaseTexture", BaseOverride);
+			hResult = pDrawShader->Bind_Texture("g_BaseTexture", BaseOverride);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(
 					"Mesh base-override texture bind failed.", hResult);
 		}
 		else
 		{
-			hResult = Resource.pModel->Bind_Material(m_pMeshShader,
+			hResult = Resource.pModel->Bind_Material(pDrawShader,
 				"g_BaseTexture", iMesh, aiTextureType_DIFFUSE);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(
 					"Mesh model diffuse-material bind failed.", hResult);
 		}
-		hResult = m_pMeshShader->Begin(iPass);
+		hResult = pDrawShader->Begin(iPass + (Instances.empty() ? 0u : 7u));
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Mesh shader pass apply failed.", hResult);
@@ -19289,14 +19727,28 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		Record_TestDrawSelection(
-			EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL, iPass);
+			EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL, iPass + (Instances.empty() ? 0u : 7u));
 #endif
-		hResult = Resource.pModel->Render(iMesh);
+		if (Instances.empty())
+            hResult = Resource.pModel->Render(iMesh);
+        else if (iOrderedGeometryHandle != UINT32_MAX)
+            hResult = Resource.pModel->Render_OrderedStaticGeometryInstanced(
+                iOrderedGeometryHandle, m_pNativeMeshInstanceBuffer.Get(),
+                sizeof(EFFECT_NATIVE_MESH_INSTANCE), static_cast<uint32_t>(Instances.size()),
+                iInstanceByteOffset);
+        else
+            hResult = Resource.pModel->Render_Instanced(iMesh,
+                m_pNativeMeshInstanceBuffer.Get(), sizeof(EFFECT_NATIVE_MESH_INSTANCE),
+                static_cast<uint32_t>(Instances.size()), iInstanceByteOffset);
 		if (S_OK != hResult)
 			return Fail_RenderOperation("Mesh model draw failed.", hResult);
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 		Record_TestVIBufferBinding();
-		Record_TestIssuedDraw(World);
+        Record_TestIssuedDraw(World);
+        if (nullptr != m_pActiveOccurrenceStats)
+            for (const auto& Instance : Instances)
+                Extend_SubmittedPosition(*m_pActiveOccurrenceStats,
+                    { Instance.World._41, Instance.World._42, Instance.World._43 });
 #endif
 		bSubmitted = true;
 	}
@@ -19659,6 +20111,149 @@ HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 	return bSubmitted ? S_OK : S_FALSE;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
+    const EFFECT_EVALUATED_FRAME& Frame,
+    const std::span<const EFFECT_EVALUATED_PARTICLE> Particles,
+    const ELEMENT_RESOURCE& Resource, bool_t& bOutHandled)
+{
+    bOutHandled = false;
+    const EFFECT_SHADER_PROGRAM_DESC* pProgram = nullptr;
+    const auto Shader = Resolve_DrawShader(Resource, EFFECT_SHADER_CARRIER::MESH, pProgram);
+    if (nullptr == Shader || nullptr == pProgram ||
+        pProgram->eFamily == EFFECT_SHADER_FAMILY::GENERIC ||
+        nullptr == Resource.pModel || Resource.pModel->Is_Skinned() ||
+        !Resource.SourceMaterialSlots.empty() || nullptr != Resource.pMaterialProgramBinding ||
+        Resource.pModel->Get_NumMeshes() == 0u)
+        return S_FALSE;
+    const EFFECT_ELEMENT_DESC* pSource = nullptr;
+    for (const auto& Particle : Particles)
+    {
+        if (nullptr == Particle.pElement) continue;
+        if (nullptr == pSource) pSource = Particle.pElement;
+        else if (Particle.pElement != pSource) return S_FALSE;
+    }
+    if (nullptr == pSource) return S_FALSE;
+    const uint32_t iNominalPass = Select_Pass(pSource->Material.eRenderProfile);
+    if (iNominalPass == UINT32_MAX) return S_FALSE;
+
+    uint32_t iOrderedGeometryHandle = UINT32_MAX;
+    if (Resource.pModel->Get_NumMeshes() > 1u)
+    {
+        // Native families sample SourceTextures, never the slot-specific g_BaseTexture.
+        // With no per-slot overrides their effective material is identical. Joining
+        // original vertex/index sequences preserves p0m0,p0m1,p1m0,p1m1 blend order.
+        const HRESULT hPrepared = Resource.pModel->Prepare_OrderedStaticGeometry(
+            0u, Resource.pModel->Get_NumMeshes(), iOrderedGeometryHandle);
+        if (hPrepared == S_FALSE) return S_FALSE;
+        if (FAILED(hPrepared))
+            return Fail_RenderOperation("Native mesh ordered geometry preparation failed.", hPrepared, true);
+    }
+    bOutHandled = true;
+    const auto& Profile = pSource->Material.SourceMaterial.strRuntimeShaderProfileId;
+    const bool_t bMirrorAware = Find_ArtistProgram(Profile) ||
+        Find_WarlordNativeProgram(Profile) || Find_LanceMasterVAProgram(Profile) ||
+        Resource.iSourceMaterialProfile == 42u || Resource.iSourceMaterialProfile == 50u ||
+        Resource.iSourceMaterialProfile == 60u || Resource.iSourceMaterialProfile == 66u ||
+        Resource.iSourceMaterialProfile == 70u;
+    const SOURCE_SUBUV_LAYOUT SubUVLayout = Resolve_SourceSubUVLayout(*pSource);
+    auto& Instances = m_NativeMeshInstanceScratch;
+    auto& Passes = m_NativeMeshPassScratch;
+    Instances.clear();
+    Passes.clear();
+    Instances.reserve(Particles.size());
+    Passes.reserve(Particles.size());
+    for (const auto& Particle : Particles)
+    {
+        if (nullptr == Particle.pElement) continue;
+        const EFFECT_SUBUV_FRAME_DESC SourceSubUV = Resolve_SubUVFrames(Particle, SubUVLayout);
+        EFFECT_SUBUV_FRAME_DESC SubUV;
+        if (!CEffectPlayback::Resolve_ParticleSpriteSubUV(Particle, SourceSubUV, SubUV))
+            return Fail_RenderOperation("Mesh particle source SubUV contract is invalid.", E_INVALIDARG, true);
+        EFFECT_NATIVE_MESH_INSTANCE Instance{};
+        Instance.World = Apply_ParticleCameraOffset(Particle);
+        const matrix_t World = XMLoadFloat4x4(&Instance.World);
+        const f32_t fDeterminant = XMVectorGetX(XMMatrixDeterminant(World));
+        if (!std::isfinite(fDeterminant))
+            return Fail_RenderOperation("Mesh world determinant is non-finite.", E_INVALIDARG, true);
+        // Match Render_Mesh's valid zero-size suppression before inverting.
+        if (std::abs(fDeterminant) <= std::numeric_limits<f32_t>::epsilon()) continue;
+        XMStoreFloat4x4(&Instance.NormalMatrix, XMMatrixTranspose(XMMatrixInverse(nullptr, World)));
+        Instance.Color = Particle.Color;
+        Instance.DynamicParameter = Particle.vDynamicParameter;
+        Instance.SubUVCurrent = SubUV.Current;
+        Instance.SubUVNext = SubUV.Next;
+        // Native mesh VS does not consume the sprite atlas unless StandardColorV1
+        // is explicitly selected. Keep that same gate and its zero blend value.
+        Instance.LifeBlend = { Particle.fNormalizedLife,
+            Resource.iStandardColorV1Enabled != 0u ? SubUV.fBlend : 0.f };
+        uint32_t iPass = iNominalPass;
+        if (bMirrorAware && fDeterminant < 0.f)
+        {
+            if (iPass == 3u) iPass = 5u;
+            else if (iPass == 4u) iPass = 6u;
+        }
+        Instances.push_back(Instance);
+        Passes.push_back(iPass);
+    }
+    if (Instances.empty()) return S_FALSE;
+    if (Instances.size() > UINT32_MAX / sizeof(EFFECT_NATIVE_MESH_INSTANCE))
+        return Fail_RenderOperation("Native mesh instance upload is too large.", E_INVALIDARG, true);
+    if (Instances.size() > m_iNativeMeshInstanceCapacity)
+    {
+        const uint32_t Capacity = (std::min)(
+            std::bit_ceil((std::max)(256u, static_cast<uint32_t>(Instances.size()))),
+            static_cast<uint32_t>(UINT32_MAX / sizeof(EFFECT_NATIVE_MESH_INSTANCE)));
+        D3D11_BUFFER_DESC Desc{};
+        Desc.ByteWidth = Capacity * sizeof(EFFECT_NATIVE_MESH_INSTANCE);
+        Desc.Usage = D3D11_USAGE_DYNAMIC;
+        Desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        ComPtr<ID3D11Buffer> Staged;
+        const HRESULT Result = m_pDevice->CreateBuffer(&Desc, nullptr, &Staged);
+        if (FAILED(Result))
+            return Fail_RenderOperation("Native mesh instance buffer creation failed.", Result);
+        m_pNativeMeshInstanceBuffer = std::move(Staged);
+        m_iNativeMeshInstanceCapacity = Capacity;
+    }
+    D3D11_MAPPED_SUBRESOURCE Mapped{};
+    const HRESULT hMapped = m_pContext->Map(m_pNativeMeshInstanceBuffer.Get(),
+        0u, D3D11_MAP_WRITE_DISCARD, 0u, &Mapped);
+    if (FAILED(hMapped))
+        return Fail_RenderOperation("Native mesh instance upload failed.", hMapped);
+    std::memcpy(Mapped.pData, Instances.data(), Instances.size() * sizeof(EFFECT_NATIVE_MESH_INSTANCE));
+    m_pContext->Unmap(m_pNativeMeshInstanceBuffer.Get(), 0u);
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+    Record_TestGeometryUpload();
+#endif
+    bool_t bSubmitted = false;
+    for (size_t Begin = 0u; Begin < Instances.size();)
+    {
+        size_t End = Begin + 1u;
+        while (End < Instances.size() && Passes[End] == Passes[Begin]) ++End;
+        const auto& First = Instances[Begin];
+        EFFECT_EVALUATED_ELEMENT Element;
+        Element.pElement = pSource;
+        Element.World = First.World;
+        Element.Color = pSource->Detail.Color;
+        Element.Color.vColorMultiply = First.Color;
+        Element.fLocalTimeSeconds = (std::max)(0.f,
+            Frame.fSampleTimeSeconds - pSource->Detail.Timing.fStartDelaySeconds);
+        Element.fNormalizedLife = First.LifeBlend.x;
+        EFFECT_SUBUV_FRAME_DESC SubUV;
+        SubUV.Current = First.SubUVCurrent;
+        SubUV.Next = First.SubUVNext;
+        SubUV.fBlend = First.LifeBlend.y;
+        const HRESULT Result = Render_Mesh(Element, Resource, 1.f, nullptr,
+            &First.DynamicParameter, &SubUV, nullptr, UINT32_MAX,
+            std::span<const EFFECT_NATIVE_MESH_INSTANCE>(Instances).subspan(Begin, End - Begin),
+            static_cast<uint32_t>(Begin * sizeof(EFFECT_NATIVE_MESH_INSTANCE)), iOrderedGeometryHandle);
+        if (FAILED(Result)) return Result;
+        bSubmitted |= Result == S_OK;
+        Begin = End;
+    }
+    return bSubmitted ? S_OK : S_FALSE;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_PARTICLE> Particles)
@@ -19696,8 +20291,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		// into a white fallback particle after the v11 renderer is enabled.
 		return S_FALSE;
 	}
+	const SOURCE_SUBUV_LAYOUT SubUVLayout = Resolve_SourceSubUVLayout(*pSource);
 	if (nullptr != pResource->pModel)
 	{
+        bool_t bNativeBatchHandled = false;
+        const HRESULT hNativeBatch = Try_RenderNativeMeshParticles(
+            Frame, Particles, *pResource, bNativeBatchHandled);
+        if (FAILED(hNativeBatch) || bNativeBatchHandled)
+            return hNativeBatch;
 		bool_t bSubmitted = false;
 		for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
 		{
@@ -19713,7 +20314,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 				Particle.pElement->Detail.Timing.fStartDelaySeconds);
 			MeshParticle.fNormalizedLife = Particle.fNormalizedLife;
 			const EFFECT_SUBUV_FRAME_DESC SourceSubUV =
-				Resolve_SubUVFrames(Particle);
+				Resolve_SubUVFrames(Particle, SubUVLayout);
 			EFFECT_SUBUV_FRAME_DESC SubUV;
 			if (!CEffectPlayback::Resolve_ParticleSpriteSubUV(
 					Particle, SourceSubUV, SubUV))
@@ -19730,13 +20331,34 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		}
 		return bSubmitted ? S_OK : S_FALSE;
 	}
+    const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram = nullptr;
+    const shared_ptr<Engine::CShader> pDrawShader = Resolve_DrawShader(
+        *pResource, EFFECT_SHADER_CARRIER::PARTICLE, pShaderProgram);
+    if (nullptr == pDrawShader)
+        return Fail_RenderOperation("Prepared particle shader family is unavailable.", E_FAIL, true);
+	std::vector<SOURCE_SPRITE_DEPTH_ORDER> SourceDepthOrder;
+	const bool_t bSortSourceDepth = Requires_SourceSpriteDepthSort(*pSource);
+	if (bSortSourceDepth)
+	{
+		const float4x4_t* pView = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+		const float4x4_t* pProjection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+		if (nullptr == pView || nullptr == pProjection)
+			return Fail_RenderOperation(
+				"Source sprite depth sort camera matrices are unavailable.", E_FAIL, true);
+		std::string SortError;
+		if (!Build_SourceSpriteDepthOrder(
+			Particles, *pSource, *pView, *pProjection, SourceDepthOrder, SortError))
+			return Fail_RenderOperation(std::move(SortError), E_INVALIDARG, true);
+	}
 	std::vector<Engine::VTXEFFECT_PARTICLE>& Instances =
 		m_ParticleInstanceScratch;
 	Instances.clear();
 	if (Instances.capacity() < Particles.size())
 		Instances.reserve(Particles.size());
-	for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
+	for (size_t iParticle = 0u; iParticle < Particles.size(); ++iParticle)
 	{
+		const EFFECT_EVALUATED_PARTICLE& Particle = bSortSourceDepth ?
+			*SourceDepthOrder[iParticle].pParticle : Particles[iParticle];
 		if (nullptr == Particle.pElement)
 			continue;
 		if (0u != pResource->iRuntimeMaterialV2Enabled &&
@@ -19769,7 +20391,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 				E_INVALIDARG, true);
 		}
 		const EFFECT_SUBUV_FRAME_DESC SourceSubUV =
-			Resolve_SubUVFrames(Particle);
+			Resolve_SubUVFrames(Particle, SubUVLayout);
 		EFFECT_SUBUV_FRAME_DESC SubUV;
 		if (!CEffectPlayback::Resolve_ParticleSpriteSubUV(
 			Particle, SourceSubUV, SubUV))
@@ -19842,7 +20464,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			!Source.SourceRecipe.bEnabled ||
 			Source.SourceRecipe.strRendererShape != "sprite" ||
 			nullptr != Find_Binding(Source, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
-			nullptr != pResource->pModel || nullptr == m_pParticleShader ||
+			nullptr != pResource->pModel || nullptr == pDrawShader ||
 			nullptr == m_pParticleBuffer ||
 			Source.Material.eRenderProfile != Adapter.eRenderProfile ||
 			(!bBoundStandardColor && !bBoundRuntimeMaterial) ||
@@ -19857,13 +20479,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		}
 		iPass = Adapter.iPassIndex;
 	}
-	hResult = Bind_Common(m_pParticleShader, Source, CommonColor,
-		LocalTime, Normalized, *pResource);
+	hResult = Bind_Common(pDrawShader, Source, CommonColor,
+		LocalTime, Normalized, *pResource, 1.f, nullptr, pShaderProgram);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle common/material shader bind failed.", hResult);
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
-	if ((pResource->iSourceMaterialProfile >= 320u && pResource->iSourceMaterialProfile <= 323u) ||
+	if (pResource->bSourceRequiresSceneDepth ||
+		(pResource->iSourceMaterialProfile >= 320u && pResource->iSourceMaterialProfile <= 323u) ||
 		43u == pResource->iSourceMaterialProfile ||
 		(pResource->iSourceMaterialProfile >= 44u && pResource->iSourceMaterialProfile <= 76u) ||
 		(pResource->iSourceMaterialProfile >= 80u && pResource->iSourceMaterialProfile <= 205u) ||
@@ -19880,11 +20503,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		if (nullptr == SourceSceneColor)
 			return Fail_RenderOperation("Native V sprite scene-color input is unavailable.", E_FAIL, true);
 	}
-	hResult = m_pParticleShader->Bind_Texture("g_EffectSceneColorTexture", SourceSceneColor);
+	hResult = pDrawShader->Bind_Texture("g_EffectSceneColorTexture", SourceSceneColor);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Native V sprite scene-color binding failed.", hResult, true);
 	// Clear the FX resource on other sprite families as well.
-	hResult = m_pParticleShader->Bind_Texture("g_EffectSceneDepthTexture", SourceSceneDepth);
+	hResult = pDrawShader->Bind_Texture("g_EffectSceneDepthTexture", SourceSceneDepth);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Slice scene-depth shader binding failed.", hResult, true);
 	if (nullptr == pMaterialProgramBinding)
@@ -19892,7 +20515,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation(
 			"Particle render-profile pass is invalid.", E_INVALIDARG, true);
-	hResult = m_pParticleShader->Begin(iPass);
+	hResult = pDrawShader->Begin(iPass);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle shader pass apply failed.", hResult);
@@ -20413,6 +21036,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 
 bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
 {
+	if (m_bOccurrenceElementSelected) return false;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	return std::ranges::any_of(Document.ModelCues,
 		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
@@ -20570,10 +21194,116 @@ bool_t Client::CEffectDocumentRenderer::Collect_ModelCueAnchorWorlds(
 	return true;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
+    const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
+    std::shared_ptr<const Engine::IPresentationScreenPostMaterial>& OutMaterial,
+    std::string& strOutError) const
+{
+    OutMaterial.reset();
+    if (!Evaluated.pElement) { strOutError="Native screen-post has no source element."; return E_INVALIDARG; }
+    const auto& Element=*Evaluated.pElement;
+    const auto& Source=Element.Material.SourceMaterial;
+    const auto* V=Find_DimensionMasterVProgram(Source.strRuntimeShaderProfileId);
+    const auto* ALTV=Find_DimensionMasterALTVProgram(Source.strRuntimeShaderProfileId);
+    const auto* Warlord=Find_WarlordNativeProgram(Source.strRuntimeShaderProfileId);
+    const auto* Artist=Find_ArtistProgram(Source.strRuntimeShaderProfileId);
+    const auto* Lance=Find_LanceMasterVAProgram(Source.strRuntimeShaderProfileId);
+    if (!V && !ALTV && !Warlord && !Artist && !Lance) return S_FALSE;
+    const bool Valid=(V && V->bScreenPost && Has_DimensionMasterVMaterialContract(Element)) ||
+        (ALTV && ALTV->strRendererShape=="screenPost" && Has_DimensionMasterALTVMaterialContract(Element)) ||
+        (Warlord && Warlord->strRendererShape=="screenPost" && Has_WarlordNativeMaterialContract(Element)) ||
+        (Artist && Artist->strRendererShape=="screenPost" && Has_ArtistMaterialContract(Element)) ||
+        (Lance && Lance->strRendererShape=="screenPost" && Has_LanceMasterVAMaterialContract(Element));
+    const auto* Resource=Find_Resource(Element.strElementId);
+    if (!Valid || !Resource || !m_pNativeScreenPostShader ||
+        !Is_NativeScreenPostShaderProfile(Resource->iSourceMaterialProfile))
+    { strOutError="Native screen-post material inputs are not prepared: "+Element.strElementId; return E_INVALIDARG; }
+    EFFECT_NATIVE_SCREEN_POST_SNAPSHOT Snapshot;
+    Snapshot.pShader=m_pNativeScreenPostShader;
+    Snapshot.SourceTextures=Resource->SourceTextures;
+    for (auto& Texture : Snapshot.SourceTextures) if (!Texture) Texture=m_pBlackTexture;
+    Snapshot.Parameters=Lance ? Resource->LanceVASourceMaterialParameters : Artist ? Resource->ArtistSourceMaterialParameters :
+        ALTV ? Resource->ALTVSourceMaterialParameters : Resource->VSourceMaterialParameters;
+    Snapshot.iProfile=Resource->iSourceMaterialProfile;
+    Snapshot.iTextureMask=Resource->iSourceTextureMask;
+    Snapshot.iClampUMask=Resource->iSourceTextureClampUMask;
+    Snapshot.iClampVMask=Resource->iSourceTextureClampVMask;
+    Snapshot.vSourceColor=Evaluated.vSourceColor;
+    Snapshot.vDynamicParameter=Evaluated.vSourceDynamicParameter;
+    Snapshot.fLocalTimeSeconds=Evaluated.fSampleTimeSeconds;
+    const auto* View=Engine::CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+    const auto* Projection=Engine::CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+    const auto* ViewInverse=Engine::CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+    if (!View || !Projection || !ViewInverse)
+    { strOutError="Native screen-post has no active scene camera."; return E_FAIL; }
+    vector_t Position=XMLoadFloat4x4(&Evaluated.SourceWorld).r[3];
+    const vector_t ToCamera=XMLoadFloat4x4(ViewInverse).r[3]-Position;
+    const float Distance=XMVectorGetX(XMVector3Length(ToCamera));
+    if (!std::isfinite(Distance) || !std::isfinite(Evaluated.fSourceCameraOffset))
+    { strOutError="Native screen-post camera offset is invalid."; return E_INVALIDARG; }
+    if (Distance>1.e-6f) Position+=ToCamera*(Evaluated.fSourceCameraOffset/Distance);
+    Position=XMVectorSetW(Position,1.f);
+    const vector_t Clip=XMVector4Transform(Position,
+        XMLoadFloat4x4(View)*XMLoadFloat4x4(Projection));
+    Snapshot.fProjectionW=XMVectorGetW(Clip);
+    if (!std::isfinite(Snapshot.fProjectionW) ||
+        !std::isfinite(Snapshot.fLocalTimeSeconds) || Snapshot.fLocalTimeSeconds<0.f)
+    { strOutError="Native screen-post source sample is invalid."; return E_INVALIDARG; }
+    auto Candidate=std::make_shared<CEffectNativeScreenPostMaterial>(std::move(Snapshot));
+    OutMaterial=std::move(Candidate);
+    return S_OK;
+}
+
+HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(
+	const ELEMENT_RESOURCE& Resource, const f32_t fLocalTimeSeconds)
+{
+	// UE skylight has no current scene owner. Feed the committed scene ambient
+	// into its separate ambient term once; leave both sky hemispheres disabled.
+	float4_t Ambient{ 0.f, 0.f, 0.f, 1.f };
+	for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+	{
+		if (Light.eType != LIGHT::DIRECTIONAL) continue;
+		Ambient.x += Light.vAmbient.x;
+		Ambient.y += Light.vAmbient.y;
+		Ambient.z += Light.vAmbient.z;
+	}
+	const auto& Shader = m_pAnimatedModelShader;
+	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
+	if (Resource.bSourceRequiresSceneDepth)
+	{
+		SourceSceneDepth = CGameInstance::Get().Get_RT_SRV(TEXT("Target_Depth"));
+		if (nullptr == SourceSceneDepth)
+			return Fail_RenderOperation("Animated model-cue scene-depth input is unavailable.", E_FAIL, true);
+	}
+	// Clear the prior cue's depth SRV when the current material does not use it.
+	if (FAILED(Shader->Bind_Texture("g_EffectSceneDepthTexture", SourceSceneDepth)))
+		return Fail_RenderOperation("Animated model-cue scene-depth binding failed.", E_FAIL, true);
+
+	if (FAILED(Shader->Bind_RawValue("g_ArtistModelCueProfile", &Resource.iSourceMaterialProfile, sizeof(Resource.iSourceMaterialProfile))) ||
+		FAILED(Shader->Bind_RawValue("g_ArtistSourceMaterialParameters", Resource.ArtistSourceMaterialParameters.data(), sizeof(Resource.ArtistSourceMaterialParameters))) ||
+		FAILED(Shader->Bind_RawValue("g_ArtistSourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
+		FAILED(Shader->Bind_RawValue("g_ArtistModelAmbient", &Ambient, sizeof(Ambient))) ||
+		FAILED(Shader->Bind_RawValue("g_LanceVASourceMaterialParameters", Resource.LanceVASourceMaterialParameters.data(), sizeof(Resource.LanceVASourceMaterialParameters))) ||
+		FAILED(Shader->Bind_RawValue("g_LanceVASourceMaterialTime", &fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
+		FAILED(Shader->Bind_RawValue("g_SourceTextureClampUMask", &Resource.iSourceTextureClampUMask, sizeof(Resource.iSourceTextureClampUMask))) ||
+		FAILED(Shader->Bind_RawValue("g_SourceTextureClampVMask", &Resource.iSourceTextureClampVMask, sizeof(Resource.iSourceTextureClampVMask))))
+		return E_FAIL;
+	for (size_t iLane = 0u; iLane < Resource.SourceTextures.size(); ++iLane)
+	{
+		const std::string Name = "g_SourceTexture" + std::to_string(iLane);
+		if (FAILED(Shader->Bind_Texture(Name.c_str(), Resource.SourceTextures[iLane] ?
+			Resource.SourceTextures[iLane] : m_pBlackTexture))) return E_FAIL;
+	}
+	return S_OK;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const bool_t bNonBlendCharacterSurfaceOnly)
 {
+	// Keep model cues available for anchor sampling, but an explicitly selected
+	// occurrence Element must not draw the source document's standalone models.
+	if (m_bOccurrenceElementSelected) return S_FALSE;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{
@@ -20629,8 +21359,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				"Animated model-cue bind failed: opacity.", hResult);
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
-			hResult = Bind_DeferredMaterialInputs(
-				Model, m_pAnimatedModelShader, iMesh);
+			hResult = Resource->second.pMaterialResource ?
+				Bind_ModelCueNativeMaterial(*Resource->second.pMaterialResource, fLocalTime) :
+				Bind_DeferredMaterialInputs(Model, m_pAnimatedModelShader, iMesh);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(
 					"Animated model-cue material bind failed at mesh " +
@@ -20649,6 +21380,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			{
 				iPass = 4u;
 			}
+			if (Resource->second.pMaterialResource)
+				iPass = Cue.Material->eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ? 8u : 7u;
 			hResult = m_pAnimatedModelShader->Begin(iPass);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(

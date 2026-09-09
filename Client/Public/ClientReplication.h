@@ -688,6 +688,7 @@ namespace Client
 			NPC_ACTION_EDGE_STATE NpcActionEdge;
 			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
+			std::uint32_t iKoukuActionStartTick = 0u;
 			std::size_t iActionClipIndex = 0u;
 			std::uint32_t iPatternSequence = 0u;
 			std::uint32_t iPatternStageIndex = 0u;

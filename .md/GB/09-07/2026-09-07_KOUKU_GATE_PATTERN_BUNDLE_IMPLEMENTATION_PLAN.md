@@ -1,5 +1,7 @@
 # 2026-09-07 쿠크 Gate·부모 분류·재생 묶음 통합 구현 계획서
 
+> 2026-09-09 후속 변경: G24가 이전 G04/G21의 개별 PRODUCT 전환·부분 트리 게시 계약을 대체한다.
+
 > 문서 종류: 구현 계획서. 코드 전문을 포함하는 디테일 계획서가 아니다.
 > 상태: 사용자 구현 승인 후 Gate·묶음 저작, Preview, Server 재생 경계 구현과 자동 검증·빌드·배포를 완료했다. 검증 증거와 남은 사용자 화면 확인은 대응 RESULT에서 관리한다.
 > 기준점: `Fix KoukuSaydon Complete Play` 완료 뒤의 미커밋 변경을 보존했으며 작업 브랜치는 `codex/kouku-gate-pattern-bundles`다. Composition v3/revision 87, Shared protocol 66을 사용한다.
@@ -495,3 +497,42 @@ Y를 함께 샘플한다. CServerNavigation의 현재 support 목록 읽기 acce
 유지하며 제거/Stop 뒤에는 기존 지면을 다시 샘플한다. 카드 instance에는 보행면을 추가하지 않는다.
 기존 support-surface contract에 정지보스 상승·종료·Stop·대상밖높이보존을 추가하고 publisher와
 Server 검사를 실행한다. 필요없는 navigation bake나 Map binary 변경은 없다.
+
+## G24. 전체 Boss Patterns 저장·게시와 F1 트리 동기화 (2026-09-09)
+
+사용자가 main 동기화 후 구현을 요청했다. 현재 revision176의 정본은 Pattern17/Parent8/Bundle8,
+F1 배포본은 Pattern11/Parent1/Bundle1이다. 같은 revision이라도 개별 PRODUCT 필터로 관계가
+사라지는 것이 문제다. 예를 들어 조커찾기 Bundle은 DRAFT이고 두 자식은 PRODUCT라 F1에서
+부모·묶음이 사라지고 자식만 Gate 직속에 남는다.
+
+Toolbar, Boss Pattern, Sequencer와 Bundle Sequencer의 Save는 모두 기존 전체 Composition
+원자 저장만 수행한다. pending Effect geometry 수집, 구조 검증, 외부 변경 CAS, 재로드와 실패 시
+기존 문서 보존은 유지한다. Save에서 publisher를 시작하지 않는다. 모든 Save의 활성 조건을 맞춘다.
+
+Boss Pattern 아래의 Set Pattern to PRODUCT를 Publish All Patterns로 교체한다. 이 명령은
+선택된 Parent/Bundle/Pattern, Gate와 Model View 필터에 관계없이 저장된 전체 문서를 게시한다.
+미저장 수정이 있으면 Save를 안내하고, 게시 중에는 중복 publisher를 시작하지 않는다.
+개별 Pattern/Bundle의 수동 PRODUCT 선택 UI는 제거한다.
+
+기존 projector가 저장 원본 전체를 검사해 각 Pattern과 Bundle의 실행 가능 여부를 판정한다.
+기존 source의 authoringStatus는 호환 저장 필드로 보존하되 수동 게시 선택으로 사용하지 않는다.
+기존 category, clip, timing, geometry, ID와 관계는 바꾸지 않는다. 빈 Stage/Bundle이나 아직
+지원되지 않는 실행 내용은 실제 validation 사유를 남긴다. 실행 가능한 대상만 기존
+Encounter/patternbindings/Server bootstrap의 실행 행으로 투영한다.
+
+Encounter의 선택적 patternInventory에는 모든 Parent/Pattern/Bundle의 stable ID, 표시 이름,
+Gate, 소속·멤버와 unavailableReason을 저장한다. 별도 정본이나 sidecar를 만들지 않는다.
+F1 BossTool은 같은 게시 revision의 전체 inventory를 순서대로 표시하고, 실행 행과의 identity와
+membership을 검증한다. 미완성 항목도 같은 트리에 남으며 선택하면 사유를 표시하고 재생만 막는다.
+손상된 metadata는 이전 inventory를 보존한다. 재생은 기존 typed audition service와 Server 권위를 사용한다.
+
+KoukuSaydon domain owner는 Encounter/patternbindings 게시와 Gameplay bootstrap 게시를 묶는다.
+뒤 단계 실패 시 앞 단계 생성물과 관련 receipt도 이전 상태로 복구한다. 성공 후에만 F1 inventory를
+갱신한다. Server 재시작 전에는 새 전투 revision이 활성화됐다고 표시하지 않는다.
+
+수정 파일은 기존 Workbench H/CPP, BossTool H/CPP, MainApp의 Kouku F1 UI, projector와 기존 tests,
+Gameplay/World publisher의 metadata 검사, domain owner 및 해당 팀 문서다. 새 C++ 파일이 없으므로
+project/filter 항목 추가는 필요하지 않다. 기존 native Save/Reload/CAS·publisher process tests,
+Python 전체 hierarchy/미완성 표시/의존 관계/rollback focused tests, 최소 Client 컴파일,
+필요한 domain publish와 JSON/XML/PowerShell parse 및 git diff --check로 검증한다.
+Client/UI는 사용자가 조작하며 실제 트리 표시와 패턴 재생의 화면 판정은 별도 확인으로 남긴다.

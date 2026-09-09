@@ -448,3 +448,153 @@ receipt는 `out/BuildPipeline/runs/20260908T071602366Z-debug-product.json`, 로�
 변경 source JSON/XML parse와 소유 범위 diff check를 확인했다. Client/UI 실행·조작·캡처는 하지
 않았으며, 현재 Effect 활성 시각에서 Stop → Box Detail P/R/S 조절 → Save/Reload의 실제 표시와
 회전·크기는 새 EXE에서 사용자가 확인해야 한다.
+
+## G28. Effect Sequencer의 여섯 트랙과 Composition 조작 통일 (2026-09-09)
+
+기존 `CEffectAuthoringSequencer`에 Animation / Effect / Collider / Sound / Camera / Screen Post
+여섯 트랙을 연결했다. Action Workbench의 `CompositionTimeline`과 `CompositionResourceTree`를
+재사용하며, V1/V2 Effect Tool에서 각 Sequencer의 Resources와 Box Detail을 연다. Effect 박스는
+V1 document 또는 V2 GROUP/LEAF 전체의 occurrence이고 내부 element별 트랙으로 펼치지 않는다.
+
+타임라인 상단 눈금 영역 전체를 drag하면 하나의 노란 재생 커서가 여섯 트랙의 공통 시간을
+변경한다. 겹치는 박스는 같은 트랙 안에서 아래로 쌓는다. 박스 본체 이동과 양 끝 trim은 drag
+중 후보를 표시하고 release 때 검증·적용한다. Box Detail의 시간·Mute 및 트랙별 속성,
+Duplicate/Remove, Play/Pause/Restart/Stop/Loop를 기존 실행 owner에 연결했다. 별도의 Effect
+실행 경로는 만들지 않았다. 이 UI 연결은 코드 확인이며 실제 mouse 입력 검증은 사용자 몫이다.
+
+### 실제 Resources와 실행 범위
+
+| 트랙 | 현재 목록과 소비 경로 |
+|---|---|
+| Animation | 현재 Model View에 로드된 실제 `CModel` clip. source start/play 구간, 재생 배율, Loop/Mute를 occurrence로 저장하고 공통 clock으로 sample한다. 단일 모델의 활성 clip 겹침은 거부한다. |
+| Effect | 저장 V1 inventory와 기존 V2 catalog의 typed GROUP/LEAF. V1 `CEffectObject`와 V2 runtime의 기존 준비·sample·정리 경로를 사용한다. V1 추가 시 실제 preview duration을 사용한다. |
+| Collider | 저장된 쿠크 `presentationResources`의 형상 정의를 복사한다. 현재 GEOMETRY 7개는 BOX/CIRCLE/SECTOR wire를 root 또는 실제 Bone에 배치한다. ROULETTE_CARD_REGION 8개는 Action Workbench gameplay Logic이 필요하다는 이유를 표시하고 추가를 막는다. |
+| Sound | `Client/Bin/Resources/Sound`의 WAV/OGG/MP3를 Resources 상대 asset ID로 선택한다. Engine의 기존 SoundCue를 occurrence별 독립 handle로 재생·정지·seek한다. |
+| Camera | 현재 camera view capture와 기존 recovery camera/key 편집을 사용한다. 공통 clock과 기존 cinematic controller / authoring camera override를 소비한다. 모든 boss camera 목록을 복제한 기능은 아니다. |
+| Screen Post | V2 `ScreenPost` category의 LEAF를 별도 lane으로 표시한다. 준비 시 실제 SCREEN_POST type을 확인하고 기존 V2 presentation 경로를 사용한다. |
+
+Resources는 명시 Refresh와 모델 교체 시 갱신한다. 한 종류의 목록 읽기가 실패하면 해당 종류의
+이전 목록과 이유를 유지하며 다른 종류의 정상 항목을 남긴다. Animation 편집은 이 Sequence의
+custom occurrence에만 적용하고 기존 skillbindings나 쿠크 Pattern/Bundle 원본을 변경하지 않는다.
+Animation 시간이 바뀌면 이전 root/Bone history를 버리고 현재 cursor를 다시 sample한다.
+
+Sound는 일반 tick마다 채널을 재생성하거나 seek하지 않는다. 자연 종료 후 같은 구간에서 계속
+재생성하지 않으며 명시 seek/restart/loop가 다시 진입할 때만 준비한다. 정지 상태의 seek는 처음부터
+paused 채널을 사용한다. Source보다 긴 박스의 나머지 구간은 침묵이다. Collider는 `CHitAreaWire`
+표시만 수행하며 overlap, damage, Server state를 생성하지 않는다. 룰렛 등 gameplay 판정은 기존
+Action Workbench → Shared/Server 권위 경로에 남는다.
+
+임시 Effect Preview에서 Resources의 Add / Append를 실행하면 준비된 Preview와 camera rows를
+Sequence에 편입한다. 같은 Effect를 추가할 때는 Preview를 한 번 편입하고 중복 occurrence를
+생성하지 않는다. 다른 항목은 검증·준비 후 추가한다. Preview를 편입하기 전 Save는 이유를 표시한다.
+
+### 저장과 실패 보존
+
+저장 위치는 `Data/Effects/Sequences/<Sequence ID>.effectsequence.json`이다. schema
+`lostark.effect-authoring-sequence`의 formatVersion 4를 쓰고 기존 1~3을 읽는다. 기존 model,
+effects, cameras에 `customAnimation`, `animationRows`, `soundRows`, `colliderRows`와
+`effects[].screenPost`를 추가했다. stable occurrence/resource ID와 원본 clip 구간, 시간·Mute 및
+형상 값을 저장하고 runtime handle이나 history는 저장하지 않는다.
+
+Load는 새 배열을 parse·validate·stage한 뒤 기존 실행을 종료하고 함께 commit한다. 잘못된 값,
+중복 ID, 없는 source/필수 모델·Bone 때문에 실패하면 현재 timeline을 보존한다. Effect의 실제 GPU
+준비는 기존 Play 경로에서 수행하므로 JSON Load 성공만으로 GPU admission을 주장하지 않는다.
+Save는 기존 파일 baseline 충돌 검사를 유지하고 원자 저장한다. 외부 변경이나 같은 ID의 기존 파일을
+조용히 덮어쓰지 않는다. 이 Save는 Sequence 배치만 저장하며 Effect 원본, skillbindings,
+boss Composition 또는 Server gameplay 데이터를 publish하지 않는다.
+
+Recovery camera의 v4 읽기는 기존 Effect + Camera 추출 용도이며 나머지 트랙을 실행하지 않는다는
+상태를 표시한다. 여섯 트랙 전체 복구는 Sequencer의 Load를 사용한다. 새 `_Timeline.cpp`,
+`_Resources.cpp`, `_Tracks.cpp`, `_Presentation.cpp`는 Client 프로젝트와 filters에 등록했다.
+
+### 확인한 검사와 남은 확인
+
+- 실제 production Save/Load, 추가 트랙 parser/writer·validator, DataJson 및 atomic writer의
+  함수 본문을 재사용한 out-only native probe가 exit 0, 29 checks / 0 failures다. v4 왕복,
+  v1/v3 호환, 잘못된 배열·중복 ID·없는 source에서 현재값 보존, 외부 파일 변경 시 저장 거부를
+  확인했다. 근거는 `out/EffectSequencerComposition20260909/codec_run_result.json`이다.
+- 위 codec 검사의 모델 clip/Bone metadata와 음원 길이는 fixture다. Camera key 실행, Effect GPU
+  stage, 실제 FMOD decode, Client/UI 실행 및 시각·음향 결과는 이 검사에 포함하지 않았다.
+- 별도의 실제 FMOD `NOSOUND_NRT` 검사는 15 checks / 0 failures이며 200 ms source 길이,
+  독립 동시 handle, paused birth/seek, 자연 종료 후 재생성 방지, stale handle 정리와 실패 시
+  다른 cue 보존을 확인했다. 근거는
+  `out/EffectSequencerActionWorkbench20260909/sound_actual_results.txt`다. 실제 출력 장치의
+  음향 청취나 Sequencer 전체 입력 검증은 아니다.
+
+G28 최종 Debug Product compile/link/deploy는 성공했다. 아래 최종 receipt를 기준으로 한다.
+새 실행 파일의 Resources 추가, 노란 커서·박스 drag, 여섯 트랙 동시 재생과 Save/Load,
+실제 모델/Bone·Effect·camera·sound의 화면/음향 결과는 사용자가 직접 확인해야 한다.
+에이전트는 Client/UI를 실행·조작·캡처하지 않았고 visual/audio PASS를 기록하지 않았다.
+
+
+G28 추가 실패 경계 검증: 최신 실제 `Play`, `Append_Sound`, `Commit_TransientPreview`,
+`Sample_Sounds` 본문을 추출한 out-only presentation 검사29개가 통과했다. 채널 준비 실패나
+Effect256개 한도·Camera owner 거절 시 기존 Preview/문서/다른 Sound handle을 보존하고,
+새로 준비한 paused handle만 해제한다. transient Effect Preview는 실제 사용하지 않는 저장된
+Sound/Collider 오류에 막히지 않지만 전체 Play는 해당 검증을 유지한다. 자연 종료의 매 프레임
+재생성 방지와 명시 seek 재생성, occurrence 종료 시 자신의 handle만 해제하는 동작도 포함한다.
+`presentation_run.log`와 `presentation_probe_source_receipt.json`이 근거이며 audio/model/
+camera/GPU는 명시적 fixture다. FMOD 실제15개 검사와 혼동하지 않는다.
+
+첫 최종 Product 시도는 Engine/Shared/Server 성공 뒤 Client의 `Shader_VtxEffectParticle.hlsl`
+Debug `/Od` compile에서 X4505(임시 register4096 한도)로 실패했다. 여섯 트랙 C++ 컴파일
+실패가 아니다. 이 shader 파일의 Debug x64만 DisableOptimizations=false 및 `/O1`로 바꾸어
+native material 분기들의 register 수명을 최적화하도록 한다. C++ Debug 설정과 원본 셰이더 식,
+다른 shader 설정은 유지한다. 이 변경의 최종 성공 여부는 다음 Product receipt로 기록한다.
+
+두 번째 Product 시도는 다른 세션의 native material 추가가 합쳐진
+`Shader_VtxEffectMeshPreview.hlsl`에서도 같은 X4505로 실패했다. 이에 MeshPreview와 Particle
+두 파일의 Debug x64 FXC에만 `/O1`을 적용했다. C++ Debug 옵션과 두 PS의 계산식은 바꾸지 않았다.
+사용자 중단 요청 시점에는 세 번째 Product 시도가 진행 중이다. 추가 복원과 실험은 중단했으며,
+이 빌드의 최종 상태와 배포 확인만 아래에 기록한다. 앞선 DimensionMaster Product 성공 receipt는
+현재 여섯 트랙 Sequencer를 포함하는 최종 빌드 성공 증거로 사용하지 않는다.
+
+### G28 최종 빌드·종료 상태
+
+세 번째 Debug Product는 exit0으로 완료됐다. receipt는
+`out/BuildPipeline/runs/20260909T083046383Z-debug-product.json`이며 Engine/Shared/Server/Client
+전부 PASS, missingRuntimeInputs0이다. 전체50분14.853초이며 Client compile이 대부분을 차지했다.
+MeshPreview와 Particle의 Debug x64 `/O1`로 X4505 없이 두 CSO가 생성됐다. 완료 CSO의
+읽기 전용 disassembly에서 두 PS 모두 dcl_temps17, indexableTemp0이다. MeshPreview의
+static instruction74702, Particle100917은 정적 코드 크기이며 실제 GPU 실행시간/FPS가 아니다.
+근거는 `out/EffectSequencerComposition20260909/shader_pressure/pressure_20260909T083106.json`.
+
+Client.exe는49,826,304B, 최종 수정 시각17:30:46 KST이다. Engine.dll은 Engine과 Client 양쪽
+8,722,432B로 배포됐고 SHA256 일치를 확인했다. 기존 FXC X4000, compiler C4819, 외부 PDB
+LNK4099 등의 경고는 남지만 최종 컴파일/링크 오류는 없다. 변경 JSON parse 및 프로젝트/filter
+등록 XML 확인과 전체 git diff --check가 통과했다. 별도 publisher/광역 runtime diagnostics는
+실행하지 않았다. 다른 세션의 변경을 포함한 공유 작업 트리의 빌드이며 새 commit/push는 없다.
+
+마무리 추가 요청의 A cube4행과 기존 crack8행의 실제 데이터 검사는 Round2 RESULT G35에 둔다.
+이 데이터는 빌드 종료 전 저장됐으며 최종 A66행의 검증 SHA를 별도로 보존한다. Client/UI를
+실행·조작·캡처하지 않았고 시각·음향·FPS·assertion 미발생을 대신 PASS로 기록하지 않았다.
+현재 server-host LAN 설정에 따라 사용자는 Debug x64의 Server + Client profile을 Ctrl+F5로
+시작하고 Lobby → Character Select → DimensionMaster → F1 → Effect Tool V1에서 확인한다.
+Saved Skill Effects의 이펙트_차원술사A_전체를 다시 Load하여 네 검격과 cube/crack을 확인하고,
+R_전체와 R_튜닝은 별도로 비교한다. 추가 작업은 여기서 종료한다.
+
+
+## G29. 선택 element의 Sequencer Solo (2026-09-10)
+
+구현: `.restore` 복구본의 기존 element Solo와 Effect Detail의 `Timeline Solo`를 기존 Sequencer의 임시 행에 연결했다. element 이름/stable ID를 보관하는 행 하나만 표시하며 원본문서의 시작 지연과 source emitter delay를 유지한 등장 시각에서 정지한다. Time 또는 시간 눈금으로 앞뒤 탐색하고 Play/Pause로 확인한다. 전체 문서의 수백 element를 행으로 펼치지 않는다.
+
+현재 draft → 선택 stable ID document projection → 기존 V1 occurrence factory → CEffectObject를 사용한다. 원본문서 timing·seed·source attachment를 유지하며 선택 element가 요구하는 ModelCue만 숨긴 anchor로 보존한다. stage와 최초 focus 샘플 성공 뒤 이전 미리보기를 교체한다. 같은 문서를 검토할 때 model sequence 재선택이 기존 미리보기를 먼저 Stop하지 않도록 했다. 최초 다른 문서/모델을 선택하는 기존 target 전환 계약은 유지한다.
+
+Live Detail/Refresh는 선택 ID와 cursor를 유지하고 변경된 element의 실제 종료 시각으로 행 길이를 갱신한다. Linear Lerp 편집 후 별도 World Preview 시계로 재시작하던 호출을 막았다. 단일 element preview 중 Model View의 중복 timeline 조작 대신 Sequencer 조작 안내를 표시한다. 임시 element 행은 read-only Box Detail을 제공하며 Append/Commit/Save가 전체 문서 저장행으로 잘못 승격시키지 않는다. Stop 후 기존 저장행이 다시 표시된다.
+
+저장 데이터: Effect JSON, animevents, skillbindings, sequence 저장 schema와 product skill 연결은 이 변경에서 수정하지 않았다. 사용자 튜닝 중인 Alt V 파일도 쓰지 않았다. 새 C++ 파일, project/filter 등록, Resources payload는 없다. 기존 8개 C++ 파일의 encoding/BOM/newline을 유지했다.
+
+검증:
+
+- Client Debug|x64 `ClCompile` 성공, 오류 0, 경고 151(C4819/C4244 포함), 33.45초. 호출부가 포함된 Effect_Tool/Workspace와 Sequencer 및 header 의존 소비자를 컴파일했다. 로그: `out/EffectSelectedElementSequencer20260910/client-compile.utf8.log`.
+- 관련 기존 source-contract 3개 성공: selected audition의 play/seek 순서, particle audition의 stage 후 restart, Lerp의 staging 성공 후 restart. 이 검사는 새 Sequencer의 GPU 재생/실제 화면 통합 검증을 대신하지 않는다.
+- 변경 8개 소스의 시작 snapshot과 before 대비 diff, SHA는 `out/EffectSelectedElementSequencer20260910`에 보존했다. 신규 상설 검사나 Client/UI 자동 실행·화면 캡처는 하지 않았다.
+- 필요한 마지막 확인: scoped `git diff --check` 및 현재 프로세스/배포 상태를 아래 마감 기록에 남긴다. JSON/XML을 변경하지 않아 해당 parse 검사는 없다.
+
+실행 준비 상태: 컴파일 시 Client PID 42808과 Server PID 73356이 실행 중이었다. Client의 최종 링크·배포는 하지 않았으며 현재 실행 중인 EXE에는 G29가 없다. CLAUDE의 Client 종료 후 최종 링크 규칙에 따라 사용자에게 튜닝 저장/종료 확인을 요청했다. 사용자 확인 전 Client/Server를 종료하거나 교체하지 않는다.
+
+사용자 확인 경로: F1 → Effect Tool → 차원술사 Alt V full restore Open Editor → 개별 element의 Solo 또는 선택 후 Effect Detail의 Timeline Solo → Effect Sequencer Time/Play/Pause. 원래 4초에 등장하는 요소의 초기 cursor, 앞뒤 scrub, Detail 수정 후 scope/시간 보존, Stop → 전체 Play 복귀는 사용자 화면 확인 대기다.
+
+### G29 마감 기록
+
+변경 8개 C++와 대응 문서 4개의 scoped `git diff --check`가 성공했다. 컴파일 receipt에 기록한 소스 SHA와 최종 소스가 일치하며 기존 source-contract 3개도 최종 코드에서 다시 성공했다. 결과는 `out/EffectSelectedElementSequencer20260910/final-check.json`이다. 사용자는 종료 확인 요청에 “아직 튜닝 중”이라고 답했다. 따라서 실행 중 Client를 보존하고 **최종 링크·EXE 배포만 대기**한다. 사용자 종료 통지 뒤 Client Debug Build를 한 번 실행하고 배포 증거를 여기에 덧붙인다. 현재 화면의 동작을 이 수정의 검증 결과로 기록하지 않았다.

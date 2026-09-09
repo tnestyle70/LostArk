@@ -50,6 +50,36 @@ void Client::CNpcPresentationAssetService::Synchronize_SaydonHammerPose(
 	const std::vector<float4x4_t>& restPose)
 {
 	if (!body || !weapon) return;
+    if (const auto* transition = body->Get_AnimationTransitionPose())
+    {
+        const auto mapClip = [&](uint32_t bodyIndex, float bodyTicks, uint32_t& weaponIndex, float& weaponTicks)
+        {
+            weaponIndex = UINT32_MAX; weaponTicks = 0.f;
+            const char* bodyName = body->Get_AnimationName(bodyIndex);
+            constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";
+            if (!bodyName || !std::string_view(bodyName).starts_with(prefix)) return;
+            std::string suffix(std::string_view(bodyName).substr(prefix.size()));
+            if (suffix.starts_with("att_battle_1_") || suffix.starts_with("att_battle_3_")) suffix.insert(11u, "0");
+            const std::string clip = "wprpct06_" + suffix;
+            for (uint32_t i = 0; i < weapon->Get_NumAnimations(); ++i)
+            {
+                if (clip != weapon->Get_AnimationName(i)) continue;
+                float cursor = 0.f, end = 0.f;
+                const float bodyTps = body->Get_AnimationTickPerSecond(bodyIndex);
+                if (bodyTps <= 0.f || !weapon->Get_AnimationProgress(i, cursor, end)) return;
+                weaponIndex = i;
+                weaponTicks = (std::min)(end, bodyTicks / bodyTps * weapon->Get_AnimationTickPerSecond(i));
+                return;
+            }
+        };
+        Engine::CModel::ANIMATION_TRANSITION_POSE pose = *transition;
+        mapClip(transition->sourceIndex, transition->sourceTicks, pose.sourceIndex, pose.sourceTicks);
+        mapClip(transition->targetIndex, transition->targetTicks, pose.targetIndex, pose.targetTicks);
+        weapon->Set_AnimPaused(true);
+        (void)weapon->Set_AnimationTransitionPose(pose);
+        return;
+    }
+    weapon->Clear_AnimationTransitionPose();
 	const auto bodyIndex = body->Get_CurrentAnimIndex();
 	const char* bodyName = body->Get_AnimationName(bodyIndex);
 	constexpr std::string_view prefix = "mn_rpct_06_sk.ao_";

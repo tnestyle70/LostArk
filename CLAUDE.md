@@ -93,9 +93,20 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 Client 빌드는 Client가 소유하는 `Shader_*.hlsl`을 같은 구성의 module-adjacent `Shader_*.cso`로
 생성한다. 제품 런타임은 이 CSO만 `D3DX11CreateEffectFromMemory`로 열며 HLSL source compile로
 fallback하지 않는다. 누락·빈 파일·손상 bytecode·technique/pass/input-layout 불일치는 즉시 실패한다.
-`Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration <Debug|Release>`는 Engine/Client의 23개
+`Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration <Debug|Release>`는 Engine/Client 프로젝트의 활성
 producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
 산출물이므로 Git에 커밋하지 않는다.
+
+Effect Mesh/Particle은 `Client/Public/Effect_ShaderFamily.h`의58개 실행 항목으로 분리된다.
+기존 native 계약을 통과한 profile만 해당 재질군·구간의 CSO를 선택한다. 큰 native 재질군의
+함수 본문은 구간별 HLSLI가 소유하므로 한 구간 편집은 그 include를 사용하는 FX만 재컴파일한다.
+Native FX는 원본 재질 계산만 포함하고, 범용 typed/reconstructed backend의 우선순위는 Generic FX가
+소유한다. Native 준비 상태에 범용 backend flag가 함께 켜지면 실패하며 자동 fallback하지 않는다.
+공통 carrier/helper를 편집하면 그 공통 입력에 의존하는 FX가 함께 갱신된다.
+Client 프로젝트는 `MultiProcFXC=true`, `MultiProcMaxCount=4`를 Microsoft.Cpp props보다 먼저
+기본값으로 설정하며 사용자가 명시한 MSBuild 값은 보존한다. FX만 병렬화하고 C++/MIDL의
+UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는 기존 FX tracking을 재사용한다.
+실행 시에는 기존 device별 공유 Effect renderer Core가 CSO를 준비하며 draw 중 생성·컴파일하지 않는다.
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone에서 Engine 산출물 없이 Client부터 빌드하면 반드시 실패한다.** 정본 runner는 Engine을 먼저 빌드하고 마지막 Client 빌드의 `PrepareEngineSdk`가 SDK를 준비하므로 중복 복사나 병렬 race를 만들지 않는다. x64 Debug/Release 제품 프로젝트는 `/MP`를 사용하되 이 dependency 순서는 그대로 유지한다.
 
@@ -327,6 +338,11 @@ Tool에서 직접 저장하지 않는다. 제품 Arena와 `CValtan`은 admitted 
 F1의 `Action Workbench`는 Boss에서 Valtan/KoukuSaydon을 선택하는 공용 저작 셸이다.
 Sequencer·Patterns·Composition Resources·Box Detail·Preview 창과 ruler/box/trim 조작을 공유하고,
 보스별 문서·draft·선택·Save owner는 각각 유지한다. Boss 전환으로 다른 보스의 draft를 다시 읽지 않는다.
+쿠크/발탄 아레나에서 다시 열면 현재 아레나의 보스 계열을 선택하며 같은 쿠크 계열의 관문 선택은 유지한다.
+바로 아래 `Open Sequencer Benchmark`는 같은 ImGui 구성·기본 배치를 쓰는 독립 연출 편집기다.
+목록 창은 `Composition Sequencer`이며 저장은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`이다.
+Action 원본과 저장 ID·창·draft를 분리하고 동일 Preview backend를 한 번에 한 편집기만 소유한다.
+연출 편집기의 Save/Preview는 제품 패턴 게시·Server Play와 연결하지 않는다. 파티 생성은 후속 Summon/Logic 범위다.
 Resources는 여섯 보스 몸체의 실제 Animation clip을 WModel 헤더에서 읽으며 현재 preview 모델과 무관하게
 목록을 표시한다. clip 선택은 Animation Tool 창을 열지 않고 기존 preview backend를 사용한다.
 Valtan session은 하나의 playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
@@ -532,8 +548,12 @@ Action Workbench → Resources → World는 Object Tool의 부모 Object를 한 
 Map 모델 Object는 Append 때 현재 캐릭터 앞 위치를 절대 좌표로 저장하고 이후 따라가지 않는다.
 같은 Object도 WORLD occurrence ID마다 독립 위치·회전·크기를 가진다. 카드와 조커를 Append하면
 해당 Pattern의 배치된 Object들을 정지된 첫 pose로 함께 Preview하고 Transform 변경을 반영한다.
-Composition Save는 편집본을 저장한 뒤 준비된 PRODUCT 자료를 비동기로 생성한다. 기존 PRODUCT의
-유효한 Object Append·Transform·시간 변경은 상태를 유지하고, 미완성 DRAFT는 자동 승격하지 않는다.
+Composition의 모든 Save는 전체 편집본을 원자 저장한다. Boss Pattern 아래의 `Publish All Patterns`가
+선택·Gate·Model View 필터와 관계없이 저장된 전체 Parent/Bundle/Pattern 트리를 F1에 게시한다.
+같은 게시 작업은 F1에서 저장한 쿠크 World의 보스 위치·방향도 기존 World publisher로 배포한다.
+패턴·쿠크 World·Gameplay balance 중 뒤 단계가 실패하면 이전 출력과 receipt를 함께 복구한다.
+개별 PRODUCT 선택은 필요하지 않다. 실행 가능한 항목은 기존 Product 경로로 배포하고, 미완성 항목은
+F1의 같은 계층에 재생 불가 사유와 함께 남긴다. Save와 Publish의 상세 계약은 팀 Animation 사용서를 따른다.
 Server 재시작 전에는 새 revision이 전투에 적용됐다고 표시하지 않는다. box `durationMs`와 optional
 placement TRS는 protocol 69 WORLD cue로 전달한다. 정상 완료는 `FINISH_OWNER`로 이미 시작한
 재생의 저작 수명을 보존하고, Stop/실패는 `STOP_OWNER`로 즉시 정리한다. 양쪽 실행 파일 갱신 후 Server와 Client를 재시작한다.

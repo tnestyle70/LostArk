@@ -296,6 +296,14 @@ public:
 		std::string_view strExpectedCanonicalDocument,
 		std::string& strOutError);
 
+	// Returns the exact canonical bytes written, only after a successful commit.
+	static bool_t Save_AtomicIfUnchanged(
+		const std::filesystem::path& Path,
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string_view strExpectedCanonicalDocument,
+		std::string& strOutError,
+		std::string* pOutSavedCanonical);
+
 	static void Collect_ResourceAssetIds(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::vector<std::string>& OutAssetIds);

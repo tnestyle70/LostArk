@@ -18,6 +18,7 @@
 NS_BEGIN(Client)
 
 class CCharacter;
+class CCamera_Free;
 class CEffectLoadPreparationJob;
 class CEffectObject;
 class CEffectScreenOverlayPresentation;
@@ -26,6 +27,7 @@ class CValtan;
 struct EFFECT_SPAWN_DESC final
 {
     std::string strEffectAssetId;
+    std::string strElementId;
 	std::weak_ptr<CCharacter> pOwner;
 	std::weak_ptr<CValtan> pBossOwner;
     std::string strAnchorSlotId = "root";
@@ -58,6 +60,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
+	// Set by external world-root sampling; shares the existing playback history path.
+	EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 	std::string strLevelPlacementId;
 };
 
@@ -82,6 +86,7 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	uint32_t iLevelIndex = ETOUI(LEVEL::END);
 	std::string strPlacementId;
 	std::string strEffectAssetId;
+	std::string strElementId;
 	float4x4_t RootWorld{};
 	uint32_t iSpawnTick = 0u;
 	f32_t fInitialSampleTimeSeconds = 0.f;
@@ -206,6 +211,9 @@ struct EFFECT_RECONSTRUCTED_OCCURRENCE_INFO final
 class CEffectPresentationService final
 {
 public:
+    static void Set_FrameCamera(const std::shared_ptr<CCamera_Free>& camera);
+    // Called before follow-anchor sampling and particle advancement on the same frame.
+    static void Prepare_FrameCamera(f32_t timeDelta);
 	static bool_t Estimate_DocumentBudget(
 		const EFFECT_DOCUMENT_DESC& Document,
 		EFFECT_SCENE_BUDGET_COST& OutCost,
@@ -332,7 +340,9 @@ public:
 		const float4x4_t& RootWorld);
 	static bool_t Seek_WorldRoot(
 		EFFECT_WORLD_ROOT_HANDLE Handle,
-		f32_t fSampleTimeSeconds);
+		f32_t fSampleTimeSeconds,
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider = {},
+		bool_t bRebuildHistory = false);
 	static void Stop_WorldRoot(EFFECT_WORLD_ROOT_HANDLE Handle);
 	/* Product cue requests can originate while Object Manager is iterating its
 	   layer map.  Commit them only after Update_Engine finishes. */

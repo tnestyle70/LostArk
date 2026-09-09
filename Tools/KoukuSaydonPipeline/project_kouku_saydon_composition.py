@@ -3,7 +3,7 @@
 
 The composition document is the only directly-authored owner.  Runtime-facing
 encounter and animation binding documents are deterministic projections of the
-rows whose authoringStatus is PRODUCT.
+ready rows. The saved hierarchy remains visible even when a row cannot execute.
 """
 
 from __future__ import annotations
@@ -146,12 +146,14 @@ LOGIC_KIND_VALUE_KEYS = {
     "AREA_OVERLAP": {"insideOutcome"},
     "OBJECT_OVERLAP": {"targetWorldInstanceId", "targetRadiusM", "insideOutcome"},
     "EXTERNAL_SIGNAL": {"endsPatternOnSuccess"},
+    "COUNTER_WINDOW": {"endsPatternOnSuccess"},
+    "ATTACHMENT_HOLD": set(),
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
-                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId"}
+                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset"}
 LOGIC_TRIGGER_VALUE_KEYS = {"triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
-                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority"}
+                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -159,8 +161,8 @@ JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 END_TICK_KINDS = {"GAZE_REAL_BOSS"}
 OUTCOME_KINDS = {
     "INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
-    "CLOWN_TRANSFORM", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
-    "PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW",
+    "CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
+    "PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER",
 }
 PERCENT_OUTCOME_KINDS = {"MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT"}
 CARD_SYMBOLS = ("HEART", "SPADE", "CLUB", "DIAMOND")
@@ -174,6 +176,7 @@ LOGIC_OCCURRENCE_OPTIONAL_KEYS = {
     "enabled",
     "onSuccessLogicId", "onTimeoutLogicId",
     "onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds",
+    "holdLogicOccurrenceId",
 }
 # A Summon is named only today; what it spawns is a later definition field.
 SUMMON_KEYS = {"summonId", "displayName"}
@@ -449,7 +452,7 @@ def _validate_logic_definition(
         elif kind == "AREA_OVERLAP":
             if logic.get("insideOutcome", "SUCCESS") not in {"SUCCESS", "FAIL"}:
                 raise CompositionError(f"{context} insideOutcome must be SUCCESS or FAIL")
-        elif kind == "EXTERNAL_SIGNAL":
+        elif kind in {"EXTERNAL_SIGNAL", "COUNTER_WINDOW"}:
             definition["endsPatternOnSuccess"] = _boolean(
                 logic.get("endsPatternOnSuccess", False), f"{context} endsPatternOnSuccess")
         elif kind == "STAGGER_WINDOW":
@@ -487,8 +490,9 @@ def _validate_logic_definition(
             for hour in hours:
                 _integer(hour, f"{context} clockHours", 2, 12)
         elif kind == "ENTER_AREA":
-            if extra != {"triggerKind"}:
+            if extra - {"bossChargeDistanceM"} != {"triggerKind"}:
                 raise CompositionError(f"{context} ENTER_AREA carries unrelated values")
+            definition["bossChargeDistanceM"] = _number(logic.get("bossChargeDistanceM", 0), f"{context} bossChargeDistanceM", 0, 1000)
         elif kind == "OBJECT_CONTACT":
             required = {"triggerKind", "targetWorldOccurrenceIds", "targetRadiusM"}
             if not required <= extra or extra - required - {"contactGroupId", "contactPriority"}:
@@ -526,8 +530,30 @@ def _validate_logic_definition(
             raise CompositionError(f"{context} {kind} requires a percent of 1..100")
         if kind not in PERCENT_OUTCOME_KINDS and percent != 0:
             raise CompositionError(f"{context} {kind} does not take a percent")
-        if kind != "CLOWN_TRANSFORM" and duration_ms != 0:
+        if kind not in {"CLOWN_TRANSFORM", "FEAR"} and duration_ms != 0:
             raise CompositionError(f"{context} {kind} does not take a durationMs")
+        if kind == "FEAR":
+            if duration_ms == 0:
+                raise CompositionError(f"{context} FEAR requires durationMs > 0")
+            for field in ("sceneProfileId", "effectResourceId", "lightResourceId"):
+                if logic.get(field, ""):
+                    _stable_id(logic[field], f"{context} {field}")
+                elif not isinstance(logic.get(field, ""), str):
+                    raise CompositionError(f"{context} {field} must be text")
+            delay = _integer(logic.get("effectDelayMs", 0), f"{context} effectDelayMs", 0, duration_ms - 1)
+            if delay and not logic.get("effectResourceId", ""):
+                raise CompositionError(f"{context} effectDelayMs requires an Effect resource")
+        elif extra & {"sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs"}:
+            raise CompositionError(f"{context} only FEAR owns presentation values")
+        if kind == "CAPTURE_PLAYER":
+            if logic.get("attachmentSlot") != "BOSS_LEFT_HAND":
+                raise CompositionError(f"{context} CAPTURE_PLAYER requires BOSS_LEFT_HAND")
+            grip = logic.get("gripLocalOffset")
+            _exact_keys(grip, {"forwardM", "upM", "rightM"}, f"{context} gripLocalOffset")
+            for axis in ("forwardM", "upM", "rightM"):
+                _number(grip[axis], f"{context} gripLocalOffset.{axis}", -10, 10)
+        elif extra & {"attachmentSlot", "gripLocalOffset"}:
+            raise CompositionError(f"{context} only CAPTURE_PLAYER owns attachment values")
         if (kind == "FOLLOWUP_PATTERN") != bool(followup):
             raise CompositionError(f"{context} FOLLOWUP_PATTERN requires exactly a followupPatternId")
         if followup:
@@ -1041,6 +1067,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         document["playAllPatternIds"], "playAllPatternIds", MAX_PATTERNS
     )
     presentation_resources = _validate_presentation_resources(document)
+    _project_fear_presentations(document)
     for world_id, world in worlds_by_id.items():
         companion = world.get("companionEffectResourceId", "")
         if companion != "":
@@ -1103,6 +1130,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         )
         logic_box_re = re.compile(rf"^{re.escape(pattern_id)}\.logic\.([1-9][0-9]*)$")
         logic_box_ids: set[str] = set()
+        capture_grip = None
         product_window_count = 0
         roulette_instances: list[str] = []
         for box_index, box in enumerate(logic_occurrences):
@@ -1141,11 +1169,32 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                             f"{box_context} outcomes are only valid on a DURATION logic box"
                         )
             kind = owner.get("kind")
+            hold_id = box.get("holdLogicOccurrenceId", "")
+            if not isinstance(hold_id, str):
+                raise CompositionError(f"{box_context} holdLogicOccurrenceId must be text")
+            if hold_id:
+                hold = next((row for row in logic_occurrences if isinstance(row, dict) and row.get("occurrenceId") == hold_id), None)
+                if kind != "ENTER_AREA" or hold is None or logic_defs.get(hold["logicId"], {}).get("kind") != "ATTACHMENT_HOLD":
+                    raise CompositionError(f"{box_context} Hold must name a same-pattern ATTACHMENT_HOLD")
+                hold_start = _integer(hold.get("startMs"), f"{box_context} Hold startMs", 0, MAX_TIMELINE_MS)
+                hold_duration = _integer(hold.get("durationMs"), f"{box_context} Hold durationMs", 1, MAX_TIMELINE_MS)
+                capture_start = _integer(box["startMs"], f"{box_context} startMs", 0, MAX_TIMELINE_MS)
+                capture_duration = _integer(box["durationMs"], f"{box_context} durationMs", 1, MAX_TIMELINE_MS)
+                if enabled and status == "PRODUCT" and (not hold.get("enabled", True) or
+                        hold_start > capture_start or hold_start + hold_duration < capture_start + capture_duration):
+                    raise CompositionError(f"{box_context} Hold must be enabled and cover the complete Trigger window")
+            if kind == "ATTACHMENT_HOLD" and any(outcomes.values()):
+                raise CompositionError(f"{box_context} ATTACHMENT_HOLD has no outcomes")
+            if kind == "ATTACHMENT_HOLD" and any(row.get("logicOccurrenceId") == box_id and
+                    presentation_resources[row["resourceId"]]["kind"] == "COLLIDER" for row in pattern.get("presentationOccurrences", [])):
+                raise CompositionError(f"{box_context} ATTACHMENT_HOLD has no Collider")
+            if sum(logic_defs[target].get("kind") == "CAPTURE_PLAYER" for target in outcomes["Success"]) > 1:
+                raise CompositionError(f"{box_context} allows at most one CAPTURE_PLAYER result")
             if kind in END_TICK_KINDS and outcomes["Timeout"]:
                 raise CompositionError(
                     f"{box_context} {kind} judges once at the window end and has no Timeout slot"
                 )
-            if kind in {"STAGGER_WINDOW", "ENTER_AREA", "EXTERNAL_SIGNAL", "OBJECT_CONTACT"} and outcomes["Fail"]:
+            if kind in {"STAGGER_WINDOW", "COUNTER_WINDOW", "ENTER_AREA", "EXTERNAL_SIGNAL", "OBJECT_CONTACT"} and outcomes["Fail"]:
                 raise CompositionError(
                     f"{box_context} {kind} has no wrong answer and no Fail slot"
                 )
@@ -1157,13 +1206,26 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             for slot, targets in outcomes.items():
                 for target in targets:
                     result_kind = logic_defs[target].get("kind")
+                    if result_kind == "CAPTURE_PLAYER":
+                        if kind != "ENTER_AREA" or slot != "Success":
+                            raise CompositionError(f"{box_context} CAPTURE_PLAYER belongs to ENTER_AREA Success only")
+                        if len(targets) != 1:
+                            raise CompositionError(f"{box_context} CAPTURE_PLAYER must be the only Success result")
+                        if enabled and status == "PRODUCT":
+                            if not hold_id:
+                                raise CompositionError(f"{box_context} CAPTURE_PLAYER requires a Hold window")
+                            source_logic = next(row for row in document["logics"] if row["logicId"] == target)
+                            grip = source_logic["gripLocalOffset"]
+                            if capture_grip is not None and capture_grip != grip:
+                                raise CompositionError(f"{context} requires one consistent capture grip offset")
+                            capture_grip = grip
                     contact_result = result_kind in {"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW"}
                     if result_kind is not None and contact_result != (kind == "OBJECT_CONTACT"):
                         raise CompositionError(f"{box_context} OBJECT_CONTACT requires contact motion or window signal results")
                     if result_kind == "FOLLOWUP_PATTERN":
-                        if kind not in {"STAGGER_WINDOW", "EXTERNAL_SIGNAL"}:
+                        if kind not in {"STAGGER_WINDOW", "COUNTER_WINDOW", "EXTERNAL_SIGNAL"}:
                             raise CompositionError(
-                                f"{box_context} FOLLOWUP_PATTERN is only valid on a STAGGER_WINDOW or EXTERNAL_SIGNAL box"
+                                f"{box_context} FOLLOWUP_PATTERN is only valid on a STAGGER_WINDOW, COUNTER_WINDOW or EXTERNAL_SIGNAL box"
                             )
                         followup_targets.append((box_id, logic_defs[target]["followupPatternId"]))
             logic_start_ms = _integer(
@@ -1305,7 +1367,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 occurrence_context = (
                     f"{stage_context}.animationOccurrences[{occurrence_index}]"
                 )
-                _exact_keys(occurrence, OCCURRENCE_KEYS, occurrence_context)
+                _exact_keys(occurrence, OCCURRENCE_KEYS | ({"blendInMs"} if "blendInMs" in occurrence else set()), occurrence_context)
+                _integer(occurrence.get("blendInMs", 0), f"{occurrence_context} blendInMs", 0, 1000)
                 occurrence_id = _stable_id(
                     occurrence["occurrenceId"], f"{occurrence_context} occurrenceId"
                 )
@@ -1375,20 +1438,29 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     raise CompositionError(
                         f"animation occurrence exceeds its stage: {occurrence_id}"
                     )
+                _animation_blend_source(pattern, occurrence)
                 if status == "PRODUCT" and (
                     start_offset != 0
                     or source_start != 0
-                    or play_ms != duration_ms
                     or play_rate < 0.1
                     or play_rate > 4.0
-                    or end_policy != "EXACT"
                 ):
                     raise CompositionError(
                         "PRODUCT animation must match the current runtime policy "
-                        f"(whole stage, sourceStartMs 0, playRate 0.1..4, "
-                        f"EXACT): {occurrence_id}"
+                        f"(stage entry, sourceStartMs 0, playRate 0.1..4): {occurrence_id}"
                     )
 
+        charges = sorted((box["startMs"], box["startMs"] + box["durationMs"])
+                         for box in pattern.get("logicOccurrences", [])
+                         if box.get("enabled", True) and logic_defs[box["logicId"]].get("bossChargeDistanceM", 0) > 0)
+        if charges and ("bossMotion" in pattern or any(left[1] > right[0] for left, right in zip(charges, charges[1:]))):
+            raise CompositionError("Boss charge windows cannot overlap or share absolute bossMotion")
+        if charges:
+            stage_start = 0
+            for stage in pattern["stages"]:
+                if stage.get("retargetOnEnter", False) and any(start <= stage_start < end for start, end in charges):
+                    raise CompositionError("Boss charge direction cannot retarget during its window")
+                stage_start += stage["durationMs"]
         if "bossMotion" in pattern:
             motion = pattern["bossMotion"]
             _exact_keys(motion, {"startMs", "endMs", "startPosition", "endPosition", "yawDegrees"}, f"{context} bossMotion")
@@ -1434,17 +1506,174 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             )
 
 
-def load_and_validate(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
-    document = load_json(root / SOURCE_PATH)
-    product = dict(document)
-    product["patterns"] = [p for p in document.get("patterns", []) if isinstance(p, dict) and p.get("authoringStatus") == "PRODUCT"]
-    product["playAllPatternIds"] = [p.get("patternId") for p in product["patterns"]]
-    product["bundles"] = [b for b in _array(document.get("bundles", []), "bundles", 4096) if isinstance(b, dict) and b.get("authoringStatus") == "PRODUCT"]
-    used_folders = {b.get("folderId") for b in product["bundles"]}
-    used_folders.update(_stable_id(p["folderId"], "pattern folderId") for p in product["patterns"] if "folderId" in p)
-    product["folders"] = [f for f in _array(document.get("folders", []), "folders", 4096) if isinstance(f, dict) and f.get("folderId") in used_folders]
+def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
+                           bundle_ids: set[str] | None = None) -> dict[str, Any]:
+    # Status is a legacy editing field. Only the private validation copy changes;
+    # category, timings, lanes, and the persisted document remain authored values.
+    candidate = copy.deepcopy(source)
+    candidate["patterns"] = [p for p in candidate["patterns"] if p["patternId"] in pattern_ids]
+    candidate["bundles"] = [b for b in candidate.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]
+    for row in [*candidate["patterns"], *candidate["bundles"]]:
+        row["authoringStatus"] = "PRODUCT"
+    candidate["playAllPatternIds"] = [p["patternId"] for p in candidate["patterns"]]
+    return candidate
+
+
+def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, Any]:
+    """Reject ambiguous saved identities globally; incomplete row bodies stay visible."""
+    patterns = _array(source.get("patterns"), "composition patterns", MAX_PATTERNS)
+    bundles = _array(source.get("bundles", []), "composition bundles", 4096)
+    # Existing validation owns the root, shared definitions, folders and counters.
+    # Row bodies are validated separately so one unfinished row cannot hide others.
+    skeleton = copy.deepcopy(source)
+    skeleton.update(patterns=[], bundles=[], playAllPatternIds=[])
+    validate_document(skeleton, root)
+    inventory: dict[str, Any] = {"folders": copy.deepcopy(source.get("folders", [])), "patterns": [], "bundles": []}
+    folders = {f["folderId"]: f for f in inventory["folders"]}
+    pattern_by_id: dict[str, dict[str, Any]] = {}
+    for pattern in patterns:
+        if not isinstance(pattern, dict):
+            raise CompositionError("saved Pattern must be an object")
+        identity = _stable_id(pattern.get("patternId"), "saved patternId")
+        if identity in pattern_by_id:
+            raise CompositionError("duplicate saved patternId: " + identity)
+        ordinal = GENERATED_PATTERN_RE.fullmatch(identity)
+        if ordinal and int(ordinal[1]) >= source["nextPatternOrdinal"]:
+            raise CompositionError("saved patternId is ahead of nextPatternOrdinal: " + identity)
+        name = _display_name(pattern.get("displayName"), "saved Pattern displayName")
+        category = _string(pattern.get("category"), "saved Pattern category")
+        if category not in PATTERN_CATEGORIES or pattern.get("authoringStatus") not in AUTHORING_STATUSES:
+            raise CompositionError("saved Pattern category/status is invalid: " + identity)
+        if source["formatVersion"] >= 3 and not {"gateId", "actorProfileId", "targetBossPlacementId"} <= pattern.keys():
+            raise CompositionError("saved Pattern requires explicit Gate, actor and target: " + identity)
+        metadata = _pattern_target_metadata(pattern)
+        _stable_id(metadata["actorProfileId"], "saved Pattern actorProfileId")
+        if metadata["gateId"] not in GATE_IDS:
+            raise CompositionError("saved Pattern Gate is invalid: " + identity)
+        row = {"patternId": identity, "displayName": name, "category": category, **metadata, "unavailableReason": ""}
+        if "folderId" in pattern:
+            folder_id = _stable_id(pattern["folderId"], "saved Pattern folderId")
+            if folder_id not in folders or folders[folder_id]["gateId"] != metadata["gateId"]:
+                raise CompositionError("saved Pattern needs a same-Gate Parent: " + identity)
+            row["folderId"] = folder_id
+        inventory["patterns"].append(row)
+        pattern_by_id[identity] = row
+    saved_order = _array(source["playAllPatternIds"], "saved playAllPatternIds", MAX_PATTERNS)
+    if any(not isinstance(identity, str) or identity not in pattern_by_id for identity in saved_order) or len(set(saved_order)) != len(saved_order):
+        raise CompositionError("saved playAllPatternIds must refer to distinct saved Patterns")
+    bundle_ids: set[str] = set()
+    for bundle in bundles:
+        if not isinstance(bundle, dict):
+            raise CompositionError("saved Bundle must be an object")
+        identity = _stable_id(bundle.get("bundleId"), "saved bundleId")
+        ordinal = re.fullmatch(r"kakulsaydon\.bundle\.([1-9][0-9]*)", identity)
+        if not ordinal or int(ordinal[1]) >= source.get("nextBundleOrdinal", 1) or identity in bundle_ids:
+            raise CompositionError("saved Bundle identity/ordinal is invalid: " + identity)
+        bundle_ids.add(identity)
+        gate = _stable_id(bundle.get("gateId"), "saved Bundle gateId")
+        folder_id = _stable_id(bundle.get("folderId"), "saved Bundle folderId")
+        if gate not in GATE_IDS or folder_id not in folders or folders[folder_id]["gateId"] != gate:
+            raise CompositionError("saved Bundle needs a same-Gate Parent: " + identity)
+        if bundle.get("authoringStatus") not in AUTHORING_STATUSES:
+            raise CompositionError("saved Bundle status is invalid: " + identity)
+        row = {"bundleId": identity, "gateId": gate, "folderId": folder_id,
+               "displayName": _display_name(bundle.get("displayName"), "saved Bundle displayName"),
+               "members": [], "unavailableReason": ""}
+        member_ids: set[str] = set()
+        member_patterns: set[str] = set()
+        next_member = _integer(bundle.get("nextMemberOrdinal"), "saved Bundle nextMemberOrdinal", 1, MAX_ORDINAL)
+        for member in _array(bundle.get("members"), "saved Bundle members", 8):
+            _exact_keys(member, {"memberId", "patternId", "startOffsetMs"}, "saved Bundle member")
+            member_id = _stable_id(member["memberId"], "saved memberId")
+            match = re.fullmatch(re.escape(identity) + r"\.member\.([1-9][0-9]*)", member_id)
+            target = _stable_id(member["patternId"], "saved member patternId")
+            if not match or int(match[1]) >= next_member or member_id in member_ids or target in member_patterns:
+                raise CompositionError("saved Bundle member identity is invalid: " + identity)
+            if target not in pattern_by_id or pattern_by_id[target]["gateId"] != gate:
+                raise CompositionError("saved Bundle child must exist in the same Gate: " + identity)
+            _integer(member["startOffsetMs"], "saved member startOffsetMs", 0, MAX_TIMELINE_MS)
+            member_ids.add(member_id)
+            member_patterns.add(target)
+            row["members"].append(dict(member))
+        inventory["bundles"].append(row)
+    return inventory
+
+
+def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
+    definitions = {row["logicId"]: row for row in source.get("logics", [])}
+    result: set[str] = set()
+    for box in _array(pattern.get("logicOccurrences", []), "Pattern logicOccurrences", MAX_LOGIC_OCCURRENCES_PER_PATTERN):
+        if not isinstance(box, dict):
+            raise CompositionError("Pattern Logic occurrence must be an object")
+        if not isinstance(box.get("logicId"), str):
+            raise CompositionError("Pattern Logic occurrence logicId must be text")
+        # validate_publishable also requires disabled outcome references to resolve.
+        for slot in OUTCOME_SLOTS:
+            for logic_id in outcome_logic_ids(box, slot):
+                target = definitions.get(logic_id, {}).get("followupPatternId", "")
+                if target:
+                    result.add(target)
+        if box.get("enabled", True):
+            target = definitions.get(box.get("logicId"), {}).get("clonePatternId", "")
+            if target:
+                result.add(target)
+    return result
+
+
+def prepare_publication(source: dict[str, Any], root: Path = REPOSITORY_ROOT) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Admit complete dependency closures, preserving every saved tree row."""
+    inventory = _saved_pattern_inventory(source, root)
+    patterns = {row["patternId"]: row for row in source["patterns"]}
+    reasons: dict[str, str] = {}
+    ready: set[str] = set()
+    for row in inventory["patterns"]:
+        identity = row["patternId"]
+        try:
+            closure: set[str] = set()
+            pending = [identity]
+            while pending:
+                current = pending.pop()
+                if current in closure:
+                    continue
+                if current not in patterns:
+                    raise CompositionError("required Pattern is missing: " + current)
+                closure.add(current)
+                pending.extend(_pattern_dependencies(source, patterns[current]) - closure)
+            candidate = _publication_candidate(source, closure)
+            validate_document(candidate, root)
+            validate_publishable(candidate, root)
+            projected_outputs(candidate, root)
+            ready.add(identity)
+        except CompositionError as error:
+            reasons[identity] = str(error)
+        row["unavailableReason"] = reasons.get(identity, "")
+    # Every admitted closure was validated, so its dependencies are also admitted.
+    product = _publication_candidate(source, ready)
     validate_document(product, root)
-    return product
+    validate_publishable(product, root)
+    projected_outputs(product, root)
+    ready_bundles: set[str] = set()
+    for row in inventory["bundles"]:
+        try:
+            for member in row["members"]:
+                if member["patternId"] not in ready:
+                    raise CompositionError("Bundle child is unavailable: " + member["patternId"] + ": " + reasons[member["patternId"]])
+            candidate = _publication_candidate(source, ready, {row["bundleId"]})
+            validate_document(candidate, root)
+            validate_publishable(candidate, root)
+            projected_outputs(candidate, root)
+            ready_bundles.add(row["bundleId"])
+        except CompositionError as error:
+            row["unavailableReason"] = str(error)
+    product = _publication_candidate(source, ready, ready_bundles)
+    validate_document(product, root)
+    validate_publishable(product, root)
+    projected_outputs(product, root)
+    return product, inventory
+
+
+def load_and_validate(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    return prepare_publication(load_json(root / SOURCE_PATH), root)[0]
 
 
 def validate_publishable(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
@@ -2062,7 +2291,56 @@ def _load_bone_bake_actor(pattern, root, cache):
     return value
 
 
-def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical_scale=1.0):
+def _animation_blend_source(pattern, occurrence):
+    previous = None
+    elapsed = 0
+    for stage in pattern["stages"]:
+        for row in sorted(stage["animationOccurrences"], key=lambda value: value["startOffsetMs"]):
+            start = elapsed + row["startOffsetMs"]
+            if row["occurrenceId"] == occurrence["occurrenceId"]:
+                if not row.get("blendInMs", 0):
+                    return None
+                if not previous or row["blendInMs"] > row["playMs"]:
+                    raise CompositionError("Animation blend requires a previous occurrence and must fit the current window")
+                prior, prior_start = previous
+                if prior_start + prior["playMs"] != start or prior["endPolicy"] != "EXACT":
+                    raise CompositionError("Animation blend requires an adjacent EXACT previous occurrence")
+                return prior, (prior["sourceStartMs"] + prior["playMs"] * prior["playRate"]) / 1000
+            previous = row, start
+        elapsed += stage["durationMs"]
+    raise CompositionError("Animation blend occurrence is not in its Pattern")
+
+
+def _blend_local_matrix(left, right, alpha):
+    def decompose(matrix):
+        scale = [math.sqrt(sum(matrix[row * 4 + col] ** 2 for col in range(3))) for row in range(3)]
+        if min(scale) <= 1e-8:
+            raise CompositionError("Animation blend cannot decompose a singular bone pose")
+        rows = [[matrix[row * 4 + col] / scale[row] for col in range(3)] for row in range(3)]
+        determinant = sum(rows[0][i] * (rows[1][(i+1)%3] * rows[2][(i+2)%3] - rows[1][(i+2)%3] * rows[2][(i+1)%3]) for i in range(3))
+        if determinant < 0:
+            axis = max(range(3), key=lambda i: scale[i]); scale[axis] *= -1
+            rows[axis] = [-value for value in rows[axis]]
+        # Convert row-vector rotation to the conventional column-vector matrix.
+        m = [[rows[col][row] for col in range(3)] for row in range(3)]
+        trace = sum(m[i][i] for i in range(3))
+        if trace > 0:
+            t = math.sqrt(trace + 1) * 2
+            q = [(m[2][1]-m[1][2])/t, (m[0][2]-m[2][0])/t, (m[1][0]-m[0][1])/t, t/4]
+        else:
+            i = max(range(3), key=lambda v: m[v][v]); j=(i+1)%3; k=(i+2)%3
+            t = math.sqrt(max(0, 1+m[i][i]-m[j][j]-m[k][k])) * 2
+            if t <= 1e-8: raise CompositionError("Animation blend has an invalid rotation")
+            q = [0.,0.,0.,0.]; q[i]=t/4; q[j]=(m[j][i]+m[i][j])/t; q[k]=(m[k][i]+m[i][k])/t; q[3]=(m[k][j]-m[j][k])/t
+        length = math.sqrt(sum(value*value for value in q)); q=[value/length for value in q]
+        return scale, q, matrix[12:15]
+    a, b = decompose(left), decompose(right)
+    rotation = wmodel_pose.sample_quaternion([(0., *a[1]), (1., *b[1])], alpha)
+    return wmodel_pose.affine_matrix(tuple(x+(y-x)*alpha for x,y in zip(a[0],b[0])), rotation,
+                                    tuple(x+(y-x)*alpha for x,y in zip(a[2],b[2])))
+
+
+def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical_scale=1.0, blend=None, local_only=False):
     model = actor[part]
     if model is None:
         raise CompositionError("Bone Collider actor has no weapon model")
@@ -2091,7 +2369,7 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical
             channel.rotation_keys = normalized
         actor["validatedClips"].add((part, clip_name))
     ticks = min(source_seconds * animation.ticks_per_second, animation.duration_ticks) if animation else 0
-    key = (part, clip_name, ticks, root_vertical_scale if part == "body" else 1.0)
+    key = (part, clip_name, ticks, root_vertical_scale if part == "body" else 1.0, blend, local_only)
     if key in actor["poses"]:
         return actor["poses"][key]
     local = [list(bone.transform) for bone in model.skeleton_bones]
@@ -2101,6 +2379,12 @@ def _sample_bone_bake_pose(actor, part, clip_name, source_seconds, root_vertical
                 wmodel_pose.sample_vector(channel.scale_keys, ticks, (1, 1, 1)),
                 wmodel_pose.sample_quaternion(channel.rotation_keys, ticks),
                 wmodel_pose.sample_vector(channel.position_keys, ticks, (0, 0, 0)))
+    if local_only:
+        return local
+    if blend is not None:
+        from_clip, from_seconds, alpha = blend
+        prior = _sample_bone_bake_pose(actor, part, from_clip, from_seconds, local_only=True)
+        local = [_blend_local_matrix(a, b, alpha) for a, b in zip(prior, local)]
     if part == "body":
         roots = [i for i, bone in enumerate(model.skeleton_bones) if bone.name == "b_root"]
         if len(roots) != 1:
@@ -2130,6 +2414,11 @@ def _bone_bake_stage_origins(pattern):
         elapsed_ticks += math.ceil(stage["durationMs"] * FIXED_TICK_HZ / 1000)
 
 
+def _animation_holds_window_end(stage, animation):
+    return (animation["startOffsetMs"] + animation["playMs"] < stage["durationMs"] or
+            animation["endPolicy"] == "HOLD_LAST_POSE")
+
+
 def _bone_bake_clip_sample(pattern, pattern_ms):
     stages = list(_bone_bake_stage_origins(pattern))
     selected = [(stage, start) for stage, start in stages if start <= pattern_ms + 1e-8]
@@ -2142,8 +2431,13 @@ def _bone_bake_clip_sample(pattern, pattern_ms):
         end = start + animation["playMs"]
         # An external deadline may retain the last action after its stage ends.
         held_end = stage is stages[-1][0] and animation["startOffsetMs"] + animation["playMs"] == stage["durationMs"]
-        if start <= pattern_ms + 1e-8 and (pattern_ms < end - 1e-8 or held_end):
-            matches.append((animation, pattern_ms - start))
+        holds_window = _animation_holds_window_end(stage, animation)
+        held_gap = holds_window and len(stage["animationOccurrences"]) == 1
+        if start <= pattern_ms + 1e-8 and (pattern_ms < end - 1e-8 or held_end or held_gap):
+            age = pattern_ms - start
+            if holds_window:
+                age = min(age, animation["playMs"])
+            matches.append((animation, age))
     if len(matches) != 1:
         raise CompositionError("Bone Collider samples an animation gap or overlapping clip windows")
     animation, age = matches[0]
@@ -2201,7 +2495,16 @@ def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
             # Product plays the action without looping. A held final stage
             # keeps advancing its source clock until CAnimation's native end.
             seconds = min(seconds, native_seconds)
-        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds, pattern.get("animationRootVerticalScale", 1.0))
+        blend = None
+        previous = _animation_blend_source(pattern, animation)
+        if previous:
+            previous_animation, previous_seconds = previous
+            current_start = next(origin + row["startOffsetMs"] for stage, origin in _bone_bake_stage_origins(pattern)
+                                 for row in stage["animationOccurrences"] if row["occurrenceId"] == animation["occurrenceId"])
+            alpha = min(1.0, max(0.0, (pattern_ms - current_start) / animation["blendInMs"]))
+            if alpha < 1.0:
+                blend = previous_animation["runtimeClip"], previous_seconds, alpha
+        body_pose = _sample_bone_bake_pose(actor, "body", body_clip, seconds, pattern.get("animationRootVerticalScale", 1.0), blend)
         matrix = body_pose[bone_indices[0]] if part == "body" else None
         if part == "weapon":
             prefix = "mn_rpct_06_sk.ao_"
@@ -2213,7 +2516,15 @@ def _project_bone_collider_track(pattern, logic_box, collider, root, cache):
             weapon_clip = "wprpct06_" + suffix
             if not any(row.name == weapon_clip for row in model.animations):
                 weapon_clip = ""  # The live hammer uses its loaded rest pose for unmapped body clips.
-            weapon_pose = _sample_bone_bake_pose(actor, "weapon", weapon_clip, seconds)
+            weapon_blend = None
+            if blend:
+                suffix = blend[0][len(prefix):]
+                if suffix.startswith(("att_battle_1_", "att_battle_3_")):
+                    suffix = suffix[:11] + "0" + suffix[11:]
+                previous_weapon_clip = "wprpct06_" + suffix
+                if not any(row.name == previous_weapon_clip for row in model.animations): previous_weapon_clip = ""
+                weapon_blend = previous_weapon_clip, blend[1], blend[2]
+            weapon_pose = _sample_bone_bake_pose(actor, "weapon", weapon_clip, seconds, blend=weapon_blend)
             matrix = wmodel_pose.matrix_multiply(weapon_pose[bone_indices[0]], body_pose[socket_indices[0]])
         position = matrix[12:15]
         _vector3(position, "Bone Collider boss-local tip", -100000, 100000)
@@ -2309,7 +2620,12 @@ def _project_outcomes(logics: dict[str, dict[str, Any]], targets: list[str]) -> 
             "durationMs": int(logic.get("durationMs", 0)),
             "patternId": logic.get("followupPatternId", ""),
         })
-        if logic["outcomeKind"] == "PLAY_WORLD_OBJECT_MOTION":
+        if logic["outcomeKind"] == "FEAR":
+            projected[-1]["presentationId"] = logic["logicId"]
+        elif logic["outcomeKind"] == "CAPTURE_PLAYER":
+            projected[-1]["attachmentSlot"] = logic["attachmentSlot"]
+            projected[-1]["gripLocalOffset"] = dict(logic["gripLocalOffset"])
+        elif logic["outcomeKind"] == "PLAY_WORLD_OBJECT_MOTION":
             projected[-1]["targetWorldInstanceId"] = logic["targetWorldInstanceId"]
             projected[-1]["motionInstanceId"] = logic["motionInstanceId"]
         elif logic["outcomeKind"] == "PLAY_CONTACT_WORLD_OBJECT_MOTION":
@@ -2329,6 +2645,8 @@ def _project_logic_window(
     kind = logic.get("judgementKind", logic.get("triggerKind"))
     return {
         "windowId": box["occurrenceId"],
+        **({"holdLogicOccurrenceId": box["holdLogicOccurrenceId"]} if box.get("holdLogicOccurrenceId") else {}),
+        **({"bossChargeDistanceM": logic["bossChargeDistanceM"]} if logic.get("bossChargeDistanceM", 0) else {}),
         "kind": kind,
         "startMs": box["startMs"],
         "durationMs": box["durationMs"],
@@ -2346,7 +2664,7 @@ def _project_logic_window(
         "poseIndex": int(logic.get("poseIndex", 0)) if kind == "POSE_INPUT" else 0,
         "threshold": int(logic.get("threshold", 0)) if kind == "STAGGER_WINDOW" else 0,
         "shieldArcDegrees": float(logic.get("shieldArcDegrees", 0.0)) if kind == "STAGGER_WINDOW" else 0.0,
-        "endsPatternOnSuccess": bool(logic.get("endsPatternOnSuccess", False)) if kind in {"STAGGER_WINDOW", "EXTERNAL_SIGNAL"} else False,
+        "endsPatternOnSuccess": bool(logic.get("endsPatternOnSuccess", False)) if kind in {"STAGGER_WINDOW", "COUNTER_WINDOW", "EXTERNAL_SIGNAL"} else False,
         "onSuccess": _project_outcomes(logics, outcome_logic_ids(box, "Success")),
         "onFail": _project_outcomes(logics, outcome_logic_ids(box, "Fail")),
         "onTimeout": _project_outcomes(logics, outcome_logic_ids(box, "Timeout")),
@@ -2521,7 +2839,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
 
 PRESENTATION_RESOURCE_REQUIRED = {"resourceId", "displayName", "kind", "assetId"}
 PRESENTATION_RESOURCE_DEFAULTS = {
-    "resourceKind": "GROUP", "durationMs": 1000, "shape": "BOX", "colliderKind": "GEOMETRY",
+    "resourceKind": "GROUP", "elementId": "", "durationMs": 1000, "shape": "BOX", "colliderKind": "GEOMETRY",
     "halfExtents": [1.0, 1.0, 1.0], "radiusM": 3.0, "halfAngleDegrees": 45.0,
     "defaultAnchorKind": "BOSS",
 }
@@ -2575,8 +2893,12 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
             raise CompositionError("presentation defaultAnchorKind is unsupported")
         if kind == "LIGHT" and normalized["resourceKind"] != "":
             raise CompositionError("LIGHT resourceKind must be empty")
-        if normalized["resourceKind"] not in ({"GROUP", "LEAF"} if kind == "EFFECT" else {"", "GROUP", "LEAF"}):
+        if normalized["resourceKind"] not in ({"GROUP", "LEAF", "V1_EFFECT", "V1_ELEMENT"} if kind == "EFFECT" else {"", "GROUP", "LEAF"}):
             raise CompositionError("presentation resourceKind is unsupported")
+        if normalized["resourceKind"] == "V1_ELEMENT":
+            _stable_id(normalized["elementId"], "V1 Element ID")
+        elif normalized["elementId"] != "":
+            raise CompositionError("Only V1_ELEMENT owns elementId")
         if normalized["colliderKind"] not in {"GEOMETRY", "ROULETTE_CARD_REGION"}:
             raise CompositionError("presentation colliderKind is unsupported")
         if normalized["shape"] not in {"BOX", "SECTOR", "CIRCLE"}:
@@ -2674,9 +2996,9 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             raise CompositionError("presentation bone is invalid")
         if not isinstance(normalized["boneTarget"], str) or normalized["boneTarget"] not in {"BODY", "WEAPON"}:
             raise CompositionError("presentation boneTarget must be BODY or WEAPON")
-        if normalized["boneTarget"] == "WEAPON" and (resources[box["resourceId"]]["kind"] != "COLLIDER" or
+        if normalized["boneTarget"] == "WEAPON" and (resources[box["resourceId"]]["kind"] not in {"COLLIDER", "EFFECT"} or
                 normalized["anchorKind"] != "BOSS" or not normalized["bone"] or not normalized["followBoss"]):
-            raise CompositionError("WEAPON boneTarget requires a following BOSS Collider and a named bone")
+            raise CompositionError("WEAPON boneTarget requires a following BOSS Collider/Effect and a named bone")
 
 
 def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, Any]) -> dict[str, Any]:
@@ -2724,6 +3046,8 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
     used = {resources[box["resourceId"]]["assetId"] for pattern in document["patterns"]
             if pattern.get("authoringStatus") == "PRODUCT"
             for box in pattern.get("presentationOccurrences", []) if box["resourceId"] in resources}
+    used.update(resources[logic["lightResourceId"]]["assetId"] for logic in document.get("logics", [])
+                if logic.get("outcomeKind") == "FEAR" and logic.get("lightResourceId") in resources)
     if not used:
         return None
     try:
@@ -2762,6 +3086,60 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
     return revision
 
 
+def _project_fear_presentations(document: dict[str, Any]) -> list[dict[str, Any]]:
+    profiles = {row["sceneProfileId"]: row for row in document.get("sceneProfiles", [])}
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
+    result = []
+    for logic in document.get("logics", []):
+        if logic.get("outcomeKind") != "FEAR":
+            continue
+        scene_id = logic.get("sceneProfileId", "")
+        effect_id = logic.get("effectResourceId", "")
+        light_id = logic.get("lightResourceId", "")
+        if scene_id and scene_id not in profiles:
+            raise CompositionError(f"FEAR references missing Scene Profile: {scene_id}")
+        if effect_id and (effect_id not in resources or resources[effect_id]["kind"] != "EFFECT"):
+            raise CompositionError(f"FEAR references missing Effect resource: {effect_id}")
+        if light_id and (light_id not in resources or resources[light_id]["kind"] != "LIGHT" or
+                         resources[light_id].get("defaultAnchorKind", "BOSS") != "PLAYER"):
+            raise CompositionError(f"FEAR requires a PLAYER Light resource: {light_id}")
+        result.append({
+            "presentationId": logic["logicId"],
+            "sceneProfileId": profiles[scene_id]["renderingProfileId"] if scene_id else "",
+            "effectResource": {**PRESENTATION_RESOURCE_DEFAULTS, **resources[effect_id],
+                               "resourceDurationMs": resources[effect_id].get("durationMs", 1000)} if effect_id else None,
+            "lightResource": {**PRESENTATION_RESOURCE_DEFAULTS, **resources[light_id],
+                              "resourceDurationMs": resources[light_id].get("durationMs", 1000)} if light_id else None,
+            "effectDelayMs": logic.get("effectDelayMs", 0),
+            "durationMs": logic["durationMs"],
+        })
+    return result
+
+
+def _project_attachment_grips(document: dict[str, Any]) -> list[dict[str, Any]]:
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    result = []
+    for pattern in document["patterns"]:
+        if pattern["authoringStatus"] != "PRODUCT":
+            continue
+        selected = None
+        for box in pattern.get("logicOccurrences", []):
+            if not box.get("enabled", True) or definitions[box["logicId"]].get("triggerKind") != "ENTER_AREA":
+                continue
+            for target in outcome_logic_ids(box, "Success"):
+                logic = definitions[target]
+                if logic.get("outcomeKind") != "CAPTURE_PLAYER":
+                    continue
+                row = {"patternId": pattern["patternId"], "attachmentSlot": logic["attachmentSlot"],
+                       "gripLocalOffset": [logic["gripLocalOffset"][axis] for axis in ("forwardM", "upM", "rightM")]}
+                if selected is not None and row != selected:
+                    raise CompositionError(f"{pattern['patternId']} requires one consistent capture grip offset")
+                selected = row
+        if selected is not None:
+            result.append(selected)
+    return result
+
+
 def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
     light_revision = _join_light_resources(document, root)
     bindings: list[dict[str, Any]] = []
@@ -2776,16 +3154,21 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
             row.get("anchorKind", "BOSS") == "BOSS" and row.get("bone") for row in pattern.get("presentationOccurrences", []))
         for stage in pattern["stages"]:
             for occurrence in stage["animationOccurrences"]:
+                previous = _animation_blend_source(pattern, occurrence)
+                transition = {"blendInMs": occurrence["blendInMs"], "blendFromClip": previous[0]["runtimeClip"],
+                              "blendFromSourceMs": previous[1] * 1000} if previous else {}
                 bindings.append(
                     {
                         "actionId": stage["actionId"],
                         "occurrenceId": occurrence["occurrenceId"],
                         "clip": occurrence["runtimeClip"],
+                        **transition,
                         "startOffsetMs": occurrence["startOffsetMs"],
                         "sourceStartMs": occurrence["sourceStartMs"],
                         "playMs": occurrence["playMs"],
                         "playRate": occurrence["playRate"],
                         "endPolicy": occurrence["endPolicy"],
+                        **({"holdAtWindowEnd": True} if _animation_holds_window_end(stage, occurrence) else {}),
                         **({"unblendedBoneContact": True} if unblended_bone_contact else {}),
                         **({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {}),
                     }
@@ -2797,6 +3180,8 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
         "bossArchetypeId": document["bossArchetypeId"],
         "sourceRevision": document["revision"],
         "bindings": bindings,
+        "fearPresentations": _project_fear_presentations(document),
+        "attachmentGrips": _project_attachment_grips(document),
         "folders": _project_folders(document),
         "bundles": _project_bundles(document, presentation=True),
         "patterns": [_project_pattern_presentation(document, pattern) for pattern in document["patterns"]
@@ -2810,9 +3195,13 @@ def serialize_json(document: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
-def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> dict[Path, bytes]:
+def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
+                      pattern_inventory: dict[str, Any] | None = None) -> dict[Path, bytes]:
+    encounter = project_encounter(document, root)
+    if pattern_inventory is not None:
+        encounter["patternInventory"] = pattern_inventory
     return {
-        ENCOUNTER_PATH: serialize_json(project_encounter(document, root)),
+        ENCOUNTER_PATH: serialize_json(encounter),
         PRESENTATION_PATH: serialize_json(project_presentation(document, root)),
     }
 
@@ -2895,9 +3284,9 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
 
 
 def run(root: Path, mode: str) -> dict[str, Any]:
-    document = load_and_validate(root)
-    validate_publishable(document, root)
-    outputs = projected_outputs(document, root)
+    source = load_json(root / SOURCE_PATH)
+    document, inventory = prepare_publication(source, root)
+    outputs = projected_outputs(document, root, inventory)
     if mode == "publish":
         publish_outputs(root, outputs)
     else:
@@ -2906,6 +3295,9 @@ def run(root: Path, mode: str) -> dict[str, Any]:
         "compositionId": COMPOSITION_ID,
         "sourceRevision": document["revision"],
         "productPatternCount": len(document["playAllPatternIds"]),
+        "savedPatternCount": len(inventory["patterns"]),
+        "savedBundleCount": len(inventory["bundles"]),
+        "productBundleCount": len(document["bundles"]),
         "productStageCount": sum(
             len(pattern["stages"])
             for pattern in document["patterns"]

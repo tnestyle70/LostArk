@@ -537,6 +537,12 @@ def decode_typed_payload(
         parsed_anchors: list[str] = []
         for _ in range(selector):
             parsed = read_string(cursor)
+            # An empty source FString still consumes its int32 length. Artist
+            # Pungnyudo keeps an empty anchor after B_WP_2; FlowerGarden stores
+            # an empty anchor alone. Skipping its bytes misreads the transform.
+            if (parsed is None and cursor + 4 <= len(raw)
+                    and struct.unpack_from("<i", raw, cursor)[0] == 0):
+                parsed = ("", cursor + 4)
             if parsed is None:
                 parsed_anchors.clear()
                 break
@@ -544,7 +550,7 @@ def decode_typed_payload(
             parsed_anchors.append(anchor)
         if not parsed_anchors:
             continue
-        source_anchors = parsed_anchors
+        source_anchors = [anchor for anchor in parsed_anchors if anchor]
         transform_start = cursor
         attachment_selector_offset = selector_offset
         break
@@ -604,7 +610,11 @@ def decode_typed_payload(
             "sourceTypeCode": source_type_code,
             "sourceRecordByteOffset": record_offset,
         }
-        if source_type_code == 1:
+        if source_type_code == 0:
+            # PSPT_None preserves the source table entry without applying an
+            # instance override to a distribution with the same parameter name.
+            parameter.update({"type": "none", "enabled": False})
+        elif source_type_code == 1:
             scalar_value = struct.unpack_from("<f", raw, parameter_cursor + 4)[0]
             if not math.isfinite(scalar_value):
                 raise ValueError(

@@ -15,6 +15,7 @@ int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_BossCompositionDocumentContractTests();
 int Run_KoukuCompositionEditorContractTests();
+int Run_KoukuSequenceDocumentContractTests();
 int Run_KoukuPreviewTransportContractTests();
 int Run_ActionCompositionGraphModelContractTests();
 int Run_BossLogicFlowViewModelContractTests();
@@ -1376,12 +1377,14 @@ int main(const int argc, const char* const argv[])
 {
 	if (argc == 2 && std::string(argv[1]) == "--kouku-preview-transport-contract")
 		return Run_KoukuPreviewTransportContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-sequence-document-contract")
+		return Run_KoukuSequenceDocumentContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-composition-editor-contract")
 		return Run_KoukuCompositionEditorContractTests();
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--kouku-composition-editor-contract | --kouku-preview-transport-contract]\n";
+			"[--kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

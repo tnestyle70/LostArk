@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "RenderingBenchmark.h"
+#include "GameInstance.h"
 
 #include <algorithm>
 #include <chrono>
@@ -11,6 +12,52 @@
 
 namespace
 {
+    // Serialize named fields, never struct padding. Exclude only the A/B switch.
+    string ComparisonConditions()
+    {
+        const auto& game = Engine::CGameInstance::Get();
+        auto& mutableGame = Engine::CGameInstance::Get();
+        ostringstream stream;
+        stream << setprecision(9) << scientific;
+        const auto scalar = [&](const auto value) { stream << value << ' '; };
+        const auto vector = [&](const auto& value) {
+            scalar(value.x); scalar(value.y); scalar(value.z); scalar(value.w);
+        };
+        scalar(game.Get_CurrentLevelID());
+        const auto viewport = mutableGame.Get_ViewportSize(); scalar(viewport.x); scalar(viewport.y);
+        for (const auto type : {Engine::D3DTS::VIEW, Engine::D3DTS::PROJ})
+        {
+            const auto* matrix = mutableGame.Get_Transform(type);
+            if (!matrix) { stream << "missing-matrix "; continue; }
+            for (const auto& row : matrix->m) for (const auto value : row) scalar(value);
+        }
+        scalar(static_cast<uint32_t>(game.Get_MaterialRenderSettings().eDebugView));
+        const auto q = game.Get_RenderQualitySettings();
+        scalar(q.bSSAOEnabled); scalar(q.fSSAORadius); scalar(q.fSSAOBias);
+        scalar(q.fSSAOIntensity); scalar(q.fSSAOPower); scalar(q.fSSAODistanceFade);
+        scalar(q.bBloomEnabled); scalar(q.fBloomThreshold); scalar(q.fBloomSoftKnee);
+        scalar(q.fBloomIntensity); scalar(q.fBloomScatter); scalar(q.fExposure);
+        scalar(q.fWhitePoint); scalar(q.fGamma); scalar(q.bFXAAEnabled);
+        scalar(q.fFXAASubpixel); scalar(q.fFXAAEdgeThreshold); scalar(q.fFXAAEdgeThresholdMin);
+        const auto fog = game.Get_HeightFogSettings();
+        scalar(fog.bEnabled); vector(fog.vColor); scalar(fog.fDensity); scalar(fog.fHeightFalloff);
+        scalar(fog.fTopHeight); scalar(fog.fStartDistance); scalar(fog.fMaximumOpacity);
+        scalar(fog.fDriftSpeed); scalar(fog.fDriftHeightAmplitude); scalar(fog.fDriftDensityAmplitude);
+        scalar(fog.fCoveragePercent); scalar(fog.fWindDirectionX); scalar(fog.fWindDirectionZ);
+        scalar(fog.fWindSpeed); scalar(fog.fPatchScale); scalar(fog.fPatchSoftness);
+        const auto& shadow = game.Get_ShadowLightDesc(); vector(shadow.vEye); vector(shadow.vAt);
+        const auto& s = shadow.Settings; scalar(s.bEnabled); scalar(s.fOrthographicWidth);
+        scalar(s.fOrthographicHeight); scalar(s.fNear); scalar(s.fFar); scalar(s.fDepthBias);
+        scalar(s.fNormalBias); scalar(s.fStrength);
+        const auto& lights = game.Get_SceneLights(); scalar(lights.size());
+        for (const auto& light : lights)
+        {
+            scalar(static_cast<uint32_t>(light.eType)); vector(light.vDirection); vector(light.vPosition);
+            scalar(light.fRange); scalar(light.fFalloffExponent); vector(light.vDiffuse);
+            vector(light.vAmbient); vector(light.vSpecular); scalar(light.fSpotInnerCos); scalar(light.fSpotOuterCos);
+        }
+        return stream.str();
+    }
 	double Percentile(std::vector<double> Values, const double fPercentile)
 	{
 		if (Values.empty())
@@ -99,6 +146,9 @@ bool_t Client::CRenderingBenchmark::Begin(
 	m_iTargetFrames = iFrames;
 	m_strLabel = strLabel.empty() ? "run" : strLabel;
 	m_strQualitySummary = strQualitySummary;
+	m_strComparisonConditions = ComparisonConditions();
+	m_bSourceMaterials = Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
+	m_bConditionsStable = true;
 	m_bCapturing = true;
 	strOutStatus = "Capturing " + std::to_string(iFrames) + " frames for '" +
 		m_strLabel + "'. Keep the camera still for a comparable result.";
@@ -109,6 +159,9 @@ void Client::CRenderingBenchmark::Update(Engine::CProfiler* pProfiler)
 {
 	if (!m_bCapturing || nullptr == pProfiler)
 		return;
+	if (m_strComparisonConditions != ComparisonConditions() ||
+        m_bSourceMaterials != Engine::CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+        m_bConditionsStable = false;
 	if (pProfiler->Get_HistoryFrameCount() <
 		static_cast<size_t>(m_iTargetFrames) +
 		Engine::CProfiler::GPU_READ_LATENCY +
@@ -129,6 +182,9 @@ bool_t Client::CRenderingBenchmark::Finalize(Engine::CProfiler& Profiler)
 	Run.strLabel = m_strLabel;
 	Run.strTimestamp = Now_Timestamp();
 	Run.strQualitySummary = m_strQualitySummary;
+	Run.strComparisonConditions = m_strComparisonConditions;
+	Run.bSourceMaterials = m_bSourceMaterials;
+	Run.bConditionsStable = m_bConditionsStable;
 	std::vector<double> CpuMs;
 	std::vector<double> GpuMs;
 	double fDrawCalls = 0.0;
@@ -220,8 +276,23 @@ void Client::CRenderingBenchmark::Render_Section(
 		(void)Begin(pProfiler, m_LabelBuffer.data(),
 			static_cast<uint32_t>(m_iFrameInput), strQualitySummary, m_strStatus);
 	}
-	ImGui::EndDisabled();
 	ImGui::SameLine();
+    for (const bool recovered : {false, true})
+    {
+        if (ImGui::Button(recovered ? "Capture B: recovered" : "Capture A: legacy"))
+        {
+            auto& game = Engine::CGameInstance::Get();
+            const auto previous = game.Get_MaterialRenderSettings();
+            auto selected = previous; selected.bUseSourceMaterials = recovered;
+            if (FAILED(game.Apply_MaterialRenderSettings(selected)))
+                m_strStatus = "Could not apply material comparison mode.";
+            else if (!Begin(pProfiler, string(m_LabelBuffer.data()) + (recovered ? " B" : " A"),
+                static_cast<uint32_t>(m_iFrameInput), strQualitySummary, m_strStatus))
+                (void)game.Apply_MaterialRenderSettings(previous);
+        }
+        ImGui::SameLine();
+    }
+	ImGui::EndDisabled();
 	if (ImGui::Button("Clear runs"))
 		m_Runs.clear();
 	if (m_bCapturing && nullptr != pProfiler)
@@ -231,8 +302,27 @@ void Client::CRenderingBenchmark::Render_Section(
 	}
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::TextDisabled("Current settings: %s", strQualitySummary.c_str());
+    ImGui::TextDisabled("A/B keeps the current camera and lighting. Stop animations for a static map comparison.");
 	if (m_Runs.empty())
 		return;
+    const auto& latest = m_Runs.back();
+    const RENDERING_BENCHMARK_RUN* counterpart = nullptr;
+    for (auto it = m_Runs.rbegin() + 1; it != m_Runs.rend(); ++it)
+        if (it->bSourceMaterials != latest.bSourceMaterials && it->bConditionsStable && latest.bConditionsStable &&
+            it->strComparisonConditions == latest.strComparisonConditions && it->strQualitySummary == latest.strQualitySummary)
+        { counterpart = &*it; break; }
+    if (!latest.bConditionsStable)
+        ImGui::TextWrapped("Comparison excluded: camera, viewport, lighting or render settings changed during this run.");
+    else if (counterpart)
+    {
+        const auto& a = latest.bSourceMaterials ? *counterpart : latest;
+        const auto& b = latest.bSourceMaterials ? latest : *counterpart;
+        ImGui::Text("B - A CPU: %+.3f ms | Draw calls: %+.0f", b.fCpuAvgMs-a.fCpuAvgMs, b.fDrawCallsAvg-a.fDrawCallsAvg);
+        if (a.iGpuFrames == a.iFrames && b.iGpuFrames == b.iFrames)
+            ImGui::Text("B - A GPU: %+.3f ms | PS invocations: %+.0f", b.fGpuAvgMs-a.fGpuAvgMs, b.fPsInvocationsAvg-a.fPsInvocationsAvg);
+        else ImGui::TextDisabled("GPU comparison unavailable: one run has incomplete GPU samples.");
+    }
+    else ImGui::TextDisabled("Capture the other material mode with identical camera, viewport and render settings.");
 	constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_Borders |
 		ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp;
 	if (!ImGui::BeginTable("##RenderingBenchmarkRuns", 9, TABLE_FLAGS))
@@ -251,7 +341,8 @@ void Client::CRenderingBenchmark::Render_Section(
 	{
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
-		ImGui::TextUnformatted(Run.strLabel.c_str());
+		ImGui::Text("%s [%s%s]", Run.strLabel.c_str(), Run.bSourceMaterials ? "B" : "A",
+            Run.bConditionsStable ? "" : ", changed");
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("%s", Run.strTimestamp.c_str());
 		ImGui::TableNextColumn();
@@ -304,6 +395,9 @@ bool_t Client::CRenderingBenchmark::Save_Json(
 			<< "      \"label\": \"" << Escape_Json(Run.strLabel) << "\",\n"
 			<< "      \"timestamp\": \"" << Escape_Json(Run.strTimestamp) << "\",\n"
 			<< "      \"qualitySummary\": \"" << Escape_Json(Run.strQualitySummary) << "\",\n"
+			<< "      \"materialMode\": \"" << (Run.bSourceMaterials ? "RECOVERED_B" : "LEGACY_A") << "\",\n"
+            << "      \"conditionsStable\": " << (Run.bConditionsStable ? "true" : "false") << ",\n"
+            << "      \"comparisonConditions\": \"" << Escape_Json(Run.strComparisonConditions) << "\",\n"
 			<< "      \"frames\": " << Run.iFrames << ",\n"
 			<< "      \"gpuFrames\": " << Run.iGpuFrames << ",\n"
 			<< "      \"cpuAvgMs\": " << Run.fCpuAvgMs << ",\n"

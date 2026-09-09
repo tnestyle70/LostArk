@@ -78,6 +78,178 @@ namespace
 			});
 	}
 
+	bool Apply_PatternInventory(
+		const Client::DATA_JSON_VALUE& root,
+		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_PATTERN>& patterns,
+		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_FOLDER>& folders,
+		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_BUNDLE>& bundles,
+		std::string& status)
+	{
+		using namespace Client;
+		const auto* inventory = root.Find("patternInventory");
+		if (!inventory) return true; // Legacy published Products contain only executable rows.
+		const auto fail = [&](const std::string& reason) {
+			status = "Invalid Boss Patterns inventory: " + reason + "; previous inventory retained.";
+			return false;
+		};
+		const auto* patternRows = Required(*inventory, "patterns", DATA_JSON_TYPE::ARRAY);
+		const auto* folderRows = Required(*inventory, "folders", DATA_JSON_TYPE::ARRAY);
+		const auto* bundleRows = Required(*inventory, "bundles", DATA_JSON_TYPE::ARRAY);
+		if (!Has_ExactProperties(*inventory, { "folders", "patterns", "bundles" }) ||
+			!patternRows || !folderRows || !bundleRows || patternRows->Get_Array().size() > 4096u ||
+			folderRows->Get_Array().size() > 4096u || bundleRows->Get_Array().size() > 4096u)
+			return fail("invalid or oversized hierarchy");
+
+		std::vector<CKoukuSaydonBossTool::PRODUCT_FOLDER> fullFolders;
+		std::vector<CKoukuSaydonBossTool::PRODUCT_PATTERN> fullPatterns;
+		std::vector<CKoukuSaydonBossTool::PRODUCT_BUNDLE> fullBundles;
+		std::unordered_set<std::string> hierarchyIds, patternIds;
+		for (const auto& row : folderRows->Get_Array())
+		{
+			const auto* id = Required(row, "folderId", DATA_JSON_TYPE::STRING);
+			const auto* gate = Required(row, "gateId", DATA_JSON_TYPE::STRING);
+			const auto* name = Required(row, "displayName", DATA_JSON_TYPE::STRING);
+			if (!Has_ExactProperties(row, { "folderId", "gateId", "displayName" }) ||
+				!id || !gate || !name || !Is_StableId(id->Get_String()) || name->Get_String().empty() ||
+				!hierarchyIds.insert(id->Get_String()).second ||
+				!CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()))
+				return fail("invalid parent identity");
+			fullFolders.push_back({ id->Get_String(), gate->Get_String(), name->Get_String() });
+		}
+		const auto hasParent = [&](const std::string& id, const std::string& gate) {
+			return std::any_of(fullFolders.begin(), fullFolders.end(), [&](const auto& folder) {
+				return folder.strFolderId == id && folder.strGateId == gate;
+			});
+		};
+		for (const auto& folder : folders)
+		{
+			if (!std::any_of(fullFolders.begin(), fullFolders.end(), [&](const auto& row) {
+				return row.strFolderId == folder.strFolderId && row.strGateId == folder.strGateId &&
+					row.strDisplayName == folder.strDisplayName;
+			})) return fail("executable parent metadata differs from the tree");
+		}
+		std::size_t readyPatterns = 0u, readyBundles = 0u;
+		for (const auto& row : patternRows->Get_Array())
+		{
+			const auto* id = Required(row, "patternId", DATA_JSON_TYPE::STRING);
+			const auto* name = Required(row, "displayName", DATA_JSON_TYPE::STRING);
+			const auto* category = Required(row, "category", DATA_JSON_TYPE::STRING);
+			const auto* gate = Required(row, "gateId", DATA_JSON_TYPE::STRING);
+			const auto* actor = Required(row, "actorProfileId", DATA_JSON_TYPE::STRING);
+			const auto* target = Required(row, "targetBossPlacementId", DATA_JSON_TYPE::STRING);
+			const auto* reason = Required(row, "unavailableReason", DATA_JSON_TYPE::STRING);
+			const auto* folder = row.Find("folderId");
+			const bool exact = folder ? Has_ExactProperties(row,
+				{ "patternId", "displayName", "category", "gateId", "actorProfileId", "targetBossPlacementId", "folderId", "unavailableReason" }) :
+				Has_ExactProperties(row,
+				{ "patternId", "displayName", "category", "gateId", "actorProfileId", "targetBossPlacementId", "unavailableReason" });
+			if (!exact || !id || !name || !category || !gate || !actor || !target || !reason ||
+				!Is_StableId(id->Get_String()) || !patternIds.insert(id->Get_String()).second ||
+				name->Get_String().empty() || (category->Get_String() != "NORMAL" && category->Get_String() != "MECHANIC") ||
+				!CKoukuSaydonCompositionDocument::Is_KnownGate(gate->Get_String()) ||
+				!Is_StableId(actor->Get_String()) || !Is_StableId(target->Get_String()) ||
+				(folder && (!folder->Is_String() || !hasParent(folder->Get_String(), gate->Get_String()))))
+				return fail("invalid pattern identity or parent");
+			CKoukuSaydonBossTool::PRODUCT_PATTERN pattern;
+			pattern.strPatternId = id->Get_String();
+			pattern.strDisplayName = name->Get_String();
+			pattern.strCategory = category->Get_String();
+			pattern.strGateId = gate->Get_String();
+			pattern.strActorProfileId = actor->Get_String();
+			pattern.strTargetBossPlacementId = target->Get_String();
+			pattern.strFolderId = folder ? folder->Get_String() : "";
+			pattern.strLoadError = reason->Get_String();
+			const auto executable = std::find_if(patterns.begin(), patterns.end(), [&](const auto& item) {
+				return item.strPatternId == pattern.strPatternId;
+			});
+			if (pattern.strLoadError.empty())
+			{
+				if (executable == patterns.end() || !executable->strLoadError.empty() || executable->Stages.empty() ||
+					executable->strDisplayName != pattern.strDisplayName || executable->strCategory != pattern.strCategory ||
+					executable->strGateId != pattern.strGateId || executable->strFolderId != pattern.strFolderId ||
+					executable->strActorProfileId != pattern.strActorProfileId ||
+					executable->strTargetBossPlacementId != pattern.strTargetBossPlacementId)
+					return fail("ready pattern metadata differs from executable pattern " + pattern.strPatternId);
+				pattern.Stages = executable->Stages;
+				++readyPatterns;
+			}
+			else if (executable != patterns.end()) return fail("unavailable pattern is executable: " + pattern.strPatternId);
+			fullPatterns.push_back(std::move(pattern));
+		}
+		if (readyPatterns != patterns.size()) return fail("executable patterns are missing from the tree");
+		for (const auto& row : bundleRows->Get_Array())
+		{
+			const auto* id = Required(row, "bundleId", DATA_JSON_TYPE::STRING);
+			const auto* folder = Required(row, "folderId", DATA_JSON_TYPE::STRING);
+			const auto* gate = Required(row, "gateId", DATA_JSON_TYPE::STRING);
+			const auto* name = Required(row, "displayName", DATA_JSON_TYPE::STRING);
+			const auto* members = Required(row, "members", DATA_JSON_TYPE::ARRAY);
+			const auto* reason = Required(row, "unavailableReason", DATA_JSON_TYPE::STRING);
+			if (!Has_ExactProperties(row, { "bundleId", "folderId", "gateId", "displayName", "members", "unavailableReason" }) ||
+				!id || !folder || !gate || !name || !members || !reason || !Is_StableId(id->Get_String()) ||
+				!hierarchyIds.insert(id->Get_String()).second || name->Get_String().empty() ||
+				members->Get_Array().size() > 8u || !hasParent(folder->Get_String(), gate->Get_String()))
+				return fail("invalid bundle identity or parent");
+			CKoukuSaydonBossTool::PRODUCT_BUNDLE bundle;
+			bundle.strBundleId = id->Get_String();
+			bundle.strFolderId = folder->Get_String();
+			bundle.strGateId = gate->Get_String();
+			bundle.strDisplayName = name->Get_String();
+			bundle.strLoadError = reason->Get_String();
+			std::unordered_set<std::string> memberIds, memberPatterns;
+			for (const auto& member : members->Get_Array())
+			{
+				const auto* memberId = Required(member, "memberId", DATA_JSON_TYPE::STRING);
+				const auto* patternId = Required(member, "patternId", DATA_JSON_TYPE::STRING);
+				const auto* offset = Required(member, "startOffsetMs", DATA_JSON_TYPE::NUMBER);
+				CKoukuSaydonBossTool::PRODUCT_BUNDLE_MEMBER item;
+				if (!Has_ExactProperties(member, { "memberId", "patternId", "startOffsetMs" }) ||
+					!memberId || !patternId || !offset || !Is_StableId(memberId->Get_String()) ||
+					!memberIds.insert(memberId->Get_String()).second || !memberPatterns.insert(patternId->Get_String()).second ||
+					!Parse_U32(*offset, 600000u, item.iStartOffsetMs))
+					return fail("invalid bundle member: " + bundle.strBundleId);
+				const auto pattern = std::find_if(fullPatterns.begin(), fullPatterns.end(), [&](const auto& item) {
+					return item.strPatternId == patternId->Get_String();
+				});
+				if (pattern == fullPatterns.end() || pattern->strGateId != bundle.strGateId)
+					return fail("bundle child is missing or belongs to another Gate: " + bundle.strBundleId);
+				item.strMemberId = memberId->Get_String();
+				item.strPatternId = patternId->Get_String();
+				item.strTargetBossPlacementId = pattern->strTargetBossPlacementId;
+				item.strActorProfileId = pattern->strActorProfileId;
+				bundle.Members.push_back(std::move(item));
+			}
+			const auto executable = std::find_if(bundles.begin(), bundles.end(), [&](const auto& item) {
+				return item.strBundleId == bundle.strBundleId;
+			});
+			if (bundle.strLoadError.empty())
+			{
+				if (executable == bundles.end() || !executable->strLoadError.empty() || executable->Members.empty() ||
+					executable->strDisplayName != bundle.strDisplayName || executable->strFolderId != bundle.strFolderId ||
+					executable->strGateId != bundle.strGateId || executable->Members.size() != bundle.Members.size())
+					return fail("ready bundle metadata differs from executable bundle " + bundle.strBundleId);
+				for (std::size_t i = 0u; i < bundle.Members.size(); ++i)
+				{
+					const auto& source = bundle.Members[i];
+					const auto& targetMember = executable->Members[i];
+					if (source.strMemberId != targetMember.strMemberId || source.strPatternId != targetMember.strPatternId ||
+						source.iStartOffsetMs != targetMember.iStartOffsetMs || source.strActorProfileId != targetMember.strActorProfileId ||
+						source.strTargetBossPlacementId != targetMember.strTargetBossPlacementId)
+						return fail("ready bundle membership differs from executable bundle " + bundle.strBundleId);
+				}
+				bundle.iDurationMs = executable->iDurationMs;
+				++readyBundles;
+			}
+			else if (executable != bundles.end()) return fail("unavailable bundle is executable: " + bundle.strBundleId);
+			fullBundles.push_back(std::move(bundle));
+		}
+		if (readyBundles != bundles.size()) return fail("executable bundles are missing from the tree");
+		folders = std::move(fullFolders);
+		patterns = std::move(fullPatterns);
+		bundles = std::move(fullBundles);
+		return true;
+	}
+
 	bool Load_ProductIndex(
 		std::vector<Client::CKoukuSaydonBossTool::PRODUCT_PATTERN>& outPatterns,
 		std::vector<std::string>& outPlayAll,
@@ -226,12 +398,17 @@ namespace
 			}
 			bundles.push_back(std::move(bundle));
 		}
+		if (!Apply_PatternInventory(root, staged, folders, bundles, outStatus)) return false;
+		errors = std::count_if(staged.begin(), staged.end(), [](const auto& pattern) { return !pattern.strLoadError.empty(); });
+		const auto unavailableBundles = std::count_if(bundles.begin(), bundles.end(), [](const auto& bundle) { return !bundle.strLoadError.empty(); });
 		outFolders=std::move(folders); outBundles=std::move(bundles);
 		outPatterns = std::move(staged);
 		outPlayAll = std::move(playOrder);
 		outSourceRevision = parsedRevision;
-		outStatus = "Loaded " + std::to_string(outPatterns.size()) + " Product patterns; " +
-			std::to_string(errors) + " invalid patterns isolated." + (validOrder ? "" : " Play All unavailable.");
+		outStatus = "Loaded Boss Patterns tree: " + std::to_string(outPatterns.size()) + " patterns / " +
+			std::to_string(outFolders.size()) + " parents / " + std::to_string(outBundles.size()) + " bundles; " +
+			std::to_string(errors) + " patterns and " + std::to_string(unavailableBundles) +
+			" bundles unavailable." + (validOrder ? "" : " Play All unavailable.");
 		return true;
 	}
 
@@ -286,28 +463,39 @@ bool Client::CKoukuSaydonBossTool::Reload(std::string& outStatus)
 const Client::CKoukuSaydonBossTool::PRODUCT_PATTERN*
 Client::CKoukuSaydonBossTool::Find_SelectedPattern() const
 {
+	if (m_iSelectedInventoryKind != 3) return nullptr;
 	const auto found = std::find_if(
 		m_ProductPatterns.begin(), m_ProductPatterns.end(),
 		[this](const PRODUCT_PATTERN& pattern)
 		{
-			return pattern.strPatternId == m_strSelectedPatternId;
+			return pattern.strPatternId == m_strSelectedInventoryId;
 		});
 	return found == m_ProductPatterns.end() ? nullptr : &*found;
 }
 
+const Client::CKoukuSaydonBossTool::PRODUCT_BUNDLE*
+Client::CKoukuSaydonBossTool::Find_SelectedBundle() const
+{
+	if (m_iSelectedInventoryKind != 2) return nullptr;
+	const auto found = std::find_if(m_ProductBundles.begin(), m_ProductBundles.end(),
+		[this](const auto& row) { return row.strBundleId == m_strSelectedInventoryId; });
+	return found == m_ProductBundles.end() ? nullptr : &*found;
+}
+
 void Client::CKoukuSaydonBossTool::Normalize_Selection()
 {
-	if (nullptr != Find_SelectedPattern())
-		return;
-	m_strSelectedPatternId.clear();
-	if (!m_ProductPatterns.empty())
-		m_strSelectedPatternId = m_ProductPatterns.front().strPatternId;
+	if (Find_SelectedPattern() || Find_SelectedBundle() ||
+		(m_iSelectedInventoryKind == 1 && std::any_of(m_ProductFolders.begin(), m_ProductFolders.end(),
+			[this](const auto& row) { return row.strFolderId == m_strSelectedInventoryId; }))) return;
+	m_iSelectedInventoryKind = 0;
+	m_strSelectedInventoryId.clear();
 }
 
 bool Client::CKoukuSaydonBossTool::Play_Selected(std::string& outStatus)
 {
-	const std::string patternId = m_strSelectedPatternId;
-	return Play_SavedPatternById(patternId, outStatus);
+	const std::string stableId = m_strSelectedInventoryId;
+	return m_iSelectedInventoryKind == 2 ? Play_SavedBundleById(stableId, outStatus) :
+		Play_SavedPatternById(stableId, outStatus);
 }
 
 bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view patternId, std::string& outStatus)
@@ -318,11 +506,12 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view
 	if (nullptr == pattern || !pattern->strLoadError.empty())
 	{
 		outStatus = m_strStatus = "Pattern '" + std::string(patternId) +
-			"' is not ready in published PRODUCT revision " + std::to_string(m_iSourceRevision) +
-			". Save it as PRODUCT, wait for publish, then reload the inventory.";
+			"' is not ready in published revision " + std::to_string(m_iSourceRevision) +
+			". " + (pattern ? pattern->strLoadError : "Use Publish All Patterns in Composition to synchronize the tree.");
 		return false;
 	}
-	m_strSelectedPatternId = pattern->strPatternId;
+	m_iSelectedInventoryKind = 3;
+	m_strSelectedInventoryId = pattern->strPatternId;
 	const auto& revision =
 		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	if (!pattern->strTargetBossPlacementId.empty())
@@ -340,7 +529,7 @@ bool Client::CKoukuSaydonBossTool::Play_All(std::string& outStatus)
 	if (!m_bHasSavedComposition ||
 		m_PlayAllPatternIds.empty())
 	{
-		outStatus = "The saved composition has no PRODUCT Play All order.";
+		outStatus = "The published composition has no executable Play All order.";
 		return false;
 	}
 	const auto& revision =
@@ -360,7 +549,7 @@ bool Client::CKoukuSaydonBossTool::Play_PatternById(
 		m_iSourceRevision != expectedSourceRevision)
 	{
 		outStatus =
-			"Saved authoring and generated KoukuSaydon Product revisions differ; Publish before Server Play.";
+			"Saved authoring and published KoukuSaydon revisions differ; use Publish All Patterns before Server Play.";
 		m_strStatus = outStatus;
 		return false;
 	}
@@ -384,7 +573,7 @@ bool Client::CKoukuSaydonBossTool::Play_BundleById(const std::string_view bundle
 {
 	if (!Reload(status)) return false;
 	if (!expectedSourceRevision || expectedSourceRevision!=m_iSourceRevision)
-	{ status=m_strStatus="Saved bundle and Product revisions differ. Save and Publish before Complete Play."; return false; }
+	{ status=m_strStatus="Saved bundle and published revisions differ. Use Publish All Patterns before Complete Play."; return false; }
 	return Play_LoadedBundleById(bundleId, status);
 }
 
@@ -392,14 +581,85 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedBundleById(const std::string_view 
 {
 	const auto found=std::find_if(m_ProductBundles.begin(),m_ProductBundles.end(),[&](const auto& b){return b.strBundleId==bundleId;});
 	if (found==m_ProductBundles.end() || !found->strLoadError.empty() || found->Members.empty())
-	{ status=m_strStatus="Bundle '" + std::string(bundleId) + "' is not ready in published PRODUCT revision " +
-		std::to_string(m_iSourceRevision) + ". Set this Bundle and all child Patterns to PRODUCT, Save, and wait for publish."; return false; }
+	{ status=m_strStatus="Bundle '" + std::string(bundleId) + "' is not ready in published revision " +
+		std::to_string(m_iSourceRevision) + ". " + (found == m_ProductBundles.end() ?
+		"Use Publish All Patterns in Composition to synchronize the tree." : found->strLoadError); return false; }
+	m_iSelectedInventoryKind = 2;
+	m_strSelectedInventoryId = found->strBundleId;
 	const auto& target=found->Members.front().strTargetBossPlacementId;
 	auto& service=CKoukuSaydonPatternAuditionService::Get();
 	service.Set_TargetBoss(target,CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
 	const auto& revision=CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	const bool played=service.Play_Bundle(found->strBundleId,found->strGateId,revision,m_iSourceRevision,status);
 	m_strStatus=status; return played;
+}
+
+bool Client::CKoukuSaydonBossTool::Render_PatternTree(
+	const std::string_view gateId, int& selectionKind, std::string& selectedId) const
+{
+	const std::string gate(gateId);
+	const auto& patterns = m_ProductPatterns;
+	const auto& folders = m_ProductFolders;
+	const auto& bundles = m_ProductBundles;
+	const auto& audition = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+	const auto findPattern = [&](const std::string& id) -> const CKoukuSaydonBossTool::PRODUCT_PATTERN* {
+		auto it=std::find_if(patterns.begin(),patterns.end(),[&](const auto& p){return p.strPatternId==id;}); return it==patterns.end()?nullptr:&*it; };
+	const bool selectionExists = selectionKind == 1 ?
+		std::any_of(folders.begin(), folders.end(), [&](const auto& row) { return row.strFolderId == selectedId && row.strGateId == gate; }) :
+		selectionKind == 2 ?
+		std::any_of(bundles.begin(), bundles.end(), [&](const auto& row) { return row.strBundleId == selectedId && row.strGateId == gate; }) :
+		selectionKind == 3 &&
+		std::any_of(patterns.begin(), patterns.end(), [&](const auto& row) { return row.strPatternId == selectedId && row.strGateId == gate; });
+	if (!selectionExists) { selectionKind = 0; selectedId.clear(); }
+	const auto selectPattern = [&](const CKoukuSaydonBossTool::PRODUCT_PATTERN& pattern, const std::string& uiId) {
+		if (ImGui::Selectable((pattern.strDisplayName+(pattern.strLoadError.empty()?"":" [Unavailable]")+"##"+uiId).c_str(),selectionKind==3 && selectedId==pattern.strPatternId))
+		{ selectionKind=3; selectedId=pattern.strPatternId; }
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s\n%s",pattern.strPatternId.c_str(),pattern.strTargetBossPlacementId.c_str(),pattern.strLoadError.c_str());
+		if (audition.Is_Live(pattern.strPatternId, m_iSourceRevision))
+		{ ImGui::SameLine(); ImGui::TextColored(LIVE_COLOR, "[Live]"); }
+	};
+	bool gateHasProduct=false;
+	{
+		for (const auto& folder : folders)
+		{
+			if (folder.strGateId!=gate) continue;
+			gateHasProduct=true;
+			const bool open=ImGui::TreeNodeEx((folder.strDisplayName+" [Parent]##"+folder.strFolderId).c_str(),ImGuiTreeNodeFlags_DefaultOpen|ImGuiTreeNodeFlags_OpenOnArrow|
+				(selectionKind==1 && selectedId==folder.strFolderId?ImGuiTreeNodeFlags_Selected:0));
+			if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen()) { selectionKind=1; selectedId=folder.strFolderId; }
+			if (open)
+			{
+				for (const auto& bundle : bundles)
+				{
+					if (bundle.strFolderId!=folder.strFolderId || bundle.strGateId!=gate) continue;
+					const bool bundleOpen=ImGui::TreeNodeEx((bundle.strDisplayName+" ["+std::to_string(bundle.Members.size())+" actors]"+(bundle.strLoadError.empty()?"":" [Unavailable]")+"##"+bundle.strBundleId).c_str(),ImGuiTreeNodeFlags_DefaultOpen|ImGuiTreeNodeFlags_OpenOnArrow|
+						(selectionKind==2 && selectedId==bundle.strBundleId?ImGuiTreeNodeFlags_Selected:0));
+					if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen()) { selectionKind=2; selectedId=bundle.strBundleId; }
+					if (ImGui::IsItemHovered() && !bundle.strLoadError.empty()) ImGui::SetTooltip("%s",bundle.strLoadError.c_str());
+					if (bundleOpen)
+					{
+						for (const auto& member : bundle.Members)
+							if (const auto* pattern=findPattern(member.strPatternId)) selectPattern(*pattern,member.strMemberId);
+							else ImGui::TextDisabled("Missing: %s",member.strPatternId.c_str());
+						ImGui::TreePop();
+					}
+				}
+				for (const auto& pattern : patterns)
+					if (pattern.strGateId==gate && pattern.strFolderId==folder.strFolderId) selectPattern(pattern,pattern.strPatternId);
+				ImGui::TreePop();
+			}
+		}
+		for (const auto& pattern : patterns)
+		{
+			if (pattern.strGateId!=gate) continue;
+			gateHasProduct=true;
+			const bool linked=std::any_of(bundles.begin(),bundles.end(),[&](const auto& b){return std::any_of(b.Members.begin(),b.Members.end(),[&](const auto& m){return m.strPatternId==pattern.strPatternId;});});
+			const bool parented=std::any_of(folders.begin(),folders.end(),[&](const auto& folder){return folder.strFolderId==pattern.strFolderId && folder.strGateId==gate;});
+			if (!linked && !parented) selectPattern(pattern,pattern.strPatternId);
+		}
+		if (!gateHasProduct) ImGui::TextDisabled("No published tree for this Gate. Use Publish All Patterns in Composition.");
+	}
+	return gateHasProduct;
 }
 
 void Client::CKoukuSaydonBossTool::Render()
@@ -417,17 +677,18 @@ void Client::CKoukuSaydonBossTool::Render()
 		CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
 	const bool exactLiveProduct = audition.Is_Live(
 		audition.strLivePatternId, m_iSourceRevision);
-	if (ImGui::Button("Reload Saved Product"))
+	if (ImGui::Button("Reload Published Patterns"))
 	{
 		std::string status;
 		(void)Reload(status);
 	}
 	ImGui::SameLine();
-	ImGui::BeginDisabled(
-		!m_bHasSavedComposition || nullptr == Find_SelectedPattern() ||
-		!Find_SelectedPattern()->strLoadError.empty() ||
-		audition.Is_InFlight());
-	if (ImGui::Button("Play Isolated"))
+	const auto* selectedPattern = Find_SelectedPattern();
+	const auto* selectedBundle = Find_SelectedBundle();
+	const bool ready = selectedBundle ? selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty() :
+		selectedPattern && selectedPattern->strLoadError.empty();
+	ImGui::BeginDisabled(!m_bHasSavedComposition || !ready || audition.Is_InFlight());
+	if (ImGui::Button(selectedBundle ? "Play Bundle" : "Play Isolated"))
 		(void)Play_Selected(m_strStatus);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -473,36 +734,34 @@ void Client::CKoukuSaydonBossTool::Render()
 		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
 		ImVec2(0.f, -1.f)))
 	{
-		ImGui::TableSetupColumn("PRODUCT Patterns", ImGuiTableColumnFlags_WidthFixed,
+		ImGui::TableSetupColumn("Boss Patterns", ImGuiTableColumnFlags_WidthFixed,
 			300.f);
 		ImGui::TableSetupColumn("Server Playback", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
-		/* Same gate grouping the Workbench pattern list shows. */
-		ImGui::SeparatorText("1" "\xEA\xB4\x80\xEB\xAC\xB8" " - " "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC");
-		for (const PRODUCT_PATTERN& pattern : m_ProductPatterns)
-		{
-			ImGui::PushID(pattern.strPatternId.c_str());
-			const bool selected =
-				pattern.strPatternId == m_strSelectedPatternId;
-			const std::string label = pattern.strDisplayName + (pattern.strLoadError.empty() ? "" : " [Error]");
-			if (ImGui::Selectable(label.c_str(), selected))
-				m_strSelectedPatternId = pattern.strPatternId;
-			if (audition.Is_Live(pattern.strPatternId, m_iSourceRevision))
-			{
-				ImGui::SameLine();
-				ImGui::TextColored(LIVE_COLOR, "[Live]");
-			}
-			ImGui::TextDisabled("%s", pattern.strPatternId.c_str());
-			ImGui::PopID();
-		}
+		static const char* gateLabels[] = { "1\xEA\xB4\x80\xEB\xAC\xB8", "2\xEA\xB4\x80\xEB\xAC\xB8", "3\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
+		static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
+		m_iSelectedGate = (std::clamp)(m_iSelectedGate, 0, 3);
+		if (ImGui::Combo("Gate##KoukuBossTree", &m_iSelectedGate, gateLabels, 4))
+		{ m_iSelectedInventoryKind = 0; m_strSelectedInventoryId.clear(); }
+		(void)Render_PatternTree(gates[m_iSelectedGate], m_iSelectedInventoryKind, m_strSelectedInventoryId);
 
 		ImGui::TableSetColumnIndex(1);
 		const PRODUCT_PATTERN* const selected =
 			Find_SelectedPattern();
-		if (nullptr == selected)
+		const PRODUCT_BUNDLE* const bundle = Find_SelectedBundle();
+		if (bundle)
 		{
-			ImGui::TextDisabled("Select one PRODUCT pattern.");
+			ImGui::Text("%s", bundle->strDisplayName.c_str());
+			if (!bundle->strLoadError.empty()) ImGui::TextWrapped("%s", bundle->strLoadError.c_str());
+			ImGui::TextDisabled("%s", bundle->strBundleId.c_str());
+			for (const auto& member : bundle->Members)
+				ImGui::BulletText("%s | %s | %u ms", member.strPatternId.c_str(),
+					member.strTargetBossPlacementId.c_str(), member.iStartOffsetMs);
+		}
+		else if (nullptr == selected)
+		{
+			ImGui::TextDisabled("Select a bundle or child Pattern. Parent folders organize the tree.");
 		}
 		else
 		{

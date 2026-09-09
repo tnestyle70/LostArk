@@ -1,0 +1,1630 @@
+{
+  "date": "2026-09-10",
+  "excluded": [
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_6",
+      "sourceNotify": "action-17060/stage-000/notify-013",
+      "reason": "SOURCE_PARTICLE_COLLISION_EXECUTOR_UNSUPPORTED",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecollision_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "dampingfactor": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 219,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "op": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablenumelements": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablechunksize": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 6
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      0.5,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071
+                    ]
+                  }
+                }
+              }
+            },
+            "dampingfactorrotation": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisions": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 80,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ]
+                  }
+                }
+              }
+            },
+            "bpawnsdonotdecrementcount": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdropdetail": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollideonlyifvisible": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollidewithworld": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "particlemass": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "dirscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 3.5
+            },
+            "verticalfudgefactor": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 0.10000000149011612
+            },
+            "delayamount": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisiondistance": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1000.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bupdatemodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 1
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_9",
+      "sourceNotify": "action-17060/stage-000/notify-013",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_01.par_e_reload_01.particlemodulelocationemitter_1",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "inheritsourcevelocityscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "inheritsourcerotationscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "emittername": {
+              "type": "nameproperty",
+              "structType": null,
+              "value": "empty_catridge"
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_33",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_34",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_35",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_73",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_53",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_36",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "W",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01.particlespriteemitter_37",
+      "sourceNotify": "action-17060/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_6",
+      "sourceNotify": "action-17080/stage-001/notify-022",
+      "reason": "SOURCE_PARTICLE_COLLISION_EXECUTOR_UNSUPPORTED",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecollision_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "dampingfactor": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 219,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "op": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablenumelements": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablechunksize": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 6
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      0.5,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071
+                    ]
+                  }
+                }
+              }
+            },
+            "dampingfactorrotation": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisions": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 80,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ]
+                  }
+                }
+              }
+            },
+            "bpawnsdonotdecrementcount": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdropdetail": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollideonlyifvisible": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollidewithworld": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "particlemass": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "dirscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 3.5
+            },
+            "verticalfudgefactor": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 0.10000000149011612
+            },
+            "delayamount": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisiondistance": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1000.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bupdatemodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 1
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_9",
+      "sourceNotify": "action-17080/stage-001/notify-022",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_01.par_e_reload_01.particlemodulelocationemitter_1",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "inheritsourcevelocityscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "inheritsourcerotationscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "emittername": {
+              "type": "nameproperty",
+              "structType": null,
+              "value": "empty_catridge"
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_duf_01_01.particlespriteemitter_1",
+      "sourceNotify": "action-17080/stage-001/notify-009",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_duf_01_01.particlespriteemitter_45",
+      "sourceNotify": "action-17080/stage-001/notify-009",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_duf_01_01.particlespriteemitter_73",
+      "sourceNotify": "action-17080/stage-001/notify-009",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_duf_01_01.particlespriteemitter_53",
+      "sourceNotify": "action-17080/stage-001/notify-009",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "E",
+      "sourceElement": "fx_pc_wgl_06.par_o_wgl_duf_01_01.particlespriteemitter_75",
+      "sourceNotify": "action-17080/stage-001/notify-009",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "R",
+      "sourceElement": "fx_cm_00.dust.par_mp_dust_high_01.particlespriteemitter_1",
+      "sourceNotify": "action-17110/stage-006/notify-011",
+      "reason": "SOURCE_ACTION_CUE_INPUT_UNCLOSED",
+      "detail": "CEFParticleData parameter type is not an admitted scalar or vector at index 2: 2"
+    },
+    {
+      "slot": "R",
+      "sourceElement": "fx_cm_01.debris.par_e_rock_up_blue_01_m.particlespriteemitter_2",
+      "sourceNotify": "action-17110/stage-006/notify-008",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "R",
+      "sourceElement": "fx_cm_01.decal.par_h_decal_01.particlespriteemitter_1",
+      "sourceNotify": "action-17110/stage-006/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "R",
+      "sourceElement": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlespriteemitter_3",
+      "sourceNotify": "action-17110/stage-001/notify-003",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlemoduletypedataribbon_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "maxtessellationbetweenparticles": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 25
+            },
+            "sheetspertrail": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxtrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxparticleintrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 500
+            },
+            "bdeadtrailsondeactivate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdeadtrailsonsourceloss": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bclipsourcesegement": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "benableprevioustangentrecalculation": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "brendergeometry": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "distancetessellationstepsize": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "tangenttessellationscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "btangentrecalculationeveryframe": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_cm_00.dust.par_mp_dust_-x_high_01.particlespriteemitter_1",
+      "sourceNotify": "action-17240/stage-006/notify-012",
+      "reason": "SOURCE_ACTION_CUE_INPUT_UNCLOSED",
+      "detail": "CEFParticleData parameter type is not an admitted scalar or vector at index 2: 2"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2.event_source-event-009",
+      "sourceNotify": "action-17240/stage-001/notify-007",
+      "reason": "SOURCE_OWNER_ANCHOR_UNRESOLVED",
+      "attachment": {
+        "mode": "FOLLOW_NAMED_ANCHORS",
+        "sourceAnchorNames": [
+          "FX_Weapon_01"
+        ],
+        "runtimeAnchors": [
+          {
+            "sourceAnchorName": "FX_Weapon_01",
+            "runtimeAnchorSlotId": "FX_Weapon_01",
+            "runtimeBoneName": "",
+            "socketLocalTransform": {
+              "position": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotationDegrees": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "resolutionStatus": "MISSING_SOURCE_SOCKET"
+          }
+        ],
+        "runtimeAnchorSlotIds": [
+          "FX_Weapon_01"
+        ],
+        "runtimeAnchorSlotId": "FX_Weapon_01",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "runtimeResolutionStatus": "MISSING_SOURCE_SOCKET",
+        "sourceSelectorByteOffset": 381
+      }
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_6",
+      "sourceNotify": "action-17240/stage-006/notify-008",
+      "reason": "SOURCE_PARTICLE_COLLISION_EXECUTOR_UNSUPPORTED",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecollision_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            },
+            "dampingfactor": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 219,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "op": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablenumelements": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 2
+                  },
+                  "lookuptablechunksize": {
+                    "type": "byteproperty",
+                    "structType": null,
+                    "value": 6
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      0.5,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.5,
+                      0.5,
+                      0.5,
+                      0.699999988079071,
+                      0.699999988079071,
+                      0.699999988079071
+                    ]
+                  }
+                }
+              }
+            },
+            "dampingfactorrotation": {
+              "type": "structproperty",
+              "structType": "rawdistributionvector",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisions": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 80,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ]
+                  }
+                }
+              }
+            },
+            "bpawnsdonotdecrementcount": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdropdetail": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollideonlyifvisible": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bcollidewithworld": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "particlemass": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "dirscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 3.5
+            },
+            "verticalfudgefactor": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 0.10000000149011612
+            },
+            "delayamount": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 36,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 0
+                  }
+                }
+              }
+            },
+            "maxcollisiondistance": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1000.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bupdatemodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 1
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_01.par_e_reload_01.particlespriteemitter_9",
+      "sourceNotify": "action-17240/stage-006/notify-008",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_01.par_e_reload_01.particlemodulelocationemitter_1",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "inheritsourcevelocityscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "inheritsourcerotationscale": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "bspawnmodule": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "emittername": {
+              "type": "nameproperty",
+              "structType": null,
+              "value": "empty_catridge"
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_decal_01_fail.particlespriteemitter_55",
+      "sourceNotify": "action-17240/stage-006/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_decal_01_fail.particlespriteemitter_56",
+      "sourceNotify": "action-17240/stage-006/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_decal_01_fail.particlespriteemitter_57",
+      "sourceNotify": "action-17240/stage-006/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_decal_01_fail.particlespriteemitter_58",
+      "sourceNotify": "action-17240/stage-006/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_shot_02_fail.particlespriteemitter_56",
+      "sourceNotify": "action-17240/stage-006/notify-013",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_shot_02_fail.particlespriteemitter_57",
+      "sourceNotify": "action-17240/stage-006/notify-013",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_shot_02_fail.particlespriteemitter_71",
+      "sourceNotify": "action-17240/stage-006/notify-013",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlespriteemitter_12",
+      "sourceNotify": "action-17250/stage-000/notify-010",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo3.particlespriteemitter_1",
+      "sourceNotify": "action-17250/stage-001/notify-004",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo3.particlespriteemitter_7",
+      "sourceNotify": "action-17250/stage-001/notify-004",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo3.particlespriteemitter_13",
+      "sourceNotify": "action-17250/stage-001/notify-004",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo3.particlespriteemitter_70",
+      "sourceNotify": "action-17250/stage-001/notify-004",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16",
+      "sourceNotify": "action-17250/stage-001/notify-024",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16.event_source-event-041",
+      "sourceNotify": "action-17250/stage-001/notify-025",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16.event_source-event-042",
+      "sourceNotify": "action-17250/stage-001/notify-026",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16.event_source-event-043",
+      "sourceNotify": "action-17250/stage-001/notify-027",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16.event_source-event-044",
+      "sourceNotify": "action-17250/stage-001/notify-028",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_explo_de.particlespriteemitter_16.event_source-event-045",
+      "sourceNotify": "action-17250/stage-001/notify-029",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_hitg.particlespriteemitter_31",
+      "sourceNotify": "action-17250/stage-001/notify-022",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16",
+      "sourceNotify": "action-17250/stage-000/notify-029",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16.event_source-event-018",
+      "sourceNotify": "action-17250/stage-000/notify-033",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16.event_source-event-022",
+      "sourceNotify": "action-17250/stage-000/notify-037",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16.event_source-event-024",
+      "sourceNotify": "action-17250/stage-000/notify-039",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16.event_source-event-026",
+      "sourceNotify": "action-17250/stage-000/notify-041",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_16.event_source-event-029",
+      "sourceNotify": "action-17250/stage-000/notify-044",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5",
+      "sourceNotify": "action-17250/stage-000/notify-029",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5.event_source-event-018",
+      "sourceNotify": "action-17250/stage-000/notify-033",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5.event_source-event-022",
+      "sourceNotify": "action-17250/stage-000/notify-037",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5.event_source-event-024",
+      "sourceNotify": "action-17250/stage-000/notify-039",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5.event_source-event-026",
+      "sourceNotify": "action-17250/stage-000/notify-041",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_00.particlespriteemitter_5.event_source-event-029",
+      "sourceNotify": "action-17250/stage-000/notify-044",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5",
+      "sourceNotify": "action-17250/stage-000/notify-036",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5.event_source-event-023",
+      "sourceNotify": "action-17250/stage-000/notify-038",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5.event_source-event-025",
+      "sourceNotify": "action-17250/stage-000/notify-040",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5.event_source-event-028",
+      "sourceNotify": "action-17250/stage-000/notify-043",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5.event_source-event-030",
+      "sourceNotify": "action-17250/stage-000/notify-045",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_5.event_source-event-031",
+      "sourceNotify": "action-17250/stage-000/notify-046",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6",
+      "sourceNotify": "action-17250/stage-000/notify-036",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6.event_source-event-023",
+      "sourceNotify": "action-17250/stage-000/notify-038",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6.event_source-event-025",
+      "sourceNotify": "action-17250/stage-000/notify-040",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6.event_source-event-028",
+      "sourceNotify": "action-17250/stage-000/notify-043",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6.event_source-event-030",
+      "sourceNotify": "action-17250/stage-000/notify-045",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "ALT_V",
+      "sourceElement": "fx_pc_wgl_08.par_w_wgl_supergprotection_sd_01.particlespriteemitter_6.event_source-event-031",
+      "sourceNotify": "action-17250/stage-000/notify-046",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_cm_00.dust.par_mp_dust_high_01.particlespriteemitter_1",
+      "sourceNotify": "action-17820/stage-000/notify-007",
+      "reason": "SOURCE_ACTION_CUE_INPUT_UNCLOSED",
+      "detail": "CEFParticleData parameter type is not an admitted scalar or vector at index 2: 2"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_cm_00.dust.par_mp_dust_high_01.particlespriteemitter_1.event_source-event-005",
+      "sourceNotify": "action-17820/stage-000/notify-009",
+      "reason": "SOURCE_ACTION_CUE_INPUT_UNCLOSED",
+      "detail": "CEFParticleData parameter type is not an admitted scalar or vector at index 2: 2"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_cm_00.dust.par_mp_dust_high_01.particlespriteemitter_1.event_source-event-008",
+      "sourceNotify": "action-17820/stage-001/notify-004",
+      "reason": "SOURCE_ACTION_CUE_INPUT_UNCLOSED",
+      "detail": "CEFParticleData parameter type is not an admitted scalar or vector at index 2: 2"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlespriteemitter_3",
+      "sourceNotify": "action-17820/stage-000/notify-008",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlemoduletypedataribbon_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "maxtessellationbetweenparticles": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 25
+            },
+            "sheetspertrail": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxtrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxparticleintrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 500
+            },
+            "bdeadtrailsondeactivate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdeadtrailsonsourceloss": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bclipsourcesegement": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "benableprevioustangentrecalculation": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "brendergeometry": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "distancetessellationstepsize": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "tangenttessellationscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "btangentrecalculationeveryframe": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlespriteemitter_3.event_source-event-007",
+      "sourceNotify": "action-17820/stage-001/notify-003",
+      "reason": "SOLO_EXTERNAL_EMITTER_PARTICLE_STATE",
+      "modules": [
+        {
+          "sourceObject": "fx_pc_wgl_00.par_j_wgl_jumptrail_01.particlemoduletypedataribbon_0",
+          "properties": {
+            "benabled": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "beditable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodduplicate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "basynctickable": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "maxtessellationbetweenparticles": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 25
+            },
+            "sheetspertrail": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxtrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 1
+            },
+            "maxparticleintrailcount": {
+              "type": "intproperty",
+              "structType": null,
+              "value": 500
+            },
+            "bdeadtrailsondeactivate": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bdeadtrailsonsourceloss": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "bclipsourcesegement": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "benableprevioustangentrecalculation": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "brendergeometry": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "distancetessellationstepsize": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "tangenttessellationscalar": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 5.0
+            },
+            "btangentrecalculationeveryframe": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": true
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          }
+        }
+      ],
+      "attempt": "Source LOD, named owner and module properties recovered. Existing independent Solo has no live sibling particle position/velocity sampling provider; core shield/electric carrier is retained."
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_pc_wgl_01.par_o_wgl_protect_01.particlespriteemitter_0.event_source-event-027",
+      "sourceNotify": "action-17820/stage-004/notify-008",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_pc_wgl_01.par_o_wgl_protect_01.particlespriteemitter_13.event_source-event-027",
+      "sourceNotify": "action-17820/stage-004/notify-008",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "X",
+      "sourceElement": "fx_pc_wgl_01.par_o_wgl_protect_01.particlespriteemitter_10.event_source-event-027",
+      "sourceNotify": "action-17820/stage-004/notify-008",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_01.particlespriteemitter_11.event_action-17240-stage-002-notify-011",
+      "sourceNotify": "action-17240/stage-002/notify-011",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_01.particlespriteemitter_14.event_action-17240-stage-002-notify-011",
+      "sourceNotify": "action-17240/stage-002/notify-011",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_5.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_3.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_27.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_2.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_4.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_8.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_10.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_wp_01.particlespriteemitter_32.event_action-17240-stage-003-notify-012",
+      "sourceNotify": "action-17240/stage-003/notify-012",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_cast_01.particlespriteemitter_9.event_action-17240-stage-003-notify-013",
+      "sourceNotify": "action-17240/stage-003/notify-013",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_02.particlespriteemitter_11.event_action-17240-stage-003-notify-014",
+      "sourceNotify": "action-17240/stage-003/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_02.particlespriteemitter_14.event_action-17240-stage-003-notify-014",
+      "sourceNotify": "action-17240/stage-003/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_02.particlespriteemitter_50.event_action-17240-stage-003-notify-014",
+      "sourceNotify": "action-17240/stage-003/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_02.particlespriteemitter_1.event_action-17240-stage-003-notify-014",
+      "sourceNotify": "action-17240/stage-003/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    },
+    {
+      "slot": "T",
+      "sourceElement": "fx_pc_wgl_07.par_s_wgl_cyclone_bcast_02.particlespriteemitter_2.event_action-17240-stage-003-notify-014",
+      "sourceNotify": "action-17240/stage-003/notify-014",
+      "reason": "NATIVE_MATERIAL_OR_VERTEX_INPUT_UNCLOSED"
+    }
+  ],
+  "canonicalStagePolicy": "D uses stage000; X uses currently bound clips01/02/03 (raw stages000/001/004). T additionally reads raw stages002/003 for the bound combo chain.",
+  "manualVisualValidation": "USER_PENDING"
+}

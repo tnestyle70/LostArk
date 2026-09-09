@@ -255,6 +255,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			valuesValid = !window.CardRegions.empty() && !window.ContactTargets.empty() && window.ContactTargets.size() <= 64u &&
 				!window.OnSuccess.empty() && window.OnFail.empty() && window.OnTimeout.empty() && !window.bEndsPatternOnSuccess;
 			break;
+        case BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD:
+            valuesValid = window.CardRegions.empty() && window.OnSuccess.empty() && window.OnFail.empty() &&
+                window.OnTimeout.empty() && !window.bEndsPatternOnSuccess;
+            break;
+		case BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW:
 		case BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL:
 			valuesValid = window.CardRegions.empty() && window.OnFail.empty();
 			break;
@@ -271,6 +276,38 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			valuesValid = false;
 			break;
 		}
+        if (!std::isfinite(window.fBossChargeDistanceM) || window.fBossChargeDistanceM < 0.f ||
+            window.fBossChargeDistanceM > 1000.f || (window.fBossChargeDistanceM > 0.f &&
+            (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || pattern.BossMotion)))
+            valuesValid = false;
+        if (window.fBossChargeDistanceM > 0.f)
+        {
+            for (const auto& other : pattern.LogicWindows)
+                if (&other != &window && other.fBossChargeDistanceM > 0.f &&
+                    other.iStartMs < endMs && window.iStartMs < std::uint64_t(other.iStartMs) + other.iDurationMs)
+                    valuesValid = false;
+            std::uint64_t stageStartMs = 0u;
+            for (const auto& stage : pattern.Stages)
+            {
+                if (!stage.Actions.empty() && window.iStartMs <= stageStartMs && stageStartMs < endMs)
+                    valuesValid = false;
+                stageStartMs += stage.iDurationMs;
+            }
+        }
+        const auto captureCount = std::count_if(window.OnSuccess.begin(), window.OnSuccess.end(), [](const auto& result) {
+            return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+        });
+        if (captureCount > 1 || (captureCount == 1 && window.OnSuccess.size() != 1u) ||
+            (captureCount == 1) != !window.strHoldLogicOccurrenceId.empty()) valuesValid = false;
+        if (!window.strHoldLogicOccurrenceId.empty())
+        {
+            const auto hold = std::find_if(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [&](const auto& row) {
+                return row.strWindowId == window.strHoldLogicOccurrenceId;
+            });
+            if (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || hold == pattern.LogicWindows.end() ||
+                hold->eKind != BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD || hold->iStartMs > window.iStartMs ||
+                std::uint64_t(hold->iStartMs) + hold->iDurationMs < endMs) valuesValid = false;
+        }
 		const auto resultsValid = [&window](
 			const std::vector<BOSS_PATTERN_LOGIC_RESULT>& results)
 		{
@@ -290,12 +327,23 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 					(contactMotion && result.ContactMotions.size() != window.ContactTargets.size()) ||
 					(contactSignal && result.strTargetLogicOccurrenceId.empty()))
 					return false;
+                const bool capture = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+                if (capture ? (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || &results != &window.OnSuccess ||
+                    result.eAttachmentSlot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
+                    result.iPercent || result.iDurationMs ||
+                    std::any_of(result.GripLocalOffset.begin(), result.GripLocalOffset.end(), [](const float value) {
+                        return !std::isfinite(value) || std::abs(value) > 10.f;
+                    })) : (result.eAttachmentSlot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE ||
+                    result.GripLocalOffset != std::array<float, 3u>{})) return false;
+                if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR &&
+                    (result.iDurationMs == 0u || result.iDurationMs > 600000u ||
+                     result.iPercent != 0u || result.strFearPresentationId.empty())) return false;
 				if (BOSS_PATTERN_LOGIC_RESULT_KIND::NONE == result.eKind)
 					return false;
 				/* Boss-level completion may hand the audition a follow-up;
 				a per-player verdict cannot move the boss. */
 				if (BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN == result.eKind &&
-					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL != window.eKind)
+					BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW != window.eKind && BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL != window.eKind)
 					return false;
 			}
 			return true;
@@ -581,7 +629,9 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
 	for (const auto& window : pattern->LogicWindows)
 	{
-		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL) continue;
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL &&
+            window.eKind != BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW && window.eKind != BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD &&
+            window.fBossChargeDistanceM <= 0.f) continue;
 		const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;
 		const std::uint64_t deadlineTicks = (endMs * SERVER_TICK_HZ + MILLISECONDS_PER_SECOND - 1u) / MILLISECONDS_PER_SECOND;
 		if (patternElapsedTicks < deadlineTicks)
@@ -605,18 +655,22 @@ void LostArk::Server::CKoukuSaydonBrain::Apply_BossMotion(
 	if (motion.iEndMs <= motion.iStartMs) return;
 	const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
 		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
-	const double timeMs = static_cast<double>(ticks) * 1000.0 / SERVER_TICK_HZ;
-	const double alpha = (std::clamp)((timeMs - motion.iStartMs) /
-		static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
-	const auto sample = [&](std::size_t axis)
-	{
-		return static_cast<float>(motion.StartPosition[axis] +
-			(motion.EndPosition[axis] - motion.StartPosition[axis]) * alpha);
-	};
-	boss.fPositionX = sample(0u);
-	boss.fPositionY = motion.StartPosition[1];
-	boss.fPositionZ = sample(2u);
-	boss.fYawDegrees = motion.fYawDegrees;
+    const auto position = Sample_BossMotion(motion, static_cast<std::uint32_t>(ticks));
+    boss.fPositionX = position[0]; boss.fPositionY = position[1]; boss.fPositionZ = position[2];
+    boss.fYawDegrees = motion.fYawDegrees;
+}
+
+std::array<float, 3u> LostArk::Server::CKoukuSaydonBrain::Sample_BossMotion(
+    const BOSS_PATTERN_BOSS_MOTION& motion, const std::uint32_t elapsedTicks) noexcept
+{
+    if (motion.iEndMs <= motion.iStartMs) return motion.StartPosition;
+    const double timeMs = static_cast<double>(elapsedTicks) * 1000.0 / SERVER_TICK_HZ;
+    const double alpha = (std::clamp)((timeMs - motion.iStartMs) /
+        static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
+    return {
+        static_cast<float>(motion.StartPosition[0] + (motion.EndPosition[0] - motion.StartPosition[0]) * alpha),
+        motion.StartPosition[1],
+        static_cast<float>(motion.StartPosition[2] + (motion.EndPosition[2] - motion.StartPosition[2]) * alpha)};
 }
 
 void LostArk::Server::CKoukuSaydonBrain::Abort_Pattern(

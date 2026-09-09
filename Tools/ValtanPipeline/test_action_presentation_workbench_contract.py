@@ -144,6 +144,81 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             r'"Action Workbench"\s*,\s*DEBUG_TOOL::ANIMATION',
         )
 
+    def test_workbench_reopen_preserves_draft_and_explicit_boss_selects_owner_gate(self) -> None:
+        reopen = function_body(self.sequencer_cpp, "void Client::CSequencerTool::Open()")
+        explicit_open = function_body(
+            self.sequencer_cpp,
+            "void Client::CSequencerTool::Open(const COMPOSITION_WORKBENCH_BOSS boss)",
+        )
+        select = function_body(self.sequencer_cpp, "void Client::CSequencerTool::Select_Boss(")
+        selector = function_body(self.sequencer_cpp, "void Client::CSequencerTool::Render_BossSelector()")
+        self.assertNotIn("m_eSelectedBoss =", reopen)
+        self.assertNotIn("Select_Boss(", reopen)
+        for body in (reopen, explicit_open, select):
+            self.assertNotIn("Reload(", body)
+            self.assertNotIn("Save(", body)
+        self.assertIn("Select_Boss(boss);", explicit_open)
+        self.assertIn("Open();", explicit_open)
+        self.assertIn("Select_Boss(boss);", selector)
+        self.assertIn("session->Select_WorkbenchBoss(boss);", select)
+        self.assertIn("m_bSequencerMaximized = false;", reopen)
+        for pane in ("PATTERNS", "RESOURCES", "DETAILS"):
+            self.assertIn(f"m_PaneVisible[static_cast<std::size_t>(PANE::{pane})] = true;", reopen)
+        self.assertIn("m_bRestoreAuthoringPanesRequested = true;", reopen)
+        self.assertIn(
+            "bool_t m_bPhysicalAnimationBrowserVisible = false;",
+            read("Client/Public/SequencerTool.h"),
+        )
+        resources = function_body(self.sequencer_cpp, "void Client::CSequencerTool::Render_Pane(")
+        self.assertIn("pane == PANE::RESOURCES && m_bPhysicalAnimationBrowserVisible", resources)
+
+    def test_sequence_workspace_reuses_panes_with_independent_windows_and_storage(self) -> None:
+        workbench = read("Client/Private/KoukuSaydonActionWorkbench.cpp")
+        workbench_h = read("Client/Public/KoukuSaydonActionWorkbench.h")
+        constructor = function_body(
+            self.sequencer_cpp, "Client::CSequencerTool::CSequencerTool(",
+        )
+        self.assertNotIn("Reload(", constructor)
+        window_ids = function_body(self.sequencer_cpp, "const char* PaneWindowId(")
+        sequence_ids = function_body(window_ids, "if (sequenceWorkspace)")
+        ids = re.findall(r'return "[^"\n]*###([^"\n]+)";', window_ids)
+        self.assertEqual(len(ids), len(set(ids)))
+        for pane in ("SEQUENCER", "PATTERNS", "RESOURCES", "DETAILS", "PREVIEW", "BOSS_PATTERN", "TOOLBAR"):
+            self.assertIn(f"case PANE::{pane}:", sequence_ids)
+        self.assertIn('"Sequencer Benchmark###SequenceBenchmarkSessionWindow"', sequence_ids)
+        self.assertIn('"Composition Sequencer###SequenceBenchmarkSequencesWindow"', sequence_ids)
+        for signature in ("void Client::CSequencerTool::Select_Boss(",
+                          "void Client::CSequencerTool::Render_BossSelector()"):
+            self.assertIn("m_bSequenceWorkspace && boss == BOSS::VALTAN",
+                          function_body(self.sequencer_cpp, signature))
+        self.assertIn("m_Document(sequenceWorkspace ? CKoukuSaydonCompositionDocument::Resolve_SequencePath() :", workbench)
+        self.assertIn("CKoukuSaydonCompositionDocument::Resolve_Path())", workbench)
+        self.assertIn("int m_iNewPatternCategory = 1;", workbench_h)
+        self.assertNotIn("static int categoryIndex", workbench)
+        for modal in ("SequenceRenameSelectedItem", "SequenceReloadConfirmation"):
+            self.assertIn(f"###{modal}", workbench)
+
+    def test_sequence_workspace_cannot_publish_or_request_server_play(self) -> None:
+        workbench = read("Client/Private/KoukuSaydonActionWorkbench.cpp")
+        publish = function_body(workbench, "bool_t Client::CKoukuSaydonActionWorkbench::Publish_AllPatterns(")
+        rejected = function_body(publish, "if (m_bSequenceWorkspace)")
+        self.assertIn("return false;", rejected)
+        self.assertLess(publish.index("if (m_bSequenceWorkspace)"), publish.index("CProjectDataRoot::Get()"))
+        for signature in ("bool_t Client::CKoukuSaydonActionWorkbench::Consume_ServerPlayRequest(",
+                          "bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundleServerPlayRequest("):
+            body = function_body(workbench, signature)
+            self.assertRegex(body, r"if \(m_bSequenceWorkspace \|\|[^\n]+\)\s*return false;")
+        toolbar = function_body(workbench, "void Client::CKoukuSaydonActionWorkbench::Render_Toolbar()")
+        patterns = function_body(workbench, "void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()")
+        self.assertIn('ImGui::Button("Complete Play (Server)")',
+                      function_body(toolbar, "if (!m_bSequenceWorkspace)"))
+        self.assertIn('ImGui::Button("Publish All Patterns##PatternList")',
+                      function_body(patterns, "if (!m_bSequenceWorkspace)"))
+        save = function_body(workbench, "bool_t Client::CKoukuSaydonActionWorkbench::Save(")
+        self.assertIn("m_Document.Save_Atomic(candidate, outStatus)", save)
+        self.assertIn("Saved all Sequence changes to the independent Sequencer workspace.", save)
+        self.assertNotIn("Publish_AllPatterns(", save)
+
     def test_f1_has_no_hard_bounds_and_owner_windows_keep_layout_contracts(
         self,
     ) -> None:

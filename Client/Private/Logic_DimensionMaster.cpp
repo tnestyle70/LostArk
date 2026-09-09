@@ -158,6 +158,7 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 		"pc_sp_m_00_sk_act_estherskill_1",
 		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
 		"idle_charactercustomizing_1",
+		"pc_sp_m_00_sk_abn_fear_1",
 	},
 
 	&Create_Logic,

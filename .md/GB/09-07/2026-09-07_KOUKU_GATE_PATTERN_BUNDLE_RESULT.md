@@ -1,5 +1,7 @@
 # 2026-09-07 쿠크 Gate·부모 분류·재생 묶음 구현 결과
 
+> 2026-09-09 최신 저장·배포 계약은 아래 G24다. 이전 절의 개별 DRAFT/PRODUCT 전환 및 Save 자동 publish 설명은 당시 기록이며 G24가 대체한다.
+
 > 상태: 기존 Gate·묶음 배포와 G08~G11 후속 코드·최종 Product 빌드·저장/서버 계약 검증 완료. 후속 작업은 사용자 저작 데이터를 자동 publish하지 않았으며 사용자 화면 재생은 미확인.
 > 계획: [Gate·묶음 구현 계획](2026-09-07_KOUKU_GATE_PATTERN_BUNDLE_IMPLEMENTATION_PLAN.md)
 > 브랜치: `codex/kouku-gate-pattern-bundles`. 선행 `Fix KoukuSaydon Complete Play` 작업의 미커밋 변경을 보존하고 이어서 구현했다.
@@ -453,3 +455,78 @@ Apply/Save/Reload·즉시 geometry 검사, static/instance/skinned shader3개 �
 위치·회전·크기를 조절하면 현재 시각에 즉시 반영되고, Apply/Save로 값을 유지한다.
 에이전트는 Client/UI를 실행·조작하거나 화면을 캡처하지 않았다. 포커판/중앙 링의 최종 모습,
 두 맵 실제 재입장과 망치·카드 반응·장판·Collider drag 화면은 새 EXE로 사용자 확인이 남아 있다.
+
+## G24. Boss Patterns 정본과 Publish All Patterns 통일 (2026-09-09)
+
+`main` 동기화 후 `codex/kouku-publish-all-patterns`에서 반영했다. 수정 전 Composition revision176은
+부모8·Bundle8·Pattern17개였지만, 수동 PRODUCT 필터 때문에 게시 데이터는 부모1·Bundle1·Pattern11개만
+포함했다. 조커찾기는 자식 Pattern12/13만 PRODUCT이고 Bundle3은 DRAFT여서 F1에서 부모·묶음이
+빠지는 상태였다. 코드 및 데이터 비교로 확인했으며 화면을 대신 판정하지 않았다.
+
+### 실제 반영
+
+- Toolbar, Boss Patterns, Sequencer의 Save와 Bundle Sequencer의 같은 위치 Save는 모두 동일한
+  `Save()`를 호출한다. 전체 Composition 수정분만 CAS 저장하며 자동 publish는 하지 않는다.
+  로드·fresh·publish 중 잠금 조건도 통일했다. clean Save는 revision이나 런타임을 변경하지 않는다.
+- 트리 아래 `Set Pattern to PRODUCT`를 `Publish All Patterns`로 교체했다. 개별 Pattern/Bundle의
+  Authoring 전환 UI를 제거했다. 저장된 모든 Gate·Parent·Bundle·Pattern을 선택/Model View와
+  무관하게 한 번에 처리한다. dirty/stale 상태에서는 저장·재로드를 요구한다.
+- Publisher는 원본 status/category/Stage/Geometry를 바꾸지 않는다. 검증용 사본에서 기존 실행
+  검증기를 사용해 FOLLOWUP/clone 의존성 및 Bundle 자식·공통 연출까지 실행 가능 여부를 판단한다.
+  불완전 항목은 전체 트리에 사유와 함께 남고 실행 배열에만 포함되지 않는다.
+- 기존 Encounter 안의 optional `patternInventory`에 전체 계층을 보존했다. 별도 정본이나
+  sidecar는 추가하지 않았다. 기존 `patterns/bundles` 및 patternbindings/Server bootstrap은
+  실행 가능한 항목을 계속 소비한다. F1 허브와 별도 Boss Tool은 같은 트리 렌더 함수를 사용한다.
+- F1 로더는 전체 계층·ID·순서와 ready 실행 배열의 정보·멤버를 검증한 뒤 교체한다.
+  손상되거나 서로 다른 metadata는 기존 목록과 revision을 보존한다. unavailable은 사유를 표시하고
+  재생을 막는다. 기존 Play All은 실행 가능한 Pattern의 원래 순서를 유지한다.
+- 명시적 Kouku owner는 Product와 Gameplay 두 배포가 모두 성공해야 완료된다. 실패 시 Product,
+  Server 출력, Valtan presentation generation 및 receipt를 원복한다. 각 owner의 동시 쓰기는
+  공통 잠금으로 직렬화한다. 성공할 때만 Workbench가 F1 refresh를 요청한다.
+- 저장과 실행 검증을 나누며 기존 PRODUCT Collider의 X/Z 회전도 저작 값으로 저장할 수 있다.
+  지원하지 않는 회전은 publish 시 해당 Pattern의 실행 불가 사유가 된다. 공유 Logic 정의를 수정하면
+  그 정의를 직접 또는 outcome으로 사용하는 Pattern만 기존 Mark_Draft 경로로 저장 가능하게 한다.
+
+### 실제 저장본 Publish 결과
+
+`Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 176`은 두 domain
+모두 PASS/exit0이다. source SHA-256 및 바이트가 그대로인 상태에서 다음 생성 결과를 확인했다.
+
+| 항목 | 전체 F1 트리 | 실행 가능 |
+|---|---:|---:|
+| Parent | 8 | 분류용 |
+| Bundle | 8 | 4 |
+| Pattern | 17 | 15 |
+
+모든 ID·이름·Gate·Parent·member·offset·원본 순서는 Composition과 정확히 같다. 새로 실행되는
+Bundle은 파1빨2·조커찾기·잡기이며 기존 등장 Bundle도 유지한다. Pattern3/16은 Stage가 없고,
+Bundle4/5/8은 member가 없으며 Bundle6은 빈 Pattern16을 참조하여 사유와 함께 남는다.
+Encounter/patternbindings/Server 데이터는 revision176이며 실행 Stage는133개다.
+
+### 자동 검증과 남은 실행 확인
+
+| 검사 | 실제 결과 및 로그 (`out/KoukuPublishAll/`) |
+|---|---|
+| Client C++ | Debug x64 ClCompile PASS/exit0, `client-compile.log`. 기존 C4819 경고는 남아 있다. |
+| 교체용 Client 빌드 | Debug x64 Build·link·shader/DLL 배포 PASS/exit0. `ClientBuild/Client.exe`, `client-build-staged-final.log`. 실행 중인 기존 Client 때문에 별도 출력 폴더에 준비했다. 첫 시도는 출력 경로 변경에 따른 Shared.lib 누락으로 실패했으며 실제 `Shared/Bin/Debug/Shared.lib`를 같은 검사 폴더에 복사해 해결했다. DirectXTK PDB 누락 LNK4099는 기존 라이브러리의 디버그 정보 경고다. |
+| 기존 native 편집기 | 재컴파일 및 transport/editor 두 switch PASS/exit0. source-only Save, 전체 DRAFT Publish 진입, 중복·dirty·stale 거절, 성공 시 refresh1/실패0, Collider/Logic 저장 및 기존 편집 회귀. `native-build.log`, `native-save-publish.log`, `native-editor.log` |
+| 실제 F1 로더 | 실제 Client 객체·라이브러리를 링크한 임시 콘솔에서 전체 트리와 12종 손상/불일치 거절·이전 목록 보존 PASS. 실제 source176도 8/17/8, PlayAll15 로드 PASS. `native-loader-synthetic.log`, `native-loader-actual-data.log` |
+| 로더 검사 경계 | `wmainCRTStartup`에서 Reload만 호출했다. 전후 Engine.dll 미로드 assertion PASS. Client/UI/network는 실행하지 않았다. 초기 독립 객체만의 링크는 외부 기호 누락으로 실패했고, 실제 Client 링크 입력으로 해결했다. |
+| Publisher 회귀 | 전체 inventory·category/원본 보존·FOLLOWUP/clone·identity·publish/validate·두 번째 domain 실패 원복7 tests PASS. `publish-all-focused-tests.log` |
+| 실제 배포·데이터 | Product+Gameplay PASS/exit0. source 바이트 보존 및 metadata/ready 목록 정확 일치 PASS. `publish-all.log`, `source-before.json`, `data-audit.json` |
+| Server | 기존 `--kouku-bundle-contract-test` PASS, failures0. 새 bootstrap의 실제 catalog admission과 Bundle 동시 시작·단독/순차 재생·부분 실패 보존 확인. `server-bundle-contract.log` |
+| 형식 | 변경 JSON parse, PowerShell3파일 AST parse, 변경 C++ UTF-8/no-BOM/CRLF 및 소유 범위 `git diff --check` PASS. project/XML 변경 없음. |
+
+현재 실행 가능한 Pattern이 0개인 저장본은 기존 Server encounter admission의 최소1개 조건으로
+전체 publish를 거절하고 이전 게시물을 보존한다. 이 Server 계약은 이번 변경에서 확장하지 않았다.
+전역 ID/계층 자체가 모호한 손상 문서도 전체 publish를 거절한다.
+
+현재 사용자가 실행한 Client PID23536과 Server PID27576은12:30 시작된 기존 프로세스다.
+교체용 EXE는 `out/KoukuPublishAll/ClientBuild/Client.exe`에 준비됐다. 현재 `Client/Bin/Debug/Client.exe`는
+실행 중이라 교체하지 않았다. Client 종료 후 기본 출력 경로 최종 빌드, Server+Client 재시작 및
+사용자 화면 재생은 미확인이다.
+사용자 확인 경로는 Lobby → KoukuSaydon → F1 → Action Workbench → Composition → Boss Patterns
+에서 Save → Publish All Patterns → 성공 확인, 이후 재시작한 Server에서 F1 Boss Patterns의
+Gate2 조커찾기 Bundle 또는 자식 Complete Play다. 빈 항목은 트리에 남고 사유를 보여야 한다.
+에이전트는 Client/UI를 실행·조작하거나 캡처하지 않았다. 별도 진행 중인 `Data/Effects` 수정과
+Resources는 보존했으며 자동 stage/commit/push는 하지 않았다.

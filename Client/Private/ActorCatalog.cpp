@@ -260,6 +260,14 @@ namespace
 			{
 				return false;
 			}
+			/* Existing v4 catalogs omit this field and retain their original size. */
+			if (nullptr != value.Find("presentationScale") &&
+				(!ReadRequiredNumber(value, "presentationScale", entry.presentationScale) ||
+				 !std::isfinite(entry.presentationScale) ||
+				 entry.presentationScale <= 0.f || entry.presentationScale > 100.f))
+			{
+				return false;
+			}
 			entry.networkClassId = ParseClass(networkClassId);
 			const DATA_JSON_VALUE* pEquipment = value.Find("equipmentModels");
 			const DATA_JSON_VALUE* pWeapons = value.Find("weaponModels");

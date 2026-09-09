@@ -107,6 +107,8 @@ const CHARACTER_SPEC Spec_Slayer =
 		"wbk_standup_1",
 		/* No Esther animation set is attached for this class yet. */
 		nullptr,
+		nullptr, // CUSTOMIZING_IDLE
+		"wbk_abn_fear_1",
 	},
 
 	&Create_Logic,

@@ -1,4 +1,6 @@
 #include "VIBuffer_ParticleRect.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 #include <array>
 #include <cstring>
@@ -66,6 +68,8 @@ HRESULT Engine::CVIBuffer_ParticleRect::Initialize_Prototype(
 
 	m_iCapacity = iCapacity;
 	m_iNumInstances = 0u;
+	m_iNextInstanceIndex = 0u;
+	m_iInstanceByteOffset = 0u;
 	return S_OK;
 }
 
@@ -85,21 +89,31 @@ HRESULT Engine::CVIBuffer_ParticleRect::Update_Instances(
 		return S_OK;
 	}
 
+	// Every effect shares this immediate-context buffer. Keep the cursor on
+	// the buffer, including across frames, so pending draws are never overwritten.
+	const bool bDiscard = 0u == m_iNextInstanceIndex ||
+		Instances.size() > m_iCapacity - m_iNextInstanceIndex;
+	const uint32_t iFirstInstance = bDiscard ? 0u : m_iNextInstanceIndex;
+	const uint32_t iByteOffset =
+		static_cast<uint32_t>(sizeof(VTXEFFECT_PARTICLE)) * iFirstInstance;
 	D3D11_MAPPED_SUBRESOURCE Mapped{};
 	const HRESULT hMapResult = m_pContext->Map(
 		m_pInstanceBuffer.Get(), 0u,
-		D3D11_MAP_WRITE_DISCARD, 0u, &Mapped);
+		bDiscard ? D3D11_MAP_WRITE_DISCARD : D3D11_MAP_WRITE_NO_OVERWRITE,
+		0u, &Mapped);
 	if (FAILED(hMapResult))
 	{
 		m_iNumInstances = 0u;
 		return hMapResult;
 	}
 	std::memcpy(
-		Mapped.pData,
+		static_cast<uint8_t*>(Mapped.pData) + iByteOffset,
 		Instances.data(),
 		Instances.size_bytes());
 	m_pContext->Unmap(m_pInstanceBuffer.Get(), 0u);
 	m_iNumInstances = static_cast<uint32_t>(Instances.size());
+	m_iInstanceByteOffset = iByteOffset;
+	m_iNextInstanceIndex = iFirstInstance + m_iNumInstances;
 	return S_OK;
 }
 
@@ -110,7 +124,7 @@ HRESULT Engine::CVIBuffer_ParticleRect::Bind_Resources()
 
 	ID3D11Buffer* Buffers[] = { m_pVB.Get(), m_pInstanceBuffer.Get() };
 	const uint32_t Strides[] = { sizeof(VTXTEX), sizeof(VTXEFFECT_PARTICLE) };
-	const uint32_t Offsets[] = { 0u, 0u };
+	const uint32_t Offsets[] = { 0u, m_iInstanceByteOffset };
 	m_pContext->IASetVertexBuffers(0u, 2u, Buffers, Strides, Offsets);
 	m_pContext->IASetIndexBuffer(m_pIB.Get(), m_eIndexFormat, 0u);
 	m_pContext->IASetPrimitiveTopology(m_ePrimitiveTopology);
@@ -123,6 +137,14 @@ HRESULT Engine::CVIBuffer_ParticleRect::Render()
 		return S_FALSE;
 	if (FAILED(Bind_Resources()))
 		return E_FAIL;
+	if (CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(EProfilerCounter::DrawCalls);
+		pProfiler->Add_Counter(EProfilerCounter::InstancedDrawCalls);
+		pProfiler->Add_Counter(EProfilerCounter::Instances, m_iNumInstances);
+		pProfiler->Add_Counter(EProfilerCounter::Indices,
+			static_cast<uint64_t>(m_iNumIndices) * m_iNumInstances);
+	}
 	m_pContext->DrawIndexedInstanced(
 		m_iNumIndices, m_iNumInstances, 0u, 0, 0u);
 	return S_OK;

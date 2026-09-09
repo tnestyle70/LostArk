@@ -188,6 +188,7 @@ namespace LostArk::Server
 		friend int Run_ServerGameplayContractTests(bool, bool, bool, bool);
 		friend int Run_ServerKoukuSupportSurfaceContractTests();
 		friend int Run_ServerCardMazeContractTests();
+        friend int Run_ServerKoukuObjectOverlapContractTests();
 	public:
 		explicit CGameRoom(
 			LostArk::Shared::WORLD_ID worldId,
@@ -1217,7 +1218,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID playerEntityId,
 			LostArk::Shared::NET_ENTITY_ID ownerEntityId,
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
-			std::uint32_t serverTick);
+			std::uint32_t serverTick, std::uint32_t holdEndTick = 0u);
 		bool Update_PlayerAttachment(
 			SERVER_PLAYER& player,
 			std::uint32_t serverTick);

@@ -3341,18 +3341,38 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		character->Apply_NetworkStance(player.eStance);
 		if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
 		{
-			/* The owner presentation is the same replicated Valtan the Effect V2
-			hand anchors follow. A missing or isolated owner keeps the Server
-			fallback transform; only a live owner without an admitted grip is a
-			presentation admission failure worth reporting. */
-			std::shared_ptr<CValtan> owner;
-			const auto ownerIter =
-				m_WorldEntities.find(player.iAttachmentOwnerNetEntityId);
+			// Both boss presentations expose the existing weak hand-socket interface.
+			// Resolve Kouku's grip from the owner in this same Server snapshot, not
+			// the previous action cached before this packet's entity loop.
+			std::shared_ptr<const IPlayerHandGripSocketSource> owner;
+			const auto ownerIter = m_WorldEntities.find(player.iAttachmentOwnerNetEntityId);
 			if (m_WorldEntities.end() != ownerIter &&
 				WORLD_ENTITY_KIND::BOSS == ownerIter->second.eKind &&
 				!ownerIter->second.bPresentationIsolated)
 			{
 				owner = ownerIter->second.pValtan.lock();
+                if (!owner && Is_KoukuSaydonArenaBoss(ownerIter->second.strArchetypeId,
+                    ownerIter->second.strEncounterId, ownerIter->second.iOwnerBossNetEntityId))
+                {
+                    const auto npc = ownerIter->second.pNpc.lock();
+                    const auto state = std::find_if(snapshot.Entities.begin(), snapshot.Entities.end(),
+                        [&](const auto& value) { return value.iNetEntityId == player.iAttachmentOwnerNetEntityId; });
+                    if (npc)
+                    {
+                        npc->Clear_PlayerHandGripLocalOffset();
+                        if (state != snapshot.Entities.end() && state->iCurrentHp &&
+                            state->eAction != WORLD_ENTITY_ACTION::DEAD &&
+                            state->PinnedDefinitionRevision == ownerIter->second.PinnedDefinitionRevision)
+                        {
+                            PLAYER_HAND_GRIP_LOCAL_OFFSET grip{};
+                            if (CKoukuSaydonPresentationAssetService::Try_Resolve_AttachmentGrip(
+                                ownerIter->second.strArchetypeId, state->strPatternId, player.eAttachmentSlot, grip,
+                                m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u))
+                                (void)npc->Set_PlayerHandGripLocalOffset(grip);
+                            owner = npc;
+                        }
+                    }
+                }
 			}
 			if (nullptr == owner)
 				character->Clear_NetworkAttachment();
@@ -3622,6 +3642,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 				const bool_t newActionEdge =
 					iter->second.strActiveActionId != entity.strActionId ||
+					iter->second.iKoukuActionStartTick != entity.iActionStartTick ||
 					iter->second.iPatternSequence != entity.iPatternSequence ||
 					iter->second.iPatternStageIndex !=
 						entity.iPatternStageIndex;
@@ -3634,7 +3655,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
                             m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u);
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
-							action.strClip.c_str(), false,
+							action.strClip.c_str(), action.bLoopToWindow,
 							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f, action.fAnimationRootVerticalScale) :
 						boss->Play_DefaultIdle(0.08f);
 					const bool_t missingProductAction = !hasAction &&
@@ -3663,10 +3684,24 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 						{
 							const auto clip = model->Get_CurrentAnimIndex();
 							float oldTicks = 0.f, durationTicks = 0.f;
-							if (model->Get_AnimationProgress(clip, oldTicks, durationTicks))
+                            (void)boss->Set_NetworkAnimationWindow(ageSeconds,
+                                action.bHoldAtWindowEnd ? action.iPlayMs * .001f : 0.f);
+                            if (action.iBlendInMs)
+                            {
+                                if (!boss->Apply_NetworkAnimationTransition(action.strBlendFromClip.c_str(),
+                                    action.fBlendFromSourceMs, float(action.iBlendInMs), ageSeconds, action.fPlayRate))
+                                {
+                                    allSucceeded = false;
+                                    m_strPendingPresentationFailure = "KoukuSaydon animation transition could not be sampled: " + action.strActionId;
+                                }
+                            }
+                            else if (model->Get_AnimationProgress(clip, oldTicks, durationTicks))
 							{
-								const float ticks = (std::min)(durationTicks, ageSeconds *
-									action.fPlayRate * model->Get_AnimationTickPerSecond(clip));
+                                const float sampleAge = action.bHoldAtWindowEnd ?
+                                    (std::min)(ageSeconds, action.iPlayMs * .001f) : ageSeconds;
+                                const float sourceTicks = sampleAge * action.fPlayRate * model->Get_AnimationTickPerSecond(clip);
+                                const float ticks = action.bLoopToWindow && durationTicks > 0.f ?
+                                    std::fmod(sourceTicks, durationTicks) : (std::min)(durationTicks, sourceTicks);
 								model->Set_AnimTrackPosition(clip, ticks);
 								model->Skip_Blend();
 								model->Update_Animation(0.f);
@@ -3679,6 +3714,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 							action.strClip : iter->second.strResolvedIdleClip;
 					}
 					iter->second.strActiveActionId = entity.strActionId;
+					iter->second.iKoukuActionStartTick = entity.iActionStartTick;
 					iter->second.iPatternSequence = entity.iPatternSequence;
 					iter->second.iPatternStageIndex =
 						entity.iPatternStageIndex;

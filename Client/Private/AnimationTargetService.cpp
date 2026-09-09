@@ -267,14 +267,7 @@ bool_t Client::CAnimationTargetService::Resolve_RootTransform(
 	const shared_ptr<CCharacter> previewCharacter =
 		s_PreviewCharacter.lock();
 	if (nullptr != previewCharacter)
-	{
-		const shared_ptr<Engine::CTransform> transform =
-			previewCharacter->Get_Transform();
-		if (nullptr == transform)
-			return false;
-		*pOut = *transform->Get_WorldMatrixPtr();
-		return true;
-	}
+		return previewCharacter->Try_Get_PresentationRootMatrix(pOut);
 
 	const shared_ptr<CValtan> previewBoss = s_PreviewBoss.lock();
 	if (nullptr != previewBoss)
@@ -292,13 +285,7 @@ bool_t Client::CAnimationTargetService::Resolve_RootTransform(
 	if (nullptr == character)
 		return false;
 
-	const shared_ptr<Engine::CTransform> transform =
-		character->Get_Transform();
-	if (nullptr == transform)
-		return false;
-
-	*pOut = *transform->Get_WorldMatrixPtr();
-	return true;
+	return character->Try_Get_PresentationRootMatrix(pOut);
 }
 
 bool_t Client::CAnimationTargetService::Resolve_AnchorTransform(

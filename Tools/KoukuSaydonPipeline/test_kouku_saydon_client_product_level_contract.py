@@ -49,35 +49,32 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         product = projector.project_presentation(document, ROOT)
         service = read("Client/Private/KoukuSaydonPresentationAssetService.cpp")
         loader = service[service.index("bool Load_PresentationBindings(") :]
-        header = loader[: loader.index("const DATA_JSON_VALUE* schema")]
-        accepted_headers = {
-            frozenset(re.findall(r'"([^"\n]+)"', names))
-            for names in re.findall(
-                r"Has_ExactProperties\(root,\s*\{([^}]+)\}\)", header
-            )
-        }
-        # Compare today's real producer output to the reader's exact field sets:
-        # adding LIGHT metadata must not silently discard every animation row.
+        header = service[service.index("bool Has_BindingDocumentProperties("):service.index("bool Is_StableToken(")]
+
+        def declared_fields(guard, name):
+            match = re.search(r"\b" + name + r"\s*=\s*\{([^}]+)\}", guard)
+            self.assertIsNotNone(match)
+            return frozenset(re.findall(r'"([^"\n]+)"', match.group(1)))
+
+        required = declared_fields(header, "required")
+        optional = declared_fields(header, "optional")
+        # Compare today's real producer output with the reader's allowed fields.
+        # New companion tables must not silently discard every animation row.
         self.assertTrue(product["bindings"])
-        self.assertIn("lightResourceRevision", product)
-        self.assertIn(frozenset(product), accepted_headers)
+        self.assertTrue(required <= product.keys() <= required | optional)
         for removed in ((), ("patterns",), ("lightResourceRevision",),
                         ("patterns", "lightResourceRevision")):
             with self.subTest(legacy_without=removed):
-                # Legacy producer headers predate folders/bundles together.
                 keys = frozenset(key for key in product
                                  if key not in (*removed, "folders", "bundles"))
-                self.assertIn(keys, accepted_headers)
-                self.assertNotIn(keys | {"unexpectedField"}, accepted_headers)
-
-        row_guard = re.search(
-            r"Has_ExactProperties\(value,\s*\{([^}]+)\}\)", loader
-        )
-        self.assertIsNotNone(row_guard)
-        accepted_row = frozenset(re.findall(r'"([^"\n]+)"', row_guard.group(1)))
+                self.assertTrue(required <= keys <= required | optional)
+                self.assertFalse(keys | {"unexpectedField"} <= required | optional)
+        row_guard = loader[loader.index("const auto hasAnimationFields"):loader.index("if (!hasAnimationFields())")]
+        row_required = declared_fields(row_guard, "required")
+        row_optional = declared_fields(row_guard, "optional")
         for row in product["bindings"]:
             with self.subTest(action=row["actionId"]):
-                self.assertEqual(frozenset(row), accepted_row)
+                self.assertTrue(row_required <= row.keys() <= row_required | row_optional)
 
     def test_registry_owns_exact_product_identity(self) -> None:
         descriptor = re.search(
