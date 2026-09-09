@@ -1094,15 +1094,33 @@ void Client::CCustomizingView::Update_ActionList(const shared_ptr<CCharacter>& p
 			continue;
 		CMainApp::Play_UIButtonClickSound();
 		m_iSelectedAction = i;
-		/* An action plays once; the pose cell just goes back to what the screen stands in,
-		which Set_Animation(IDLE) already resolves to the creation clip while the preview is
-		up (see CCharacter::Set_Animation). */
+		/* The pose cell goes back to what the screen stands in, which Set_Animation(IDLE)
+		already resolves to the creation clip while the preview is up (see
+		CCharacter::Set_Animation). */
 		if (nullptr == CREATION_ACTION_CLIPS[i])
-			pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
-		else if (!pCharacter->Set_Animation(CREATION_ACTION_CLIPS[i], false))
 		{
-			OutputDebugStringA(("[CustomizingAction] this class' animation set has no " +
-				string(CREATION_ACTION_CLIPS[i]) + "\n").c_str());
+			pCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true);
+			continue;
+		}
+		/* Start rather than Set: Set_Animation only moves the index, so a clip that already
+		ran once resumes on its last frame and reads as nothing happening. Start_Animation
+		rewinds it, which is also what a second click on the same cell should do. */
+		const shared_ptr<Engine::CModel> pBody = pCharacter->Get_BodyModel();
+		if (nullptr == pBody || !pBody->Start_Animation(CREATION_ACTION_CLIPS[i], false))
+		{
+			string carried;
+			if (nullptr != pBody)
+			{
+				for (uint32_t index = 0u; index < pBody->Get_NumAnimations(); ++index)
+				{
+					const char_t* pName = pBody->Get_AnimationName(index);
+					if (nullptr != pName && 0 == std::strncmp(pName, "sc_", 3))
+						carried += string(" ") + pName;
+				}
+			}
+			OutputDebugStringA(("[CustomizingAction] no clip " +
+				string(CREATION_ACTION_CLIPS[i]) + "; body carries" +
+				(carried.empty() ? string(" none") : carried) + "\n").c_str());
 			m_iSelectedAction = 0;
 		}
 	}
