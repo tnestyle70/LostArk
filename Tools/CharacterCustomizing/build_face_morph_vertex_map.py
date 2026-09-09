@@ -55,12 +55,69 @@ WMODEL_SECTION_DESC = struct.Struct("<IIQQ40s")
 WMODEL_MESH_HEADER = struct.Struct("<4sIIIIIIIB3s")
 WMODEL_SUBMESH_DESC = struct.Struct("<IIIIIQ20s")
 WMODEL_SECTION_MESH = 1
+WMODEL_SECTION_MATERIAL = 2
+WMODEL_SUBMESH_MATERIAL_FIELD = 4
+WMODEL_MATERIAL_META = struct.Struct("<4sI")
+WMODEL_MATERIAL_ENTRY = {
+    b"WMAT": struct.Struct("<IQ64s520s"),
+    b"WMA2": struct.Struct("<IQ64s" + "520s" * 9),
+    b"WMA3": struct.Struct("<IQ64s" + "520s" * 10 + "16f"),
+}
 
 FACEMORPHMAP_MAGIC = b"LAFMVMAP"
 FACEMORPHMAP_VERSION = 2
 
 EXACT_EPSILON_SQ = 1e-8
 UV_TIE_EPSILON_SQ = 1e-6
+
+
+# --------------------------------------------------------------------- materials
+
+def read_material_names(path: Path):
+    """Return {materialIndex: lowercase name} as a submesh descriptor indexes them.
+
+    Which submesh is skin and which is an eyeball is not something to infer from vertex
+    counts: the model says so, in the material each submesh draws with."""
+    data = path.read_bytes()
+    base = WMODEL_FILE_HEADER.size
+    _magic, section_count = WMODEL_MODEL_HEADER.unpack_from(data, base)[:2]
+    for index in range(section_count):
+        section_type, _i, offset, _size, _name = WMODEL_SECTION_DESC.unpack_from(
+            data, base + WMODEL_MODEL_HEADER.size + index * WMODEL_SECTION_DESC.size)
+        if section_type != WMODEL_SECTION_MATERIAL:
+            continue
+        at = base + offset + WMODEL_FILE_HEADER.size
+        magic, count = WMODEL_MATERIAL_META.unpack_from(data, at)
+        if magic not in WMODEL_MATERIAL_ENTRY:
+            raise SystemExit("%s: unknown material container %r" % (path, magic))
+        entry = WMODEL_MATERIAL_ENTRY[magic]
+        at += WMODEL_MATERIAL_META.size
+        names = {}
+        for row in range(count):
+            fields = entry.unpack_from(data, at + row * entry.size)
+            names[fields[0]] = fields[2].split(b"\0")[0].decode("ascii", "replace").lower()
+        return names
+    raise SystemExit("%s: no material section" % path)
+
+
+def read_submesh_materials(path: Path):
+    """Return the material index each submesh draws with, in submesh order."""
+    data = path.read_bytes()
+    base = WMODEL_FILE_HEADER.size
+    _magic, section_count = WMODEL_MODEL_HEADER.unpack_from(data, base)[:2]
+    for index in range(section_count):
+        section_type, _i, offset, _size, _name = WMODEL_SECTION_DESC.unpack_from(
+            data, base + WMODEL_MODEL_HEADER.size + index * WMODEL_SECTION_DESC.size)
+        if section_type != WMODEL_SECTION_MESH:
+            continue
+        start = next(c for c in (base + offset, offset) if data[c:c + 4] == b"WINT")
+        payload = start + WMODEL_FILE_HEADER.size
+        submesh_count = WMODEL_MESH_HEADER.unpack_from(data, payload)[1]
+        submesh_base = payload + WMODEL_MESH_HEADER.size
+        return [WMODEL_SUBMESH_DESC.unpack_from(
+            data, submesh_base + row * WMODEL_SUBMESH_DESC.size)[WMODEL_SUBMESH_MATERIAL_FIELD]
+            for row in range(submesh_count)]
+    raise SystemExit("%s: no mesh section" % path)
 
 
 # -------------------------------------------------------------------------- PSK

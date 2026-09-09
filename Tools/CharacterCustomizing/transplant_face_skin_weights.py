@@ -245,10 +245,25 @@ def main() -> int:
     palette = [cooked_bones.index(n) for n in resolved_names]
     facial = sum(1 for n in resolved_names if n.startswith("b_fc_"))
 
-    pairs = []
+    # Only the skin may be written.  The retail face mesh is facial skin and nothing else --
+    # measured, no `b_fc_*_eye_ani` bone appears in any of the three bone maps -- but the
+    # eyeball and eye-AO shells sit inside the distance filter below, so without this they get
+    # paired to eyelid and even mouth wedges and lose the binding the cook gave them.  That
+    # cost Warlord its eye rig once already; restore_body_eye_weights.py exists to undo it.
+    material_names = _map.read_material_names(model_path)
+    skin = {index for index, material in enumerate(_map.read_submesh_materials(model_path))
+            if "_face" in material_names.get(material, "")}
+    if not skin:
+        raise SystemExit("%s: no face-skin material among %s"
+                         % (args.class_id, sorted(set(material_names.values()))))
+
+    pairs, off_skin = [], 0
     for wedge in range(len(influences)):
         for mesh_index, local_index in targets[wedge]:
             offset, count = submeshes[mesh_index]
+            if mesh_index not in skin:
+                off_skin += 1
+                continue
             if local_index < count:
                 pairs.append((wedge, vertex_base + (offset + local_index) * stride, mesh_index))
     cooked_positions = [struct.unpack_from("<3f", data, at) for _w, at, _m in pairs]
@@ -278,9 +293,10 @@ def main() -> int:
         dominant[cooked_bones[max(entries, key=lambda e: e[1])[0]]] += 1
 
     distances.sort()
-    print("%s: axes %s signs %s; %d/%d bone-map entries are facial; %d vertices written %s"
+    print("%s: axes %s signs %s; %d/%d bone-map entries are facial; %d vertices written %s; "
+          "%d map targets outside the face-skin material were left alone"
           % (args.class_id, permutation, signs, facial, len(bone_map), written,
-             dict(sorted(touched.items()))))
+             dict(sorted(touched.items())), off_skin))
     print("   wedge-to-vertex distance: median %.4f, 99th %.4f, max %.4f (%d skipped over %.3f)"
           % (distances[len(distances) // 2], distances[int(len(distances) * 0.99)],
              distances[-1], skipped, args.max_distance))
