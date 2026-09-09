@@ -4,6 +4,7 @@
 #include "ActionPresentationTimeline.h"
 #include "AnimationEffectCueDocument.h"
 #include "ContainerObject.h"
+#include "ActorCatalog.h"
 #include "CharacterSpec.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "EstherActionSoundCueDocument.h"
@@ -312,9 +313,9 @@ public:
 	/* Puts every face-material choice back to what the class was authored with. */
 	void Reset_FaceMaterial();
 private:
-	/* Takes this class' authored head-material values from the actor catalog on the first
-	creation choice. False when the class' face is not on a native head program. */
-	bool_t Prepare_FaceMaterial();
+	/* Takes this class' authored native-material values from the actor catalog on the first
+	creation choice. False when the class' body has no material on a native program. */
+	bool_t Prepare_NativeMaterials();
 public:
 	/* Character-creation preview appearance: the class's own default outfit with no helmet,
 	no avatar costume and no weapon, so the face and the plain silhouette are what the player
@@ -460,13 +461,18 @@ private:
 	stepping through the iris list does not reload the same texture every click, and so the
 	SRV outlives the call that handed it to the material. */
 	std::unordered_map<std::string, ComPtr<ID3D11ShaderResourceView>> m_FaceIrisTextures;
-	/* This character's copy of its face material's authored parameters, taken from the actor
-	catalog the first time a creation choice moves one. The copy is per character: two of the
-	same class on screen keep their own faces. Empty family means the class' face is not on a
-	native head program, or the catalog has not been consulted yet. */
+	/* This character's copy of every native source-character material's authored parameters,
+	taken from the actor catalog the first time a creation choice moves one. The copy is per
+	character, so two of the same class on screen keep their own faces.
+
+	A named value goes to every material that declares it. Retail states var_base_skincolor_ui
+	on the face and on each body part alike and lets each material's own mask decide where skin
+	shows, so nothing here has to judge which material is skin. */
+	std::vector<CHARACTER_MATERIAL_PARAMETERS> m_NativeMaterials;
+	/* Which of them is the head: the make-up stamps live on its texture registers. Empty when
+	this class' face is not on a native head program. */
 	std::string m_strFaceMaterialName;
-	std::string m_strFaceMaterialFamily;
-	std::map<std::string, std::array<f32_t, 4>> m_FaceMaterialParameters;
+	bool_t m_hasPreparedNativeMaterials = false;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
 	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */

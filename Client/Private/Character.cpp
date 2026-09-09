@@ -2413,78 +2413,89 @@ namespace
 	constexpr const char_t* FACE_MATERIAL_FAMILY = "source.character.classic-head.v1";
 }
 
-bool_t CCharacter::Prepare_FaceMaterial()
+bool_t CCharacter::Prepare_NativeMaterials()
 {
-	if (!m_strFaceMaterialFamily.empty())
-		return true;
+	if (m_hasPreparedNativeMaterials)
+		return !m_NativeMaterials.empty();
 	if (nullptr == m_pBodyModel)
 		return false;
 
+	m_hasPreparedNativeMaterials = true;
 	const CHARACTER_ACTOR_ENTRY* pActor = CActorCatalog::Find_Character(m_eCharacterClass);
 	if (nullptr == pActor)
 		return false;
 	const auto found = pActor->modelMaterialParameters.find(pActor->bodyModel);
 	if (found == pActor->modelMaterialParameters.end())
 		return false;
-	/* The head program is what the skin and make-up variables belong to. A class whose face
-	is drawn some other way has no such row, and every one of these controls reports false
-	rather than painting the wrong material. */
-	for (const CHARACTER_MATERIAL_PARAMETERS& material : found->second)
+
+	m_NativeMaterials = found->second;
+	for (const CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
 	{
 		if (material.family != FACE_MATERIAL_FAMILY)
 			continue;
 		m_strFaceMaterialName = material.materialName;
-		m_strFaceMaterialFamily = material.family;
-		m_FaceMaterialParameters = material.values;
-		return true;
+		break;
 	}
-	return false;
+	return !m_NativeMaterials.empty();
 }
 
 bool_t CCharacter::Set_FaceMaterialParameter(
 	const std::string& strName, const float4_t& vValue)
 {
-	if (!Prepare_FaceMaterial())
+	if (!Prepare_NativeMaterials())
 		return false;
-	const auto found = m_FaceMaterialParameters.find(strName);
-	if (found == m_FaceMaterialParameters.end())
-	{
-		OutputDebugStringA(("[FaceMaterial] " + m_strFaceMaterialName +
-			" has no parameter " + strName + "\n").c_str());
-		return false;
-	}
-	const std::array<f32_t, 4> previous = found->second;
-	found->second = { vValue.x, vValue.y, vValue.z, vValue.w };
 
-	Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed{};
-	if (!SourceCharacterMaterial::Configure(
-		m_strFaceMaterialFamily, m_FaceMaterialParameters, packed) ||
-		0u == m_pBodyModel->Override_SourceCharacterConstants(
-			m_strFaceMaterialName.c_str(), packed))
+	/* Every material that declares the name takes it. The skin colour is stated on the face
+	and on each body part alike, so one choice paints the whole character the way the source
+	game does; a make-up colour is stated only on the head and reaches only that. */
+	uint32_t iApplied = 0u;
+	for (CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
 	{
-		/* Nothing partial: the face keeps the value it was showing. */
-		found->second = previous;
-		return false;
+		const auto found = material.values.find(strName);
+		if (found == material.values.end())
+			continue;
+
+		const std::array<f32_t, 4> previous = found->second;
+		found->second = { vValue.x, vValue.y, vValue.z, vValue.w };
+		Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed{};
+		if (!SourceCharacterMaterial::Configure(material.family, material.values, packed) ||
+			0u == m_pBodyModel->Override_SourceCharacterConstants(
+				material.materialName.c_str(), packed))
+		{
+			/* Nothing partial: this material keeps the value it was showing. */
+			found->second = previous;
+			continue;
+		}
+		++iApplied;
 	}
-	return true;
+	if (0u == iApplied)
+	{
+		OutputDebugStringA(("[FaceMaterial] no native material states " + strName + "\n").c_str());
+	}
+	return 0u != iApplied;
 }
 
 bool_t CCharacter::Try_Get_FaceMaterialParameter(
 	const std::string& strName, float4_t& outValue)
 {
-	if (!Prepare_FaceMaterial())
+	if (!Prepare_NativeMaterials())
 		return false;
-	const auto found = m_FaceMaterialParameters.find(strName);
-	if (found == m_FaceMaterialParameters.end())
-		return false;
-	outValue = float4_t(found->second[0], found->second[1], found->second[2], found->second[3]);
-	return true;
+	for (const CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
+	{
+		const auto found = material.values.find(strName);
+		if (found == material.values.end())
+			continue;
+		outValue = float4_t(found->second[0], found->second[1],
+			found->second[2], found->second[3]);
+		return true;
+	}
+	return false;
 }
 
 bool_t CCharacter::Set_FaceStampTexture(
 	const FACE_STAMP eStamp, const std::string& strTextureAssetId)
 {
-	if (!Prepare_FaceMaterial())
+	if (!Prepare_NativeMaterials() || m_strFaceMaterialName.empty())
 		return false;
 	const uint32_t iRegister = static_cast<uint32_t>(eStamp);
 	if (strTextureAssetId.empty())
@@ -2525,9 +2536,9 @@ void CCharacter::Reset_FaceMaterial()
 {
 	if (nullptr != m_pBodyModel)
 		m_pBodyModel->Clear_SourceCharacterOverrides();
+	m_NativeMaterials.clear();
 	m_strFaceMaterialName.clear();
-	m_strFaceMaterialFamily.clear();
-	m_FaceMaterialParameters.clear();
+	m_hasPreparedNativeMaterials = false;
 }
 
 bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)

@@ -50,45 +50,88 @@ from pathlib import Path
 
 # Cooked material slot -> retail MIC to resolve, per class.  The slot name is what the cooked
 # model calls the submesh's material; the source is the retail instance whose values it takes.
-CLASSES = {
-    "LanceMaster": {
-        "modelAssetId": "Character/LanceMaster/LanceMaster.wmodel",
-        "materialName": "pc_ft_face_mi",
-        "sourceMaterial": "pc_ft_face_mi",
-        "textureRoot": "Character/LanceMaster/textures",
-    },
-    "Warlord": {
-        "modelAssetId": "Character/Warlord/Warlord.wmodel",
-        "materialName": "pc_wr_face_mi",
-        "sourceMaterial": "pc_wr_face_mi_high",
-        "textureRoot": "Character/Warlord/textures",
-    },
-    "Artist": {
-        "modelAssetId": "Character/Artist/Artist.wmodel",
-        "materialName": "pc_sp_face_mi_high",
-        "sourceMaterial": "pc_sp_face_mi_high",
-        "textureRoot": "Character/Artist/textures",
-    },
+HEAD_FAMILY = "source.character.classic-head.v1"
+SKIN_FAMILY = "source.character.classic-skin.v1"
+
+# Register -> the texture parameter the program reads there, per family.  See the module
+# docstring for how the head map was read; the skin map is the one DimensionMaster's existing
+# pc_sp_av_base_upper_mi row already uses, and the chain reproduces all seven of its entries.
+TEXTURE_REGISTERS = {
+    HEAD_FAMILY: [
+        (0, "var_headbase_normaltexture_ui", "linear"),
+        (1, "var_headbase_overlaynormaltexture_ui", "linear"),
+        (2, "var_headbase_speculartexture_ui", "srgb"),
+        (3, "var_headbase_diffusetexture_ui", "srgb"),
+        (4, "var_makeup_liptexture_ui", "srgb"),
+        (5, "var_makeup_eyetexture_ui", "srgb"),
+        (6, "var_makeup_cheektexture_ui", "srgb"),
+        (7, "var_headdeco_decaltexture_ui", "srgb"),
+        (8, "texture_ao", "srgb"),
+        (9, "texture_ibl_cube", "srgb"),
+        (10, "texture_state_fx", "srgb"),
+        (11, "texture_specular_power", "linear"),
+    ],
+    SKIN_FAMILY: [
+        (0, "texture_normal", "linear"),
+        (1, "texture_color_fx_skin", "srgb"),
+        (2, "texture_specular", "srgb"),
+        (3, "texture_diffuse", "srgb"),
+        (4, "texture_ibl", "srgb"),
+        (5, "texture_state_fx", "srgb"),
+        (6, "texture_brdf", "linear"),
+    ],
 }
 
-# Register -> the texture parameter the program reads there.  See the module docstring.
-TEXTURE_REGISTERS = [
-    (0, "var_headbase_normaltexture_ui", "linear"),
-    (1, "var_headbase_overlaynormaltexture_ui", "linear"),
-    (2, "var_headbase_speculartexture_ui", "srgb"),
-    (3, "var_headbase_diffusetexture_ui", "srgb"),
-    (4, "var_makeup_liptexture_ui", "srgb"),
-    (5, "var_makeup_eyetexture_ui", "srgb"),
-    (6, "var_makeup_cheektexture_ui", "srgb"),
-    (7, "var_headdeco_decaltexture_ui", "srgb"),
-    (8, "texture_ao", "srgb"),
-    (9, "texture_ibl_cube", "srgb"),
-    (10, "texture_state_fx", "srgb"),
-    (11, "texture_specular_power", "linear"),
+# Registers the material chain never names, because the engine binds them rather than the
+# material.  These are the values the two existing DimensionMaster rows already carry, and this
+# tool reproduces both rows exactly.
+ENGINE_REGISTER_TEXTURES = {
+    HEAD_FAMILY: {9: "hdr07_1", 10: "statefx_default", 11: "brdf_beckmann_spec"},
+    SKIN_FAMILY: {5: "statefx_default"},
+}
+
+TEXTURE_ROOTS = {
+    "LanceMaster": "Character/LanceMaster/textures",
+    "Warlord": "Character/Warlord/textures",
+    "Artist": "Character/Artist/textures",
+}
+
+# One catalog row each: the cooked material slot, the retail MIC whose resolved chain fills it,
+# and the family that packs it.  The face rows are explained in the module docstring; the skin
+# rows are every material of these bodies that sits on a `*_parts_*_high` master, because that
+# master is what declares `var_base_skincolor_ui` and its mask decides where skin shows -- so
+# "which material is skin" is not a judgement this tool has to make.
+#
+# `pc_ft_01_arm_mi` is deliberately absent. It sits on `ft_parts_opa_high`, an opaque master,
+# while every material this family is known to cover -- the three existing rows and every one
+# below -- sits on a `*_parts_msk_high` masked master. Its 46 parameter names resolve, so the
+# name set does not tell the two apart, and nothing establishes that the opaque master compiles
+# to the same program. Adding it would be a guess about which shader draws an arm.
+ROWS = [
+    ("LanceMaster", "pc_ft_face_mi", "pc_ft_face_mi", HEAD_FAMILY),
+    ("Warlord", "pc_wr_face_mi", "pc_wr_face_mi_high", HEAD_FAMILY),
+    ("Artist", "pc_sp_face_mi_high", "pc_sp_face_mi_high", HEAD_FAMILY),
+
+    ("LanceMaster", "pc_ft_01_upper_mi", "pc_ft_01_upper_mi", SKIN_FAMILY),
+    ("LanceMaster", "pc_ft_01_lower_mi", "pc_ft_01_lower_mi", SKIN_FAMILY),
+    ("Warlord", "pc_wr_00_arm_mi", "pc_wr_00_arm_mi", SKIN_FAMILY),
+    ("Warlord", "pc_wr_00_upper_mi", "pc_wr_00_upper_mi", SKIN_FAMILY),
+    ("Warlord", "pc_wr_00_lower_mi", "pc_wr_00_lower_mi", SKIN_FAMILY),
+    ("Warlord", "pc_wr_base_upper_mi", "pc_wr_base_upper_mi", SKIN_FAMILY),
+    ("Artist", "pc_sp_av_base_body_mi", "pc_sp_av_base_body_mi", SKIN_FAMILY),
+    ("Artist", "pc_sp_01_upper_mi", "pc_sp_01_upper_mi", SKIN_FAMILY),
+    ("Artist", "pc_sp_01-1_arm_mi", "pc_sp_01-1_arm_mi", SKIN_FAMILY),
+    ("Artist", "pc_sp_01-1_lower_mi", "pc_sp_01-1_lower_mi", SKIN_FAMILY),
 ]
 
+MODEL_ASSETS = {
+    "LanceMaster": "Character/LanceMaster/LanceMaster.wmodel",
+    "Warlord": "Character/Warlord/Warlord.wmodel",
+    "Artist": "Character/Artist/Artist.wmodel",
+}
+
 # Textures the master supplies rather than the class: they live once under SourceMaterials or in
-# a class folder that already ships them, and every face row points at the same copy.
+# a class folder that already ships them, and every row points at the same copy.
 SHARED_TEXTURES = {
     "null": "Character/SourceMaterials/efmaster_material_prologue/null.tga",
     "flat_white": "Character/SourceMaterials/efmaster_material_prologue/flat_white.tga",
@@ -105,15 +148,6 @@ SHARED_TEXTURES = {
 # than defaulted silently.
 RUNTIME_INPUTS = {
     "selectioncolor": [0.0, 0.0, 0.0, 1.0],
-}
-
-# Registers the material chain never names, because the engine binds them rather than the
-# material: the IBL probe, the state-effect ramp and the BRDF lookup.  These are the values
-# DimensionMaster's existing row already carries, and this tool reproduces that row exactly.
-ENGINE_REGISTER_TEXTURES = {
-    9: "hdr07_1",
-    10: "statefx_default",
-    11: "brdf_beckmann_spec",
 }
 
 PARENT = re.compile(r"^Parent = \w+'([^']+)'")
@@ -252,10 +286,11 @@ def main() -> int:
     repo = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
     parser.add_argument("--export-root", type=Path, required=True,
-                        help="directory umodel exported the face materials into")
+                        help="directory umodel exported the materials into")
     parser.add_argument("--class-id", action="append",
                         help="one class; repeat, or omit for every class in the table")
-    parser.add_argument("--family", default="source.character.classic-head.v1")
+    parser.add_argument("--family", action="append",
+                        help="one family; repeat, or omit for every family in the table")
     parser.add_argument("--header", type=Path,
                         default=repo / "Client" / "Public" / "SourceCharacterMaterialParameters.h")
     parser.add_argument("--resources", type=Path,
@@ -263,16 +298,18 @@ def main() -> int:
     parser.add_argument("--data", type=Path, default=repo / "Data")
     args = parser.parse_args()
 
-    wanted = args.class_id or sorted(CLASSES)
-    needed = required_parameters(args.header, args.family)
+    needed = {family: required_parameters(args.header, family)
+              for family in TEXTURE_REGISTERS}
     rows, missing_files = [], []
-    for class_id in wanted:
-        entry = CLASSES[class_id]
-        resolved, chain = resolve_chain(args.export_root, entry["sourceMaterial"])
-        print("%s: %s" % (class_id, " -> ".join(chain)), file=sys.stderr)
+    for class_id, material_name, source_material, family in ROWS:
+        if (args.class_id and class_id not in args.class_id) or \
+           (args.family and family not in args.family):
+            continue
+        resolved, chain = resolve_chain(args.export_root, source_material)
+        print("%-22s %s" % (material_name, " -> ".join(chain[1:])), file=sys.stderr)
 
         parameters, absent = {}, []
-        for name in needed:
+        for name in needed[family]:
             # Configure() spells one parameter with a trailing space; the material does not.
             found = resolved.get(name) or resolved.get(name.strip())
             if found is not None:
@@ -283,44 +320,47 @@ def main() -> int:
                 absent.append(name)
         if absent:
             raise SystemExit("%s: the chain never states %s, and they are not listed as engine "
-                             "runtime inputs" % (class_id, absent))
+                             "runtime inputs" % (material_name, absent))
 
         rule_textures = rule_document_textures(args.data, class_id)
+        texture_root = TEXTURE_ROOTS[class_id]
         textures = []
-        for index, name, colour_space in TEXTURE_REGISTERS:
+        for index, name, colour_space in TEXTURE_REGISTERS[family]:
             found = resolved.get(name)
             texture = found[1] if found is not None and found[0] == "texture" else None
             if texture is None:
-                texture = rule_textures.get(name) or ENGINE_REGISTER_TEXTURES.get(index)
+                texture = (rule_textures.get(name) or
+                           ENGINE_REGISTER_TEXTURES[family].get(index))
             if texture is None:
                 raise SystemExit("%s: register %d (%s) is stated by neither the material chain, "
-                                 "the rule document nor the engine table" % (class_id, index, name))
+                                 "the rule document nor the engine table"
+                                 % (material_name, index, name))
             asset = SHARED_TEXTURES.get(texture)
             if asset is None:
                 # Whichever container the texture was installed in: the older cook wrote TGA,
                 # a BC5 normal map is kept as the DDS umodel exports rather than re-encoded.
                 for suffix in (".tga", ".dds"):
-                    candidate = "%s/%s%s" % (entry["textureRoot"], texture, suffix)
+                    candidate = "%s/%s%s" % (texture_root, texture, suffix)
                     if (args.resources / candidate).exists():
                         asset = candidate
                         break
                 else:
-                    asset = "%s/%s.tga" % (entry["textureRoot"], texture)
+                    asset = "%s/%s.tga" % (texture_root, texture)
             if not (args.resources / asset).exists():
-                missing_files.append("%s (%s register %d)" % (asset, class_id, index))
+                missing_files.append("%s (%s register %d)" % (asset, material_name, index))
             textures.append({"expressionIndex": index, "assetId": asset,
                              "colorSpace": colour_space})
 
-        rows.append({"modelAssetId": entry["modelAssetId"],
-                     "materialName": entry["materialName"],
-                     "family": args.family,
-                     "sourceMaterial": entry["sourceMaterial"],
+        rows.append({"modelAssetId": MODEL_ASSETS[class_id],
+                     "materialName": material_name,
+                     "family": family,
+                     "sourceMaterial": source_material,
                      "parameters": parameters,
                      "textures": textures})
 
     if missing_files:
         print("\nthese Resources files are not installed yet:", file=sys.stderr)
-        for line in missing_files:
+        for line in sorted(set(missing_files)):
             print("   " + line, file=sys.stderr)
     print(json.dumps(rows, indent=2, ensure_ascii=False))
     return 1 if missing_files else 0
