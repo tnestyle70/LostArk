@@ -73,8 +73,14 @@ LISTS = {
     "background": lambda icon, key: (
         icon.lower() == "customizing_lv" and key == SECONDARY_BACKGROUND
     ),
-    # Everything else keeps its own bucket so a later tab can pick it up by key.
-    "other": lambda icon, key: icon.lower().startswith("characterpreset_"),
+    # Everything else keeps its own bucket so a later tab can pick it up by key. The filter
+    # used to require a CharacterPreset_* package here, which silently dropped every list a
+    # class draws from the shared All_Customizing_* atlases instead -- measured, that is
+    # Warlord's eye make-up and cheek rows (key 10 and 11, All_Customizing_02) and
+    # LanceMaster's eye make-up (key 10, All_Customizing_01), so those tabs came up empty
+    # while the classes that happen to use CharacterPreset_* for the same lists were filled.
+    # A bucket is the table's own category, whichever atlas the row names.
+    "other": lambda icon, key: True,
 }
 
 
