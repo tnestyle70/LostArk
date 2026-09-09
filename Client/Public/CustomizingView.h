@@ -213,9 +213,10 @@ private:
 	/* Which stamp each adorn page is showing, as an index into that page's icon list. -1 is
 	the authored one, which is the transparent Null the retail material ships. */
 	std::array<int32_t, 3> m_SelectedAdornItems{ -1, -1, -1 };
-	/* Skin gloss: var_base_skinspecularintensity_ui, seeded from the class' authored value
-	the first frame the tab is shown so the thumb starts where retail put it. */
-	f32_t m_fSkinGloss = -1.f;
+	/* Wrinkle, gloss and freckle, in SKIN_SLIDERS order. Seeded from the class' authored
+	values the first frame the tab is shown, so a thumb starts where retail put it; -1 is
+	"not seeded yet". */
+	std::array<f32_t, 3> m_SkinSliderValues{ -1.f, -1.f, -1.f };
 	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
 	and a non-native skin, a named head-material parameter for everything else. */
 	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,

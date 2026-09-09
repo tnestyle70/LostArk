@@ -55,7 +55,36 @@ namespace
 	};
 	constexpr const char_t* EYESHADOW_COLOR_PARAMETER = "var_makeup_eyeshadowcolor_ui";
 	constexpr const char_t* SKIN_COLOR_PARAMETER = "var_base_skincolor_ui";
-	constexpr const char_t* SKIN_GLOSS_PARAMETER = "var_base_skinspecularintensity_ui";
+
+	/* The three skin sliders, in layout order. Which head-material variable each drives is
+	settled by reading program 4 rather than by the rule document, which leaves two of them
+	open:
+
+	  Wrinkle. The document offers var_base_skinnormalintensity_ui and
+	  var_headbase_overlaynormalintensity_ui and names neither. In the program they are two
+	channels of one constant, and each scales a different map: .z scales texture 0, the face
+	normal, and .w scales texture 1, the overlay -- which is the class' wrinkle map
+	(pc_ft_wrinkle_00_n) -- before adding it onto the first. The wrinkle slider is the one
+	that scales the wrinkle map.
+
+	  Freckle. The document says the Skin tab exposes a FreckleIntensity slider and that no
+	freckle scalar exists anywhere; the only freckle parameter is a colour. The program reads
+	that colour as `skin = lerp(skin, colour.rgb, mask * colour.a)`, where mask is the cheek
+	stamp's alpha sampled on both cheeks. Alpha is the intensity, and it is the only channel
+	shaped like one. */
+	struct SKIN_SLIDER
+	{
+		const char_t* pSlotId;
+		const char_t* pParameter;
+		/* True when the slider is the alpha of a colour parameter rather than a scalar of
+		its own, so writing it has to keep the authored RGB. */
+		bool_t isColorAlpha;
+	};
+	constexpr SKIN_SLIDER SKIN_SLIDERS[] = {
+		{ "CC_Slider_skin_age",      "var_headbase_overlaynormalintensity_ui", false },
+		{ "CC_Slider_skin_shine",    "var_base_skinspecularintensity_ui",      false },
+		{ "CC_Slider_skin_freckles", "var_base_skinfrecklecolor_ui",           true  },
+	};
 	constexpr int32_t ADORN_TAB_INDEX = 5;
 	/* Voice is left out on purpose: its list needs audio this project has none of, so drawing
 	its rows would only add a row of dead buttons. */
@@ -708,7 +737,7 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 	on the face rather than black at zero. A class whose face is not on a native head program
 	leaves them unset, and those controls draw without moving anything. */
 	m_SelectedAdornItems.fill(-1);
-	m_fSkinGloss = -1.f;
+	m_SkinSliderValues.fill(-1.f);
 	for (size_t iPage = 0; iPage < std::size(ADORN_PAGES); ++iPage)
 	{
 		const size_t iSurface = FIRST_MAKEUP_SURFACE_INDEX + iPage;
@@ -1341,27 +1370,26 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 
 	m_pView->Set_SlotVisible("CC_SkinDivision", bSkin);
 	Fn_ShowPicker("CC_SkinColor", bSkin, 2);
-	/* Wrinkle and freckle stay unbound. The rule documents give the wrinkle slider two
-	candidate variables and name neither, and the only freckle parameter is a colour whose
-	driven channel they do not state -- an unbound control draws and does not move rather
-	than being wired to a guess. Gloss is Skin/SpecularIntensity, which they do resolve. */
-	Fn_ShowSlider("CC_Slider_skin_age", bSkin);
-	if (bSkin && nullptr != pCharacter && m_fSkinGloss < 0.f)
+	for (size_t i = 0; i < std::size(SKIN_SLIDERS); ++i)
 	{
-		float4_t vGloss{};
-		m_fSkinGloss = pCharacter->Try_Get_FaceMaterialParameter(SKIN_GLOSS_PARAMETER, vGloss) ?
-			std::clamp(vGloss.x, 0.f, 1.f) : 0.f;
-	}
-	{
-		f32_t fGloss = m_fSkinGloss < 0.f ? 0.f : m_fSkinGloss;
-		if (Fn_ShowSlider("CC_Slider_skin_shine", bSkin, &fGloss) && nullptr != pCharacter)
+		const SKIN_SLIDER& Slider = SKIN_SLIDERS[i];
+		float4_t vAuthored{};
+		const bool_t bBound = bSkin && nullptr != pCharacter &&
+			pCharacter->Try_Get_FaceMaterialParameter(Slider.pParameter, vAuthored);
+		if (bBound && m_SkinSliderValues[i] < 0.f)
 		{
-			m_fSkinGloss = fGloss;
-			pCharacter->Set_FaceMaterialParameter(SKIN_GLOSS_PARAMETER,
-				float4_t(fGloss, fGloss, fGloss, fGloss));
+			m_SkinSliderValues[i] = std::clamp(
+				Slider.isColorAlpha ? vAuthored.w : vAuthored.x, 0.f, 1.f);
 		}
+		f32_t fValue = m_SkinSliderValues[i] < 0.f ? 0.f : m_SkinSliderValues[i];
+		if (!Fn_ShowSlider(Slider.pSlotId, bSkin, bBound ? &fValue : nullptr) || !bBound)
+			continue;
+		m_SkinSliderValues[i] = fValue;
+		/* The freckle slider is one channel of a colour, so the authored hue stays put. */
+		pCharacter->Set_FaceMaterialParameter(Slider.pParameter, Slider.isColorAlpha ?
+			float4_t(vAuthored.x, vAuthored.y, vAuthored.z, fValue) :
+			float4_t(fValue, fValue, fValue, fValue));
 	}
-	Fn_ShowSlider("CC_Slider_skin_freckles", bSkin);
 
 	m_pView->Set_SlotVisible("CC_AdornDivision", bAdorn);
 	static constexpr const char_t* ADORN_SUB_IDS[] = {
