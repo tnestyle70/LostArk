@@ -56,6 +56,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 15. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
 16. PR #264 이후 main pull 이전과 EXE/Data ZIP·Drive Resource 분리 전달: `RUNTIME_BUILD_DELIVERY_GUIDE.md`
 17. 최근 Valtan·Bern·Party 통합 검증 증거: `../GB/08-28/2026-08-28_VALTAN_BERN_PARTY_INTEGRATION_RESULT.md`
+18. 쿠크 병합 후 3FPS·Play 실패 원인, 수정 검증과 맵 Git 전달 복구: [09-10 통합 결과의 G20~G22](../GB/09-09/2026-09-09_BERN_LOCAL_LIGHT_AND_THREE_CLASS_FULL_RESTORE_IMPLEMENTATION_RESULT.md). 현재 배포 절차는 위 Area 가이드를 따른다.
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 

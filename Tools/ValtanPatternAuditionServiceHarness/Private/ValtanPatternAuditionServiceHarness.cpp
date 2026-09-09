@@ -1375,6 +1375,8 @@ namespace
 
 int main(const int argc, const char* const argv[])
 {
+	if (argc == 2 && std::string(argv[1]) == "--presentation-generation-admission-contract")
+		return Run_ValtanPresentationGenerationAdmissionContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-preview-transport-contract")
 		return Run_KoukuPreviewTransportContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-sequence-document-contract")
@@ -1384,7 +1386,7 @@ int main(const int argc, const char* const argv[])
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract]\n";
+			"[--presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

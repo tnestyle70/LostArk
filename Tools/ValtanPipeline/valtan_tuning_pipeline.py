@@ -85,6 +85,7 @@ EFFECT_V1_ALIASES_REL = (
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
 GAMEPLAY_BOOTSTRAP_VERSION = 33
+MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 8192
 # Keep the authored cross-pattern follow-up bound aligned with the native
 # GameplayCatalog/ValtanBrain traversal guard.  A single edge has depth 1.
 PATTERN_FOLLOWUP_MAX_DEPTH = 32
@@ -12396,7 +12397,7 @@ def _parse_gameplay_bootstrap(path: Path) -> tuple[int, list[str]]:
         version != GAMEPLAY_BOOTSTRAP_VERSION
         or declared_count != len(rows)
         or not rows
-        or len(rows) > 4096
+        or len(rows) > MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS
         or any(not row for row in rows)
     ):
         raise PipelineError(
@@ -12745,7 +12746,7 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
         "removedValtanRows",
         "addedValtanRows",
     ):
-        integer(bootstrap[field], f"candidate server gameplay {field}", 0, 4096)
+        integer(bootstrap[field], f"candidate server gameplay {field}", 0, MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
 
     presentation_generation_id = compatibility["presentationGenerationId"]
     if (

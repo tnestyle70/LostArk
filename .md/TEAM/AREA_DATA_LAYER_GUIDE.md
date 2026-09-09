@@ -244,7 +244,11 @@ Action Workbench는 부모 Object를 선택해 기본 상태로 Append하며, WO
 owner 정상 완료의 `FINISH_OWNER`는 이미 시작한 WORLD의 저작 수명을 보존하며, 취소·실패의
 `STOP_OWNER`는 즉시 정리한다. protocol 68 실행 파일과 혼용하지 않고 Server와 Client를 함께 갱신·재시작한다.
 Object Tool Save가 기존 `Publish-MapAuthoring.ps1 -Scope WorldSequences`를 비동기 실행하며 이 scope는
-해당 Area worldsequences만 원자 배포한다. 조명·카메라 등 다른 Area 파일은 갱신하지 않는다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
+해당 Area worldsequences만 원자 배포한다. 조명·카메라 등 다른 Area 파일은 갱신하지 않는다.
+이 scope의 MAP/DEPLOY binding은 이미 설치된 runtime catalog·placement와 조인한다.
+존재하지 않는 placement/asset, Sky map, STATIC Deploy 대상이면 기존 runtime을 유지하고
+배포를 거절한다. 새 맵 배치까지 추가한 작업은 `-Scope Area`로 함께 배포해야 한다.
+Area scope는 같은 transaction에서 stage한 catalog·placement를 검증 기준으로 사용한다. 생성과 상태 sampling·수명·정리는 기존 `CWorldSequencePlayer`가 소유하며, 렌더 객체는
 `CWorldSequenceObject -> CModel -> CMaterial` 경로를 사용한다. 별도 Effect asset이나 두 번째
 오브젝트 재생 runtime을 만들지 않는다.
 
@@ -328,6 +332,26 @@ Validate는 source를 검증하고, Check는 같은 예상 파일과 현재 runt
 두 모드는 runtime을 쓰지 않으며 Publish만 기존 파일 집합 transaction을 실행한다. 기본값은
 기존 호출과 같은 Publish다. 현재 Area가 선언한 파일만 대상으로 하며 다른 Area나 미참조 파일을
 자동 삭제하지 않는다. 상세 명령은 [Map pipeline 사용서](../../Tools/MapPipeline/README.md)를 따른다.
+`Client/Bin/DataFiles/Map/*.mapassets`와 `*.mapplacements`는 Git LFS 추적 생성물이다.
+맵 담당자는 아래 명령으로 Area 출력을 생성·확인한 뒤 Data 원본과 변경된 runtime
+catalog·placement·시퀀스 및 관련 출력을 같은 PR에 포함한다. 받는 PC는 같은 commit과
+LFS 실파일을 받아 실행하며, 맵 배치가 바뀌면 열린 Client를 다시 시작한다.
+받은 데이터의 일치는 `-Mode Check`로 확인할 수 있다. 로컬 저작본을 수정하지 않았다면
+맵을 전달받기 위해 별도 Publish를 반복할 필요가 없다. `Resources` 모델/텍스처는
+기존 Drive 계약으로 전달한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Publish
+powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_MIDNIGHTC_ED -Scope Area -Mode Check
+```
+
+명시적 전체 쿠크 배포 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon`도
+`map.kakulsaydon`을 포함한다. 기존 BuildDomains의 해당 Area 출력·필수 출력은
+mapassets, mapplacements, deployassets, deployplacements, maplights, mapmaterials,
+worldsequences, camerashots의8개이며, 누락된 출력은 기존 receipt로 생략하지 않는다.
+일반 Client 컴파일은 계속 자동 배포를 하지 않는다. 컴파일 성공과 실행용 데이터 준비는
+별도로 확인한다. 생성물은 직접 편집하거나 `git add -f`로 우회하지 않고 기존 LFS
+규칙과 일반 `git add`로 추적한다. 다른 domain의 Git 제외 정책은 변경하지 않는다.
 
 Valtan 파괴 벽의 `navblockers`는 각 source collisionBox의 실제 XZ OBB와 base-walkable 셀, 해당 셀 높이에서
 시작하는 Server body 수직 범위가 겹치는 곳만 소유한다. 위층 벽으로 아래층 길을 막거나 nearest cell을

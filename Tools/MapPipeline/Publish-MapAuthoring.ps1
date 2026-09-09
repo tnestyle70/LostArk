@@ -57,8 +57,10 @@ $importedPlacementMask = [uint64]::Parse(
     [Globalization.CultureInfo]::InvariantCulture)
 
 function Read-PlacementDocument {
-    param([string]$Path)
-    $lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    param([string]$Path, [string[]]$Lines)
+    if (-not $PSBoundParameters.ContainsKey('Lines')) {
+        $Lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    }
     if ($lines.Count -lt 1) {
         throw "Placement document is empty: $Path"
     }
@@ -130,11 +132,13 @@ function Parse-PlacementRow {
 }
 
 function Read-MapAssetCatalog {
-    param([string]$Path)
-    $lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    param([string]$Path, [string[]]$Lines, [switch]$Published)
+    if (-not $PSBoundParameters.ContainsKey('Lines')) {
+        $Lines = @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+    }
     $header = if ($lines.Count -gt 0) {
         [regex]::Match($lines[0],
-            '^LOSTARK_MAP_ASSET_CATALOG\s+(?<version>[1-4])\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
+            '^LOSTARK_MAP_ASSET_CATALOG\s+(?<version>[1-5])\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)(?:\s+"(?<materials>[A-Za-z0-9_.-]+)")?$')
     }
     if ($null -eq $header -or -not $header.Success -or
         $header.Groups['area'].Value -cne $AreaId -or
@@ -142,7 +146,14 @@ function Read-MapAssetCatalog {
         $lines.Count -lt 2 -or $lines.Count -gt 513) {
         throw "Asset catalog header/count is invalid: $Path"
     }
+    $version = [int]$header.Groups['version'].Value
+    if (($version -eq 5 -and (-not $Published -or
+            $header.Groups['materials'].Value -cne "$AreaId.mapmaterials.json")) -or
+        ($version -lt 5 -and $header.Groups['materials'].Success)) {
+        throw "Asset catalog material reference/version is invalid: $Path"
+    }
     $assetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $assets = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     $resourcePrefix = [IO.Path]::GetFullPath($runtimeResourceRoot).TrimEnd('\') + '\'
     foreach ($row in @($lines | Select-Object -Skip 1)) {
         $match = [regex]::Match($row,
@@ -165,14 +176,24 @@ function Read-MapAssetCatalog {
             throw "Conflicting model paths for map asset: $assetId"
         }
         $script:mapMaterialModels[$assetId] = $modelPath
+        if ($Published) {
+            $tokens = @(Split-DeployAuthoringTokens $row $Path)
+            $expectedCount = if ($version -eq 1) { 8 } elseif ($version -eq 2) { 11 } elseif ($version -eq 3) { 25 } else { 26 }
+            $renderMode = if ($version -lt 3) { 'Opaque' } else { $tokens[11] }
+            if ($tokens.Count -ne $expectedCount -or
+                $renderMode -cnotin @('Opaque','Alpha','Sky','Additive','Water')) {
+                throw "Asset catalog sequence target row is invalid: $Path/$assetId"
+            }
+            $assets.Add($assetId, [pscustomobject]@{ RenderMode = $renderMode })
+        }
     }
-    if ($script:mapMaterialsDeclared) {
+    if ($script:mapMaterialsDeclared -and -not $Published) {
         if ($header.Groups['version'].Value -ne '4') {
             throw "Map material references require an imported v4 catalog: $Path"
         }
         $lines[0] = "LOSTARK_MAP_ASSET_CATALOG 5 `"$AreaId`" $($assetIds.Count) `"$AreaId.mapmaterials.json`""
     }
-    return [pscustomobject]@{ Lines = $lines; AssetIds = $assetIds }
+    return [pscustomobject]@{ Lines = $lines; AssetIds = $assetIds; Assets = $assets }
 }
 
 function Assert-ImportedLeaf {
@@ -296,24 +317,28 @@ function Assert-DeployWModelPath {
 }
 
 function Read-DeployAuthoringPair {
-    $catalogLines = @([IO.File]::ReadAllLines(
-        $sourceDeployCatalogPath, [Text.Encoding]::UTF8))
+    param([string[]]$CatalogLines, [string[]]$PlacementLines,
+        [string]$CatalogPath = $sourceDeployCatalogPath,
+        [string]$PlacementPath = $authoringDeployPath)
+    if (-not $PSBoundParameters.ContainsKey('CatalogLines')) {
+        $CatalogLines = @([IO.File]::ReadAllLines($CatalogPath, [Text.Encoding]::UTF8))
+    }
     if ($catalogLines.Count -lt 2) {
-        throw "Deploy catalog is empty: $sourceDeployCatalogPath"
+        throw "Deploy catalog is empty: $CatalogPath"
     }
     $catalogHeader = @(Split-DeployAuthoringTokens `
-        $catalogLines[0] "$sourceDeployCatalogPath header")
+        $catalogLines[0] "$CatalogPath header")
     if ($catalogHeader.Count -ne 4 -or
         $catalogHeader[0] -cne 'LOSTARK_DEPLOY_PROP_CATALOG' -or
         $catalogHeader[1] -notin @('2','3') -or
         $catalogHeader[2] -cne $AreaId) {
-        throw "Deploy catalog header is invalid: $sourceDeployCatalogPath"
+        throw "Deploy catalog header is invalid: $CatalogPath"
     }
     $catalogVersion = [uint32]$catalogHeader[1]
     $assetCount = Convert-DeployUInt32 $catalogHeader[3] `
-        "$sourceDeployCatalogPath asset count" $false
+        "$CatalogPath asset count" $false
     if ($assetCount -gt 64 -or $assetCount -ne ($catalogLines.Count - 1)) {
-        throw "Deploy catalog count is invalid: $sourceDeployCatalogPath"
+        throw "Deploy catalog count is invalid: $CatalogPath"
     }
 
     $assets = [Collections.Generic.Dictionary[string,object]]::new(
@@ -321,7 +346,7 @@ function Read-DeployAuthoringPair {
     $prototypeTags = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     for ($index = 0; $index -lt $assetCount; ++$index) {
-        $context = "$sourceDeployCatalogPath row $index"
+        $context = "$CatalogPath row $index"
         $tokens = @(Split-DeployAuthoringTokens $catalogLines[$index + 1] $context)
         $expectedCount = if ($catalogVersion -eq 3) { 12 } else { 10 }
         if ($tokens.Count -ne $expectedCount -or
@@ -367,31 +392,32 @@ function Read-DeployAuthoringPair {
         })
     }
 
-    $placementLines = @([IO.File]::ReadAllLines(
-        $authoringDeployPath, [Text.Encoding]::UTF8))
+    if (-not $PSBoundParameters.ContainsKey('PlacementLines')) {
+        $PlacementLines = @([IO.File]::ReadAllLines($PlacementPath, [Text.Encoding]::UTF8))
+    }
     if ($placementLines.Count -lt 1) {
-        throw "Deploy placement document is empty: $authoringDeployPath"
+        throw "Deploy placement document is empty: $PlacementPath"
     }
     $placementHeader = @(Split-DeployAuthoringTokens `
-        $placementLines[0] "$authoringDeployPath header")
+        $placementLines[0] "$PlacementPath header")
     if ($placementHeader.Count -ne 4 -or
         $placementHeader[0] -cne 'LOSTARK_DEPLOY_PROP_PLACEMENTS' -or
         $placementHeader[1] -notin @('1','2') -or
         $placementHeader[2] -cne $AreaId) {
-        throw "Deploy placement header is invalid: $authoringDeployPath"
+        throw "Deploy placement header is invalid: $PlacementPath"
     }
     $placementVersion = [uint32]$placementHeader[1]
     $placementCount = Convert-DeployUInt32 $placementHeader[3] `
-        "$authoringDeployPath placement count" $true
+        "$PlacementPath placement count" $true
     if ($placementCount -gt 4096 -or
         $placementCount -ne ($placementLines.Count - 1)) {
-        throw "Deploy placement count is invalid: $authoringDeployPath"
+        throw "Deploy placement count is invalid: $PlacementPath"
     }
 
     $placements = [Collections.Generic.Dictionary[string,object]]::new(
         [StringComparer]::Ordinal)
     for ($index = 0; $index -lt $placementCount; ++$index) {
-        $context = "$authoringDeployPath row $index"
+        $context = "$PlacementPath row $index"
         $tokens = @(Split-DeployAuthoringTokens $placementLines[$index + 1] $context)
         $expectedCount = if ($placementVersion -eq 2) { 17 } else { 16 }
         if ($tokens.Count -ne $expectedCount) {
@@ -1795,15 +1821,120 @@ function Read-WorldSequenceDocument {
     return $validatedLines.ToArray()
 }
 
+function Assert-WorldSequencePlacementTargets {
+    param([object]$Document, [Collections.Generic.List[object]]$Files)
+    $bindings = @($Document.instances | ForEach-Object { $_.bindings })
+    $mapBindings = @($bindings | Where-Object { $_.targetKind -ceq 'MAP_PLACEMENT' })
+    $deployBindings = @($bindings | Where-Object { $_.targetKind -ceq 'DEPLOY_PLACEMENT' })
+    if ($mapBindings.Count -eq 0 -and $deployBindings.Count -eq 0) { return }
+
+    function Read-SequenceTargetLines([string]$Name, [string]$Extension) {
+        if ($Name -notmatch '^[A-Za-z0-9_.-]+$' -or $Name.Length -gt 260 -or
+            [IO.Path]::GetExtension($Name) -cne $Extension) {
+            throw "World sequence target filename is invalid: $Name"
+        }
+        if ($Scope -eq 'Area') {
+            $staged = @($Files | Where-Object { $_.Name -ceq $Name })
+            if ($staged.Count -ne 1) { throw "World sequence target file is not staged: $Name" }
+            return $staged[0].Lines
+        }
+        $path = Join-Path $runtimeRoot $Name
+        if (-not [IO.File]::Exists($path)) {
+            throw "World sequence target runtime is missing: $path. Publish Scope Area first."
+        }
+        return [IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8)
+    }
+
+    $placements = [Collections.Generic.Dictionary[uint64,object]]::new()
+    if ($mapBindings.Count -gt 0) {
+        $sharded = if ($Scope -eq 'Area') {
+            @($Files | Where-Object { $_.Name -ceq "$AreaId.mapset" }).Count -eq 1
+        } else {
+            if ($areaEntry.catalogType -cnotin @('single','shard-set')) {
+                throw "World sequence Map target catalog type is invalid: $AreaId"
+            }
+            $areaEntry.catalogType -ceq 'shard-set'
+        }
+        $pairs = [Collections.Generic.List[object]]::new()
+        if ($sharded) {
+            $set = @(Read-SequenceTargetLines "$AreaId.mapset" '.mapset')
+            $header = @(Split-DeployAuthoringTokens $set[0] 'World sequence target shard set')
+            if ($header.Count -ne 4 -or $header[0] -cne 'LOSTARK_MAP_SHARD_SET' -or
+                $header[1] -cne '1' -or $header[2] -cne $AreaId -or
+                $header[3] -notmatch '^[0-9]+$' -or [uint32]$header[3] -notin 1..64 -or
+                [uint32]$header[3] -ne $set.Count - 1) { throw 'Invalid world sequence target shard set' }
+            $shardIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($line in $set[1..($set.Count - 1)]) {
+                $row = @(Split-DeployAuthoringTokens $line 'World sequence target shard')
+                if ($row.Count -ne 5 -or $row[0] -cnotmatch '^[A-Za-z0-9_.-]+$' -or
+                    -not $shardIds.Add($row[0]) -or $row[3] -notmatch '^[0-9]+$' -or
+                    $row[4] -notmatch '^[0-9]+$') { throw 'Invalid world sequence target shard row' }
+                $pairs.Add([pscustomobject]@{ Catalog = $row[1]; Placements = $row[2];
+                    AssetCount = [uint32]$row[3]; PlacementCount = [uint32]$row[4] })
+            }
+        } else {
+            $pairs.Add([pscustomobject]@{ Catalog = "$AreaId.mapassets";
+                Placements = "$AreaId.mapplacements"; AssetCount = -1; PlacementCount = -1 })
+        }
+        foreach ($pair in $pairs) {
+            $catalogLines = @(Read-SequenceTargetLines $pair.Catalog '.mapassets')
+            $placementLines = @(Read-SequenceTargetLines $pair.Placements '.mapplacements')
+            $catalog = Read-MapAssetCatalog $pair.Catalog -Lines $catalogLines -Published
+            $rows = @(Read-PlacementDocument $pair.Placements -Lines $placementLines)
+            if ($sharded -and ($catalog.AssetIds.Count -ne $pair.AssetCount -or
+                    $rows.Count -ne $pair.PlacementCount)) { throw 'World sequence target shard count mismatch' }
+            foreach ($row in $rows) {
+                $parsed = Parse-PlacementRow $row $pair.Placements
+                if ($placements.ContainsKey($parsed.PlacementId) -or
+                    -not $catalog.Assets.ContainsKey($parsed.AssetId)) {
+                    throw "Invalid world sequence Map target placement/asset: $($parsed.PlacementId)/$($parsed.AssetId)"
+                }
+                $placements.Add($parsed.PlacementId, $catalog.Assets[$parsed.AssetId])
+            }
+        }
+    }
+    $deploy = $null
+    if ($deployBindings.Count -gt 0) {
+        $catalogName = "$AreaId.deployassets"
+        $placementName = "$AreaId.deployplacements"
+        $deploy = Read-DeployAuthoringPair -CatalogPath $catalogName -PlacementPath $placementName `
+            -CatalogLines @(Read-SequenceTargetLines $catalogName '.deployassets') `
+            -PlacementLines @(Read-SequenceTargetLines $placementName '.deployplacements')
+    }
+    foreach ($instance in $Document.instances) {
+        foreach ($binding in $instance.bindings) {
+            $context = "$($instance.instanceId)/$($binding.slotId) -> $($binding.targetId)"
+            if ($binding.targetKind -ceq 'MAP_PLACEMENT') {
+                $target = [uint64]$binding.targetId
+                if (-not $placements.ContainsKey($target) -or $placements[$target].RenderMode -ceq 'Sky') {
+                    throw "Invalid Map binding: $context. Publish Scope Area with its placements/assets first."
+                }
+            } elseif ($binding.targetKind -ceq 'DEPLOY_PLACEMENT') {
+                # Clip existence remains the native CModel validator's contract;
+                # catalog roles do not enumerate every clip on an animated prop.
+                $target = ([uint64]$binding.targetId).ToString([Globalization.CultureInfo]::InvariantCulture)
+                if (-not $deploy.Placements.ContainsKey($target) -or
+                    $deploy.Assets[$deploy.Placements[$target].AssetId].Kind -cne 'ANIM') {
+                    throw "Invalid animated Deploy binding: $context. Publish Scope Area with its placements/assets first."
+                }
+            }
+        }
+    }
+}
+
 function Add-WorldSequencePublishFile {
     param([Collections.Generic.List[object]]$Files)
     if ($script:worldSequencesDeclared) {
         if (-not [IO.File]::Exists($authoringSequencePath)) {
             throw "Declared world sequence authoring source is missing: $authoringSequencePath"
         }
+        $lines = @(Read-WorldSequenceDocument $authoringSequencePath)
+        # Join the exact validated snapshot against the files this operation will
+        # leave installed. A sequence-only save cannot publish new Map targets.
+        Assert-WorldSequencePlacementTargets ($lines -join "`n" | ConvertFrom-Json) $Files
         $Files.Add([pscustomobject]@{
             Name = "$AreaId.worldsequences.json"
-            Lines = Read-WorldSequenceDocument $authoringSequencePath
+            Lines = $lines
         })
     }
 }

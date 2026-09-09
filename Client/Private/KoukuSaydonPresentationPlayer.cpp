@@ -1814,9 +1814,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                     !placementBindings.insert(std::to_string(static_cast<int>(binding.targetKind)) + ":" + binding.targetId).second)
                     return fail("Bundle WORLD members share a mutable map/deploy target.");
             auto player = std::make_shared<CWorldSequencePlayer>();
-            if (!player->Set_Document(sequences, targets, status) ||
-                !player->Prepare_InstanceResources(world->strSequenceInstanceId, targets))
-                return fail(status.empty() ? player->Get_Status() : status);
+            if (!player->Set_Document(sequences, targets, status))
+                return fail(status);
+            if (!player->Prepare_InstanceResources(world->strSequenceInstanceId, targets))
+                return fail(player->Get_Status());
             if (!player->Validate_ObjectPlacement(world->strSequenceInstanceId, WorldPlacementFromOccurrence(box), status))
                 return fail(status);
             const auto worldSpan = player->Get_InstanceElapsedSpanMs(

@@ -213,6 +213,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.14`로 갱신
 - 작업을 시작할 때 `git status --short`로 다른 담당자의 변경과 생성물을 구분한다. 소유권이 불명확한 대규모 dirty worktree에서는 자동 stage/commit하지 않는다.
 - 하나의 커밋은 한 기능의 변경만 담는다. 코드, 그 코드가 소비하는 JSON/schema, 필요한 project/filter 등록, PLAN/RESULT 갱신을 같은 변경 단위로 묶는다.
 - `Client/Bin/Resources`는 팀장이 Drive로 직접 관리하는 runtime 입력이며 Git index에 추적하지 않는다. 기능 PR은 Resources-relative asset ID와 필요한 물리 위치만 기록하고 binary payload를 force-add하지 않는다. 전체 물리 팩, 추출 원본, 미참조 자산과 build/intermediate 산출물은 커밋하지 않으며 immutable Resource pack, lock, 별도 Resource manifest, hash publish를 완료 조건으로 만들지 않는다.
+- `Client/Bin/DataFiles/Map`의 publisher 출력인 `.mapassets`와 `.mapplacements`는 기존 `.gitattributes`의 Git LFS 규칙으로 추적한다. 맵 변경 PR은 Data 정본과 함께 변경된 runtime catalog·placement·시퀀스 및 같은 Area의 관련 출력을 포함한다. 생성물을 직접 편집하지 않고 Area publisher로 생성·Check하며, 받는 PC에 실행용 맵이 전달되도록 신규 출력도 일반 `git add`에 포함한다. Resources 바이너리의 Drive 관리와 다른 domain의 Git 제외 정책은 유지한다.
 - 계획/결과 문서는 `.md/GB/<MM-DD>/`에 보관한다. `.md/계획서작성규칙.local.md`와 local gotcha는 개인 파일이므로 커밋하지 않는다.
 - 완료 보고에는 변경 기능에 필요한 최소 컴파일, 변경한 JSON/XML parse, `git diff --check`와 실제 입력·저장·실행 확인 결과를 기록한다. 사용자가 아직 하지 않은 화면 확인이나 실행하지 않은 검사를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.

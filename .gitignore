@@ -79,11 +79,9 @@
 /Client/Bin/Resources/
 !/Client/Bin/DataFiles/
 !/Client/Bin/DataFiles/**
-# Publisher runtime products are materialized from Data authoring sources.
-# Existing tracked legacy products remain tracked, while newly generated Area
-# outputs must not make a committed verification snapshot dirty.
-/Client/Bin/DataFiles/Map/*.mapassets
-/Client/Bin/DataFiles/Map/*.mapplacements
+# Published Map catalogs and placements are tracked with their sequence JSON.
+# Existing .gitattributes rules store .mapassets/.mapplacements in Git LFS.
+# The following other publisher outputs retain their existing ignore policy.
 /Client/Bin/DataFiles/Navigation/*.navblockers
 /Client/Bin/DataFiles/Navigation/*.navgrid
 /Client/Bin/DataFiles/Navigation/*.navpolicy
