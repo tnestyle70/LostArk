@@ -1,0 +1,18 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59504",
+  "bindings": [
+    { "effectId": "esther.ninave.appear_2", "clip": "npc_sk_parkunas", "startMs": 1000, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.appear_1", "clip": "npc_sk_parkunas", "startMs": 866, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.arrow_1", "clip": "npc_sk_parkunas", "startMs": 3500, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.thunder_1", "clip": "npc_sk_parkunas", "startMs": 3433, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.water_1", "clip": "npc_sk_parkunas", "startMs": 3500, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.water_2", "clip": "npc_sk_parkunas", "startMs": 3500, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.impact_1", "clip": "npc_sk_parkunas", "startMs": 3666, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.impact_2", "clip": "npc_sk_parkunas", "startMs": 3666, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.impact_3", "clip": "npc_sk_parkunas", "startMs": 3666, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.blur_1", "clip": "npc_sk_parkunas", "startMs": 3666, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "esther.ninave.radial_1", "clip": "npc_sk_parkunas", "startMs": 3666, "bone": "b_wp_2", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 }
+  ]
+}
