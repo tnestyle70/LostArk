@@ -52,6 +52,8 @@ from pathlib import Path
 # model calls the submesh's material; the source is the retail instance whose values it takes.
 HEAD_FAMILY = "source.character.classic-head.v1"
 SKIN_FAMILY = "source.character.classic-skin.v1"
+EYE_FAMILY = "source.character.eye.v1"
+EYELASH_FAMILY = "source.character.eyelash.v1"
 
 # Register -> the texture parameter the program reads there, per family.  See the module
 # docstring for how the head map was read; the skin map is the one DimensionMaster's existing
@@ -71,6 +73,17 @@ TEXTURE_REGISTERS = {
         (10, "texture_state_fx", "srgb"),
         (11, "texture_specular_power", "linear"),
     ],
+    EYE_FAMILY: [
+        (0, "texture_normal", "linear"),
+        (1, "texture_tdspecular", "srgb"),
+        (2, "var_eye_iristexture_ui", "srgb"),
+        (3, "texture_diffuse_base", "srgb"),
+        (4, "var_eye_iristextureleft_ui", "srgb"),
+        (5, "texture_state_fx", "srgb"),
+    ],
+    EYELASH_FAMILY: [
+        (0, "texture_diffuse", "srgb"),
+    ],
     SKIN_FAMILY: [
         (0, "texture_normal", "linear"),
         (1, "texture_color_fx_skin", "srgb"),
@@ -88,6 +101,8 @@ TEXTURE_REGISTERS = {
 ENGINE_REGISTER_TEXTURES = {
     HEAD_FAMILY: {9: "hdr07_1", 10: "statefx_default", 11: "brdf_beckmann_spec"},
     SKIN_FAMILY: {5: "statefx_default"},
+    EYE_FAMILY: {5: "statefx_default"},
+    EYELASH_FAMILY: {},
 }
 
 TEXTURE_ROOTS = {
@@ -122,6 +137,12 @@ ROWS = [
     ("Artist", "pc_sp_01_upper_mi", "pc_sp_01_upper_mi", SKIN_FAMILY),
     ("Artist", "pc_sp_01-1_arm_mi", "pc_sp_01-1_arm_mi", SKIN_FAMILY),
     ("Artist", "pc_sp_01-1_lower_mi", "pc_sp_01-1_lower_mi", SKIN_FAMILY),
+
+    ("LanceMaster", "pc_ft_eye_mi", "pc_ft_eye_mi", EYE_FAMILY),
+    ("Warlord", "pc_wr_eye_mi", "pc_wr_eye_mi", EYE_FAMILY),
+    ("Artist", "pc_sp_eye_mi", "pc_sp_eye_mi", EYE_FAMILY),
+    ("LanceMaster", "pc_ft_eyelashes_mi", "pc_ft_eyelashes_mi", EYELASH_FAMILY),
+    ("Artist", "pc_sp_eyeao_mi", "pc_sp_eyeao_mi", EYELASH_FAMILY),
 ]
 
 MODEL_ASSETS = {
@@ -139,6 +160,8 @@ SHARED_TEXTURES = {
     "hdr07_1": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
     "statefx_default": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
     "normal": "Character/LanceMaster/textures/normal.tga",
+    "diffuse": "Character/SourceMaterials/efmaster_material_prologue/diffuse.dds",
+    "lightbox_cube2_1": "Character/SourceMaterials/efmaster_material_prologue/lightbox_cube2_1.dds",
     "brdf_beckmann_spec": "Character/LanceMaster/textures/brdf_beckmann_spec.tga",
 }
 

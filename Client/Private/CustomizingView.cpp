@@ -56,6 +56,16 @@ namespace
 	constexpr const char_t* EYESHADOW_COLOR_PARAMETER = "var_makeup_eyeshadowcolor_ui";
 	constexpr const char_t* SKIN_COLOR_PARAMETER = "var_base_skincolor_ui";
 
+	/* The eye tab drives the retail eye material's own variables. The movie exposes one pair of
+	swatches plus an index that chooses which eye, so the odd-eye sub-tab both flips
+	`var_eye_useordeyecolor_bool_ui` and points the same two swatches at the left-eye twins. */
+	constexpr const char_t* EYE_BASE_COLOR_PARAMETER = "var_eye_basecolor_ui";
+	constexpr const char_t* EYE_IRIS_COLOR_PARAMETER = "var_eye_iriscolor_ui";
+	constexpr const char_t* EYE_BASE_COLOR_LEFT_PARAMETER = "var_eye_basecolorleft_ui";
+	constexpr const char_t* EYE_IRIS_COLOR_LEFT_PARAMETER = "var_eye_iriscolorleft_ui";
+	constexpr const char_t* EYE_IRIS_SIZE_PARAMETER = "var_eye_irissize_ui";
+	constexpr const char_t* EYE_ODD_COLOR_PARAMETER = "var_eye_useordeyecolor_bool_ui";
+
 	/* The three skin sliders, in layout order. Which head-material variable each drives is
 	settled by reading program 4 rather than by the rule document, which leaves two of them
 	open:
@@ -86,6 +96,13 @@ namespace
 		{ "CC_Slider_skin_freckles", "var_base_skinfrecklecolor_ui",           true  },
 	};
 	constexpr int32_t ADORN_TAB_INDEX = 5;
+	/* The base tab picks a whole appearance at once, and its list is table category 0 -- a
+	curated set whose contents were never extracted. CustomizingFacePresets.json carries the
+	category 1 face-shape run the face tab uses, which has the same row count per class and is
+	a different list, so filling the base grid from it would put the wrong faces behind the
+	wrong icons. Until category 0 is extracted the tab is dimmed rather than opened onto a
+	blank panel. */
+	constexpr int32_t BASE_TAB_INDEX = 0;
 	/* Voice is left out on purpose: its list needs audio this project has none of, so drawing
 	its rows would only add a row of dead buttons. */
 	constexpr int32_t VOICE_TAB_INDEX = 6;
@@ -197,9 +214,16 @@ namespace
 	constexpr const wchar_t* LABEL_SKIN_GLOSS           = L"\xD53C\xBD80 \xC724\xAE30";	/* customizing_label_skin_gloss */
 	constexpr const wchar_t* LABEL_SKIN_FRECKLE         = L"\xC8FC\xADFC\xAE68";	/* customizing_label_skin_freckle */
 	constexpr const wchar_t* LABEL_ADORN_DESC           = L"\xD654\xC7A5\xC758 \xD615\xD0DC, \xC0C9\xC0C1 \xBCC0\xACBD";	/* customizing_label_makeup_desc */
-	constexpr const wchar_t* LABEL_ADORN_FORM           = L"\xB208 \xD654\xC7A5 \xD615\xD0DC";	/* customizing_label_makeup_form */
-	constexpr const wchar_t* LABEL_ADORN_COLOR          = L"\xC785\xC220 \xC0C9\xC0C1";	/* customizing_label_makeup_lips_color */
 	constexpr const wchar_t* LABEL_ADORN_SHADOW_COLOR   = L"\xC544\xC774\xC100\xB3C4 \xC0C9\xC0C1";	/* customizing_label_makeup_eyeshadow_color */
+	constexpr const wchar_t* LABEL_EYE_LENZ             = L"\xB3D9\xACF5 \xD615\xD0DC";	/* customizing_label_eye_lenz */
+	constexpr const wchar_t* LABEL_HAIR_GLOSS           = L"\xBA38\xB9AC \xC724\xAE30";	/* customizing_label_hair_gloss */
+	constexpr const wchar_t* LABEL_ADORN_LIP_FORM       = L"\xC785\xC220 \xD615\xD0DC";	/* customizing_label_makeup_lips_form */
+	constexpr const wchar_t* LABEL_ADORN_LIP_COLOR      = L"\xC785\xC220 \xC0C9\xC0C1";	/* customizing_label_makeup_lips_color */
+	constexpr const wchar_t* LABEL_ADORN_CHEEK_FORM     = L"\xBCFC \xD130\xCE58 \xD615\xD0DC";	/* customizing_label_makeup_cheek_form */
+	constexpr const wchar_t* LABEL_ADORN_CHEEK_COLOR    = L"\xBCFC \xD130\xCE58 \xC0C9\xC0C1";	/* customizing_label_makeup_cheek_form_color */
+	constexpr const wchar_t* LABEL_ADORN_EYEMAKE_FORM   = L"\xB208 \xD654\xC7A5 \xD615\xD0DC";	/* customizing_label_makeup_form */
+	constexpr const wchar_t* LABEL_ADORN_EYELINE_COLOR  = L"\xC544\xC774\xB77C\xC778 \xC0C9\xC0C1";	/* customizing_label_makeup_eyeline_color */
+	constexpr const wchar_t* LABEL_ADORN_BROW_COLOR     = L"\xB208\xC370 \xC0C9\xC0C1";	/* customizing_label_eyebrow_color */
 	constexpr const wchar_t* LABEL_SAVE_SLOT            = L"\xCEE4\xC2A4\xD130\xB9C8\xC774\xC9D5 \xC800\xC7A5/\xBD88\xB7EC\xC624\xAE30";	/* customizing_label_save_slot */
 	/* sys.pccreate.checkname_button_ok / .customizing_btn_avatarreset */
 	constexpr const wchar_t* LABEL_PICKER_APPLY = L"\xD655\xC778";
@@ -621,7 +645,7 @@ void Client::CCustomizingView::Update_Tabs()
 		const string strGlowId = "CC_Tab" + std::to_string(i) + "_Glow";
 		const string strIconId = "CC_Tab" + std::to_string(i) + "_Icon";
 		const bool_t bSelected = i == m_iSelectedTab;
-		const bool_t bSupported = VOICE_TAB_INDEX != i;
+		const bool_t bSupported = VOICE_TAB_INDEX != i && BASE_TAB_INDEX != i;
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!Get_SlotRect(strBgId.c_str(), fX, fY, fWidth, fHeight))
@@ -762,6 +786,29 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 		float4_t vSkin{};
 		if (pCharacter->Try_Get_FaceMaterialParameter(SKIN_COLOR_PARAMETER, vSkin))
 			m_SurfaceColors[SKIN_SURFACE_INDEX] = vSkin;
+	}
+	/* The eye tab reads the eye material, which is a different material from the head, so
+	the odd-eye sub-tab starts wherever the class was authored rather than on both-eyes. */
+	m_fEyeIrisSize = -1.f;
+	m_fEyeIrisAlpha = -1.f;
+	{
+		float4_t vOdd{};
+		m_isEyeOddSelected = pCharacter->Try_Get_FaceMaterialParameter(
+			EYE_ODD_COLOR_PARAMETER, vOdd) && vOdd.x >= 0.5f;
+	}
+	{
+		float4_t vEye{};
+		if (pCharacter->Try_Get_FaceMaterialParameter(m_isEyeOddSelected ?
+			EYE_BASE_COLOR_LEFT_PARAMETER : EYE_BASE_COLOR_PARAMETER, vEye))
+		{
+			m_SurfaceColors[EYE_BASE_SURFACE_INDEX] = float4_t(vEye.x, vEye.y, vEye.z, 1.f);
+		}
+		if (pCharacter->Try_Get_FaceMaterialParameter(m_isEyeOddSelected ?
+			EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_IRIS_COLOR_PARAMETER, vEye))
+		{
+			m_SurfaceColors[EYE_IRIS_SURFACE_INDEX] = float4_t(vEye.x, vEye.y, vEye.z, 1.f);
+			m_fEyeIrisAlpha = std::clamp(vEye.w, 0.f, 1.f);
+		}
 	}
 	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
 	if (nullptr == pIcons)
@@ -1012,6 +1059,19 @@ bool_t Client::CCustomizingView::Apply_SurfaceColor(
 		}
 		return pCharacter->Set_DyeColor(
 			static_cast<CCharacter::DYE_SURFACE>(iSurface), vColor, vColor);
+	}
+	if (EYE_BASE_SURFACE_INDEX == iSurface || EYE_IRIS_SURFACE_INDEX == iSurface)
+	{
+		/* The iris colour's alpha is not a swatch value: the eye program uses it as the
+		weight of the iris over the base, which is the clarity slider, so the wheel moves
+		only the hue and leaves the slider where it was set. */
+		const bool_t isIris = EYE_IRIS_SURFACE_INDEX == iSurface;
+		const char_t* pEyeParameter = m_isEyeOddSelected ?
+			(isIris ? EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_BASE_COLOR_LEFT_PARAMETER) :
+			(isIris ? EYE_IRIS_COLOR_PARAMETER : EYE_BASE_COLOR_PARAMETER);
+		const f32_t fAlpha = (isIris && m_fEyeIrisAlpha >= 0.f) ? m_fEyeIrisAlpha : 1.f;
+		return pCharacter->Set_FaceMaterialParameter(pEyeParameter,
+			float4_t(vColor.x, vColor.y, vColor.z, fAlpha));
 	}
 	const int32_t iPage = iSurface - FIRST_MAKEUP_SURFACE_INDEX;
 	const char_t* pParameter = EYESHADOW_SURFACE_INDEX == iSurface ?
@@ -1292,10 +1352,37 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 	m_pView->Set_SlotVisible("CC_EyeDivision", bEye);
 	Fn_ShowSubTab("CC_EyeSubIris", bEye, !m_isEyeOddSelected);
 	Fn_ShowSubTab("CC_EyeSubOdd", bEye, m_isEyeOddSelected);
-	Fn_ShowSlider("CC_Slider_eye_scale", bEye);
-	Fn_ShowPicker("CC_EyeColor", bEye, 1);
-	Fn_ShowPicker("CC_EyeIrisColor", bEye);
-	Fn_ShowSlider("CC_Slider_eye_definition", bEye);
+	/* Pupil size: var_eye_irissize_ui, which the program reads against iris_size_center to
+	grow or shrink the iris disc. */
+	{
+		float4_t vAuthored{};
+		const bool_t bBound = bEye && nullptr != pCharacter &&
+			pCharacter->Try_Get_FaceMaterialParameter(EYE_IRIS_SIZE_PARAMETER, vAuthored);
+		if (bBound && m_fEyeIrisSize < 0.f)
+			m_fEyeIrisSize = std::clamp(vAuthored.x, 0.f, 1.f);
+		f32_t fSize = m_fEyeIrisSize < 0.f ? 0.f : m_fEyeIrisSize;
+		if (Fn_ShowSlider("CC_Slider_eye_scale", bEye, bBound ? &fSize : nullptr) && bBound)
+		{
+			m_fEyeIrisSize = fSize;
+			pCharacter->Set_FaceMaterialParameter(EYE_IRIS_SIZE_PARAMETER,
+				float4_t(fSize, fSize, fSize, fSize));
+		}
+	}
+	Fn_ShowPicker("CC_EyeColor", bEye, bEye ? EYE_BASE_SURFACE_INDEX : -1);
+	Fn_ShowPicker("CC_EyeIrisColor", bEye, bEye ? EYE_IRIS_SURFACE_INDEX : -1);
+	{
+		f32_t fAlpha = m_fEyeIrisAlpha < 0.f ? 0.f : m_fEyeIrisAlpha;
+		const bool_t bBound = bEye && nullptr != pCharacter && m_fEyeIrisAlpha >= 0.f;
+		if (Fn_ShowSlider("CC_Slider_eye_definition", bEye, bBound ? &fAlpha : nullptr) &&
+			bBound)
+		{
+			m_fEyeIrisAlpha = fAlpha;
+			const float4_t& vIris = m_SurfaceColors[EYE_IRIS_SURFACE_INDEX];
+			pCharacter->Set_FaceMaterialParameter(m_isEyeOddSelected ?
+				EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_IRIS_COLOR_PARAMETER,
+				float4_t(vIris.x, vIris.y, vIris.z, fAlpha));
+		}
+	}
 	Fn_ShowList("CC_EyeIris", EYE_IRIS_COUNT, bEye);
 	if (bEye)
 	{
@@ -1490,6 +1577,28 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			{
 				CMainApp::Play_UIButtonClickSound();
 				m_isEyeOddSelected = 1 == i;
+				/* The material decides whether the left-eye colours are read at all, and the
+				two swatches now stand for the other eye, so they show its colours. */
+				if (nullptr != pCharacter)
+				{
+					const f32_t fOdd = m_isEyeOddSelected ? 1.f : 0.f;
+					pCharacter->Set_FaceMaterialParameter(EYE_ODD_COLOR_PARAMETER,
+						float4_t(fOdd, fOdd, fOdd, fOdd));
+					float4_t vEye{};
+					if (pCharacter->Try_Get_FaceMaterialParameter(m_isEyeOddSelected ?
+						EYE_BASE_COLOR_LEFT_PARAMETER : EYE_BASE_COLOR_PARAMETER, vEye))
+					{
+						m_SurfaceColors[EYE_BASE_SURFACE_INDEX] =
+							float4_t(vEye.x, vEye.y, vEye.z, 1.f);
+					}
+					if (pCharacter->Try_Get_FaceMaterialParameter(m_isEyeOddSelected ?
+						EYE_IRIS_COLOR_LEFT_PARAMETER : EYE_IRIS_COLOR_PARAMETER, vEye))
+					{
+						m_SurfaceColors[EYE_IRIS_SURFACE_INDEX] =
+							float4_t(vEye.x, vEye.y, vEye.z, 1.f);
+						m_fEyeIrisAlpha = std::clamp(vEye.w, 0.f, 1.f);
+					}
+				}
 			}
 		}
 	}
@@ -1810,11 +1919,12 @@ void Client::CCustomizingView::Render_Text()
 			continue;
 		}
 		const bool_t bSelected = i == m_iSelectedTab;
-		const bool_t bHovered = FACE_TAB_INDEX == i && Is_Hovered(fX, fY, fWidth, fHeight);
+		const bool_t bSupported = VOICE_TAB_INDEX != i && BASE_TAB_INDEX != i;
+		const bool_t bHovered = bSupported && Is_Hovered(fX, fY, fWidth, fHeight);
 		if (!bSelected && !bHovered)
 			continue;
 		Fn_Draw(TEXT("Font_YoonGasiIIM"), fX + fWidth * 0.5f, fY + fHeight - 6.f, 11.f,
-			FACE_TAB_INDEX == i ? vDescColor : vDimColor, LABEL_TABS[i], float2_t(0.5f, 0.5f));
+			bSupported ? vDescColor : vDimColor, LABEL_TABS[i], float2_t(0.5f, 0.5f));
 	}
 
 	/* Left column captions. The lists themselves have no data yet, so only their headings
@@ -2007,7 +2117,9 @@ void Client::CCustomizingView::Render_Text()
 			{ HAIR_TAB_INDEX,  "CC_HairSubBasic_Bg",       LABEL_HAIR_SUB_BASE,      true  , false },
 			{ HAIR_TAB_INDEX,  "CC_HairSubTwoTone_Bg",     LABEL_HAIR_SUB_TWOTONE,   true  , false },
 			{ HAIR_TAB_INDEX,  "CC_HairDivision",          LABEL_HAIR_DESC,          false , true  },
+			{ HAIR_TAB_INDEX,  "CC_HairShape0_Plate",      LABEL_HAIR_FORM,          false , true  },
 			{ HAIR_TAB_INDEX,  "CC_HairColor",             LABEL_HAIR_COLOR,         false , false },
+			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_HAIR_GLOSS,    false , true  },
 			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_STRENGTH,      false , false },
 			{ HAIR_TAB_INDEX,  "CC_Slider_hair_range_Track",    LABEL_RANGE,         false , false },
 
@@ -2016,13 +2128,15 @@ void Client::CCustomizingView::Render_Text()
 			{ EYE_TAB_INDEX,   "CC_EyeDivision",           LABEL_EYE_DESC,           false , true  },
 			{ EYE_TAB_INDEX,   "CC_EyeColor",              LABEL_EYE_COLOR,          false , false },
 			{ EYE_TAB_INDEX,   "CC_EyeIrisColor",          LABEL_EYE_IRIS_COLOR,     false , false },
+			{ EYE_TAB_INDEX,   "CC_EyeIris0_Plate",        LABEL_EYE_LENZ,           false , true  },
 			{ EYE_TAB_INDEX,   "CC_Slider_eye_scale_Track",      LABEL_EYE_SIZE,     false , false },
 			{ EYE_TAB_INDEX,   "CC_Slider_eye_definition_Track", LABEL_ALPHA,        false , false },
 
 			{ SKIN_TAB_INDEX,  "CC_SkinDivision",          LABEL_SKIN_DESC,          false , true  },
 			{ SKIN_TAB_INDEX,  "CC_SkinColor",             LABEL_SKIN_COLOR,         false , false },
 			{ SKIN_TAB_INDEX,  "CC_Slider_skin_age_Track",      LABEL_SKIN_WRINKLE,  false , false },
-			{ SKIN_TAB_INDEX,  "CC_Slider_skin_shine_Track",    LABEL_SKIN_GLOSS,    false , false },
+			{ SKIN_TAB_INDEX,  "CC_Slider_skin_shine_Track",    LABEL_SKIN_GLOSS,    false , true  },
+			{ SKIN_TAB_INDEX,  "CC_Slider_skin_shine_Track",    LABEL_STRENGTH,      false , false },
 			{ SKIN_TAB_INDEX,  "CC_Slider_skin_freckles_Track", LABEL_SKIN_FRECKLE,  false , false },
 
 			{ ADORN_TAB_INDEX, "CC_AdornSubLip_Bg",        LABEL_ADORN_SUB_LIP,      true  , false },
@@ -2030,11 +2144,25 @@ void Client::CCustomizingView::Render_Text()
 			{ ADORN_TAB_INDEX, "CC_AdornSubEyeLine_Bg",    LABEL_ADORN_SUB_EYEMAKE,  true  , false },
 			{ ADORN_TAB_INDEX, "CC_AdornSubEyeBrow_Bg",    LABEL_ADORN_SUB_EYEBROW,  true  , false },
 			{ ADORN_TAB_INDEX, "CC_AdornDivision",         LABEL_ADORN_DESC,         false , true  },
-			{ ADORN_TAB_INDEX, "CC_AdornColor",            LABEL_ADORN_COLOR,        false , false },
-			{ ADORN_TAB_INDEX, "CC_AdornShadowColor",      LABEL_ADORN_SHADOW_COLOR, false , false },
-			{ ADORN_TAB_INDEX, "CC_Slider_adorn_strength_Track", LABEL_STRENGTH,     false , false },
-			{ ADORN_TAB_INDEX, "CC_Slider_adorn_shadow_Track",   LABEL_ALPHA,        false , false },
 		};
+		/* The adorn pages share one set of slots, so their captions come from the page in
+		view rather than from the table above: retail names each page's list, swatch and
+		slider after that page, and the cheek slider is a strength where the rest are an
+		alpha. */
+		struct ADORN_PAGE_LABEL
+		{
+			const wchar_t* pFormLabel;
+			const wchar_t* pColorLabel;
+			const wchar_t* pStrengthLabel;
+		};
+		constexpr ADORN_PAGE_LABEL ADORN_PAGE_LABELS[] = {
+			{ LABEL_ADORN_LIP_FORM,     LABEL_ADORN_LIP_COLOR,     LABEL_ALPHA    },
+			{ LABEL_ADORN_CHEEK_FORM,   LABEL_ADORN_CHEEK_COLOR,   LABEL_STRENGTH },
+			{ LABEL_ADORN_EYEMAKE_FORM, LABEL_ADORN_EYELINE_COLOR, LABEL_ALPHA    },
+			{ nullptr,                  LABEL_ADORN_BROW_COLOR,    LABEL_ALPHA    },
+		};
+		static_assert(std::size(ADORN_PAGE_LABELS) == std::size(ADORN_PAGES),
+			"one caption row per adorn page");
 		for (const TAB_LABEL& Entry : TAB_LABELS)
 		{
 			/* The picker covers the panel, so the captions underneath would read through it. */
@@ -2061,6 +2189,44 @@ void Client::CCustomizingView::Render_Text()
 				centred on the swatch or slider track it names. */
 				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
 					vDescColor, Entry.pLabel, float2_t(0.f, 0.5f));
+			}
+		}
+		if (ADORN_TAB_INDEX == m_iSelectedTab && PICKER_SURFACE_NONE == m_iPickerSurface &&
+			m_iSelectedAdornSub >= 0 &&
+			m_iSelectedAdornSub < static_cast<int32_t>(std::size(ADORN_PAGE_LABELS)))
+		{
+			const ADORN_PAGE_LABEL& Page =
+				ADORN_PAGE_LABELS[static_cast<size_t>(m_iSelectedAdornSub)];
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (nullptr != Page.pFormLabel &&
+				Get_SlotRect("CC_AdornItem0_Plate", fX, fY, fWidth, fHeight))
+			{
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY - 12.f, 11.f,
+					vDescColor, Page.pFormLabel, float2_t(0.f, 0.5f));
+			}
+			if (Get_SlotRect("CC_AdornColor", fX, fY, fWidth, fHeight))
+			{
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+					vDescColor, Page.pColorLabel, float2_t(0.f, 0.5f));
+			}
+			if (Get_SlotRect("CC_Slider_adorn_strength_Track", fX, fY, fWidth, fHeight))
+			{
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+					vDescColor, Page.pStrengthLabel, float2_t(0.f, 0.5f));
+			}
+			/* Only the eye make-up page carries the second swatch and slider. */
+			if (2 == m_iSelectedAdornSub)
+			{
+				if (Get_SlotRect("CC_AdornShadowColor", fX, fY, fWidth, fHeight))
+				{
+					Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+						vDescColor, LABEL_ADORN_SHADOW_COLOR, float2_t(0.f, 0.5f));
+				}
+				if (Get_SlotRect("CC_Slider_adorn_shadow_Track", fX, fY, fWidth, fHeight))
+				{
+					Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+						vDescColor, LABEL_ALPHA, float2_t(0.f, 0.5f));
+				}
 			}
 		}
 	}

@@ -191,7 +191,11 @@ private:
 	/* Lip, cheek, eye line, eyebrow -- the four adorn pages, in sub-tab order -- then the
 	eye shadow the eye-line page carries alongside its own colour. */
 	static constexpr int32_t EYESHADOW_SURFACE_INDEX = 7;
-	static constexpr size_t SURFACE_COLOR_COUNT = 8;
+	/* The eye tab's two swatches. Its colours are parameters of the retail eye material, not
+	dyes, and which pair they write depends on the odd-eye sub-tab. */
+	static constexpr int32_t EYE_BASE_SURFACE_INDEX = 8;
+	static constexpr int32_t EYE_IRIS_SURFACE_INDEX = 9;
+	static constexpr size_t SURFACE_COLOR_COUNT = 10;
 	int32_t m_iPickerSurface = PICKER_SURFACE_NONE;
 	f32_t m_fPickerHue = 0.f;
 	f32_t m_fPickerSaturation = 0.f;
@@ -217,6 +221,12 @@ private:
 	values the first frame the tab is shown, so a thumb starts where retail put it; -1 is
 	"not seeded yet". */
 	std::array<f32_t, 3> m_SkinSliderValues{ -1.f, -1.f, -1.f };
+	/* Pupil size: var_eye_irissize_ui, seeded from the class' authored value like the skin
+	sliders. -1 is "not seeded yet". */
+	f32_t m_fEyeIrisSize = -1.f;
+	/* Iris clarity: the alpha of var_eye_iriscolor_ui, which the eye program uses as the weight of
+	the iris colour over the base colour. Seeded like the size, -1 until then. */
+	f32_t m_fEyeIrisAlpha = -1.f;
 	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
 	and a non-native skin, a named head-material parameter for everything else. */
 	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,

@@ -1356,6 +1356,123 @@
               "colorSpace": "linear"
             }
           ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+          "materialName": "pc_ft_eye_mi",
+          "family": "source.character.eye.v1",
+          "sourceMaterial": "pc_ft_eye_mi",
+          "parameters": {
+            "iris_size_center": 0.35,
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": 0.6,
+            "specular_intensity": 0.0,
+            "specular_offset": 0.2,
+            "specular_power": 40.0,
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "tdspecular_intensity": 1.98,
+            "tdspecular_offset_x": 0.0,
+            "tdspecular_offset_y": 0.0,
+            "tdspecular_size_x": 1.08,
+            "tdspecular_size_y": 1.2,
+            "tdspecular_uv_offset": 0.25,
+            "var_eye_basecolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_eye_basecolorleft_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_eye_iriscolor_ui": [
+              0.64,
+              0.42,
+              0.28,
+              1.0
+            ],
+            "var_eye_iriscolorleft_ui": [
+              0.64,
+              0.42,
+              0.28,
+              1.0
+            ],
+            "var_eye_irissize_ui": 0.5,
+            "var_eye_useordeyecolor_bool_ui": 0.0
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/normal.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/lightbox_cube2_1.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_ft_00_eyeiris_d.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_ft_00_eyebase_d.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/diffuse.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+          "materialName": "pc_ft_eyelashes_mi",
+          "family": "source.character.eyelash.v1",
+          "sourceMaterial": "pc_ft_eyelashes_mi",
+          "parameters": {
+            "diffusecolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "opacity": 0.9,
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_ft_eyelashes_d.tga",
+              "colorSpace": "srgb"
+            }
+          ]
         }
       ]
     },
@@ -2278,6 +2395,123 @@
               "expressionIndex": 6,
               "assetId": "Character/LanceMaster/textures/brdf_beckmann_spec.tga",
               "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Artist/Artist.wmodel",
+          "materialName": "pc_sp_eye_mi",
+          "family": "source.character.eye.v1",
+          "sourceMaterial": "pc_sp_eye_mi",
+          "parameters": {
+            "iris_size_center": 0.5,
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": 0.6,
+            "specular_intensity": 0.0,
+            "specular_offset": 0.2,
+            "specular_power": 40.0,
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "tdspecular_intensity": 2.0,
+            "tdspecular_offset_x": 0.0,
+            "tdspecular_offset_y": 0.0,
+            "tdspecular_size_x": 1.22,
+            "tdspecular_size_y": 1.1,
+            "tdspecular_uv_offset": 0.28,
+            "var_eye_basecolor_ui": [
+              0.801075,
+              0.801075,
+              0.801075,
+              1.0
+            ],
+            "var_eye_basecolorleft_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_eye_iriscolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_eye_iriscolorleft_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_eye_irissize_ui": 0.58,
+            "var_eye_useordeyecolor_bool_ui": 0.0
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/normal.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/Artist/textures/pc_sp_eye_cube.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/Artist/textures/pc_sp_eyeiris_00_d.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/Artist/textures/pc_sp_eyebace_00_d.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/Artist/textures/pc_sp_eyeiris_00_d.dds",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/Artist/Artist.wmodel",
+          "materialName": "pc_sp_eyeao_mi",
+          "family": "source.character.eyelash.v1",
+          "sourceMaterial": "pc_sp_eyeao_mi",
+          "parameters": {
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "opacity": 0.9,
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/Artist/textures/pc_sp_eye_ao.tga",
+              "colorSpace": "srgb"
             }
           ]
         }
