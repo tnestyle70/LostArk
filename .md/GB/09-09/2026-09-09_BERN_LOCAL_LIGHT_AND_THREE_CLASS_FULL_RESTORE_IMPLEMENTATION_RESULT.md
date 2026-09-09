@@ -478,3 +478,147 @@ WorldPlayback 12개로 합계 150개 통과·실패 0이다. 마지막 Bundle �
 
 Client를 자율 실행하거나 화면을 캡처하지 않았으며 사용자 visual PASS로 기록하지 않는다.
 이 검증 상태의 전체 변경을 기존 PR #348로 push하고 merge한다.
+
+## G20. 쿠크 F1 idle 재로드로 인한 프레임 지연 교정
+
+PR #348 병합 이후 사용자가 1관문에서 아무것도 재생하지 않아도 3FPS가 난다고 보고했다.
+제공한 화면은 3.5FPS·CPU 288.948ms·GPU timestamp span 282.667ms였고, 사용자가
+ImGui와의 연관을 확인했다. 화면은 사용자 제공 입력이며 에이전트 캡처가 아니다.
+Sequence Viewer의 308은 trigger 97 + sequence 185 + pattern 26의 목록 수다.
+최초 열기와 Refresh에서 목록을 준비하고 재생 버튼은 선택한 한 항목만 요청한다.
+
+직접 원인은 MainApp의 시야 설정 `!gazeLoaded` 분기였다. incoming main의
+logic.28 `GRAB_TO_WORLD_OBJECT`가 Client outcome 목록에 없어 문서가 거절됐고,
+성공 여부를 최초 시도 여부로 사용한 UI가 전체 Reload를 매 프레임 다시 실행했다.
+실제 수정 전 C++ Reload 12회는 모두 같은 Unknown outcome 오류로 실패했다.
+회당 평균 254.665ms, 446,862 bytes, 111 read operations다. 이는 관측된 약
+289ms 프레임에서 대부분의 시간을 설명하며, 목록 308개 동시 재생은 원인이 아니다.
+
+MainApp에 최초 시도 상태를 별도로 기록해 실패 시에도 자동 재시도하지 않도록 했다.
+사용자의 Reload Sight Settings 버튼만 다음 읽기를 요청한다. Client outcome 목록에
+GRAB_TO_WORLD_OBJECT를 추가하고 기존 연결 검증에서 ENTER_AREA SUCCESS에만
+허용했다. 기존 duration/percent/grip 검증, 오류 표시, last-good 보존은 유지했다.
+제품 JSON과 Resources는 변경하지 않았고 세 C++ 파일의 UTF-8/no-BOM/CRLF를 보존했다.
+
+동일 실제 로더를 수정 후 다시 컴파일해 원본 Reload 3/3, unknown outcome과 malformed
+JSON 거절·정확한 last-good/generation 보존, 잘못된 GRAB slot 거절, serialize/parse 전체 값
+동일성까지 15개 검사 실패 0을 확인했다. 성공 시 immutable 참고 자료까지 읽으므로
+최초 Reload는 평균 약 998ms·2,687,317 bytes이며 이 비용을 프레임마다 반복하지 않는다.
+수정 전후 자료는 `out/KoukuGate1IdlePerf20260910/ReloadProbe/`의 `baseline.csv`,
+`after.log`, `audit.md`다. WPR 외부 CPU trace는 OS profiling policy 권한 부족으로
+시작되지 않았으며, 해당 trace를 검증 근거로 쓰지 않았다.
+
+사용자가 직접 Client를 종료하고 빌드했다. MainApp.obj(07:29:00),
+KoukuSaydonCompositionDocument.obj(07:28:45), 새 Client.exe(07:29:24)와 이어서 시작된
+새 Client process를 확인했다. 에이전트가 Client를 실행하거나 조작하지 않았다.
+격리 parser 컴파일과 diff check는 통과했지만 사용자 Visual Studio 빌드의 전체 출력은
+읽지 않았으므로 별도 경고/오류 집계로 기록하지 않는다. 수정 후 실제 FPS의 사용자 확인은
+아직 받지 않았다.
+
+## G21. 쿠크 Play 정지·배포 누락 교정과 다음 세션 인계 (2026-09-10)
+
+사용자는 2관문 `대형세이튼_조커찾기` Play가 “Pattern preview requested from 0 ms”에
+머물며 0ms에서 움직이지 않는 화면을 제공했다. 정확한 대상은 PATTERN_13,21 stage,
+30,353ms이며 이 패턴 JSON 자체는 병합 전 c67a47b2와 동일했다. 단일 Pattern 요청은
+정상적으로 같은 Kouku Workbench에서 소비되고 기존 Bundle 배우 경로로 전달된다.
+
+직접 원인은 이 PC의 오래된 실행용 맵이다. PR346에서 들어온 authoring은3368배치·330asset,
+이 PC runtime은3231배치·323asset이었다. 새137배치 중 `9440738451765240953`이 빠져
+`world.sequence.instance.mario.striped_ball.bounce/source_ball_679` binding을 해결하지 못했다.
+WorldSequence는 문서 전체를 validate하므로 Object Tool 목록과 조커 Pattern의 WORLD도
+함께 사용할 수 없었다. 목록308개를 동시에 재생해서 발생한 문제는 아니다.
+
+담당자의 `2026-09-09_MARIO_ORIGINAL_PLACEMENT_RESULT.md`에는3368개 Publish 성공이
+기록되어 있다. 원래 담당자의 배포 누락으로 단정하지 않는다. `.mapassets/.mapplacements`는
+Git 제외 생성물이고 `.worldsequences.json`은 기존 추적 파일이라, 받는 PC에서 Area 전체를
+생성하지 않으면 이 조합이 어긋난다. 기존 쿠크 명시 배포 owner에도 map domain이 빠져 있었다.
+
+### 반영한 수정
+
+- 기존 `Publish-MapAuthoring -Scope Area`로 이 PC의8개 실행용 문서를 배포했다.
+  새137배치가 포함된3368배치이며 Resources 모델/텍스처와 원본 튜닝값은 바꾸지 않았다.
+- WorldSequences만 배포할 때 현재 runtime catalog·placement를 참조 검증한다.
+  Area 배포는 같은 transaction의 staged 문서와 조인한다. 없는 placement/asset,
+  Sky map·STATIC Deploy binding은 승격 전에 거절해 기존 파일을 유지한다.
+- `Invoke-BuildDomainOwner -Owner KoukuSaydon`에 기존 map.kakulsaydon domain을
+  포함하고 BuildDomains의8개 출력·필수 출력 목록을 실제 Area 결과와 맞췄다.
+  일반 컴파일의 자동 배포 비활성 상태는 유지한다.
+- 별도로 실제 Client session73352 로그에서 bootstrap4122행을 Client4096상한이
+  거절하는 것을 확인했다. Client admission과 Python 후보검사를 Server/publisher와
+  같은8192상한으로 맞췄다. 이 오류는 서버 연출 baseline을 격리한 별도 결함이다.
+- Pattern/Bundle 요청을 소비한 직후에는 같은 실패도 Workbench 상태에 다시 표시한다.
+  그 뒤 매프레임 동일 상태가 편집 메시지를 지우지는 않는다. WORLD resource 준비 실패는
+  이전 문서 로드 성공 문구로 덮지 않고 실제 모델/텍스처/클립 오류를 전달한다.
+
+### 실행한 검증
+
+- Client Debug x64 최소 ClCompile, 사용자 종료 확인 후 최종 Build/Link: exit0.
+  최종 EXE: `Client/Bin/Debug/Client.exe`, 2026-09-10 07:50:59,51,330,560 bytes.
+  로그 `out/KoukuGate2JokerPreview20260910/client-compile.log`, `client-final-build.log`.
+- 기존 native 하네스 빌드와 `--kouku-preview-transport-contract`,
+  `--presentation-generation-admission-contract`: 모두 exit0/PASS.
+  반복 실패 표시·정상 상태에서 편집 메시지 보존, 실제4122행 bootstrap 수용을 포함한다.
+- 실제 CMapAssetCatalog/CMapPlacementDocument/DeployPropCatalog와
+  CWorldSequenceDocument로 동일 WorldSequence를 전후 실행했다. 배포 전은 위 binding
+  오류로 Load false, 배포 후149 templates·185 instances·revision423 Load/Validate true.
+  `out/KoukuGate2JokerPreview20260910/SequenceAdmission/result.log`.
+- 실제 CWorldGameplayDocument는112 placements·revision8792로 로드했고 대상 보스를 찾았다.
+  일반카드·조커 WModel은 headless CModel 로드에서 각각1 mesh·14 clips·diffuse 수용 성공.
+  `out/KoukuGate1Perf20260910/WorldLoad/result.log`, `CardMaterial/result.log`.
+- Python bootstrap 실제 입력·상한·잘림2검사, Build domain의 출력 집합·owner·compile opt-in·
+  rollback·receipt 무효화5검사 PASS. 기존 PowerShell parser/JSON 검사 PASS.
+- 최초 Area Check는 runtime.mapassets 불일치로 실패했고, Area Publish는3368배치·8파일로
+  성공했다. 실패 전 runtime은 `out/KoukuGate2JokerPreview20260910/runtime-before/`에 보존했다.
+
+최종 publisher 코드로 `-Scope Area -Mode Check`도 exit0:3368배치·8파일을 확인했다.
+로그는 `out/KoukuGate2JokerPreview20260910/area-check-final.log`다. 관련 WorldSequence
+기존 검사21/21와 Map publisher9/9 PASS이며, 수정된 JSON parse·6개 C++ 파일의
+UTF-8/CRLF 유지·`git diff --check`도 통과했다.
+
+전체 WorldSequence 검사 모듈을 실행하면서 별도로 발견한 **기존 실패1개**는
+`AnimatedPropAuthoringContractTests`의 “MapTool.cpp must stay on the default charset”
+프로젝트 조건이다. 수정 전 테스트를 현재 프로젝트에 실행해 같은 실패를 재현했으며,
+이번 publisher 수정과 관계없는 charset 정책을 임의 변경하지 않았다. 다음 세션은 필요하면
+이 기존 프로젝트/검사 기준 불일치를 별도 정리해야 한다. 관련30검사 PASS를 전체 모듈
+무결점 PASS로 표현하지 않는다. 근거 `out/KoukuGate2JokerPreview20260910/publisher-fix/handoff.md`.
+### 인계 상태와 남은 작업
+
+사용자가 이 세션을 마무리하고 다른 세션에서 Git ignore 정책 정리와 최종 PR을 진행하기로 했다.
+현재 브랜치는 `codex/kouku-preview-runtime-admission`, 기준은 origin/main40824b99(PR349병합)다.
+이번 G21 수정은 **아직 commit/push/PR하지 않았다.** 이전3FPS 수정 b880f0be는 PR349로 이미
+main에 병합됐으므로 다음 PR에 중복 수정하지 않는다. 현재 dirty 파일을 임의 reset하지 않는다.
+
+`.gitignore` 자체는 수정하지 않았다. 다음 세션은 runtime 생성물의 추적 정책 변경 여부와
+기존 tracked worldsequences/관련JSON의 정리를 팀 계약에 맞춰 결정하면 된다. 이번 수정의
+정본 생성 경로와 참조 guard를 제거하고 binary를 force-add하는 방식으로 해결하지 않는다.
+TEAM README에 이 결과를 연결했고, AREA_DATA_LAYER_GUIDE에 현재 배포 계약과
+받는 PC의 `Area Publish → Check → Client 재시작` 명령을 반영했다.
+
+Client와 Server는 마지막 확인 당시 종료 상태다. 에이전트는 Client/UI를 실행·조작하거나
+화면을 캡처하지 않았다. 사용자가 새 EXE로 2관문 조커찾기 Play, Object Resource 목록,
+커서 진행과 실제 연출을 확인해야 한다. 실제 FPS 회복과 visual fidelity는 아직 사용자
+PASS가 없으며, 컴파일/로더 성공을 화면 재생 완료로 기록하지 않는다.
+
+## G22. 실행용 맵 Git 추적 복구와 최종 PR (2026-09-10)
+
+사용자 승인에 따라 G21 인계 뒤 `.gitignore`의 Map `*.mapassets`·`*.mapplacements`
+제외 두 줄을 제거했다. 기존 `.gitattributes`를 그대로 사용해 Git LFS로 전달한다.
+쿠크 실행용 catalog 330행(176,604 bytes)과 placement 3,368행(832,759 bytes)을
+추적 대상으로 추가했다. catalog 본문은 Imported와 같고 v5 재질 참조 헤더는 publisher
+출력이다. placement는 authoring 원본을 LF로 정규화한 출력과 정확히 같다.
+기존 추적 Map 파일 36개, Resources·Navigation·World 제외 정책은 변경하지 않았다.
+
+G21의 Git 제외 상태와 받는 PC 재생성 설명은 당시 조사 기록이다. 현재 전달 계약은
+AGENTS, CLAUDE, AREA_DATA_LAYER_GUIDE와 Tools/MapPipeline/README에 반영한
+Git LFS snapshot 전달이다. 작성자는 Area Publish/Check 후 원본과 관련 실행용 출력을
+같은 PR에 포함하고, 받는 PC는 같은 commit과 LFS 실파일을 받아 사용한다.
+생성물 직접 편집과 매 컴파일 자동 배포를 추가하지 않았다.
+
+G21의 종료된 수정본을 그대로 인계받아 이번 기능 PR에 함께 포함했다. 별도 확인에서
+기존 WorldSequenceAuthoringContractTests와 MapAuthoringPublishContractTests 29개,
+build owner/출력/rollback/receipt와 bootstrap 검사 7개가 모두 통과했다.
+로그는 `out/MapRuntimeGit20260910/map-contracts.log`, `build-bootstrap-contracts.log`다.
+두 신규 파일의 LFS 속성과 ignore 해제, `git diff --check`를 확인했다.
+G21의 최종 Client Debug 빌드·native 로더 전후·Area Check 증거를 보존했다.
+정책·문서 변경으로 추가 C++ 컴파일은 하지 않았다. 사용자 실제 재생·FPS·화면 확인은
+여전히 미완료이며 자동 검사를 visual PASS로 취급하지 않는다.

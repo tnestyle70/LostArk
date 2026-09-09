@@ -144,3 +144,44 @@ Source JSON, 갈고리 경로, Sequence Viewer 목록과 게임플레이 판정�
 잘못된 outcome/slot의 거절·실패 시 이전 문서 보존, 해당 Client 최소 컴파일,
 PR 범위 diff check로 확인한다. 실행 중인 Client는 유지하고 최종 링크는 사용자가 종료한
 뒤 진행한다. 프레임 회복의 최종 화면 확인은 사용자가 한다.
+
+## G21. 병합 후 쿠크 Play 입력과 실행용 데이터의 불일치 교정
+
+Play는 선택 패턴을 기존 단일 Bundle 배우 경로로 전달한다. 요청·선택 세션에는 누락이
+없으나 incoming PR의 맵 배치137개가 실행용 맵에 배포되지 않았다. Authoring3368개와
+runtime3231개의 차이 때문에 WorldSequence의 source_ball_679 참조가 runtime에서
+해결되지 않고 전체 문서가 거절된다. 기존 Area publisher로 맵과 연결 문서를 함께 배포하고,
+WorldSequences만 배포할 때에는 현재 runtime map/deploy 대상과 참조를 검증해 같은
+불일치를 승격 전에 거절한다. Area 배포는 이번에 stage한 맵/배치 정본으로 검증한다.
+
+실제 Client session 로그에서 Gameplay.bootstrap4122행을 Client4096상한이 거절한
+별도 문제도 확인했다. Server/publisher8192와 Client admission, 기존 Python 후보검사의
+상한을 맞춘다. 의미가 다른 animation/curve 개수의4096상한은 변경하지 않는다.
+
+재생 시작 실패의 진단은 두 곳에서 보존한다. Workbench가 Pattern/Bundle 요청을 소비한
+직후의 결과는 같은 실패 문구여도 한 번 다시 표시하고, 그 후 매프레임 동일 상태가 편집
+메시지를 지우지는 않는다. Bundle WORLD 준비가 실패하면 이전 Set_Document 성공
+문구가 아니라 Prepare_InstanceResources의 실제 오류를 전달한다.
+
+기존 preview transport/admission 계약 검사를 필요한 항목만 실행하고, Area publish/check,
+WorldSequence 참조와 최소 Client compile을 확인한다. 신규 제품 파일은 없으며 사용자가
+Client를 종료하기 전에는 최종 EXE 링크를 하지 않는다. 실제 재생/화면 결과는 사용자가
+확인한다.
+
+## G22. 실행용 맵의 Git 전달 계약 복구
+
+사용자가 실행용 맵의 Git 제외 규칙 수정과 G21 수정본의 PR·병합을 요청했다.
+`.gitignore`의 Map `*.mapassets`·`*.mapplacements` 제외 두 줄을 제거하고 기존
+`.gitattributes`의 LFS 규칙으로 두 확장자를 관리한다. 현재 기존 runtime 36개는 이미
+추적 중이며, 이번에 추가할 파일은 publisher가 생성한 쿠크 catalog·placement 두 개다.
+Data 원본을 편집하고 publisher로 실행용 snapshot을 만든다는 소유권은 유지한다.
+새 배치와 이를 참조하는 시퀀스 및 catalog는 같은 PR에서 전달한다.
+
+AGENTS의 Git 전달 계약, CLAUDE의 실행 준비 설명, Area 가이드와 Map pipeline 사용서를
+현재 정책으로 맞춘다. Resources, Navigation과 다른 domain의 제외 규칙은 변경하지 않는다.
+G21의 실패 참조 거절·쿠크 배포 owner·재생 오류 표시·bootstrap 허용 범위도 함께 검토한다.
+
+쿠크 Area Check와 기존 관련 회귀 검사를 확인하고, 두 파일의 LFS 저장 및 Git에서
+복원한 실행 데이터의 참조 일치를 검증한다. Git 정책·문서 변경은 추가 C++ 컴파일을
+요구하지 않으며, G21의 실제 Debug compile/link 증거를 보존한다. 사용자 화면 확인은
+자동 검사와 분리한다. 커밋된 변경을 독립 검토한 뒤 PR을 생성하고 main에 병합한다.

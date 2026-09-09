@@ -305,6 +305,97 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             self.assertNotEqual(0, run("Publish").returncode)
             self.assertEqual(prior, output.read_bytes())
 
+    def test_sequence_publish_joins_installed_or_staged_map_and_deploy_targets(self):
+        area = "TEST_SEQUENCE_JOIN"
+        source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
+        instance = next(row for row in source["instances"] if len(row["bindings"]) == 1 and row["bindings"][0]["targetKind"] == "MAP_PLACEMENT")
+        template = next(row for row in source["templates"] if row["sequenceId"] == instance["templateId"])
+        instance.pop("walkableSurface", None)
+        instance["bindings"][0]["targetId"] = "2"
+        source.update(areaId=area, instances=[instance], templates=[template], objectResources=[])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            authoring = root / f"Data/Maps/Authoring/{area}"
+            imported = root / f"Data/Maps/Imported/{area}"
+            runtime = root / "Client/Bin/DataFiles/Map"
+            for directory in (authoring, imported, runtime):
+                directory.mkdir(parents=True)
+            catalog = root / "Data/Maps/MapCatalog.json"
+            entry = {"id": area, "catalogType": "single", "sourceSequences": f"Data/Maps/Authoring/{area}/{area}.worldsequences.json",
+                     "sequences": f"Client/Bin/DataFiles/Map/{area}.worldsequences.json"}
+            catalog.write_text(json.dumps({"areas": [entry]}), encoding="utf-8")
+            sequence = authoring / f"{area}.worldsequences.json"
+            sequence.write_text(json.dumps(source), encoding="utf-8")
+            output = runtime / sequence.name
+            output.write_bytes(b"previous sequence runtime")
+            asset = lambda name: f'"{name}" "Fixture" "Map/{name}.wmodel" "Prototype_{name}" 1 1 1 Origin'
+            placement = lambda number, name: f'{number} "editor.{number}" "fixture" "editor" "{name}" 0 0 0 0 0 0 1 1 1 1 1'
+            def write_pair(folder, names, ids):
+                (folder / f"{area}.mapassets").write_text(f'LOSTARK_MAP_ASSET_CATALOG 1 "{area}" {len(names)}\n' + "\n".join(map(asset, names)) + "\n", encoding="utf-8")
+                (folder / f"{area}.mapplacements").write_text(f'LOSTARK_MAP_PLACEMENTS 2 "{area}" {len(ids)}\n' + "\n".join(placement(number, name) for number, name in ids) + "\n", encoding="utf-8")
+            write_pair(runtime, ["OLD"], [(1, "OLD")])
+            write_pair(imported, ["OLD", "NEW"], [(1, "OLD"), (2, "NEW")])
+            (authoring / f"{area}.mapplacements").write_bytes((imported / f"{area}.mapplacements").read_bytes())
+            def run(scope, mode="Publish"):
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                    str(ROOT / "Tools/MapPipeline/Publish-MapAuthoring.ps1"), "-ProjectRoot", str(root), "-AreaId", area,
+                    "-Scope", scope, "-Mode", mode], capture_output=True, text=True, timeout=30)
+            snapshot = lambda: {path.name: path.read_bytes() for path in runtime.iterdir() if path.is_file()}
+            def reject(expected):
+                before = snapshot()
+                result = run("WorldSequences")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(expected, result.stderr)
+                self.assertEqual(before, snapshot(), "A rejected join must preserve every installed file")
+            reject("Invalid Map binding")
+            before = snapshot()
+            result = run("Area", "Validate")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(before, snapshot())
+            result = run("Area")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(source, json.loads(output.read_bytes()))
+            self.assertEqual(0, run("WorldSequences", "Check").returncode)
+            write_pair(runtime, ["OLD"], [(1, "OLD"), (2, "NEW")])
+            reject("Invalid world sequence Map target placement/asset")
+            # Sky is specifically excluded by native Collect_Placements.
+            sky = asset("NEW") + ' "group" "Group" "evidence" Sky Back 1 1 0 0 1 0 1 50 1 1 1 1'
+            (runtime / f"{area}.mapassets").write_text(f'LOSTARK_MAP_ASSET_CATALOG 3 "{area}" 1\n{sky}\n', encoding="utf-8")
+            (runtime / f"{area}.mapplacements").write_text(f'LOSTARK_MAP_PLACEMENTS 2 "{area}" 1\n{placement(2, "NEW")}\n', encoding="utf-8")
+            reject("Invalid Map binding")
+            self.assertEqual(0, run("Area").returncode)
+            # Single-scope joins must also consume the installed shard set.
+            (runtime / f"{area}.mapset").write_text(f'LOSTARK_MAP_SHARD_SET 1 "{area}" 1\n"one" "{area}.mapassets" "{area}.mapplacements" 2 2\n', encoding="utf-8")
+            entry["catalogType"] = "shard-set"
+            catalog.write_text(json.dumps({"areas": [entry]}), encoding="utf-8")
+            self.assertEqual(0, run("WorldSequences", "Validate").returncode)
+            entry["catalogType"] = "single"
+            catalog.write_text(json.dumps({"areas": [entry]}), encoding="utf-8")
+            # Deploy roles are not the complete native clip list: an arbitrary
+            # named animation remains valid here and is checked by CModel later.
+            instance["bindings"][0].update(targetKind="DEPLOY_PLACEMENT", targetId="11")
+            template["tracks"] = []
+            template["animationTracks"] = [{"slotId": instance["bindings"][0]["slotId"], "clipName": "additional.native.clip",
+                "playbackRate": 1, "loop": False, "holdLastFrame": True}]
+            sequence.write_text(json.dumps(source), encoding="utf-8")
+            deploy_asset = '"ANIMATED" ANIM "Fixture" "Map/animated.wmodel" "Prototype_Animated" "" "" 1 0 "fixture" "on" "off"'
+            deploy_catalog = f'LOSTARK_DEPLOY_PROP_CATALOG 3 "{area}" 1\n{deploy_asset}\n'
+            (imported / f"{area}.deployassets").write_text(deploy_catalog, encoding="utf-8")
+            (runtime / f"{area}.deployassets").write_text(deploy_catalog, encoding="utf-8")
+            deploy_row = '11 0 0 "editor.11" "ANIMATED" 0 0 0 0 0 0 1 1 0 0 0 PROJECT_AUTHORED'
+            deploy_source = f'LOSTARK_DEPLOY_PROP_PLACEMENTS 2 "{area}" 1\n{deploy_row}\n'
+            (authoring / f"{area}.deployplacements").write_text(deploy_source, encoding="utf-8")
+            (runtime / f"{area}.deployplacements").write_text(f'LOSTARK_DEPLOY_PROP_PLACEMENTS 2 "{area}" 0\n', encoding="utf-8")
+            reject("Invalid animated Deploy binding")
+            result = run("Area")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(0, run("WorldSequences", "Check").returncode)
+            (runtime / f"{area}.deployplacements").write_text(deploy_source.replace('"ANIMATED"', '"ABSENT"'), encoding="utf-8")
+            reject("Deploy placement identity is invalid")
+            (runtime / f"{area}.deployplacements").write_text(deploy_source, encoding="utf-8")
+            (runtime / f"{area}.deployassets").write_text(deploy_catalog.replace(' ANIM ', ' STATIC ').replace('"on" "off"', '"" ""'), encoding="utf-8")
+            reject("Invalid animated Deploy binding")
+
     def test_camera_pattern_authoring_fields_validate_without_changing_legacy_shots(self):
         source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json"))
         source["shots"] = [source["shots"][0]]

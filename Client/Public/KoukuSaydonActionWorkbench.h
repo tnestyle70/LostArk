@@ -139,10 +139,13 @@ namespace Client
 			KOUKU_PREVIEW_TRANSPORT& outTransport,
 			std::uint32_t& outSeekMs);
 		void Set_PreviewState(const KOUKU_PREVIEW_STATE& state) {
-			if (!state.strStatus.empty() && state.strStatus != m_PreviewState.strStatus)
+			if (!state.strStatus.empty() && (m_bPreviewResultStatusPending ||
+				state.strStatus != m_PreviewState.strStatus))
 				m_strStatus = state.strStatus;
+			m_bPreviewResultStatusPending = false;
 			m_PreviewState = state;
 		}
+		[[nodiscard]] const std::string& Get_Status() const noexcept { return m_strStatus; }
 		[[nodiscard]] const KOUKU_PREVIEW_STATE& Get_PreviewState() const noexcept {
 			return m_PreviewState;
 		}
@@ -789,6 +792,8 @@ namespace Client
 		bool_t m_bHasSelectedResource = false;
 		bool_t m_bPreviewRequestPending = false;
 		bool_t m_bPatternPreviewRequestPending = false;
+		// Show the next consumed start result even when its diagnostic repeats.
+		bool_t m_bPreviewResultStatusPending = false;
 		bool_t m_bServerPlayRequestPending = false;
 	};
 }

@@ -6172,6 +6172,41 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(before, after)
 
 
+class ValtanGameplayBootstrapAdmissionContractTests(unittest.TestCase):
+    def test_current_published_bootstrap_is_admitted(self) -> None:
+        version, rows = pipeline._parse_gameplay_bootstrap(
+            REPOSITORY_ROOT / "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
+        )
+        self.assertEqual(pipeline.GAMEPLAY_BOOTSTRAP_VERSION, version)
+        self.assertGreater(len(rows), 0)
+        self.assertLessEqual(len(rows), 8192)
+
+    def test_bootstrap_row_limit_and_exact_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "Gameplay.bootstrap"
+
+            def write_rows(count: int, declared: int | None = None) -> None:
+                path.write_text(
+                    f"LOSTARK_GAMEPLAY_BOOTSTRAP\t{pipeline.GAMEPLAY_BOOTSTRAP_VERSION}\t"
+                    f"{count if declared is None else declared}\n"
+                    + "".join(f"ROW\t{index}\n" for index in range(count)),
+                    encoding="utf-8",
+                )
+
+            for count in (1, 4096, 4097, 8192):
+                with self.subTest(accepted_rows=count):
+                    write_rows(count)
+                    self.assertEqual(count, len(pipeline._parse_gameplay_bootstrap(path)[1]))
+            for count in (0, 8193):
+                with self.subTest(rejected_rows=count):
+                    write_rows(count)
+                    with self.assertRaisesRegex(pipeline.PipelineError, "version/count is invalid"):
+                        pipeline._parse_gameplay_bootstrap(path)
+            write_rows(8191, declared=8192)
+            with self.assertRaisesRegex(pipeline.PipelineError, "version/count is invalid"):
+                pipeline._parse_gameplay_bootstrap(path)
+
+
 class ValtanDynamicManualLineageContractTests(unittest.TestCase):
     def test_empty_manual_and_promotion_lineage_is_valid(self) -> None:
         master = {

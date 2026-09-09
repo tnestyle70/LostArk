@@ -52,6 +52,26 @@ single과 shard 모두 같은 placement parser로 행, finite float transform, I
 shard는 baseline count/asset 참조와 중복 ID, `Imported` 밖 shard 경로도 commit 전에
 거부한다. model/material 전체 schema와 물리 model 파일 존재 검증을 새로 대체하지는 않는다.
 
+`WorldSequences` scope는 MAP/DEPLOY binding을 현재 설치된 runtime catalog와 placement에
+대조한다. 아직 배포되지 않은 새 placement를 참조하면 기존 runtime을 유지하며 거절한다.
+새 맵 배치를 추가한 작업은 `Area` scope에서 catalog·placement·sequence를 함께 stage하고
+참조 검증 후 한 transaction으로 배포한다. 순수 Object 편집은 시퀀스 단독 배포를 유지한다.
+
+## Git 전달
+
+`Client/Bin/DataFiles/Map/*.mapassets`와 `*.mapplacements`는 기존 `.gitattributes`의
+Git LFS 규칙으로 추적하는 publisher 출력이다. 작성자는 Area Publish/Check 후 변경한
+Data 정본과 runtime catalog·placement·sequence 및 관련 Area 출력을 같은 PR에 포함한다.
+생성물을 직접 편집하거나 강제 추가하지 않는다. 새 출력도 일반 `git add`로 포함한다.
+
+받는 PC는 같은 commit을 pull하고 Git LFS 실파일을 받은 뒤 실행한다. 이미 열린 Level의
+배치는 파일 교체만으로 바뀌지 않으므로 Client를 재시작한다. 해당 commit의 snapshot을
+받는 데 재배포는 필요하지 않으며, `-Mode Check`는 수신한 출력과 원본의 일치를 확인한다.
+로컬 원본을 수정했거나 실행용 파일을 복구해야 할 때 기존 publisher를 실행한다.
+모델·텍스처가 들어 있는 `Client/Bin/Resources`는 계속 Drive로 전달하며 Git에 추가하지 않는다.
+
+## 관련 검사
+
 격리 temp fixture에서 publisher 실행 계약을 검증한다. 실제 Desktop runtime은 변경하지 않는다.
 
 ```powershell

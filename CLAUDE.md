@@ -117,7 +117,7 @@ UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는
 
 정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이며 기본은 `Product`다. 일반 컴파일은 publisher, oracle, 전체 source/resource 해시, CSO WARP probe, Server harness를 실행하지 않는다. `-Profile Core`와 `-Profile FullDiagnostic`은 사용자가 광역 진단을 요청할 때 선택할 수 있는 옵션이며 기능 완료나 커밋의 필수 조건이 아니다. Product 결과와 단계별 시간은 `out/BuildPipeline/runs/*-product.json`에 기록한다. `-SkipBuild`는 컴파일을 생략하고 배포 경로만 확인하는 옵션이며 현재 소스의 빌드 완료 증거로 쓰지 않는다.
 
-runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터 준비 명령은 다음과 같다.
+runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Map의 `.mapassets`·`.mapplacements`는 시퀀스와 함께 PR에 포함하는 Git LFS 추적 출력이다. 같은 commit을 pull하고 LFS 파일을 받은 PC는 그 맵 snapshot을 사용한다. 맵 원본을 수정한 작업자는 Area Publish/Check 후 변경된 출력을 함께 커밋한다. 일반 컴파일은 실행 데이터를 재생성하지 않으며, Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터나 Git 제외 domain의 입력이 없는 경우 준비 명령은 다음과 같다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server

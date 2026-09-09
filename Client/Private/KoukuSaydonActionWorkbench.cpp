@@ -1313,6 +1313,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_PatternPreviewRequest(
 	m_strPendingPreviewTargetAsset.clear();
 	m_PendingPatternPreview = {};
 	m_bPatternPreviewRequestPending = false;
+	m_bPreviewResultStatusPending = true;
 	return true;
 }
 
@@ -3323,7 +3324,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundlePreviewRequest(std::st
 {
 	if (!m_bBundlePreviewRequestPending) return false;
 	id = std::move(m_strPendingBundlePreviewId); clockMs = m_iPendingPreviewStartMs; paused = m_bPendingPreviewStartPaused;
-	m_bBundlePreviewRequestPending = false; return true;
+	m_bBundlePreviewRequestPending = false;
+	m_bPreviewResultStatusPending = true;
+	return true;
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundleServerPlayRequest(std::string& id, std::uint32_t& revision)
@@ -4825,7 +4828,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		m_TimelineSelectedStageIds.size(), m_TimelineSelectedOccurrenceIds.size());
 	ImGui::TextDisabled("Ctrl+click: toggle any lane | drag empty space: enclose boxes across lanes | Ctrl+drag: add | Ctrl+D: duplicate | Delete: remove");
 	ImGui::TextDisabled("Earlier/Later and Left/Right reorder Stage/Animation selections only. Mixed lane selections keep their authored clocks.");
-	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::TextWrapped("%s", Get_Status().c_str());
 	if (saveRequested || deleteRequested || duplicateRequested || durationRequested ||
 		0 != moveRequested)
 	{

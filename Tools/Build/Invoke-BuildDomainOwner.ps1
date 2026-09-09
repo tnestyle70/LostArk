@@ -63,6 +63,7 @@ $domainIds = if ($Owner -eq 'Client') {
 elseif ($Owner -eq 'KoukuSaydon') {
     @(
         'koukusaydon.product',
+        'map.kakulsaydon',
         'world.gameplay',
         'gameplay.balance'
     )

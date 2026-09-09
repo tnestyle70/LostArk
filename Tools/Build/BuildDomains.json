@@ -153,14 +153,20 @@
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
-        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements"
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapmaterials.json",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.camerashots.json"
       ],
       "requiredOutputPatterns": [
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.maplights.json",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
-        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements"
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapmaterials.json",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.camerashots.json"
       ],
       "action": {
         "executable": "powershell.exe",

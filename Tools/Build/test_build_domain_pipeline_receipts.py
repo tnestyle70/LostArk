@@ -62,10 +62,13 @@ class KoukuDomainOwnerTransactionTests(unittest.TestCase):
             shutil.copy2(ROOT / "Tools/Build/Invoke-BuildDomainOwner.ps1", build)
             product_paths = ["Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
                              "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json"]
+            map_paths = next(row["outputs"] for row in json.loads(
+                MANIFEST.read_text(encoding="utf-8"))["domains"] if row["id"] == "map.kakulsaydon")
             bootstrap = "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
             generation = "Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations"
             manifest = {"domains": [
                 {"id": "koukusaydon.product", "outputs": product_paths},
+                {"id": "map.kakulsaydon", "outputs": map_paths},
                 {"id": "world.gameplay", "outputs": [], "requiredOutputPatterns": [],
                  "action": {"arguments": []}},
                 {"id": "gameplay.balance", "outputs": [bootstrap, generation + "/*.json"]},
@@ -104,7 +107,10 @@ function Invoke-BuildDomain($RepositoryRoot, $Domain, $ResourceRoot, $ReceiptRoo
                 "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap": b"old world placement",
                 "Client/Bin/DataFiles/World/LV_LUT_MIDNIGHTC_ED.viewer.world.json": b"old viewer",
                 "out/BuildPipeline/receipts/world.gameplay.receipt.json": b"old world receipt",
+                "out/BuildPipeline/receipts/map.kakulsaydon.receipt.json": b"old map receipt",
             }
+            originals.update({path: f"old map output {index}".encode("utf-8")
+                              for index, path in enumerate(map_paths[:-1])})
             for relative, content in originals.items():
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,7 +123,7 @@ function Invoke-BuildDomain($RepositoryRoot, $Domain, $ResourceRoot, $ReceiptRoo
             self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertIn("previous Product files, Server data and receipts restored", result.stdout, result.stdout + result.stderr)
             self.assertEqual(originals, {relative: (root / relative).read_bytes() for relative in originals})
-            for relative in (product_paths[1], generation + "/new-generation.json",
+            for relative in (product_paths[1], map_paths[-1], generation + "/new-generation.json",
                              "out/BuildPipeline/receipts/gameplay.balance.receipt.json",
                              "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"):
                 self.assertFalse((root / relative).exists(), relative)
@@ -295,6 +301,9 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements",
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapmaterials.json",
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.camerashots.json",
         ]
         self.assertEqual(domain["outputs"], expected_outputs)
         self.assertEqual(domain["requiredOutputPatterns"], expected_outputs)
@@ -324,7 +333,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
                 "koukusaydon.product", "map.kakulsaydon", "composition.presentation",
                 "world.gameplay", "navigation",
             ],
-            "KoukuSaydon": ["koukusaydon.product", "world.gameplay", "gameplay.balance"],
+            "KoukuSaydon": ["koukusaydon.product", "map.kakulsaydon", "world.gameplay", "gameplay.balance"],
             "Server": [
                 "koukusaydon.product", "world.gameplay", "navigation",
                 "world.destruction", "gameplay.balance", "items.catalog", "valtan.rewards",

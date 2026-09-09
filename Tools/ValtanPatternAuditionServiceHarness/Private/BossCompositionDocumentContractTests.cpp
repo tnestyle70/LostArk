@@ -2202,6 +2202,27 @@ namespace
 			Require(!workbench.Consume_PreviewTransportRequest(command, clock), "Preview transport request was not one-shot");
 		};
 		const auto expected = EditorPattern(workbench, patternId);
+		KOUKU_PREVIEW_STATE repeatedFailure;
+		repeatedFailure.strStatus = "Actor preview could not stage its selected model.";
+		for (unsigned retry = 0u; retry < 2u; ++retry)
+		{
+			RequireEditorStep(workbench.Request_PatternPreview(patternId, 0u, status), status,
+				"request Pattern after the same staging failure");
+			expectPattern(0u, false, expected);
+			workbench.Set_PreviewState(repeatedFailure);
+			Require(workbench.Get_Status() == repeatedFailure.strStatus,
+				"repeated Pattern failure left the request acknowledgement visible");
+		}
+		KOUKU_PREVIEW_STATE steadyState;
+		steadyState.strStatus = "Pattern preview ready.";
+		workbench.Set_PreviewState(steadyState);
+		Require(!workbench.Set_PatternDuration("absent.pattern", 1000u, status),
+			"invalid edit fixture unexpectedly succeeded");
+		const auto editStatus = workbench.Get_Status();
+		for (unsigned frame = 0u; frame < 3u; ++frame) workbench.Set_PreviewState(steadyState);
+		Require(workbench.Get_Status() == editStatus,
+			"unchanged frame status erased the unrelated edit diagnostic");
+		workbench.Set_PreviewState({});
 		Require(!workbench.Request_PreviewPause(), "inactive preview accepted Pause");
 		RequireEditorStep(workbench.Request_PatternScrub(patternId, 321u, status), status, "cold Pattern ruler seek");
 		expectPattern(321u, true, expected);
@@ -2253,6 +2274,14 @@ namespace
 				id == bundle.strBundleId && clock == expectedClock && paused, "Bundle scrub lost its identity, endpoint or paused state");
 			Require(!workbench.Consume_BundlePreviewRequest(id, clock, paused), "Bundle scrub request was not one-shot");
 		};
+		for (unsigned retry = 0u; retry < 2u; ++retry)
+		{
+			Require(workbench.Request_BundleScrub(0u), "request Bundle after the same staging failure");
+			expectBundle(0u);
+			workbench.Set_PreviewState(repeatedFailure);
+			Require(workbench.Get_Status() == repeatedFailure.strStatus,
+				"repeated Bundle failure left the request acknowledgement visible");
+		}
 		Require(workbench.Request_BundleScrub(321u), "cold Bundle ruler seek failed"); expectBundle(321u);
 		Require(workbench.Request_BundleScrub(600000u), "cold Bundle endpoint seek failed"); expectBundle(bundleDuration);
 		state.strPatternId = bundle.strBundleId; state.iDurationMs = bundleDuration; state.iClockMs = 432u;

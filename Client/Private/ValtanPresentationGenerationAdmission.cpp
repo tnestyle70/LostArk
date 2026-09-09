@@ -229,7 +229,7 @@ namespace
 		}
 		if (LostArk::Shared::GAMEPLAY_BOOTSTRAP_FORMAT_VERSION != version ||
 			0u == rowCount ||
-			rowCount > 4096u)
+			rowCount > 8192u)
 		{
 			status = "Gameplay.bootstrap version or row count is invalid.";
 			return false;
