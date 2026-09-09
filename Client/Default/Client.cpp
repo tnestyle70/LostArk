@@ -69,7 +69,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ int       nCmdShow)
 {
 #ifdef _DEBUG
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    /* Tracking on, but not the CRT's own end-of-executable report: that runs before
+    Engine.dll is detached, so everything an Engine static still held was listed as a leak
+    although it is freed moments later. Engine/Private/DebugLeakReport.cpp reports instead,
+    from the last static destroyed in that module. */
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF);
     /* The leak dump names an allocation number but not a call stack, and the blocks it
     reports are container bookkeeping (_Container_proxy: one pointer to the container plus
     a null iterator list), which an address alone cannot attribute. Set LOSTARK_BREAK_ALLOC
