@@ -815,6 +815,145 @@ HRESULT CModel::Bind_Material(shared_ptr<class CShader> pShader, const char_t* p
     return m_Materials[iMaterialIndex]->Bind_Material(pShader, pConstantName, eType, iTextureIndex);
 }
 
+uint32_t CModel::Override_MaterialTexture(
+    const char_t* pMaterialNameFragment,
+    const aiTextureType eType,
+    const uint32_t iTextureIndex,
+    ComPtr<ID3D11ShaderResourceView> pTexture)
+{
+    if (nullptr == pMaterialNameFragment || 0 == pMaterialNameFragment[0])
+        return 0u;
+
+    /* Case-insensitive: the source materials are named inconsistently across rigs and the
+       caller should not have to know which spelling a given class shipped. */
+    string fragment = pMaterialNameFragment;
+    transform(fragment.begin(), fragment.end(), fragment.begin(),
+        [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial)
+            continue;
+        string name = pMaterial->Get_Name();
+        transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        if (name.find(fragment) == string::npos)
+            continue;
+        pMaterial->Set_TextureOverride(eType, iTextureIndex, pTexture);
+        ++matched;
+    }
+    return matched;
+}
+
+uint32_t CModel::Override_MaterialDyeColor(
+    const char_t* pMaterialNameFragment,
+    const float4_t& vDiffuse,
+    const float4_t& vRegionA)
+{
+    if (nullptr == pMaterialNameFragment || 0 == pMaterialNameFragment[0])
+        return 0u;
+
+    string fragment = pMaterialNameFragment;
+    transform(fragment.begin(), fragment.end(), fragment.begin(),
+        [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_DyeColor())
+            continue;
+        string name = pMaterial->Get_Name();
+        transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        if (name.find(fragment) == string::npos)
+            continue;
+        pMaterial->Set_DyeColorOverride(vDiffuse, vRegionA);
+        ++matched;
+    }
+    return matched;
+}
+
+uint32_t CModel::Override_MaterialDiffuseTint(
+    const char_t* pMaterialNameFragment, const float4_t& vTint)
+{
+    if (nullptr == pMaterialNameFragment || 0 == pMaterialNameFragment[0])
+        return 0u;
+
+    string fragment = pMaterialNameFragment;
+    transform(fragment.begin(), fragment.end(), fragment.begin(),
+        [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial)
+            continue;
+        string name = pMaterial->Get_Name();
+        transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        if (name.find(fragment) == string::npos)
+            continue;
+        pMaterial->Set_DiffuseTint(vTint);
+        ++matched;
+    }
+    return matched;
+}
+
+const float4_t* CModel::Get_MaterialDiffuseTint(const uint32_t iMeshIndex) const
+{
+    if (iMeshIndex >= m_iNumMeshes)
+        return nullptr;
+    const uint32_t iMaterialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+    if (iMaterialIndex >= m_iNumMaterials || nullptr == m_Materials[iMaterialIndex])
+        return nullptr;
+    return &m_Materials[iMaterialIndex]->Get_DiffuseTint();
+}
+
+uint32_t CModel::Override_MaterialDyeTwoTone(
+    const char_t* pMaterialNameFragment, const f32_t fStrength, const f32_t fRange)
+{
+    if (nullptr == pMaterialNameFragment || 0 == pMaterialNameFragment[0])
+        return 0u;
+
+    string fragment = pMaterialNameFragment;
+    transform(fragment.begin(), fragment.end(), fragment.begin(),
+        [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_DyeColor())
+            continue;
+        string name = pMaterial->Get_Name();
+        transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        if (name.find(fragment) == string::npos)
+            continue;
+        pMaterial->Set_DyeTwoTone(fStrength, fRange);
+        ++matched;
+    }
+    return matched;
+}
+
+void CModel::Clear_MaterialDyeColorOverrides()
+{
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr != pMaterial)
+            pMaterial->Clear_DyeColorOverride();
+    }
+}
+
+void CModel::Clear_MaterialTextureOverrides()
+{
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr != pMaterial)
+            pMaterial->Clear_TextureOverrides();
+    }
+}
+
 bool_t CModel::Has_MaterialTexture(uint32_t iMeshIndex,
     aiTextureType eType,
     uint32_t iTextureIndex) const
@@ -892,6 +1031,50 @@ uint64_t CModel::Get_MaterialNameHash(uint32_t iMeshIndex) const
 	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
 	return materialIndex < m_Materials.size() ?
 		m_Materials[materialIndex]->Get_NameHash() : 0u;
+}
+
+uint32_t CModel::Get_MeshVertexCount(uint32_t iMeshIndex) const
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return 0u;
+	return m_Meshes[iMeshIndex]->Get_NumVertices();
+}
+
+bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return false;
+	return m_Meshes[iMeshIndex]->Has_MorphBaseVertices();
+}
+
+bool_t CModel::Get_MorphBaseVertex(uint32_t iMeshIndex, uint32_t iVertexIndex,
+	float3_t& OutPosition, float3_t& OutNormal) const
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return false;
+	return m_Meshes[iMeshIndex]->Get_MorphBaseVertex(iVertexIndex, OutPosition, OutNormal);
+}
+
+HRESULT CModel::Make_MeshVertexBuffer_Unique(uint32_t iMeshIndex)
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return E_INVALIDARG;
+	return m_Meshes[iMeshIndex]->Make_VertexBuffer_Unique();
+}
+
+HRESULT CModel::Update_Mesh_Vertices(uint32_t iMeshIndex, const vector<uint32_t>& iVertexIndices,
+	const vector<float3_t>& Positions, const vector<float3_t>& Normals)
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return E_INVALIDARG;
+	return m_Meshes[iMeshIndex]->Update_Vertices(iVertexIndices, Positions, Normals);
+}
+
+HRESULT CModel::Reset_Mesh_Vertices(uint32_t iMeshIndex)
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return E_INVALIDARG;
+	return m_Meshes[iMeshIndex]->Reset_Vertices();
 }
 
 HRESULT CModel::Ready_Meshes()

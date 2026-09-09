@@ -47,6 +47,14 @@ namespace
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 4) | (1u << 5) | (1u << 6) | (1u << 7);
 
+	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
+	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
+	off the cooked model's material order, like the mask above. 0 is pc_wr_f_01_hair. */
+	/* Kept at zero on purpose: this class has no cooked hair sets, so nothing can take
+	over from the body's own hair. Put the bit back (pc_wr_f_01_hair is submesh 0) once its
+	hairstyle sets exist and it gets a hair part like the other classes. */
+	constexpr uint32_t BAKED_HAIR = 0u;
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Slayer>();
@@ -72,6 +80,7 @@ const CHARACTER_SPEC Spec_Slayer =
 	TEXT("Prototype_Component_Model_Slayer"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
+	BAKED_HAIR,
 
 	/* Item 1016002 is this class's default weapon and names WP_WWBK_03. That
 	package also holds wp_wwbk_03_sk_bk, an 11-bone variant with its own

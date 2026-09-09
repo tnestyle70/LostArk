@@ -1,0 +1,2059 @@
+{
+  "schema": "lostark.customizing-material-variables",
+  "formatVersion": 1,
+  "sourceKind": "Decoded from the CharacterCustomizingRule .loa documents. scalarVariables carry defaultValue, the first float of the record, plus the remaining floats of that record in source order, left unnamed because the documents do not name them. A record payload runs to the length prefix of the next authored variable, so a long payload can include trailing document bytes that belong to no variable; payloadBytes is reported so that is visible rather than hidden. booleanVariables hold no decoded default in these documents, so none is stated.",
+  "classes": {
+    "LanceMaster": {
+      "sourceDocument": "EFDLChar_PC_FT.PC_FT.loa",
+      "modelPrefix": "PC_FT",
+      "scalarVariables": [
+        {
+          "variable": "var_base_skinspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.4,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_skinnormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_headbase_overlaynormalintensity_ui; neither source says which"
+          }
+        },
+        {
+          "variable": "var_base_skinspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.8,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_base_skinnormalintensity_ui. Its paired overlay texture defaults to a wrinkle map, which makes this the likelier one, but that is inference and not a stated pairing"
+          }
+        },
+        {
+          "variable": "var_makeup_lipspecular_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekside_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekupdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_CheekScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 2.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalRotate_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.4,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalSide_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalUpdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.3,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_irissize_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisSize",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.8,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularPower",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangehardness_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneHardness",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeA_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeA",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeB_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeB",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeedge_ui",
+          "payloadBytes": 28,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneEdge",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ],
+      "booleanVariables": [
+        {
+          "variable": "Var_HeadDeco_DecalMirror_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "Var_HeadDeco_DecalInverse_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_useordeyecolor_bool_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "reads as the odd-eye enable, but the movie names that control OrdBtn and sends it through btn_clickHandler carrying no value, so the pairing is not stated by either source"
+          }
+        },
+        {
+          "variable": "Var_Base_HairTwotone_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerange_Bool_ui",
+          "payloadBytes": 20,
+          "payloadUint32": [
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixedcheek_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixeddecal_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_usedecalcolor_bool_private_ui",
+          "payloadBytes": 32,
+          "payloadUint32": [
+            0,
+            4,
+            0,
+            10,
+            1699628613,
+            1868777847,
+            983150,
+            1967325184
+          ],
+          "payloadTrailingStrings": [
+            "EFNewIcon"
+          ],
+          "payloadRunsToNextVariable": false,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ]
+    },
+    "Warlord": {
+      "sourceDocument": "EFDLChar_PC_WR.PC_WR.loa",
+      "modelPrefix": "PC_WR",
+      "scalarVariables": [
+        {
+          "variable": "var_base_skinspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_skinnormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_headbase_overlaynormalintensity_ui; neither source says which"
+          }
+        },
+        {
+          "variable": "var_base_skinspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_base_skinnormalintensity_ui. Its paired overlay texture defaults to a wrinkle map, which makes this the likelier one, but that is inference and not a stated pairing"
+          }
+        },
+        {
+          "variable": "var_makeup_lipspecular_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekside_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekupdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_CheekScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalRotate_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalSide_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalUpdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_irissize_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisSize",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.8,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularPower",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangehardness_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneHardness",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeA_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeA",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeB_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeB",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeedge_ui",
+          "payloadBytes": 28,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneEdge",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ],
+      "booleanVariables": [
+        {
+          "variable": "Var_HeadDeco_DecalMirror_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "Var_HeadDeco_DecalInverse_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_useordeyecolor_bool_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "reads as the odd-eye enable, but the movie names that control OrdBtn and sends it through btn_clickHandler carrying no value, so the pairing is not stated by either source"
+          }
+        },
+        {
+          "variable": "Var_Base_HairTwotone_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerange_Bool_ui",
+          "payloadBytes": 20,
+          "payloadUint32": [
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixedcheek_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixeddecal_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_usedecalcolor_bool_private_ui",
+          "payloadBytes": 32,
+          "payloadUint32": [
+            0,
+            4,
+            0,
+            10,
+            1699628613,
+            1868777847,
+            983150,
+            1967325184
+          ],
+          "payloadTrailingStrings": [
+            "EFNewIcon"
+          ],
+          "payloadRunsToNextVariable": false,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ]
+    },
+    "Artist": {
+      "sourceDocument": "EFDLCHAR_PC_SP.PC_SP.loa",
+      "modelPrefix": "PC_SP",
+      "scalarVariables": [
+        {
+          "variable": "var_base_skinspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.6,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_skinnormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_headbase_overlaynormalintensity_ui; neither source says which"
+          }
+        },
+        {
+          "variable": "var_base_skinspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_base_skinnormalintensity_ui. Its paired overlay texture defaults to a wrinkle map, which makes this the likelier one, but that is inference and not a stated pairing"
+          }
+        },
+        {
+          "variable": "var_makeup_lipspecular_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekside_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekupdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_CheekScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalRotate_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalSide_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalUpdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_irissize_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.58,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisSize",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.7,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangehardness_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneHardness",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeA_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeA",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeB_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeB",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeedge_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneEdge",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularpower_ui",
+          "payloadBytes": 28,
+          "defaultValue": 0.8,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularPower",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        }
+      ],
+      "booleanVariables": [
+        {
+          "variable": "Var_HeadDeco_DecalMirror_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "Var_HeadDeco_DecalInverse_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_eye_useordeyecolor_bool_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "reads as the odd-eye enable, but the movie names that control OrdBtn and sends it through btn_clickHandler carrying no value, so the pairing is not stated by either source"
+          }
+        },
+        {
+          "variable": "Var_Base_HairTwotone_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerange_Bool_ui",
+          "payloadBytes": 20,
+          "payloadUint32": [
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixedcheek_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixeddecal_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_usedecalcolor_bool_private_ui",
+          "payloadBytes": 32,
+          "payloadUint32": [
+            0,
+            4,
+            0,
+            10,
+            1699628613,
+            1868777847,
+            983150,
+            1967325184
+          ],
+          "payloadTrailingStrings": [
+            "EFNewIcon"
+          ],
+          "payloadRunsToNextVariable": false,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ]
+    },
+    "DimensionMaster": {
+      "sourceDocument": "EFDLCHAR_PC_SP_M.PC_SP_M.loa",
+      "modelPrefix": "PC_SP_M",
+      "scalarVariables": [
+        {
+          "variable": "var_base_hairspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.8,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularPower",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangehardness_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneHardness",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeA_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeA",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeB_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneRangeB",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerangeedge_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Hair",
+            "category1": "TwotoneEdge",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_eye_irissize_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.58,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Eye",
+            "category1": "IrisSize",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_skinspecularintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.6,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": "Skin",
+            "category1": "SpecularIntensity",
+            "basis": "exact name correspondence with the movie setUpCustomUI key"
+          }
+        },
+        {
+          "variable": "var_base_skinnormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 1.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_headbase_overlaynormalintensity_ui; neither source says which"
+          }
+        },
+        {
+          "variable": "var_base_skinspecularpower_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headbase_overlaynormalintensity_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "Skin/WinkleIntensity has two candidates: this and var_base_skinnormalintensity_ui. Its paired overlay texture defaults to a wrinkle map, which makes this the likelier one, but that is inference and not a stated pairing"
+          }
+        },
+        {
+          "variable": "var_makeup_lipspecular_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.5,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekside_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_Cheekupdown_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_Makeup_CheekScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalScale_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalRotate_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalSide_ui",
+          "payloadBytes": 24,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_HeadDeco_DecalUpdown_ui",
+          "payloadBytes": 28,
+          "defaultValue": 0.0,
+          "remainingFloats": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ],
+      "booleanVariables": [
+        {
+          "variable": "Var_Base_HairTwotone_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_base_hairtwotonerange_Bool_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "the hair tab has two boolean controls (the TwotoneAdvance checkbox and the Single/Double toggle) and two boolean variables here; neither source says which maps to which"
+          }
+        },
+        {
+          "variable": "var_eye_useordeyecolor_bool_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "reads as the odd-eye enable, but the movie names that control OrdBtn and sends it through btn_clickHandler carrying no value, so the pairing is not stated by either source"
+          }
+        },
+        {
+          "variable": "Var_HeadDeco_DecalMirror_Bool_UI",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "Var_HeadDeco_DecalInverse_Bool_UI",
+          "payloadBytes": 20,
+          "payloadUint32": [
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixedcheek_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_fixeddecal_bool_private_ui",
+          "payloadBytes": 16,
+          "payloadUint32": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "payloadTrailingStrings": [],
+          "payloadRunsToNextVariable": true,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        },
+        {
+          "variable": "var_headdeco_usedecalcolor_bool_private_ui",
+          "payloadBytes": 32,
+          "payloadUint32": [
+            0,
+            4,
+            0,
+            10,
+            1699628613,
+            1868777847,
+            110,
+            4294901760
+          ],
+          "payloadTrailingStrings": [
+            "EFNewIcon"
+          ],
+          "payloadRunsToNextVariable": false,
+          "as3Binding": {
+            "category0": null,
+            "category1": null,
+            "basis": null,
+            "unresolvedReason": "no control in the extracted movie carries a matching key"
+          }
+        }
+      ]
+    }
+  }
+}

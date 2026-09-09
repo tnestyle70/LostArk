@@ -45,6 +45,14 @@ namespace
 	Re-cooking the body with different content invalidates these bits. */
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 3) | (1u << 5) | (1u << 6);
 
+	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
+	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
+	off the cooked model's material order, like the mask above. 4 is pc_ft_15_hair. */
+	/* Kept at zero on purpose: this class has no cooked hair sets, so nothing can take
+	over from the body's own hair. Put the bit back (pc_ft_15_hair is submesh 4) once its
+	hairstyle sets exist and it gets a hair part like the other classes. */
+	constexpr uint32_t BAKED_HAIR = 0u;
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_GunSlinger>();
@@ -70,6 +78,7 @@ const CHARACTER_SPEC Spec_GunSlinger =
 	TEXT("Prototype_Component_Model_GunSlinger"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
+	BAKED_HAIR,
 
 	/* Item 1056002 is this class's default weapon and names WP_WGDH_02, the
 	handgun of that set. The rifle and shotgun are cooked and waiting for a

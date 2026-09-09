@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "CustomizingFacePresetDocument.h"
+#include "CustomizingFaceTextureDocument.h"
 #include "CustomizingIconDocument.h"
 #include "Engine_Defines.h"
 
+#include <array>
 #include <memory>
 #include <random>
 #include <string>
@@ -67,10 +70,37 @@ public:
 	step) and the back icon (leave customizing). */
 	bool_t Try_Consume_Decide();
 	bool_t Try_Consume_Back();
+	/* Which try-on costume the left column is showing, as the table's Object_Unit. The edge is
+	one-shot so the owning Level only runs an equipment transaction when the pick changes. */
+	int32_t Get_SelectedCostume() const { return m_iSelectedCostume; }
+	bool_t Try_Consume_CostumeChange();
+	/* Which hairstyle cell the hair tab is showing, and its one-shot change edge. */
+	int32_t Get_SelectedHair() const { return m_iSelectedHair; }
+	/* Degrees the drag gesture has turned the subject. The camera stays where the retail
+	framing puts it; the model is what rotates, so its cloth chains react. */
+	f32_t Get_SubjectYawOffsetDegrees() const { return -m_fOrbitYaw; }
+	bool_t Try_Consume_HairChange();
 
 private:
 	void Update_Tabs();
 	void Update_FaceTab(const shared_ptr<CCharacter>& pCharacter);
+	/* Hair, eye, skin and adorn: their retail chrome, shown per selected tab. The controls are
+	placed and clickable; what they would change has no runtime contract yet. */
+	void Update_SecondaryTabs(const shared_ptr<CCharacter>& pCharacter);
+	/* A grid shows one window onto a longer list. These keep the window in range and fill the
+	visible cells from it; the wheel over the grid moves it. */
+	int32_t Clamp_ScrollRow(int32_t iScrollRow, int32_t iEntryCount, int32_t iCellCount) const;
+	void Fill_ScrollingGrid(const char_t* pPrefix, int32_t iCellCount, int32_t iScrollRow,
+		const std::vector<std::string>& Entries);
+	/* Moves whichever grid the pointer is over, and reports whether it took the notch so the
+	camera zoom does not also act on it. */
+	bool_t Consume_GridScroll(const char_t* pPrefix, int32_t iCellCount, int32_t iEntryCount,
+		int32_t& iScrollRow, int32_t iWheel);
+	/* Routes one wheel notch to whichever tab's grid is showing. Returns true when a grid took
+	it, so the camera zoom leaves it alone. */
+	bool_t Consume_TabGridScroll(int32_t iWheel);
+	/* The adorn grid's current page, chosen by its sub-tab. */
+	const std::vector<std::string>& Get_AdornPage() const;
 	/* Puts the retail icons into the left column and the preset grid. The document
 	is per class, so this reruns whenever the class on screen changes. */
 	void Apply_ListIcons(const shared_ptr<CCharacter>& pCharacter);
@@ -78,8 +108,13 @@ private:
 	authored rects are captured once and every frame positions it from those. */
 	void Capture_FaceDetailLayout();
 	void Apply_FaceAccordionLayout();
+	/* One accordion over the two face categories: isOther is the sibling's flag, which this
+	closes whenever the clicked one opens. */
 	void Update_FaceCategoryHeader(
-		const char_t* pSlotId, bool_t& isExpanded, bool_t isVisible);
+		const char_t* pSlotId, bool_t& isExpanded, bool_t& isOther, bool_t isVisible);
+	/* Puts one face preset's morph weights on the character. iPreset < 0 clears every
+	weight instead, which is what the reset button and a class with no preset data do. */
+	void Apply_FacePreset(const shared_ptr<CCharacter>& pCharacter, int32_t iPreset);
 	void Update_Buttons(const shared_ptr<CCharacter>& pCharacter);
 	void Update_Orbit(f32_t fTimeDelta);
 	/* Reads the eye line off the body model on screen, so the face zoom frames every class
@@ -124,9 +159,68 @@ private:
 	f32_t m_fZoomBlend = 0.f;
 	/* The character's own facing this frame, captured in Update. */
 	f32_t m_fCharacterYawDegrees = 0.f;
+	bool_t m_hasCapturedCharacterYaw = false;
 	f32_t m_fMeasuredEyeHeight = 0.f;
 	CCustomizingIconDocument m_IconDocument;
+	/* Morph weights each face preset sets, in the same order as the grid's icons. Loaded
+	next to the icons, per class. */
+	CCustomizingFacePresetDocument m_FacePresetDocument;
+	/* Which cooked face texture each list offers. Only the iris list is applied today; the
+	rest are stamps this renderer cannot composite yet (see the document's own header). */
+	CCustomizingFaceTextureDocument m_FaceTextureDocument;
+	int32_t m_iSelectedEyeIris = -1;
+	/* Hair two-tone, as the retail sliders express it: how much of the second colour blends
+	and how far up the strand it reaches. The authored defaults until the player moves them. */
+	f32_t m_fHairTwoToneStrength = 1.f;
+	f32_t m_fHairTwoToneRange = 0.5f;
+	/* Which slot the pointer grabbed, so a drag keeps following it off the track. */
+	std::string m_strDraggingSlider;
+
+	/* The colour picker, over the panel of whichever swatch opened it. Hue and saturation
+	come from the wheel (angle and radius, the way the source art is drawn) and value from
+	the bar beside it. The choice only reaches the model on Apply, so cancelling leaves the
+	character exactly as it was. */
+	/* CCharacter::DYE_SURFACE as an index, so this header keeps its forward declaration
+	instead of pulling the character in for one enum. PICKER_SURFACE_NONE is its END. */
+	static constexpr int32_t PICKER_SURFACE_NONE = -1;
+	/* CCharacter::DYE_SURFACE::SKIN. */
+	static constexpr int32_t SKIN_SURFACE_INDEX = 2;
+	int32_t m_iPickerSurface = PICKER_SURFACE_NONE;
+	f32_t m_fPickerHue = 0.f;
+	f32_t m_fPickerSaturation = 0.f;
+	f32_t m_fPickerValue = 1.f;
+	bool_t m_isPickerWheelDragging = false;
+	/* What the surface wore when the picker opened, so cancelling puts it back. The choice
+	is applied live while the wheel is dragged -- that is the only way to judge it. */
+	float4_t m_vPickerRestore = { 0.f, 0.f, 0.f, -1.f };
+	bool_t m_isPickerBarDragging = false;
+	bool_t m_bLastDyeApplied = false;
+	/* What each surface is currently wearing, so a swatch shows the choice and re-opening
+	the picker starts from it. w < 0 means the authored colour is still in place. */
+	std::array<float4_t, 3> m_SurfaceColors{};
+	/* Set for the whole frame the picker is up, so the panel underneath reads no clicks --
+	the wheel sits directly over the swatches and sliders that opened it. The picker tests
+	its own widgets against the router instead of the view's helper. */
+	bool_t m_isPickerCapturingPointer = false;
+	bool_t Update_ColorPicker(const shared_ptr<CCharacter>& pCharacter);
+	static float4_t HsvToRgb(f32_t fHue, f32_t fSaturation, f32_t fValue);
+	/* Which preset cell is picked, or -1 for none (the face is whatever the sliders and the
+	unmodified mesh give). */
+	int32_t m_iSelectedFacePreset = -1;
 	std::string m_strIconClassAssetId;
+	/* Which of the five try-on costumes the left column has picked. The screen owns the
+	choice; applying it to the model belongs to the equipment presentation service. */
+	int32_t m_iSelectedCostume = 0;
+	bool_t m_bCostumeChanged = false;
+	int32_t m_iSelectedHair = 0;
+	int32_t m_iHairScrollRow = 0;
+	int32_t m_iEyeIrisScrollRow = 0;
+	int32_t m_iAdornScrollRow = 0;
+	bool_t m_bHairChanged = false;
+	/* Sub-tab state of the secondary tabs. */
+	bool_t m_isHairTwoTone = false;
+	bool_t m_isEyeOddSelected = false;
+	int32_t m_iSelectedAdornSub = 0;
 	bool_t m_isFaceDefaultExpanded = false;
 	bool_t m_isFaceDetailExpanded = true;
 	std::vector<std::pair<std::string, float2_t>> m_FaceDetailAuthoredRects;

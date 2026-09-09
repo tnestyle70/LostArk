@@ -1,0 +1,578 @@
+{
+  "schema": "lostark.customizing-costumes",
+  "formatVersion": 1,
+  "classes": {
+    "Artist": {
+      "costume": [
+        {
+          "objectUnit": 0,
+          "sourceOutfitId": "PC_SDM_HR_01-1",
+          "setId": "pc_sdm_hr_01",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_hr_01/upper.wmodel",
+              "sourceMesh": "pc_sdm_hr_01.Mesh.PC_SDM_HR_01-1_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_HR_01.Mat.PC_SDM_HR_01-1_UpperA_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_hr_01/lower.wmodel",
+              "sourceMesh": "pc_sdm_hr_01.Mesh.PC_SDM_HR_01_Lower_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_HR_01.Mat.PC_SDM_HR_01-1_Lower_MI"
+            }
+          ],
+          "visualSetId": "character.artist.pc_sdm_hr_01.outfit"
+        },
+        {
+          "objectUnit": 1,
+          "sourceOutfitId": "PC_SP_03-1",
+          "setId": "pc_sp_03",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Artist/Equipment/pc_sp_03/upper.wmodel",
+              "sourceMesh": "PC_SP_03.Mesh.PC_SP_03_Upper_SK",
+              "sourceMaterial": "PC_SP_03.Mat.PC_SP_03-1_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Artist/Equipment/pc_sp_03/lower.wmodel",
+              "sourceMesh": "PC_SP_03.Mesh.PC_SP_03_Lower1_SK_LOC_INT",
+              "sourceMaterial": "PC_SP_03.Mat.PC_SP_03-1_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Artist/Equipment/pc_sp_03/arm.wmodel",
+              "sourceMesh": "PC_SP_03.Mesh.PC_SP_03_Arm_SK",
+              "sourceMaterial": "PC_SP_03.Mat.PC_SP_03-1_Arm_MI"
+            }
+          ],
+          "visualSetId": "character.artist.pc_sp_03.outfit"
+        },
+        {
+          "objectUnit": 2,
+          "sourceOutfitId": "PC_SDM_HR_00",
+          "setId": "pc_sdm_hr_00",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_hr_00/upper.wmodel",
+              "sourceMesh": "PC_SDM_HR_00.Mesh.PC_SDM_HR_00_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_HR_00.Mat.PC_SDM_HR_00_UpperA_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_hr_00/lower.wmodel",
+              "sourceMesh": "PC_SDM_HR_00.Mesh.PC_SDM_HR_00_Lower_SK",
+              "sourceMaterial": "PC_SDM_HR_00.Mat.PC_SDM_HR_00_Lower_MI"
+            }
+          ],
+          "visualSetId": "character.artist.pc_sdm_hr_00.outfit"
+        },
+        {
+          "objectUnit": 3,
+          "sourceOutfitId": "PC_SDM_02-6",
+          "setId": "pc_sdm_02",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_02/upper.wmodel",
+              "sourceMesh": "pc_sdm_02.Mesh.PC_SDM_02_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_02.Mat.PC_SDM_02-6_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_02/lower.wmodel",
+              "sourceMesh": "pc_sdm_02.Mesh.PC_SDM_02_Lower2_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_02.Mat.PC_SDM_02-6_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_02/arm.wmodel",
+              "sourceMesh": "PC_SDM_02.Mesh.PC_SDM_02_Arm_SK",
+              "sourceMaterial": "PC_SDM_02.Mat.PC_SDM_02-6_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_02/shoulder.wmodel",
+              "sourceMesh": "PC_SDM_02.Mesh.PC_SDM_02_Shoulder_SK",
+              "sourceMaterial": "PC_SDM_02.Mat.PC_SDM_02-6_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.artist.pc_sdm_02.outfit"
+        },
+        {
+          "objectUnit": 4,
+          "sourceOutfitId": "PC_SDM_03-7",
+          "setId": "pc_sdm_03",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_03/upper.wmodel",
+              "sourceMesh": "PC_SDM_03.Mesh.PC_SDM_03_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_03.Mat.PC_SDM_03-7_Upper1_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_03/lower.wmodel",
+              "sourceMesh": "PC_SDM_03.Mesh.PC_SDM_03_Lower_SK_LOC_INT",
+              "sourceMaterial": "PC_SDM_03.Mat.PC_SDM_03-7_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_03/arm.wmodel",
+              "sourceMesh": "PC_SDM_03.Mesh.PC_SDM_03_Arm_SK",
+              "sourceMaterial": "PC_SDM_03.Mat.PC_SDM_03-7_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Artist/Equipment/pc_sdm_03/shoulder.wmodel",
+              "sourceMesh": "PC_SDM_03.Mesh.PC_SDM_03_Shoulder_SK",
+              "sourceMaterial": "PC_SDM_03.Mat.PC_SDM_03-7_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.artist.pc_sdm_03.outfit"
+        }
+      ]
+    },
+    "DimensionMaster": {
+      "costume": [
+        {
+          "objectUnit": 0,
+          "sourceOutfitId": "PC_SWP_M_HR_00",
+          "setId": "pc_swp_m_hr_00",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_hr_00/upper.wmodel",
+              "sourceMesh": "PC_SWP_M_HR_00.Mesh.PC_SWP_M_HR_00_Upper_SK",
+              "sourceMaterial": "PC_SWP_M_HR_00.Mat.PC_SWP_M_HR_00_Upper2_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_hr_00/lower.wmodel",
+              "sourceMesh": "PC_SWP_M_HR_00.Mesh.PC_SWP_M_HR_00_Lower_SK",
+              "sourceMaterial": "PC_SWP_M_HR_00.Mat.PC_SWP_M_HR_00_Lower_MI"
+            }
+          ],
+          "visualSetId": "character.dimensionmaster.pc_swp_m_hr_00.outfit"
+        },
+        {
+          "objectUnit": 1,
+          "sourceOutfitId": "PC_SWP_M_AV_137",
+          "setId": "pc_swp_m_av_137",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_av_137/upper.wmodel",
+              "sourceMesh": "PC_SWP_M_AV_137.Mesh.PC_SWP_M_AV_137_Upper_SK",
+              "sourceMaterial": "PC_SWP_M_AV_137.Mat.PC_SWP_M_AV_137_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_av_137/lower.wmodel",
+              "sourceMesh": "PC_SWP_M_AV_137.Mesh.PC_SWP_M_AV_137_Lower_SK",
+              "sourceMaterial": "PC_SWP_M_AV_137.Mat.PC_SWP_M_AV_137_Lower_MI"
+            }
+          ],
+          "visualSetId": "character.dimensionmaster.pc_swp_m_av_137.outfit"
+        },
+        {
+          "objectUnit": 2,
+          "sourceOutfitId": "PC_SWP_M_02-5",
+          "setId": "pc_swp_m_02",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_02/upper.wmodel",
+              "sourceMesh": "PC_SWP_M_02.Mesh.PC_SWP_M_02_Upper4_SK",
+              "sourceMaterial": "PC_SWP_M_02.Mat.PC_SWP_M_02-5_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_02/lower.wmodel",
+              "sourceMesh": "PC_SWP_M_02.Mesh.PC_SWP_M_02_Lower2_SK",
+              "sourceMaterial": "PC_SWP_M_02.Mat.PC_SWP_M_02-5_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_02/arm.wmodel",
+              "sourceMesh": "PC_SWP_M_02.Mesh.PC_SWP_M_02_Arm_SK",
+              "sourceMaterial": "PC_SWP_M_02.Mat.PC_SWP_M_02-5_Arm1_MI"
+            }
+          ],
+          "visualSetId": "character.dimensionmaster.pc_swp_m_02.outfit"
+        },
+        {
+          "objectUnit": 3,
+          "sourceOutfitId": "PC_SP_M_01-9",
+          "setId": "pc_sp_m_01",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_sp_m_01/upper.wmodel",
+              "sourceMesh": "PC_SP_M_01.Mesh.PC_SP_M_01_Upper1_SK",
+              "sourceMaterial": "PC_SP_M_01.Mat.PC_SP_M_01_Upper-9_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_sp_m_01/lower.wmodel",
+              "sourceMesh": "PC_SP_M_01.Mesh.PC_SP_M_01_Lower_SK",
+              "sourceMaterial": "PC_SP_M_AV_BaseBody.Mat.PC_SP_AV_Base_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_sp_m_01/arm.wmodel",
+              "sourceMesh": "PC_SP_M_01.Mesh.PC_SP_M_01_Arm2_SK",
+              "sourceMaterial": "PC_SP_M_01.Mat.PC_SP_M_01_Arm-9_MI"
+            }
+          ],
+          "visualSetId": "character.dimensionmaster.pc_sp_m_01.outfit"
+        },
+        {
+          "objectUnit": 4,
+          "sourceOutfitId": "PC_SWP_M_03",
+          "setId": "pc_swp_m_03",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_03/upper.wmodel",
+              "sourceMesh": "PC_SWP_M_03.Mesh.PC_SWP_M_03_Upper_SK",
+              "sourceMaterial": "PC_SWP_M_03.Mat.PC_SWP_M_03_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_03/lower.wmodel",
+              "sourceMesh": "PC_SWP_M_03.Mesh.PC_SWP_M_03_Lower_SK",
+              "sourceMaterial": "PC_SWP_M_03.Mat.PC_SWP_M_03_Lower1_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/DimensionMaster/Equipment/pc_swp_m_03/arm.wmodel",
+              "sourceMesh": "PC_SWP_M_03.Mesh.PC_SWP_M_03_Arm_SK",
+              "sourceMaterial": "PC_SWP_M_03.Mat.PC_SWP_M_03_Arm_MI"
+            }
+          ],
+          "visualSetId": "character.dimensionmaster.pc_swp_m_03.outfit"
+        }
+      ]
+    },
+    "LanceMaster": {
+      "costume": [
+        {
+          "objectUnit": 0,
+          "sourceOutfitId": "PC_FBM_00",
+          "setId": "pc_fbm_00",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_00/upper.wmodel",
+              "sourceMesh": "PC_FBM_00.Mesh.PC_FBM_00_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_FBM_00.Mat.PC_FBM_00_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_00/lower.wmodel",
+              "sourceMesh": "PC_FBM_00.Mesh.PC_FBM_00_Lower_SK",
+              "sourceMaterial": "PC_FBM_00.Mat.PC_FBM_00_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_00/arm.wmodel",
+              "sourceMesh": "PC_FBM_00.Mesh.PC_FBM_00_Arm_SK",
+              "sourceMaterial": "PC_FBM_00.Mat.PC_FBM_00_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_00/shoulder.wmodel",
+              "sourceMesh": "PC_FBM_00.Mesh.PC_FBM_00_Shoulder_SK",
+              "sourceMaterial": "PC_FBM_00.Mat.PC_FBM_00_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.lance_master.pc_fbm_00.outfit"
+        },
+        {
+          "objectUnit": 1,
+          "sourceOutfitId": "PC_FBM_05",
+          "setId": "pc_fbm_05",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_05/upper.wmodel",
+              "sourceMesh": "pc_fbm_05.Mesh.PC_FBM_05_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_FBM_05.Mat.PC_FBM_05_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_05/lower.wmodel",
+              "sourceMesh": "PC_FBM_05.Mesh.PC_FBM_05_Lower_SK",
+              "sourceMaterial": "PC_FBM_05.Mat.PC_FBM_05_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_05/arm.wmodel",
+              "sourceMesh": "PC_FBM_05.Mesh.PC_FBM_05_Arm_SK",
+              "sourceMaterial": "PC_FBM_05.Mat.PC_FBM_05_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_05/shoulder.wmodel",
+              "sourceMesh": "PC_FBM_05.Mesh.PC_FBM_05_Shoulder_SK",
+              "sourceMaterial": "PC_FBM_05.Mat.PC_FBM_05_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.lance_master.pc_fbm_05.outfit"
+        },
+        {
+          "objectUnit": 2,
+          "sourceOutfitId": "PC_FBM_04-1",
+          "setId": "pc_fbm_04",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_04/upper.wmodel",
+              "sourceMesh": "pc_fbm_04.Mesh.PC_FBM_04_Upper_SK_LOC_INT",
+              "sourceMaterial": null
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_04/lower.wmodel",
+              "sourceMesh": "pc_fbm_04.Mesh.PC_FBM_04_Lower_SK_LOC_INT",
+              "sourceMaterial": null
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_04/arm.wmodel",
+              "sourceMesh": "PC_FBM_04.Mesh.PC_FBM_04_Arm_SK",
+              "sourceMaterial": null
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fbm_04/shoulder.wmodel",
+              "sourceMesh": "PC_FBM_04.Mesh.PC_FBM_04_Shoulder_SK",
+              "sourceMaterial": null
+            }
+          ],
+          "visualSetId": "character.lance_master.pc_fbm_04.outfit"
+        },
+        {
+          "objectUnit": 3,
+          "sourceOutfitId": "PC_FIF_07",
+          "setId": "pc_fif_07",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fif_07/upper.wmodel",
+              "sourceMesh": "pc_fif_07.Mesh.PC_FIF_07_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_FIF_07.Mat.PC_FIF_07_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fif_07/lower.wmodel",
+              "sourceMesh": "PC_FIF_07.Mesh.PC_FIF_07_Lower_SK",
+              "sourceMaterial": "PC_FIF_07.Mat.PC_FIF_07_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fif_07/arm.wmodel",
+              "sourceMesh": "PC_FIF_07.Mesh.PC_FIF_07_Arm_SK",
+              "sourceMaterial": "PC_FIF_07.Mat.PC_FIF_07_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_fif_07/shoulder.wmodel",
+              "sourceMesh": "PC_FIF_07.Mesh.PC_FIF_07_Shoulder_SK",
+              "sourceMaterial": "PC_FIF_07.Mat.PC_FIF_07_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.lance_master.pc_fif_07.outfit"
+        },
+        {
+          "objectUnit": 4,
+          "sourceOutfitId": "PC_FT_LF_09-4",
+          "setId": "pc_ft_lf_09",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_ft_lf_09/upper.wmodel",
+              "sourceMesh": "pc_ft_lf_09.Mesh.PC_FT_LF_09_Upper_SK_LOC_INT",
+              "sourceMaterial": "PC_FT_LF_09.Mat.PC_FT_LF_09-4_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_ft_lf_09/lower.wmodel",
+              "sourceMesh": "pc_ft_lf_09.Mesh.PC_FT_LF_09_Lower_SK_LOC_INT",
+              "sourceMaterial": "PC_FT_LF_09.Mat.PC_FT_LF_09-4_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_ft_lf_09/arm.wmodel",
+              "sourceMesh": "PC_FT_LF_09.Mesh.PC_FT_LF_09_Arm_SK",
+              "sourceMaterial": "PC_FT_LF_09.Mat.PC_FT_LF_09-4_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/LanceMaster/Equipment/pc_ft_lf_09/shoulder.wmodel",
+              "sourceMesh": "PC_FT_LF_09.Mesh.PC_FT_LF_09_Shoulder_SK",
+              "sourceMaterial": "PC_FT_LF_09.Mat.PC_FT_LF_09-4_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.lance_master.pc_ft_lf_09.outfit"
+        }
+      ]
+    },
+    "Warlord": {
+      "costume": [
+        {
+          "objectUnit": 0,
+          "sourceOutfitId": "PC_WR_05-4",
+          "setId": "pc_wr_05",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wr_05/upper.wmodel",
+              "sourceMesh": "PC_WR_05.Mesh.PC_WR_05_Upper_SK",
+              "sourceMaterial": "PC_WR_05.Mat.PC_WR_05-4_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wr_05/lower.wmodel",
+              "sourceMesh": "PC_WR_05.Mesh.PC_WR_05_Lower_SK",
+              "sourceMaterial": "PC_WR_05.Mat.PC_WR_05-4_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wr_05/arm.wmodel",
+              "sourceMesh": "PC_WR_05.Mesh.PC_WR_05_Arm_SK",
+              "sourceMaterial": "PC_WR_05.Mat.PC_WR_05-4_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wr_05/shoulder.wmodel",
+              "sourceMesh": "PC_WR_05.Mesh.PC_WR_05_Shoulder_SK",
+              "sourceMaterial": "PC_WR_05.Mat.PC_WR_05-4_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.warlord.pc_wr_05.outfit"
+        },
+        {
+          "objectUnit": 1,
+          "sourceOutfitId": "PC_WDR_02",
+          "setId": "pc_wdr_02",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wdr_02/upper.wmodel",
+              "sourceMesh": "PC_WDR_02.Mesh.PC_WDR_02_UPPER_SK",
+              "sourceMaterial": "PC_WDR_02.Mat.PC_WDR_02_UPPER_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wdr_02/lower.wmodel",
+              "sourceMesh": "PC_WDR_02.Mesh.PC_WDR_02_LOWER_SK",
+              "sourceMaterial": "PC_WDR_02.Mat.PC_WDR_02_LOWER_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wdr_02/arm.wmodel",
+              "sourceMesh": "PC_WDR_02.Mesh.PC_WDR_02_ARM_SK",
+              "sourceMaterial": "PC_WDR_02.Mat.PC_WDR_02_ARM_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wdr_02/shoulder.wmodel",
+              "sourceMesh": "PC_WDR_02.Mesh.PC_WDR_02_SHOULDER_SK",
+              "sourceMaterial": "PC_WDR_02.Mat.PC_WDR_02_SHOULDER_MI"
+            }
+          ],
+          "visualSetId": "character.warlord.pc_wdr_02.outfit"
+        },
+        {
+          "objectUnit": 2,
+          "sourceOutfitId": "PC_WGL_HR_01-4",
+          "setId": "pc_wgl_hr_01",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_hr_01/upper.wmodel",
+              "sourceMesh": "PC_WGL_HR_01.Mesh.PC_WGL_HR_01_Upper_SK",
+              "sourceMaterial": "PC_WGL_HR_01.Mat.PC_WGL_HR_01-4_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_hr_01/lower.wmodel",
+              "sourceMesh": "PC_WGL_HR_01.Mesh.PC_WGL_HR_01_Lower_SK",
+              "sourceMaterial": "PC_WGL_HR_01.Mat.PC_WGL_HR_01-4_Lower_MI"
+            }
+          ],
+          "visualSetId": "character.warlord.pc_wgl_hr_01.outfit"
+        },
+        {
+          "objectUnit": 3,
+          "sourceOutfitId": "PC_WBK_00-6",
+          "setId": "pc_wbk_00",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wbk_00/upper.wmodel",
+              "sourceMesh": "PC_WBK_00.Mesh.PC_WBK_00_Upper_SK",
+              "sourceMaterial": "PC_WBK_00.Mat.PC_WBK_00-6_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wbk_00/lower.wmodel",
+              "sourceMesh": "PC_WBK_00.Mesh.PC_WBK_00_Lower_SK",
+              "sourceMaterial": "PC_WBK_00.Mat.PC_WBK_00-6_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wbk_00/arm.wmodel",
+              "sourceMesh": "PC_WBK_00.Mesh.PC_WBK_00_Arm_SK",
+              "sourceMaterial": "PC_WBK_00.Mat.PC_WBK_00-6_ARM"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wbk_00/shoulder.wmodel",
+              "sourceMesh": "PC_WBK_00.Mesh.PC_WBK_00_Shoulder_SK",
+              "sourceMaterial": "PC_WBK_00.Mat.PC_WBK_00-6_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.warlord.pc_wbk_00.outfit"
+        },
+        {
+          "objectUnit": 4,
+          "sourceOutfitId": "PC_WGL_05",
+          "setId": "pc_wgl_05",
+          "parts": [
+            {
+              "part": "upper",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_05/upper.wmodel",
+              "sourceMesh": "PC_WGL_05.Mesh.PC_WGL_05_Upper_SK",
+              "sourceMaterial": "PC_WGL_05.Mat.PC_WGL_05_Upper_MI"
+            },
+            {
+              "part": "lower",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_05/lower.wmodel",
+              "sourceMesh": "PC_WGL_05.Mesh.PC_WGL_05_Lower_SK",
+              "sourceMaterial": "PC_WGL_05.Mat.PC_WGL_05_Lower_MI"
+            },
+            {
+              "part": "arm",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_05/arm.wmodel",
+              "sourceMesh": "PC_WGL_05.Mesh.PC_WGL_05_Arm_SK",
+              "sourceMaterial": "PC_WGL_05.Mat.PC_WGL_05_Arm_MI"
+            },
+            {
+              "part": "shoulder",
+              "modelAssetId": "Character/Warlord/Equipment/pc_wgl_05/shoulder.wmodel",
+              "sourceMesh": "PC_WGL_05.Mesh.PC_WGL_05_Shoulder_SK",
+              "sourceMaterial": "PC_WGL_05.Mat.PC_WGL_05_Shoulder_MI"
+            }
+          ],
+          "visualSetId": "character.warlord.pc_wgl_05.outfit"
+        }
+      ]
+    }
+  }
+}

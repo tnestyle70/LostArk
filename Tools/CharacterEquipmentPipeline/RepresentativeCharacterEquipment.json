@@ -1,7 +1,9 @@
 {
   "schema": "lostark.character-equipment-representative-selection",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "sourceAssociationPolicy": "CURATED_EXISTING_OR_EXACT_AUTHORED_STATIC_COOK_V1",
+  "catalogRelationship": "REPRESENTATIVE_CURATED_SUBSET",
+  "catalogRelationshipNote": "sets here is a curated pick of one alternative appearance per class, not an enumeration of every visualSet the runtime catalog may hold. EquipmentPresentationCatalog.json legitimately contains additional visualSets sourced through other extraction pipelines (for example the character-creation costume/hairstyle intake under CustomizingCostumes.json/CustomizingHairstyles.json, association state NORMALIZED_RAW_COOK_V1 via Tools/CharacterEquipmentPipeline/normalize_character_equipment_gltf.py), which are validated by their own pipeline's tests rather than by this file. Every set this file does name is still checked field for field against the catalog.",
   "sourceInventory": "out/CharacterEquipmentExtraction/Inventory/Generated/character-equipment-source-inventory.json",
   "pendingNormalizationCandidates": [
     {

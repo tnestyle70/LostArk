@@ -13,6 +13,7 @@
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
 #include "LevelTransitionService.h"
 #include "LevelRegistry.h"
@@ -33,6 +34,29 @@
 namespace
 {
 	std::atomic<uint64_t> g_iNextEffectLoadJobEpoch = 1u;
+
+	/* Fraction of the track the heartbeat segment covers while no lane has published a real
+	fraction yet. */
+	constexpr f32_t INDETERMINATE_SEGMENT = 0.18f;
+	/* How far across its own art the mark's anchor sits. Retail places the mark's registration
+	point on the reveal edge and draws the comet at (-293,-25) from it, so 293 of the art's 356
+	px lie behind that edge and only its short bright end pokes past. */
+	constexpr f32_t GLOW_ANCHOR_RATIO = 293.f / 356.f;
+
+	/* The movie is authored on a 1920x1080 stage; this layout's reference is 1280x720. */
+	constexpr f32_t GFX_TO_REF = 2.f / 3.f;
+	/* Em sizes off each line's own text field: nameTF 36, TitleTip 26, tipTF 18. */
+	constexpr f32_t TITLE_TEXT_SIZE = 36.f * GFX_TO_REF;
+	constexpr f32_t SCENARIO_TEXT_SIZE = 26.f * GFX_TO_REF;
+	/* The tip line reads too small at its authored size on this screen, so the user asked for
+	1.3x. The other two lines stay at the size their fields carry. */
+	constexpr f32_t TIP_TEXT_SIZE = 18.f * GFX_TO_REF * 1.3f;
+	/* A text field's height is its em size plus the font's ascent/descent overshoot, which the
+	sprite fonts bake into their line spacing. The exact ratio is not recoverable from either
+	side, so this is the one approximated number here. */
+	constexpr f32_t EM_TO_LINE_SPACING = 1.25f;
+	/* TitleTip's markup colour, #ffdd8a. */
+	const XMVECTORF32 SCENARIO_TEXT_COLOR = { { { 1.f, 0.867f, 0.541f, 1.f } } };
 }
 
 CLevel_Loading::CLevel_Loading(
@@ -73,11 +97,14 @@ HRESULT CLevel_Loading::Initialize(
 	howls of beasts can be heard." Character Select (creation): retail's prologue loading
 	screen "Destiny Begins" / "Prepare for the start of a new journey." Everything else keeps
 	Bern's placeholder: "Bern Castle" / "Bern Castle is the capital of Bern, where many races
-	live mixed together." */
+	live mixed together." The label above the tip is "Scenario" except on Character Select,
+	which shows "Info" over a line about the 161st class. */
+	m_strScenarioLabel = L"\xC2DC\xB098\xB9AC\xC624";
 	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID)
 	{
 		m_strTitleText = L"\xC2DC\xC791\xB418\xB294 \xC6B4\xBA85";
-		m_strTipText = L"\xC0C8\xB85C\xC6B4 \xC5EC\xC815\xC758 \xC2DC\xC791\xC744 \xC900\xBE44\xD558\xC138\xC694.";
+		m_strScenarioLabel = L"\xC815\xBCF4";
+		m_strTipText = L"161\xAE30\xB294 \xC6D0\xB798 11\xBA85 \xC774\xC5C8\xC2B5\xB2C8\xB2E4";
 	}
 	else if (LEVEL::VALTAN_ARENA == m_eNextLevelID)
 	{
@@ -256,21 +283,49 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			1.f);
 	}
 
-	const f32_t fTrackLeft = m_fProgressTrackX - m_fProgressTrackWidth * 0.5f;
-	const f32_t fFillWidth = m_hasDeterminateProgress ?
-		m_fProgressTrackWidth * m_fShownProgress :
-		m_fProgressTrackWidth * 0.18f;
-	const f32_t fFillLeft = m_hasDeterminateProgress ? fTrackLeft :
-		fTrackLeft + (m_fProgressTrackWidth - fFillWidth) *
-		m_fIndeterminateProgress;
+	/* The reveal window in layout space, the way retail drives the bar: a clip whose left edge
+	is fixed and whose width is the ratio times the track length. The heartbeat slides that
+	window instead of growing it. */
+	const f32_t fRevealLeft = m_fProgressMaskLeft + m_fProgressMaskWidth *
+		(m_hasDeterminateProgress ? 0.f :
+			(1.f - INDETERMINATE_SEGMENT) * m_fIndeterminateProgress);
+	const f32_t fRevealRight = fRevealLeft + m_fProgressMaskWidth *
+		(m_hasDeterminateProgress ? std::clamp(m_fShownProgress, 0.f, 1.f) :
+			INDETERMINATE_SEGMENT);
 
-	if (nullptr != m_pProgressFill)
-		m_pProgressFill->Set_Rect(fFillLeft + fFillWidth * 0.5f, m_fProgressTrackY,
-			fFillWidth, m_fProgressTrackHeight);
+	if (nullptr != m_pProgressFill && m_fProgressFillWidth > 0.f)
+	{
+		/* The revealed run, as a window over the fill art's own extent. Sizing the quad to that
+		window and sampling the matching UV slice draws the art at its authored scale; resizing
+		the quad alone squeezed the whole 1804 px gradient into the filled run, so the run read
+		as a dark smear with only its bright right end showing under the mark. */
+		const f32_t fLeftU = std::clamp(
+			(fRevealLeft - m_fProgressFillLeft) / m_fProgressFillWidth, 0.f, 1.f);
+		const f32_t fRightU = std::clamp(
+			(fRevealRight - m_fProgressFillLeft) / m_fProgressFillWidth, 0.f, 1.f);
+		const f32_t fWindowWidth = (fRightU - fLeftU) * m_fProgressFillWidth;
+
+		/* A zero-width quad would scale the transform's axes to nothing, so the sprite is
+		hidden for that frame instead. */
+		m_pProgressFill->Set_Visible(fWindowWidth > 0.f);
+		if (fWindowWidth > 0.f)
+		{
+			m_pProgressFill->Set_UVWindow(
+				float2_t(fLeftU, 0.f), float2_t(fRightU - fLeftU, 1.f));
+			m_pProgressFill->Set_Rect(
+				m_fProgressFillLeft + fLeftU * m_fProgressFillWidth + fWindowWidth * 0.5f,
+				m_fProgressFillCenterY, fWindowWidth, m_fProgressFillHeight);
+		}
+	}
 
 	if (nullptr != m_pProgressGlow)
-		m_pProgressGlow->Set_Rect(fFillLeft + fFillWidth, m_fProgressTrackY,
-			m_fProgressGlowWidth, m_fProgressGlowHeight);
+	{
+		/* Retail puts the mark's registration point on the reveal edge; GLOW_ANCHOR_RATIO is
+		where that point sits across the art, so the trail lies back along the filled run. */
+		m_pProgressGlow->Set_Rect(
+			fRevealRight - (GLOW_ANCHOR_RATIO - 0.5f) * m_fProgressGlowWidth,
+			m_fProgressGlowCenterY, m_fProgressGlowWidth, m_fProgressGlowHeight);
+	}
 
 	if (m_pLoader->Finished() && bTargetPresentationReady &&
 		!m_isActivationRequested)
@@ -298,18 +353,36 @@ HRESULT CLevel_Loading::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	if (!m_strTitleText.empty())
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), m_strTitleText.c_str(),
-			m_vTitlePos, Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.65f);
+	/* Each line is drawn at the point size its own text field carries, scaled from the movie's
+	1920x1080 stage into this layout's 1280x720 reference. The fields are top-anchored and
+	centre-aligned, so the marker position is the field's top-centre. */
+	const auto Fn_DrawLine = [](const wstring_t& strFamily, const wchar_t* pText,
+		const float2_t& vTopCenter, f32_t fEmSize, const fvector_t& vColor)
+	{
+		if (nullptr == pText || L'\0' == pText[0])
+			return;
+		/* UILabelFont sizes by line spacing, the gfx field carries an em size, so the one goes
+		through the other. Measuring the string itself instead would size every line by its own
+		tallest glyph, which is why the Korean lines came out smaller than the label size asked
+		for. */
+		f32_t fScale = 1.f;
+		const wstring_t strFont =
+			UILabelFont::Resolve(strFamily, fEmSize * EM_TO_LINE_SPACING, fScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, vTopCenter, vColor, 0.f,
+			float2_t(0.5f, 0.f), fScale);
+	};
+
+	Fn_DrawLine(TEXT("Font_YoonGasiIIM"), m_strTitleText.c_str(),
+		m_vTitlePos, TITLE_TEXT_SIZE, Colors::White);
 
 	if (!m_strTipText.empty())
 	{
-		/* "Scenario" label, as \x escapes for the same reason as the title/tip text above. */
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), L"\xC2DC\xB098\xB9AC\xC624",
-			m_vScenarioPos, Colors::Gold, 0.f, float2_t(0.5f, 0.5f), 0.55f);
+		/* Colour is the one the field's own markup carries. */
+		Fn_DrawLine(TEXT("Font_YoonGasiIIM"), m_strScenarioLabel.c_str(),
+			m_vScenarioPos, SCENARIO_TEXT_SIZE, SCENARIO_TEXT_COLOR);
 
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), m_strTipText.c_str(),
-			m_vTipPos, Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.6f);
+		Fn_DrawLine(TEXT("Font_YG760"), m_strTipText.c_str(),
+			m_vTipPos, TIP_TEXT_SIZE, Colors::White);
 	}
 
 	Render_LoadingRecoveryProduct();
@@ -851,11 +924,19 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		const string& strId = pId->Get_String();
 
 		string strTexturePath;
+		bool_t bFlipX = false;
 		if (nullptr != pLayers && pLayers->Is_Array() && !pLayers->Get_Array().empty())
 		{
-			const DATA_JSON_VALUE* pPath = pLayers->Get_Array().front().Find("path");
+			const DATA_JSON_VALUE& layer = pLayers->Get_Array().front();
+			const DATA_JSON_VALUE* pPath = layer.Find("path");
 			if (nullptr != pPath && pPath->Is_String())
 				strTexturePath = pPath->Get_String();
+			/* The side gradients are one texture placed twice, the second copy mirrored. Without
+			this the mirrored copy draws its opaque edge inwards, as a hard vertical seam across
+			the background. */
+			const DATA_JSON_VALUE* pFlipX = layer.Find("flipX");
+			if (nullptr != pFlipX && pFlipX->Is_Boolean())
+				bFlipX = pFlipX->Get_Boolean();
 		}
 
 		/* Valtan Arena reuses every other chrome slot from the shared JSON as-is; only its
@@ -871,14 +952,24 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		can still drag -- pull text draw positions from them instead of creating a sprite. */
 		if (strTexturePath.empty())
 		{
-			const float2_t vCenter(fX + fWidth * 0.5f, fY + fHeight * 0.5f);
+			/* Retail's text fields are top-anchored boxes tall enough for more lines than this
+			screen draws, so a line goes at the top edge, not at the box centre. */
+			const float2_t vTopCenter(fX + fWidth * 0.5f, fY);
 
 			if ("TitleText" == strId)
-				m_vTitlePos = vCenter;
+				m_vTitlePos = vTopCenter;
 			else if ("ScenarioLabel" == strId)
-				m_vScenarioPos = vCenter;
+				m_vScenarioPos = vTopCenter;
 			else if ("TipText" == strId)
-				m_vTipPos = vCenter;
+				m_vTipPos = vTopCenter;
+			else if ("ProgressMask" == strId)
+			{
+				/* Retail's crashLoadingTarget: a clip whose left edge is fixed and whose width
+				at full progress is the track length the ratio multiplies. It draws nothing
+				itself, so it stays a marker. */
+				m_fProgressMaskLeft = fX;
+				m_fProgressMaskWidth = fWidth;
+			}
 
 			continue;
 		}
@@ -904,17 +995,21 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 			continue;
 		}
 
+		if (bFlipX)
+			static_pointer_cast<CUI_Sprite>(pObject)->Set_FlipX(true);
+
 		if ("ProgressFill" == strId)
 		{
 			m_pProgressFill = static_pointer_cast<CUI_Sprite>(pObject);
-			m_fProgressTrackX = Desc.fX;
-			m_fProgressTrackY = Desc.fY;
-			m_fProgressTrackWidth = fWidth;
-			m_fProgressTrackHeight = fHeight;
+			m_fProgressFillLeft = fX;
+			m_fProgressFillWidth = fWidth;
+			m_fProgressFillCenterY = Desc.fY;
+			m_fProgressFillHeight = fHeight;
 		}
 		else if ("ProgressGlow" == strId)
 		{
 			m_pProgressGlow = static_pointer_cast<CUI_Sprite>(pObject);
+			m_fProgressGlowCenterY = Desc.fY;
 			m_fProgressGlowWidth = fWidth;
 			m_fProgressGlowHeight = fHeight;
 		}

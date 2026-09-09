@@ -6,6 +6,9 @@
 #include "Level.h"
 #include "LobbyCommandService.h"
 #include "MapLightPresentationRuntime.h"
+#include "CustomizingCostumeDocument.h"
+#include "EquipmentPresentationCatalog.h"
+#include "EquipmentPresentationService.h"
 #include "MapPlacementRuntime.h"
 #include "Network/SessionDiagnostic.h"
 #include "Network/PacketType.h"
@@ -113,6 +116,16 @@ private:
 	the arena's own placements stop drawing while it is up and come back on close. */
 	void Open_Customizing();
 	void Close_Customizing();
+	/* Puts the left column's selected try-on costume on the model through the existing
+	equipment preview transaction. Loads its two documents on first use. */
+	void Apply_CustomizingCostume();
+	/* Same transaction for the hair tab's grid, over the catalog's HEAD sets. */
+	void Apply_CustomizingHair();
+	/* Puts strSetId in its own slot of m_CustomizingOutfit, drops whatever it collides
+	with, and re-applies the whole outfit. */
+	void Wear_CustomizingSet(const std::string& strSetId, const char_t* pWhat);
+	/* Loads the costume document and the equipment catalog once. */
+	bool_t Ensure_EquipmentPresentation();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_CreateCharacterProductInputHost();
 	void Render_ProductStatus();
@@ -165,6 +178,9 @@ public:
 	/* True while the customizing screen owns the screen: CMainApp hides the combat HUD
 	chrome behind it the same way it does for the Debug raid-entry preview. */
 	bool_t Is_CustomizingOpen() const;
+	/* Takes the class-list stage down while character creation is open and restores each
+	placement's authored visibility when it closes. */
+	void Update_CustomizingStageVisibility();
 #ifdef _DEBUG
 	/* Same split as Render_ArenaSpawnLabels just above, plus the
 	   GetForegroundDrawList() submission-order requirement
@@ -216,7 +232,25 @@ private:
 		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD
 	};
 
+	/* The try-on costumes: which visual set each of the five stands for, the catalog that owns
+	their parts, and the service that swaps them onto the model. */
+	CCustomizingCostumeDocument m_CostumeDocument{
+		"lostark.customizing-costumes",
+		"UI/Customizing/CustomizingCostumes.json", "costume" };
+	CCustomizingCostumeDocument m_HairstyleDocument{
+		"lostark.customizing-hairstyles",
+		"UI/Customizing/CustomizingHairstyles.json", "hairstyle" };
+	CEquipmentPresentationCatalog m_EquipmentCatalog;
+	/* Built on first use: the service needs the device this Level already holds. */
+	unique_ptr<CEquipmentPresentationService> m_pEquipmentPresentation;
+	bool_t m_isEquipmentPresentationLoaded = false;
+	/* What the model is wearing right now, one visual set id per slot. Apply_Preview takes
+	the whole outfit, so hair and costume have to be applied together -- passing only the
+	slot that just changed took everything else off. */
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> m_CustomizingOutfit{};
+
 	CMapPlacementRuntime m_MapRuntime;
+	bool_t m_isCustomizingStageHidden = false;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 	bool_t m_bMapLightSubmissionFailureReported = false;

@@ -230,6 +230,7 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	Update_CustomizingStageVisibility();
 	const auto& lights = m_pMapLightAuthoringOverride ?
 		m_pMapLightAuthoringOverride : m_pMapLightPresentation;
 	if (lights && !lights->Submit_Frame() && !m_bMapLightSubmissionFailureReported)
@@ -761,6 +762,13 @@ bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
 		}
 		m_PlayerController.Rebind_LocalCharacter(localCharacter);
 		m_pActiveCharacter = localCharacter;
+		/* Visual sets belong to one class, so the new model starts bare rather than
+		carrying ids Apply_Preview would reject for the whole outfit. */
+		m_CustomizingOutfit = {};
+		/* Character creation keeps the head bare for the hairstyle grid, so the new
+		class needs its own hairstyle put on straight away or it stands there bald. */
+		if (nullptr != m_pCustomizingView && m_pCustomizingView->Is_Open())
+			Apply_CustomizingHair();
 	}
 	m_iSelectedClassIndex = selectedIndex;
 	if (!CCharacterSelectionState::Select(
@@ -1576,6 +1584,157 @@ bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const
 	return nullptr != m_pCustomizingView && m_pCustomizingView->Is_Open();
 }
 
+void CLevel_CharacterSelect::Update_CustomizingStageVisibility()
+{
+	/* Character creation puts the model against a flat backdrop, not on the class-list stage.
+	Scanned down the retail screen well clear of the model, the value falls smoothly from 24 to
+	7 with no edge anywhere -- a gradient, not a floor -- so the whole stage comes down while
+	the screen is open and every placement goes back to the visibility its own authored record
+	carries on close. */
+	const bool_t wantsStageHidden = Is_CustomizingOpen();
+	if (wantsStageHidden == m_isCustomizingStageHidden)
+		return;
+	m_isCustomizingStageHidden = wantsStageHidden;
+
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_MapRuntime.Get_MutablePlacements())
+	{
+		(void)CMapPlacementRuntime::Set_RuntimeVisible(
+			entry, wantsStageHidden ? false : entry.record.visible);
+	}
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingCostume()
+{
+	/* The left column's five try-on costumes are equipment visual sets, so putting one on is
+	the existing preview transaction -- the same one the equipment authoring tool drives. The
+	document names the set; the catalog owns its parts. */
+	if (nullptr == m_pActiveCharacter || nullptr == m_pCustomizingView)
+		return;
+	const CHARACTER_SPEC* const pSpec = m_pActiveCharacter->Get_Spec();
+	if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		return;
+
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	const std::vector<std::string>* const pSetIds =
+		m_CostumeDocument.Find(pSpec->pAssetName);
+	const int32_t iSelected = m_pCustomizingView->Get_SelectedCostume();
+	if (nullptr == pSetIds || iSelected < 0 ||
+		static_cast<size_t>(iSelected) >= pSetIds->size())
+	{
+		return;
+	}
+
+	Wear_CustomizingSet((*pSetIds)[iSelected], "Costume");
+}
+
+void CLevel_CharacterSelect::Wear_CustomizingSet(
+	const std::string& strSetId, const char_t* const pWhat)
+{
+	/* A set names itself in its primary slot only -- Apply_Preview expands the other slots it
+	occupies itself, and rejects the same slot being claimed twice. */
+	const EQUIPMENT_VISUAL_SET* const pSet = m_EquipmentCatalog.Find_Set(strSetId);
+	if (nullptr == pSet || pSet->primarySlot >= EQUIPMENT_SLOT_ID::END)
+	{
+		m_strStatus = std::string(pWhat) + " set not in catalog: " + strSetId;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + m_strStatus + "\n").c_str());
+		return;
+	}
+
+	/* Everything already worn stays on, so picking hair no longer undresses the model and
+	picking a costume no longer shaves it. Only a piece this one physically overlaps comes
+	off, which is what lets a helmet set take the hair with it. */
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected = m_CustomizingOutfit;
+	selected[ETOI(pSet->primarySlot)].clear();
+	for (const EQUIPMENT_SLOT_ID occupied : pSet->occupiedSlots)
+	{
+		for (std::string& worn : selected)
+		{
+			if (worn.empty())
+				continue;
+			const EQUIPMENT_VISUAL_SET* const pWorn = m_EquipmentCatalog.Find_Set(worn);
+			if (nullptr == pWorn ||
+				pWorn->occupiedSlots.end() != std::find(pWorn->occupiedSlots.begin(),
+					pWorn->occupiedSlots.end(), occupied))
+			{
+				worn.clear();
+			}
+		}
+	}
+	selected[ETOI(pSet->primarySlot)] = strSetId;
+
+	std::string error;
+	if (!m_pEquipmentPresentation->Apply_Preview(
+		*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+	{
+		/* On screen as well as in the debugger: this screen has no other way to say why the
+		model kept what it had on. The stored outfit is left alone so it still describes what
+		is actually being drawn. */
+		m_strStatus = std::string(pWhat) + ": " + error;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + error + "\n").c_str());
+		return;
+	}
+	m_CustomizingOutfit = std::move(selected);
+	m_strStatus = std::string(pWhat) + " applied: " + strSetId;
+}
+
+bool_t CLevel_CharacterSelect::Ensure_EquipmentPresentation()
+{
+	if (nullptr == m_pEquipmentPresentation)
+	{
+		m_pEquipmentPresentation =
+			std::make_unique<CEquipmentPresentationService>(m_pDevice, m_pContext);
+	}
+	if (m_isEquipmentPresentationLoaded)
+		return true;
+
+	std::string error;
+	if (!m_EquipmentCatalog.Load(error) || !m_CostumeDocument.Load() ||
+		!m_HairstyleDocument.Load())
+	{
+		/* A missing document leaves the model in whatever it is already wearing rather than
+		half-dressing it. */
+		m_strStatus = "Equipment data: " +
+			(error.empty() ? m_CostumeDocument.Get_Status() : error);
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Costume] " + m_strStatus + "\n").c_str());
+		return false;
+	}
+	m_isEquipmentPresentationLoaded = true;
+	return true;
+}
+
+void CLevel_CharacterSelect::Apply_CustomizingHair()
+{
+	/* The hair grid lists every style the retail table carries, but only the styles this
+	project has a cooked head model for can be worn. Anything past that says so rather than
+	silently doing nothing. */
+	if (nullptr == m_pActiveCharacter || nullptr == m_pCustomizingView)
+		return;
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	const CHARACTER_SPEC* const pSpec = m_pActiveCharacter->Get_Spec();
+	if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		return;
+	/* Paired by position with the hair icon list, the way the costume row is -- the document's
+	own order is the table's, so cell N really is hairstyle N. */
+	const std::vector<std::string>* const pSetIds =
+		m_HairstyleDocument.Find(pSpec->pAssetName);
+	const int32_t iSelected = m_pCustomizingView->Get_SelectedHair();
+	if (nullptr == pSetIds || iSelected < 0 ||
+		static_cast<size_t>(iSelected) >= pSetIds->size())
+	{
+		m_strStatus = "Hair: style " + std::to_string(iSelected) + " is not in the document.";
+		return;
+	}
+
+	Wear_CustomizingSet((*pSetIds)[iSelected], "Hair");
+}
+
 void CLevel_CharacterSelect::Open_Customizing()
 {
 	if (nullptr == m_pCustomizingView)
@@ -1598,7 +1757,11 @@ void CLevel_CharacterSelect::Close_Customizing()
 	if (nullptr != m_pCamera)
 		m_pCamera->End_PresentationOverride(CUSTOMIZING_CAMERA_OWNER_ID);
 	if (nullptr != m_pActiveCharacter)
+	{
 		m_pActiveCharacter->Set_CreationPreviewActive(false);
+		/* The turn was the screen's, not the world's, so it leaves with the screen. */
+		m_pActiveCharacter->Set_CreationPreviewYawOffset(0.f);
+	}
 	m_strStatus = "Server Arena active. Select a class thumbnail, then test its skill keys.";
 }
 
@@ -1663,6 +1826,17 @@ void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
 		return;
 
 	m_pCustomizingView->Update(fTimeDelta, m_pActiveCharacter);
+	/* The drag gesture turns the model, so the offset is pushed every frame -- the character
+	rewrites its rotation from the replicated yaw on each network update. */
+	if (nullptr != m_pActiveCharacter)
+	{
+		m_pActiveCharacter->Set_CreationPreviewYawOffset(
+			m_pCustomizingView->Get_SubjectYawOffsetDegrees());
+	}
+	if (m_pCustomizingView->Try_Consume_CostumeChange())
+		Apply_CustomizingCostume();
+	if (m_pCustomizingView->Try_Consume_HairChange())
+		Apply_CustomizingHair();
 	if (m_pCustomizingView->Try_Consume_Back())
 	{
 		Close_Customizing();

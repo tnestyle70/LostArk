@@ -621,6 +621,9 @@
     <ClCompile Include="..\Private\FaceCustomizeApplier.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\FaceMorphApplier.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\FaceSliderDocument.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -739,6 +742,15 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\SkillWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CustomizingCostumeDocument.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CustomizingFacePresetDocument.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CustomizingFaceTextureDocument.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CustomizingIconDocument.cpp">
@@ -1177,6 +1189,9 @@
     <ClInclude Include="..\Public\FaceCustomizeApplier.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\FaceMorphApplier.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\FaceSliderDocument.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -1310,6 +1325,15 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\SkillWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CustomizingCostumeDocument.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CustomizingFacePresetDocument.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CustomizingFaceTextureDocument.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CustomizingIconDocument.h">

@@ -2,6 +2,7 @@
 
 #include "Model.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -26,6 +27,8 @@ namespace
 	/* Per-second blend rate of the wind's velocity filter; about a fifth of a
 	second to lean into a run and the same to ease home after a stop. */
 	constexpr f32_t VELOCITY_FILTER_RATE = 5.f;
+	/* The turn equivalent of TELEPORT_SPEED: past this the yaw jumped rather than turned. */
+	constexpr f32_t TELEPORT_YAW_RATE = 40.f;
 
 	bool_t Is_Finite(const matrix_t& Matrix)
 	{
@@ -89,6 +92,8 @@ bool_t Client::CBoneChainSimulation::Initialize(
 	m_isPrimed = false;
 	m_vFilteredWorldVelocity = {};
 	m_hasWorldSample = false;
+	m_fPreviousYawDegrees = 0.f;
+	m_fFilteredYawRateRadians = 0.f;
 	if (nullptr == pModel || nullptr == pSpecs || 0u == iNumSpecs)
 		return false;
 
@@ -139,6 +144,8 @@ void Client::CBoneChainSimulation::Reset()
 	m_isPrimed = false;
 	m_vFilteredWorldVelocity = {};
 	m_hasWorldSample = false;
+	m_fPreviousYawDegrees = 0.f;
+	m_fFilteredYawRateRadians = 0.f;
 }
 
 void Client::CBoneChainSimulation::Update(
@@ -169,6 +176,28 @@ void Client::CBoneChainSimulation::Update(
 			XMVectorLerp(XMLoadFloat3(&m_vFilteredWorldVelocity),
 				vVelocity, fBlend));
 	}
+	/* Turning on the spot moves every link even though the body goes nowhere, and the
+	model-space solve cannot see that by itself: in model space the link is standing still
+	and the world is turning under it. The rate is filtered the same way the travel is,
+	and each link turns it into its own apparent velocity below. */
+	if (m_hasWorldSample)
+	{
+		f32_t fYawDifference = fYawDegrees - m_fPreviousYawDegrees;
+		while (fYawDifference > 180.f)
+			fYawDifference -= 360.f;
+		while (fYawDifference < -180.f)
+			fYawDifference += 360.f;
+		const f32_t fYawRate =
+			XMConvertToRadians(fYawDifference) / fTimeDelta;
+		const f32_t fYawBlend = fTimeDelta * VELOCITY_FILTER_RATE > 1.f ?
+			1.f : fTimeDelta * VELOCITY_FILTER_RATE;
+		if (std::isfinite(fYawRate) && fabsf(fYawRate) < TELEPORT_YAW_RATE)
+		{
+			m_fFilteredYawRateRadians +=
+				(fYawRate - m_fFilteredYawRateRadians) * fYawBlend;
+		}
+	}
+	m_fPreviousYawDegrees = fYawDegrees;
 	XMStoreFloat3(&m_vPreviousWorldPosition, vWorldPosition);
 	m_hasWorldSample = true;
 	const vector_t vVelocityModel = XMVector3TransformNormal(
@@ -261,12 +290,23 @@ void Client::CBoneChainSimulation::Update(
 			const vector_t vPrevious =
 				XMLoadFloat3(&Link.vPreviousPosition);
 
+			/* The apparent velocity the turn gives this link, in the same model space
+			the solve runs in: for a spin about Y at w, a link at (x, ., z) moves at
+			(w*z, 0, -w*x). It joins the travel wind as drag, so the cloth trails the
+			turn instead of staying rigid through it. */
+			const vector_t vSpinVelocity = XMVectorSet(
+				m_fFilteredYawRateRadians * XMVectorGetZ(vCurrent),
+				0.f,
+				-m_fFilteredYawRateRadians * XMVectorGetX(vCurrent),
+				0.f);
+
 			/* Verlet: carried velocity, the pull toward the animated
 			direction, and the forces. */
 			vector_t vNext = vCurrent +
 				(vCurrent - vPrevious) * Spec.fDamping +
 				(vTarget - vCurrent) * Spec.fStiffness +
-				Accelerations[Link.iSpecIndex] * STEP_SECONDS_SQUARED;
+				(Accelerations[Link.iSpecIndex] -
+					vSpinVelocity * Spec.fWindResponse) * STEP_SECONDS_SQUARED;
 
 			/* Length is what makes it a chain rather than a cloud of
 			points. */
@@ -293,6 +333,36 @@ void Client::CBoneChainSimulation::Update(
 					fRange * (fOver / (fOver + fRange));
 				vNext = vTarget +
 					XMVector3Normalize(vFromRest) * (fKnee + fEased);
+			}
+
+			/* The authored swing cone, applied about the animated direction. The length
+			constraint above already put the link on the right sphere, so limiting the angle
+			is what is left to keep it inside the silhouette the original authors chose. */
+			if (Spec.fSwingLimitDegrees > 0.f && fRestLength > MINIMUM_REST_LENGTH)
+			{
+				const vector_t vRestDirection =
+					XMVector3Normalize(vTarget - vParentPosition);
+				const vector_t vNextDirection =
+					XMVector3Normalize(vNext - vParentPosition);
+				const f32_t fCosine = std::clamp(
+					XMVectorGetX(XMVector3Dot(vRestDirection, vNextDirection)), -1.f, 1.f);
+				const f32_t fLimit = XMConvertToRadians(Spec.fSwingLimitDegrees);
+				if (std::acos(fCosine) > fLimit)
+				{
+					/* Rotate the rest direction toward the current one by exactly the limit,
+					around the axis the two of them span. A pair that is (anti)parallel spans
+					no axis, and the length clamp has already handled that case. */
+					const vector_t vAxis =
+						XMVector3Cross(vRestDirection, vNextDirection);
+					if (XMVectorGetX(XMVector3LengthSq(vAxis)) > 1e-12f)
+					{
+						const vector_t vClamped = XMVector3Rotate(
+							vRestDirection,
+							XMQuaternionRotationAxis(
+								XMVector3Normalize(vAxis), fLimit));
+						vNext = vParentPosition + vClamped * fRestLength;
+					}
+				}
 			}
 
 			/* Within a millimetre of home and barely moving, a link parks

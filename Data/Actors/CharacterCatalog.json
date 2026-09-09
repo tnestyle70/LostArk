@@ -14,7 +14,8 @@
         "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
         "Character/LanceMaster/LanceMaster_Helmet.wmodel",
         "Character/LanceMaster/LanceMaster_Helmet_Mokoko.wmodel",
-        "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel"
+        "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel",
+        "Character/LanceMaster/Equipment/pc_ft_00_hair/head.wmodel"
       ],
       "weaponModels": [
         "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
@@ -857,7 +858,8 @@
         "Character/Artist/Artist_Lower.wmodel",
         "Character/Artist/Artist_Arm.wmodel",
         "Character/Artist/Artist_Shoulder.wmodel",
-        "Character/Artist/Artist_Helmet.wmodel"
+        "Character/Artist/Artist_Helmet.wmodel",
+        "Character/Artist/Equipment/pc_sp_00_hair/head.wmodel"
       ],
       "weaponModels": [
         "Character/WP_WSDM_09/WP_WSDM_09.wmodel"
@@ -874,7 +876,9 @@
       "networkClassId": "DIMENSIONMASTER",
       "assetId": "DimensionMaster",
       "bodyModel": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
-      "equipmentModels": [],
+      "equipmentModels": [
+        "Character/DimensionMaster/Equipment/pc_sp_m_55_hair/head.wmodel"
+      ],
       "weaponModels": [
         "Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel",
         "Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel",

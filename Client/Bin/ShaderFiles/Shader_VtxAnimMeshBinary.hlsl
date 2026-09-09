@@ -23,6 +23,10 @@ uint g_FullSurfaceEmissiveMaskMode = 0;
 of a mostly achromatic diffuse and each region multiplies its tint in. */
 Texture2D g_DyeMaskTexture;
 uint g_HasDyeMask = 0;
+uint g_DyeIsHair = 0;
+/* Skin and eyes are tinted without a region mask in the source game, so this multiplies the
+sampled diffuse directly. Identity unless the creation screen chose a colour. */
+float4 g_DiffuseTint = 1.f;
 float4 g_DyeDiffuseColor = 1.f;
 float4 g_DyeRegionA = 1.f;
 float4 g_DyeRegionB = 1.f;
@@ -147,12 +151,35 @@ PS_OUT Evaluate_Material(
     if (0 != g_HasDyeMask)
     {
         float3 mask = g_DyeMaskTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord).rgb;
-        float3 tint = g_DyeDiffuseColor.rgb;
-        tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
-        tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
-        tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
-        diffuse.rgb *= tint;
+        if (0 != g_DyeIsHair)
+        {
+            /* A hair texture is not a colour. Its red and blue sit at a constant marker and
+               only green varies, carrying the strand shading -- measured on every class'
+               hair map, green's spread is 86-99 against 10-38 for red and 17-56 for blue.
+               So the authored hair colour replaces the sample and green shades it. */
+            /* Two-tone: the second colour reaches up the strand from its tip. The strand
+               runs along v, so v is how far down it a pixel sits; range is how much of it
+               the second colour claims and strength is how much of it actually blends.
+               A hairstyle authored without a second colour repeats the first, so the blend
+               changes nothing whatever the sliders say. */
+            float fRange = max(g_DyeRegionA.a, 0.001f);
+            float fAlong = saturate((input.vTexcoord.y - (1.f - fRange)) / fRange);
+            float3 hair = lerp(g_DyeDiffuseColor.rgb, g_DyeRegionA.rgb,
+                fAlong * saturate(g_DyeDiffuseColor.a));
+            diffuse.rgb = hair * mask.g;
+        }
+        else
+        {
+            float3 tint = g_DyeDiffuseColor.rgb;
+            tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
+            tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
+            tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
+            diffuse.rgb *= tint;
+        }
     }
+
+    /* Skin and eyes: identity everywhere the creation screen has not chosen a colour. */
+    diffuse.rgb *= g_DiffuseTint.rgb;
 
     float3 normal = normalize(input.vNormal.xyz);
     if (0 != g_HasNormalTexture)

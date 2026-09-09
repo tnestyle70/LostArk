@@ -26,6 +26,32 @@ public:
     static void Reset_SourceCharacterFrame(float presentationTime = 0.f);
     static uint32_t Get_SourceCharacterFrameCount();
     static HRESULT Bind_SourceCharacterLight(shared_ptr<class CShader> shader, uint32_t index);
+	/* Swaps one of this material's texture slots for another view at runtime, for the
+	character-creation choices that repaint a face rather than replace a mesh -- iris, lip,
+	cheek, eye make and decals. Both the legacy A/B slots and the surface program's own slots
+	honour it, so a material takes the override whichever path binds it. A null view clears
+	the override and the authored texture comes back. Nothing is written to the loaded
+	texture, so two characters sharing a material prototype do not share the choice: the
+	override lives on the cloned material. */
+	void Set_TextureOverride(aiTextureType eType, uint32_t iTextureIndex,
+		ComPtr<ID3D11ShaderResourceView> pTexture);
+	void Clear_TextureOverrides();
+	/* The creation screen repaints a dyed material: the authored colour stays in the asset
+	and the chosen one rides on the clone, so two characters sharing a prototype keep their
+	own. Only a material that already dyes accepts one -- an undyed material has no mask to
+	paint through, and forcing a colour on it would flatten its own texture. */
+	void Set_DyeColorOverride(const float4_t& vDiffuse, const float4_t& vRegionA);
+	void Clear_DyeColorOverride();
+	/* Hair only: how much of the second colour blends in and how far up the strand it
+	reaches. Kept apart from the colours so the two sliders can move without the screen
+	having to know what the hairstyle was authored in. */
+	void Set_DyeTwoTone(f32_t fStrength, f32_t fRange);
+	/* A plain multiply on the sampled diffuse, for the surfaces the source game tints
+	without a region mask -- skin (var_base_skincolor_ui) and eyes (var_eye_iriscolor_ui),
+	both authored at identity so nothing changes until a colour is chosen. */
+	void Set_DiffuseTint(const float4_t& vTint) { m_vDiffuseTint = vTint; }
+	const float4_t& Get_DiffuseTint() const { return m_vDiffuseTint; }
+	bool_t Has_DyeColor() const { return m_ColorTint.isEnabled; }
 	const string& Get_Name() const { return m_strName; }
 	uint64_t Get_NameHash() const { return m_iNameHash; }
 	/* Identity (isEnabled false) for every material without a WMA3 colour
@@ -39,7 +65,12 @@ private:
 	uint64_t									m_iNameHash = {};
 
 	vector<ComPtr<ID3D11ShaderResourceView>>	m_Textures[AI_TEXTURE_TYPE_MAX];
+	/* Sparse: only the slots the creation screen actually repainted. */
+	unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_TextureOverrides;
 	MODEL_COLOR_TINT							m_ColorTint;
+	/* What the asset shipped, so clearing the choice restores it exactly. */
+	MODEL_COLOR_TINT							m_AuthoredColorTint;
+	float4_t									m_vDiffuseTint = { 1.f, 1.f, 1.f, 1.f };
 	MODEL_SURFACE_PARAMETERS m_Surface;
     std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_CHARACTER_TEXTURE_COUNT> m_SourceCharacterTextures;
     HRESULT Bind_SourceCharacterInputs(shared_ptr<class CShader> shader, bool lightPass, uint32_t row);

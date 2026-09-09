@@ -242,6 +242,82 @@ slot("CC_GuideEyeTrackIcon", cut("guide_rotate", I1, 972, 68, 1008, 134),
 slot("CC_GuideZoomIcon", cut("guide_zoom", I1, 972, 0, 1008, 66),
      GUIDE_X + 11, GUIDE_Y + 149 + 17, 36, 66)
 
+
+# ---- the remaining right tabs -------------------------------------------------------------
+# Every tab page is placed at (-437,192) inside CharCustom_RightPanel, which itself sits at
+# (1920,0) -- PANEL_X already carries that 1483, so the pages only add their own y. Positions
+# below are each element's own placement inside its tab sprite, straight out of the trace.
+TAB_X = PANEL_X
+TAB_Y = 192
+COLOR_SWATCH = cut("v2_color_swatch", I1, 588, 260, 629, 281)
+
+
+def color_picker(slot_id, x, y):
+    """CharCustom_ColorPickerButton: a 39x19 colour chip under a 41x21 frame."""
+    slot(slot_id + "_Chip", CELL_PLATE, x + 1, y + 1, 39, 19)
+    slot(slot_id, COLOR_SWATCH, x, y, 41, 21)
+
+
+def tab_slider(slot_id, x, y):
+    """ARKDefaultSlider_V2, the same 151x8 track and 17x30 thumb the face rows use."""
+    slot(slot_id + "_Track", TRACK, x, y + 7 * SY, 151 * SX, 8 * SY)
+    slot(slot_id + "_Thumb", THUMB_N, x, y, 17 * 0.647 * SX, 30 * 0.733 * SY, hover=THUMB_O)
+
+
+def tile_list(prefix, x, y, columns, rows, pitch=71):
+    for i in range(columns * rows):
+        cell("%s%d" % (prefix, i), x + pitch * (i % columns), y + (pitch + 1) * (i // columns))
+
+
+# -- 머리카락: rightTabHairNewList (36,64), rightTabHairPresetList (36,170),
+#    rightTabHairSubTabList (35,472), then the default page's colour picker and two sliders.
+slot("CC_HairDivision", DIVISION, TAB_X + 35, TAB_Y + 25, 146 * 2.4726, 5)
+tile_list("CC_HairNew", TAB_X + 36, TAB_Y + 64, 5, 1)
+tile_list("CC_HairShape", TAB_X + 36, TAB_Y + 170, 5, 4)
+for i, sid in enumerate(("CC_HairSubBasic", "CC_HairSubTwoTone")):
+    slot(sid + "_Bg", TAB2_N, TAB_X + 35 + 123 * i, TAB_Y + 472, 82 * 1.5, 33, hover=TAB2_O)
+    slot(sid + "_Selected", TAB2_O, TAB_X + 35 + 123 * i, TAB_Y + 472, 82 * 1.5, 33)
+color_picker("CC_HairColor", TAB_X + 353, TAB_Y + 472 + 33 + 8)
+tab_slider("CC_Slider_hair_strength", TAB_X + 190, TAB_Y + 472 + 33 + 40)
+tab_slider("CC_Slider_hair_range", TAB_X + 190, TAB_Y + 472 + 33 + 73)
+
+# -- 눈: subTabList (35,72.9), then defaultPage @ (0,190) with its preset grid at (36,128),
+#    iris picker (353,32), eye colour picker (354,-1) and the definition/scale sliders.
+slot("CC_EyeDivision", DIVISION, TAB_X + 35, TAB_Y + 25, 146 * 2.4726, 5)
+for i, sid in enumerate(("CC_EyeSubIris", "CC_EyeSubOdd")):
+    slot(sid + "_Bg", TAB2_N, TAB_X + 35 + 123 * i, TAB_Y + 73, 82 * 1.5, 33, hover=TAB2_O)
+    slot(sid + "_Selected", TAB2_O, TAB_X + 35 + 123 * i, TAB_Y + 73, 82 * 1.5, 33)
+tab_slider("CC_Slider_eye_scale", TAB_X + 191, TAB_Y + 37)
+EYE_PAGE_Y = TAB_Y + 190
+color_picker("CC_EyeColor", TAB_X + 354, EYE_PAGE_Y - 1)
+color_picker("CC_EyeIrisColor", TAB_X + 353, EYE_PAGE_Y + 32)
+tab_slider("CC_Slider_eye_definition", TAB_X + 191, EYE_PAGE_Y + 61)
+tile_list("CC_EyeIris", TAB_X + 36, EYE_PAGE_Y + 128, 5, 3)
+
+# -- 피부: three sliders and one colour picker, no lists.
+slot("CC_SkinDivision", DIVISION, TAB_X + 35, TAB_Y + 25, 146 * 2.5, 5)
+color_picker("CC_SkinColor", TAB_X + 354, TAB_Y + 38)
+tab_slider("CC_Slider_skin_age", TAB_X + 191, TAB_Y + 69)
+tab_slider("CC_Slider_skin_shine", TAB_X + 191, TAB_Y + 135)
+tab_slider("CC_Slider_skin_freckles", TAB_X + 191, TAB_Y + 167)
+
+# -- 꾸미기: CharCustom_Right_TabAdornMakeUp's four sub-tabs at (0,36), each page a list at
+#    (1,31) with its own slider at (157,212) and picker at (319,186); the eye-line page adds a
+#    second pair at (157,275)/(319,249).
+slot("CC_AdornDivision", DIVISION, TAB_X + 35, TAB_Y + 25, 146 * 2.4726, 5)
+ADORN_SUBS = ("Lip", "Touch", "EyeLine", "EyeBrow")
+for i, name in enumerate(ADORN_SUBS):
+    sx = TAB_X + 35 + 123 * (i % 3)
+    sy = TAB_Y + 36 + 33 * (i // 3)
+    slot("CC_AdornSub%s_Bg" % name, TAB2_N, sx, sy, 82 * 1.5, 33, hover=TAB2_O)
+    slot("CC_AdornSub%s_Selected" % name, TAB2_O, sx, sy, 82 * 1.5, 33)
+ADORN_PAGE_Y = TAB_Y + 36 + 66 + 31
+tile_list("CC_AdornItem", TAB_X + 36, ADORN_PAGE_Y, 5, 2)
+tab_slider("CC_Slider_adorn_strength", TAB_X + 157, ADORN_PAGE_Y + 181)
+color_picker("CC_AdornColor", TAB_X + 319, ADORN_PAGE_Y + 155)
+tab_slider("CC_Slider_adorn_shadow", TAB_X + 157, ADORN_PAGE_Y + 244)
+color_picker("CC_AdornShadowColor", TAB_X + 319, ADORN_PAGE_Y + 218)
+
 document = {
     "schema": "lostark.ui-layout",
     "formatVersion": 1,

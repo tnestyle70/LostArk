@@ -3,7 +3,7 @@
   "formatVersion": 2,
   "areaId": "LV_LOBBY_CLASSSELECT_SL00",
   "provenance": "PROJECT_AUTHORED",
-  "nextLightOrdinal": 3,
+  "nextLightOrdinal": 4,
   "lights": [
     {
       "lightId": "light.LV_LOBBY_CLASSSELECT_SL00.1",
@@ -60,6 +60,62 @@
         1.0
       ],
       "brightness": 40.0
+    },
+    {
+      "lightId": "light.LV_LOBBY_CLASSSELECT_SL00.key",
+      "displayName": "Character Key",
+      "kind": "POINT",
+      "groupId": "character-key",
+      "enabled": true,
+      "position": [
+        -771.4,
+        -140.75,
+        194.6
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        1.0,
+        0.96,
+        0.91,
+        1.0
+      ],
+      "brightness": 1.2
+    },
+    {
+      "lightId": "light.LV_LOBBY_CLASSSELECT_SL00.fill",
+      "displayName": "Character Fill",
+      "kind": "POINT",
+      "groupId": "character-key",
+      "enabled": true,
+      "position": [
+        -774.0,
+        -141.45000000000002,
+        195.0
+      ],
+      "rotationDegrees": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rangeMeters": 8.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0.0,
+      "outerConeDegrees": 0.0,
+      "color": [
+        0.82,
+        0.87,
+        1.0,
+        1.0
+      ],
+      "brightness": 0.5
     }
   ]
 }

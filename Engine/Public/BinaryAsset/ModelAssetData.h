@@ -14,6 +14,11 @@ false is identity, and every pre-V3 material reads as that. */
 struct MODEL_COLOR_TINT
 {
 	bool_t isEnabled = { false };
+	/* Hair dyes differently from clothing: its diffuse *is* the region mask, so the tint
+	replaces the sampled colour instead of multiplying it, and the strand shading comes from
+	the mask's green channel. A material declares this by naming its own diffuse as the
+	colour mask, which no clothing material ever does -- there the two are separate maps. */
+	bool_t isHairMask = { false };
 	float4_t vDiffuse = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vRegionA = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vRegionB = { 1.f, 1.f, 1.f, 1.f };

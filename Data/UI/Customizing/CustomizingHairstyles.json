@@ -1,0 +1,1096 @@
+{
+  "schema": "lostark.customizing-hairstyles",
+  "formatVersion": 1,
+  "classes": {
+    "Artist": {
+      "hairstyle": [
+        {
+          "index": 0,
+          "sourceHairId": "PC_SP_00_Hair",
+          "setId": "pc_sp_00_hair",
+          "visualSetId": "character.artist.pc_sp_00_hair.head"
+        },
+        {
+          "index": 1,
+          "sourceHairId": "PC_SP_01_Hair",
+          "setId": "pc_sp_01_hair",
+          "visualSetId": "character.artist.pc_sp_01_hair.head"
+        },
+        {
+          "index": 2,
+          "sourceHairId": "PC_SP_02_Hair",
+          "setId": "pc_sp_02_hair",
+          "visualSetId": "character.artist.pc_sp_02_hair.head"
+        },
+        {
+          "index": 3,
+          "sourceHairId": "PC_SP_03_Hair",
+          "setId": "pc_sp_03_hair",
+          "visualSetId": "character.artist.pc_sp_03_hair.head"
+        },
+        {
+          "index": 4,
+          "sourceHairId": "PC_SP_04_Hair",
+          "setId": "pc_sp_04_hair",
+          "visualSetId": "character.artist.pc_sp_04_hair.head"
+        },
+        {
+          "index": 5,
+          "sourceHairId": "PC_SP_05_Hair",
+          "setId": "pc_sp_05_hair",
+          "visualSetId": "character.artist.pc_sp_05_hair.head"
+        },
+        {
+          "index": 6,
+          "sourceHairId": "PC_SP_06_Hair",
+          "setId": "pc_sp_06_hair",
+          "visualSetId": "character.artist.pc_sp_06_hair.head"
+        },
+        {
+          "index": 7,
+          "sourceHairId": "PC_SP_07_Hair",
+          "setId": "pc_sp_07_hair",
+          "visualSetId": "character.artist.pc_sp_07_hair.head"
+        },
+        {
+          "index": 8,
+          "sourceHairId": "PC_SP_08_Hair",
+          "setId": "pc_sp_08_hair",
+          "visualSetId": "character.artist.pc_sp_08_hair.head"
+        },
+        {
+          "index": 9,
+          "sourceHairId": "PC_SP_09_Hair",
+          "setId": "pc_sp_09_hair",
+          "visualSetId": "character.artist.pc_sp_09_hair.head"
+        },
+        {
+          "index": 10,
+          "sourceHairId": "PC_SP_10_Hair",
+          "setId": "pc_sp_10_hair",
+          "visualSetId": "character.artist.pc_sp_10_hair.head"
+        },
+        {
+          "index": 11,
+          "sourceHairId": "PC_SP_11_Hair",
+          "setId": "pc_sp_11_hair",
+          "visualSetId": "character.artist.pc_sp_11_hair.head"
+        },
+        {
+          "index": 12,
+          "sourceHairId": "PC_SP_12_Hair",
+          "setId": "pc_sp_12_hair",
+          "visualSetId": "character.artist.pc_sp_12_hair.head"
+        },
+        {
+          "index": 13,
+          "sourceHairId": "PC_SP_13_Hair",
+          "setId": "pc_sp_13_hair",
+          "visualSetId": "character.artist.pc_sp_13_hair.head"
+        },
+        {
+          "index": 14,
+          "sourceHairId": "PC_SP_14_Hair",
+          "setId": "pc_sp_14_hair",
+          "visualSetId": "character.artist.pc_sp_14_hair.head"
+        },
+        {
+          "index": 15,
+          "sourceHairId": "PC_SP_15_Hair",
+          "setId": "pc_sp_15_hair",
+          "visualSetId": "character.artist.pc_sp_15_hair.head"
+        },
+        {
+          "index": 16,
+          "sourceHairId": "PC_SP_16_Hair",
+          "setId": "pc_sp_16_hair",
+          "visualSetId": "character.artist.pc_sp_16_hair.head"
+        },
+        {
+          "index": 17,
+          "sourceHairId": "PC_SP_18_Hair",
+          "setId": "pc_sp_18_hair",
+          "visualSetId": "character.artist.pc_sp_18_hair.head"
+        },
+        {
+          "index": 18,
+          "sourceHairId": "PC_SP_19_Hair",
+          "setId": "pc_sp_19_hair",
+          "visualSetId": "character.artist.pc_sp_19_hair.head"
+        },
+        {
+          "index": 19,
+          "sourceHairId": "PC_SP_20_Hair",
+          "setId": "pc_sp_20_hair",
+          "visualSetId": "character.artist.pc_sp_20_hair.head"
+        },
+        {
+          "index": 20,
+          "sourceHairId": "PC_SP_21_Hair",
+          "setId": "pc_sp_21_hair",
+          "visualSetId": "character.artist.pc_sp_21_hair.head"
+        },
+        {
+          "index": 21,
+          "sourceHairId": "PC_SP_22_Hair",
+          "setId": "pc_sp_22_hair",
+          "visualSetId": "character.artist.pc_sp_22_hair.head"
+        },
+        {
+          "index": 22,
+          "sourceHairId": "PC_SP_23_Hair",
+          "setId": "pc_sp_23_hair",
+          "visualSetId": "character.artist.pc_sp_23_hair.head"
+        },
+        {
+          "index": 23,
+          "sourceHairId": "PC_SP_24_Hair",
+          "setId": "pc_sp_24_hair",
+          "visualSetId": "character.artist.pc_sp_24_hair.head"
+        },
+        {
+          "index": 24,
+          "sourceHairId": "PC_SP_25_Hair",
+          "setId": "pc_sp_25_hair",
+          "visualSetId": "character.artist.pc_sp_25_hair.head"
+        },
+        {
+          "index": 25,
+          "sourceHairId": "PC_SP_26_Hair",
+          "setId": "pc_sp_26_hair",
+          "visualSetId": "character.artist.pc_sp_26_hair.head"
+        },
+        {
+          "index": 26,
+          "sourceHairId": "PC_SP_27_Hair",
+          "setId": "pc_sp_27_hair",
+          "visualSetId": "character.artist.pc_sp_27_hair.head"
+        },
+        {
+          "index": 27,
+          "sourceHairId": "PC_SP_28_Hair",
+          "setId": "pc_sp_28_hair",
+          "visualSetId": "character.artist.pc_sp_28_hair.head"
+        },
+        {
+          "index": 28,
+          "sourceHairId": "PC_SP_29_Hair",
+          "setId": "pc_sp_29_hair",
+          "visualSetId": "character.artist.pc_sp_29_hair.head"
+        },
+        {
+          "index": 29,
+          "sourceHairId": "PC_SP_30_Hair",
+          "setId": "pc_sp_30_hair",
+          "visualSetId": "character.artist.pc_sp_30_hair.head"
+        },
+        {
+          "index": 30,
+          "sourceHairId": "PC_SP_31_Hair",
+          "setId": "pc_sp_31_hair",
+          "visualSetId": "character.artist.pc_sp_31_hair.head"
+        },
+        {
+          "index": 31,
+          "sourceHairId": "PC_SP_32_Hair",
+          "setId": "pc_sp_32_hair",
+          "visualSetId": "character.artist.pc_sp_32_hair.head"
+        },
+        {
+          "index": 32,
+          "sourceHairId": "PC_SP_33_Hair",
+          "setId": "pc_sp_33_hair",
+          "visualSetId": "character.artist.pc_sp_33_hair.head"
+        },
+        {
+          "index": 33,
+          "sourceHairId": "PC_SP_38_Hair",
+          "setId": "pc_sp_38_hair",
+          "visualSetId": "character.artist.pc_sp_38_hair.head"
+        },
+        {
+          "index": 34,
+          "sourceHairId": "PC_SP_39_Hair",
+          "setId": "pc_sp_39_hair",
+          "visualSetId": "character.artist.pc_sp_39_hair.head"
+        },
+        {
+          "index": 35,
+          "sourceHairId": "PC_SP_40_Hair",
+          "setId": "pc_sp_40_hair",
+          "visualSetId": "character.artist.pc_sp_40_hair.head"
+        },
+        {
+          "index": 36,
+          "sourceHairId": "PC_SP_42_Hair",
+          "setId": "pc_sp_42_hair",
+          "visualSetId": "character.artist.pc_sp_42_hair.head"
+        },
+        {
+          "index": 37,
+          "sourceHairId": "PC_SP_34_Hair",
+          "setId": "pc_sp_34_hair",
+          "visualSetId": "character.artist.pc_sp_34_hair.head"
+        },
+        {
+          "index": 38,
+          "sourceHairId": "PC_SP_43_Hair",
+          "setId": "pc_sp_43_hair",
+          "visualSetId": "character.artist.pc_sp_43_hair.head"
+        },
+        {
+          "index": 39,
+          "sourceHairId": "PC_SP_44_Hair",
+          "setId": "pc_sp_44_hair",
+          "visualSetId": "character.artist.pc_sp_44_hair.head"
+        },
+        {
+          "index": 40,
+          "sourceHairId": "PC_SP_45_Hair",
+          "setId": "pc_sp_45_hair",
+          "visualSetId": "character.artist.pc_sp_45_hair.head"
+        },
+        {
+          "index": 41,
+          "sourceHairId": "PC_SP_46_Hair",
+          "setId": "pc_sp_46_hair",
+          "visualSetId": "character.artist.pc_sp_46_hair.head"
+        },
+        {
+          "index": 42,
+          "sourceHairId": "PC_SP_47_Hair",
+          "setId": "pc_sp_47_hair",
+          "visualSetId": "character.artist.pc_sp_47_hair.head"
+        },
+        {
+          "index": 43,
+          "sourceHairId": "PC_SP_48_Hair",
+          "setId": "pc_sp_48_hair",
+          "visualSetId": "character.artist.pc_sp_48_hair.head"
+        },
+        {
+          "index": 44,
+          "sourceHairId": "PC_SP_49_Hair",
+          "setId": "pc_sp_49_hair",
+          "visualSetId": "character.artist.pc_sp_49_hair.head"
+        },
+        {
+          "index": 45,
+          "sourceHairId": "PC_SP_50_Hair",
+          "setId": "pc_sp_50_hair",
+          "visualSetId": "character.artist.pc_sp_50_hair.head"
+        },
+        {
+          "index": 46,
+          "sourceHairId": "PC_SP_51_Hair",
+          "setId": "pc_sp_51_hair",
+          "visualSetId": "character.artist.pc_sp_51_hair.head"
+        },
+        {
+          "index": 47,
+          "sourceHairId": "PC_SP_53_Hair",
+          "setId": "pc_sp_53_hair",
+          "visualSetId": "character.artist.pc_sp_53_hair.head"
+        },
+        {
+          "index": 48,
+          "sourceHairId": "PC_SP_52_Hair",
+          "setId": "pc_sp_52_hair",
+          "visualSetId": "character.artist.pc_sp_52_hair.head"
+        },
+        {
+          "index": 49,
+          "sourceHairId": "PC_SP_54_Hair",
+          "setId": "pc_sp_54_hair",
+          "visualSetId": "character.artist.pc_sp_54_hair.head"
+        },
+        {
+          "index": 50,
+          "sourceHairId": "PC_SP_55_Hair",
+          "setId": "pc_sp_55_hair",
+          "visualSetId": "character.artist.pc_sp_55_hair.head"
+        },
+        {
+          "index": 51,
+          "sourceHairId": "PC_SP_56_Hair",
+          "setId": "pc_sp_56_hair",
+          "visualSetId": "character.artist.pc_sp_56_hair.head"
+        },
+        {
+          "index": 52,
+          "sourceHairId": "PC_SP_57_Hair",
+          "setId": "pc_sp_57_hair",
+          "visualSetId": "character.artist.pc_sp_57_hair.head"
+        }
+      ]
+    },
+    "DimensionMaster": {
+      "hairstyle": [
+        {
+          "index": 0,
+          "sourceHairId": "PC_SP_M_55_Hair",
+          "setId": "pc_sp_m_55_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_55_hair.head"
+        },
+        {
+          "index": 1,
+          "sourceHairId": "PC_SP_M_56_Hair",
+          "setId": "pc_sp_m_56_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_56_hair.head"
+        },
+        {
+          "index": 2,
+          "sourceHairId": "PC_SP_M_57_Hair",
+          "setId": "pc_sp_m_57_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_57_hair.head"
+        },
+        {
+          "index": 3,
+          "sourceHairId": "PC_SP_M_58_Hair",
+          "setId": "pc_sp_m_58_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_58_hair.head"
+        },
+        {
+          "index": 4,
+          "sourceHairId": "PC_SP_M_59_Hair",
+          "setId": "pc_sp_m_59_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_59_hair.head"
+        },
+        {
+          "index": 5,
+          "sourceHairId": "PC_SP_M_60_Hair",
+          "setId": "pc_sp_m_60_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_60_hair.head"
+        },
+        {
+          "index": 6,
+          "sourceHairId": "PC_SP_M_07_Hair",
+          "setId": "pc_sp_m_07_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_07_hair.head"
+        },
+        {
+          "index": 7,
+          "sourceHairId": "PC_SP_M_09_Hair",
+          "setId": "pc_sp_m_09_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_09_hair.head"
+        },
+        {
+          "index": 8,
+          "sourceHairId": "PC_SP_M_13_Hair",
+          "setId": "pc_sp_m_13_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_13_hair.head"
+        },
+        {
+          "index": 9,
+          "sourceHairId": "PC_SP_M_18_Hair",
+          "setId": "pc_sp_m_18_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_18_hair.head"
+        },
+        {
+          "index": 10,
+          "sourceHairId": "PC_SP_M_19_Hair",
+          "setId": "pc_sp_m_19_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_19_hair.head"
+        },
+        {
+          "index": 11,
+          "sourceHairId": "PC_SP_M_20_Hair",
+          "setId": "pc_sp_m_20_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_20_hair.head"
+        },
+        {
+          "index": 12,
+          "sourceHairId": "PC_SP_M_21_Hair",
+          "setId": "pc_sp_m_21_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_21_hair.head"
+        },
+        {
+          "index": 13,
+          "sourceHairId": "PC_SP_M_23_Hair",
+          "setId": "pc_sp_m_23_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_23_hair.head"
+        },
+        {
+          "index": 14,
+          "sourceHairId": "PC_SP_M_24_Hair",
+          "setId": "pc_sp_m_24_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_24_hair.head"
+        },
+        {
+          "index": 15,
+          "sourceHairId": "PC_SP_M_25_Hair",
+          "setId": "pc_sp_m_25_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_25_hair.head"
+        },
+        {
+          "index": 16,
+          "sourceHairId": "PC_SP_M_26_Hair",
+          "setId": "pc_sp_m_26_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_26_hair.head"
+        },
+        {
+          "index": 17,
+          "sourceHairId": "PC_SP_M_27_Hair",
+          "setId": "pc_sp_m_27_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_27_hair.head"
+        },
+        {
+          "index": 18,
+          "sourceHairId": "PC_SP_M_45_Hair",
+          "setId": "pc_sp_m_45_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_45_hair.head"
+        },
+        {
+          "index": 19,
+          "sourceHairId": "PC_SP_M_29_Hair",
+          "setId": "pc_sp_m_29_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_29_hair.head"
+        },
+        {
+          "index": 20,
+          "sourceHairId": "PC_SP_M_31_Hair",
+          "setId": "pc_sp_m_31_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_31_hair.head"
+        },
+        {
+          "index": 21,
+          "sourceHairId": "PC_SP_M_32_Hair",
+          "setId": "pc_sp_m_32_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_32_hair.head"
+        },
+        {
+          "index": 22,
+          "sourceHairId": "PC_SP_M_33_Hair",
+          "setId": "pc_sp_m_33_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_33_hair.head"
+        },
+        {
+          "index": 23,
+          "sourceHairId": "PC_SP_M_34_Hair",
+          "setId": "pc_sp_m_34_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_34_hair.head"
+        },
+        {
+          "index": 24,
+          "sourceHairId": "PC_SP_M_35_Hair",
+          "setId": "pc_sp_m_35_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_35_hair.head"
+        },
+        {
+          "index": 25,
+          "sourceHairId": "PC_SP_M_36_Hair",
+          "setId": "pc_sp_m_36_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_36_hair.head"
+        },
+        {
+          "index": 26,
+          "sourceHairId": "PC_SP_M_37_Hair",
+          "setId": "pc_sp_m_37_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_37_hair.head"
+        },
+        {
+          "index": 27,
+          "sourceHairId": "PC_SP_M_38_Hair",
+          "setId": "pc_sp_m_38_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_38_hair.head"
+        },
+        {
+          "index": 28,
+          "sourceHairId": "PC_SP_M_39_Hair",
+          "setId": "pc_sp_m_39_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_39_hair.head"
+        },
+        {
+          "index": 29,
+          "sourceHairId": "PC_SP_M_40_Hair",
+          "setId": "pc_sp_m_40_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_40_hair.head"
+        },
+        {
+          "index": 30,
+          "sourceHairId": "PC_SP_M_41_Hair",
+          "setId": "pc_sp_m_41_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_41_hair.head"
+        },
+        {
+          "index": 31,
+          "sourceHairId": "PC_SP_M_43_Hair",
+          "setId": "pc_sp_m_43_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_43_hair.head"
+        },
+        {
+          "index": 32,
+          "sourceHairId": "PC_SP_M_44_Hair",
+          "setId": "pc_sp_m_44_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_44_hair.head"
+        },
+        {
+          "index": 33,
+          "sourceHairId": "PC_SP_M_46_Hair",
+          "setId": "pc_sp_m_46_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_46_hair.head"
+        },
+        {
+          "index": 34,
+          "sourceHairId": "PC_SP_M_47_Hair",
+          "setId": "pc_sp_m_47_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_47_hair.head"
+        },
+        {
+          "index": 35,
+          "sourceHairId": "PC_SP_M_48_Hair",
+          "setId": "pc_sp_m_48_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_48_hair.head"
+        },
+        {
+          "index": 36,
+          "sourceHairId": "PC_SP_M_49_Hair",
+          "setId": "pc_sp_m_49_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_49_hair.head"
+        },
+        {
+          "index": 37,
+          "sourceHairId": "PC_SP_M_50_Hair",
+          "setId": "pc_sp_m_50_hair",
+          "visualSetId": "character.dimensionmaster.pc_sp_m_50_hair.head"
+        }
+      ]
+    },
+    "LanceMaster": {
+      "hairstyle": [
+        {
+          "index": 0,
+          "sourceHairId": "PC_FT_00_Hair",
+          "setId": "pc_ft_00_hair",
+          "visualSetId": "character.lance_master.pc_ft_00_hair.head"
+        },
+        {
+          "index": 1,
+          "sourceHairId": "PC_FT_01_Hair",
+          "setId": "pc_ft_01_hair",
+          "visualSetId": "character.lance_master.pc_ft_01_hair.head"
+        },
+        {
+          "index": 2,
+          "sourceHairId": "PC_FT_02_Hair",
+          "setId": "pc_ft_02_hair",
+          "visualSetId": "character.lance_master.pc_ft_02_hair.head"
+        },
+        {
+          "index": 3,
+          "sourceHairId": "PC_FT_03_Hair",
+          "setId": "pc_ft_03_hair",
+          "visualSetId": "character.lance_master.pc_ft_03_hair.head"
+        },
+        {
+          "index": 4,
+          "sourceHairId": "PC_FT_04_Hair",
+          "setId": "pc_ft_04_hair",
+          "visualSetId": "character.lance_master.pc_ft_04_hair.head"
+        },
+        {
+          "index": 5,
+          "sourceHairId": "PC_FT_05_Hair",
+          "setId": "pc_ft_05_hair",
+          "visualSetId": "character.lance_master.pc_ft_05_hair.head"
+        },
+        {
+          "index": 6,
+          "sourceHairId": "PC_FT_06_Hair",
+          "setId": "pc_ft_06_hair",
+          "visualSetId": "character.lance_master.pc_ft_06_hair.head"
+        },
+        {
+          "index": 7,
+          "sourceHairId": "PC_FT_07_Hair",
+          "setId": "pc_ft_07_hair",
+          "visualSetId": "character.lance_master.pc_ft_07_hair.head"
+        },
+        {
+          "index": 8,
+          "sourceHairId": "PC_FT_08_Hair",
+          "setId": "pc_ft_08_hair",
+          "visualSetId": "character.lance_master.pc_ft_08_hair.head"
+        },
+        {
+          "index": 9,
+          "sourceHairId": "PC_FT_10_Hair",
+          "setId": "pc_ft_10_hair",
+          "visualSetId": "character.lance_master.pc_ft_10_hair.head"
+        },
+        {
+          "index": 10,
+          "sourceHairId": "PC_FT_11_Hair",
+          "setId": "pc_ft_11_hair",
+          "visualSetId": "character.lance_master.pc_ft_11_hair.head"
+        },
+        {
+          "index": 11,
+          "sourceHairId": "PC_FT_12_hair",
+          "setId": "pc_ft_12_hair",
+          "visualSetId": "character.lance_master.pc_ft_12_hair.head"
+        },
+        {
+          "index": 12,
+          "sourceHairId": "PC_FT_13_Hair",
+          "setId": "pc_ft_13_hair",
+          "visualSetId": "character.lance_master.pc_ft_13_hair.head"
+        },
+        {
+          "index": 13,
+          "sourceHairId": "PC_FT_14_Hair",
+          "setId": "pc_ft_14_hair",
+          "visualSetId": "character.lance_master.pc_ft_14_hair.head"
+        },
+        {
+          "index": 14,
+          "sourceHairId": "PC_FT_19_Hair",
+          "setId": "pc_ft_19_hair",
+          "visualSetId": "character.lance_master.pc_ft_19_hair.head"
+        },
+        {
+          "index": 15,
+          "sourceHairId": "PC_FT_20_Hair",
+          "setId": "pc_ft_20_hair",
+          "visualSetId": "character.lance_master.pc_ft_20_hair.head"
+        },
+        {
+          "index": 16,
+          "sourceHairId": "PC_FT_17_Hair",
+          "setId": "pc_ft_17_hair",
+          "visualSetId": "character.lance_master.pc_ft_17_hair.head"
+        },
+        {
+          "index": 17,
+          "sourceHairId": "PC_FT_18_Hair",
+          "setId": "pc_ft_18_hair",
+          "visualSetId": "character.lance_master.pc_ft_18_hair.head"
+        },
+        {
+          "index": 18,
+          "sourceHairId": "PC_FT_23_Hair",
+          "setId": "pc_ft_23_hair",
+          "visualSetId": "character.lance_master.pc_ft_23_hair.head"
+        },
+        {
+          "index": 19,
+          "sourceHairId": "PC_FT_24_Hair",
+          "setId": "pc_ft_24_hair",
+          "visualSetId": "character.lance_master.pc_ft_24_hair.head"
+        },
+        {
+          "index": 20,
+          "sourceHairId": "PC_FT_25_Hair",
+          "setId": "pc_ft_25_hair",
+          "visualSetId": "character.lance_master.pc_ft_25_hair.head"
+        },
+        {
+          "index": 21,
+          "sourceHairId": "PC_FT_28_HAIR",
+          "setId": "pc_ft_28_hair",
+          "visualSetId": "character.lance_master.pc_ft_28_hair.head"
+        },
+        {
+          "index": 22,
+          "sourceHairId": "PC_FT_30_HAIR",
+          "setId": "pc_ft_30_hair",
+          "visualSetId": "character.lance_master.pc_ft_30_hair.head"
+        },
+        {
+          "index": 23,
+          "sourceHairId": "PC_FT_31_HAIR",
+          "setId": "pc_ft_31_hair",
+          "visualSetId": "character.lance_master.pc_ft_31_hair.head"
+        },
+        {
+          "index": 24,
+          "sourceHairId": "PC_FT_32_Hair",
+          "setId": "pc_ft_32_hair",
+          "visualSetId": "character.lance_master.pc_ft_32_hair.head"
+        },
+        {
+          "index": 25,
+          "sourceHairId": "PC_FT_37_Hair",
+          "setId": "pc_ft_37_hair",
+          "visualSetId": "character.lance_master.pc_ft_37_hair.head"
+        },
+        {
+          "index": 26,
+          "sourceHairId": "PC_FT_38_Hair",
+          "setId": "pc_ft_38_hair",
+          "visualSetId": "character.lance_master.pc_ft_38_hair.head"
+        },
+        {
+          "index": 27,
+          "sourceHairId": "PC_FT_39_Hair",
+          "setId": "pc_ft_39_hair",
+          "visualSetId": "character.lance_master.pc_ft_39_hair.head"
+        },
+        {
+          "index": 28,
+          "sourceHairId": "PC_FT_41_Hair",
+          "setId": "pc_ft_41_hair",
+          "visualSetId": "character.lance_master.pc_ft_41_hair.head"
+        },
+        {
+          "index": 29,
+          "sourceHairId": "PC_FT_33_Hair",
+          "setId": "pc_ft_33_hair",
+          "visualSetId": "character.lance_master.pc_ft_33_hair.head"
+        },
+        {
+          "index": 30,
+          "sourceHairId": "PC_FT_42_Hair",
+          "setId": "pc_ft_42_hair",
+          "visualSetId": "character.lance_master.pc_ft_42_hair.head"
+        },
+        {
+          "index": 31,
+          "sourceHairId": "PC_FT_44_Hair",
+          "setId": "pc_ft_44_hair",
+          "visualSetId": "character.lance_master.pc_ft_44_hair.head"
+        },
+        {
+          "index": 32,
+          "sourceHairId": "PC_FT_43_Hair",
+          "setId": "pc_ft_43_hair",
+          "visualSetId": "character.lance_master.pc_ft_43_hair.head"
+        },
+        {
+          "index": 33,
+          "sourceHairId": "PC_FT_45_Hair",
+          "setId": "pc_ft_45_hair",
+          "visualSetId": "character.lance_master.pc_ft_45_hair.head"
+        },
+        {
+          "index": 34,
+          "sourceHairId": "PC_FT_46_Hair",
+          "setId": "pc_ft_46_hair",
+          "visualSetId": "character.lance_master.pc_ft_46_hair.head"
+        },
+        {
+          "index": 35,
+          "sourceHairId": "PC_FT_47_Hair",
+          "setId": "pc_ft_47_hair",
+          "visualSetId": "character.lance_master.pc_ft_47_hair.head"
+        },
+        {
+          "index": 36,
+          "sourceHairId": "PC_FT_48_Hair",
+          "setId": "pc_ft_48_hair",
+          "visualSetId": "character.lance_master.pc_ft_48_hair.head"
+        },
+        {
+          "index": 37,
+          "sourceHairId": "PC_FT_49_Hair",
+          "setId": "pc_ft_49_hair",
+          "visualSetId": "character.lance_master.pc_ft_49_hair.head"
+        },
+        {
+          "index": 38,
+          "sourceHairId": "PC_FT_50_Hair",
+          "setId": "pc_ft_50_hair",
+          "visualSetId": "character.lance_master.pc_ft_50_hair.head"
+        },
+        {
+          "index": 39,
+          "sourceHairId": "PC_FT_52_Hair",
+          "setId": "pc_ft_52_hair",
+          "visualSetId": "character.lance_master.pc_ft_52_hair.head"
+        },
+        {
+          "index": 40,
+          "sourceHairId": "PC_FT_51_Hair",
+          "setId": "pc_ft_51_hair",
+          "visualSetId": "character.lance_master.pc_ft_51_hair.head"
+        },
+        {
+          "index": 41,
+          "sourceHairId": "PC_FT_53_Hair",
+          "setId": "pc_ft_53_hair",
+          "visualSetId": "character.lance_master.pc_ft_53_hair.head"
+        },
+        {
+          "index": 42,
+          "sourceHairId": "PC_FT_54_Hair",
+          "setId": "pc_ft_54_hair",
+          "visualSetId": "character.lance_master.pc_ft_54_hair.head"
+        },
+        {
+          "index": 43,
+          "sourceHairId": "PC_FT_55_Hair",
+          "setId": "pc_ft_55_hair",
+          "visualSetId": "character.lance_master.pc_ft_55_hair.head"
+        },
+        {
+          "index": 44,
+          "sourceHairId": "PC_FT_56_Hair",
+          "setId": "pc_ft_56_hair",
+          "visualSetId": "character.lance_master.pc_ft_56_hair.head"
+        }
+      ]
+    },
+    "Warlord": {
+      "hairstyle": [
+        {
+          "index": 0,
+          "sourceHairId": "PC_WR_00_Hair",
+          "setId": "pc_wr_00_hair",
+          "visualSetId": "character.warlord.pc_wr_00_hair.head"
+        },
+        {
+          "index": 1,
+          "sourceHairId": "PC_WR_01_Hair",
+          "setId": "pc_wr_01_hair",
+          "visualSetId": "character.warlord.pc_wr_01_hair.head"
+        },
+        {
+          "index": 2,
+          "sourceHairId": "PC_WR_02_Hair",
+          "setId": "pc_wr_02_hair",
+          "visualSetId": "character.warlord.pc_wr_02_hair.head"
+        },
+        {
+          "index": 3,
+          "sourceHairId": "PC_WR_03_hair",
+          "setId": "pc_wr_03_hair",
+          "visualSetId": "character.warlord.pc_wr_03_hair.head"
+        },
+        {
+          "index": 4,
+          "sourceHairId": "PC_WR_04_hair",
+          "setId": "pc_wr_04_hair",
+          "visualSetId": "character.warlord.pc_wr_04_hair.head"
+        },
+        {
+          "index": 5,
+          "sourceHairId": "PC_WR_05_hair",
+          "setId": "pc_wr_05_hair",
+          "visualSetId": "character.warlord.pc_wr_05_hair.head"
+        },
+        {
+          "index": 6,
+          "sourceHairId": "PC_WR_06_Hair",
+          "setId": "pc_wr_06_hair",
+          "visualSetId": "character.warlord.pc_wr_06_hair.head"
+        },
+        {
+          "index": 7,
+          "sourceHairId": "PC_WR_07_Hair",
+          "setId": "pc_wr_07_hair",
+          "visualSetId": "character.warlord.pc_wr_07_hair.head"
+        },
+        {
+          "index": 8,
+          "sourceHairId": "PC_WR_08_Hair",
+          "setId": "pc_wr_08_hair",
+          "visualSetId": "character.warlord.pc_wr_08_hair.head"
+        },
+        {
+          "index": 9,
+          "sourceHairId": "PC_WR_09_Hair",
+          "setId": "pc_wr_09_hair",
+          "visualSetId": "character.warlord.pc_wr_09_hair.head"
+        },
+        {
+          "index": 10,
+          "sourceHairId": "PC_WR_10_Hair",
+          "setId": "pc_wr_10_hair",
+          "visualSetId": "character.warlord.pc_wr_10_hair.head"
+        },
+        {
+          "index": 11,
+          "sourceHairId": "PC_WR_11_Hair",
+          "setId": "pc_wr_11_hair",
+          "visualSetId": "character.warlord.pc_wr_11_hair.head"
+        },
+        {
+          "index": 12,
+          "sourceHairId": "PC_WR_12_Hair",
+          "setId": "pc_wr_12_hair",
+          "visualSetId": "character.warlord.pc_wr_12_hair.head"
+        },
+        {
+          "index": 13,
+          "sourceHairId": "PC_WR_13_Hair",
+          "setId": "pc_wr_13_hair",
+          "visualSetId": "character.warlord.pc_wr_13_hair.head"
+        },
+        {
+          "index": 14,
+          "sourceHairId": "PC_WR_14_Hair",
+          "setId": "pc_wr_14_hair",
+          "visualSetId": "character.warlord.pc_wr_14_hair.head"
+        },
+        {
+          "index": 15,
+          "sourceHairId": "PC_WR_15_Hair",
+          "setId": "pc_wr_15_hair",
+          "visualSetId": "character.warlord.pc_wr_15_hair.head"
+        },
+        {
+          "index": 16,
+          "sourceHairId": "PC_WR_18_Hair",
+          "setId": "pc_wr_18_hair",
+          "visualSetId": "character.warlord.pc_wr_18_hair.head"
+        },
+        {
+          "index": 17,
+          "sourceHairId": "PC_WR_19_Hair",
+          "setId": "pc_wr_19_hair",
+          "visualSetId": "character.warlord.pc_wr_19_hair.head"
+        },
+        {
+          "index": 18,
+          "sourceHairId": "PC_WR_20_Hair",
+          "setId": "pc_wr_20_hair",
+          "visualSetId": "character.warlord.pc_wr_20_hair.head"
+        },
+        {
+          "index": 19,
+          "sourceHairId": "PC_WR_21_HAIR",
+          "setId": "pc_wr_21_hair",
+          "visualSetId": "character.warlord.pc_wr_21_hair.head"
+        },
+        {
+          "index": 20,
+          "sourceHairId": "PC_WR_23_HAIR",
+          "setId": "pc_wr_23_hair",
+          "visualSetId": "character.warlord.pc_wr_23_hair.head"
+        },
+        {
+          "index": 21,
+          "sourceHairId": "PC_WR_24_HAIR",
+          "setId": "pc_wr_24_hair",
+          "visualSetId": "character.warlord.pc_wr_24_hair.head"
+        },
+        {
+          "index": 22,
+          "sourceHairId": "PC_WR_25_Hair",
+          "setId": "pc_wr_25_hair",
+          "visualSetId": "character.warlord.pc_wr_25_hair.head"
+        },
+        {
+          "index": 23,
+          "sourceHairId": "PC_WR_27_Hair",
+          "setId": "pc_wr_27_hair",
+          "visualSetId": "character.warlord.pc_wr_27_hair.head"
+        },
+        {
+          "index": 24,
+          "sourceHairId": "PC_WR_28_Hair",
+          "setId": "pc_wr_28_hair",
+          "visualSetId": "character.warlord.pc_wr_28_hair.head"
+        },
+        {
+          "index": 25,
+          "sourceHairId": "PC_WR_29_Hair",
+          "setId": "pc_wr_29_hair",
+          "visualSetId": "character.warlord.pc_wr_29_hair.head"
+        },
+        {
+          "index": 26,
+          "sourceHairId": "PC_WR_30_Hair",
+          "setId": "pc_wr_30_hair",
+          "visualSetId": "character.warlord.pc_wr_30_hair.head"
+        },
+        {
+          "index": 27,
+          "sourceHairId": "PC_WR_26_Hair",
+          "setId": "pc_wr_26_hair",
+          "visualSetId": "character.warlord.pc_wr_26_hair.head"
+        },
+        {
+          "index": 28,
+          "sourceHairId": "PC_WR_31_Hair",
+          "setId": "pc_wr_31_hair",
+          "visualSetId": "character.warlord.pc_wr_31_hair.head"
+        },
+        {
+          "index": 29,
+          "sourceHairId": "PC_WR_32_Hair",
+          "setId": "pc_wr_32_hair",
+          "visualSetId": "character.warlord.pc_wr_32_hair.head"
+        },
+        {
+          "index": 30,
+          "sourceHairId": "PC_WR_33_Hair",
+          "setId": "pc_wr_33_hair",
+          "visualSetId": "character.warlord.pc_wr_33_hair.head"
+        },
+        {
+          "index": 31,
+          "sourceHairId": "PC_WR_34_Hair",
+          "setId": "pc_wr_34_hair",
+          "visualSetId": "character.warlord.pc_wr_34_hair.head"
+        },
+        {
+          "index": 32,
+          "sourceHairId": "PC_WR_35_Hair",
+          "setId": "pc_wr_35_hair",
+          "visualSetId": "character.warlord.pc_wr_35_hair.head"
+        },
+        {
+          "index": 33,
+          "sourceHairId": "PC_WR_36_Hair",
+          "setId": "pc_wr_36_hair",
+          "visualSetId": "character.warlord.pc_wr_36_hair.head"
+        },
+        {
+          "index": 34,
+          "sourceHairId": "PC_WR_37_Hair",
+          "setId": "pc_wr_37_hair",
+          "visualSetId": "character.warlord.pc_wr_37_hair.head"
+        },
+        {
+          "index": 35,
+          "sourceHairId": "PC_WR_39_Hair",
+          "setId": "pc_wr_39_hair",
+          "visualSetId": "character.warlord.pc_wr_39_hair.head"
+        },
+        {
+          "index": 36,
+          "sourceHairId": "PC_WR_40_Hair",
+          "setId": "pc_wr_40_hair",
+          "visualSetId": "character.warlord.pc_wr_40_hair.head"
+        },
+        {
+          "index": 37,
+          "sourceHairId": "PC_WR_43_Hair",
+          "setId": "pc_wr_43_hair",
+          "visualSetId": "character.warlord.pc_wr_43_hair.head"
+        },
+        {
+          "index": 38,
+          "sourceHairId": "PC_WR_44_Hair",
+          "setId": "pc_wr_44_hair",
+          "visualSetId": "character.warlord.pc_wr_44_hair.head"
+        },
+        {
+          "index": 39,
+          "sourceHairId": "PC_WR_45_Hair",
+          "setId": "pc_wr_45_hair",
+          "visualSetId": "character.warlord.pc_wr_45_hair.head"
+        },
+        {
+          "index": 40,
+          "sourceHairId": "PC_WR_46_Hair",
+          "setId": "pc_wr_46_hair",
+          "visualSetId": "character.warlord.pc_wr_46_hair.head"
+        },
+        {
+          "index": 41,
+          "sourceHairId": "PC_WR_47_Hair",
+          "setId": "pc_wr_47_hair",
+          "visualSetId": "character.warlord.pc_wr_47_hair.head"
+        },
+        {
+          "index": 42,
+          "sourceHairId": "PC_WR_48_Hair",
+          "setId": "pc_wr_48_hair",
+          "visualSetId": "character.warlord.pc_wr_48_hair.head"
+        }
+      ]
+    }
+  }
+}

@@ -429,6 +429,149 @@ shared_ptr<CMesh> CMesh::Create(ComPtr<ID3D11Device> pDevice,
 }
 
 
+bool_t CMesh::Get_MorphBaseVertex(uint32_t iIndex, float3_t& OutPosition, float3_t& OutNormal) const
+{
+	if (!Has_MorphBaseVertices() || iIndex >= m_iNumVertices)
+		return false;
+	OutPosition = (*m_pMorphBasePositions)[iIndex];
+	OutNormal = (*m_pMorphBaseNormals)[iIndex];
+	return true;
+}
+
+HRESULT CMesh::Make_VertexBuffer_Unique()
+{
+	if (m_hasUniqueVertexBuffer)
+		return S_OK;
+	if (0u == m_iNumVertices || nullptr == m_pVB)
+		return E_FAIL;
+
+	const uint32_t iByteWidth = m_iVertexStride * m_iNumVertices;
+
+	/* The unmorphed rest position/normal has to come from somewhere, and the vertex buffer
+	is D3D11_USAGE_DEFAULT with CPUAccessFlags 0, so it cannot be Map()ed directly. Copying
+	it into a staging buffer first is the one supported readback path, and doing it here --
+	once, for the one character that actually opens the face editor -- costs nothing for
+	every other model, which is why nothing is retained at load time. */
+	D3D11_BUFFER_DESC stagingDesc{};
+	stagingDesc.ByteWidth = iByteWidth;
+	stagingDesc.Usage = D3D11_USAGE_STAGING;
+	stagingDesc.BindFlags = 0;
+	stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	stagingDesc.StructureByteStride = m_iVertexStride;
+
+	ComPtr<ID3D11Buffer> pStaging;
+	if (FAILED(m_pDevice->CreateBuffer(&stagingDesc, nullptr, &pStaging)))
+		return E_FAIL;
+	m_pContext->CopyResource(pStaging.Get(), m_pVB.Get());
+
+	D3D11_MAPPED_SUBRESOURCE mapped{};
+	if (FAILED(m_pContext->Map(pStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped)) ||
+		nullptr == mapped.pData)
+	{
+		return E_FAIL;
+	}
+
+	auto pPositions = make_shared<vector<float3_t>>(m_iNumVertices);
+	auto pNormals = make_shared<vector<float3_t>>(m_iNumVertices);
+	const uint8_t* pVertices = static_cast<const uint8_t*>(mapped.pData);
+	for (uint32_t i = 0; i < m_iNumVertices; ++i)
+	{
+		/* vPosition sits at offset 0 and vNormal at 12 in both VTXMESH and VTXANIMMESH. */
+		const uint8_t* pVertex = pVertices + static_cast<size_t>(i) * m_iVertexStride;
+		memcpy(&(*pPositions)[i], pVertex, sizeof(float3_t));
+		memcpy(&(*pNormals)[i], pVertex + sizeof(float3_t), sizeof(float3_t));
+	}
+	m_pContext->Unmap(pStaging.Get(), 0);
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth = iByteWidth;
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = m_iVertexStride;
+
+	ComPtr<ID3D11Buffer> pUniqueVB;
+	if (FAILED(m_pDevice->CreateBuffer(&vertexBufferDesc, nullptr, &pUniqueVB)))
+		return E_FAIL;
+
+	/* GPU-side copy of the buffer this instance still shares with the prototype and its
+	siblings, so the new one starts identical -- every field, not just the position/normal
+	this class knows how to touch. */
+	m_pContext->CopyResource(pUniqueVB.Get(), m_pVB.Get());
+
+	m_pMorphBasePositions = pPositions;
+	m_pMorphBaseNormals = pNormals;
+	m_pVB = pUniqueVB;
+	m_hasUniqueVertexBuffer = true;
+	m_TouchedVertexIndices.clear();
+	return S_OK;
+}
+
+HRESULT CMesh::Update_Vertices(const vector<uint32_t>& iIndices,
+	const vector<float3_t>& Positions, const vector<float3_t>& Normals)
+{
+	if (!m_hasUniqueVertexBuffer)
+		return E_FAIL;
+	if (iIndices.size() != Positions.size() || iIndices.size() != Normals.size())
+		return E_INVALIDARG;
+
+	for (size_t i = 0; i < iIndices.size(); ++i)
+	{
+		const uint32_t iVertex = iIndices[i];
+		if (iVertex >= m_iNumVertices)
+			return E_INVALIDARG;
+
+		const f32_t PositionNormal[6] = {
+			Positions[i].x, Positions[i].y, Positions[i].z,
+			Normals[i].x, Normals[i].y, Normals[i].z,
+		};
+
+		D3D11_BOX Box{};
+		Box.left = iVertex * m_iVertexStride;
+		Box.right = Box.left + sizeof(PositionNormal);
+		Box.top = 0u;
+		Box.bottom = 1u;
+		Box.front = 0u;
+		Box.back = 1u;
+
+		/* vPosition and vNormal are adjacent (offset 0 and 12) in both VTXMESH and
+		VTXANIMMESH, so one 24-byte box covers both; every other field (tangent, binormal,
+		UV, blend indices/weights) is outside this box and is left untouched. */
+		m_pContext->UpdateSubresource(m_pVB.Get(), 0, &Box, PositionNormal, 0, 0);
+		m_TouchedVertexIndices.push_back(iVertex);
+	}
+	return S_OK;
+}
+
+HRESULT CMesh::Reset_Vertices()
+{
+	if (!m_hasUniqueVertexBuffer || m_TouchedVertexIndices.empty())
+		return S_OK;
+	if (!Has_MorphBaseVertices())
+		return E_FAIL;
+
+	for (uint32_t iVertex : m_TouchedVertexIndices)
+	{
+		const float3_t& BasePosition = (*m_pMorphBasePositions)[iVertex];
+		const float3_t& BaseNormal = (*m_pMorphBaseNormals)[iVertex];
+		const f32_t PositionNormal[6] = {
+			BasePosition.x, BasePosition.y, BasePosition.z,
+			BaseNormal.x, BaseNormal.y, BaseNormal.z,
+		};
+
+		D3D11_BOX Box{};
+		Box.left = iVertex * m_iVertexStride;
+		Box.right = Box.left + sizeof(PositionNormal);
+		Box.top = 0u;
+		Box.bottom = 1u;
+		Box.front = 0u;
+		Box.back = 1u;
+
+		m_pContext->UpdateSubresource(m_pVB.Get(), 0, &Box, PositionNormal, 0, 0);
+	}
+	m_TouchedVertexIndices.clear();
+	return S_OK;
+}
+
 shared_ptr<CPrototype> CMesh::Clone(void* pArg)
 {
 	auto pInstance = shared_ptr<CMesh>(new CMesh(*this));
