@@ -5,6 +5,7 @@
 #include "ServerWorldEntity.h"
 #include "ServerNavigation.h"
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <set>
@@ -212,6 +213,83 @@ namespace LostArk::Server
 	dealt and how many of that suit they have felled. It owns no entity and no
 	socket -- the room spawns, hits and despawns on its verdicts -- and it is
 	reset with the run, never by the roulette that shares the suit enum. */
+	/* The bingo board. Two 25-bit masks are the whole of it: a white bit is a
+	skull, a red bit is a skull on a line that has completed. Red never clears
+	until the board resets, so a finished line stays safe. */
+	class CKoukuBingoRuntime final
+	{
+	public:
+		void Reset() noexcept
+		{
+			m_iWhiteMask = 0u;
+			m_iRedMask = 0u;
+			m_Bombs = {};
+			m_Hammer = {};
+		}
+		/* Paints the given cells white, then promotes every line that is now
+		complete. Bits outside the board are ignored rather than refused so a
+		caller cannot half-apply a fill. */
+		void Fill(std::uint32_t cellMask) noexcept;
+		/* One bomb blast. Empty cells in the mask light up, white cells that
+		are not part of a completed line go back out, and red cells are left
+		alone. Every cell is judged against the board as it stood before the
+		blast, so neighbours inside one cross cannot cancel each other by
+		order. Completed lines promote afterwards, same as Fill. */
+		void Detonate(std::uint32_t cellMask) noexcept;
+		[[nodiscard]] std::uint32_t Get_WhiteMask() const noexcept { return m_iWhiteMask; }
+		[[nodiscard]] std::uint32_t Get_RedMask() const noexcept { return m_iRedMask; }
+		/* True while this position stands on a completed line. The wipe attack
+		is the consumer; until then only the contract test asks. */
+		[[nodiscard]] bool Is_Safe(float x, float z) const noexcept;
+
+		/* One bomb slot. The room owns player lookup, so the runtime keeps the
+		carrier's id and asks to be told where that carrier is when the mark
+		expires. */
+		struct BOMB final
+		{
+			LostArk::Shared::BINGO_BOMB_PHASE ePhase =
+				LostArk::Shared::BINGO_BOMB_PHASE::NONE;
+			LostArk::Shared::NET_ENTITY_ID iCarrierNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			float fPositionX = 0.f;
+			float fPositionZ = 0.f;
+			std::uint32_t iDetonateTick = 0u;
+		};
+		using BOMB_SLOTS = std::array<BOMB,
+			static_cast<std::size_t>(LostArk::Shared::KOUKU_BINGO_MAX_BOMBS)>;
+
+		/* Marks a carrier if it has no live bomb and a slot is free. Returns
+		false rather than replacing an existing mark, so a double press cannot
+		restart someone else's clock. */
+		bool Start_Bomb(LostArk::Shared::NET_ENTITY_ID carrier,
+			std::uint32_t detonateTick) noexcept;
+		/* Turns a MARKED slot into a PLANTED bomb at this position, burning
+		until the given tick. */
+		void Plant_Bomb(std::size_t slot, float x, float z,
+			std::uint32_t fuseTick) noexcept;
+		void Clear_Bomb(std::size_t slot) noexcept;
+		[[nodiscard]] const BOMB_SLOTS& Get_Bombs() const noexcept { return m_Bombs; }
+
+		/* Starts the hammer on one anchor if none is running. The room rolls
+		the anchor, because the runtime owns no randomness. */
+		bool Start_Hammer(std::int32_t anchor, std::uint32_t startTick,
+			std::uint32_t endTick) noexcept;
+		/* Moves the hammer into its next phase, or clears it after the
+		sweep. Returns true while a hammer is still running. */
+		bool Advance_Hammer(std::uint32_t tick) noexcept;
+		[[nodiscard]] const LostArk::Shared::BINGO_HAMMER_SNAPSHOT&
+			Get_Hammer() const noexcept { return m_Hammer; }
+
+	private:
+		/* Promotes every line that is now completely white. */
+		void Promote_Lines() noexcept;
+
+		std::uint32_t m_iWhiteMask = 0u;
+		std::uint32_t m_iRedMask = 0u;
+		BOMB_SLOTS m_Bombs{};
+		LostArk::Shared::BINGO_HAMMER_SNAPSHOT m_Hammer{};
+	};
+
 	class CKoukuCardMazeRuntime final
 	{
 	public:

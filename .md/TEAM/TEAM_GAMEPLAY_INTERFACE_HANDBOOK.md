@@ -357,13 +357,13 @@ Server는 session/world/순서/enum/마리오 상태를 검사하고 기존 navi
 0.75m 직접 목표를 공급한다. A* 우회 경로는 만들지 않는다. 입력 유지 시 100ms 갱신,
 키 해제 시 STOP, 입력이 끊기면 9틱(30Hz에서 300ms) 만료로 정지한다.
 
-Server의 17개 stable entry/exit trigger 연결이 구간별 진행선을 소유한다. 승인된 실제 착지점부터
+Server의 18개 stable entry/exit trigger 연결이 구간별 진행선을 소유한다. 승인된 실제 착지점부터
 다음 출구 trigger 중심까지의 XZ 축과 고정 RIGHT 부호를 사용한다. 카메라의 회전/보정은 축을 바꾸지 않는다.
 진행 중 위치를 고정 원점/축으로 복원해 왕복·점프·knockback의 깊이 방향 누적 오차를 막고,
 Mario body 충돌에서만 옆미끄러짐을 끈다. 기존 navigation의 구멍/높이/충돌을 강제로 개방하지 않는다.
 기존 저작 movePlayer 완료 시 출처 placement ID로 다음 구간을 선택한다. 일반 Debug 점프는 축/원점을 바꾸지 않는다.
 초기 이동 도중에는 Clown 상태만 적용하고 착지 후 진행선을 확정한다.
-M4 Tigger_2→Tigger_3의 1.4mm 인접 연결은 기존 축을 유지한 채 승인 착지점으로 원점만 옮긴다.
+M4 Tigger_2의 현재 다음 출구는 Tigger_5이며 착지점과 이 출구로 진행선을 다시 계산한다.
 유효한 연결이 없으면 자유 이동으로 대체하지 않는다. 마리오 밖의 회전/이동/충돌 처리는 유지한다.
 
 Debug follow-player에서 ↑의 새 누름은 현재 Server가 제안한 건너가기 trigger가 있으면 기존
@@ -383,6 +383,39 @@ stage 2/3/4는 authored `MarioN_go` 목적지와 같은 상세 navregion인지 �
 `TRIGGER_MOVE` snapshot을 재사용한다. 테스트용 gap 통과이며 새 jump 스킬/스켈레탈 clip은 아니다.
 HP·소품 상태·trigger membership은 초기화하지 않는다. 새 요청 순서를 검사하고 중복에는 이전 verdict만 반환한다.
 Release Server는 점프에 `REJECTED_DISABLED`를 반환한다. F1 `Mario Controls (Debug Jump)`에 승인/거절 이유를 표시한다.
+
+### 4.3 마리오 원본 배치 선택
+
+Shared protocol 76의 `PLAYER_SNAPSHOT.iMarioLayoutVariant`는 0=미선택, 1–3=원본 색 공 Case다.
+Server가 Mario1–4 진입 시 34/33/33 확률로 선택하고 같은 stage의 살아 있는 참여자는
+이미 선택된 Case를 공유한다. 마지막 참여자 퇴장·사망 후 새 진입은 다시 선택한다.
+Client는 `world.sequence.instance.marioN.source.layoutC`의 기존 MAP_PLACEMENT 트랙만 재생한다.
+클라이언트 독자 난수 선택이나 모든 후보 동시 활성화는 금지한다.
+
+`SpawnGroups.world.json`의 `spawn.marioN.source`는 원본 actor별 anchor를 가진 일반 몬스터 그룹이다.
+Server 진입 코드가 활성화하고 해당 stage가 비면 entity despawn 후 `Reset_Group`으로 일정만 초기화한다.
+기존 카드미로 그룹이나 다른 stage는 초기화하지 않는다. 원본 XZ를 유지하는 Sample_Position과
+원본 높이 대비 0.25m 검사 후 생성한다. 종료 지점은 기존 lane graph의 terminal exit로도 인식하여
+퇴장 목적지를 편집해도 stage/layout과 생성 그룹이 남지 않는다.
+
+현재 일반 ZoneLevel 0의 원본 배치이며 ZoneLevel 2 전용 추가 actor는 제외한다.
+추가 MonsterCatalog의 `MONSTER_MARIO_REUP/RHKP/CDMD/CLUB/HEART/DIAMOND`는 현재 프로젝트 튜닝
+순찰/근접 공격 프로필이다. Server가 같은 stage·같은 높이의 가장 가까운 published lane을
+source anchor에 평행 이동한 직선에서 왕복시킨다. 끝·네비 단절·충돌에서는 이동을 멈추고
+world Y축으로 선회한다. 접선 미끄러짐으로 통로를 이탈하지 않는다.
+같은 stage의 생존·combat-ready player만 2m 안에서 감지하며, 높이차 0.8m 초과와
+trigger 이동 중인 player는 제외한다. 600ms 예고/100ms 판정/1300ms 회복이며 해당 공격당
+고정한 대상의 전방·거리·높이를 재검사해 기존 ServerCombatHitRuntime으로 한 번만 피해를 준다.
+MonsterProfiles의 Mario 여섯 프로필만 HP 1, 방어 0, 이동 1.2m/s, 선회 360deg/s로 설정한다.
+실제 양수 피해를 주는 player hit 한 번에 몬스터가 죽으며 player HP는 변경하지 않는다.
+Client는 기존 IDLE/CHASE/ATTACK/DEAD snapshot으로 catalog의 원본 clip을 자동 재생한다.
+마리오 여섯 종류의 순찰은 `walk_normal_1` 계열을 사용한다. Q/W는 기존 InteractionSlot
+명령으로 전달하며 마우스 이동과 class 스킬은 계속 차단한다. Q는 승인 후 12틱에
+전방 120도·2.4m(+몬스터 반경), 높이차 0.8m 이내의 같은 stage 몬스터를 한 번 판정한다.
+피해/사망은 ServerCombatHitRuntime에서 확정하고 W는 Q 피해를 공유하지 않는다.
+Mario modelYawDegrees=-90은 모델 +X 앞축을 Server yaw의 +Z 앞축으로 정렬한다.
+이는 원본 AI·표적 집계·폭탄 피해의 복원 완료를 의미하지 않는다.
+Server와 Client를 protocol 76으로 함께 빌드/재시작하고 신규 리소스는 대응 배치 RESULT를 참조한다.
 
 ## 5. Character와 Animation
 

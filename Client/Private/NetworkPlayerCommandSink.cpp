@@ -84,6 +84,24 @@ bool Client::CNetworkPlayerCommandSink::Request_InteractionSlot(
  return CNetworkManager::Get().Send_InteractionSlot(sequence, slot);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugBingoFill(
+ std::uint32_t sequence, std::uint32_t cellMask, bool reset)
+{
+ return CNetworkManager::Get().Send_DebugBingoFill(sequence, cellMask, reset);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_DebugBingoBomb(
+ std::uint32_t sequence)
+{
+ return CNetworkManager::Get().Send_DebugBingoBomb(sequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_DebugBingoHammer(
+ std::uint32_t sequence)
+{
+ return CNetworkManager::Get().Send_DebugBingoHammer(sequence);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_DebugKoukuHudMode(
  std::uint32_t sequence, LostArk::Shared::KOUKU_HUD_MODE mode)
 {

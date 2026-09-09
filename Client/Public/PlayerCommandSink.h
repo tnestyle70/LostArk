@@ -40,6 +40,16 @@ public:
 		LostArk::Shared::INTERACTION_SLOT slot) = 0;
 	virtual bool Request_DebugKoukuHudMode(std::uint32_t sequence,
 		LostArk::Shared::KOUKU_HUD_MODE mode) = 0;
+	/* Debug bingo board fill. The board comes back on the world snapshot, so
+	there is no result to consume. */
+	virtual bool Request_DebugBingoFill(std::uint32_t sequence,
+		std::uint32_t cellMask, bool reset) = 0;
+	/* Debug bingo bomb. The Server picks the carrier and owns the clock, so
+	the request names nothing and there is no result to consume. */
+	virtual bool Request_DebugBingoBomb(std::uint32_t sequence) = 0;
+	/* Debug bingo hammer. The Server rolls the anchor and owns the phase
+	clock, so the request names nothing. */
+	virtual bool Request_DebugBingoHammer(std::uint32_t sequence) = 0;
 	virtual bool Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
 

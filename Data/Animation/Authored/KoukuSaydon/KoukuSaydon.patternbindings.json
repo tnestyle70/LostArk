@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 8,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 176,
+  "sourceRevision": 178,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -964,6 +964,246 @@
       "startOffsetMs": 0,
       "sourceStartMs": 0,
       "playMs": 2333,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.1",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.2",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.3",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.4",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.5",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.6",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.7",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.8",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.9",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.10",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.11",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_18.stage.12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_18.animation.12",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.1",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.2",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.3",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.4",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.5",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.6",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.7",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.8",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.9",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.10",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.11",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
+      "playRate": 1,
+      "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_19.stage.12",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_19.animation.12",
+      "clip": "rpct00_idle_normal_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3000,
       "playRate": 1,
       "endPolicy": "EXACT"
     }
@@ -5853,6 +6093,22 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
       "durationMs": 2333,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_18",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 36000,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_19",
+      "gateId": "GATE3",
+      "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 36000,
       "presentationOccurrences": []
     }
   ]

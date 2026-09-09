@@ -161,6 +161,8 @@ OUTCOME_KINDS = {
     "INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
     "CLOWN_TRANSFORM", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
     "PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW",
+    # Hangs the player on the region that judged them and drags them with it.
+    "GRAB_TO_WORLD_OBJECT",
 }
 PERCENT_OUTCOME_KINDS = {"MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT"}
 CARD_SYMBOLS = ("HEART", "SPADE", "CLUB", "DIAMOND")
@@ -1160,6 +1162,11 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     contact_result = result_kind in {"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW"}
                     if result_kind is not None and contact_result != (kind == "OBJECT_CONTACT"):
                         raise CompositionError(f"{box_context} OBJECT_CONTACT requires contact motion or window signal results")
+                    if result_kind == "GRAB_TO_WORLD_OBJECT" and kind != "ENTER_AREA":
+                        raise CompositionError(
+                            f"{box_context} GRAB_TO_WORLD_OBJECT is only valid on an ENTER_AREA box, "
+                            "whose regions ride a World Object transform track"
+                        )
                     if result_kind == "FOLLOWUP_PATTERN":
                         if kind not in {"STAGGER_WINDOW", "EXTERNAL_SIGNAL"}:
                             raise CompositionError(

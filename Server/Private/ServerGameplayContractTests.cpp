@@ -1979,6 +1979,108 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			tests.Require(room->Is_Ready() && nullptr != entrance &&
 				!entrance->TriggerActions.empty(), "Mario jump loads authored entrance");
 			if (!room->Is_Ready() || nullptr == entrance || entrance->TriggerActions.empty()) continue;
+			const std::string sourceGroup = "spawn.mario" + std::to_string(stage) + ".source";
+			const auto layout = room->Begin_MarioStageObjects(stage);
+			tests.Require(layout >= 1u && layout <= 3u, "Mario source entry selects a bounded original layout");
+			room->m_SpawnGroupRuntime.Update(1.f / 30.f, room->m_SpawnGroupBootstrap,
+				[&](const std::string& id) { return room->Count_SpawnGroupEntities(id); },
+				[&](const auto& id, const auto& entry, const auto& anchor, const auto& profile, auto ordinal) {
+					return room->Spawn_Monster(id, entry, anchor, profile, ordinal);
+				});
+			const unsigned expectedSourceCounts[] = {0u, 3u, 7u, 14u, 16u};
+			tests.Require(room->Count_SpawnGroupEntities(sourceGroup) == expectedSourceCounts[stage],
+				"Mario source entry spawns every authored monster exactly once");
+			for (const auto& spawned : room->m_WorldEntities)
+			{
+				if (spawned.strSpawnGroupId != sourceGroup) continue;
+				tests.Require(spawned.iCurrentHp == 1u && spawned.iMarioPatrolStage == stage &&
+					std::abs(std::hypot(spawned.fMarioPatrolAxisX, spawned.fMarioPatrolAxisZ) - 1.f) < .001f,
+					"Mario source monster has one HP and an authored patrol axis");
+				auto patrol = spawned;
+				patrol.fMarioPatrolMinimum = -.5f; patrol.fMarioPatrolMaximum = .5f;
+				std::map<PLAYER_ID, SERVER_PLAYER> patrolPlayers;
+				std::vector<DAMAGE_EVENT> patrolDamage;
+				CMonsterBrain brain;
+				bool moved = false, turned = false;
+				for (uint32_t tick = 1u; tick <= 150u; ++tick)
+				{
+					brain.Update(patrol, patrolPlayers, room->m_GameplayCatalog,
+						room->m_ServerNavigation, 1.f / 30.f, tick, patrolDamage);
+					const float dx = patrol.fPositionX - spawned.fPositionX;
+					const float dz = patrol.fPositionZ - spawned.fPositionZ;
+					moved |= std::hypot(dx, dz) > .1f;
+					turned |= patrol.bMarioPatrolForward != spawned.bMarioPatrolForward;
+					tests.Require(std::abs(dx * patrol.fMarioPatrolAxisZ - dz * patrol.fMarioPatrolAxisX) < .01f,
+						"Mario patrol preserves its lateral line");
+				}
+				tests.Require(moved && turned, "Mario patrol walks and turns at its endpoint or floor edge");
+				auto blockedPatrol = spawned;
+				blockedPatrol.bMarioPatrolForward = true;
+				blockedPatrol.fYawDegrees = std::atan2(spawned.fMarioPatrolAxisX, spawned.fMarioPatrolAxisZ) * 57.2957795f;
+				CServerCollisionSystem patrolCollision;
+				std::string patrolCollisionStatus;
+				patrolCollision.Initialize({}, patrolCollisionStatus);
+				patrolCollision.Set_BlockingBodies({ SERVER_BLOCKING_BODY{
+					spawned.fPositionX + spawned.fMarioPatrolAxisX * (2.f * spawned.fCollisionRadius + .001f),
+					spawned.fPositionZ + spawned.fMarioPatrolAxisZ * (2.f * spawned.fCollisionRadius + .001f),
+					spawned.fCollisionRadius, spawned.fPositionY + spawned.fCollisionRadius,
+					spawned.fCollisionRadius, 98765u } });
+				brain.Update(blockedPatrol, patrolPlayers, room->m_GameplayCatalog,
+					room->m_ServerNavigation, patrolCollision, 1.f / 30.f, 175u, patrolDamage);
+				tests.Require(!blockedPatrol.bMarioPatrolForward &&
+					blockedPatrol.fPositionX == spawned.fPositionX && blockedPatrol.fPositionZ == spawned.fPositionZ,
+					"Mario patrol reverses at a blocking body without tangent sliding");
+				patrol = spawned;
+				patrol.fYawDegrees = std::atan2(patrol.fMarioPatrolAxisX, patrol.fMarioPatrolAxisZ) * 57.2957795f;
+				auto& victim = patrolPlayers[12345u];
+				victim.iNetEntityId = 12345u; victim.iMarioStage = stage;
+				victim.iCurrentHp = victim.iMaximumHp = 50000u; victim.isCombatReady = true;
+				victim.fPositionX = patrol.fPositionX + patrol.fMarioPatrolAxisX * .7f;
+				victim.fPositionZ = patrol.fPositionZ + patrol.fMarioPatrolAxisZ * .7f;
+				victim.fPositionY = patrol.fPositionY + 4.f;
+				brain.Update(patrol, patrolPlayers, room->m_GameplayCatalog,
+					room->m_ServerNavigation, 1.f / 30.f, 200u, patrolDamage);
+				tests.Require(patrol.eAction != SERVER_ENTITY_ACTION::PATTERN_WINDUP,
+					"Mario monster ignores a player on another floor");
+				patrol = spawned;
+				patrol.fYawDegrees = std::atan2(patrol.fMarioPatrolAxisX, patrol.fMarioPatrolAxisZ) * 57.2957795f;
+				victim.fPositionY = patrol.fPositionY;
+				for (uint32_t tick = 201u; tick <= 230u; ++tick)
+					brain.Update(patrol, patrolPlayers, room->m_GameplayCatalog,
+						room->m_ServerNavigation, 1.f / 30.f, tick, patrolDamage);
+				const auto* victimProfile = room->m_GameplayCatalog.Find_Player(victim.eCharacterClass);
+				const auto expectedDamage = CGameplayCatalog::Apply_Defense(patrol.iAttackPower,
+					victimProfile ? victimProfile->iDefense : 0u);
+				tests.Require(victim.iCurrentHp == 50000u - expectedDamage && patrolDamage.size() == 1u,
+					"Mario nearby attack lands exactly once and does not force player death");
+				SERVER_PLAYER_TO_WORLD_HIT strike{};
+				strike.iSkillId = 34010u; strike.iRawDamage = 1u; strike.iServerTick = 231u;
+				tests.Require(CServerCombatHitRuntime::Apply_PlayerToWorld(patrol, strike, patrolDamage) ==
+					SERVER_COMBAT_HIT_RESULT::KILLED && !patrol.iCurrentHp,
+					"One admitted player hit kills the Mario monster");
+				// Each actual source spawn is tested, not just one archetype.
+			}
+			auto& participant = room->m_Players[999u];
+			participant.iMarioStage = stage; participant.iMarioLayoutVariant = layout; participant.iCurrentHp = 100u;
+			tests.Require(room->Begin_MarioStageObjects(stage) == layout &&
+				room->Count_SpawnGroupEntities(sourceGroup) == expectedSourceCounts[stage],
+				"Another Mario participant shares layout without duplicating source monsters");
+			room->Cleanup_EmptyMarioStages();
+			tests.Require(room->Count_SpawnGroupEntities(sourceGroup) == expectedSourceCounts[stage],
+				"Occupied Mario stage survives cleanup");
+			participant.Clear_MarioControl();
+			tests.Require(!participant.iMarioLayoutVariant, "Leaving Mario clears selected layout");
+			room->m_Players.erase(999u);
+			room->Cleanup_EmptyMarioStages();
+			tests.Require(!room->Count_SpawnGroupEntities(sourceGroup) &&
+				!room->m_SpawnGroupRuntime.Is_ActiveOrCompleted(sourceGroup),
+				"Last Mario departure despawns source group and resets its schedule");
+			room->m_MarioLayoutRandom.seed(37081u);
+			unsigned cases = 0u;
+			for (unsigned retry = 0u; retry < 100u; ++retry)
+				cases |= 1u << room->Begin_MarioStageObjects(stage);
+			tests.Require(cases == 14u, "Repeated Mario entries can select all three original cases");
+			room->Cleanup_EmptyMarioStages();
 			const auto& destination = entrance->TriggerActions.front();
 			SERVER_NAV_POINT ground{};
 			const bool sampled = room->m_ServerNavigation.Sample_Position(
@@ -1994,9 +2096,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			player.fPositionX = ground.x;
 			player.fPositionY = ground.y;
 			player.fPositionZ = ground.z;
+			const bool entranceWasEnabled = entrance->isEnabled;
 			room->Update_MarioControlState(player);
 			tests.Require(player.iMarioStage == stage && player.eMadnessForm == PLAYER_MADNESS_FORM::CLOWN &&
 				player.iCurrentHp == 100u, "Authored Mario intro admits mode and existing clown form without HP change");
+			tests.Require(player.bMarioRailReady && entrance->isEnabled == entranceWasEnabled,
+				"Admitted Mario uses entrance rail metadata without enabling its trigger");
 			player.iSessionId = 789u;
 			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 			room->m_PlayerIdBySessionId[player.iSessionId] = player.iPlayerId;
@@ -2013,6 +2118,69 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			room->Handle_UseSkill(player.iSessionId, ordinarySkill);
 			tests.Require(player.eAction == PLAYER_ACTION_STATE::NONE && !player.hasMoveGoal,
 				"Mario mode rejects ordinary mouse movement and class skills while grounded");
+			{
+				const auto savedPlayer = player;
+				const auto savedTick = room->m_iServerTick;
+				auto savedEntities = std::move(room->m_WorldEntities);
+				auto savedDamage = std::move(room->m_TickDamageEvents);
+				room->m_WorldEntities.clear(); room->m_TickDamageEvents.clear();
+				player.isCombatReady = true;
+				player.eKoukuHudMode = KOUKU_HUD_MODE::MARIO;
+				player.ModeSkillIndexBySlot[0] = 0; player.ModeSkillIndexBySlot[1] = 1;
+				player.fYawDegrees = 0.f;
+				for (uint32_t index = 0; index < 5u; ++index)
+				{
+					SERVER_WORLD_ENTITY target{};
+					target.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+					target.iNetEntityId = 9000u + index;
+					target.iMarioPatrolStage = stage;
+					target.iCurrentHp = target.iMaximumHp = 1u;
+					target.fCollisionRadius = .6f;
+					target.fPositionX = player.fPositionX;
+					target.fPositionY = player.fPositionY;
+					target.fPositionZ = player.fPositionZ + 1.f;
+					if (index == 1u) target.fPositionZ = player.fPositionZ - 1.f;
+					if (index == 2u) target.fPositionY += 4.f;
+					if (index == 3u) target.iMarioPatrolStage = stage == 4u ? 1u : stage + 1u;
+					if (index == 4u) target.fPositionZ += 10.f;
+					room->m_WorldEntities.push_back(target);
+				}
+				room->m_iServerTick = 1000u;
+				C2S_INTERACTION_SLOT press{};
+				press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+				press.eSlot = static_cast<INTERACTION_SLOT>(0);
+				press.iRequestSequence = player.iLastKoukuInteractionSequence + 1u;
+				room->Handle_InteractionSlot(player.iSessionId, press);
+				tests.Require(player.eAction == PLAYER_ACTION_STATE::INTERACTION && player.iCurrentSkillId == 0u,
+					"Mario Q command starts replicated hammer action");
+				const auto hitTick = player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET;
+				for (; room->m_iServerTick + 1u < hitTick; ++room->m_iServerTick)
+					room->Update_Players(1.f / 30.f);
+				tests.Require(room->m_WorldEntities[0].iCurrentHp == 1u && room->m_TickDamageEvents.empty(),
+					"Mario Q does not damage before the hammer contact tick");
+				room->Update_Players(1.f / 30.f);
+				tests.Require(room->m_WorldEntities[0].eAction == SERVER_ENTITY_ACTION::DEAD &&
+					!room->m_WorldEntities[0].iCurrentHp && room->m_TickDamageEvents.size() == 1u,
+					"Mario Q command through player update kills its front target in one hit");
+				for (size_t index = 1; index < room->m_WorldEntities.size(); ++index)
+					tests.Require(room->m_WorldEntities[index].iCurrentHp == 1u,
+						"Mario Q excludes behind, other floor, other stage and out-of-range targets");
+				++room->m_iServerTick;
+				room->Update_Players(1.f / 30.f);
+				tests.Require(room->m_TickDamageEvents.size() == 1u, "Mario hammer damage is emitted only once");
+				player.eAction = PLAYER_ACTION_STATE::NONE;
+				press.eSlot = static_cast<INTERACTION_SLOT>(1); ++press.iRequestSequence;
+				room->Handle_InteractionSlot(player.iSessionId, press);
+				room->m_WorldEntities[0].eAction = SERVER_ENTITY_ACTION::IDLE;
+				room->m_WorldEntities[0].iCurrentHp = 1u;
+				room->m_iServerTick = player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET - 1u;
+				room->Update_Players(1.f / 30.f);
+				tests.Require(player.eAction == PLAYER_ACTION_STATE::INTERACTION && player.iCurrentSkillId == 1u &&
+					room->m_WorldEntities[0].iCurrentHp == 1u, "Mario W retains its action without borrowing Q hammer damage");
+				player = savedPlayer; room->m_iServerTick = savedTick;
+				room->m_WorldEntities = std::move(savedEntities);
+				room->m_TickDamageEvents = std::move(savedDamage);
+			}
 			C2S_DEBUG_MARIO_JUMP request{};
 			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 			request.iClientSequence = 1u;
@@ -2495,7 +2663,6 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			/* T2's tiny transfer in Mario4 preserves A's direction, then T3
 			uses its real placement target to establish C's new fixed lane. */
 			auto& player = room->m_Players[123u];
-			const float firstRightX = player.fMarioRailRightX, firstRightZ = player.fMarioRailRightZ;
 			for (const char* source : { "Mario4_Tigger_2", "Mario4_Tigger_3" })
 			{
 				const auto* original = room->Find_Placement(source);
@@ -2516,8 +2683,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					player.fMarioRailOriginX == player.fPositionX && player.fMarioRailOriginZ == player.fPositionZ,
 					"Mario authored transfer rebases lane only at completed authoritative landing");
 				if (std::string(source) == "Mario4_Tigger_2")
-					tests.Require(player.fMarioRailRightX == firstRightX && player.fMarioRailRightZ == firstRightZ,
-						"Mario4 tiny T2 transfer preserves its previous fixed axis");
+				{
+					const auto* nextExit = room->Find_Placement("Mario4_Tigger_5");
+					const float dx = nextExit ? nextExit->fPositionX - player.fPositionX : 0.f;
+					const float dz = nextExit ? nextExit->fPositionZ - player.fPositionZ : 0.f;
+					const float length = std::hypot(dx, dz);
+					tests.Require(nextExit && length > .1f &&
+						std::abs(player.fMarioRailRightX - dx / length) < .00001f &&
+						std::abs(player.fMarioRailRightZ - dz / length) < .00001f,
+						"Mario4 T2 follows the currently authored T5 continuation axis");
+				}
 			}
 			CServerCollisionSystem collision;
 			std::string collisionStatus;
@@ -29227,6 +29402,291 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	tests.Require(maze.Get_Targets().empty() && players[1u].eCardMazeRole == CARD_MAZE_ROLE::NONE &&
 		players[4u].CardMaze.transferStartTick == 0u, "Reset removes run state and presentation clocks");
 	std::cout << "card maze failures: " << tests.failures << '\n';
+	return tests.failures == 0 ? 0 : 1;
+}
+
+int LostArk::Server::Run_ServerBingoContractTests()
+{
+	using namespace LostArk::Shared;
+	TESTS tests;
+	constexpr float HALF = KOUKU_BINGO_CELL_SIZE_M * 0.5f;
+
+	/* Every authored tile centre has to answer with its own index, otherwise
+	the board constants do not describe the floor that is actually placed. */
+	bool centresRoundTrip = true;
+	for (std::int32_t cell = 0; cell < KOUKU_BINGO_CELL_COUNT; ++cell)
+	{
+		if (Kouku_BingoCellAt(Kouku_BingoCellCenterX(cell),
+			Kouku_BingoCellCenterZ(cell)) != cell)
+		{
+			centresRoundTrip = false;
+			break;
+		}
+	}
+	tests.Require(centresRoundTrip, "Every bingo tile centre resolves to its own cell");
+
+	tests.Require(Kouku_BingoCellAt(-6.08f, 1140.8f) == 0 &&
+		Kouku_BingoCellAt(6.08f, 1152.96f) == 24 &&
+		Kouku_BingoCellAt(0.f, 1146.88f) == 12,
+		"The two authored corners and the board centre are cells 0, 24 and 12");
+
+	/* Row runs along +Z and column along +X. Swapping them still round trips
+	on the centres, so the axes are pinned separately. */
+	tests.Require(Kouku_BingoCellAt(Kouku_BingoCellCenterX(0) + KOUKU_BINGO_CELL_SIZE_M,
+			Kouku_BingoCellCenterZ(0)) == 1 &&
+		Kouku_BingoCellAt(Kouku_BingoCellCenterX(0),
+			Kouku_BingoCellCenterZ(0) + KOUKU_BINGO_CELL_SIZE_M) == 5,
+		"One cell along +X advances the column and one along +Z advances the row");
+
+	/* Just inside each outer edge is still on the board; just outside is not. */
+	const float minX = KOUKU_BINGO_ORIGIN_X - HALF;
+	const float minZ = KOUKU_BINGO_ORIGIN_Z - HALF;
+	const float maxX = Kouku_BingoCellCenterX(KOUKU_BINGO_SIDE - 1) + HALF;
+	const float maxZ = Kouku_BingoCellCenterZ(KOUKU_BINGO_CELL_COUNT - 1) + HALF;
+	tests.Require(Kouku_BingoCellAt(minX + 0.01f, minZ + 0.01f) == 0 &&
+		Kouku_BingoCellAt(maxX - 0.01f, maxZ - 0.01f) == 24,
+		"The inside of the outer edge belongs to the corner cells");
+	tests.Require(Kouku_BingoCellAt(minX - 0.01f, 1146.88f) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoCellAt(maxX + 0.01f, 1146.88f) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoCellAt(0.f, minZ - 0.01f) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoCellAt(0.f, maxZ + 0.01f) == KOUKU_BINGO_OFF_BOARD,
+		"A step past any outer edge is off the board");
+
+	/* The card maze sits far along +Z in the same world; it must not read as
+	a bingo cell. A NaN must not truncate into an arbitrary index either. */
+	tests.Require(Kouku_BingoCellAt(0.28f, 1351.65f) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoCellAt(std::numeric_limits<float>::quiet_NaN(), 1146.88f) ==
+			KOUKU_BINGO_OFF_BOARD,
+		"A far position and a NaN both report off board instead of a cell");
+
+	/* The cross the bomb paints: centre, up, down, left, right. */
+	tests.Require(Kouku_BingoNeighbour(12, -1, 0) == 7 &&
+		Kouku_BingoNeighbour(12, 1, 0) == 17 &&
+		Kouku_BingoNeighbour(12, 0, -1) == 11 &&
+		Kouku_BingoNeighbour(12, 0, 1) == 13,
+		"The cross around the middle cell is 7, 17, 11 and 13");
+
+	/* A column step at the edge must leave the board rather than wrap into
+	the next row, which plain index arithmetic would do. */
+	tests.Require(Kouku_BingoNeighbour(4, 0, 1) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoNeighbour(5, 0, -1) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoNeighbour(0, -1, 0) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoNeighbour(24, 1, 0) == KOUKU_BINGO_OFF_BOARD,
+		"An edge step leaves the board instead of wrapping into the next row");
+	tests.Require(Kouku_BingoNeighbour(KOUKU_BINGO_OFF_BOARD, 0, 1) == KOUKU_BINGO_OFF_BOARD &&
+		Kouku_BingoNeighbour(KOUKU_BINGO_CELL_COUNT, 0, 0) == KOUKU_BINGO_OFF_BOARD,
+		"Stepping from a cell that is not on the board stays off the board");
+
+	/* G2/G3: the board state, the twelve lines and the safe judgement. */
+	{
+		std::uint32_t seen = 0u;
+		bool lineCellsAreFive = true;
+		for (std::int32_t line = 0; line < KOUKU_BINGO_LINE_COUNT; ++line)
+		{
+			const std::uint32_t mask = Kouku_BingoLineMask(line);
+			seen |= mask;
+			std::int32_t cells = 0;
+			for (std::uint32_t bit = mask; 0u != bit; bit &= bit - 1u)
+				++cells;
+			if (5 != cells || 0u != (mask & ~KOUKU_BINGO_ALL_CELLS_MASK))
+				lineCellsAreFive = false;
+		}
+		tests.Require(lineCellsAreFive && KOUKU_BINGO_ALL_CELLS_MASK == seen,
+			"Twelve bingo lines each hold five on-board cells and together cover the board");
+		tests.Require(Kouku_BingoLineMask(0) == 0x1Fu &&
+			Kouku_BingoLineMask(KOUKU_BINGO_SIDE) == 0x108421u &&
+			Kouku_BingoLineMask(KOUKU_BINGO_SIDE * 2) == 0x1041041u &&
+			Kouku_BingoLineMask(KOUKU_BINGO_SIDE * 2 + 1) == 0x111110u &&
+			Kouku_BingoLineMask(KOUKU_BINGO_LINE_COUNT) == 0u,
+			"Row, column and both diagonal line masks are the expected cells");
+	}
+	{
+		CKoukuBingoRuntime board;
+		/* The Debug check the user drives: Play1 paints 0,1,2 and Play2 paints
+		3,4, which completes row 0 and turns those five red. */
+		board.Fill(0x7u);
+		tests.Require(0x7u == board.Get_WhiteMask() && 0u == board.Get_RedMask(),
+			"Three cells of a row are white and no line has completed yet");
+		board.Fill(0x18u);
+		tests.Require(0x1Fu == board.Get_WhiteMask() && 0x1Fu == board.Get_RedMask(),
+			"Completing the fifth cell of a row turns that whole row red");
+		tests.Require(board.Is_Safe(Kouku_BingoCellCenterX(2), Kouku_BingoCellCenterZ(2)) &&
+			!board.Is_Safe(Kouku_BingoCellCenterX(12), Kouku_BingoCellCenterZ(12)) &&
+			!board.Is_Safe(0.28f, 1351.65f),
+			"A completed cell is safe while an unfinished cell and a position off the board are not");
+		board.Reset();
+		tests.Require(0u == board.Get_WhiteMask() && 0u == board.Get_RedMask() &&
+			!board.Is_Safe(Kouku_BingoCellCenterX(2), Kouku_BingoCellCenterZ(2)),
+			"Reset clears both masks and with them the safe cells");
+	}
+	{
+		CKoukuBingoRuntime board;
+		/* A diagonal counts, which is the rule the user chose. */
+		board.Fill(0x1041041u);
+		tests.Require(0x1041041u == board.Get_RedMask(),
+			"A completed diagonal turns red like a row or a column");
+		board.Fill(~0u);
+		tests.Require(KOUKU_BINGO_ALL_CELLS_MASK == board.Get_WhiteMask() &&
+			KOUKU_BINGO_ALL_CELLS_MASK == board.Get_RedMask(),
+			"Bits above the board are dropped and a full board completes every line");
+	}
+	{
+		S2C_WORLD_SNAPSHOT snapshot{};
+		snapshot.iServerTick = 7u;
+		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		GameplayDataRevision revision{};
+		revision.Bytes.front() = 1u;
+		snapshot.ActiveGameplayRevision = revision;
+		PLAYER_SNAPSHOT player{};
+		player.iNetEntityId = 41u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		snapshot.Players.push_back(player);
+		snapshot.Bingo.iWhiteMask = 0x1Fu;
+		snapshot.Bingo.iRedMask = 0x1Fu;
+		CPacketWriter writer;
+		tests.Require(Write_Message(writer, snapshot), "Bingo board snapshot writes");
+		CPacketReader reader{ writer.Get_Buffer() };
+		S2C_WORLD_SNAPSHOT decoded{};
+		tests.Require(Read_Message(reader, decoded) && 0u == reader.Get_RemainingSize() &&
+			0x1Fu == decoded.Bingo.iWhiteMask && 0x1Fu == decoded.Bingo.iRedMask,
+			"Bingo board masks round trip on the world snapshot");
+		snapshot.Bingo.iRedMask = 0x3Fu;
+		CPacketWriter strayRed;
+		tests.Require(!Write_Message(strayRed, snapshot) && strayRed.Get_Buffer().empty(),
+			"A red cell that is not white refuses the whole snapshot before writing");
+		snapshot.Bingo.iRedMask = 0x1Fu;
+		snapshot.Bingo.iWhiteMask = 0x2000000u;
+		CPacketWriter strayCell;
+		tests.Require(!Write_Message(strayCell, snapshot) && strayCell.Get_Buffer().empty(),
+			"A bit above the twenty-fifth cell refuses the whole snapshot before writing");
+	}
+	{
+		C2S_DEBUG_BINGO_FILL fill{};
+		fill.iRequestSequence = 3u;
+		fill.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		fill.iCellMask = 0x18u;
+		fill.bReset = true;
+		CPacketWriter writer;
+		tests.Require(Write_Message(writer, fill), "Bingo debug fill writes");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_DEBUG_BINGO_FILL decoded{};
+		tests.Require(Read_Message(reader, decoded) &&
+			3u == decoded.iRequestSequence && 0x18u == decoded.iCellMask && decoded.bReset,
+			"Bingo debug fill round trips its cells and reset flag");
+		fill.iCellMask = 0x2000000u;
+		CPacketWriter strayCell;
+		tests.Require(!Write_Message(strayCell, fill) && strayCell.Get_Buffer().empty(),
+			"A fill outside the board refuses before writing");
+	}
+	{
+		/* The bomb clock. One mark per carrier, planted where the room says
+		the carrier was, and the slot freed only by an explicit clear. */
+		CKoukuBingoRuntime bombs;
+		tests.Require(bombs.Start_Bomb(41u, 90u) &&
+			BINGO_BOMB_PHASE::MARKED == bombs.Get_Bombs()[0].ePhase &&
+			41u == bombs.Get_Bombs()[0].iCarrierNetEntityId &&
+			90u == bombs.Get_Bombs()[0].iDetonateTick,
+			"Starting a bomb marks the carrier with its detonate tick");
+		tests.Require(!bombs.Start_Bomb(41u, 120u) &&
+			90u == bombs.Get_Bombs()[0].iDetonateTick,
+			"A second mark on the same carrier is refused and keeps the first clock");
+		tests.Require(!bombs.Start_Bomb(INVALID_NET_ENTITY_ID, 120u),
+			"A bomb without a carrier is refused");
+		/* The cross a bomb paints, including the edges it has to drop. */
+		tests.Require(Kouku_BingoCrossMask(12) ==
+			((1u << 12) | (1u << 7) | (1u << 17) | (1u << 11) | (1u << 13)),
+			"A centre bomb paints its own cell and all four neighbours");
+		tests.Require(Kouku_BingoCrossMask(0) ==
+			((1u << 0) | (1u << 1) | (1u << 5)),
+			"A corner bomb drops the two neighbours that fall off the board");
+		tests.Require(0u == Kouku_BingoCrossMask(KOUKU_BINGO_OFF_BOARD),
+			"A bomb that missed the board paints nothing");
+		bombs.Plant_Bomb(0u, 1.5f, 1141.f, 180u);
+		tests.Require(BINGO_BOMB_PHASE::PLANTED == bombs.Get_Bombs()[0].ePhase &&
+			INVALID_NET_ENTITY_ID == bombs.Get_Bombs()[0].iCarrierNetEntityId &&
+			1.5f == bombs.Get_Bombs()[0].fPositionX &&
+			1141.f == bombs.Get_Bombs()[0].fPositionZ &&
+			180u == bombs.Get_Bombs()[0].iDetonateTick,
+			"Planting drops the carrier and keeps the position and fuse it was given");
+		bombs.Plant_Bomb(0u, 9.f, 9.f, 200u);
+		tests.Require(1.5f == bombs.Get_Bombs()[0].fPositionX,
+			"Planting an already planted bomb does not move it");
+		/* One cross, then the row it completes, through the same Fill the
+		board buttons use. */
+		bombs.Fill(Kouku_BingoCrossMask(Kouku_BingoCellAt(
+			Kouku_BingoCellCenterX(1), Kouku_BingoCellCenterZ(1))));
+		tests.Require(bombs.Get_WhiteMask() ==
+			((1u << 1) | (1u << 0) | (1u << 2) | (1u << 6)) &&
+			0u == bombs.Get_RedMask(),
+			"A bomb on cell 1 paints four cells and completes no line");
+		bombs.Fill(Kouku_BingoCrossMask(3));
+		tests.Require(0x1Fu == (bombs.Get_RedMask() & 0x1Fu),
+			"A second cross that finishes row 0 turns that row red");
+		/* A blast toggles: empty lights, white clears, red is untouchable. */
+		CKoukuBingoRuntime blast;
+		blast.Detonate(Kouku_BingoCrossMask(12));
+		const std::uint32_t cross12 = Kouku_BingoCrossMask(12);
+		tests.Require(cross12 == blast.Get_WhiteMask() && 0u == blast.Get_RedMask(),
+			"A blast on an empty board lights its whole cross");
+		blast.Detonate(cross12);
+		tests.Require(0u == blast.Get_WhiteMask(),
+			"A second blast on the same cross clears every cell it lit");
+		blast.Detonate(Kouku_BingoCrossMask(11));
+		const std::uint32_t before = blast.Get_WhiteMask();
+		blast.Detonate(Kouku_BingoCrossMask(13));
+		tests.Require(before != blast.Get_WhiteMask() &&
+			0u == (blast.Get_WhiteMask() & (1u << 12)),
+			"An overlapping blast clears the cells the two crosses share");
+		blast.Reset();
+		blast.Fill(0x1Fu);
+		tests.Require(0x1Fu == blast.Get_RedMask(), "Row 0 is red before the blast");
+		blast.Detonate(Kouku_BingoCrossMask(2));
+		tests.Require(0x1Fu == (blast.Get_WhiteMask() & 0x1Fu) &&
+			0x1Fu == blast.Get_RedMask(),
+			"A blast never clears a cell that belongs to a completed line");
+		tests.Require(0u != (blast.Get_WhiteMask() & (1u << 7)),
+			"The same blast still lights the empty cell below the red row");
+		tests.Require(bombs.Start_Bomb(41u, 150u) &&
+			BINGO_BOMB_PHASE::MARKED == bombs.Get_Bombs()[1].ePhase,
+			"The same carrier can be marked again once its bomb is planted");
+		bombs.Reset();
+		tests.Require(BINGO_BOMB_PHASE::NONE == bombs.Get_Bombs()[0].ePhase &&
+			BINGO_BOMB_PHASE::NONE == bombs.Get_Bombs()[1].ePhase,
+			"Resetting the board clears every bomb slot");
+	}
+	{
+		/* Both phases have to survive the wire, and a mark that lost its
+		carrier must be refused rather than drawn on nobody. */
+		S2C_WORLD_SNAPSHOT snapshot{};
+		snapshot.iServerTick = 7u;
+		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		GameplayDataRevision revision{};
+		revision.Bytes.front() = 1u;
+		snapshot.ActiveGameplayRevision = revision;
+		snapshot.Bingo.iBombCount = 2u;
+		snapshot.Bingo.Bombs[0].ePhase = BINGO_BOMB_PHASE::MARKED;
+		snapshot.Bingo.Bombs[0].iCarrierNetEntityId = 41u;
+		snapshot.Bingo.Bombs[1].ePhase = BINGO_BOMB_PHASE::PLANTED;
+		snapshot.Bingo.Bombs[1].fPositionX = -3.04f;
+		snapshot.Bingo.Bombs[1].fPositionZ = 1143.84f;
+		CPacketWriter writer;
+		tests.Require(Write_Message(writer, snapshot), "Bingo bombs write");
+		CPacketReader reader{ writer.Get_Buffer() };
+		S2C_WORLD_SNAPSHOT decoded{};
+		tests.Require(Read_Message(reader, decoded) &&
+			2u == decoded.Bingo.iBombCount &&
+			BINGO_BOMB_PHASE::MARKED == decoded.Bingo.Bombs[0].ePhase &&
+			41u == decoded.Bingo.Bombs[0].iCarrierNetEntityId &&
+			BINGO_BOMB_PHASE::PLANTED == decoded.Bingo.Bombs[1].ePhase &&
+			-3.04f == decoded.Bingo.Bombs[1].fPositionX &&
+			1143.84f == decoded.Bingo.Bombs[1].fPositionZ,
+			"Both bomb phases round trip on the world snapshot");
+		snapshot.Bingo.Bombs[0].iCarrierNetEntityId = INVALID_NET_ENTITY_ID;
+		CPacketWriter orphan;
+		tests.Require(!Write_Message(orphan, snapshot) && orphan.Get_Buffer().empty(),
+			"A mark without a carrier refuses the whole snapshot before writing");
+	}
+	std::cout << "bingo failures: " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
 }
 

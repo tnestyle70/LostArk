@@ -1281,6 +1281,22 @@ void CCharacter::Set_Position(fvector_t vPosition)
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
 }
 
+bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
+{
+	if (m_pSpec != CCharacterCatalog::Find_ClownSpec())
+		return true;
+	const auto bodyTransform = dynamic_pointer_cast<CTransform>(
+		__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Transform")));
+	if (nullptr == bodyTransform)
+		return false;
+	// Full idle-start mesh height, including the hat, at the existing 0.012053 admission scale.
+	constexpr f32_t CLOWN_REFERENCE_HEIGHT_METERS = 2.3730526f;
+	const f32_t scale = isMario ? 1.5f / CLOWN_REFERENCE_HEIGHT_METERS : 1.f;
+	// Scale sets absolute axis lengths; Scaling would shrink on every snapshot.
+	bodyTransform->Scale(scale, scale, scale);
+	return true;
+}
+
 bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees, bool_t isMoving, std::uint32_t iServerTick)
 {
 	//client replication이 서버 상태를 character 표현 상태로 전달하는 public 함수이다.

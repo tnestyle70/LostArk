@@ -29,6 +29,9 @@ namespace LostArk::Server
 		DEBUG_MARIO_JUMP,
 		MARIO_MOVE,
 		DEBUG_SET_MADNESS_FORM,
+		DEBUG_BINGO_FILL,
+		DEBUG_BINGO_BOMB,
+		DEBUG_BINGO_HAMMER,
 		INTERACTION_SLOT,
 		DEBUG_SET_KOUKU_HUD_MODE,
 		CHANGE_CHARACTER_CLASS,
@@ -89,6 +92,9 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_MARIO_JUMP DebugMarioJump;
 		LostArk::Shared::C2S_MARIO_MOVE MarioMove;
 		LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM DebugSetMadnessForm;
+		LostArk::Shared::C2S_DEBUG_BINGO_FILL DebugBingoFill;
+		LostArk::Shared::C2S_DEBUG_BINGO_BOMB DebugBingoBomb;
+		LostArk::Shared::C2S_DEBUG_BINGO_HAMMER DebugBingoHammer;
 		LostArk::Shared::C2S_INTERACTION_SLOT InteractionSlot;
 		LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE DebugSetKoukuHudMode;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;

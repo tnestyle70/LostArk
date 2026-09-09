@@ -472,6 +472,9 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	m_pCamera.reset();
 	for (auto& [id, cue] : m_OwnedWorldCues) cue.player->Stop_All(Make_WorldSequenceTargets(), true);
 	m_OwnedWorldCues.clear();
+	if (m_pMarioBombPlayer) m_pMarioBombPlayer->Stop_All(Make_WorldSequenceTargets(), true);
+	m_pMarioBombPlayer.reset();
+	m_MarioBombEmitters.clear();
 	m_SequencePlayer.Clear();
 	m_pMapLightAuthoringOverride.reset();
 	m_pMapLightPresentation.reset();
@@ -1064,6 +1067,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
 	Update_CardMazePresentation(fTimeDelta);
+	Update_MarioBallBouncePresentation(fTimeDelta);
+	Update_MarioBombPresentation(fTimeDelta);
 	if (m_bWorldObjectReloadPending && !m_SequencePlayer.Has_ActiveInstances())
 	{
 		std::string status;

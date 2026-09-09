@@ -2921,6 +2921,39 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS;
 		command.ChangeCharacterClass = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_BINGO_FILL)
+	{
+		C2S_DEBUG_BINGO_FILL request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_BINGO_FILL");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_BINGO_FILL;
+		command.DebugBingoFill = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_BINGO_BOMB)
+	{
+		C2S_DEBUG_BINGO_BOMB request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_BINGO_BOMB");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_BINGO_BOMB;
+		command.DebugBingoBomb = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER)
+	{
+		C2S_DEBUG_BINGO_HAMMER request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_BINGO_HAMMER");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_BINGO_HAMMER;
+		command.DebugBingoHammer = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM)
 	{
 		C2S_DEBUG_SET_MADNESS_FORM request{};

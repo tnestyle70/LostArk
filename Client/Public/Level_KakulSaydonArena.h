@@ -296,6 +296,33 @@ private:
 	   move; this only reads the action state it already replicates. */
 	void Update_TriggerMoveFade(f32_t fTimeDelta);
 	void Update_CardMazePresentation(f32_t fTimeDelta);
+	void Update_MarioBallBouncePresentation(f32_t fTimeDelta);
+	void Update_MarioLayoutPresentation();
+	std::string m_strMarioLayoutInstance;
+	bool_t m_bMarioLayoutFailed = false;
+	bool_t m_bMarioLayoutStarted = false;
+	std::uint32_t m_iMarioBallBounceSnapshotTick = 0u;
+	f32_t m_fMarioBallBounceSnapshotSeconds = 0.f;
+	bool_t m_bMarioBallBounceRunning = false;
+	bool_t m_bMarioBallBounceFailed = false;
+	// Presentation-only launch markers use published world positions and the existing object player.
+	struct MARIO_BOMB_EMITTER
+	{
+		std::uint8_t stage = 0u;
+		std::uint32_t seed = 1u, phaseMs = 0u, durationMs = 0u;
+		std::vector<std::string> slots;
+		std::vector<std::int64_t> births;
+		bool_t failed = false;
+	};
+	bool_t Ready_MarioBombPresentation(std::string& status);
+	void Update_MarioBombPresentation(f32_t timeDelta);
+	std::unique_ptr<CWorldSequencePlayer> m_pMarioBombPlayer;
+	std::vector<MARIO_BOMB_EMITTER> m_MarioBombEmitters;
+	std::uint8_t m_iMarioBombStage = 0u;
+	double m_fMarioBombStageStartMs = 0.;
+	std::uint32_t m_iMarioBombSnapshotTick = 0u;
+	f32_t m_fMarioBombSnapshotSeconds = 0.f;
+	bool_t m_bMarioBombLoadAttempted = false;
 	std::uint32_t m_iCardMazeLastSnapshotTick = 0u;
 	f32_t m_fCardMazeSnapshotSeconds = 0.f;
 	bool m_bCardMazeMarchPlaying = false;

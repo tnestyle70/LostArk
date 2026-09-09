@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <random>
 #include <span>
 #include <string>
 #include <string_view>
@@ -354,10 +355,28 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_DEBUG_MARIO_JUMP& request);
 		void Handle_MarioMove(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_MOVE& request);
 		void Update_MarioControlState(SERVER_PLAYER& player);
+		std::uint8_t Begin_MarioStageObjects(std::uint8_t stage);
+		void Reset_MarioStageObjects(std::uint8_t stage);
+		void Cleanup_EmptyMarioStages();
 		void Update_MarioMoveGoal(SERVER_PLAYER& player, std::uint32_t updateTick);
 		bool Configure_MarioRail(SERVER_PLAYER& player, const std::string& arrivalPlacementId);
 		/* Debug F1 clown/player avatar toggle: swaps only the replicated
 		madness form of this session's player; Release answers REJECTED_DISABLED. */
+		/* Debug F1 bingo check: paints cells and promotes completed lines. The
+		board replicates on the world snapshot, so there is no result message. */
+		void Handle_DebugBingoFill(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_BINGO_FILL& request);
+		/* Debug F1 bingo bomb: marks this session's own player. The bomb
+		rides the world snapshot, so there is no result message. */
+		void Handle_DebugBingoBomb(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_BINGO_BOMB& request);
+		/* Debug F1 bingo hammer: rolls one of the twenty row/column anchors
+		and starts the sweep. The hammer rides the world snapshot. */
+		void Handle_DebugBingoHammer(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_BINGO_HAMMER& request);
 		void Handle_DebugSetMadnessForm(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);
@@ -1189,9 +1208,14 @@ namespace LostArk::Server
 		void Reset_CardMaze();
 		void Despawn_CardMazeTargets();
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
+		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
 		void Update_CardMaze(std::uint32_t tick);
+		/* Advances the bingo bomb clock: a mark whose deadline passed is
+		planted where its carrier stands, and a carrier that left the room
+		takes its mark with it. */
+		void Update_KoukuBingo(std::uint32_t tick);
 		bool Begin_CardMazeTransfer(SERVER_PLAYER& player, float x, float y, float z,
 			std::uint32_t tick, bool leaving);
 		std::uint32_t Count_SpawnGroupEntities(
@@ -1342,7 +1366,9 @@ namespace LostArk::Server
 		CServerTriggerSystem m_ServerTriggerSystem;
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
+		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};
 		CKoukuCardMazeRuntime m_KoukuCardMaze;
+		CKoukuBingoRuntime m_KoukuBingo;
 		std::uint32_t m_iCardMazeMarchStartTick = 0u;
 		std::uint32_t m_iCardMazeCycleMs = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, std::pair<float, float>> m_CardMazePreviousPositions;

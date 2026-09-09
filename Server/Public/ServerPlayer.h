@@ -148,6 +148,7 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT LastDebugMarioJumpResult;
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
 		std::uint8_t iMarioStage = 0u;
+		std::uint8_t iMarioLayoutVariant = 0u;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;
@@ -170,6 +171,7 @@ namespace LostArk::Server
 				iMovePathIndex = 0u;
 			}
 			iMarioStage = 0u;
+			iMarioLayoutVariant = 0u;
 			iMarioMoveExpiryTick = 0u;
 			fMarioDirectionX = fMarioDirectionZ = 0.f;
 			bMarioRailReady = false;
@@ -355,6 +357,14 @@ namespace LostArk::Server
 		float fAttachmentLocalOffsetY = 0.f;
 		float fAttachmentLocalOffsetZ = 0.f;
 		float fAttachmentYawOffsetDegrees = 0.f;
+		/* WORLD_HOOK_TIP rides an authored judgement region instead of a boss
+		bone, so the player names the region that caught it and the tick that
+		region's world track lets go. The owner id still names the boss whose
+		pattern owns the region, which is what every existing release path keys
+		on. Canonical zero for every other slot. */
+		std::uint32_t iAttachmentWindowIndex = 0u;
+		std::uint32_t iAttachmentRegionIndex = 0u;
+		std::uint32_t iAttachmentReleaseTick = 0u;
 
 		void Clear_Attachment()
 		{
@@ -368,6 +378,9 @@ namespace LostArk::Server
 			fAttachmentLocalOffsetY = 0.f;
 			fAttachmentLocalOffsetZ = 0.f;
 			fAttachmentYawOffsetDegrees = 0.f;
+			iAttachmentWindowIndex = 0u;
+			iAttachmentRegionIndex = 0u;
+			iAttachmentReleaseTick = 0u;
 		}
 		/* Live only while eAction is FALLING. The velocity integrates downward
 		from zero at the tick the ground disappeared, and the death tick is the

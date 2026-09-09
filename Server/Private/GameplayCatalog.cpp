@@ -581,6 +581,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
 		else if ("COMPLETE_LOGIC_WINDOW" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
+		else if ("GRAB_TO_WORLD_OBJECT" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT;
 		else
 			return false;
 		return true;
@@ -2712,6 +2714,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP &&
 				(!worldMotion || result.strTargetWorldInstanceId != window->strTargetWorldInstanceId))
 			{ m_strStatus = "OBJECT_OVERLAP Result must apply a motion to the same target World Object"; return false; }
+			if ((BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT == result.eKind) &&
+				(window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || fields[4] != "SUCCESS" ||
+					result.iPercent || result.iDurationMs))
+			{ m_strStatus = "A world-object grab only answers an ENTER_AREA success and carries no value"; return false; }
 			const bool contactResult = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION ||
 				result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
 			if ((contactResult && (window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT || fields[4] != "SUCCESS" ||
