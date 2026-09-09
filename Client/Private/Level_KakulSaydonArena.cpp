@@ -547,6 +547,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	if (cues.empty())
 	{
 		Debug_StopCompositionWorldPreview();
+		if (!m_CompositionWorldPreviewDeployStates.empty() || !m_CompositionWorldPreviewArenaVisibility.empty())
+		{ status = "Previous WORLD preview state could not be restored."; return false; }
 		return true;
 	}
 	auto targets = Make_WorldSequenceTargets();
@@ -582,6 +584,67 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{cue, std::move(player)});
 	}
 	Debug_StopCompositionWorldPreview();
+	if (!m_CompositionWorldPreviewDeployStates.empty() || !m_CompositionWorldPreviewArenaVisibility.empty())
+	{ status = "Previous WORLD preview state could not be restored."; return false; }
+
+	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> previousDeployStates;
+	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> visibleDeployStates;
+	bool_t previewsCutsceneSet = false;
+	for (const auto& [kind, target] : placementBindings)
+	{
+		WORLD_SEQUENCE_BINDING binding;
+		binding.targetKind = kind;
+		binding.targetId = target;
+		uint64_t targetId = 0u;
+		if (!CWorldSequencePlayer::Try_ParseTargetId(binding, targetId))
+		{ status = "WORLD preview target identity is invalid."; return false; }
+		if (kind == WORLD_SEQUENCE_TARGET_KIND::DEPLOY_PLACEMENT)
+		{
+			const auto object = m_DeployRuntime.Find(targetId);
+			if (!object || object->Is_AnimationAuthoringPreviewActive())
+			{ status = "WORLD preview Deploy target is missing or already owned."; return false; }
+			previousDeployStates.emplace_back(targetId, object->Get_State());
+			visibleDeployStates.emplace_back(targetId, DEPLOY_PROP_STATE::INTACT);
+		}
+		else if (kind == WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT &&
+			KAKULSAYDON_CUTSCENE_SET_FIRST_ID <= targetId && targetId < KAKULSAYDON_CUTSCENE_SET_END_ID)
+			previewsCutsceneSet = true;
+	}
+	std::vector<std::pair<uint64_t, bool_t>> previousArenaVisibility;
+	if (previewsCutsceneSet)
+	{
+		// Reuse the Level's exclusive unfolded/standing arena membership. The
+		// World player reveals its bound copy; only the standing copy is borrowed.
+		for (auto& entry : m_MapRuntime.Get_MutablePlacements())
+		{
+			if (placementBindings.contains({WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT,
+				std::to_string(entry.record.placementId)}) ||
+				std::find(KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.begin(), KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.end(),
+					entry.record.placementId) == KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.end()) continue;
+			bool_t visible = false;
+			if (!CMapPlacementRuntime::Try_GetRuntimeVisible(entry, visible))
+			{ status = "WORLD preview could not capture standing arena visibility."; return false; }
+			if (visible) previousArenaVisibility.emplace_back(entry.record.placementId, visible);
+		}
+	}
+	m_CompositionWorldPreviewDeployStates = std::move(previousDeployStates);
+	m_CompositionWorldPreviewArenaVisibility = std::move(previousArenaVisibility);
+	if (!visibleDeployStates.empty() && !m_DeployRuntime.Set_States(visibleDeployStates))
+	{
+		status = "WORLD preview could not show its bound Deploy targets: " + m_DeployRuntime.Get_Status();
+		Debug_StopCompositionWorldPreview();
+		return false;
+	}
+	for (const auto& previous : m_CompositionWorldPreviewArenaVisibility)
+	{
+		auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), previous.first);
+		if (!entry || !CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
+		{
+			status = "WORLD preview could not hide the standing arena.";
+			Debug_StopCompositionWorldPreview();
+			return false;
+		}
+	}
 	m_CompositionWorldPreviewCues = std::move(staged);
 	m_strCompositionWorldPreviewPattern = patternId;
 	m_bCompositionWorldPreviewClockBound = false;
@@ -618,6 +681,31 @@ void Client::CLevel_KakulSaydonArena::Debug_StopCompositionWorldPreview()
 	for (auto& [id, playback] : m_CompositionWorldPreviewCues)
 		playback.player->Stop_All(targets, true);
 	m_CompositionWorldPreviewCues.clear();
+	// Release the animation borrow before restoring state: Set_State rejects
+	// writes while an animation preview owns the model. Respect later external state.
+	for (auto row = m_CompositionWorldPreviewDeployStates.begin(); row != m_CompositionWorldPreviewDeployStates.end();)
+	{
+		const auto object = m_DeployRuntime.Find(row->first);
+		if (object && object->Get_State() == DEPLOY_PROP_STATE::INTACT &&
+			!m_DeployRuntime.Set_State(row->first, row->second))
+		{
+			OutputDebugStringA(("[KoukuWorldPreview] Deploy restore pending: " + m_DeployRuntime.Get_Status() + "\n").c_str());
+			++row;
+		}
+		else row = m_CompositionWorldPreviewDeployStates.erase(row);
+	}
+	for (auto row = m_CompositionWorldPreviewArenaVisibility.begin(); row != m_CompositionWorldPreviewArenaVisibility.end();)
+	{
+		auto* entry = CWorldSequencePlayer::Find_Placement(m_MapRuntime.Get_MutablePlacements(), row->first);
+		bool_t visible = false;
+		if (entry && (!CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, visible) ||
+			(!visible && !CMapPlacementRuntime::Set_RuntimeVisible(*entry, row->second))))
+		{
+			OutputDebugStringA("[KoukuWorldPreview] Standing arena visibility restore pending.\n");
+			++row;
+		}
+		else row = m_CompositionWorldPreviewArenaVisibility.erase(row);
+	}
 	m_strCompositionWorldPreviewPattern.clear();
 	m_bCompositionWorldPreviewClockBound = false;
 }
@@ -650,13 +738,15 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 			!player.Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
 		{
 			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
-			continue;
+			Debug_StopCompositionWorldPreview();
+			return;
 		}
 		if (!player.Seek_InstanceToMs(cue.instanceId,
 			static_cast<f32_t>(clockMs - cue.startMs), targets))
 		{
 			OutputDebugStringA(("[KoukuWorldPreview] " + cue.occurrenceId + ": " + player.Get_Status() + "\n").c_str());
-			player.Stop_All(targets, true);
+			Debug_StopCompositionWorldPreview();
+			return;
 		}
 	}
 }

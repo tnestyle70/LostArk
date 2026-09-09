@@ -122,10 +122,18 @@ public:
 	shared_ptr<Engine::CTransform> Get_Transform() const {
 		return m_pTransformCom;
 	}
+	/* Visual-only root shared by body, equipment, sockets and pose consumers. */
+	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
 
 	const std::string& Get_NickName() const
 	{
 		return m_strNickName;
+	}
+
+	bool_t Is_EffectActionCurrent(const std::uint32_t actionStartTick) const
+	{
+		return actionStartTick != 0u && actionStartTick == m_iEffectActionStartTick &&
+			m_iCurrentEffectSkillId != LostArk::Shared::INVALID_SKILL_ID;
 	}
 
 	bool_t Is_LocallyControlled() const
@@ -322,6 +330,9 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	f32_t m_fMoveSpeed = { 5.f };
+	f32_t m_fPresentationScale = 1.f;
+	// Part parent pointers refer to this instance member for their whole lifetime.
+	float4x4_t m_PresentationRootMatrix = {};
 	bool_t m_isMoving = { false };
 	/* Negative when no delayed idle commit is pending. */
 	f32_t m_fPendingIdleSeconds = { -1.f };
@@ -482,6 +493,8 @@ private:
 	/* Advances the knockdown clip step when its current clip ends: fall to
 	land, land to the lying loop, and standup back to locomotion. */
 	void Update_KnockdownPresentation();
+
+	void Update_PresentationRootMatrix();
 
 	//server snapshot interpolation
 	void Update_NetworkTransform(f32_t fTimeDelta);

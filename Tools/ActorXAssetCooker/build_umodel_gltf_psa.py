@@ -445,6 +445,10 @@ def build_animations(
                 # scale keeps translation keys in the same unit as the bind pose.
                 unit = 0.01 * translation_scale
                 translations.append((key[0] * unit, key[2] * unit, -key[1] * unit))
+                # ActorX mirrors source Y/W. The UModel glTF basis swap plus
+                # root-only conjugation leaves the root tuple below unchanged.
+                # For a child, conjugating XYZ is equivalent to negating only W
+                # up to quaternion sign; classify roots by the mesh hierarchy.
                 rotation = normalize_quaternion((key[3], key[5], -key[4], key[6]))
                 if node_index in child_joints:
                     rotation = (-rotation[0], -rotation[1], -rotation[2], rotation[3])

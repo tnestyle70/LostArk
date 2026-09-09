@@ -2282,11 +2282,45 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION >= 66u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 66");
+			"Mario direction packet retains its appended identity in protocol 78");
 	}
+
+    void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
+    {
+        S2C_WORLD_SNAPSHOT snapshot{};
+        snapshot.iServerTick = 100u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+        PLAYER_SNAPSHOT player{}; player.iNetEntityId = 100u;
+        player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        player.eAction = PLAYER_ACTION_STATE::FEAR; player.iActionStartTick = 100u;
+        player.iFearEndTick = 190u; player.strFearPresentationId = "kakulsaydon.g1.logic.28";
+        snapshot.Players = {player};
+        CPacketWriter writer;
+        const bool written = Write_Message(writer, snapshot);
+        CPacketReader reader{writer.Get_Buffer()}; S2C_WORLD_SNAPSHOT decoded{};
+        testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+            decoded.Players[0].eAction == PLAYER_ACTION_STATE::FEAR && decoded.Players[0].iFearEndTick == 190u &&
+            decoded.Players[0].strFearPresentationId == player.strFearPresentationId,
+            "Fear action, authoritative deadline and presentation identity round trip");
+        for (int invalid = 0; invalid < 4; ++invalid)
+        {
+            auto bad = snapshot;
+            if (invalid == 0) bad.Players[0].iFearEndTick = 0u;
+            if (invalid == 1) bad.Players[0].strFearPresentationId = "invalid id";
+            if (invalid == 2) bad.Players[0].eAction = PLAYER_ACTION_STATE::NONE;
+            if (invalid == 3) bad.Players[0].iFearEndTick = 100u;
+            CPacketWriter rejected;
+            testRunner.Require(!Write_Message(rejected, bad) && rejected.Get_Buffer().empty(),
+                "Malformed fear or stale fear fields reject before serializing any bytes");
+        }
+        auto truncated = writer.Get_Buffer(); truncated.pop_back();
+        CPacketReader malformed{truncated}; decoded.iServerTick = 777u;
+        testRunner.Require(!Read_Message(malformed, decoded) && decoded.iServerTick == 777u,
+            "Truncated fear snapshot preserves the previously committed state");
+    }
 
 	void Test_MarioStageSnapshotProtocol(TEST_RUNNER& testRunner)
 	{
@@ -2638,14 +2672,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION >= 68u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Mario wire v68 preserves jump packet identities without renumbering existing peers");
+			"Protocol 78 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2706,15 +2740,20 @@ namespace
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 73u, "World Object owner lifecycle protocol is 69");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 78u, "World Object owner lifecycle and fear use protocol 78");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) == 74u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK) == 75u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT) == 76u &&
-			static_cast<std::uint16_t>(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE) == 77u,
-			"Protocol 73 preserves main identities and bundle state");
+			static_cast<std::uint16_t>(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE) == 77u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_FILL) == 78u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_BOMB) == 79u &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) == 80u &&
+			static_cast<std::uint8_t>(PLAYER_ACTION_STATE::FEAR) == 9u &&
+			static_cast<std::uint8_t>(PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP) == 2u,
+			"Protocol 78 preserves main identities and bundle state");
 		testRunner.Require(static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::STOP_OWNER) == 3u &&
 			static_cast<unsigned>(WORLD_SEQUENCE_OPERATION::FINISH_OWNER) == 4u,
 			"Natural owner finish appends without renumbering immediate owner stop");
@@ -3054,8 +3093,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 73u,
-			"Protocol 73 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 78u,
+			"Protocol 78 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3171,8 +3210,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(69u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 69");
+			testRunner.Require(78u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 78");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3542,12 +3581,15 @@ namespace
 		/* Protocol 60 adds the dealt card symbol, the interaction HUD mode and
 		the eight mode-skill slot indices to every player row. */
 		constexpr std::size_t playerInteractionBytes = 1 + 1 + 1 + KOUKU_HUD_SLOT_COUNT;
-		// Protocol 62 appends the Server-owned Mario stage to each player row.
-		constexpr std::size_t playerMarioStageBytes = 1;
+		// Protocol 62 adds the Mario stage; protocol 76 adds its source layout.
+		constexpr std::size_t playerMarioStageBytes = 1 + 1;
+        constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
+		// Protocol 78 adds a fear deadline and the empty presentation string length.
+        constexpr std::size_t playerFearBytes = 4 + 2;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes;
+			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -3565,11 +3607,14 @@ namespace
 			GAMEPLAY_DATA_REVISION_BYTES + 1u +
 			(source.RequiredPinnedGameplayRevisions.size() *
 				GAMEPLAY_DATA_REVISION_BYTES);
+		// Empty Bingo board: masks, bomb count, hammer anchor and phase clock.
+		constexpr std::size_t bingoBoardBytes = 4 + 4 + 1 + 4 + 4 + 4 + 1;
 		const std::size_t expectedPayloadBytes =
 			snapshotHeaderBytes +
 			(playerFixedBytes * 2) +
 			cooldownBytes +
 			entityBytes +
+			bingoBoardBytes +
 			bossCombatEventBytes +
 			combatObjectBytes +
 			snapshotRevisionBytes;
@@ -6376,8 +6421,8 @@ namespace
 		}
 
 		testRunner.Require(
-			69u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 69");
+			78u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 78");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -6404,8 +6449,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			69u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 69");
+			78u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 78");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -7676,7 +7721,8 @@ int main(const int argumentCount, char* arguments[])
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--mario-controls-only")
 	{
 		Test_MarioMoveProtocol(testRunner);
-		Test_MarioStageSnapshotProtocol(testRunner);
+		Test_FearSnapshotProtocol(testRunner);
+	Test_MarioStageSnapshotProtocol(testRunner);
 		Test_CardMazeSnapshotProtocol(testRunner);
 		Test_DebugMarioJumpProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
@@ -7722,6 +7768,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_DebugMarioJumpProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_MarioMoveProtocol(testRunner);
+	Test_FearSnapshotProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
 	Test_CardMazeSnapshotProtocol(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);

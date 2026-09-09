@@ -12,6 +12,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
+#include "MapLightPresentationRuntime.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "PlayerCommandSink.h"
@@ -330,6 +331,11 @@ CLevel_Bern::CLevel_Bern(
 CLevel_Bern::~CLevel_Bern()
 {
 	End_EntranceCinematic();
+	if (nullptr != m_pMapLightPresentation)
+	{
+		m_pMapLightPresentation->Clear();
+		m_pMapLightPresentation.reset();
+	}
 
 	if (m_bBernBgmStarted)
 		CGameInstance::Get().Stop_Music();
@@ -355,6 +361,16 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] " +
 			m_MapRuntime.Get_Status() +
 			"\n").c_str());
+		return E_FAIL;
+	}
+
+	// Keep the provider local until the rest of Level initialization commits.
+	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
+	if (!mapLightPresentation->Load_Runtime(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_Bern][MapLight] " +
+			mapLightPresentation->Get_Status() + "\n").c_str());
+		m_MapRuntime.Clear();
 		return E_FAIL;
 	}
 
@@ -456,6 +472,10 @@ HRESULT CLevel_Bern::Initialize()
 #endif
 	}
 
+	m_pMapLightPresentation = std::move(mapLightPresentation);
+	m_bMapLightSubmissionFailureReported = false;
+	OutputDebugStringA(("[Level_Bern][MapLight] " +
+		m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	return S_OK;
 }
 
@@ -466,6 +486,15 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(LEVEL::BERN))
 	{
 		return;
+	}
+
+	if (nullptr != m_pMapLightPresentation &&
+		!m_pMapLightPresentation->Submit_Frame() &&
+		!m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_Bern][MapLight] " +
+			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 
 	if (!m_Replication.Update())

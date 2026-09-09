@@ -630,3 +630,1580 @@ Stop/paused seek는 같은 실행의 활성 Effect row와 raw anchor history를 
 되감는다. 과거 시점은 이미 기록한 표본을 사용하며 history에 역순으로 append하지 않는다. Reset과
 새 Pattern 실행은 기존 Stop_Session으로 완전히 해제한다. WORLD anchor 준비를 기다린 Effect는
 anchor가 생긴 뒤 기존 GROUP/LEAF 경로로 재시도한다.
+
+## G28. 캐릭터 Effect Sequencer와 Composition 조작 통일 (2026-09-09)
+
+사용자는 기존 Effect Sequencer를 Action Workbench와 같은 ImGui 구성으로 확장하고,
+Animation·Effect·Collider·Sound·Camera·Screen Post를 한 시간 커서에서 편집·재생하도록 요청했다.
+맨 위 ruler 전체를 드래그하면 노란 playhead와 모든 트랙의 표본 시점이 함께 이동한다.
+Effect 행은 개별 element로 펼치지 않고 기존 typed effect resource occurrence를 표시한다.
+다른 세션 변경의 조율은 사용자가 맡는다고 확인했으며 기존 dirty 내용은 보존한다.
+
+`CEffectAuthoringSequencer`가 문서와 단일 clock을 계속 소유한다. 기존 `CompositionTimeline`의
+ruler/box/edge gesture와 `CompositionResourceTree`를 재사용하고, Composition Resources와
+Box Detail 창을 Effect Tool별 ID로 구분한다. 고정 여섯 lane에 겹치는 occurrence만 추가 subrow로
+배치한다. 선택·검색·드래그마다 전체 Effect JSON을 다시 검사하지 않는다. 목록은 명시 Refresh와
+처음 열린 catalog의 metadata만 읽고, 실제 Append/Play에서 선택 자원의 기존 owner가 검증한다.
+
+현재 모델의 실제 clip 이름을 Animation resource로 제공한다. 저장된 skillbinding sequence는
+가져오는 원본이며 수정한 animation occurrence는 별도 sequence 문서에 저장한다. 단일 CModel의
+활성 animation 구간 겹침은 거절하며 sourceStart/sourcePlay/playRate/loop와 wall timing을 분리한다.
+원본 skillbindings나 Server gameplay timing을 이 편집이 암묵적으로 바꾸지 않는다.
+
+Sound는 Resources-relative asset ID와 occurrence별 FMOD handle을 사용한다. 기존
+Play_SoundCue/Pause/Seek/Stop 경계를 연결하여 여러 사운드를 같은 clock에서 재생하고, 멈춤·
+되감기·loop·자원 해제에서 자신의 handle만 정리한다. Collider는 Action Workbench의 saved
+presentationResources 형상 정의와 `CHitAreaWire`를 재사용해 root/bone에 연결한다. BOX/CIRCLE/
+SECTOR의 크기·위치·회전·발생구간을 저장하고 표시하며 combat 판정은 기존 Server 권위를 유지한다.
+Screen Post는 기존 V2 SCREEN_POST leaf를 별도 lane에 놓고 기존 Effect runtime으로 재생한다.
+Camera는 기존 camera key·원본 recovery camera·presentation override 소유권을 유지한다.
+
+`.effectsequence.json` v4는 customAnimation/animationRows/soundRows/colliderRows와 effect의
+screenPost 분류를 추가하고 v1~3을 계속 읽는다. 모든 추가 행은 stable occurrence ID, 유한 값,
+시간 범위, Resources 상대 경로와 named bone을 검사한다. Load는 parse/validate/stage/commit,
+Save는 기준 파일 변경 거절과 atomic write를 유지한다. 실패한 후보로 현재 문서를 부분 교체하지 않는다.
+
+기존 `EffectAuthoringSequencer.h/.cpp`를 확장하고 표시·codec·presentation을 같은 class의
+`_Timeline.cpp`, `_Resources.cpp`, `_Tracks.cpp`, `_Presentation.cpp`로 나눈다. 네 CPP는
+Client.vcxproj와 filters에 실제 물리 위치를 등록한다. V1 목록 조회는 기존
+EffectAuthoringResourceTree의 read-only metadata 함수를 재사용한다. 새 병렬 runtime은 없다.
+실제 clock/저장 왕복·잘못된 입력 보존·동시 사운드 handle 정리를 필요한 기존 검사 방식으로
+확인하고 최소 C++ compile 및 Debug Product를 순차 실행한다. Client 조작·화면·청각 판정은 사용자에게 인계한다.
+
+
+### G28 새 CPP의 책임과 전체 코드
+
+새 CPP 네 개는 독립 런타임이 아니라 `CEffectAuthoringSequencer`의 같은 멤버 상태를 사용한다. 아래 코드는 기존 class의 선언과 실제 project/filter 등록을 소비한다. 코드 전문은 화면 검증 증거가 아니다.
+
+#### EffectAuthoringSequencer_Timeline.cpp
+
+`Select_TimelineRow`는 stable ID 선택을 소유한다. `Apply_AnimationRow`, `Apply_EffectRow`, `Apply_SoundRow`, `Apply_ColliderRow`는 편집 후보를 검증하고 선택 occurrence만 교체한다. Animation 실패는 이전 배열과 pause/dirty를 복구하고, Effect/Sound는 새 객체·채널 준비 실패 때 이전 것을 유지한다. `Remove_SelectedRow`와 `Duplicate_SelectedRow`는 종류별 실제 자원을 정리·복사한다. `Render_Sequencer`는 toolbar와 공통 ruler/box gesture를 표시하고 드래그 종료 시 한 번 적용한다. UI의 preview timing과 저장된 행을 분리한다.
+
+<details>
+<summary>EffectAuthoringSequencer_Timeline.cpp 전체 코드</summary>
+
+```cpp
+#include "imgui.h"
+#include "EffectAuthoringSequencer.h"
+#include "CompositionTimeline.h"
+#include "EffectEditingSession.h"
+#include "Effect_Object.h"
+#include "GameInstance.h"
+#include "RuntimeAssetRoot.h"
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <functional>
+
+namespace Client
+{
+namespace
+{
+constexpr std::uint32_t LIMIT_MS = 600000u;
+template<class Rows> auto FindRow(Rows& rows, const std::string& id)
+{
+    return std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return row.id == id; });
+}
+bool FinitePosition(const float3_t& value)
+{
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+        std::abs(value.x) <= 100000.f && std::abs(value.y) <= 100000.f && std::abs(value.z) <= 100000.f;
+}
+}
+
+void CEffectAuthoringSequencer::Select_TimelineRow(const TRACK_KIND kind, const std::string& id)
+{
+    m_SelectedTrack = kind; m_SelectedRowId = id; m_BoxDetailOpen = true;
+    m_SelectedEffect = kind == TRACK_KIND::EFFECT || kind == TRACK_KIND::SCREEN_POST ? id : "";
+    m_SelectedCamera = kind == TRACK_KIND::CAMERA ? id : "";
+}
+
+bool CEffectAuthoringSequencer::Apply_AnimationRow(const CLIP& row)
+{
+    if (m_UseKouku) { m_Status = "Edit the saved boss composition in Action Workbench."; return false; }
+    auto candidate = m_CustomAnimation ? m_AnimationRows :
+        (Selected_Sequence() ? Selected_Sequence()->clips : std::vector<CLIP>{});
+    auto found = FindRow(candidate, row.id);
+    if (found == candidate.end()) { m_Status = "The selected Animation occurrence is unavailable."; return false; }
+    *found = row;
+    if (!Validate_AnimationRows(candidate)) return false;
+    auto previous = m_AnimationRows; const bool wasCustom = m_CustomAnimation, wasDirty = m_Dirty;
+    m_AnimationRows = std::move(candidate); m_CustomAnimation = true;
+    if (!Refresh_AnimationTiming())
+    {
+        const auto error = m_Status; m_AnimationRows = std::move(previous); m_CustomAnimation = wasCustom;
+        Refresh_AnimationTiming(); m_Dirty = wasDirty; m_Status = error; return false;
+    }
+    m_BoxDetailDraft.reset(); m_Dirty = true; m_Status = "Animation occurrence applied."; return true;
+}
+
+bool CEffectAuthoringSequencer::Apply_EffectRow(const EFFECT_ROW& value)
+{
+    auto found = FindRow(m_Effects, value.id);
+    if (found == m_Effects.end()) { m_Status = "Append this preview before editing its occurrence."; return false; }
+    if (!FinitePosition(value.offset)) { m_Status = "Effect offset must be finite and within 100000 m."; return false; }
+    auto candidate = value;
+    candidate.v1.reset(); candidate.v2 = 0u; candidate.history.reset(); candidate.anchorHistory.reset();
+    candidate.sampledAge = candidate.recordedAge = -1.f;
+    float4x4_t root = m_WorldRoot;
+    if (m_Active && !Resolve_Root(root)) return false;
+    if (!Stage_Row(candidate, root) || (m_Active && !m_Transient && !Sample_Row(candidate, root)))
+    { Release_Row(candidate); return false; }
+    Release_Row(*found); *found = std::move(candidate); m_Dirty = true;
+    m_BoxDetailDraft.reset(); Preserve_ClockDuringAuthoring(); m_Status = "Effect occurrence applied."; return true;
+}
+
+bool CEffectAuthoringSequencer::Apply_SoundRow(const SOUND_ROW& value)
+{
+    auto candidate = m_Sounds; auto found = FindRow(candidate, value.id);
+    if (found == candidate.end()) { m_Status = "The selected Sound occurrence is unavailable."; return false; }
+    const auto index = static_cast<std::size_t>(found - candidate.begin());
+    *found = value;
+    if (!Validate_SoundRows(candidate)) return false;
+    auto staged = value; staged.handle = 0u; staged.sampledAge = -1;
+    auto& sound = CGameInstance::Get();
+    if (m_Active && !m_Transient && !staged.muted && ClockMs() >= staged.startMs &&
+        std::uint64_t(ClockMs()) < std::uint64_t(staged.startMs) + staged.durationMs)
+    {
+        const auto path = CRuntimeAssetRoot::Resolve(std::filesystem::path(
+            std::u8string(staged.assetId.begin(), staged.assetId.end())));
+        std::uint32_t sourceDuration = 0u;
+        if (path.empty() || !sound.Get_SoundDurationMs(path.wstring(), sourceDuration))
+        { m_Status = "Sound source preparation failed; the previous occurrence is preserved."; return false; }
+        const auto age = staged.sourceStartMs + ClockMs() - staged.startMs;
+        if (age < sourceDuration)
+        {
+            staged.handle = sound.Play_SoundCue(path.wstring(), staged.volume, age, true);
+            if (!staged.handle)
+            { m_Status = "Sound channel preparation failed; the previous occurrence is preserved."; return false; }
+        }
+        staged.sampledAge = age;
+    }
+    if (m_Sounds[index].handle) sound.Stop_SoundCue(m_Sounds[index].handle);
+    m_Sounds[index] = std::move(staged);
+    if (m_Sounds[index].handle) sound.Pause_SoundCue(m_Sounds[index].handle, m_Paused);
+    m_BoxDetailDraft.reset(); m_Dirty = true; m_Status = "Sound occurrence applied."; return true;
+}
+
+bool CEffectAuthoringSequencer::Apply_ColliderRow(const COLLIDER_ROW& value)
+{
+    auto candidate = m_Colliders; auto found = FindRow(candidate, value.id);
+    if (found == candidate.end()) { m_Status = "The selected Collider occurrence is unavailable."; return false; }
+    *found = value;
+    if (!Validate_ColliderRows(candidate) || !Validate_Anchor(value.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
+    m_Colliders = std::move(candidate); m_BoxDetailDraft.reset(); m_Dirty = true; m_Status = "Collider occurrence applied."; return true;
+}
+
+bool CEffectAuthoringSequencer::Remove_SelectedRow()
+{
+    if (m_SelectedRowId.empty()) return false;
+    switch (m_SelectedTrack)
+    {
+    case TRACK_KIND::ANIMATION:
+    {
+        if (m_UseKouku) return false;
+        auto candidate = m_CustomAnimation ? m_AnimationRows :
+            (Selected_Sequence() ? Selected_Sequence()->clips : std::vector<CLIP>{});
+        auto row = FindRow(candidate, m_SelectedRowId); if (row == candidate.end()) return false;
+        auto previous = m_AnimationRows; const bool wasCustom = m_CustomAnimation, wasDirty = m_Dirty;
+        candidate.erase(row); m_AnimationRows = std::move(candidate); m_CustomAnimation = true;
+        if (!Refresh_AnimationTiming())
+        {
+            const auto error = m_Status; m_AnimationRows = std::move(previous); m_CustomAnimation = wasCustom;
+            Refresh_AnimationTiming(); m_Dirty = wasDirty; m_Status = error; return false;
+        }
+        break;
+    }
+    case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+    {
+        auto row = FindRow(m_Effects, m_SelectedRowId); if (row == m_Effects.end()) return false;
+        Release_Row(*row); m_Effects.erase(row); break;
+    }
+    case TRACK_KIND::SOUND:
+    {
+        auto row = FindRow(m_Sounds, m_SelectedRowId); if (row == m_Sounds.end()) return false;
+        if (row->handle) CGameInstance::Get().Stop_SoundCue(row->handle);
+        m_Sounds.erase(row); break;
+    }
+    case TRACK_KIND::COLLIDER:
+    {
+        auto row = FindRow(m_Colliders, m_SelectedRowId); if (row == m_Colliders.end()) return false;
+        m_Colliders.erase(row); break;
+    }
+    case TRACK_KIND::CAMERA:
+    {
+        auto row = FindRow(m_CameraRows, m_SelectedRowId); if (row == m_CameraRows.end()) return false;
+        m_CameraRows.erase(row);
+        if (m_Active) { float4x4_t root; if (Resolve_Root(root)) Sample_Camera(ClockMs(), root); }
+        break;
+    }
+    }
+    m_SelectedRowId.clear(); m_SelectedEffect.clear(); m_SelectedCamera.clear();
+    m_BoxDetailDraft.reset(); m_Dirty = true; m_Status = "Occurrence removed."; return true;
+}
+
+bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
+{
+    const auto nextStart = [](std::uint32_t start, std::uint32_t duration)
+        { return duration <= LIMIT_MS && start <= LIMIT_MS - duration && start + duration <= LIMIT_MS - duration; };
+    switch (m_SelectedTrack)
+    {
+    case TRACK_KIND::ANIMATION:
+    {
+        if (m_UseKouku) break;
+        auto candidate = m_CustomAnimation ? m_AnimationRows :
+            (Selected_Sequence() ? Selected_Sequence()->clips : std::vector<CLIP>{});
+        auto found = FindRow(candidate, m_SelectedRowId);
+        if (found == candidate.end() || !nextStart(found->startMs, found->durationMs)) break;
+        auto row = *found; row.id = CEffectEditingSession::New_Id("animation.occurrence."); row.startMs += row.durationMs;
+        candidate.push_back(row); if (!Validate_AnimationRows(candidate)) return false;
+        auto previous = m_AnimationRows; const bool wasCustom = m_CustomAnimation, wasDirty = m_Dirty;
+        m_AnimationRows = std::move(candidate); m_CustomAnimation = true;
+        if (!Refresh_AnimationTiming())
+        {
+            const auto error = m_Status; m_AnimationRows = std::move(previous); m_CustomAnimation = wasCustom;
+            Refresh_AnimationTiming(); m_Dirty = wasDirty; m_Status = error; return false;
+        }
+        Select_TimelineRow(TRACK_KIND::ANIMATION, row.id); m_Dirty = true; return true;
+    }
+    case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+    {
+        auto found = FindRow(m_Effects, m_SelectedRowId);
+        if (found == m_Effects.end() || m_Effects.size() >= 256u || !nextStart(found->startMs, found->durationMs)) break;
+        auto row = *found; row.id = CEffectEditingSession::New_Id("effect.occurrence."); row.startMs += row.durationMs;
+        row.v1.reset(); row.v2 = 0u; row.history.reset(); row.anchorHistory.reset(); row.sampledAge = row.recordedAge = -1.f;
+        float4x4_t root = m_WorldRoot;
+        if (m_Active && !Resolve_Root(root)) return false;
+        if (!Stage_Row(row, root) || (m_Active && !m_Transient && !Sample_Row(row, root))) { Release_Row(row); return false; }
+        Select_TimelineRow(m_SelectedTrack, row.id); m_Effects.push_back(std::move(row)); m_Dirty = true; return true;
+    }
+    case TRACK_KIND::SOUND:
+    {
+        auto found = FindRow(m_Sounds, m_SelectedRowId);
+        if (found == m_Sounds.end() || !nextStart(found->startMs, found->durationMs)) break;
+        auto row = *found; row.id = CEffectEditingSession::New_Id("sound.occurrence."); row.startMs += row.durationMs;
+        row.handle = 0u; row.sampledAge = -1;
+        auto candidate = m_Sounds; candidate.push_back(row); if (!Validate_SoundRows(candidate)) return false;
+        m_Sounds = std::move(candidate); Select_TimelineRow(TRACK_KIND::SOUND, row.id); m_Dirty = true; return true;
+    }
+    case TRACK_KIND::COLLIDER:
+    {
+        auto found = FindRow(m_Colliders, m_SelectedRowId);
+        if (found == m_Colliders.end() || !nextStart(found->startMs, found->durationMs)) break;
+        auto row = *found; row.id = CEffectEditingSession::New_Id("collider.occurrence."); row.startMs += row.durationMs;
+        auto candidate = m_Colliders; candidate.push_back(row); if (!Validate_ColliderRows(candidate)) return false;
+        m_Colliders = std::move(candidate); Select_TimelineRow(TRACK_KIND::COLLIDER, row.id); m_Dirty = true; return true;
+    }
+    case TRACK_KIND::CAMERA:
+    {
+        auto found = FindRow(m_CameraRows, m_SelectedRowId);
+        if (found == m_CameraRows.end() || !nextStart(found->startMs, found->cue.iDurationMs)) break;
+        auto row = *found; row.id = CEffectEditingSession::New_Id("camera.row."); row.cue.strCueId = row.id;
+        row.startMs += row.cue.iDurationMs;
+        auto candidate = m_CameraRows; candidate.push_back(row); if (!Validate_CameraRows(candidate)) return false;
+        m_CameraRows = std::move(candidate); Select_TimelineRow(TRACK_KIND::CAMERA, row.id); m_Dirty = true; return true;
+    }
+    }
+    m_Status = "The selected occurrence cannot be duplicated at its end time."; return false;
+}
+
+void CEffectAuthoringSequencer::Render_Sequencer(const char* title)
+{
+    ImGui::SetNextWindowSize({1180.f, 420.f}, ImGuiCond_FirstUseEver);
+    const bool expanded = ImGui::Begin(title, nullptr, ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Window"))
+        {
+            ImGui::MenuItem("Composition Resources", nullptr, &m_ResourcesOpen);
+            ImGui::MenuItem("Box Detail", nullptr, &m_BoxDetailOpen);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+    if (expanded)
+    {
+        if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
+        if (ImGui::Button("Play")) { if (m_ClockMs >= DurationMs()) m_ClockMs = 0; Play(); }
+        ImGui::SameLine(); if (ImGui::Button(m_Paused ? "Resume" : "Pause")) Pause(!m_Paused);
+        ImGui::SameLine(); if (ImGui::Button("Restart")) { m_ClockMs = 0; Play(); }
+        ImGui::SameLine(); if (ImGui::Button("Stop")) { Stop(); m_ClockMs = 0; }
+        ImGui::SameLine(); ImGui::Checkbox("Loop", &m_Loop);
+        ImGui::SameLine(); if (ImGui::Button("Refresh Effects")) Refresh_Effects();
+        ImGui::SameLine(); if (ImGui::Button("Resources")) m_ResourcesOpen = true;
+        ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
+        ImGui::SetNextItemWidth(255.f); ImGui::InputText("Sequence ID", m_SequenceId, sizeof(m_SequenceId));
+        ImGui::SameLine(); if (ImGui::Button("Save")) Save_Sequence();
+        ImGui::SameLine(); if (ImGui::Button("Load")) Load_Sequence();
+        ImGui::SameLine(); if (ImGui::Button("Revert")) Load_Sequence(true);
+        ImGui::SameLine(); if (ImGui::Button("New"))
+        {
+            if (m_Dirty) m_Status = "Save or Revert this sequence before creating another.";
+            else
+            {
+                Stop(); m_Effects.clear(); m_CameraRows.clear(); m_Sounds.clear(); m_Colliders.clear();
+                m_AnimationRows.clear(); m_CustomAnimation = false; m_SelectedSequence.clear(); m_UseKouku = false;
+                m_SelectedCamera.clear(); m_SelectedEffect.clear(); m_SelectedRowId.clear(); m_BoxDetailDraft.reset();
+                m_ClockMs = 0; m_NextEffectOrdinal = 1u;
+                std::snprintf(m_SequenceId, sizeof(m_SequenceId), "%s", CEffectEditingSession::New_Id("effect.sequence.").c_str());
+                m_SequenceBaseline.clear(); m_PersistedSequenceId.clear(); m_SequenceExisted = false; m_Dirty = true;
+            }
+        }
+        if (m_Dirty) { ImGui::SameLine(); ImGui::TextDisabled("Unsaved"); }
+        int clock = static_cast<int>(ClockMs());
+        ImGui::SetNextItemWidth(300.f);
+        if (ImGui::SliderInt("Time", &clock, 0, static_cast<int>(DurationMs()), "%d ms")) Seek(clock);
+        ImGui::SameLine(); ImGui::SetNextItemWidth(130.f); ImGui::SliderFloat("Zoom", &m_Zoom, 10.f, 300.f, "%.0f px/s");
+        ImGui::SameLine(); if (ImGui::Button("Duplicate")) Duplicate_SelectedRow();
+        ImGui::SameLine(); if (ImGui::Button("Remove")) Remove_SelectedRow();
+        const auto firstLine = m_Status.substr(0, m_Status.find('\n'));
+        ImGui::TextUnformatted(firstLine.c_str());
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_Status.c_str());
+
+        struct BOX final
+        {
+            TRACK_KIND kind; std::string id, label; std::uint32_t start, duration;
+            bool muted, editable;
+        };
+        std::array<std::vector<BOX>, 6> lanes;
+        auto add = [&](TRACK_KIND kind, const std::string& id, const std::string& label,
+            std::uint32_t start, std::uint32_t duration, bool muted, bool editable = true)
+        { lanes[static_cast<std::size_t>(kind)].push_back({kind, id, label, start, duration, muted, editable}); };
+        if (m_UseKouku)
+            for (const auto& clip : m_Kouku.Rows())
+                add(TRACK_KIND::ANIMATION, clip.memberId + "." + clip.occurrenceId, clip.runtimeClip,
+                    clip.startMs, clip.durationMs, false, false);
+        else
+        {
+            const auto* sequence = Selected_Sequence();
+            const auto* clips = m_CustomAnimation ? &m_AnimationRows : (sequence ? &sequence->clips : nullptr);
+            if (clips) for (const auto& clip : *clips)
+                add(TRACK_KIND::ANIMATION, clip.id, clip.label.empty() ? clip.clipName : clip.label,
+                    clip.startMs, clip.durationMs, clip.muted);
+        }
+        auto addEffect = [&](const EFFECT_ROW& row, bool transient)
+        {
+            const auto resource = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(),
+                [&](const auto& entry) { return entry.key == row.key; });
+            const auto label = resource == m_CompositionResources.end() ? row.key.strStableId : resource->label;
+            add(row.screenPost ? TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT, row.id,
+                transient ? "Preview / " + label : label, row.startMs, row.durationMs, row.muted, !transient);
+        };
+        for (const auto& row : m_Effects) addEffect(row, false);
+        if (m_Transient) addEffect(*m_Transient, true);
+        for (const auto& row : m_Colliders) add(TRACK_KIND::COLLIDER, row.id, row.label, row.startMs, row.durationMs, row.muted);
+        for (const auto& row : m_Sounds) add(TRACK_KIND::SOUND, row.id, row.label, row.startMs, row.durationMs, row.muted);
+        const auto& cameras = m_Transient ? m_TransientCameraRows : m_CameraRows;
+        for (const auto& row : cameras) add(TRACK_KIND::CAMERA, row.id, row.label, row.startMs, row.cue.iDurationMs, row.muted, !m_Transient);
+        constexpr float labels = 160.f, rowHeight = 29.f;
+        const auto canvasMs = (std::min)(LIMIT_MS, (std::max)(10000u, DurationMs() + 1000u));
+        const float width = (std::max)(ImGui::GetContentRegionAvail().x - 5.f, labels + canvasMs * m_Zoom * .001f + 30.f);
+        ImGui::SetNextWindowContentSize({width, 0.f});
+        if (ImGui::BeginChild("Timeline", {0.f, 0.f}, ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar))
+        {
+            const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
+            ImGui::TextDisabled("0  Timeline");
+            CompositionTimeline::DrawRuler(draw, {origin.x + labels, origin.y}, {origin.x + width, origin.y + rowHeight}, canvasMs, m_Zoom);
+            ImGui::SetCursorScreenPos({origin.x + labels, origin.y});
+            ImGui::InvisibleButton("Timeline cursor", {width - labels, rowHeight});
+            if (ImGui::IsItemActive())
+            {
+                const auto ms = static_cast<std::uint32_t>((std::clamp)(
+                    (ImGui::GetIO().MousePos.x - origin.x - labels) * 1000.f / m_Zoom, 0.f, float(DurationMs())));
+                if (!m_Active || ms != ClockMs()) Seek(ms);
+                m_Interaction = true;
+            }
+            const char* names[] = {"Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post"};
+            const ImU32 colors[] = {IM_COL32(68,125,177,230), IM_COL32(173,107,48,230), IM_COL32(65,171,165,230),
+                IM_COL32(130,176,83,230), IM_COL32(118,85,184,230), IM_COL32(190,90,144,230)};
+            float y = origin.y + rowHeight;
+            for (std::size_t lane = 0; lane < lanes.size(); ++lane)
+            {
+                auto& boxes = lanes[lane];
+                std::stable_sort(boxes.begin(), boxes.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
+                std::vector<std::uint32_t> rowEnds;
+                std::vector<std::size_t> positions;
+                for (const auto& box : boxes)
+                {
+                    std::size_t row = 0;
+                    while (row < rowEnds.size() && rowEnds[row] > box.start) ++row;
+                    if (row == rowEnds.size()) rowEnds.push_back(0u);
+                    rowEnds[row] = box.start + box.duration; positions.push_back(row);
+                }
+                const auto rowCount = (std::max)(std::size_t{1}, rowEnds.size());
+                const float height = rowHeight * static_cast<float>(rowCount);
+                draw->AddRectFilled({origin.x, y}, {origin.x + width, y + height},
+                    lane % 2 ? IM_COL32(31,34,41,255) : IM_COL32(38,41,49,255));
+                draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(64,68,76,255));
+                draw->AddText({origin.x + 8.f, y + 6.f}, colors[lane], names[lane]);
+                if (boxes.empty()) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), "Add from Composition Resources");
+                for (std::size_t i = 0; i < boxes.size(); ++i)
+                {
+                    const auto& box = boxes[i];
+                    const bool dragging = m_DragRowId == box.id && m_DragTrack == box.kind;
+                    const auto startMs = dragging ? m_DragPreviewStartMs : box.start;
+                    const auto durationMs = dragging ? m_DragPreviewDurationMs : box.duration;
+                    const float top = y + positions[i] * rowHeight + 2.f;
+                    const float left = origin.x + labels + startMs * m_Zoom * .001f;
+                    const float right = (std::max)(left + 6.f, left + durationMs * m_Zoom * .001f);
+                    CompositionTimeline::DrawBox(draw, {left, top}, {right, top + rowHeight - 5.f},
+                        box.muted ? IM_COL32(73,75,81,200) : colors[lane],
+                        m_SelectedTrack == box.kind && m_SelectedRowId == box.id, box.label.c_str(), box.editable, box.editable);
+                    ImGui::SetCursorScreenPos({left, top}); ImGui::PushID(static_cast<int>(lane)); ImGui::PushID(box.id.c_str());
+                    ImGui::InvisibleButton("Occurrence", {right - left, rowHeight - 5.f});
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%u ms / %u ms%s", box.label.c_str(), startMs, durationMs, box.muted ? " / Muted" : "");
+                    if (ImGui::IsItemActivated())
+                    {
+                        Select_TimelineRow(box.kind, box.id); m_Interaction = true;
+                        if (box.editable)
+                        {
+                            m_DragRowId = box.id; m_DragTrack = box.kind; m_DragMouseX = ImGui::GetIO().MousePos.x;
+                            m_DragStartMs = m_DragPreviewStartMs = box.start; m_DragDurationMs = m_DragPreviewDurationMs = box.duration;
+                            m_DragWasPaused = m_Paused; Pause(true);
+                            m_DragKind = static_cast<int>(CompositionTimeline::HitBoxGesture(m_DragMouseX, left, right, 6.f, true, true));
+                        }
+                    }
+                    if (box.editable && dragging && ImGui::IsItemActive())
+                    {
+                        const auto delta = static_cast<std::int64_t>(std::llround((ImGui::GetIO().MousePos.x - m_DragMouseX) * 1000. / m_Zoom));
+                        std::int64_t start = m_DragStartMs, duration = m_DragDurationMs;
+                        if (m_DragKind == static_cast<int>(CompositionTimeline::BoxGesture::MOVE))
+                            start = (std::clamp)(start + delta, std::int64_t{0}, std::int64_t{LIMIT_MS - m_DragDurationMs});
+                        else if (m_DragKind == static_cast<int>(CompositionTimeline::BoxGesture::TRIM_START))
+                        { start = (std::clamp)(start + delta, std::int64_t{0}, std::int64_t{m_DragStartMs} + m_DragDurationMs - 1); duration = m_DragStartMs + m_DragDurationMs - start; }
+                        else duration = (std::clamp)(duration + delta, std::int64_t{1}, std::int64_t{LIMIT_MS - m_DragStartMs});
+                        m_DragPreviewStartMs = static_cast<std::uint32_t>(start); m_DragPreviewDurationMs = static_cast<std::uint32_t>(duration);
+                    }
+                    ImGui::PopID(); ImGui::PopID();
+                }
+                y += height;
+            }
+            const float cursorX = origin.x + labels + float(m_ClockMs) * m_Zoom * .001f;
+            draw->AddLine({cursorX, origin.y}, {cursorX, y}, IM_COL32(255,222,90,255), 2.f);
+            draw->AddTriangleFilled({cursorX - 6.f, origin.y}, {cursorX + 6.f, origin.y}, {cursorX, origin.y + 8.f}, IM_COL32(255,222,90,255));
+            ImGui::SetCursorScreenPos({origin.x, y}); ImGui::Dummy({width, 2.f});
+        }
+        ImGui::EndChild();
+        if (!m_DragRowId.empty() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            if (m_DragPreviewStartMs != m_DragStartMs || m_DragPreviewDurationMs != m_DragDurationMs)
+            {
+                switch (m_DragTrack)
+                {
+                case TRACK_KIND::ANIMATION:
+                {
+                    const auto* sequence = Selected_Sequence();
+                    const auto* clips = m_CustomAnimation ? &m_AnimationRows : (sequence ? &sequence->clips : nullptr);
+                    if (clips)
+                    {
+                        auto found = FindRow(*clips, m_DragRowId);
+                        if (found != clips->end())
+                        {
+                            auto row = *found; bool valid = true;
+                            if (m_DragKind == static_cast<int>(CompositionTimeline::BoxGesture::TRIM_START))
+                            {
+                                const auto sourceDelta = static_cast<std::int64_t>(std::llround(
+                                    (std::int64_t(m_DragPreviewStartMs) - row.startMs) * double(row.playRate)));
+                                const auto sourceStart = std::int64_t(row.sourceStartMs) + sourceDelta;
+                                const auto sourcePlay = row.sourcePlayMs ? std::int64_t(row.sourcePlayMs) - sourceDelta : 0;
+                                valid = sourceStart >= 0 && sourceStart <= LIMIT_MS &&
+                                    (!row.sourcePlayMs || (sourcePlay > 0 && sourcePlay <= LIMIT_MS));
+                                if (valid) { row.sourceStartMs = static_cast<std::uint32_t>(sourceStart); row.sourcePlayMs = static_cast<std::uint32_t>(sourcePlay); }
+                            }
+                            if (valid) { row.startMs = m_DragPreviewStartMs; row.durationMs = m_DragPreviewDurationMs; Apply_AnimationRow(row); }
+                            else m_Status = "Animation trim extends outside its source window; the occurrence is preserved.";
+                        }
+                    }
+                    break;
+                }
+                case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+                { auto found = FindRow(m_Effects, m_DragRowId); if (found != m_Effects.end()) { auto row = *found; row.startMs = m_DragPreviewStartMs; row.durationMs = m_DragPreviewDurationMs; Apply_EffectRow(row); } break; }
+                case TRACK_KIND::SOUND:
+                {
+                    auto found = FindRow(m_Sounds, m_DragRowId);
+                    if (found != m_Sounds.end())
+                    {
+                        auto row = *found; const auto sourceStart = std::int64_t(row.sourceStartMs) +
+                            (m_DragKind == static_cast<int>(CompositionTimeline::BoxGesture::TRIM_START) ?
+                                std::int64_t(m_DragPreviewStartMs) - row.startMs : 0);
+                        if (sourceStart >= 0 && sourceStart <= LIMIT_MS)
+                        {
+                            row.sourceStartMs = static_cast<std::uint32_t>(sourceStart);
+                            row.startMs = m_DragPreviewStartMs; row.durationMs = m_DragPreviewDurationMs; Apply_SoundRow(row);
+                        }
+                        else m_Status = "Sound trim extends before its source; the occurrence is preserved.";
+                    }
+                    break;
+                }
+                case TRACK_KIND::COLLIDER:
+                { auto found = FindRow(m_Colliders, m_DragRowId); if (found != m_Colliders.end()) { auto row = *found; row.startMs = m_DragPreviewStartMs; row.durationMs = m_DragPreviewDurationMs; Apply_ColliderRow(row); } break; }
+                case TRACK_KIND::CAMERA:
+                {
+                    auto candidate = m_CameraRows; auto found = FindRow(candidate, m_DragRowId);
+                    if (found != candidate.end())
+                    {
+                        for (auto& key : found->cue.Keyframes) key.iTimeMs = static_cast<std::uint32_t>(
+                            std::llround(double(key.iTimeMs) * m_DragPreviewDurationMs / found->cue.iDurationMs));
+                        found->startMs = m_DragPreviewStartMs; found->cue.iDurationMs = m_DragPreviewDurationMs;
+                        if (Validate_CameraRows(candidate))
+                        { m_CameraRows = std::move(candidate); m_Dirty = true; if (m_Active) Sample(); }
+                    }
+                    break;
+                }
+                }
+            }
+            m_DragRowId.clear(); Pause(m_DragWasPaused);
+        }
+    }
+    ImGui::End();
+    if (m_ResourcesOpen) Render_CompositionResources();
+    if (m_BoxDetailOpen) Render_BoxDetail();
+    Render_Colliders();
+}
+}
+```
+
+</details>
+
+#### EffectAuthoringSequencer_Resources.cpp
+
+`Refresh_CompositionResourceInventory`는 명시적 갱신의 metadata 목록을 구성하고 `Render_CompositionResources`는 공통 resource tree의 선택을 typed Append 명령으로 전달한다. 실제 모델 clip, V1/V2 Effect, saved geometry Collider, Sound 상대 ID와 Camera capture를 기존 소비자에 연결한다. `BOX_DETAIL_DRAFT`는 적용 전 편집 상태이며 shared owner를 함수 안에서 유지해 Apply가 멤버를 reset해도 참조가 유효하다. `Render_BoxDetail`은 종류별 필드를 보여 주고 검증된 후보만 class의 Apply 함수로 전달한다.
+
+<details>
+<summary>EffectAuthoringSequencer_Resources.cpp 전체 코드</summary>
+
+```cpp
+#include "imgui.h"
+#include "EffectAuthoringSequencer.h"
+#include "EffectAuthoringResourceTree.h"
+#include "EffectEditingSession.h"
+#include "Model.h"
+#include "RuntimeAssetRoot.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <set>
+
+namespace Client
+{
+namespace
+{
+constexpr std::uint32_t MAX_RESOURCE_MS = 600000u;
+constexpr const char* RESOURCE_TABS[] = { "Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post" };
+
+std::string ResourcePathUtf8(const std::filesystem::path& path)
+{
+    const auto text = path.generic_u8string();
+    return std::string(text.begin(), text.end());
+}
+
+bool ResourceMatches(const std::string& text, const std::string& query)
+{
+    return query.empty() || std::search(text.begin(), text.end(), query.begin(), query.end(),
+        [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); }) != text.end();
+}
+
+std::vector<std::string> ResourceSegments(const std::string& category)
+{
+    std::vector<std::string> result;
+    std::size_t start = 0;
+    while (start < category.size())
+    {
+        const auto end = category.find('/', start);
+        if (end != start) result.push_back(category.substr(start, end - start));
+        if (end == std::string::npos) break;
+        start = end + 1;
+    }
+    return result;
+}
+
+template<class Rows, class Kind>
+void ReadAnimationRows(Rows& rows, const Kind animationKind)
+{
+    const auto model = CAnimationTargetService::Resolve_Model();
+    if (!model) return;
+    const auto asset = CAnimationTargetService::Resolve_AssetName();
+    std::set<std::string> names;
+    for (std::uint32_t i = 0; i < model->Get_NumAnimations(); ++i)
+    {
+        const auto* name = model->Get_AnimationName(i);
+        if (!name || !*name) continue;
+        typename Rows::value_type row; row.kind = animationKind; row.id = row.label = name;
+        row.category = asset;
+        float position = 0.f, duration = 0.f;
+        const float rate = model->Get_AnimationTickPerSecond(i);
+        if (!names.insert(row.id).second) row.status = "The model contains an ambiguous clip name.";
+        if (!model->Get_AnimationProgress(i, position, duration) || !std::isfinite(duration) || duration <= 0.f ||
+            !std::isfinite(rate) || rate <= 0.f || duration / rate > MAX_RESOURCE_MS * .001f)
+            row.status = "The model clip has invalid duration metadata.";
+        else row.durationMs = static_cast<std::uint32_t>(std::ceil(duration / rate * 1000.f));
+        rows.push_back(std::move(row));
+    }
+}
+
+bool ReadColliderDefinitions(std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE>& rows,
+    std::string& error)
+{
+    const auto path = CKoukuSaydonCompositionDocument::Resolve_Path();
+    std::error_code ec;
+    const auto size = std::filesystem::file_size(path, ec);
+    if (ec || size > 16u * 1024u * 1024u)
+    { error = "Saved Collider composition is unavailable or exceeds 16 MiB."; return false; }
+    std::ifstream input(path, std::ios::binary);
+    if (!input) { error = "Cannot read saved Collider composition."; return false; }
+    const std::string bytes((std::istreambuf_iterator<char>(input)), {});
+    if (input.bad()) { error = "Saved Collider composition read failed."; return false; }
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+    // Reuse the source codec without admitting the unrelated boss gameplay graph.
+    if (!CKoukuSaydonCompositionDocument::Parse_Text(bytes, document, error)) return false;
+    for (auto& resource : document.PresentationResources)
+        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
+            rows.push_back(std::move(resource));
+    return true;
+}
+
+bool DetailMs(const char* label, std::uint32_t& value, bool& commit, const int minimum = 0)
+{
+    int edit = static_cast<int>(value);
+    const bool changed = ImGui::DragInt(label, &edit, 10.f, minimum, MAX_RESOURCE_MS, "%d ms");
+    commit |= ImGui::IsItemDeactivatedAfterEdit();
+    if (changed) value = static_cast<std::uint32_t>((std::clamp)(edit, minimum, int(MAX_RESOURCE_MS)));
+    return changed;
+}
+
+bool DetailVector(const char* label, float3_t& value, bool& commit, const float minimum = 0.f,
+    const float maximum = 0.f)
+{
+    const bool changed = ImGui::DragFloat3(label, &value.x, .01f, minimum, maximum);
+    commit |= ImGui::IsItemDeactivatedAfterEdit();
+    return changed;
+}
+}
+
+struct CEffectAuthoringSequencer::BOX_DETAIL_DRAFT final
+{
+    TRACK_KIND kind = TRACK_KIND::EFFECT;
+    std::string id;
+    CLIP animation;
+    EFFECT_ROW effect;
+    SOUND_ROW sound;
+    COLLIDER_ROW collider;
+    bool dirty = false;
+};
+
+bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
+{
+    std::vector<RESOURCE_ENTRY> staged;
+    std::string problems;
+    bool complete = true;
+    const auto preserve = [&](TRACK_KIND kind, const std::string& error)
+    {
+        complete = false;
+        if (!problems.empty()) problems += "\n";
+        problems += std::string(RESOURCE_TABS[static_cast<std::size_t>(kind)]) + ": " + error;
+        for (const auto& previous : m_CompositionResources)
+            if (previous.kind == kind) staged.push_back(previous);
+    };
+    ReadAnimationRows(staged, TRACK_KIND::ANIMATION);
+    m_ResourceModelGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+
+    std::vector<CEffectAuthoringResourceTree::RESOURCE> authored;
+    std::string error;
+    if (CEffectAuthoringResourceTree::Read_V1Inventory(authored, error))
+        for (const auto& source : authored)
+        {
+            RESOURCE_ENTRY row; row.kind = TRACK_KIND::EFFECT;
+            row.key = {source.eKind, source.strAssetId}; row.id = "authored:" + source.strAssetId;
+            row.label = source.strDisplayName.empty() ? source.strAssetId : source.strDisplayName;
+            row.category = "Saved Effects"; row.status = source.strStatus;
+            staged.push_back(std::move(row));
+        }
+    else
+    {
+        complete = false; problems += "Saved Effects: " + error;
+        for (const auto& previous : m_CompositionResources)
+            if (previous.kind == TRACK_KIND::EFFECT && previous.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+                staged.push_back(previous);
+    }
+    std::vector<EFFECT_V2_RESOURCE_SUMMARY> typed;
+    error.clear();
+    if (CEffectV2Catalog::Get().Read_Inventory(typed, error))
+        for (const auto& source : typed)
+        {
+            RESOURCE_ENTRY row;
+            row.kind = source.eKind == EFFECT_V2_RESOURCE_KIND::LEAF && source.strCategory == "ScreenPost" ?
+                TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT;
+            row.key = {source.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? EFFECT_RESOURCE_OWNER_KIND::V2_GROUP :
+                EFFECT_RESOURCE_OWNER_KIND::V2_LEAF, source.strResourceId};
+            row.id = std::string(source.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "group:" : "effect:") + source.strResourceId;
+            row.label = source.strDisplayName.empty() ? source.strResourceId : source.strDisplayName;
+            row.category = source.strCategory; row.status = source.strStatus; row.durationMs = source.iDurationMs;
+            staged.push_back(std::move(row));
+        }
+    else
+    {
+        complete = false; if (!problems.empty()) problems += "\n"; problems += "Effect catalog: " + error;
+        for (const auto& previous : m_CompositionResources)
+            if ((previous.kind == TRACK_KIND::EFFECT || previous.kind == TRACK_KIND::SCREEN_POST) &&
+                previous.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT) staged.push_back(previous);
+    }
+
+    std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> colliders;
+    error.clear();
+    if (ReadColliderDefinitions(colliders, error))
+        for (const auto& source : colliders)
+        {
+            RESOURCE_ENTRY row; row.kind = TRACK_KIND::COLLIDER; row.id = source.strResourceId;
+            row.label = source.strDisplayName.empty() ? row.id : source.strDisplayName;
+            row.category = source.strShape; row.collider = source; row.durationMs = source.iDurationMs;
+            if (source.strColliderKind != "GEOMETRY") row.status = "This resource requires its Action Workbench gameplay Logic.";
+            staged.push_back(std::move(row));
+        }
+    else preserve(TRACK_KIND::COLLIDER, error);
+
+    std::vector<RESOURCE_ENTRY> sounds;
+    const auto resourceRoot = CRuntimeAssetRoot::Get_ResourceRoot();
+    const auto soundRoot = CRuntimeAssetRoot::Resolve("Sound");
+    std::error_code ec;
+    if (!soundRoot.empty())
+    {
+        std::filesystem::recursive_directory_iterator it(soundRoot,
+            std::filesystem::directory_options::skip_permission_denied, ec), end;
+        for (; !ec && it != end; it.increment(ec))
+        {
+            if (!it->is_regular_file(ec)) continue;
+            auto extension = it->path().extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+            if (extension != ".wav" && extension != ".ogg" && extension != ".mp3") continue;
+            RESOURCE_ENTRY row; row.kind = TRACK_KIND::SOUND;
+            row.id = ResourcePathUtf8(it->path().lexically_relative(resourceRoot));
+            if (CRuntimeAssetRoot::Resolve(std::filesystem::path(std::u8string(row.id.begin(), row.id.end()))).empty()) continue;
+            row.label = ResourcePathUtf8(it->path().filename());
+            row.category = ResourcePathUtf8(it->path().parent_path().lexically_relative(soundRoot));
+            if (row.category == ".") row.category.clear();
+            sounds.push_back(std::move(row));
+        }
+    }
+    if (soundRoot.empty() || ec) preserve(TRACK_KIND::SOUND, ec ? ec.message() : "Sound resource root is unavailable.");
+    else staged.insert(staged.end(), std::make_move_iterator(sounds.begin()), std::make_move_iterator(sounds.end()));
+
+    RESOURCE_ENTRY camera; camera.kind = TRACK_KIND::CAMERA; camera.id = "camera.capture.current";
+    camera.label = "Current camera view"; camera.category = "Capture"; camera.durationMs = 1000u;
+    staged.push_back(std::move(camera));
+    std::stable_sort(staged.begin(), staged.end(), [](const auto& a, const auto& b)
+    {
+        if (a.kind != b.kind) return a.kind < b.kind;
+        if (a.category != b.category) return a.category < b.category;
+        if (a.label != b.label) return a.label < b.label;
+        return a.id < b.id;
+    });
+    m_CompositionResources = std::move(staged); m_ResourcesLoaded = true;
+    m_ResourceStatus = std::move(problems);
+    Rebuild_CompositionResourceTrees();
+    return complete;
+}
+
+void CEffectAuthoringSequencer::Rebuild_CompositionResourceTrees()
+{
+    for (std::size_t family = 0; family < m_ResourceTrees.size(); ++family)
+    {
+        m_ResourceTrees[family] = {};
+        m_ResourceQueries[family] = m_ResourceSearch[family].data();
+        for (std::size_t i = 0; i < m_CompositionResources.size(); ++i)
+        {
+            const auto& row = m_CompositionResources[i];
+            if (static_cast<std::size_t>(row.kind) != family) continue;
+            const auto& query = m_ResourceQueries[family];
+            if (!ResourceMatches(row.label, query) && !ResourceMatches(row.id, query) && !ResourceMatches(row.category, query)) continue;
+            InsertResourceTree(m_ResourceTrees[family], ResourceSegments(row.category), i);
+        }
+        FinalizeResourceTree(m_ResourceTrees[family]);
+    }
+}
+
+void CEffectAuthoringSequencer::Render_CompositionResources()
+{
+    if (!m_ResourcesOpen) return;
+    const std::string title = "Composition Resources###EffectCompositionResources." + std::to_string(reinterpret_cast<std::uintptr_t>(this));
+    ImGui::SetNextWindowSize({470.f, 570.f}, ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin(title.c_str(), &m_ResourcesOpen)) { ImGui::End(); return; }
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
+    if (!m_ResourcesLoaded) Refresh_CompositionResourceInventory();
+    if (ImGui::Button("Refresh Resources")) Refresh_CompositionResourceInventory();
+    ImGui::SameLine(); ImGui::TextDisabled("Append at %u ms", ClockMs());
+    if (m_ResourceModelGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+    {
+        // A new rig only changes native clips; the saved catalogs keep their cache.
+        std::erase_if(m_CompositionResources, [](const auto& row) { return row.kind == TRACK_KIND::ANIMATION; });
+        ReadAnimationRows(m_CompositionResources, TRACK_KIND::ANIMATION);
+        m_ResourceModelGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+        m_SelectedResourceIds[static_cast<std::size_t>(TRACK_KIND::ANIMATION)].clear();
+        Rebuild_CompositionResourceTrees();
+    }
+    if (ImGui::BeginTabBar("CompositionResourceTabs"))
+    {
+        for (std::size_t family = 0; family < m_ResourceTrees.size(); ++family)
+        {
+            if (!ImGui::BeginTabItem(RESOURCE_TABS[family])) continue;
+            m_ResourceTab = static_cast<int>(family);
+            ImGui::SetNextItemWidth(-1.f);
+            if (ImGui::InputTextWithHint("##ResourceSearch", "Search name, category or source...",
+                m_ResourceSearch[family].data(), m_ResourceSearch[family].size())) Rebuild_CompositionResourceTrees();
+            const float footer = ImGui::GetFrameHeightWithSpacing() * 3.f;
+            if (ImGui::BeginChild("ResourceList", {0.f, (std::max)(120.f, ImGui::GetContentRegionAvail().y - footer)}, ImGuiChildFlags_Borders))
+                RenderResourceTree(m_ResourceTrees[family], [&](std::size_t index)
+                {
+                    const auto& row = m_CompositionResources[index];
+                    ImGui::PushID(row.id.c_str());
+                    if (ImGui::Selectable(row.label.c_str(), m_SelectedResourceIds[family] == row.id)) m_SelectedResourceIds[family] = row.id;
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s%s", row.key.Is_Valid() ? row.key.strStableId.c_str() : row.id.c_str(),
+                        row.status.empty() ? "" : "\n", row.status.c_str());
+                    ImGui::PopID();
+                });
+            ImGui::EndChild();
+            const auto selected = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row)
+                { return static_cast<std::size_t>(row.kind) == family && row.id == m_SelectedResourceIds[family]; });
+            ImGui::BeginDisabled(selected == m_CompositionResources.end() || !selected->status.empty());
+            if (ImGui::Button("Add / Append"))
+            {
+                bool added = false;
+                switch (selected->kind)
+                {
+                case TRACK_KIND::ANIMATION: added = Append_Animation(selected->id); break;
+                case TRACK_KIND::EFFECT:
+                    added = Append(selected->key, selected->key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? 0u : selected->durationMs);
+                    break;
+                case TRACK_KIND::SCREEN_POST: added = Append(selected->key, selected->durationMs, true); break;
+                case TRACK_KIND::SOUND: added = Append_Sound(selected->id, 0u); break;
+                case TRACK_KIND::COLLIDER: added = Append_Collider(selected->collider); break;
+                case TRACK_KIND::CAMERA:
+                {
+                    CAMERA_ROW row; row.id = CEffectEditingSession::New_Id("camera.row."); row.label = "Camera";
+                    row.startMs = (std::min)(ClockMs(), MAX_RESOURCE_MS - 1000u); row.cue.iDurationMs = 1000u;
+                    row.cue.strCueId = row.id; row.modelRelative = m_ModelRoot;
+                    if (Capture_CameraKey(row, 0u))
+                    {
+                        auto staged = m_CameraRows;
+                        for (auto preview : m_TransientCameraRows)
+                        {
+                            preview.id = CEffectEditingSession::New_Id("camera.row."); preview.cue.strCueId = preview.id;
+                            staged.push_back(std::move(preview));
+                        }
+                        staged.push_back(row);
+                        if (Validate_CameraRows(staged) && Commit_TransientPreview())
+                        {
+                            // Promotion owns its new camera identities. Append to that
+                            // committed list rather than overwriting it with this draft.
+                            m_CameraRows.push_back(row); m_Dirty = added = true;
+                            Select_TimelineRow(TRACK_KIND::CAMERA, row.id);
+                        }
+                    }
+                    break;
+                }
+                }
+                if (added) m_BoxDetailOpen = true;
+            }
+            ImGui::EndDisabled();
+            if (selected != m_CompositionResources.end() && !selected->status.empty()) ImGui::TextWrapped("%s", selected->status.c_str());
+            if (family == 0 && !CAnimationTargetService::Resolve_Model()) ImGui::TextDisabled("Select a character or boss in Model View.");
+            if (!m_ResourceStatus.empty()) { ImGui::TextDisabled("Some resources could not refresh."); if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_ResourceStatus.c_str()); }
+            if (!m_Status.empty())
+            {
+                const auto end = m_Status.find_first_of("\r\n");
+                ImGui::TextUnformatted(m_Status.data(), m_Status.data() + (end == std::string::npos ? m_Status.size() : end));
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", m_Status.c_str());
+            }
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+    ImGui::End();
+}
+
+void CEffectAuthoringSequencer::Render_BoxDetail()
+{
+    if (!m_BoxDetailOpen) return;
+    const std::string title = "Box Detail###EffectCompositionDetail." + std::to_string(reinterpret_cast<std::uintptr_t>(this));
+    ImGui::SetNextWindowSize({440.f, 470.f}, ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin(title.c_str(), &m_BoxDetailOpen)) { ImGui::End(); return; }
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
+    if (m_SelectedTrack == TRACK_KIND::CAMERA)
+    {
+        m_SelectedCamera = m_SelectedRowId;
+        const auto previous = m_SelectedCamera;
+        Render_CameraEditor();
+        if (previous != m_SelectedCamera) Select_TimelineRow(TRACK_KIND::CAMERA, m_SelectedCamera);
+        ImGui::End(); return;
+    }
+    if (m_SelectedRowId.empty()) { ImGui::TextDisabled("Select a timeline box."); ImGui::End(); return; }
+    if (!m_BoxDetailDraft || m_BoxDetailDraft->id != m_SelectedRowId || m_BoxDetailDraft->kind != m_SelectedTrack || !m_BoxDetailDraft->dirty)
+    {
+        auto draft = std::make_shared<BOX_DETAIL_DRAFT>(); draft->kind = m_SelectedTrack; draft->id = m_SelectedRowId;
+        bool found = false;
+        const auto copy = [&](const auto& rows, auto& destination)
+        {
+            const auto row = std::find_if(rows.begin(), rows.end(), [&](const auto& value) { return value.id == draft->id; });
+            if (row != rows.end()) { destination = *row; found = true; }
+        };
+        switch (draft->kind)
+        {
+        case TRACK_KIND::ANIMATION:
+            if (m_CustomAnimation) copy(m_AnimationRows, draft->animation);
+            else if (const auto* sequence = Selected_Sequence()) copy(sequence->clips, draft->animation);
+            break;
+        case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST: copy(m_Effects, draft->effect); break;
+        case TRACK_KIND::SOUND: copy(m_Sounds, draft->sound); break;
+        case TRACK_KIND::COLLIDER: copy(m_Colliders, draft->collider); break;
+        case TRACK_KIND::CAMERA: break;
+        }
+        if (!found) { ImGui::TextDisabled("The selected box is no longer available."); ImGui::End(); return; }
+        draft->effect.v1.reset(); draft->effect.v2 = 0; draft->effect.snapshot.reset();
+        draft->effect.history.reset(); draft->effect.anchorHistory.reset();
+        draft->sound.handle = 0; draft->sound.sampledAge = -1;
+        m_BoxDetailDraft = std::move(draft);
+    }
+    const auto draftOwner = m_BoxDetailDraft;
+    auto& draft = *draftOwner;
+    ImGui::TextUnformatted(RESOURCE_TABS[static_cast<std::size_t>(draft.kind)]);
+    ImGui::TextDisabled("%s", draft.id.c_str());
+    bool changed = false, commit = false;
+    ImGui::PushItemWidth(-1.f);
+    switch (draft.kind)
+    {
+    case TRACK_KIND::ANIMATION:
+    {
+        auto& row = draft.animation; ImGui::TextWrapped("%s", row.clipName.c_str());
+        changed |= DetailMs("Start", row.startMs, commit); changed |= DetailMs("Duration", row.durationMs, commit, 1);
+        changed |= DetailMs("Source start", row.sourceStartMs, commit); changed |= DetailMs("Source play", row.sourcePlayMs, commit);
+        changed |= ImGui::DragFloat("Playback rate", &row.playRate, .01f, .01f, 100.f); commit |= ImGui::IsItemDeactivatedAfterEdit();
+        if (ImGui::Checkbox("Loop", &row.loop)) changed = commit = true;
+        if (ImGui::Checkbox("Mute", &row.muted)) changed = commit = true;
+        break;
+    }
+    case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+    {
+        auto& row = draft.effect; ImGui::TextWrapped("%s", row.key.strStableId.c_str());
+        changed |= DetailMs("Start", row.startMs, commit); changed |= DetailMs("Duration", row.durationMs, commit, 1);
+        if (draft.kind == TRACK_KIND::EFFECT)
+        {
+            changed |= DetailVector("Offset (m)", row.offset, commit);
+            if (Render_AnchorChoice("Bone / socket", row.anchorSlotId)) changed = commit = true;
+        }
+        if (ImGui::Checkbox("Mute", &row.muted)) changed = commit = true;
+        break;
+    }
+    case TRACK_KIND::SOUND:
+    {
+        auto& row = draft.sound; ImGui::TextWrapped("%s", row.assetId.c_str());
+        changed |= DetailMs("Start", row.startMs, commit); changed |= DetailMs("Duration", row.durationMs, commit, 1);
+        changed |= DetailMs("Source start", row.sourceStartMs, commit);
+        changed |= ImGui::SliderFloat("Volume", &row.volume, 0.f, 1.f); commit |= ImGui::IsItemDeactivatedAfterEdit();
+        if (ImGui::Checkbox("Mute", &row.muted)) changed = commit = true;
+        break;
+    }
+    case TRACK_KIND::COLLIDER:
+    {
+        auto& row = draft.collider; ImGui::TextWrapped("%s", row.label.c_str());
+        ImGui::TextDisabled("%s", row.resource.strShape.c_str());
+        changed |= DetailMs("Start", row.startMs, commit); changed |= DetailMs("Duration", row.durationMs, commit, 1);
+        changed |= DetailVector("Offset (m)", row.offset, commit); changed |= DetailVector("Rotation (degrees)", row.rotation, commit);
+        changed |= DetailVector("Scale", row.scale, commit, .001f, 10000.f);
+        if (Render_AnchorChoice("Bone / socket", row.anchorSlotId)) changed = commit = true;
+        if (ImGui::Checkbox("Debug Render", &row.debugRender)) changed = commit = true;
+        if (ImGui::Checkbox("Mute", &row.muted)) changed = commit = true;
+        break;
+    }
+    case TRACK_KIND::CAMERA: break;
+    }
+    ImGui::PopItemWidth();
+    draft.dirty |= changed;
+    if (ImGui::Button("Apply")) commit = true;
+    ImGui::SameLine();
+    if (ImGui::Button("Revert")) { m_BoxDetailDraft.reset(); ImGui::End(); return; }
+    if (commit && draft.dirty)
+    {
+        bool applied = false;
+        switch (draft.kind)
+        {
+        case TRACK_KIND::ANIMATION: applied = Apply_AnimationRow(draft.animation); break;
+        case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST: applied = Apply_EffectRow(draft.effect); break;
+        case TRACK_KIND::SOUND: applied = Apply_SoundRow(draft.sound); break;
+        case TRACK_KIND::COLLIDER: applied = Apply_ColliderRow(draft.collider); break;
+        case TRACK_KIND::CAMERA: break;
+        }
+        if (applied) draft.dirty = false;
+    }
+    if (draft.dirty) ImGui::TextDisabled("Unapplied values");
+    ImGui::BeginDisabled(draft.dirty);
+    if (ImGui::Button("Duplicate")) { if (Duplicate_SelectedRow()) m_BoxDetailDraft.reset(); }
+    ImGui::SameLine();
+    if (ImGui::Button("Remove")) { if (Remove_SelectedRow()) m_BoxDetailDraft.reset(); }
+    ImGui::EndDisabled();
+    if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
+    ImGui::End();
+}
+}
+```
+
+</details>
+
+#### EffectAuthoringSequencer_Tracks.cpp
+
+`Parse_AdditionalRows`는 v4의 Animation/Sound/Collider 행을 임시 배열에 파싱하고 종류별 validator를 호출한다. v1~3은 빈 추가 트랙으로 읽는다. `Write_AdditionalRows`는 stable ID와 source/wall 시간, 전체 Collider resource를 최대 유효 숫자 정밀도로 저장한다. `Commit_TransientPreview`는 현재 preview의 Effect와 Camera를 함께 검증해 영구 목록으로 승격한다. `Refresh_AnimationTiming`은 현재 clock을 보존하며 기존 모델 preview와 Effect history를 새 timing에 연결한다.
+
+<details>
+<summary>EffectAuthoringSequencer_Tracks.cpp 전체 코드</summary>
+
+```cpp
+#include "EffectAuthoringSequencer.h"
+#include "DataJson.h"
+#include "EffectEditingSession.h"
+#include "Effect_Object.h"
+#include <cmath>
+#include <limits>
+#include <ostream>
+
+namespace Client
+{
+namespace
+{
+constexpr std::uint32_t TRACK_MAX_MS = 600000u;
+constexpr std::size_t TRACK_MAX_ROWS = 256u;
+bool Track_Text(const DATA_JSON_VALUE& object, const char* key, std::string& result)
+{
+    const auto* value = object.Find(key);
+    if (!value || !value->Is_String()) return false;
+    result = value->Get_String(); return true;
+}
+bool Track_Bool(const DATA_JSON_VALUE& object, const char* key, bool& result)
+{
+    const auto* value = object.Find(key);
+    if (!value || !value->Is_Boolean()) return false;
+    result = value->Get_Boolean(); return true;
+}
+bool Track_Number(const DATA_JSON_VALUE& object, const char* key, double& result)
+{
+    const auto* value = object.Find(key);
+    if (!value || !value->Is_Number() || !std::isfinite(value->Get_Number())) return false;
+    result = value->Get_Number(); return true;
+}
+bool Track_Ms(const DATA_JSON_VALUE& object, const char* key, std::uint32_t& result)
+{
+    double value = 0.0;
+    if (!Track_Number(object, key, value) || value < 0.0 || value > TRACK_MAX_MS || std::floor(value) != value) return false;
+    result = static_cast<std::uint32_t>(value); return true;
+}
+bool Track_Vector(const DATA_JSON_VALUE& object, const char* key, std::array<double, 3u>& result)
+{
+    const auto* value = object.Find(key);
+    if (!value || !value->Is_Array() || value->Get_Array().size() != 3u) return false;
+    for (std::size_t i = 0u; i < result.size(); ++i)
+    {
+        const auto& component = value->Get_Array()[i];
+        if (!component.Is_Number() || !std::isfinite(component.Get_Number()) || std::abs(component.Get_Number()) > 100000.0) return false;
+        result[i] = component.Get_Number();
+    }
+    return true;
+}
+bool Track_Vector(const DATA_JSON_VALUE& object, const char* key, float3_t& result)
+{
+    std::array<double, 3u> value{};
+    if (!Track_Vector(object, key, value)) return false;
+    result = {static_cast<float>(value[0]), static_cast<float>(value[1]), static_cast<float>(value[2])}; return true;
+}
+void Track_WriteVector(std::ostream& out, const float3_t& value)
+{ out << '[' << value.x << ", " << value.y << ", " << value.z << ']'; }
+}
+
+bool CEffectAuthoringSequencer::Parse_AdditionalRows(const DATA_JSON_VALUE& document, const std::uint32_t version,
+    std::vector<CLIP>& animations, bool& customAnimation,
+    std::vector<SOUND_ROW>& sounds, std::vector<COLLIDER_ROW>& colliders)
+{
+    animations.clear(); sounds.clear(); colliders.clear(); customAnimation = false;
+    if (version < 4u) return true;
+    const auto* animationValues = document.Find("animationRows");
+    const auto* soundValues = document.Find("soundRows");
+    const auto* colliderValues = document.Find("colliderRows");
+    if (!Track_Bool(document, "customAnimation", customAnimation) ||
+        !animationValues || !animationValues->Is_Array() || animationValues->Get_Array().size() > TRACK_MAX_ROWS ||
+        !soundValues || !soundValues->Is_Array() || soundValues->Get_Array().size() > TRACK_MAX_ROWS ||
+        !colliderValues || !colliderValues->Is_Array() || colliderValues->Get_Array().size() > TRACK_MAX_ROWS ||
+        (!customAnimation && !animationValues->Get_Array().empty()))
+    { m_Status = "Invalid v4 track arrays or custom animation mode; current timeline preserved."; return false; }
+    for (const auto& value : animationValues->Get_Array())
+    {
+        CLIP row; double rate = 0.0;
+        if (!Track_Text(value, "occurrenceId", row.id) || !Track_Text(value, "displayName", row.label) ||
+            !Track_Text(value, "memberId", row.memberId) || !Track_Text(value, "clipName", row.clipName) ||
+            !Track_Ms(value, "startMs", row.startMs) || !Track_Ms(value, "durationMs", row.durationMs) ||
+            !Track_Ms(value, "sourceStartMs", row.sourceStartMs) || !Track_Ms(value, "sourcePlayMs", row.sourcePlayMs) ||
+            !Track_Number(value, "playRate", rate) || rate <= 0.0 || rate > 1000.0 ||
+            !Track_Bool(value, "loop", row.loop) || !Track_Bool(value, "muted", row.muted))
+        { m_Status = "Invalid Animation occurrence; current timeline preserved."; return false; }
+        row.playRate = static_cast<float>(rate); animations.push_back(std::move(row));
+    }
+    for (const auto& value : soundValues->Get_Array())
+    {
+        SOUND_ROW row; double volume = 0.0;
+        if (!Track_Text(value, "occurrenceId", row.id) || !Track_Text(value, "displayName", row.label) ||
+            !Track_Text(value, "assetId", row.assetId) || !Track_Ms(value, "startMs", row.startMs) ||
+            !Track_Ms(value, "durationMs", row.durationMs) || !Track_Ms(value, "sourceStartMs", row.sourceStartMs) ||
+            !Track_Number(value, "volume", volume) || std::abs(volume) > 1000.0 || !Track_Bool(value, "muted", row.muted))
+        { m_Status = "Invalid Sound occurrence; current timeline preserved."; return false; }
+        row.volume = static_cast<float>(volume); sounds.push_back(std::move(row));
+    }
+    for (const auto& value : colliderValues->Get_Array())
+    {
+        COLLIDER_ROW row; std::string kind;
+        const auto* resource = value.Find("resource");
+        if (!Track_Text(value, "occurrenceId", row.id) || !Track_Text(value, "displayName", row.label) ||
+            !Track_Ms(value, "startMs", row.startMs) || !Track_Ms(value, "durationMs", row.durationMs) ||
+            !Track_Vector(value, "offset", row.offset) || !Track_Vector(value, "rotationDegrees", row.rotation) ||
+            !Track_Vector(value, "scale", row.scale) || !Track_Text(value, "anchorSlotId", row.anchorSlotId) ||
+            !Track_Bool(value, "muted", row.muted) || !Track_Bool(value, "debugRender", row.debugRender) ||
+            !resource || !resource->Is_Object() || !Track_Text(*resource, "resourceId", row.resource.strResourceId) ||
+            !Track_Text(*resource, "displayName", row.resource.strDisplayName) ||
+            !Track_Text(*resource, "kind", kind) || kind != "COLLIDER" ||
+            !Track_Text(*resource, "assetId", row.resource.strAssetId) ||
+            !Track_Text(*resource, "resourceKind", row.resource.strResourceKind) ||
+            !Track_Text(*resource, "defaultAnchorKind", row.resource.strDefaultAnchorKind) ||
+            !Track_Ms(*resource, "durationMs", row.resource.iDurationMs) ||
+            !Track_Text(*resource, "shape", row.resource.strShape) ||
+            !Track_Text(*resource, "colliderKind", row.resource.strColliderKind) ||
+            !Track_Vector(*resource, "halfExtents", row.resource.HalfExtents) ||
+            !Track_Number(*resource, "radiusM", row.resource.fRadiusM) ||
+            !Track_Number(*resource, "halfAngleDegrees", row.resource.fHalfAngleDegrees))
+        { m_Status = "Invalid Collider occurrence or resource; current timeline preserved."; return false; }
+        row.resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+        colliders.push_back(std::move(row));
+    }
+    return Validate_AnimationRows(animations) && Validate_SoundRows(sounds) && Validate_ColliderRows(colliders);
+}
+
+void CEffectAuthoringSequencer::Write_AdditionalRows(std::ostream& out) const
+{
+    const auto precision = out.precision(std::numeric_limits<double>::max_digits10);
+    const auto quote = [&](const std::string& value) { out << '"' << CDataJson::Escape(value) << '"'; };
+    out << ",\n  \"customAnimation\": " << (m_CustomAnimation ? "true" : "false") << ",\n  \"animationRows\": [";
+    for (std::size_t i = 0u; i < m_AnimationRows.size(); ++i)
+    {
+        const auto& row = m_AnimationRows[i];
+        out << (i ? ",\n" : "\n") << "    {\"occurrenceId\": "; quote(row.id);
+        out << ", \"displayName\": "; quote(row.label); out << ", \"memberId\": "; quote(row.memberId);
+        out << ", \"clipName\": "; quote(row.clipName);
+        out << ", \"startMs\": " << row.startMs << ", \"durationMs\": " << row.durationMs
+            << ", \"sourceStartMs\": " << row.sourceStartMs << ", \"sourcePlayMs\": " << row.sourcePlayMs
+            << ", \"playRate\": " << row.playRate << ", \"loop\": " << (row.loop ? "true" : "false")
+            << ", \"muted\": " << (row.muted ? "true" : "false") << '}';
+    }
+    out << "\n  ],\n  \"soundRows\": [";
+    for (std::size_t i = 0u; i < m_Sounds.size(); ++i)
+    {
+        const auto& row = m_Sounds[i];
+        out << (i ? ",\n" : "\n") << "    {\"occurrenceId\": "; quote(row.id);
+        out << ", \"displayName\": "; quote(row.label); out << ", \"assetId\": "; quote(row.assetId);
+        out << ", \"startMs\": " << row.startMs << ", \"durationMs\": " << row.durationMs
+            << ", \"sourceStartMs\": " << row.sourceStartMs << ", \"volume\": " << row.volume
+            << ", \"muted\": " << (row.muted ? "true" : "false") << '}';
+    }
+    out << "\n  ],\n  \"colliderRows\": [";
+    for (std::size_t i = 0u; i < m_Colliders.size(); ++i)
+    {
+        const auto& row = m_Colliders[i]; const auto& resource = row.resource;
+        out << (i ? ",\n" : "\n") << "    {\"occurrenceId\": "; quote(row.id);
+        out << ", \"displayName\": "; quote(row.label);
+        out << ", \"startMs\": " << row.startMs << ", \"durationMs\": " << row.durationMs << ", \"offset\": "; Track_WriteVector(out, row.offset);
+        out << ", \"rotationDegrees\": "; Track_WriteVector(out, row.rotation); out << ", \"scale\": "; Track_WriteVector(out, row.scale);
+        out << ", \"anchorSlotId\": "; quote(row.anchorSlotId);
+        out << ", \"muted\": " << (row.muted ? "true" : "false") << ", \"debugRender\": " << (row.debugRender ? "true" : "false");
+        out << ", \"resource\": {\"resourceId\": "; quote(resource.strResourceId);
+        out << ", \"displayName\": "; quote(resource.strDisplayName); out << ", \"kind\": \"COLLIDER\", \"assetId\": "; quote(resource.strAssetId);
+        out << ", \"resourceKind\": "; quote(resource.strResourceKind); out << ", \"defaultAnchorKind\": "; quote(resource.strDefaultAnchorKind);
+        out << ", \"durationMs\": " << resource.iDurationMs << ", \"shape\": "; quote(resource.strShape);
+        out << ", \"colliderKind\": "; quote(resource.strColliderKind);
+        out << ", \"halfExtents\": [" << resource.HalfExtents[0] << ", " << resource.HalfExtents[1] << ", " << resource.HalfExtents[2]
+            << "], \"radiusM\": " << resource.fRadiusM << ", \"halfAngleDegrees\": " << resource.fHalfAngleDegrees << "}}";
+    }
+    out << "\n  ]";
+    out.precision(precision);
+}
+
+bool CEffectAuthoringSequencer::Commit_TransientPreview()
+{
+    if (!m_Transient) return true;
+    if (m_Effects.size() >= TRACK_MAX_ROWS)
+    { m_Status = "The sequence already has 256 Effect rows."; return false; }
+    auto cameras = m_CameraRows;
+    for (auto row : m_TransientCameraRows)
+    {
+        row.id = CEffectEditingSession::New_Id("camera.row."); row.cue.strCueId = row.id;
+        cameras.push_back(std::move(row));
+    }
+    if (!Validate_CameraRows(cameras)) return false;
+    auto row = std::move(*m_Transient); row.id = CEffectEditingSession::New_Id("effect.occurrence.");
+    Select_TimelineRow(row.screenPost ? TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT, row.id);
+    m_Effects.push_back(std::move(row)); m_CameraRows = std::move(cameras);
+    m_Transient.reset(); m_TransientCameraRows.clear(); m_SelectedCamera.clear(); m_Dirty = true;
+    m_Status = "Preview and camera rows appended. Save sequence preserves this arrangement.";
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Refresh_AnimationTiming()
+{
+    const auto clock = ClockMs(); const bool active = m_Active, paused = m_Paused;
+    const auto reset = [](EFFECT_ROW& row)
+    {
+        row.history.reset(); row.anchorHistory.reset(); row.recordedAge = row.sampledAge = -1.f;
+        if (row.v2) { CEffectV2Runtime::Stop_Group(row.v2); row.v2 = 0u; }
+    };
+    for (auto& row : m_Effects) reset(row);
+    if (m_Transient) reset(*m_Transient);
+    m_Dirty = true;
+    if (!active) return true;
+    // An Effect-only preview may not have acquired the model clock yet.
+    if (!Begin_Model()) return false;
+    if (!Seek(clock)) return false;
+    Pause(paused); m_SkipNextPlaybackDelta = true;
+    return true;
+}
+}
+```
+
+</details>
+
+#### EffectAuthoringSequencer_Presentation.cpp
+
+`Validate_SoundRows`는 안전한 Resources 상대 경로와 실제 음원 길이를, `Validate_ColliderRows`는 같은 Composition geometry 정의와 transform/time을 검사한다. `Append_Sound`는 선택 음원을 paused 채널로 먼저 준비하고 성공한 뒤 문서에 추가한다. `Append_Collider`는 현재 root/bone anchor를 검증한다. `Sample_Sounds`는 단일 sequence clock으로 occurrence별 FMOD handle을 시작·seek·pause하고 자연 종료 채널을 매 프레임 재생성하지 않는다. `Stop_Sounds`는 자신의 handle만 해제한다. `Render_Colliders`는 현재 활성 geometry를 기존 `CHitAreaWire`에 전달하며 Server damage를 만들지 않는다.
+
+<details>
+<summary>EffectAuthoringSequencer_Presentation.cpp 전체 코드</summary>
+
+```cpp
+#include "EffectAuthoringSequencer.h"
+#include "GameInstance.h"
+#include "HitAreaWire.h"
+#include "RuntimeAssetRoot.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <filesystem>
+#include <set>
+
+namespace Client
+{
+namespace
+{
+constexpr std::uint32_t PRESENTATION_MAX_MS = 600000u;
+constexpr std::size_t PRESENTATION_MAX_ROWS = 256u;
+
+bool Presentation_Text(const std::string& text, std::size_t maximum, bool empty = false)
+{
+    return (empty || !text.empty()) && text.size() <= maximum &&
+        text.find('\0') == std::string::npos;
+}
+
+bool Presentation_Time(std::uint32_t start, std::uint32_t duration)
+{
+    return duration > 0u && duration <= PRESENTATION_MAX_MS &&
+        start <= PRESENTATION_MAX_MS - duration;
+}
+
+bool Presentation_Vector(const float3_t& value, float minimum, float maximum)
+{
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+        value.x >= minimum && value.x <= maximum && value.y >= minimum && value.y <= maximum &&
+        value.z >= minimum && value.z <= maximum;
+}
+
+std::filesystem::path Sound_Path(const std::string& assetId)
+{
+    if (!Presentation_Text(assetId, 1024u) || !assetId.starts_with("Sound/") ||
+        assetId.find(':') != std::string::npos || assetId.find('\\') != std::string::npos)
+        return {};
+    const auto relative = std::filesystem::path(std::u8string(assetId.begin(), assetId.end()));
+    if (relative.is_absolute() || relative.has_root_path() ||
+        std::any_of(relative.begin(), relative.end(), [](const auto& part) { return part == ".."; }))
+        return {};
+    const auto dot = assetId.find_last_of('.');
+    if (dot == std::string::npos) return {};
+    auto extension = assetId.substr(dot);
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+        [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    if (extension != ".wav" && extension != ".ogg" && extension != ".mp3") return {};
+    const auto path = CRuntimeAssetRoot::Resolve(relative);
+    std::error_code error;
+    return !path.empty() && std::filesystem::is_regular_file(path, error) && !error ? path :
+        std::filesystem::path{};
+}
+
+bool Collider_Resource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource)
+{
+    if (resource.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+        resource.strColliderKind != "GEOMETRY" || !resource.strAssetId.empty() ||
+        !CEffectV2Document::Is_ValidEffectId(resource.strResourceId) ||
+        !Presentation_Text(resource.strDisplayName, 512u) ||
+        !Presentation_Text(resource.strResourceKind, 128u, true) ||
+        !Presentation_Text(resource.strDefaultAnchorKind, 128u, true) ||
+        (resource.strShape != "BOX" && resource.strShape != "CIRCLE" && resource.strShape != "SECTOR") ||
+        !Presentation_Time(0u, resource.iDurationMs) ||
+        !std::isfinite(resource.fRadiusM) || resource.fRadiusM < .001 || resource.fRadiusM > 10000.0 ||
+        !std::isfinite(resource.fHalfAngleDegrees) || resource.fHalfAngleDegrees < .001 ||
+        resource.fHalfAngleDegrees > 180.0)
+        return false;
+    return std::all_of(resource.HalfExtents.begin(), resource.HalfExtents.end(), [](double value)
+        { return std::isfinite(value) && value >= .001 && value <= 10000.0; });
+}
+
+// The composition player's geometry mapping is retained: meters become the
+// existing hit-area wire's centimetres; BOX height stays a presentation volume.
+HIT_AREA_SHAPE Collider_Wire(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
+    const float3_t& scale)
+{
+    HIT_AREA_SHAPE shape;
+    if (resource.strShape == "BOX")
+    {
+        const double halfWidth = resource.HalfExtents[0] * scale.x;
+        const double halfLength = resource.HalfExtents[2] * scale.z;
+        shape.fBoxHalfHeightM = static_cast<float>(resource.HalfExtents[1] * scale.y);
+        shape.iAreaType = 2;
+        shape.iAreaRange = static_cast<int32_t>((std::min)(halfLength * 200.0, 1000000000.0));
+        shape.iAreaAngle = static_cast<int32_t>((std::min)(halfWidth * 200.0, 1000000000.0));
+        shape.iAreaOffsetX = -shape.iAreaRange / 2;
+    }
+    else
+    {
+        shape.iAreaType = resource.strShape == "CIRCLE" ? 1 : 3;
+        shape.iAreaRange = static_cast<int32_t>((std::min)(
+            resource.fRadiusM * (std::max)(scale.x, scale.z) * 100.0, 1000000000.0));
+        shape.iAreaAngle = static_cast<int32_t>(resource.fHalfAngleDegrees * 2.0);
+    }
+    return shape;
+}
+}
+
+bool CEffectAuthoringSequencer::Validate_SoundRows(const std::vector<SOUND_ROW>& rows)
+{
+    if (rows.size() > PRESENTATION_MAX_ROWS)
+    { m_Status = "A sequence supports at most 256 Sound occurrences."; return false; }
+    std::set<std::string> ids;
+    for (const auto& row : rows)
+    {
+        if (!CEffectV2Document::Is_ValidEffectId(row.id) || !ids.insert(row.id).second ||
+            !Presentation_Text(row.label, 512u, true) || !Presentation_Time(row.startMs, row.durationMs) ||
+            row.sourceStartMs > PRESENTATION_MAX_MS - row.durationMs ||
+            !std::isfinite(row.volume) || row.volume < 0.f || row.volume > 4.f)
+        { m_Status = "Invalid Sound identity, timing, source trim or volume: " + row.id; return false; }
+        const auto path = Sound_Path(row.assetId);
+        std::uint32_t sourceDuration = 0u;
+        if (path.empty() || !CGameInstance::Get().Get_SoundDurationMs(path.wstring(), sourceDuration))
+        { m_Status = "Sound asset is missing, unsafe or cannot be decoded: " + row.assetId; return false; }
+        if (row.sourceStartMs >= sourceDuration)
+        { m_Status = "Sound source trim starts at or beyond its natural end: " + row.id; return false; }
+    }
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Validate_ColliderRows(const std::vector<COLLIDER_ROW>& rows)
+{
+    if (rows.size() > PRESENTATION_MAX_ROWS)
+    { m_Status = "A sequence supports at most 256 Collider occurrences."; return false; }
+    std::set<std::string> ids;
+    for (const auto& row : rows)
+        if (!CEffectV2Document::Is_ValidEffectId(row.id) || !ids.insert(row.id).second ||
+            !Presentation_Text(row.label, 512u, true) || !Collider_Resource(row.resource) ||
+            !Presentation_Time(row.startMs, row.durationMs) ||
+            !Presentation_Vector(row.offset, -100000.f, 100000.f) ||
+            !Presentation_Vector(row.rotation, -100000.f, 100000.f) ||
+            !Presentation_Vector(row.scale, .001f, 10000.f) ||
+            !Presentation_Text(row.anchorSlotId, 128u))
+        { m_Status = "Invalid geometry Collider resource, transform, timing or anchor: " + row.id; return false; }
+    // Load validates named anchors against its staged model selection. This
+    // structural check must not accidentally use the previously selected model.
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Append_Sound(const std::string& assetId, std::uint32_t durationMs)
+{
+    SOUND_ROW row;
+    std::uint32_t ordinal = 1u;
+    do { row.id = "sound.occurrence." + std::to_string(ordinal++); }
+    while (std::any_of(m_Sounds.begin(), m_Sounds.end(), [&](const auto& value) { return value.id == row.id; }));
+    row.assetId = assetId;
+    row.label = assetId.substr(assetId.find_last_of('/') + 1u);
+    row.startMs = ClockMs();
+    if (!durationMs)
+    {
+        const auto path = Sound_Path(assetId);
+        if (path.empty() || !CGameInstance::Get().Get_SoundDurationMs(path.wstring(), durationMs))
+        { m_Status = "Sound source duration is unavailable: " + assetId; return false; }
+    }
+    row.durationMs = durationMs;
+    auto staged = m_Sounds; staged.push_back(row);
+    if (!Validate_SoundRows(staged)) return false;
+    auto& sound = CGameInstance::Get();
+    if (m_Active)
+    {
+        const auto path = Sound_Path(assetId);
+        if (path.empty())
+        { m_Status = "Sound source preparation failed; the current timeline is preserved."; return false; }
+        row.handle = sound.Play_SoundCue(path.wstring(), row.volume, row.sourceStartMs, true);
+        if (!row.handle)
+        { m_Status = "Sound channel preparation failed; the current timeline is preserved."; return false; }
+        row.sampledAge = row.sourceStartMs;
+    }
+    if (!Commit_TransientPreview())
+    {
+        if (row.handle) sound.Stop_SoundCue(row.handle);
+        return false;
+    }
+    m_Sounds.push_back(std::move(row));
+    if (m_Sounds.back().handle) sound.Pause_SoundCue(m_Sounds.back().handle, m_Paused);
+    Select_TimelineRow(TRACK_KIND::SOUND, m_Sounds.back().id);
+    m_Dirty = true;
+    Preserve_ClockDuringAuthoring();
+    m_Status = "Appended Sound at " + std::to_string(ClockMs()) + " ms.";
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Append_Collider(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource)
+{
+    COLLIDER_ROW row;
+    std::uint32_t ordinal = 1u;
+    do { row.id = "collider.occurrence." + std::to_string(ordinal++); }
+    while (std::any_of(m_Colliders.begin(), m_Colliders.end(), [&](const auto& value) { return value.id == row.id; }));
+    row.resource = resource; row.label = resource.strDisplayName;
+    row.startMs = ClockMs(); row.durationMs = resource.iDurationMs;
+    row.anchorSlotId = m_DefaultAnchorSlotId;
+    auto staged = m_Colliders; staged.push_back(row);
+    if (!Validate_ColliderRows(staged) || !Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return false;
+    if (!Commit_TransientPreview()) return false;
+    m_Colliders.push_back(std::move(row));
+    Select_TimelineRow(TRACK_KIND::COLLIDER, m_Colliders.back().id);
+    m_Dirty = true;
+    Preserve_ClockDuringAuthoring();
+    m_Status = "Appended Collider at " + std::to_string(ClockMs()) + " ms.";
+    return true;
+}
+
+void CEffectAuthoringSequencer::Stop_Sounds()
+{
+    for (auto& row : m_Sounds)
+    {
+        if (row.handle) CGameInstance::Get().Stop_SoundCue(row.handle);
+        row.handle = 0u; row.sampledAge = -1;
+    }
+}
+
+bool CEffectAuthoringSequencer::Sample_Sounds(bool forceSeek)
+{
+    if (!m_Active || m_Transient) { Stop_Sounds(); return true; }
+    const auto clock = ClockMs();
+    auto& sound = CGameInstance::Get();
+    for (auto& row : m_Sounds)
+    {
+        if (row.muted || clock < row.startMs || std::uint64_t(clock) >= std::uint64_t(row.startMs) + row.durationMs)
+        {
+            if (row.handle) sound.Stop_SoundCue(row.handle);
+            row.handle = 0u; row.sampledAge = -1;
+            continue;
+        }
+        const auto sourceAge = row.sourceStartMs + (clock - row.startMs);
+        const bool reposition = forceSeek || (row.sampledAge >= 0 && sourceAge < row.sampledAge);
+        if (row.sampledAge >= 0 && !reposition)
+        {
+            // A finished FMOD channel is deliberately not reborn each tick.
+            // Only a new interval, Restart/Loop or explicit Seek can recreate it.
+            if (row.handle) sound.Pause_SoundCue(row.handle, m_Paused);
+            row.sampledAge = sourceAge;
+            continue;
+        }
+        const auto path = Sound_Path(row.assetId);
+        std::uint32_t sourceDuration = 0u;
+        if (path.empty() || !sound.Get_SoundDurationMs(path.wstring(), sourceDuration))
+        { m_Status = "Sound occurrence cannot resolve its source: " + row.id; return false; }
+        if (sourceAge >= sourceDuration)
+        {
+            if (row.handle) sound.Stop_SoundCue(row.handle);
+            row.handle = 0u; row.sampledAge = sourceAge;
+            continue;
+        }
+        if (row.handle && sound.Is_SoundCueActive(row.handle))
+        {
+            sound.Pause_SoundCue(row.handle, true);
+            sound.Seek_SoundCue(row.handle, sourceAge);
+            sound.Pause_SoundCue(row.handle, m_Paused);
+        }
+        else
+        {
+            if (row.handle) sound.Stop_SoundCue(row.handle);
+            row.handle = sound.Play_SoundCue(path.wstring(), row.volume, sourceAge, m_Paused);
+            if (!row.handle)
+            { m_Status = "Sound occurrence could not start: " + row.id; return false; }
+        }
+        row.sampledAge = sourceAge;
+    }
+    return true;
+}
+
+void CEffectAuthoringSequencer::Render_Colliders()
+{
+    if (!m_Active || m_Transient) return;
+    float4x4_t root;
+    if (!Resolve_Root(root)) return;
+    const auto clock = ClockMs();
+    for (const auto& row : m_Colliders)
+    {
+        if (row.muted || !row.debugRender || clock < row.startMs ||
+            std::uint64_t(clock) >= std::uint64_t(row.startMs) + row.durationMs) continue;
+        EFFECT_ROW anchorRow; anchorRow.anchorSlotId = row.anchorSlotId;
+        float4x4_t anchor;
+        if (!Resolve_RowPivot(anchorRow, root, anchor)) continue;
+        matrix_t basis = XMLoadFloat4x4(&anchor);
+        bool valid = !XMMatrixIsNaN(basis) && !XMMatrixIsInfinite(basis);
+        for (std::size_t axis = 0; valid && axis < 3u; ++axis)
+        {
+            const auto length = XMVectorGetX(XMVector3LengthSq(basis.r[axis]));
+            valid = std::isfinite(length) && length >= .000001f;
+            if (valid) basis.r[axis] = XMVectorSetW(XMVector3Normalize(basis.r[axis]), 0.f);
+        }
+        if (!valid) { m_Status = "Collider anchor has a singular transform: " + row.id; continue; }
+        // Scale is already baked into Collider_Wire. Keep the occurrence's
+        // rotation/offset and sampled anchor without scaling dimensions twice.
+        const matrix_t placed = XMMatrixRotationRollPitchYaw(XMConvertToRadians(row.rotation.x),
+            XMConvertToRadians(row.rotation.y), XMConvertToRadians(row.rotation.z)) *
+            XMMatrixTranslation(row.offset.x, row.offset.y, row.offset.z) * basis;
+        if (row.resource.strShape != "BOX" &&
+            XMVectorGetX(XMVector3LengthSq(XMVectorSetY(placed.r[2], 0.f))) < 1e-12f)
+        { m_Status = "Collider footprint needs a nonvertical forward axis: " + row.id; continue; }
+        float4x4_t world; XMStoreFloat4x4(&world, placed);
+        // Preview geometry only; no collision object, damage or Server state is created.
+        CHitAreaWire::Draw(world, Collider_Wire(row.resource, row.scale), 0xff40dfff);
+    }
+}
+}
+```
+
+</details>
+
+
+## G29. 선택 element의 Sequencer Solo (2026-09-10)
+
+차원술사 Alt V full restore의 개별 element를 기다리지 않고 원래 등장 시점부터 검토한다. 기존 Solo와 선택 element용 Timeline Solo 버튼은 Sequencer에 임시 effect 행 하나를 만들고 해당 element의 원본 시작 시각으로 이동해 정지한다. 수백 개의 행을 펼치거나 저장 문서를 변경하지 않는다.
+
+호출은 Effect Tool 선택/버튼 → Preview_Element → 기존 Stage_Row/Seek/Sample_Row → 기존 V1 occurrence factory → CEffectObject로 이어진다. 임시 행은 실제 문서 asset ID와 element stable ID를 따로 유지한다. factory는 현재 draft를 반영한 문서를 선택 element 하나와 필요한 비표시 model-cue anchor로 투영한다. 원본 start delay와 source clock을 보존하고 행 시작은 0으로 둬 지연이 이중 적용되지 않게 한다. 준비 또는 최초 샘플 실패는 기존 재생을 보존한다.
+
+| 파일 | 변경 책임 |
+|---|---|
+| Client/Public/EffectAuthoringSequencer.h, Client/Private/EffectAuthoringSequencer.cpp | 임시 element scope, factory 인자, 원본 시각에서 정지하는 transaction, refresh/play 유지 |
+| Client/Private/EffectAuthoringSequencer_Tracks.cpp | 선택 element 미리보기의 저장행 자동 승격 차단 |
+| Client/Private/EffectAuthoringSequencer_Timeline.cpp, EffectAuthoringSequencer_Resources.cpp | 임시 element 한 행과 이름, 읽기 전용 행 정보, 저장행 표시 복귀 |
+| Client/Public/Effect_Tool.h, Client/Private/Effect_Tool.cpp, Effect_Tool_Workspace.cpp | 기존 Solo 및 Timeline Solo 버튼 연결, draft/anchor를 유지하는 단일 element document projection |
+
+Append는 전체 문서 저장행의 의미를 유지한다. element 미리보기를 전체 문서인 것처럼 저장하지 않으며 Stop 또는 전체 Preview로 빠져나온 뒤 Append한다. 전체 재생, 기존 저장 sequence, 제품 skill cue와 effect JSON은 변경하지 않는다. 기존 C++ 파일만 수정하므로 vcxproj/filter 등록은 필요 없다.
+
+검증은 관련 기존 source-contract 검사, 변경 Client C++의 최소 컴파일과 scoped diff check로 한정한다. Client 실행 중에는 ClCompile까지만 진행하고 링크/배포는 실행 종료 확인 뒤 수행한다. 한 행 표시, 4초 등장 시점 이동, 스크럽/Play 및 전체 재생 복귀의 최종 화면 확인은 사용자가 수행한다.

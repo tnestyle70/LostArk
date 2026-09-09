@@ -7,6 +7,97 @@
 각 표시 시점의 관측이며 그 세션의 후속 반영 완료를 대신하지 않는다. 최초 작업은 조사·문서였고,
 사용자가 지속 복원을 요청한 뒤 G31에서 아래의 renderer 최소 수정·검증을 수행했다.
 
+## G36 후속 결과: S 실제 입력 연결과 원본 mip 복구
+
+최신 S는 `2050220 → momentaryrift → full.restore`로 실제 animevents와 EffectCatalog에
+연결했다. 현재 full은 sprite 24개와 crack mesh 2개, 총 26개다. V63 핵심 noise009/014/021의
+원본 8개 mip을 회수해 Resources에 설치했으며 mip0 압축 bytes는 유지했다. 원본 PS와 제품
+V63의 동일 입력 120조건 비교, 실제 Codec 저장·재Load 및 26개 Solo 입자 생성은 통과했다.
+S 이미지의 모든 주변 선을 특정 occurrence로 확정한 것은 아니며 최종 화면은 사용자 확인 전이다.
+이하 G31/G33의 과거 연결·개수와 이번 반영 시점을 구분한다. R/A를 포함한 최신 변경·검증·
+빌드 경계의 정본은 [Round2 RESULT G36](../09-08/2026-09-08_CHARACTER_MATERIAL_AND_EFFECT_ROUND2_ESTIMATE_RESULT.md)이다.
+
+## G33 후속 결과: V69 주변선의 Null Dynamic 입력 교정
+
+2026-09-09 후속 재생 입력 조사에서는 원본 PS가 존재하지만 투명하게 출력되는 발생을
+실제 Playback frame과 production HLSLI로 분리했다. 대상은
+`authored.source-particle.full-s.33fbed7aace5d0c8c6b3`, 원본
+`fx_pc_swp_02.par_r_swp_momentaryrift_00_05.particlespriteemitter_49`다.
+이 발생의 재질은 `fx_m_mi_o_00.fx_m.fx_o_pa_splitline_02_ad`, native profile은 V69다.
+이 주변선의 입력 결함을 고친 것이며, V63 주광선이나 첨부의 모든 흰 스크류를 복원했다고
+확대하지 않는다. cone/helix 손저작 메시로 원본 S의 검격을 대체한 결과도 아니다.
+
+### 실제 원인과 원본 근거
+
+수정 전 실제 입자 프레임 입력39개는 Dynamic=(0,0,0,0)이었고 원본과 현재 source module 목록에
+활성 `particlemoduleparameterdynamic`은 없었다. 원본 PS
+`5dfee80075c74444bffc1d810344820c`의 alpha 식은
+`floor(textureR + Dynamic.z) * uv.y * particleAlpha`다. 실제 texture와 입력에서는
+첫 항이0이 되어 깊이 조건3개를 포함한117조건 모두 alpha가 정확히0이었다.
+RGB가 양수여도 이 재질은 alpha blend이므로 실제 기여가 사라진다.
+
+선택 ShaderMap `da50296bbd6ee194d7cd0a2c358d3a3d553a709ab7fefd00d27b19c9923cc3a3`의
+sprite VF는 `fparticledynamicparametervertexfactory`와 offset-center dynamic VF다.
+선택 VS `5825675b4ffbc840ad691ec56973cf7e` / `2dd6d96a7e6c974fac82106409a5b9b8`는
+기존 Q45/49와 정확히 같다. 원본 VS의 `mov o4.xyzw, v6.xyzw`는 Dynamic vertex stream을
+PS v4에 그대로 전달하므로, 모듈이 없을 때 shader CB가0을 만드는 구조가 아니다.
+
+- 원본 Engine CDO `Default__ParticleModuleParameterDynamic`, export23567의 네 ParamValue
+  LUT는 모두1이다. 보존 serial SHA256은
+  `818b2a98635a1378757df5d8a7f89d62ab29e65c21c96fa70dabab36c1e09e63`이다.
+- 별도 로컬 Epic UE5.7.4 `ParticleHelper.h:2370`은 Null Dynamic buffer의 네 값을1로
+  초기화하고 `ParticleVertexFactory.cpp:302`는 Dynamic buffer가 없을 때 이를 stride0으로
+  연결한다. 현재 Q45/49와 ALT/WR의 모듈 부재 처리도 이 입력 계약을 이미 사용한다.
+- 원본 CDO, 동일 selected VS와 별도 Epic 구현은 기본1의 근거다. **LostArk 실행 중의
+  원본 CPU vertex stream을 직접 확보한 것은 아니다.** CDO 값만으로 absent-module
+  stream을 증명한 것으로 기록하지 않고, 세 근거의 관계와 관측 한계를 함께 유지한다.
+
+### 실제 반영
+
+`Client/Private/Effect_Playback.cpp`의 `Apply_SourceSpawnModules`에서 기존 Q45/49의
+Null Dynamic 분기에 V69를 포함했다. source material이 활성이고 활성 Dynamic 모듈이
+없을 때만 (1,1,1,1)을 공급한다. 명시적인 Dynamic 모듈·곡선은 기존 평가를 유지한다.
+`VNative69`의 원본 HLSL alpha/RGB 식과 texture, native profile은 바꾸지 않았다.
+새 shader나 두 번째 runtime 경로를 추가하지 않았다.
+
+V63도 모듈이 없는 경우 기본 입력 계약과 현재0 공급을 구분해야 한다. 다만 이 PS에서
+사용하는 Dynamic.xy는 wrap noise UV에 대한 offset이라 정수0/1 차이가 반복 텍스처에서
+동치다. 이번 측정에서 V63의 투명화 원인으로 확인된 것은 아니다.
+
+### 자동 검증과 남은 경계
+
+메인 구현 작업이 최신 Playback/Codec을 최소 컴파일하고 실제 Load/Stage와 수치 검사를
+순차 실행했다. 이 문서 담당은 재실행 없이 before/after CSV의 모든 필드를 직접 비교했다.
+
+| 검사 | 실제 결과 |
+|---|---|
+| 실제 Playback trace | 수정 전·후409행, 후속 invalid0. PS가 소비하는 필드 중 V69의39행 Dynamic4채널만0→1이며 나머지는 동일 |
+| V69 native PS | 수정 전117조건 모두 alpha0 → 수정 후117조건 모두 alpha>0. 양수 alpha 픽셀479232/479232, 조건별 최대 alpha .124279201–8.53673744 |
+| 전체 PS 비교 | 실제 입자 프레임 입력324개 × depth gap3개 = 972조건, 전·후 non-finite0. V69의 alpha 관련4필드만117행 변경. 나머지855조건과 모든 RGB 결과는 동일 |
+| V63 Shine | 56입력 모두 depth gap .25m/1m에서 alpha>0. gap0에서만 원본 depth fade로 alpha0이며 전·후 결과 동일 |
+| V58/64/65 | 각각85/72/72입력 모두 additive RGB가 남고 전·후 동일. wrapper A=1을 생존 증거로 사용하지 않음 |
+| 실제 문서 Load/Stage | 현재14개 full + R tuning = 15문서 모두 valid1. 이는 해당 문서 입력 수용이며 화면 판정이나 전체 Solo 재검사를 뜻하지 않음 |
+
+Frame 전체가 byte-identical한 것은 아니다. V53/V64의68행에는 작은 유한 geometry 수치
+차이가 있다. 최대 world 성분 차이1.43e-6, projected area 차이 .0157픽셀,
+최대 상대 차이9.67e-7이다. PS가 받는 색·시간·parameter와는 분리해 receipt에 기록했으며
+원인을 확정하지 않은 이 차이를 V69 기본값 수정의 시각 효과로 해석하지 않는다.
+
+WARP는 실제 packet/texture와 production PS를 64×64 UV 격자에서 평가했다.
+projectionW=10m, depth gap=0/.25/1m이며 V69의 SceneColor는 고정 회색 fixture다.
+V69 alpha 식은 SceneColor를 읽지 않으므로 alpha 소멸 교정은 이 조건에서 분리할 수 있다.
+실제 camera·particle geometry·culling·blend·장면색과 원작 화면 일치까지 검증한 것은 아니다.
+이번 수정의 Client/UI 조작·캡처와 사용자 visual 판정은 아직 없다. 새 원본 검격 완성이나
+전체 S 시각 복원 PASS로 기록하지 않는다.
+
+증거는 `out/DimensionMasterRound3_20260909/s_native_ps_probe/`의
+`ps_results_before_null_fix.csv`, `ps_results.csv`, `before_after_receipt.json`,
+`source_audit.md`, `run_after.log`와 `s_native_trace/`의
+`frames_before_null_fix.csv`, `frames.csv`, `compile_updated.log`, `validate_after.log`다.
+원본 기본값·VF 근거는 `out/DimensionMasterALTVRestore20260908/native_particle_class_defaults.json`,
+`out/DimensionMasterVRestore20260908/full_source_materials.json`과 `full_programs/`,
+`out/DimensionMasterQRestore20260908/q_native_visual_defect_audit.json`에서 재확인했다.
+
 ## G31 반영 결과: V63 원본 속도 정렬 연결
 
 `Client/Private/Effect_DocumentRenderer.cpp`의 `Make_ParticleSpriteWorld` 안 native velocity

@@ -200,6 +200,7 @@
     <ClInclude Include="..\Public\EffectEditingSession.h" />
     <ClInclude Include="..\Public\EffectAuthoringResourceTree.h" />
     <ClInclude Include="..\Public\EffectAuthoringSequencer.h" />
+    <ClInclude Include="..\Public\EffectRecoveryCamera.h" />
     <ClInclude Include="..\Public\EffectAuthoringV2Pane.h" />
     <ClInclude Include="..\Public\EffectV2_Object.h" />
     <ClInclude Include="..\Public\EffectV2_Catalog.h" />
@@ -412,6 +413,11 @@
     <ClCompile Include="..\Private\EffectAuthoringResourceTree.cpp" />
     <ClCompile Include="..\Private\EffectAuthoringSequencer.cpp" />
     <ClCompile Include="..\Private\EffectAuthoringSequencer_Camera.cpp" />
+    <ClCompile Include="..\Private\EffectRecoveryCamera.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringSequencer_Timeline.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringSequencer_Resources.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringSequencer_Tracks.cpp" />
+    <ClCompile Include="..\Private\EffectAuthoringSequencer_Presentation.cpp" />
     <ClCompile Include="..\Private\EffectAuthoringV2Pane.cpp" />
     <ClCompile Include="..\Private\Effect_Tool_Workspace.cpp" />
     <ClCompile Include="..\Private\EffectV2_Object.cpp" />
@@ -497,6 +503,7 @@
 	<None Include="..\..\Data\Compositions\Bosses\KoukuSaydonGate1.bosscomposition.json" />
 	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json" />
 	<None Include="..\..\Data\Compositions\Sequences\KoukuSaydonArena.sequencer.json" />
+	<None Include="..\..\Data\Compositions\Sequences\KoukuSaydonSequenceComposition.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
@@ -595,6 +602,8 @@
 	<None Include="..\..\Data\KoukuSaydon\Gate1\KoukuSaydonComposition.json" />
 	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\KoukuSaydon.patternbindings.json" />
     <None Include="..\..\Data\Animation\Authored\KoukuSaydon\Clown.interactionbindings.json" />
+    <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.fear.face.effectv2group.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.fear.face_1.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.curtain_1.effectv2.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.restore.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json" />
@@ -730,11 +739,17 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEstherNpc.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl">
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
 	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl" />
 	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxClickMoveGlow.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMeshV2.hlsl" />
@@ -751,6 +766,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceStoneSurface.hlsli" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapmaterials.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.maplights.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.maplights.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapmaterials.json" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli" />
@@ -759,6 +775,8 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterVNative.hlsli" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.full.restore.effect.json" />
     <None Include="..\..\Data\Effects\Sequences\effect.dimensionmaster.skill.2050540.full.restore.effectsequence.json" />
+    <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.clip1.full.restore.effectsequence.json" />
+    <None Include="..\..\Data\Effects\Sequences\effect.artist.skill.31930.clip2.full.restore.effectsequence.json" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectCubeSampleScene.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectSliceSceneDepth.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
@@ -777,6 +795,10 @@
     <ProjectGuid>{1a5672c6-54b4-4779-99e7-84ef85171388}</ProjectGuid>
     <RootNamespace>Client</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <MultiProcFXC Condition="'$(MultiProcFXC)'==''">true</MultiProcFXC>
+    <MultiProcMaxCount Condition="'$(MultiProcMaxCount)'==''">4</MultiProcMaxCount>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -1099,5 +1121,380 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\V2\Groups\boss.kouku.medusa.laser.effectv2group.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Effect_ArtistMaterial.h" />
+    <ClInclude Include="..\Public\Effect_WarlordNativeMaterial.h" />
+    <ClInclude Include="..\Public\Effect_NativeScreenPostMaterial.h" />
+    <ClCompile Include="..\Private\Effect_NativeScreenPostMaterial.cpp" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNative.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNative.hlsli" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectNativeScreenPost.hlsl" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31490.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31910.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31950.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17040.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17090.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.full.restore.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Effect_LanceMasterVAMaterial.h" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANative.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip4.full.restore.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Effect_ShaderFamily.h" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterQ.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterV.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterWR.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterSD.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterALTV064.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterALTV128.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshDimensionMasterALTV192.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist448.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist512.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist768.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist832.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster512.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster576.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster640.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster704.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster768.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterQ.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterV.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterWR.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterSD.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterALTV064.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterALTV128.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleDimensionMasterALTV192.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist448.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist512.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist768.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist832.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster512.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster576.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster640.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster704.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster768.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Engine_Shader_Defines.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Active003RibbonMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Active011OuterMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Active022DecalMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470RuntimeMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup448.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup512.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup768.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup832.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeGroup064.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeGroup128.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterALTVNativeGroup192.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectDimensionMasterVNativeShared.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup512.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup576.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup640.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup704.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup768.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectMeshFamilyCarrier.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectParticleFamilyCarrier.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectV2_Common.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectNativeScreenUV.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist1600.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshArtist1664.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster1152.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster1216.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster1280.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshLanceMaster1344.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord1024.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord1088.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord1152.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord1984.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshWarlord960.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist1600.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleArtist1664.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster1152.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster1216.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster1280.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleLanceMaster1344.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1024.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1088.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1152.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord1984.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleWarlord960.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba4.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31050.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31050.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31200.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba4.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31420.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31480.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34020.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34030.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34090.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba2.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34150.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34520.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34540.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34550.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba0.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17030.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17060.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17100.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba0.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip5.full.restore.effect.json" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup1600.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeGroup1664.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup1152.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup1216.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup1280.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLanceMasterVANativeGroup1344.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup1024.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup1088.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup1152.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup1984.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectWarlordNativeGroup960.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip1.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip2.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.clip3.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.clip4.full.restore.effect.json" />
   </ItemGroup>
 </Project>

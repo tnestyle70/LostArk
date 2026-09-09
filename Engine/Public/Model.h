@@ -8,6 +8,7 @@
 NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
+struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
 struct MODEL_SURFACE_PARAMETERS;
@@ -119,6 +120,18 @@ public:
 		f32_t fTrackPositionTicks,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
+	// Explicit clip samples define a transition independently of render history.
+	// UINT32_MAX selects the immutable rest pose (for an unmapped weapon clip).
+	struct ANIMATION_TRANSITION_POSE final
+	{
+		uint32_t sourceIndex = UINT32_MAX, targetIndex = UINT32_MAX;
+		f32_t sourceTicks = 0.f, targetTicks = 0.f;
+		f32_t durationSeconds = 0.f, elapsedSeconds = 0.f, playRate = 1.f;
+	};
+	bool_t Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose);
+	const ANIMATION_TRANSITION_POSE* Get_AnimationTransitionPose() const
+	{ return m_bExplicitAnimationPose ? &m_ExplicitAnimationPose : nullptr; }
+	void Clear_AnimationTransitionPose() { m_bExplicitAnimationPose = false; }
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(
@@ -132,6 +145,7 @@ public:
 		f32_t fBlendSeconds = 0.f) {
 		if (iAnimIndex >= m_iNumAnimations)
 			return;
+		m_bExplicitAnimationPose = false;
 		if (iAnimIndex != m_iCurrentAnimIndex)
 			Begin_AnimBlend(fBlendSeconds);
 		m_isAnimLoop = isLoop;
@@ -168,7 +182,26 @@ public:
 	HRESULT Render(uint32_t iMeshIndex);
 	HRESULT Render_Instanced(
 		uint32_t iMeshIndex, ID3D11Buffer* pInstanceBuffer,
-		uint32_t iInstanceStride, uint32_t iNumInstances);
+		uint32_t iInstanceStride, uint32_t iNumInstances,
+		uint32_t iInstanceByteOffset = 0u);
+	/* Preparation is explicit: the caller owns the proof that every source
+	   submesh in this contiguous range uses the same effective draw state.
+	   Original meshes/material slots remain intact. S_FALSE means this model
+	   cannot batch (not retained, skinned, or made mutable for morphing).
+	   Failure leaves the output handle and every existing cache entry intact. */
+	struct ORDERED_STATIC_GEOMETRY_RANGE final
+	{
+		uint32_t iSourceMesh = 0u, iSourceMaterial = 0u;
+		uint32_t iFirstVertex = 0u, iVertexCount = 0u;
+		uint32_t iFirstIndex = 0u, iIndexCount = 0u;
+	};
+	HRESULT Prepare_OrderedStaticGeometry(
+		uint32_t iFirstMesh, uint32_t iMeshCount, uint32_t& iOutHandle);
+	bool_t Get_OrderedStaticGeometryRanges(uint32_t iHandle,
+		std::span<const ORDERED_STATIC_GEOMETRY_RANGE>& OutRanges) const;
+	HRESULT Render_OrderedStaticGeometryInstanced(uint32_t iHandle,
+		ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride,
+		uint32_t iNumInstances, uint32_t iInstanceByteOffset = 0u);
 	bool_t Play_Animation(f32_t fTimeDelta);
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
@@ -249,6 +282,17 @@ private:
 	uint32_t							m_iNumMeshes = {};
 	vector<shared_ptr<class CMesh>>		m_Meshes;
 	float4x4_t							m_PreTransformMatrix = {};
+	bool_t m_bRetainOrderedStaticGeometry = false;
+	shared_ptr<const vector<MODEL_MESH_DATA>> m_pOrderedStaticGeometrySource;
+	struct ORDERED_STATIC_GEOMETRY final
+	{
+		uint32_t iHandle = 0u, iFirstMesh = 0u, iMeshCount = 0u;
+		shared_ptr<class CMesh> pMesh;
+		vector<ORDERED_STATIC_GEOMETRY_RANGE> Ranges;
+	};
+	vector<shared_ptr<const ORDERED_STATIC_GEOMETRY>> m_OrderedStaticGeometry;
+	uint32_t m_iNextOrderedStaticGeometryHandle = 0u;
+	bool_t Can_UseOrderedStaticGeometry(uint32_t iFirstMesh, uint32_t iMeshCount) const;
 
 	uint32_t							m_iNumMaterials = {};
 	vector<shared_ptr<class CMaterial>>	m_Materials;
@@ -291,6 +335,10 @@ private:
 		f32_t fBlendElapsedSeconds,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
+	bool_t Build_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose,
+		vector<float4x4_t>& local, vector<float4x4_t>& combined, float3_t* unscaledRoot = nullptr) const;
+	ANIMATION_TRANSITION_POSE m_ExplicitAnimationPose;
+	bool_t m_bExplicitAnimationPose = false;
 	void Begin_AnimBlend(f32_t fBlendSeconds);
 	void Restore_UnscaledRootVertical(float4x4_t& Local) const;
 	void Apply_RootMotionTranslation(float4x4_t& Local) const;
@@ -309,13 +357,15 @@ private:
 	void Include_LocalPosition(fvector_t vPosition);
 
 public:
-	static unique_ptr<CModel> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
+	static unique_ptr<CModel> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix,
+		bool_t bRetainOrderedStaticGeometry = false);
 	static unique_ptr<CModel> Create(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,
 		MODEL eType,
 		const MODEL_ASSET_LOAD_DESC& loadDesc,
-		fmatrix_t PreTransformMatrix);
+		fmatrix_t PreTransformMatrix,
+		bool_t bRetainOrderedStaticGeometry = false);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 	void Free();
 };

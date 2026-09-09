@@ -419,6 +419,15 @@ Server와 Client를 protocol 76으로 함께 빌드/재시작하고 신규 리�
 
 ## 5. Character와 Animation
 
+캐릭터의 외형 배율은 `Data/Actors/CharacterCatalog.json` format 4의 optional
+`presentationScale`이 소유한다(미지정 1, finite 양수, 최대 100).
+`CCharacter::Try_Get_PresentationRootMatrix`의 `Scale * gameplayWorld`를 body/장비/무기와
+Animation Target의 현재·과거 pose 및 bone Effect anchor가 소비한다. asset import scale,
+Server pose/이동/충돌은 이 값과 분리한다. Character의 `root` Effect cue와 `skill_target`,
+명시 world root는 기존 world 크기를 유지한다. class가 없는 쿠크 변신 avatar는 착용자의
+class 배율을 상속하지 않는다. catalog는 process 최초 초기화에서 읽으므로 변경 뒤 Client를 재시작하고
+character를 다시 생성해야 한다. runtime hot reload는 아니다.
+
 ### 5.1 Source Effect attachment basis
 
 Imported/Product Effect의 attachment는 `FOLLOW_NAMED_ANCHORS`와 `SNAPSHOT_ROOT`를 같은 transform
@@ -762,16 +771,18 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 manifest의 admission을 편집 진입 조건으로 사용하지 않는다. generated resolved Product를 timeline runtime으로
 읽지 않는다. 이 SHADOW/REFERENCE_ONLY 문서와 별도로
 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`은 쿠크 Stage/Animation 저작 정본이며
-Action Workbench의 KoukuSaydon session이 DRAFT/PRODUCT 전체를 편집하고 단일 파일 CAS Save한다. K Boss Tool은 명시 publish된
-`Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json`의 PRODUCT를, Server는 그 bootstrap을 소비한다.
+Action Workbench의 KoukuSaydon session이 전체 트리를 편집하고 단일 파일 CAS Save한다. K Boss Tool은 명시 publish된
+`Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json`의 전체 `patternInventory`를 표시하고,
+실행 가능한 Product와 Server bootstrap은 기존 typed 재생 경로에서 소비한다.
 Composition v3는 `GATE1/GATE2/GATE3/BINGO`, 부모 폴더, 재생 묶음, 대상 보스가 지정된 패턴을 저장한다.
 Composition Patterns의 Model View는 표시 필터이며 묶음의 실행 대상을 바꾸지 않는다. 부모는 분류만 하고,
 묶음은 stable child pattern ID와 시작 offset을 참조한다. 묶음을 선택하면 자식별 요약 Sequencer와 공통
 Camera/Scene Profile 행을, 자식을 선택하면 기존 상세 Sequencer를 편집한다. Create Parent → Create Bundle →
 Create Pattern 또는 Link Existing Pattern으로 연결하며 원본 패턴·클립을 복제하지 않는다.
-Patterns 목록의 `Set Pattern to PRODUCT`는 선택 Pattern 검증 후 기존 CAS Save와 PRODUCT
-publish를 요청한다. 이미 PRODUCT인 항목도 배포를 재시도할 수 있다. 저장 성공과 background
-배포 성공은 구분해 표시하며, 포함된 DRAFT Bundle은 이름을 안내하고 별도로 승격한다.
+모든 Composition Save는 수정 내용을 저장하고, Patterns 목록의 `Publish All Patterns`가 전체
+Parent/Bundle/Pattern을 함께 게시한다. 수동 PRODUCT 선택은 없으며 publisher가 각 대상의 실행
+가능 여부를 검사한다. 미완성 항목은 F1의 같은 위치에 사유와 함께 남고 재생만 비활성화된다.
+Encounter/patternbindings와 Gameplay 게시 중 실패하면 domain owner가 이전 생성물·receipt를 복구한다.
 배포 성공 후 F1 목록을 갱신하며 Complete Play는 최신 Product를 재조회한다. Workbench의 미저장
 변경·배포 진행·source/Product revision 불일치를 거절하고, Server 활성 revision 검사는 유지한다.
 새 runtime 데이터의 Server 적용에는 재시작이 필요하다. Product source revision 거절 메시지는
@@ -783,9 +794,15 @@ Stage가 포함되면 뒤 구간을 밀고 삽입점을 가로지르는 기존 m
 외부 카드와 검색 master 참조는 유지한다. 긴 master/World까지 직접 선택하면 그 전체 구간이 복제되므로
 한 타격만 복제할 때는 선택 표시를 확인한다. lane만 복제하면 선택 끝에 배치하고 필요한 끝 시간을 늘린다.
 Delete도 선택 전체를 한 번에 처리한다. Earlier/Later는 Stage/Animation만 선택했을 때 사용한다.
-복제·삭제 결과는 DRAFT이므로 Save와 PRODUCT 승격 후 Server 재시작을 거쳐 Complete Play로 확인한다.
-F1의 Gate 선택은 유지하며 게시된 PRODUCT만 나열한다. Complete Play는 선택한 패턴 하나 또는 선택한 묶음
-전체를 Server에 요청한다. 기존 Play All은 원본 PRODUCT 순서의 순차 재생이다. Server는 묶음의 모든 대상을
+복제·삭제 후 Save → Publish All Patterns → Server 재시작을 거쳐 Complete Play로 확인한다.
+Pattern/Parent/Bundle/Logic/Resource의 Rename은 현재 표시 이름을 열어 Apply하고 기존 Save로 저장한다.
+stable ID와 참조는 바뀌지 않는다. Stage 삽입·삭제는 겹치는 BossMotion 시간도 함께 늘리거나 압축하며
+이동 위치와 yaw를 보존한다. 이동 구간 전체를 제거할 때는 Move boss를 먼저 해제한다.
+Animation의 optional blendInMs는 직전 clip 끝점에서 현재 clip으로 보간한다. Product의 짧은 playMs는
+남은 Stage 동안 종료 자세를 유지하고 LOOP_TO_WINDOW는 지정한 시간창에서 반복한다.
+Preview, Product의 body/weapon 및 서버 bone-contact bake가 같은 샘플링 계약을 사용한다.
+F1의 Gate 선택은 유지하며 게시된 전체 트리를 나열한다. Complete Play는 실행 가능한 선택 패턴 하나 또는 선택한 묶음
+전체를 Server에 요청한다. 기존 Play All은 실행 가능한 Pattern의 원본 순서대로 순차 재생한다. Server는 묶음의 모든 대상을
 검증한 뒤 하나의 run epoch와 공통 시작 tick을 확정한다. offset은 30Hz tick으로 올림하며 Stop/Restart는
 원래 run epoch를 명시한다. 같은 방의 Client와 늦게 입장한 Client는 복제된 묶음 상태와 시작 tick을 소비한다.
 공통 Camera/Scene Profile은 묶음 시계에서 한 번 실행하며 다른 소유자의 겹치는 전역 연출은 게시 단계에서
@@ -804,7 +821,8 @@ projector의 `worldSequences`와 Gameplay bootstrap `PATTERNWORLDSEQUENCE`를 �
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 69로 함께 빌드·재시작한다.
+Server/Shared/Client는 같은 protocol 78로 함께 빌드·재시작한다. FEAR snapshot 상태와
+빙고·마리오·갈고리 attachment wire를 함께 포함하므로 이전73/77 실행 파일과 혼용하지 않는다.
 optional `resetBossToSpawn`은 패턴 시작 때 Server가 실제 보스를 spawn에 복구한다.
 함께 지정하는 optional `resetBossYawDegrees`는 유한한 -360~360도의 절대 yaw로, 매 재생 같은 방향을 snapshot에 반영한다.
 누락하면 기존 yaw를 유지한다. 이 필드를 배포할 때는 확장된 PATTERNSPAWNRESET을 읽는 Server도 함께 빌드·재시작한다.
@@ -826,6 +844,49 @@ Preview가 같은 값을 소비하고, bone Collider 투영도 같은 배율을 
 Play Bundle과 실제 보스 actor를 소유한 단일 Pattern Play는 같은 actor/weapon preview 경로를 사용한다. Model Reference는 제자리 비교다.
 BOSS_SPAWN World Object는 Product의 `worldEmissionAnchors`와 bossMotion을 사용해 각 emission 시각의 생성점을
 고정한 뒤 개별 objectMotion을 재생한다. 객체가 이동하는 보스를 매 프레임 따라가는 정책은 아니다.
+
+F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeline/Resources/Box Detail ImGui와
+기본 배치를 사용하는 독립 Sequence 세션이다. Patterns 목록 창 이름은 `Composition Sequencer`로 표시한다.
+저장 정본은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`, compositionId는
+`boss.composition.kakulsaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
+같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
+덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않으며 파티 생성은 후속 Summon/Logic 작업이다.
+
+Kouku `Publish All Patterns`는 Product, 쿠크 범위 World, Gameplay balance를 같은 게시 작업으로 처리한다.
+F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Server worldbootstrap에 포함한다.
+기존 World publisher의 `-WorldId KAKULSAYDON_ARENA` 범위를 쓰며 다른 World 출력은 변경하지 않는다.
+중간 실패는 이전 세 domain 출력과 receipt를 함께 복구한다. 실행 중 Server의 world 상태는 바뀌지 않으므로
+게시 후 Server를 재시작해야 Complete Play가 새 위치를 사용한다.
+
+Composition Effect Resources는 V2 GROUP 목록이 기본이며 V1 탭에서 기존 authored Effect와 stable Element를
+선택한다. `resourceKind=V1_EFFECT/V1_ELEMENT`와 optional `elementId`는 원본 V1 문서를 참조한다.
+Effect occurrence도 Collider와 같은 BODY/WEAPON named bone, BOSS/WORLD anchor와 local offset을 사용한다.
+관측한 anchor 기록으로 외부 시계 재생·seek를 처리하며 과거 기록이 없는 구간을 임의 포즈로 보충하지 않는다.
+
+Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/effectDelayMs를
+소유한다. 서버의 FEAR action, 시작 tick, 종료 tick, Result logicId가 상태의 정본이며 공포 중 이동·스킬을
+차단한다. Client는 각 class 공포 animation과 로컬 플레이어의 Scene/캐릭터 Light/화면 Effect를 그 시간에
+맞춰 재생하고 종료하면 기존 표현을 복원한다. 전체 화면 이미지는 V2 ScreenPost Effect로 관리한다.
+GAZE_REAL_BOSS의 Fail에 FEAR를 연결하면 시야 밖 보스에 대한 공포가 되고, ENTER_AREA의 Success에
+연결하면 따라가는 Collider 접촉 공포가 된다. OBJECT_CONTACT는 World Object 접촉에 사용한다.
+COUNTER_WINDOW는 실제 Server counter hit를 소비하며 Success의 FOLLOWUP_PATTERN과
+endsPatternOnSuccess로 그로기 후속 재생을 연결한다.
+ENTER_AREA의 optional bossChargeDistanceM은 Trigger 시작 시 살아 있는 target의 방향을 한 번 확정해
+해당 occurrence duration 동안 지정 거리를 이동한다. navigation/collision이 막으면 경계에서 멈추고,
+이동한 Server pose로 같은 tick의 접촉을 검사한다. 절대 bossMotion과의 중복 소유는 거부한다.
+
+잡기는 짧은 ENTER_AREA Trigger의 Success에 CAPTURE_PLAYER를 연결하고, occurrence의
+`holdLogicOccurrenceId`로 같은 패턴의 DURATION `ATTACHMENT_HOLD`를 참조한다. Hold는 판정이나
+outcome 없이 붙잡힌 상태의 종료 시각만 소유한다. 늦게 잡힌 대상도 원래 Hold 끝 tick에 해제하며,
+Collider 종료는 잡기 해제가 아니다. Server는 실제 attachment commit에 성공한 뒤에만 Success를
+확정하고 Hold 종료·Stop/Restart·보스/대상 사망·owner sequence 변경 때 기존 Release 경로를 사용한다.
+FEAR와 GRABBED는 서로 덮어쓰지 않는다.
+CAPTURE_PLAYER의 `attachmentSlot=BOSS_LEFT_HAND`와 `gripLocalOffset {forwardM,upM,rightM}`는
+패턴별 `attachmentGrips` 배열로 patternbindings에 투영하며 같은 패턴의 서로 다른 grip은 거부한다.
+Client는 같은 snapshot의 owner pattern과 게시 revision으로 grip을 선택한다. CNpc의 실제 BODY
+`bip001-l-hand` socket에 owner yaw 기준 forward/right와 world up의 미터 단위 보정을 합성하고,
+기존 `IPlayerHandGripSocketSource -> CCharacter::Apply_NetworkAttachment`를 사용한다.
+Grip/animation 재로드 실패는 이전 캐시를 보존하며 owner·bone·grip 표현이 없으면 Server 위치를 유지한다.
 
 F1 `Effect Tool V1`과 `Effect Tool V2`는 별도 버튼·창·입력 focus·visibility로 연다. V1은 Current Effect·Effect Detail·Model View·Effect Resources·Effect Sequencer를, V2는 자기 CPU draft·Resources·Sequencer와 기존 target attachment 도구를 소유한다. 한 도구를 닫아도 다른 도구의 창과 draft를 닫지 않으며 각 Sequencer의 창 ID와 기본 저장 ID를 구분한다. 이전 Effect Composition Workbench enum은 V1 호환 진입점이다. 각 Resource 트리는 자기 V1 또는 V2 root만 표시하고 typed resource open은 해당 도구로 전달한다. Parent와 표시 이름은 `Data/Effects/EffectResourceTree.json`의 stable reference metadata로 저장하며 V1/V2 Effect body의 원본 경로·codec을 변경하지 않는다. Tree 조회는 metadata만 읽고 선택한 파일의 Open/Play에서 필요한 항목만 stage한다.
 
@@ -906,7 +967,7 @@ Collider Box Detail의 position/rotation/scale·치수 편집은 stable Pattern/
 즉시 Preview하며 Apply/Save 전에는 draft나 원본을 바꾸지 않는다. active Pattern/Bundle member의
 clock·actor·Effect/SFX session을 유지하고 inactive만 현재 cursor에서 paused Preview를 준비한다.
 Revert geometry/선택 변경은 적용된 geometry로 복구하고 Reset은 임시 요청을 폐기한다.
-Logic이 연결된 지면 gameplay Collider는 Yaw만 편집하며 PRODUCT의 X/Z 기울기는 저장 전에 거절한다.
+Logic이 연결된 지면 gameplay Collider는 Yaw만 편집하며 X/Z 기울기는 Publish All Patterns의 실행 검증에서 거절한다.
 
 V2 Effect Box Detail의 Position/Rotation/Scale은 같은 Pattern/Bundle의 현재 actor·bone·WORLD와
 clock에서 즉시 Preview한다. Box Preview도 그 소유자를 사용하며 독립 Resource Preview는 별도다.
@@ -1221,7 +1282,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 이 항목들은 현재 인터페이스를 우회해 임시 구현하지 않는다.
 
 
-WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }`는 단일 MAP_PLACEMENT의 고정 수평 원판과 WORLD/STOP에 한정한다. Kouku WORLD cue의 활성 구간이 Server effective support height를 소유하며 기본 blocked/NO_SURFACE와 step policy는 유지한다. Motion Detail에서 설정을 저장한 뒤 Map 및 Kouku Product publisher를 소비한다. DRAFT pattern은 Product에 포함되지 않으며 클라이언트의 로컬 Transform으로 서버 보행면을 대신하지 않는다.
+WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }`는 단일 MAP_PLACEMENT의 고정 수평 원판과 WORLD/STOP에 한정한다. Kouku WORLD cue의 활성 구간이 Server effective support height를 소유하며 기본 blocked/NO_SURFACE와 step policy는 유지한다. Motion Detail에서 설정을 저장한 뒤 Map 및 Kouku Product publisher를 소비한다. Publish All Patterns에서 실행 조건을 충족하지 못한 패턴은 전체 트리에 사유와 함께 남지만 실행 데이터에는 포함되지 않는다. 클라이언트의 로컬 Transform으로 서버 보행면을 대신하지 않는다.
 
 ### 카드미로 진행·관전 계약
 

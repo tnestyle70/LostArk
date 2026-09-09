@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_Playback.h"
 #include "Effect_RuntimeAuthority.h"
 #include "Generated/Effect_SourceContractRegistry.generated.h"
 #include "RuntimeAssetRoot.h"
@@ -275,7 +276,8 @@ namespace
 	{
 		"screen.rgb-noise.reconstructed.v1",
 		"screen.zoom-blur.reconstructed.v1",
-		"screen.film-noise.reconstructed.v1"
+		"screen.film-noise.reconstructed.v1",
+		"screen.motion-blur.reconstructed.v1"
 	};
 	constexpr const char_t* SOURCE_PRESENTATION_STATUS_TOKENS[] =
 	{
@@ -3120,6 +3122,11 @@ namespace
 			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError) ||
 			!Read_OptionalBool(Value, "authoredModuleOverrides",
 				Out.bAuthoredModuleOverrides, strOutError) ||
+			!Read_OptionalBool(Value, "simulationOnly", Out.bSimulationOnly, strOutError) ||
+			(nullptr != Value.Find("particleSystemOccurrenceId") &&
+			 !Read_String(Value, "particleSystemOccurrenceId", Out.strParticleSystemOccurrenceId, strOutError)) ||
+			(nullptr != Value.Find("emitterName") &&
+			 !Read_String(Value, "emitterName", Out.strEmitterName, strOutError)) ||
 			!Read_String(Value, "rendererShape", Out.strRendererShape,
 				strOutError) ||
 			!Read_Float(Value, "emitterDelaySeconds",
@@ -3577,6 +3584,12 @@ namespace
 			<< (Recipe.bEnabled ? "true" : "false")
 			<< ", \"rendererShape\": \""
 			<< Client::CDataJson::Escape(Recipe.strRendererShape) << '"';
+		if (Recipe.bSimulationOnly)
+			Output << ", \"simulationOnly\": true";
+		if (!Recipe.strParticleSystemOccurrenceId.empty())
+			Output << ", \"particleSystemOccurrenceId\": \"" << Client::CDataJson::Escape(Recipe.strParticleSystemOccurrenceId) << '"';
+		if (!Recipe.strEmitterName.empty())
+			Output << ", \"emitterName\": \"" << Client::CDataJson::Escape(Recipe.strEmitterName) << '"';
 		if (Recipe.bAuthoredModuleOverrides && !bSourceContract)
 			Output << ", \"authoredModuleOverrides\": true";
 		if (bSourceContract)
@@ -5786,6 +5799,21 @@ namespace
 				});
 		const std::string_view strProfile =
 			SourceMaterial.strRuntimeShaderProfileId;
+		if (nullptr != Find_LanceMasterVAProgram(strProfile) && !Has_LanceMasterVAMaterialContract(Element))
+		{
+			strOutError = "Native Lance Master requires its recovered material, carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_ArtistProgram(strProfile) && !Has_ArtistMaterialContract(Element))
+		{
+			strOutError = "Native Artist requires its recovered material variant, carrier and named inputs.";
+			return false;
+		}
+		if (nullptr != Find_WarlordNativeProgram(strProfile) && !Has_WarlordNativeMaterialContract(Element))
+		{
+			strOutError = "Native Warlord requires its recovered material variant, carrier and named inputs.";
+			return false;
+		}
 		if (nullptr != Find_DimensionMasterSDProgram(strProfile) &&
 			!Has_DimensionMasterSDMaterialContract(Element))
 		{
@@ -6872,7 +6900,9 @@ namespace
 				  Has_DimensionMasterVMaterialContract(Leaf) ||
 				  Has_DimensionMasterALTVMaterialContract(Leaf) ||
 				  Has_DimensionMasterWRMaterialContract(Leaf) ||
-				  Has_DimensionMasterSDMaterialContract(Leaf)))
+				  Has_DimensionMasterSDMaterialContract(Leaf) ||
+				  Has_ArtistMaterialContract(Leaf) || Has_WarlordNativeMaterialContract(Leaf) ||
+				  Has_LanceMasterVAMaterialContract(Leaf)))
 			{
 				strOutError = "Source material slot identity or exact native material contract is invalid: " +
 					Element.strElementId + " slot " + std::to_string(Slot.iSourceMaterialIndex);
@@ -7070,6 +7100,21 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				"Effect Model Cue identity, resource, time, or transform is invalid.";
 			return false;
 		}
+		if (Cue.Material)
+		{
+			EFFECT_ELEMENT_DESC Metadata;
+			Metadata.strElementId = Cue.strCueId;
+			Metadata.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			Metadata.Material = *Cue.Material;
+			if (Cue.eAlphaMode != EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE ||
+				!Validate_ElementMaterial(Metadata, true, strOutError) ||
+				!(Has_ArtistModelCueMaterialContract(Cue) || Has_LanceMasterVAModelCueMaterialContract(Cue)))
+			{
+				if (strOutError.empty())
+					strOutError = "Model Cue recovered skeletal material contract is invalid: " + Cue.strCueId;
+				return false;
+			}
+		}
 	}
 
 	std::unordered_set<std::string> ElementIds;
@@ -7170,7 +7215,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				Recipe.fEmitterDelaySeconds < 0.f ||
 				!std::isfinite(Recipe.fEmitterDurationSeconds) ||
 				Recipe.fEmitterDurationSeconds < 0.f ||
-				Recipe.fEmitterDurationSeconds > 300.f ||
+				Recipe.fEmitterDurationSeconds > 600.f ||
 				Recipe.iEmitterLoopCount > 100000u ||
 				Recipe.Bursts.size() > MAX_SOURCE_BURSTS_PER_ELEMENT ||
 				Recipe.Modules.size() > MAX_SOURCE_MODULES_PER_ELEMENT)
@@ -7657,6 +7702,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				!D.ScreenPost.bEnabled) &&
 			(!D.ScreenPost.bEnabled ||
 				(D.ScreenPost.eProfile < EFFECT_SCREEN_POST_PROFILE::END &&
+					(D.ScreenPost.eProfile != EFFECT_SCREEN_POST_PROFILE::MOTION_BLUR_RECONSTRUCTED_V1 ||
+						Has_ArtistMaterialContract(Element)) &&
 					D.ScreenPost.eStatus ==
 						EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE &&
 					std::isfinite(D.ScreenPost.fIntensity) &&
@@ -7934,6 +7981,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			return false;
 		}
 	}
+	if (!CEffectPlayback::Validate_SourceParticleProviders(Document, strOutError))
+		return false;
 	strOutError.clear();
 	return true;
 }
@@ -8640,7 +8689,7 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		Document.Elements.begin(), Document.Elements.end(),
 		[](const EFFECT_ELEMENT_DESC& Element)
 		{
-			return Element.bVisible &&
+			return Element.bVisible && !Is_EffectSimulationOnlyParticle(Element) &&
 				(Is_EffectElementAuthoringExecutionTarget(Element) ||
 				 Is_EffectPresentationExecutionTarget(Element));
 		});
@@ -9112,7 +9161,7 @@ bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 		 Source->eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
 		 Source->eKind != EFFECT_ELEMENT_KIND::DECAL &&
 		 Source->eKind != EFFECT_ELEMENT_KIND::TRAIL) ||
-		!Is_EffectAuthoringExecutionTarget(Source->Material.Execution))
+		!Is_EffectElementAuthoringExecutionTarget(*Source))
 	{
 		strOutError =
 			"Portable authored Saved Element copy requires a self-contained executable Mesh, Sprite, Particle, Decal, or Trail Element.";
@@ -9133,6 +9182,12 @@ bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 		   second synthetic-motion Trail Family for Saved Element reuse. */
 		strOutError =
 			"Portable authored Saved Element copy cannot detach Trail transform history; load the complete Effect instead.";
+		return false;
+	}
+	if (Source->SourceRecipe.bSimulationOnly ||
+		!Source->SourceRecipe.strParticleSystemOccurrenceId.empty())
+	{
+		strOutError = "Saved Element copy cannot detach a live particle provider; use the complete Effect or Element Timeline Solo.";
 		return false;
 	}
 	if (Source->TransformInheritance.bEnabled)
@@ -9173,9 +9228,21 @@ bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 		std::none_of(Source->ResourceBindings.begin(), Source->ResourceBindings.end(),
 			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
 			{ return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID; });
-	if (bDetachNativeOwnerYawSprite && !Validate(SourceDocument, strOutError))
+	/* Camera-view attachments resolve from the active view and their socket,
+	   independently of the source animation or a model cue. Preserve that
+	   attachment when reusing the Element instead of treating it as bone history. */
+	const bool_t bPortableCameraViewFollow =
+		Source->ActionCueAttachment.bEnabled &&
+		Source->ActionCueAttachment.bFollow &&
+		Source->ActionCueAttachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
+		Source->ActionCueAttachment.strRuntimeBoneName.empty() &&
+		Source->ActionCueAttachment.strModelCueId.empty();
+	if ((bDetachNativeOwnerYawSprite || bPortableCameraViewFollow) &&
+		!Validate(SourceDocument, strOutError))
 		return false;
-	if (Source->ActionCueAttachment.bFollow && !bDetachNativeOwnerYawSprite)
+	if (Source->ActionCueAttachment.bFollow &&
+		!bDetachNativeOwnerYawSprite && !bPortableCameraViewFollow)
 	{
 		/* A matching textual owner prefix does not prove that the target preview
 		   owns the source bone, clip, or fixed-step anchor history.  Snapshot/root
@@ -10703,7 +10770,7 @@ namespace
 {
 	using namespace Client;
 
-	constexpr std::array<std::string_view, 42u>
+	constexpr std::array<std::string_view, 45u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemoduleacceleration",
 			"particlemodulecameraoffset",
@@ -10716,6 +10783,7 @@ namespace
 			"particlemodulelocation",
 			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
+			"particlemodulelocationemitter",
 			"particlemodulelocalvectorfield",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
@@ -10736,9 +10804,11 @@ namespace
 			"particlemodulesizescale",
 			"particlemodulesizescalebytime",
 			"particlemodulesizemultiplylife",
+			"particlemodulesizemultiplyvelocity",
 			"particlemodulespawn",
 			"particlemodulespawnperunit",
 			"particlemodulesubuv",
+			"particlemodulesubuvmovie",
 			"particlemoduletypedatamesh",
 			"particlemodulevectorfieldrotationrate",
 			"particlemodulevectorfieldscale",
@@ -10749,7 +10819,7 @@ namespace
 			"particlemodulevortex"
 		};
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 67u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 70u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "efparticlemoduleacceleration", "acceldata" },
 			std::pair{ "particlemoduleacceleration", "acceleration" },
@@ -10806,10 +10876,13 @@ namespace
 			std::pair{ "particlemodulesizescale", "sizescale" },
 			std::pair{ "particlemodulesizescalebytime", "sizescalebytime" },
 			std::pair{ "particlemodulesizemultiplylife", "lifemultiplier" },
+			std::pair{ "particlemodulesizemultiplyvelocity", "velocitymultiplier" },
 			std::pair{ "particlemodulespawn", "rate" },
 			std::pair{ "particlemodulespawn", "ratescale" },
 			std::pair{ "particlemodulespawnperunit", "spawnperunit" },
 			std::pair{ "particlemodulesubuv", "subimageindex" },
+			std::pair{ "particlemodulesubuvmovie", "subimageindex" },
+			std::pair{ "particlemodulesubuvmovie", "framerate" },
 			std::pair{ "particlemodulevectorfieldscale", "scale" },
 			std::pair{ "particlemodulevectorfieldscaleoverlife", "scaleoverlife" },
 			std::pair{ "particlemodulevelocity", "startvelocity" },
@@ -10819,7 +10892,7 @@ namespace
 			std::pair{ "efparticlemodulevortex", "poweracceleration" }
 		};
 
-	constexpr std::array<std::pair<std::string_view, size_t>, 22u>
+	constexpr std::array<std::pair<std::string_view, size_t>, 23u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS = {
 			std::pair{ "particlemoduleacceleration", 2u },
 			std::pair{ "particlemodulecameraoffset", 2u },
@@ -10834,6 +10907,8 @@ namespace
 			std::pair{ "particlemodulelocationprimitivesphere", 2u },
 			std::pair{ "particlemodulemeshrotation", 5u },
 			std::pair{ "particlemodulemeshrotationrate", 2u },
+			// Ordered multiply modules already compose in the shared update loop.
+			std::pair{ "particlemodulemeshrotationratemultiplylife", 2u },
 			std::pair{ "particlemoduleorientationaxislock", 2u },
 			std::pair{ "particlemoduleorbit", 2u },
 			std::pair{ "particlemodulerotation", 3u },
@@ -11184,8 +11259,7 @@ namespace
 				!ReadPortableBoolLiteral(Module, "bnegativeaxis", false,
 					bNegative) ||
 				!ReadPortableBoolLiteral(Module, "velocity", false, bVelocity) ||
-				!ReadPortableBoolLiteral(Module, "benabled", true, bEnabled) ||
-				!bEnabled)
+				!ReadPortableBoolLiteral(Module, "benabled", true, bEnabled))
 			{
 				strOutError =
 					"Portable authored particle CircleSurface semantics are unsupported: " +
@@ -11289,15 +11363,15 @@ namespace
 						{
 							return false;
 						}
-						// These decoded source options match the existing one-time
-						// relative-time spawn sampling. Raw or live options stay closed.
+						// Offset has a per-tick base reset and can sample over life.
+						// Variable rotation/rate updates still need their own phase state.
 						if (Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
 							return true;
 						const std::string_view Option = Path.substr(Path.find('.') + 1u);
-						if (Option == "bprocessduringspawn")
-							return !Literal.bBoolean;
-						if (Option == "bprocessduringupdate" || Option == "buseemittertime")
-							return Literal.bBoolean;
+						if (Option == "bprocessduringspawn" || Option == "buseemittertime")
+							return false;
+						if (Option == "bprocessduringupdate")
+							return Literal.bBoolean && !Path.starts_with("offsetoptions.");
 						return true;
 					}))
 			{
@@ -11337,6 +11411,69 @@ namespace
 			{
 				strOutError =
 					"Portable authored particle Vortex semantics are unsupported.";
+				return false;
+			}
+		}
+		if (strNormalizedClass == "particlemodulerequired")
+		{
+			std::string_view Mode;
+			if (!ReadPortableStringLiteral(Module, "interpolationmethod", "", Mode))
+				return false;
+			if (Mode == "psuvim_random")
+			{
+				double Columns, Rows, Changes, Interval;
+				bool_t ScaleUV;
+				if (!ReadPortableNumberLiteral(Module, "subimages_horizontal", 1.0, Columns) ||
+					!ReadPortableNumberLiteral(Module, "subimages_vertical", 1.0, Rows) ||
+					!ReadPortableNumberLiteral(Module, "randomimagechanges", 0.0, Changes) ||
+					!ReadPortableNumberLiteral(Module, "randomimagetime", 1.0, Interval) ||
+					!ReadPortableBoolLiteral(Module, "bscaleuv", false, ScaleUV) ||
+					Columns < 1.0 || Rows < 1.0 || Columns > 256.0 || Rows > 256.0 ||
+					std::floor(Columns) != Columns || std::floor(Rows) != Rows ||
+					Changes < 0.0 || Changes > 65535.0 || std::floor(Changes) != Changes ||
+					Interval < 0.0 || Interval > 1.0)
+				{
+					strOutError = "Source random SubUV layout or relative-age interval is invalid.";
+					return false;
+				}
+			}
+		}
+		if (strNormalizedClass == "particlemodulesubuvmovie")
+		{
+			double StartingFrame = 1.0;
+			bool_t UseEmitterTime = false, UseRealTime = false;
+			if (!ReadPortableNumberLiteral(Module, "startingframe", 1.0, StartingFrame) ||
+				!ReadPortableBoolLiteral(Module, "buseemittertime", false, UseEmitterTime) ||
+				!ReadPortableBoolLiteral(Module, "brealtime", false, UseRealTime) ||
+				UseRealTime || StartingFrame < 0.0 || StartingFrame > 65536.0 ||
+				std::floor(StartingFrame) != StartingFrame)
+			{
+				strOutError = "Source SubUV Movie requires a valid starting frame and simulation time.";
+				return false;
+			}
+		}
+		if (strNormalizedClass == "particlemodulesizemultiplyvelocity")
+		{
+			bool_t Value = false;
+			double Number = 0.0;
+			for (const auto Path : { "multiplyx", "multiplyy", "multiplyz",
+				"bspawnmodule", "bupdatemodule" })
+				if (!ReadPortableBoolLiteral(Module, Path, true, Value))
+				{
+					strOutError = "SizeMultiplyVelocity has an invalid axis or execution flag.";
+					return false;
+				}
+			for (const auto Path : { "capminsize.x", "capminsize.y", "capminsize.z",
+				"capmaxsize.x", "capmaxsize.y", "capmaxsize.z" })
+				if (!ReadPortableNumberLiteral(Module, Path, 0.0, Number))
+				{
+					strOutError = "SizeMultiplyVelocity has an invalid size cap.";
+					return false;
+				}
+			if (Module.Distributions.size() != 1u ||
+				Module.Distributions.front().iComponentCount != 3u)
+			{
+				strOutError = "SizeMultiplyVelocity requires one vector3 multiplier.";
 				return false;
 			}
 		}
@@ -11538,7 +11675,9 @@ namespace
 				ClassName == "particlemoduletypedatadecal";
 			const bool_t bSpriteOnly =
 				ClassName == "particlemodulerotationratemultiplylife" ||
-				ClassName == "particlemodulesubuv";
+				((ClassName == "particlemodulesubuv" || ClassName == "particlemodulesubuvmovie") && !(bMesh &&
+					(Has_ArtistMaterialContract(Element) || Has_WarlordNativeMaterialContract(Element) ||
+						Has_LanceMasterVAMaterialContract(Element))));
 			const auto Maximum = std::ranges::find_if(
 				PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS,
 				[&ClassName](const auto& Capability)
@@ -11801,7 +11940,12 @@ namespace
 				eExpectedKind == EFFECT_ELEMENT_KIND::DECAL &&
 				strExpectedShape == "decal" &&
 				NormalizedClass == "particlemoduletypedatadecal";
-			if ((!bAdmittedDecalTypeData && std::ranges::find(
+			const bool_t bAdmittedMeshMaterial =
+				eExpectedKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				strExpectedShape == "mesh" &&
+				!SourceElement.Detail.Mesh.SourceMaterialSlots.empty() &&
+				Module.strClassName == "particlemodulemeshmaterial";
+			if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && std::ranges::find(
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,
 					NormalizedClass) ==
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES.end()) ||
@@ -13613,7 +13757,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					{ "cueId", "modelAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "alphaMode",
 						"opacity", "colorMultiply", "holdLastFrame", "visible",
-						"localTransform", "assetPreTransform" },
+						"localTransform", "assetPreTransform", "material" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
 				strOutError = "Effect Model Cue must be an object.";
@@ -13658,6 +13802,14 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			{
 				strOutError = "Effect Model Cue alphaMode is invalid.";
 				return false;
+			}
+			if (const DATA_JSON_VALUE* pMaterial = CueValue.Find("material"))
+			{
+				EFFECT_MATERIAL_DESC Material;
+				if (!pMaterial->Is_Object() || !Read_Material(*pMaterial, Material,
+					Staged.iLoadedFormatVersion, bSourceContract, strOutError))
+					return false;
+				Cue.Material = std::move(Material);
 			}
 			Cue.bVisible = pVisible->Get_Boolean();
 			Staged.ModelCues.push_back(std::move(Cue));
@@ -13981,7 +14133,13 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		Write_Float3(Output, Cue.vAssetPreScale);
 		Output << ", \"rotationDegrees\": ";
 		Write_Float3(Output, Cue.vAssetPreRotationDegrees);
-		Output << " } }";
+		Output << " }";
+		if (Cue.Material)
+		{
+			Output << ", \"material\": ";
+			Write_Material(Output, *Cue.Material);
+		}
+		Output << " }";
 	}
 	if (!Document.ModelCues.empty())
 		Output << '\n';
@@ -14264,11 +14422,34 @@ namespace
 			std::to_wstring(iClock) + L"." + std::to_wstring(iCounter);
 	}
 
+	bool_t Matches_EffectDocumentCanonicalOnDisk(
+		const std::filesystem::path& Path,
+		const std::string_view ExpectedCanonical)
+	{
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input)
+			return false;
+		std::ostringstream Buffer;
+		Buffer << Input.rdbuf();
+		if (!Input.eof() && Input.fail())
+			return false;
+		const std::string Bytes = Buffer.str();
+		// Our previous save already wrote canonical JSON. Avoid parsing that same
+		// graph again; formatting-only external edits retain the semantic check.
+		if (Bytes == ExpectedCanonical)
+			return true;
+		Client::EFFECT_DOCUMENT_DESC Current;
+		std::string Error;
+		return Client::CEffectDocumentCodec::Parse(Bytes, Current, Error) &&
+			Client::CEffectDocumentCodec::Serialize(Current) == ExpectedCanonical;
+	}
+
 	bool_t Save_EffectDocumentAtomic(
 		const std::filesystem::path& Path,
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		const std::string_view* pExpectedCanonicalDocument,
-		std::string& strOutError)
+		std::string& strOutError,
+		std::string* pOutSavedCanonical = nullptr)
 	{
 		using Client::CEffectDocumentCodec;
 
@@ -14339,12 +14520,9 @@ namespace
 			}
 			else
 			{
-				Client::EFFECT_DOCUMENT_DESC Current;
-				std::string CurrentError;
 				if (!bDestinationExists ||
-					!CEffectDocumentCodec::Load(Path, Current, CurrentError) ||
-					CEffectDocumentCodec::Serialize(Current) !=
-						*pExpectedCanonicalDocument)
+					!Matches_EffectDocumentCanonicalOnDisk(
+						Path, *pExpectedCanonicalDocument))
 				{
 					strOutError =
 						"Effect document changed on disk after it was loaded; Reload Saved before applying this draft.";
@@ -14380,6 +14558,8 @@ namespace
 			return false;
 		}
 		std::filesystem::remove(Backup, Error);
+		if (nullptr != pOutSavedCanonical)
+			*pOutSavedCanonical = Json;
 		strOutError.clear();
 		return true;
 	}
@@ -14403,13 +14583,29 @@ bool_t Client::CEffectDocumentCodec::Save_AtomicIfUnchanged(
 		Path, Document, &strExpectedCanonicalDocument, strOutError);
 }
 
+bool_t Client::CEffectDocumentCodec::Save_AtomicIfUnchanged(
+	const std::filesystem::path& Path,
+	const EFFECT_DOCUMENT_DESC& Document,
+	const std::string_view strExpectedCanonicalDocument,
+	std::string& strOutError,
+	std::string* pOutSavedCanonical)
+{
+	return Save_EffectDocumentAtomic(Path, Document,
+		&strExpectedCanonicalDocument, strOutError, pOutSavedCanonical);
+}
+
 void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::vector<std::string>& OutAssetIds)
 {
 	std::unordered_set<std::string> Unique;
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+	{
 		Unique.insert(Cue.strModelAssetId);
+		if (Cue.Material)
+			for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Cue.Material->SourceMaterial.Textures)
+				if (!Texture.strAssetId.empty()) Unique.insert(Texture.strAssetId);
+	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)

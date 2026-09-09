@@ -6,6 +6,9 @@
 #include "Effect_DimensionMasterALTVMaterial.h"
 #include "Effect_DimensionMasterWRMaterial.h"
 #include "Effect_DimensionMasterSDMaterial.h"
+#include "Effect_ArtistMaterial.h"
+#include "Effect_LanceMasterVAMaterial.h"
+#include "Effect_WarlordNativeMaterial.h"
 
 #include <algorithm>
 #include <array>
@@ -935,6 +938,9 @@ inline bool_t Is_SupportedEffectSourceRuntimeShaderProfile(
 		EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS, strProfileId) ||
 		nullptr != Find_DimensionMasterALTVProgram(strProfileId) ||
 		nullptr != Find_DimensionMasterSDProgram(strProfileId) ||
+		nullptr != Find_ArtistProgram(strProfileId) ||
+		nullptr != Find_LanceMasterVAProgram(strProfileId) ||
+		nullptr != Find_WarlordNativeProgram(strProfileId) ||
 		nullptr != Find_DimensionMasterWRProgram(strProfileId) ||
 		nullptr != Find_DimensionMasterVProgram(strProfileId) ||
 		nullptr != Find_DimensionMasterQProgram(strProfileId);

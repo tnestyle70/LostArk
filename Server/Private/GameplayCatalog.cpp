@@ -22,6 +22,8 @@ namespace
 	/* Mirror of the publisher's $maximumDamageRatePercent: a rate only one side
 	accepts would make Validate and Load disagree about the same document. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
+	// Matches the publisher bound for the complete gameplay document.
+	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 8192u;
 	/* The wire names one plate per bit, so a boss cannot wear more than the
 	snapshot can carry. The publisher rejects a larger authored count. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
@@ -551,6 +553,10 @@ namespace
 			output = BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP;
 		else if ("OBJECT_CONTACT" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT;
+		else if ("ATTACHMENT_HOLD" == value)
+            output = BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD;
+		else if ("COUNTER_WINDOW" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW;
 		else if ("EXTERNAL_SIGNAL" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL;
 		else
@@ -571,6 +577,10 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
 		else if ("MADNESS_GAUGE_ADD_PERCENT" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
+		else if ("CAPTURE_PLAYER" == value)
+            output = BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+		else if ("FEAR" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR;
 		else if ("CLOWN_TRANSFORM" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::CLOWN_TRANSFORM;
 		else if ("FOLLOWUP_PATTERN" == value)
@@ -1553,7 +1563,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
 		!ParseNumber(header[1], version) ||
 		GAMEPLAY_BOOTSTRAP_VERSION != version ||
-		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
+		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
 		return false;
@@ -2540,6 +2550,51 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			owner->LogicWindows.push_back(std::move(window));
 		}
+        else if (!fields.empty() && "PATTERNLOGICCHARGE" == fields[0])
+        {
+            float distance = 0.f;
+            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+                !IsStableId(fields[3]) || !ParseNumber(fields[4], distance) || !std::isfinite(distance) ||
+                distance <= 0.f || distance > 1000.f)
+            { m_strStatus = "Boss charge row is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Boss charge encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end() || pattern->BossMotion)
+            { m_strStatus = "Boss charge pattern is missing or owns absolute motion"; return false; }
+            const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[3]; });
+            if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ||
+                window->fBossChargeDistanceM != 0.f)
+            { m_strStatus = "Boss charge needs a unique ENTER_AREA window"; return false; }
+            for (const auto& other : pattern->LogicWindows)
+                if (other.fBossChargeDistanceM > 0.f && other.iStartMs < window->iStartMs + window->iDurationMs &&
+                    window->iStartMs < other.iStartMs + other.iDurationMs)
+                { m_strStatus = "Boss charge windows overlap"; return false; }
+            window->fBossChargeDistanceM = distance;
+        }
+        else if (!fields.empty() && "PATTERNLOGICHOLD" == fields[0])
+        {
+            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+                !IsStableId(fields[3]) || !IsStableId(fields[4]))
+            { m_strStatus = "Attachment hold reference row is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Attachment hold encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end()) { m_strStatus = "Attachment hold pattern is missing"; return false; }
+            const auto trigger = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[3]; });
+            const auto hold = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[4]; });
+            if (trigger == pattern->LogicWindows.end() || hold == pattern->LogicWindows.end() ||
+                trigger->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || hold->eKind != BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD ||
+                !trigger->strHoldLogicOccurrenceId.empty() || hold->iStartMs > trigger->iStartMs ||
+                std::uint64_t(hold->iStartMs) + hold->iDurationMs < std::uint64_t(trigger->iStartMs) + trigger->iDurationMs)
+            { m_strStatus = "Attachment hold must uniquely reference a containing Hold window in the same pattern"; return false; }
+            trigger->strHoldLogicOccurrenceId = fields[4];
+        }
 		else if (!fields.empty() && "PATTERNLOGICREGION" == fields[0])
 		{
 			BOSS_LOGIC_REGION region{};
@@ -2656,7 +2711,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			BOSS_PATTERN_LOGIC_RESULT result{};
 			std::uint32_t ordinal = 0u;
-			if ((10u != fields.size() && 12u != fields.size()) || !IsStableId(fields[1]) ||
+			if ((10u != fields.size() && 11u != fields.size() && 12u != fields.size() && 14u != fields.size()) || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				("SUCCESS" != fields[4] && "FAIL" != fields[4] && "TIMEOUT" != fields[4]) ||
 				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
@@ -2669,6 +2724,28 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus = "Boss pattern logic outcome row is invalid";
 				return false;
 			}
+            if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER)
+            {
+                if (fields.size() != 14u || fields[10] != "BOSS_LEFT_HAND" || result.iPercent || result.iDurationMs ||
+                    !ParseNumber(fields[11], result.GripLocalOffset[0]) || !ParseNumber(fields[12], result.GripLocalOffset[1]) ||
+                    !ParseNumber(fields[13], result.GripLocalOffset[2]) ||
+                    std::any_of(result.GripLocalOffset.begin(), result.GripLocalOffset.end(), [](const float value) {
+                        return !std::isfinite(value) || std::abs(value) > 10.f;
+                    }))
+                { m_strStatus = "Capture result requires BOSS_LEFT_HAND and bounded forward/up/right grip"; return false; }
+                result.eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND;
+            }
+            else if (fields.size() == 14u)
+            { m_strStatus = "Only capture results carry an attachment slot and grip"; return false; }
+            if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)
+            {
+                if (fields.size() != 11u || !IsStableId(fields[10]) || result.iDurationMs == 0u ||
+                    result.iDurationMs > 600000u || result.iPercent != 0u)
+                { m_strStatus = "Fear outcome needs a bounded duration and stable presentation ID"; return false; }
+                result.strFearPresentationId = fields[10];
+            }
+            else if (fields.size() == 11u)
+            { m_strStatus = "Only fear carries a presentation ID"; return false; }
 			result.strPatternId = "-" == fields[9] ? "" : std::string(fields[9]);
 			if (12u == fields.size())
 			{
@@ -2711,6 +2788,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus = "Boss pattern logic outcome has no window owner";
 				return false;
 			}
+            if (window->eKind == BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD ||
+                (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER &&
+                 (window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || fields[4] != "SUCCESS")))
+            { m_strStatus = "Capture belongs to ENTER_AREA Success; Hold has no outcomes"; return false; }
 			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP &&
 				(!worldMotion || result.strTargetWorldInstanceId != window->strTargetWorldInstanceId))
 			{ m_strStatus = "OBJECT_OVERLAP Result must apply a motion to the same target World Object"; return false; }
@@ -6154,6 +6235,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								return world.strInstanceId == result.strTargetWorldInstanceId;
 							}) > 1)
 							return fail("Legacy World motion target is ambiguous; use occurrence-bound contact motion");
+                const auto captureCount = std::count_if(window.OnSuccess.begin(), window.OnSuccess.end(), [](const auto& result) {
+                    return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+                });
+                if (captureCount > 1 || (captureCount == 1 && window.OnSuccess.size() != 1u) ||
+                    (captureCount == 1) != !window.strHoldLogicOccurrenceId.empty())
+                    return fail("One capture Success requires one explicit Hold reference");
+                if (!window.strHoldLogicOccurrenceId.empty() && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA)
+                    return fail("Only ENTER_AREA owns a Hold reference");
+                if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD &&
+                    (!window.CardRegions.empty() || !window.OnSuccess.empty() || !window.OnFail.empty() ||
+                     !window.OnTimeout.empty() || window.bInsideIsFail || window.bEndsPatternOnSuccess || window.fBossChargeDistanceM != 0.f))
+                    return fail("Attachment Hold owns only its lifetime");
 				if (window.eKind == BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL)
 				{
 					if (window.bInsideIsFail || !window.OnFail.empty() || !window.CardRegions.empty()) return fail("External signal accepts Success/Timeout and no Collider regions or inside Fail");

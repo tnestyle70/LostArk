@@ -7,9 +7,11 @@
 #include <wrl/client.h>
 
 #include "Fx11/d3dx11effect.h"
+#include "../../Client/Public/Effect_ShaderFamily.h"
 
 #include <array>
 #include <cmath>
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -36,6 +38,7 @@ namespace
         float Binormal[3];
         float Texcoord[2];
         float Texcoord1[2];
+        unsigned int Color = 0xffffffffu;
     };
 
     struct RENDER_TARGETS final
@@ -667,6 +670,161 @@ namespace
         return true;
     }
 
+    bool Validate_Family_Programs(ID3D11Device* pDevice, const fs::path& ShaderRoot,
+        size_t& OutCount, std::string& OutError)
+    {
+        using namespace Client;
+        static constexpr const char* PassNames[] = {
+            "OpaqueBackDepthWrite", "AlphaTwoSidedDepthRead", "AdditiveTwoSidedDepthRead",
+            "AlphaOneSidedDepthRead", "AdditiveOneSidedDepthRead",
+            "AlphaOneSidedMirroredDepthRead", "AdditiveOneSidedMirroredDepthRead",
+            "InstancedOpaqueBackDepthWrite", "InstancedAlphaTwoSidedDepthRead",
+            "InstancedAdditiveTwoSidedDepthRead", "InstancedAlphaOneSidedDepthRead",
+            "InstancedAdditiveOneSidedDepthRead", "InstancedAlphaOneSidedMirroredDepthRead",
+            "InstancedAdditiveOneSidedMirroredDepthRead" };
+        static constexpr D3D11_INPUT_ELEMENT_DESC MeshElements[] = {
+            {"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,24,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"BINORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,36,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,48,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"TEXCOORD",1,DXGI_FORMAT_R32G32_FLOAT,0,56,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"COLOR",0,DXGI_FORMAT_R8G8B8A8_UNORM,0,64,D3D11_INPUT_PER_VERTEX_DATA,0} };
+        struct NATIVE_MESH_INSTANCE final
+        {
+            float World[16], NormalMatrix[16], Color[4], Dynamic[4];
+            float SubUVCurrent[4], SubUVNext[4], LifeBlend[2];
+        };
+        static_assert(sizeof(NATIVE_MESH_INSTANCE) == 200u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, NormalMatrix) == 64u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, Color) == 128u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, Dynamic) == 144u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, SubUVCurrent) == 160u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, SubUVNext) == 176u);
+        static_assert(offsetof(NATIVE_MESH_INSTANCE, LifeBlend) == 192u);
+        const auto NativeMeshElements = [&]
+        {
+            std::array<D3D11_INPUT_ELEMENT_DESC, std::size(MeshElements) + 13u> Rows{};
+            size_t i = 0u;
+            for (const auto& Element : MeshElements) Rows[i++] = Element;
+            for (UINT Row = 0u; Row < 4u; ++Row)
+                Rows[i++] = { "WORLD", Row, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                    1u, Row * 16u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            for (UINT Row = 0u; Row < 4u; ++Row)
+                Rows[i++] = { "WORLDINVTRANSPOSE", Row, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                    1u, 64u + Row * 16u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            Rows[i++] = { "INSTANCE_COLOR", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, 128u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            Rows[i++] = { "DYNAMIC", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, 144u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            Rows[i++] = { "UVTRANSFORM", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, 160u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            Rows[i++] = { "UVTRANSFORM", 1u, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                1u, 176u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            Rows[i++] = { "PARTICLEDATA", 0u, DXGI_FORMAT_R32G32_FLOAT,
+                1u, 192u, D3D11_INPUT_PER_INSTANCE_DATA, 1u };
+            return Rows;
+        }();
+        static constexpr D3D11_INPUT_ELEMENT_DESC ParticleElements[] = {
+            {"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"WORLD",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,0,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"WORLD",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,16,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"WORLD",2,DXGI_FORMAT_R32G32B32A32_FLOAT,1,32,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"WORLD",3,DXGI_FORMAT_R32G32B32A32_FLOAT,1,48,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,64,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"DYNAMIC",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,80,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"UVTRANSFORM",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,96,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"UVTRANSFORM",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,112,D3D11_INPUT_PER_INSTANCE_DATA,1},
+            {"PARTICLEDATA",0,DXGI_FORMAT_R32G32_FLOAT,1,128,D3D11_INPUT_PER_INSTANCE_DATA,1} };
+        OutCount = 0u;
+        for (const auto& Program : EFFECT_SHADER_PROGRAMS)
+        {
+            const auto Fail = [&](const std::string& Reason) {
+                OutError = std::string(Program.strShaderAssetId) + ": " + Reason; return false; };
+            const fs::path File = ShaderRoot / fs::path(Program.strShaderAssetId).replace_extension(".cso");
+            const auto Bytes = Read_Bytes(File, OutError);
+            if (Bytes.empty()) return false;
+            ComPtr<ID3DX11Effect> Effect;
+            if (FAILED(D3DX11CreateEffectFromMemory(Bytes.data(), Bytes.size(), 0u, pDevice, &Effect)))
+                return Fail("family effect creation failed");
+            auto* Technique = Effect->GetTechniqueByName("DefaultTechnique");
+            D3DX11_TECHNIQUE_DESC Desc{};
+            const bool Mesh = Program.eCarrier == EFFECT_SHADER_CARRIER::MESH;
+            const bool NativeMesh = Mesh && Program.eFamily != EFFECT_SHADER_FAMILY::GENERIC;
+            const UINT ExpectedPasses = NativeMesh ? 14u : (Mesh ? 7u : 5u);
+            if (!Technique || !Technique->IsValid() || FAILED(Technique->GetDesc(&Desc)) || Desc.Passes != ExpectedPasses)
+                return Fail("family technique/pass count mismatch");
+            for (UINT i = 0u; i < ExpectedPasses; ++i)
+            {
+                auto* Pass = Technique->GetPassByIndex(i); D3DX11_PASS_DESC PD{};
+                if (!Pass || FAILED(Pass->GetDesc(&PD)) || !PD.Name || std::string_view(PD.Name) != PassNames[i])
+                    return Fail("family ordered pass contract mismatch");
+                ComPtr<ID3D11InputLayout> Layout;
+                if (FAILED(pDevice->CreateInputLayout(NativeMesh ? NativeMeshElements.data() :
+                        (Mesh ? MeshElements : ParticleElements),
+                        NativeMesh ? static_cast<UINT>(NativeMeshElements.size()) :
+                        (Mesh ? static_cast<UINT>(std::size(MeshElements)) : static_cast<UINT>(std::size(ParticleElements))),
+                        PD.pIAInputSignature, PD.IAInputSignatureSize, &Layout)))
+                    return Fail("family carrier input signature mismatch");
+                if (NativeMesh)
+                {
+                    D3DX11_PASS_SHADER_DESC Vertex{};
+                    D3DX11_EFFECT_VARIABLE_DESC Variable{};
+                    const char* ExpectedVertex = i < 7u ? "EffectPreviewVS" : "EffectInstanceVS";
+                    if (FAILED(Pass->GetVertexShaderDesc(&Vertex)) ||
+                        !Vertex.pShaderVariable || !Vertex.pShaderVariable->IsValid() ||
+                        FAILED(Vertex.pShaderVariable->GetDesc(&Variable)) || !Variable.Name ||
+                        std::string_view(Variable.Name) != ExpectedVertex)
+                        return Fail("native mesh regular/instance vertex program mismatch");
+                }
+            }
+            const auto Require = [&](const char* Name) { auto* V = Effect->GetVariableByName(Name); return V && V->IsValid(); };
+            for (const char* Name : {"g_ViewMatrix", "g_ProjMatrix", "g_CameraPosition", "g_SourceMaterialProfile",
+                    "g_ColorMultiply", "g_ColorOffset", "g_EffectSceneColorTexture", "g_EffectSceneDepthTexture"})
+                if (!Require(Name)) return Fail(std::string("family required variable missing: ") + Name);
+            for (const char* Name : {"g_StandardColorV1Enabled", "g_RuntimeMaterialV2Enabled",
+                    "g_ReconstructedMaterialEvaluatorEnabled", "g_ArtistVisualV4Opcode"})
+                if (Require(Name) != (Program.eFamily == EFFECT_SHADER_FAMILY::GENERIC))
+                    return Fail(std::string("family backend isolation mismatch: ") + Name);
+            for (unsigned i = 0u; i < 9u; ++i)
+                if (!Require(("g_SourceTexture" + std::to_string(i)).c_str())) return Fail("family source SRV lane missing");
+            const char* Packet = nullptr; const char* Time = nullptr;
+            switch (Program.eFamily)
+            {
+            case EFFECT_SHADER_FAMILY::GENERIC: break;
+            case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_Q: Packet="g_QSourceMaterialParameters"; Time="g_QSourceMaterialTime"; break;
+            case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_V:
+            case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_WR:
+            case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_SD: Packet="g_VSourceMaterialParameters"; Time="g_VSourceMaterialTime"; break;
+            case EFFECT_SHADER_FAMILY::DIMENSIONMASTER_ALTV: Packet="g_ALTVSourceMaterialParameters"; Time="g_ALTVSourceMaterialTime"; break;
+            case EFFECT_SHADER_FAMILY::WARLORD: Packet="g_WarlordSourceMaterialParameters"; Time="g_WarlordSourceMaterialTime"; break;
+            case EFFECT_SHADER_FAMILY::ARTIST: Packet="g_ArtistSourceMaterialParameters"; Time="g_ArtistSourceMaterialTime"; break;
+            case EFFECT_SHADER_FAMILY::LANCE_MASTER: Packet="g_LanceVASourceMaterialParameters"; Time="g_LanceVASourceMaterialTime"; break;
+            default: return Fail("unknown family");
+            }
+            if (Packet && (!Require(Packet) || !Require(Time))) return Fail("family native packet missing");
+            if (Packet)
+            {
+                D3DX11_EFFECT_TYPE_DESC Type{};
+                if (FAILED(Effect->GetVariableByName(Packet)->GetType()->GetDesc(&Type)) ||
+                    Type.Type != D3D_SVT_FLOAT || Type.Elements != 32u ||
+                    Type.Rows != 1u || Type.Columns != 4u || Type.UnpackedSize != 512u)
+                    return Fail("family native packet layout mismatch");
+            }
+            for (const char* Other : {"g_QSourceMaterialParameters", "g_VSourceMaterialParameters",
+                    "g_ALTVSourceMaterialParameters", "g_WarlordSourceMaterialParameters",
+                    "g_ArtistSourceMaterialParameters", "g_LanceVASourceMaterialParameters"})
+                if ((!Packet || std::string_view(Other) != Packet) && Require(Other))
+                    return Fail("unselected native family packet remains in compiled effect");
+            if (Program.eFamily == EFFECT_SHADER_FAMILY::WARLORD)
+                for (const char* Name : {"g_WarlordSkyUpper", "g_WarlordSkyLower", "g_WarlordAmbient"})
+                    if (!Require(Name)) return Fail("Warlord scene adapter variable missing");
+            ++OutCount;
+        }
+        return OutCount == EFFECT_SHADER_PROGRAMS.size();
+    }
+
     bool Draw_Compiled_Effect(
         ID3D11Device* pDevice,
         ID3D11DeviceContext* pContext,
@@ -707,7 +865,7 @@ namespace
             OutError = "compiled effect pass signature is unavailable";
             return false;
         }
-        const std::array<D3D11_INPUT_ELEMENT_DESC, 6> Elements = {{
+        const std::array<D3D11_INPUT_ELEMENT_DESC, 7> Elements = {{
             {"POSITION", 0u, DXGI_FORMAT_R32G32B32_FLOAT, 0u,
                 static_cast<UINT>(offsetof(VERTEX, Position)),
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
@@ -725,6 +883,9 @@ namespace
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
             {"TEXCOORD", 1u, DXGI_FORMAT_R32G32_FLOAT, 0u,
                 static_cast<UINT>(offsetof(VERTEX, Texcoord1)),
+                D3D11_INPUT_PER_VERTEX_DATA, 0u},
+            {"COLOR", 0u, DXGI_FORMAT_R8G8B8A8_UNORM, 0u,
+                static_cast<UINT>(offsetof(VERTEX, Color)),
                 D3D11_INPUT_PER_VERTEX_DATA, 0u},
         }};
         ComPtr<ID3D11InputLayout> InputLayout;
@@ -909,6 +1070,13 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
     }
 
     const fs::path ShaderRoot = RepositoryRoot / L"Client/Bin" / Configuration;
+    const auto FamilyValidationBegin = std::chrono::steady_clock::now();
+    size_t FamilyProgramsValidated = 0u;
+    if (!Validate_Family_Programs(Device.Get(), ShaderRoot, FamilyProgramsValidated, Error))
+    { std::cerr << Error << '\n'; return EXIT_RENDER_CONTRACT; }
+    const double FamilyProgramsValidationMs = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - FamilyValidationBegin).count();
+
     size_t V1LitPixels = 0u;
     size_t V2LitPixels = 0u;
     size_t UnusedDistortionPixels = 0u;
@@ -981,7 +1149,9 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
     Device.As(&DxgiDevice);
     if (DxgiDevice && SUCCEEDED(DxgiDevice->GetAdapter(Adapter.GetAddressOf())) && Adapter)
         Adapter->GetDesc(&AdapterDesc);
-    std::cout << "{\"driver\":\"WARP\",\"adapter\":\""
+    std::cout << "{\"familyProgramsValidated\":" << FamilyProgramsValidated
+              << ",\"familyProgramsValidationMs\":" << FamilyProgramsValidationMs
+              << ",\"driver\":\"WARP\",\"adapter\":\""
               << Json_Escape(To_Utf8(AdapterDesc.Description))
               << "\",\"v1LitPixels\":" << V1LitPixels
               << ",\"v2LitPixels\":" << V2LitPixels

@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "Camera_Free.h"
+#include "Effect_PresentationService.h"
 
 #include "CameraShakeService.h"
 #include "Transform.h"
@@ -88,6 +89,7 @@ void CCamera_Free::Update(f32_t fTimeDelta)
 
 void CCamera_Free::Late_Update(f32_t fTimeDelta)
 {
+	CEffectPresentationService::Set_FrameCamera(static_pointer_cast<CCamera_Free>(shared_from_this()));
 	Remove_AppliedCameraShake();
 	if (!m_bFollowEnabled)
 	{

@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 NS_BEGIN(Client)
 
@@ -102,6 +103,10 @@ public:
 		std::string& strOutError);
 	void Set_ReconstructedDiagnosticSolo(
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Select_OccurrenceElement(std::string_view elementId, std::string& status);
+	// Product source-local visibility reuses the same object-local submission mask.
+	// Evaluation and the admitted document remain unchanged.
+	bool_t Set_SubmissionElementSet(std::vector<std::string> elementIds, std::string& error);
 	bool_t Set_PreviewSubmissionIsolation(
 		const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
 		std::string& strOutError);
@@ -183,6 +188,7 @@ public:
 	{
 		return m_Playback.Query_ParticleRuntimeProbe(strElementId, OutProbe);
 	}
+	f32_t Get_PreviewDurationSeconds() const { return m_Playback.Get_DurationSeconds(); }
 	const std::string& Get_Status() const { return m_strStatus; }
 	const PRESENTATION_SUBMISSION_STATS&
 		Get_LastPresentationSubmissionStats() const
@@ -274,6 +280,7 @@ private:
 	f32_t m_fPlaybackRate = 1.f;
 	uint64_t m_iConfiguredLightCount = 0u;
 	uint64_t m_iConfiguredScreenPostCount = 0u;
+	std::vector<std::string> m_SceneColorElementIds;
 	std::shared_ptr<CEffectScreenOverlayPresentation>
 		m_pScreenOverlayPresentation;
 	PRESENTATION_SUBMISSION_STATS m_LastPresentationSubmissionStats;

@@ -1,6 +1,7 @@
 #include "Shader.h"
 
 #include <cwchar>
+#include <cstring>
 #include <new>
 
 namespace
@@ -218,13 +219,56 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		return Fail(L"technique-desc", FAILED(Result) ? Result : E_FAIL);
 
 	std::vector<ComPtr<ID3D11InputLayout>> InputLayouts;
+	std::shared_ptr<EFFECT_BINDINGS> Bindings;
 	try
 	{
 		InputLayouts.reserve(TechniqueDesc.Passes);
+		Bindings = std::make_shared<EFFECT_BINDINGS>();
+		Bindings->Passes.reserve(TechniqueDesc.Passes);
+		size_t VariableCapacity = 2u;
+		while (VariableCapacity < static_cast<size_t>(EffectDesc.GlobalVariables) * 2u)
+			VariableCapacity *= 2u;
+		Bindings->Variables.resize(VariableCapacity);
+		Bindings->iVariableMask = VariableCapacity - 1u;
+		for (uint32_t i = 0u; i < EffectDesc.GlobalVariables; ++i)
+		{
+			ID3DX11EffectVariable* pIndexedVariable = Effect->GetVariableByIndex(i);
+			if (nullptr == pIndexedVariable || !pIndexedVariable->IsValid())
+				return Fail(L"variable", E_FAIL);
+			D3DX11_EFFECT_VARIABLE_DESC VariableDesc{};
+			Result = pIndexedVariable->GetDesc(&VariableDesc);
+			if (FAILED(Result))
+				return Fail(L"variable-desc", Result);
+			if (nullptr == VariableDesc.Name || '\0' == VariableDesc.Name[0])
+				continue;
+
+			// Resolve the public name once, including the Effects name lookup's
+			// own precedence. Drawing uses only this immutable per-Effect table.
+			ID3DX11EffectVariable* pVariable = Effect->GetVariableByName(VariableDesc.Name);
+			if (nullptr == pVariable || !pVariable->IsValid())
+				return Fail(L"variable-name", E_FAIL);
+			const uint64_t NameHash = Hash_VariableName(VariableDesc.Name);
+			size_t Slot = static_cast<size_t>(NameHash) & Bindings->iVariableMask;
+			while (nullptr != Bindings->Variables[Slot].pVariable &&
+				std::strcmp(Bindings->Variables[Slot].strName.c_str(), VariableDesc.Name) != 0)
+				Slot = (Slot + 1u) & Bindings->iVariableMask;
+			VARIABLE_BINDING& Binding = Bindings->Variables[Slot];
+			if (nullptr != Binding.pVariable)
+				continue;
+			Binding.strName = VariableDesc.Name;
+			Binding.iNameHash = NameHash;
+			Binding.pVariable = pVariable;
+			Binding.pMatrix = pVariable->AsMatrix();
+			if (nullptr != Binding.pMatrix && !Binding.pMatrix->IsValid())
+				Binding.pMatrix = nullptr;
+			Binding.pResource = pVariable->AsShaderResource();
+			if (nullptr != Binding.pResource && !Binding.pResource->IsValid())
+				Binding.pResource = nullptr;
+		}
 	}
 	catch (const std::bad_alloc&)
 	{
-		return Fail(L"input-layout-reserve", E_OUTOFMEMORY);
+		return Fail(L"binding-cache-reserve", E_OUTOFMEMORY);
 	}
 
 	for (uint32_t i = 0u; i < TechniqueDesc.Passes; ++i)
@@ -251,10 +295,12 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 			return Fail(L"input-layout", FAILED(Result) ? Result : E_FAIL);
 
 		InputLayouts.push_back(std::move(InputLayout));
+		Bindings->Passes.push_back(pPass);
 	}
 
 	m_pEffect = std::move(Effect);
 	m_InputLayouts = std::move(InputLayouts);
+	m_pBindings = std::move(Bindings);
 	m_iNumPasses = TechniqueDesc.Passes;
 
 	TraceCompiledEffectLoad(
@@ -273,77 +319,90 @@ HRESULT CShader::Initialize(void* pArg)
 	return S_OK;
 }
 
+const CShader::VARIABLE_BINDING* CShader::Find_Variable(const char_t* pConstantName) const
+{
+	const EFFECT_BINDINGS* pBindings = m_pBindings.get();
+	if (nullptr == pBindings || nullptr == pConstantName || '\0' == pConstantName[0])
+		return nullptr;
+	const uint64_t NameHash = Hash_VariableName(pConstantName);
+	size_t Slot = static_cast<size_t>(NameHash) & pBindings->iVariableMask;
+	const VARIABLE_BINDING* pVariables = pBindings->Variables.data();
+	while (nullptr != pVariables[Slot].pVariable)
+	{
+		if (pVariables[Slot].iNameHash == NameHash &&
+			std::strcmp(pVariables[Slot].strName.c_str(), pConstantName) == 0)
+			return &pVariables[Slot];
+		Slot = (Slot + 1u) & pBindings->iVariableMask;
+	}
+	return nullptr;
+}
+
+uint64_t CShader::Hash_VariableName(const char_t* pConstantName) noexcept
+{
+	uint64_t Hash = 14695981039346656037ull;
+	for (; '\0' != *pConstantName; ++pConstantName)
+	{
+		Hash ^= static_cast<unsigned char>(*pConstantName);
+		Hash *= 1099511628211ull;
+	}
+	return Hash;
+}
+
 HRESULT CShader::Bind_RawValue(const char_t* pConstantName, const void* pData, uint32_t iLength)
 {
-	ComPtr<ID3DX11EffectVariable>	pVariable = m_pEffect->GetVariableByName(pConstantName);
-	if (nullptr == pVariable)
+	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	if (nullptr == pBinding)
 		return E_FAIL;
 
-	return pVariable->SetRawValue(pData, 0, iLength);	
+	return pBinding->pVariable->SetRawValue(pData, 0, iLength);
 }
 
 HRESULT CShader::Bind_Matrix(const char_t* pConstantName, const float4x4_t* pMatrix)
 {
-	ComPtr<ID3DX11EffectVariable>	pVariable = m_pEffect->GetVariableByName(pConstantName);
-	if (nullptr == pVariable)
+	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	if (nullptr == pBinding || nullptr == pBinding->pMatrix)
 		return E_FAIL;
 
-	ComPtr<ID3DX11EffectMatrixVariable>		pMatrixVariable = pVariable->AsMatrix();
-	if (nullptr == pMatrixVariable)
-		return E_FAIL;
-
-	return pMatrixVariable->SetMatrix(reinterpret_cast<const float_t*>(pMatrix));	
+	return pBinding->pMatrix->SetMatrix(reinterpret_cast<const float_t*>(pMatrix));
 }
 
 HRESULT CShader::Bind_Matrices(const char_t* pConstantName, const float4x4_t* pMatrices, uint32_t iNumMatrices)
 {
-	ComPtr<ID3DX11EffectVariable>	pVariable = m_pEffect->GetVariableByName(pConstantName);
-	if (nullptr == pVariable)
+	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	if (nullptr == pBinding || nullptr == pBinding->pMatrix)
 		return E_FAIL;
 
-	ComPtr<ID3DX11EffectMatrixVariable>		pMatrixVariable = pVariable->AsMatrix();
-	if (nullptr == pMatrixVariable)
-		return E_FAIL;
-
-	return pMatrixVariable->SetMatrixArray(reinterpret_cast<const float_t*>(pMatrices), 0, iNumMatrices);
+	return pBinding->pMatrix->SetMatrixArray(reinterpret_cast<const float_t*>(pMatrices), 0, iNumMatrices);
 }
 
 HRESULT CShader::Bind_Texture(const char_t* pConstantName, ComPtr<ID3D11ShaderResourceView> pSRV)
 {
-	ComPtr<ID3DX11EffectVariable>	pVariable = m_pEffect->GetVariableByName(pConstantName);
-	if (nullptr == pVariable)
+	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	if (nullptr == pBinding || nullptr == pBinding->pResource)
 		return E_FAIL;
 
-	ComPtr<ID3DX11EffectShaderResourceVariable>	pSRVVariable = pVariable->AsShaderResource();
-	if (nullptr == pSRVVariable)
-		return E_FAIL;
-
-	return pSRVVariable->SetResource(pSRV.Get());	
+	return pBinding->pResource->SetResource(pSRV.Get());
 }
 
 HRESULT CShader::Bind_Textures(const char_t* pConstantName, ID3D11ShaderResourceView** ppSRV, uint32_t iNumSRVs)
 {
-	ComPtr<ID3DX11EffectVariable>	pVariable = m_pEffect->GetVariableByName(pConstantName);
-	if (nullptr == pVariable)
+	const VARIABLE_BINDING* pBinding = Find_Variable(pConstantName);
+	if (nullptr == pBinding || nullptr == pBinding->pResource)
 		return E_FAIL;
 
-	ComPtr<ID3DX11EffectShaderResourceVariable>	pSRVVariable = pVariable->AsShaderResource();
-	if (nullptr == pSRVVariable)
-		return E_FAIL;
-
-	return pSRVVariable->SetResourceArray(ppSRV, 0, iNumSRVs);
+	return pBinding->pResource->SetResourceArray(ppSRV, 0, iNumSRVs);
 }
 
 
 
 HRESULT CShader::Begin(uint32_t iPassIndex)
 {
-	if (iPassIndex >= m_iNumPasses)
+	if (nullptr == m_pBindings || iPassIndex >= m_iNumPasses)
 		return E_FAIL;
 
 	m_pContext->IASetInputLayout(m_InputLayouts[iPassIndex].Get());
 
-	return m_pEffect->GetTechniqueByIndex(0)->GetPassByIndex(iPassIndex)->Apply(0, m_pContext.Get());	
+	return m_pBindings->Passes[iPassIndex]->Apply(0, m_pContext.Get());
 }
 
 unique_ptr<CShader> CShader::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const tchar_t* pShaderFilePath, const D3D11_INPUT_ELEMENT_DESC* pElements, uint32_t iNumElements)

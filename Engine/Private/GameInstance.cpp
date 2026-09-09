@@ -311,8 +311,12 @@ bool_t CGameInstance::IsMouseInputBlocked() const
 }
 
 #ifdef _WIN64
-uint64_t CGameInstance::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs)
-{ return m_pSound_Manager ? m_pSound_Manager->Play_SoundCue(path, volume, ageMs) : 0u; }
+uint64_t CGameInstance::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused)
+{ return m_pSound_Manager ? m_pSound_Manager->Play_SoundCue(path, volume, ageMs, paused) : 0u; }
+bool_t CGameInstance::Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs)
+{ return m_pSound_Manager && m_pSound_Manager->Get_SoundDurationMs(path, durationMs); }
+bool_t CGameInstance::Is_SoundCueActive(uint64_t handle) const
+{ return m_pSound_Manager && m_pSound_Manager->Is_SoundCueActive(handle); }
 void CGameInstance::Pause_SoundCue(uint64_t handle, bool_t paused)
 { if (m_pSound_Manager) m_pSound_Manager->Pause_SoundCue(handle, paused); }
 void CGameInstance::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
@@ -512,6 +516,11 @@ HRESULT CGameInstance::Bind_InverseTransform(shared_ptr<class CShader> pShader, 
 HRESULT CGameInstance::Add_Light(const LIGHT_DESC& LightDesc)
 {
 	return m_pLight_Manager->Add_Light(LightDesc);
+}
+
+const vector<LIGHT_DESC>& CGameInstance::Get_SceneLights() const
+{
+	return m_pLight_Manager->Get_SceneLights();
 }
 
 HRESULT CGameInstance::Render_Lights(

@@ -19,6 +19,7 @@ namespace
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
+	constexpr const char_t* PLAYER_LEFT_HAND_BONE = "bip001-l-hand";
 }
 
 CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -122,10 +123,50 @@ bool_t CNpc::Try_GetAnimationModelTarget(const ANIMATION_BONE_TARGET target,
 	return true;
 }
 
+bool_t CNpc::Set_PlayerHandGripLocalOffset(const PLAYER_HAND_GRIP_LOCAL_OFFSET& offset)
+{
+    if (!m_pModelCom || !m_pModelCom->Has_Bone(PLAYER_LEFT_HAND_BONE) ||
+        !CPlayerHandGripTransform::Is_ValidGripLocalOffset(offset)) return false;
+    m_PlayerHandGripLocalOffset = offset;
+    return true;
+}
+
+bool_t CNpc::Try_Get_PlayerHandGripLocalOffset(const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+    PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
+{
+    if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
+        !m_PlayerHandGripLocalOffset ||
+        !CPlayerHandGripTransform::Is_ValidGripLocalOffset(*m_PlayerHandGripLocalOffset)) return false;
+    outOffset = *m_PlayerHandGripLocalOffset;
+    return true;
+}
+
+bool_t CNpc::Try_Get_PlayerHandGripSocketView(const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+    PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const
+{
+    if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
+        !m_PlayerHandGripLocalOffset || !m_pModelCom || !m_pTransformCom ||
+        !m_pModelCom->Has_Bone(PLAYER_LEFT_HAND_BONE)) return false;
+    PLAYER_HAND_GRIP_SOCKET_VIEW staged{};
+    const auto* root = m_pTransformCom->Get_WorldMatrixPtr();
+    XMStoreFloat4x4(&staged.SocketWorld,
+        m_pModelCom->Get_BoneMatrix(PLAYER_LEFT_HAND_BONE) * XMLoadFloat4x4(root));
+    staged.OwnerYawBasis = *root;
+    // The same composition validates matrices and metre offsets for every owner.
+    float3_t position{};
+    if (!CPlayerHandGripTransform::Compose_WorldPosition(staged, *m_PlayerHandGripLocalOffset, position)) return false;
+    outView = staged;
+    return true;
+}
+
 bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
+	m_bNetworkAnimationTransition = false;
+	m_fNetworkAnimationHoldSeconds = 0.f;
+	m_fNetworkAnimationAgeSeconds = 0.f;
+	m_isNetworkAnimationLoop = isLoop;
 	m_pModelCom->Set_AnimationSpeed(1.f);
 	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
 		return false;
@@ -135,6 +176,46 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return true;
 }
 
+bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t holdSeconds)
+{
+    if (!m_pModelCom || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
+        !std::isfinite(holdSeconds) || holdSeconds < 0.f || holdSeconds > 600.f) return false;
+    m_fNetworkAnimationAgeSeconds = ageSeconds;
+    m_fNetworkAnimationHoldSeconds = holdSeconds;
+    return true;
+}
+
+bool_t CNpc::Apply_NetworkAnimationTransition(const char_t* sourceClip, const f32_t sourceMs,
+    const f32_t durationMs, const f32_t ageSeconds, const f32_t playRate)
+{
+    if (!m_pModelCom || !sourceClip || !std::isfinite(sourceMs) || sourceMs < 0.f ||
+        !std::isfinite(durationMs) || durationMs <= 0.f || durationMs > 1000.f ||
+        !std::isfinite(ageSeconds) || ageSeconds < 0.f || !std::isfinite(playRate) || playRate <= 0.f) return false;
+    uint32_t sourceIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < m_pModelCom->Get_NumAnimations(); ++i)
+        if (std::string_view(sourceClip) == m_pModelCom->Get_AnimationName(i)) { sourceIndex = i; break; }
+    const uint32_t targetIndex = m_pModelCom->Get_CurrentAnimIndex();
+    float cursor = 0.f, sourceEnd = 0.f, targetEnd = 0.f;
+    if (!m_pModelCom->Get_AnimationProgress(sourceIndex, cursor, sourceEnd) ||
+        !m_pModelCom->Get_AnimationProgress(targetIndex, cursor, targetEnd)) return false;
+    CModel::ANIMATION_TRANSITION_POSE pose;
+    pose.sourceIndex = sourceIndex; pose.targetIndex = targetIndex;
+    pose.sourceTicks = (std::min)(sourceEnd, sourceMs * .001f * m_pModelCom->Get_AnimationTickPerSecond(sourceIndex));
+    const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
+        (std::min)(ageSeconds, m_fNetworkAnimationHoldSeconds) : ageSeconds;
+    const float targetTicks = sampleAge * playRate * m_pModelCom->Get_AnimationTickPerSecond(targetIndex);
+    pose.targetTicks = m_isNetworkAnimationLoop && targetEnd > 0.f ?
+        std::fmod(targetTicks, targetEnd) : (std::min)(targetEnd, targetTicks);
+    pose.durationSeconds = durationMs * .001f; pose.elapsedSeconds = ageSeconds; pose.playRate = playRate;
+    if (!m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
+    m_iTransitionSourceIndex = sourceIndex; m_fTransitionSourceTicks = pose.sourceTicks;
+    m_fTransitionDurationSeconds = pose.durationSeconds; m_fTransitionAgeSeconds = ageSeconds;
+    m_fTransitionPlayRate = playRate; m_bNetworkAnimationTransition = true;
+    m_pModelCom->Set_AnimPaused(false);
+    Synchronize_WeaponPose();
+    return true;
+}
+
 bool_t CNpc::Play_NetworkAction(
 	const char_t* pClipName,
 	const bool_t isLoop,
@@ -142,6 +223,10 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fBlendSeconds,
 	const f32_t fRootVerticalScale)
 {
+	m_bNetworkAnimationTransition = false;
+	m_fNetworkAnimationHoldSeconds = 0.f;
+	m_fNetworkAnimationAgeSeconds = 0.f;
+	m_isNetworkAnimationLoop = isLoop;
 	m_fTransientActionRemainingSeconds = 0.f;
 	m_strTransientReturnClip.clear();
 	if (nullptr == pClipName || '\0' == pClipName[0] ||
@@ -157,6 +242,7 @@ bool_t CNpc::Play_NetworkAction(
 	}
 	if (!m_pModelCom->Set_RootMotionVerticalScale(fRootVerticalScale)) return false;
 	m_pModelCom->Set_AnimationSpeed(fPlaybackRate);
+	m_fNetworkAnimationPlayRate = fPlaybackRate;
 	if (!m_pModelCom->Start_Animation(
 			m_pModelCom->Get_CurrentAnimIndex(), isLoop))
 	{
@@ -265,7 +351,45 @@ void CNpc::Update(f32_t fTimeDelta)
 			}
 		}
 	}
-	if (m_bSuppressRootMotion)
+    m_fNetworkAnimationAgeSeconds += (std::max)(0.f, fTimeDelta);
+    if (m_bNetworkAnimationTransition)
+    {
+        m_fTransitionAgeSeconds += (std::max)(0.f, fTimeDelta);
+        const auto targetIndex = m_pModelCom->Get_CurrentAnimIndex();
+        float cursor = 0.f, duration = 0.f;
+        if (m_pModelCom->Get_AnimationProgress(targetIndex, cursor, duration))
+        {
+            CModel::ANIMATION_TRANSITION_POSE pose;
+            pose.sourceIndex = m_iTransitionSourceIndex; pose.sourceTicks = m_fTransitionSourceTicks;
+            pose.targetIndex = targetIndex;
+            const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
+                (std::min)(m_fTransitionAgeSeconds, m_fNetworkAnimationHoldSeconds) : m_fTransitionAgeSeconds;
+            const float targetTicks = sampleAge * m_fTransitionPlayRate * m_pModelCom->Get_AnimationTickPerSecond(targetIndex);
+            pose.targetTicks = m_isNetworkAnimationLoop && duration > 0.f ?
+                std::fmod(targetTicks, duration) : (std::min)(duration, targetTicks);
+            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = m_fTransitionAgeSeconds;
+            pose.playRate = m_fTransitionPlayRate;
+            (void)m_pModelCom->Set_AnimationTransitionPose(pose);
+        }
+    }
+    else if (m_fNetworkAnimationHoldSeconds > 0.f &&
+        m_fNetworkAnimationAgeSeconds >= m_fNetworkAnimationHoldSeconds)
+    {
+        const auto clip = m_pModelCom->Get_CurrentAnimIndex();
+        float cursor = 0.f, duration = 0.f;
+        if (m_pModelCom->Get_AnimationProgress(clip, cursor, duration))
+        {
+            const float sourceTicks = m_fNetworkAnimationHoldSeconds * m_fNetworkAnimationPlayRate *
+                m_pModelCom->Get_AnimationTickPerSecond(clip);
+            const float ticks = m_isNetworkAnimationLoop && duration > 0.f ?
+                std::fmod(sourceTicks, duration) : (std::min)(duration, sourceTicks);
+            m_pModelCom->Set_AnimTrackPosition(clip, ticks);
+            m_pModelCom->Set_AnimPaused(true);
+            m_pModelCom->Skip_Blend();
+            m_pModelCom->Update_Animation(0.f);
+        }
+    }
+    else if (m_bSuppressRootMotion)
 	{
 		m_pModelCom->Update_Animation(fTimeDelta);
 	}

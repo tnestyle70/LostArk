@@ -11,6 +11,7 @@
 //writer가 일부만 기록한 뒤 실패하지 않도록 snapshot의 모든 state를 먼저 검증한다.
 namespace
 {
+	bool Is_Valid_StableId(const std::string& value, bool allowEmpty);
 	bool Is_Utf8Continuation(const std::uint8_t value) noexcept
 	{
 		return 0x80u == (value & 0xC0u);
@@ -177,6 +178,13 @@ namespace
 			((0u == snapshot.iSilenceEndTick) ==
 			 (0u == snapshot.iSilenceDurationTicks)) &&
 			snapshot.iSilenceDurationTicks <= 3600u &&
+            (LostArk::Shared::PLAYER_ACTION_STATE::FEAR == snapshot.eAction ?
+                (snapshot.iFearEndTick != 0u && snapshot.iCurrentHp != 0u &&
+                 static_cast<std::int32_t>(snapshot.iFearEndTick - snapshot.iActionStartTick) > 0 &&
+                 snapshot.iFearEndTick - snapshot.iActionStartTick <= 18001u &&
+                 Is_Valid_StableId(snapshot.strFearPresentationId, false) &&
+                 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE == snapshot.eLocomotionState) :
+                (snapshot.iFearEndTick == 0u && snapshot.strFearPresentationId.empty())) &&
 			(snapshot.isPatternBound ?
 				(snapshot.iPatternBindEndTick != 0u &&
 				 snapshot.iCurrentHp != 0u && !snapshot.isCombatReady &&
@@ -222,7 +230,8 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::FALLING == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
-			 (LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == snapshot.eAction &&
+			 ((LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == snapshot.eAction ||
+			   LostArk::Shared::PLAYER_ACTION_STATE::FEAR == snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
 			 (LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == snapshot.eAction &&
@@ -240,6 +249,7 @@ namespace
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::FEAR != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION != snapshot.eAction) &&
@@ -2817,6 +2827,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.isPatternBound ? 1u : 0u);
 		writer.Write_U32(player.iPatternBindEndTick);
+		writer.Write_U32(player.iFearEndTick);
+		if (!writer.Write_String(player.strFearPresentationId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
 		writer.Write_U32(player.iSilenceEndTick);
 		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
@@ -3076,6 +3088,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawPatternBound) ||
 			rawPatternBound > 1u ||
 			!reader.Read_U32(player.iPatternBindEndTick) ||
+			!reader.Read_U32(player.iFearEndTick) ||
+			!reader.Read_String(player.strFearPresentationId, MAX_STABLE_NETWORK_ID_BYTES) ||
 			!reader.Read_U32(player.iSilenceEndTick) ||
 			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
@@ -3550,6 +3564,7 @@ bool LostArk::Shared::Read_Message(
 
 namespace
 {
+	bool Is_Valid_StableId(const std::string& value, bool allowEmpty);
 	using namespace LostArk::Shared;
 
 	bool Is_NextAuditionOperation(const std::uint8_t rawOperation)
@@ -3939,6 +3954,7 @@ bool LostArk::Shared::Read_Message(
 
 namespace
 {
+	bool Is_Valid_StableId(const std::string& value, bool allowEmpty);
 	using namespace LostArk::Shared;
 
 	bool Is_Valid_AuditionLifecycle(
@@ -5860,6 +5876,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_WORLD_PLAYBA
 
 namespace
 {
+	bool Is_Valid_StableId(const std::string& value, bool allowEmpty);
 	bool Is_Valid_KoukuSaydonAuditionOperation(
 		const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation)
 	{

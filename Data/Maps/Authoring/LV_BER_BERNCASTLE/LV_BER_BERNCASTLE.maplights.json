@@ -1,0 +1,289 @@
+{
+  "schema": "lostark.map-light-presentation",
+  "formatVersion": 2,
+  "areaId": "LV_BER_BERNCASTLE",
+  "provenance": "PROJECT_AUTHORED",
+  "nextLightOrdinal": 11,
+  "lights": [
+    {
+      "lightId": "light.bern.entrance.sl00.859",
+      "displayName": "SL00 export 859 pointlight_14_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        133.541835937,
+        36.103962402,
+        -163.7484375
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.20000000298023224
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.861",
+      "displayName": "SL00 export 861 pointlight_18_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        157.530068359,
+        34.764008789,
+        -90.802792969
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 10.24,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.4000000059604645
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.862",
+      "displayName": "SL00 export 862 pointlight_19_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        148.806611328,
+        34.763981934,
+        -97.700146484
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 10.24,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.4000000059604645
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.863",
+      "displayName": "SL00 export 863 pointlight_1_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        147.553662109,
+        44.715380859,
+        -159.890703125
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 3.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "brightness": 2.0
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.865",
+      "displayName": "SL00 export 865 pointlight_22_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        125.281552734,
+        39.035656738,
+        -154.189326172
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.30000001192092896
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.866",
+      "displayName": "SL00 export 866 pointlight_27_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        138.740498047,
+        36.103964844,
+        -163.7484375
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.6000000238418579
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.868",
+      "displayName": "SL00 export 868 pointlight_53_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        127.368261719,
+        35.923964844,
+        -161.649560547
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.30000001192092896
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.869",
+      "displayName": "SL00 export 869 pointlight_55_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        141.153173828,
+        55.915859375,
+        -168.050488281
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.784313725,
+        1.0,
+        0.980392157,
+        1
+      ],
+      "brightness": 1.0
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.870",
+      "displayName": "SL00 export 870 pointlight_64_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        132.833173828,
+        55.915859375,
+        -168.050488281
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 5.0,
+      "falloffExponent": 4.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.784313725,
+        1.0,
+        0.980392157,
+        1
+      ],
+      "brightness": 1.0
+    },
+    {
+      "lightId": "light.bern.entrance.sl00.872",
+      "displayName": "SL00 export 872 pointlight_9_lc",
+      "kind": "POINT",
+      "groupId": "bern.entrance.source-direct",
+      "enabled": true,
+      "position": [
+        123.999462891,
+        30.458337402,
+        -98.900664062
+      ],
+      "rotationDegrees": [
+        0,
+        0,
+        0
+      ],
+      "rangeMeters": 12.0,
+      "falloffExponent": 2.0,
+      "innerConeDegrees": 0,
+      "outerConeDegrees": 0,
+      "color": [
+        0.788235294,
+        0.91372549,
+        1.0,
+        1
+      ],
+      "brightness": 0.5
+    }
+  ]
+}

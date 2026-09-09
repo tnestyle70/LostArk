@@ -1,0 +1,5862 @@
+{
+  "formatVersion": 1,
+  "createdDate": "2026-09-09",
+  "scope": "Artist LMB/Q/W/E/R/A/S/D/F/T/V/Z/ALT_V full.restore; existing unified and Resources preserved.",
+  "fullRestoreElements": 540,
+  "modelCues": 3,
+  "candidateElements": 626,
+  "reasonCounts": {
+    "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED": 23,
+    "SOURCE_VF_NOT_COMPILED": 19,
+    "SOURCE_ENGINE_PREFIX_AND_VERTEX_INPUTS_UNCLOSED": 2,
+    "MATERIAL_MAP_MISSING": 4,
+    "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER": 37,
+    "SOURCE_MULTI_MODULE_ORBIT_LINK_NOT_SUPPORTED": 1
+  },
+  "excluded": [
+    {
+      "document": "effect.artist.skill.31490.full.restore",
+      "sourceElementId": "fx_cm_03.trail.par_d_mptrail_03.particlespriteemitter_88",
+      "sourceEmitter": "fx_cm_03.trail.par_d_mptrail_03.particlespriteemitter_88",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr",
+      "id": "authored.source-particle.artist-full.cde970090bf968963e03ebbe",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_cm_03.trail.par_d_mptrail_03.particlemoduletypedataribbon_3",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 600.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31490.full.restore",
+      "sourceElementId": "fx_pc_sdm_08.par_l_sdm_sk_01_2.particlespriteemitter_43",
+      "sourceEmitter": "fx_pc_sdm_08.par_l_sdm_sk_01_2.particlespriteemitter_43",
+      "sourceMaterial": "fx_m_mi_l_00.fx_mi.fx_l_de_master_01_77_tr",
+      "id": "authored.source-particle.artist-full.1131ca40793b640726db300a",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31490.full.restore",
+      "sourceElementId": "fx_pc_sdm_08.par_l_sdm_sk_01_2.particlespriteemitter_4",
+      "sourceEmitter": "fx_pc_sdm_08.par_l_sdm_sk_01_2.particlespriteemitter_4",
+      "sourceMaterial": "fx_m_mi_l_00.fx_mi.fx_l_de_master_01_47_tr",
+      "id": "authored.source-particle.artist-full.88b6715119ed1c0f51a5fcbf",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31490.full.restore",
+      "sourceElementId": "fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_10",
+      "sourceEmitter": "fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_10",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_47_tr",
+      "id": "authored.source-particle.artist-full.3de711b0d3a04834ee4b1469",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_24",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_24",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_ringmaster_01_10_tr",
+      "id": "authored.source-particle.artist-full.dd51a72cbace6ab37b8dccd1",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_3",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_ringmaster_02_01_tr",
+      "id": "authored.source-particle.artist-full.a520ecad978cec1ece06b426",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_6",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_02.particlespriteemitter_6",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_ringmaster_02_02_tr",
+      "id": "authored.source-particle.artist-full.da1f7a12310cdf7473ef1991",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlespriteemitter_6",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlespriteemitter_6",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+      "id": "authored.source-particle.artist-full.9150b697c19e314fc08e2c52",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlespriteemitter_5",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlespriteemitter_5",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+      "id": "authored.source-particle.artist-full.b42d478fae0a1f065e2396c7",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_06.par_d_sdm_2supermove_03_rib.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlespriteemitter_5",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlespriteemitter_5",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+      "id": "authored.source-particle.artist-full.18f101c6470f7be1c0e1c373",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 300.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlespriteemitter_22",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlespriteemitter_22",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+      "id": "authored.source-particle.artist-full.c37534a0474f943c7f5abc2c",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_06.par_d_sdm_2supermove_04_rib.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 300.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_05_exp.particlespriteemitter_9",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_05_exp.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_ringmaster_swirl_01_tr",
+      "id": "authored.source-particle.artist-full.ea5e9b741bdfae499015a547",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_05_exp.particlespriteemitter_18",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_05_exp.particlespriteemitter_18",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_ringmaster_swirl_02_tr",
+      "id": "authored.source-particle.artist-full.e9248219d71688825011e68b",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_06.particlespriteemitter_36",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_06.particlespriteemitter_36",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_drawringbrush_06_tr",
+      "id": "authored.source-particle.artist-full.f3209a899fe7269056ec9a99",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31910.full.restore",
+      "sourceElementId": "fx_pc_sdm_06.par_d_sdm_2supermove_06.particlespriteemitter_0",
+      "sourceEmitter": "fx_pc_sdm_06.par_d_sdm_2supermove_06.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_de_drawringbrush_05_tr",
+      "id": "authored.source-particle.artist-full.a9e423211462eaad87cb0367",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_butterfly_01.particlespriteemitter_25",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_butterfly_01.particlespriteemitter_25",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.775d194c84b8108f12acc461",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_butterfly_01.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_exp_01.particlespriteemitter_32",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_exp_01.particlespriteemitter_32",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_d_me_gprotection_01_01_ad",
+      "id": "authored.source-particle.artist-full.aff9a91dec7dc42756533de0",
+      "reason": "SOURCE_ENGINE_PREFIX_AND_VERTEX_INPUTS_UNCLOSED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_37",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_37",
+      "sourceMaterial": "enginematerials.defaultparticle",
+      "id": "authored.source-particle.artist-full.02e99c09c714876707a152ee",
+      "reason": "MATERIAL_MAP_MISSING",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_22",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_22",
+      "sourceMaterial": "enginematerials.defaultparticle",
+      "id": "authored.source-particle.artist-full.7012f7580184aa0fb9e486e2",
+      "reason": "MATERIAL_MAP_MISSING",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_5",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_5",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.8b7ab5b31d96ec0cecc1841d",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_6",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_6",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.a79c0b21476a63a3c70171b5",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_9",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.60d4922d7af085018157d4da",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_14",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_14",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.28cb1d578044a83843a954d7",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_15",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_15",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.33bda1bba548b0d09a2044fb",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_17",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_17",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.de1d13a12bc58fdf50137af1",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_23",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_23",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.6c81becbb5b1761100592bc7",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_25",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_25",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.54decdf939a2b2f7cd11071b",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_26",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_26",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.aa2b886b0c7ffe636422f5db",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_27",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_27",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.150d2055b3f715e9f73a1b6e",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_28",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_28",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.8592db3b98d3bb12fd67bc2d",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_29",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_29",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_01",
+      "id": "authored.source-particle.artist-full.2cb1fdab928a7f95321b2061",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_40",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_40",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.1b410b849a0bc14a71eb7cb9",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_41",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_41",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.7526c4abd47e8a0a574d22f6",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_0",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.40cc794fcc2772789b5d2e07",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_1",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.12dc5d25d456bc22a90dfa99",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_2",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_2",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.b32022de84283a1db1853593",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_3",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.bbe78c26b858c29315ac4ba4",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_4",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_4",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.b5e64bf8099fe1c863681762",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_7",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_7",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.fdc58bbe5c410ced06dc9e69",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_8",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_8",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.b6d5d4e67aeb28815e2d2976",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_10",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_10",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.0e5aa9cbb160656cd0a2d750",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_11",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_11",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.d49da69337b47245a9912858",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_12",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_12",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.110985d4f91487e63bb792e1",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_13",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_13",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.3c6237a79226f862ac36f084",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_16",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_16",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergarden_petal_02",
+      "id": "authored.source-particle.artist-full.0651934f96adcaf27a2ae978",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_32",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_32",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.056bef1d742f31ff7a319bd3",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_31",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_31",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.2510547320617b0be6efee16",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_21",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_21",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_06d_ad",
+      "id": "authored.source-particle.artist-full.178cb550cd2ad3df2a7d99cb",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_gbs_01.par_o_gbs_hommingmis_02.efparticlemodulelocationemitter_14",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "2"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_20",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_01.particlespriteemitter_20",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_06d_ad",
+      "id": "authored.source-particle.artist-full.725f8ca16b3c71c4512a7697",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_mn_petcb_03.par_v_petcb_drop_pjt_01.efparticlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_02.particlespriteemitter_16",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_02.particlespriteemitter_16",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.0e772f1544bd3d06839ce3bd",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_field_02.efparticlemodulelocationemitter_3",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "pink"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_field_02.particlespriteemitter_18",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_field_02.particlespriteemitter_18",
+      "sourceMaterial": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "id": "authored.source-particle.artist-full.ad9a648c0f25a6eecfbcf3c6",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_field_02.efparticlemodulelocationemitter_13",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "yellow"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.particlespriteemitter_27",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.particlespriteemitter_27",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_09_dt_tr",
+      "id": "authored.source-particle.artist-full.0da7ee59f6702978066755b1",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.efparticlemodulelocationemitter_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "binheritsourcerotation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "icepiecebig-p"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocity",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.particlespriteemitter_27.event_source-event-017",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.particlespriteemitter_27",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_09_dt_tr",
+      "id": "authored.source-particle.artist-full.d137567f6ea2dadebd70f491",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "requiredSourceInputs": [
+        {
+          "className": "efparticlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_footstep_01.efparticlemodulelocationemitter_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "binheritsourcerotation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "icepiecebig-p"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocity",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "selectionmethod",
+              "kind": "string",
+              "value": "elesm_sequential"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31950.full.restore",
+      "sourceElementId": "fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_9",
+      "sourceEmitter": "fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_04.fx_o_de_fi_07_2_tr",
+      "id": "authored.source-particle.artist-full.dec27486d79ceee7a39c745b",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "requiredSourceInputs": []
+    },
+    {
+      "document": "effect.artist.skill.31950.full.restore",
+      "sourceElementId": "fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_2",
+      "sourceEmitter": "fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_2",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+      "id": "authored.source-particle.artist-full.4aab0f19abfda6cf33deb6ad",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "requiredSourceInputs": [
+        {
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 300.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31000.ba4.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_06_01.particlespriteemitter_42.event_source-event-021",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_sdm_att_06_01.particlespriteemitter_42",
+      "sourceMaterial": "fx_m_mi_l_00.fx_mi.fx_l_de_master_01_77_tr",
+      "id": "authored.source-particle.artist-full.d3bf0acb02969285147d1574",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31000.ba4.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_06_01.particlespriteemitter_43.event_source-event-021",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_sdm_att_06_01.particlespriteemitter_43",
+      "sourceMaterial": "fx_m_mi_l_00.fx_mi.fx_l_de_master_01_47_tr",
+      "id": "authored.source-particle.artist-full.9db3441b9586af9f7da27d73",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31050.clip1.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_trailtest_01.particlespriteemitter_13.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_trailtest_01.particlespriteemitter_13",
+      "sourceMaterial": "fx_m_mi_o_00.fx_mi.fx_o_maskedrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.82f42d8986ad79c5c265184d",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.01f220c1bbeb8ef70cc3988f",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_trailtest_01.particlemoduletypedataribbon_9",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31050.clip1.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_trailtest_01.particlespriteemitter_11.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_trailtest_01.particlespriteemitter_11",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "id": "authored.source-particle.artist-full.f34016e64a8c448d655bd11c",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.9a9dcf57f4df8a24387ecdac",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_trailtest_01.particlemoduletypedataribbon_8",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31200.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_12.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_12",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_maskedrib_01_10_tr",
+      "id": "authored.source-particle.artist-full.71aeb267e02bdf0c1c184cea",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.1f5d382bcad96ab3ae04a9e8",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlemoduletypedataribbon_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 10.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 100.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31200.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_4.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_4",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr",
+      "id": "authored.source-particle.artist-full.a36c3b0703e5b3bcefa0f3d2",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.7d94f0780bfb9a0ccc959a3d",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 10.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31200.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_43.event_source-event-003",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_43",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_de_master_01_77_tr",
+      "id": "authored.source-particle.artist-full.22c92c8bd06c303945ba0884",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31200.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_0.event_source-event-003",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_de_master_01_47_tr",
+      "id": "authored.source-particle.artist-full.aa94fa7abfa78cb3449e373c",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31210.ba1.full.restore",
+      "sourceElementId": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlespriteemitter_3.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_k_maskedrib_01_04_tr",
+      "id": "authored.source-particle.artist-full.7f8c7fa13e2d19ca28fdf43d",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.c87cf96034083191d4915621",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31210.ba4.full.restore",
+      "sourceElementId": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlespriteemitter_3.event_source-event-045",
+      "sourceEmitter": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_02.fx_mi.fx_k_maskedrib_01_04_tr",
+      "id": "authored.source-particle.artist-full.7cbaded385f7e96db055e8e1",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.c87cf96034083191d4915621",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_01.par_t_sdm_skykongkong_weapon_01.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_cm_03.trail.par_d_mptrail_03.particlespriteemitter_88.event_source-event-001",
+      "sourceEmitter": "fx_cm_03.trail.par_d_mptrail_03.particlespriteemitter_88",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr",
+      "id": "authored.source-particle.artist-full.be0fb1fbe60219babee18653",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.ccfd69a9f852dac5d62d525f",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_cm_03.trail.par_d_mptrail_03.particlemoduletypedataribbon_3",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 600.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_44.event_source-event-005",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_44",
+      "sourceMaterial": "enginematerials.defaultparticle",
+      "id": "authored.source-particle.artist-full.8f0f4c0509ed2da6109de892",
+      "reason": "MATERIAL_MAP_MISSING"
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_45.event_source-event-005",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_45",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_pa_ribbonliquid_01_01_tr",
+      "id": "authored.source-particle.artist-full.c5537b9c1365bd66eb050a0f",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "source.module.24ae8627118a87f0ab953f15",
+          "className": "particlemodulelocationemitter",
+          "objectPath": "fx_mn_cncs_00_n.par_n_cncs_line_prj_01.particlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "parent"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        },
+        {
+          "stableId": "source.module.c6bb5aba1493afa4f98a1ee2",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_four_04.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 30.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 300.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_3.event_source-event-005",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_3",
+      "sourceMaterial": "enginematerials.defaultparticle",
+      "id": "authored.source-particle.artist-full.a48c0d7a2d46062c37e34a02",
+      "reason": "MATERIAL_MAP_MISSING"
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_0.event_source-event-005",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_pa_ribbonliquid_01_01_tr",
+      "id": "authored.source-particle.artist-full.dff0a6d3a4e9ca35fe32e65a",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "source.module.d755fbbfb0b874c12be7644b",
+          "className": "particlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_four_04.particlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "parent1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        },
+        {
+          "stableId": "source.module.69f35f7edbd779d377112c02",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_four_04.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcatmullromspline",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 30.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 300.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31420.full.restore",
+      "sourceElementId": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_1.event_source-event-005",
+      "sourceEmitter": "fx_pc_sdm_04.par_w_sdm_four_04.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_d_00.fx_mi.fx_d_pa_master_01_101_ma",
+      "id": "authored.source-particle.artist-full.217b0c54761568407c67881a",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "source.module.a65504b93d4d711346d1a836",
+          "className": "particlemodulelocationemitter",
+          "objectPath": "fx_pc_sdm_04.par_w_sdm_four_04.particlemodulelocationemitter_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "emittername",
+              "kind": "string",
+              "value": "parent1"
+            },
+            {
+              "propertyPath": "inheritsourcerotationscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "inheritsourcevelocityscale",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_1.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_o_00.fx_mi.fx_o_maskedrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.c213c39a15151da0eac9595b",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.7c58891bfa32a0264b1dceaa",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_0.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "id": "authored.source-particle.artist-full.65028023ba2e2c336c7af07d",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.1c6da45c08e267333098e18e",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_27.event_source-event-001",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_27",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.c7f10c36db01abb269ac5e86",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.af102b1539dadb883c4c3e7c",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydream_01_01.particlespriteemitter_51.event_source-event-006",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydream_01_01.particlespriteemitter_51",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_de_master_01_77_tr",
+      "id": "authored.source-particle.artist-full.eb33fa3339cfb05e3baf095d",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_1.event_source-event-015",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_o_00.fx_mi.fx_o_maskedrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.421f196455ba8bac14af1bb6",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.7c58891bfa32a0264b1dceaa",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 400.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_0.event_source-event-015",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "id": "authored.source-particle.artist-full.18b0adf1c53a12c3cdb97658",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.1c6da45c08e267333098e18e",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_0",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_27.event_source-event-015",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlespriteemitter_27",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.ecf44f96c1a902f12f645ad1",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.af102b1539dadb883c4c3e7c",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_butterflydreamtrail_01_01.particlemoduletypedataribbon_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydream_02_01.particlespriteemitter_48.event_source-event-027",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydream_02_01.particlespriteemitter_48",
+      "sourceMaterial": "fx_m_mi_04.fx_o_de_fi_07_2_tr",
+      "id": "authored.source-particle.artist-full.a9be223810b930ef58d3708a",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31460.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_butterflydream_02_01.particlespriteemitter_50.event_source-event-027",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_butterflydream_02_01.particlespriteemitter_50",
+      "sourceMaterial": "fx_m_mi_w_00.mi.fx_w_de_master_01_77_tr",
+      "id": "authored.source-particle.artist-full.6811307d1eadce2edd32bc3a",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31470.full.restore",
+      "sourceElementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15.event_source-event-010",
+      "sourceEmitter": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_unlit_01_01_tr",
+      "id": "authored.source-particle.artist-full.49b7c53dcda4d39cdaf4c6f7",
+      "reason": "SOURCE_VF_NOT_COMPILED"
+    },
+    {
+      "document": "effect.artist.skill.31470.full.restore",
+      "sourceElementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17.event_source-event-010",
+      "sourceEmitter": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17",
+      "sourceMaterial": "fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma",
+      "id": "authored.source-particle.artist-full.b8483e9d81232d69730cf248",
+      "reason": "SOURCE_ENGINE_PREFIX_AND_VERTEX_INPUTS_UNCLOSED"
+    },
+    {
+      "document": "effect.artist.skill.31480.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_1.event_source-event-002",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "id": "authored.source-particle.artist-full.25a0e2608f155a716bb091ac",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.13e6c9e6d3ab2608ba8f97df",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlemoduletypedataribbon_1",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31480.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_11.event_source-event-002",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_11",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "id": "authored.source-particle.artist-full.b166a66db5d1e07a846cfea5",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.0adeb45156d6bfea22d6097f",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlemoduletypedataribbon_8",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31480.full.restore",
+      "sourceElementId": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_17.event_source-event-002",
+      "sourceEmitter": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlespriteemitter_17",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+      "id": "authored.source-particle.artist-full.f93f98cb613637158c00c5ee",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.cdc2aa493b3fda9c35fd5121",
+          "className": "particlemoduletypedataribbon",
+          "objectPath": "fx_pc_sdm_00.par_o_flyinheaven_01_01.particlemoduletypedataribbon_11",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bclipsourcesegement",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdeadtrailsondeactivate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bdeadtrailsonsourceloss",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benableprevioustangentrecalculation",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "brendergeometry",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "btangentrecalculationeveryframe",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "distancetessellationstepsize",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxparticleintrailcount",
+              "kind": "number",
+              "value": 500.0
+            },
+            {
+              "propertyPath": "maxtessellationbetweenparticles",
+              "kind": "number",
+              "value": 25.0
+            },
+            {
+              "propertyPath": "maxtrailcount",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "sheetspertrail",
+              "kind": "number",
+              "value": 1.0
+            },
+            {
+              "propertyPath": "tangenttessellationscalar",
+              "kind": "number",
+              "value": 5.0
+            },
+            {
+              "propertyPath": "tilingdistance",
+              "kind": "number",
+              "value": 500.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.artist.skill.31930.clip2.full.restore",
+      "id": "authored.source-particle.artist-full.33ba1b44a27967143dd4aa9b",
+      "sourceElementId": "fx_pc_sdm_09.par_m_flowergarden_shine_03.particlespriteemitter_30",
+      "sourceEmitter": "fx_pc_sdm_09.par_m_flowergarden_shine_03.particlespriteemitter_30",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_flowergardenmesh_01_tr",
+      "reason": "SOURCE_MULTI_MODULE_ORBIT_LINK_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "source.module.56ffd2b3d9307096a88c2a51",
+          "className": "particlemoduleorbit",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_shine_03.particlemoduleorbit_17",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "chainmode",
+              "kind": "string",
+              "value": "eochainmode_link"
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "offsetoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "offsetoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "offsetoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "rotationoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationrateoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "rotationrateoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationrateoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            }
+          ],
+          "distributions": [
+            {
+              "propertyPath": "offsetamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 3,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 20.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.0,
+                250.0,
+                0.0,
+                250.0,
+                0.0,
+                0.0,
+                218.50247192382812,
+                0.0,
+                0.0,
+                189.7149658203125,
+                0.0,
+                0.0,
+                163.51907348632812,
+                0.0,
+                0.0,
+                139.79647827148438,
+                0.0,
+                0.0,
+                118.42874908447266,
+                0.0,
+                0.0,
+                99.2975082397461,
+                0.0,
+                0.0,
+                82.28441619873047,
+                0.0,
+                0.0,
+                67.27104187011719,
+                0.0,
+                0.0,
+                54.139015197753906,
+                0.0,
+                0.0,
+                42.769996643066406,
+                0.0,
+                0.0,
+                33.045562744140625,
+                0.0,
+                0.0,
+                24.847347259521484,
+                0.0,
+                0.0,
+                18.056995391845703,
+                0.0,
+                0.0,
+                12.556083679199219,
+                0.0,
+                0.0,
+                8.226249694824219,
+                0.0,
+                0.0,
+                4.949148178100586,
+                0.0,
+                0.0,
+                2.606321334838867,
+                0.0,
+                0.0,
+                1.0794072151184082,
+                0.0,
+                0.0,
+                0.2501133680343628,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "rotationamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "rotationrateamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                -0.20000000298023224,
+                0.20000000298023224,
+                0.0,
+                0.0,
+                -0.20000000298023224,
+                0.0,
+                0.0,
+                0.20000000298023224,
+                0.0,
+                0.0,
+                -0.20000000298023224,
+                0.0,
+                0.0,
+                0.20000000298023224
+              ],
+              "keys": []
+            }
+          ]
+        },
+        {
+          "stableId": "source.module.84c7a1f34717ddd952915974",
+          "className": "particlemoduleorbit",
+          "objectPath": "fx_pc_sdm_09.par_m_flowergarden_shine_03.particlemoduleorbit_18",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "chainmode",
+              "kind": "string",
+              "value": "eochainmode_link"
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "offsetoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "offsetoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "offsetoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "rotationoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationrateoptions.bprocessduringspawn",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "rotationrateoptions.bprocessduringupdate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "rotationrateoptions.buseemittertime",
+              "kind": "boolean",
+              "value": false
+            }
+          ],
+          "distributions": [
+            {
+              "propertyPath": "offsetamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.0,
+                25.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                25.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                25.0,
+                0.0
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "rotationamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 0,
+              "lookupTableNumElements": 0,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [],
+              "keys": []
+            },
+            {
+              "propertyPath": "rotationrateamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.5,
+                -0.5,
+                0.5,
+                0.5,
+                0.5,
+                -0.5,
+                -0.5,
+                -0.5,
+                0.5,
+                0.5,
+                0.5,
+                -0.5,
+                -0.5,
+                -0.5
+              ],
+              "keys": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "updatedDate": "2026-09-10"
+}

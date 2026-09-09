@@ -1,6 +1,7 @@
 #include "Character.h"
 
 #include "AnimationSkillBindingDocument.h"
+#include "ActorCatalog.h"
 #include "CharacterCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
 #include "DataJson.h"
@@ -132,6 +133,17 @@ HRESULT CCharacter::Initialize(void* pArg)
 	if (nullptr == m_pSpec)
 		return E_FAIL;
 
+	/* A class-less transformation avatar keeps its own size; the wearer class
+	   still owns gameplay, but must not resize that different visual model. */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::END != m_pSpec->eCharacterClass)
+	{
+		const CHARACTER_ACTOR_ENTRY* pActor =
+			CActorCatalog::Find_Character(m_pSpec->eCharacterClass);
+		if (nullptr == pActor)
+			return E_FAIL;
+		m_fPresentationScale = pActor->presentationScale;
+	}
+
 	if (FAILED(__super::Initialize(pDesc)))
 		return E_FAIL;
 
@@ -143,6 +155,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 			pDesc->vPosition.z,
 			1.f));
 
+	Update_PresentationRootMatrix();
 	if (FAILED(Ready_Components()) ||
 		FAILED(Ready_PartObjects()))
 	{
@@ -1276,9 +1289,25 @@ shared_ptr<CModel> CCharacter::Get_BodyModel() const
 	return m_pBodyModel;
 }
 
+bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
+{
+	if (nullptr == pOut || nullptr == m_pTransformCom)
+		return false;
+	XMStoreFloat4x4(pOut,
+		XMMatrixScaling(m_fPresentationScale, m_fPresentationScale, m_fPresentationScale) *
+		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	return true;
+}
+
+void CCharacter::Update_PresentationRootMatrix()
+{
+	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);
+}
+
 void CCharacter::Set_Position(fvector_t vPosition)
 {
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
+	Update_PresentationRootMatrix();
 }
 
 bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
@@ -1632,6 +1661,24 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_fEffectActionFacingYawDegrees = 0.f;
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+    else if (PLAYER_ACTION_STATE::FEAR == action)
+    {
+        if (INVALID_SKILL_ID != skillId || 0u == actionStartTick) return false;
+        if (m_eNetworkAction == action && m_iLastNetworkActionStartTick == actionStartTick) return true;
+        m_pChain = nullptr;
+        m_iChainStage = 0;
+        m_iChainStep = 0;
+        m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+        m_fActionPresentationSeconds = 0.f;
+        Commit_PendingClipChains();
+        if (!Set_Animation(CHARACTER_ANIM::FEAR, true))
+            Set_Animation(CHARACTER_ANIM::IDLE, true);
+        m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+        m_iEffectActionStartTick = 0u;
+        m_bHasEffectActionFacingYaw = false;
+        m_fEffectActionFacingYawDegrees = 0.f;
+        m_iLastNetworkActionStartTick = actionStartTick;
+    }
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
@@ -1672,6 +1719,7 @@ bool_t CCharacter::Apply_NetworkAction(
 	else if (PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::FEAR == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
@@ -1868,7 +1916,7 @@ bool_t CCharacter::Apply_EquipmentPreview(
 		}
 
 		CPart_Equipment::PART_EQUIPMENT_DESC equipmentDesc{};
-		equipmentDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		equipmentDesc.pParentMatrix = &m_PresentationRootMatrix;
 		equipmentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		equipmentDesc.strModelTag = part.modelPrototypeTag;
 		equipmentDesc.strShaderTag = part.isSocketed ?
@@ -2258,6 +2306,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 	if (m_isLocallyControlled && nullptr != m_pLogic)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
+	Update_PresentationRootMatrix();
 	__super::Update(fTimeDelta);
 	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
 		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
@@ -2826,7 +2875,7 @@ HRESULT CCharacter::Ready_PartObjects()
 	updates them in tag order. The body has to run first: socketed parts read its
 	bone matrices during their own Update. */
 	CPart_Body::PART_BODY_DESC bodyDesc{};
-	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+	bodyDesc.pParentMatrix = &m_PresentationRootMatrix;
 	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 	bodyDesc.strModelTag = m_pSpec->pBodyModelTag;
 	bodyDesc.strShaderTag = m_pSpec->pShaderTag;
@@ -2869,7 +2918,7 @@ HRESULT CCharacter::Ready_PartObjects()
 	for (uint32_t i = 0; i < m_pSpec->iNumEquipment; ++i)
 	{
 		CPart_Equipment::PART_EQUIPMENT_DESC equipmentDesc{};
-		equipmentDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		equipmentDesc.pParentMatrix = &m_PresentationRootMatrix;
 		equipmentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		equipmentDesc.strModelTag = m_pSpec->pEquipment[i].pModelTag;
 		equipmentDesc.strShaderTag = m_pSpec->pShaderTag;
@@ -2899,7 +2948,7 @@ HRESULT CCharacter::Ready_PartObjects()
 	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
-		weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		weaponDesc.pParentMatrix = &m_PresentationRootMatrix;
 		weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		weaponDesc.strModelTag = m_pSpec->pWeapons[i].pModelTag;
 		weaponDesc.strShaderTag = m_pSpec->pWeaponShaderTag;

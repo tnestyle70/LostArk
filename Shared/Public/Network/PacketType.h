@@ -67,8 +67,11 @@ namespace LostArk::Shared
 	76 adds the Server-selected Mario source layout to player snapshots.
 	77 adds the world-object attachment slot: a grabbed player may hang from a
 	World Object instead of a boss hand, so the snapshot admits any known slot.
-	A v76 peer rejects the new slot value and drops the snapshot. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 77;
+	A v76 peer rejects the new slot value and drops the snapshot.
+	78 combines the v77 snapshot with Server-owned fear state, deadline and
+	presentation identity. The independent v73 fear branch and v77 main are
+	both incompatible with this combined layout. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 78;
 
 	enum class WORLD_ID : std::uint16_t
 	{

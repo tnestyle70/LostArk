@@ -23,6 +23,8 @@ struct CHARACTER_ACTOR_ENTRY final
 	LostArk::Shared::CHARACTER_CLASS_ID networkClassId =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::string assetId;
+	// Optional v4 visual multiplier; model import units and gameplay stay separate.
+	f32_t presentationScale = 1.f;
 	std::string bodyModel;
 	std::vector<std::string> equipmentModels;
 	std::vector<std::string> weaponModels;

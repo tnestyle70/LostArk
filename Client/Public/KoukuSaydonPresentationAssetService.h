@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "PlayerHandGripTransform.h"
 
 #include <cstdint>
 #include <string>
@@ -18,6 +19,11 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 	f32_t fPlayRate = 1.f;
 	f32_t fAnimationRootVerticalScale = 1.f;
 	bool_t bUnblendedBoneContact = false;
+	bool_t bLoopToWindow = false;
+	bool_t bHoldAtWindowEnd = false;
+	std::uint32_t iBlendInMs = 0u;
+	std::string strBlendFromClip;
+	f32_t fBlendFromSourceMs = 0.f;
 };
 
 /* Loads the embedded-body presentation of every KoukuSaydon arena boss
@@ -62,6 +68,9 @@ public:
 		std::string_view actionId,
 		KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation,
 		std::uint32_t expectedSourceRevision = 0u);
+	static bool_t Try_Resolve_AttachmentGrip(std::string_view archetypeId,
+		std::string_view patternId, LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset, std::uint32_t expectedSourceRevision = 0u);
 	static bool_t Reload_ProductBindings(std::uint32_t levelIndex,
 		std::uint32_t expectedSourceRevision, std::string& status);
 	static const std::string& Get_Status();

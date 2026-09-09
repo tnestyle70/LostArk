@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -50,6 +51,78 @@ def powershell(script: str, cwd: Path) -> str:
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
     return result.stdout.strip()
+
+
+class KoukuDomainOwnerTransactionTests(unittest.TestCase):
+    def test_final_domain_failure_restores_patterns_world_and_receipts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            build = root / "Tools/Build"
+            build.mkdir(parents=True)
+            shutil.copy2(ROOT / "Tools/Build/Invoke-BuildDomainOwner.ps1", build)
+            product_paths = ["Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
+                             "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json"]
+            bootstrap = "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
+            generation = "Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations"
+            manifest = {"domains": [
+                {"id": "koukusaydon.product", "outputs": product_paths},
+                {"id": "world.gameplay", "outputs": [], "requiredOutputPatterns": [],
+                 "action": {"arguments": []}},
+                {"id": "gameplay.balance", "outputs": [bootstrap, generation + "/*.json"]},
+            ]}
+            (build / "BuildDomains.json").write_text(json.dumps(manifest), encoding="utf-8")
+            (build / "BuildDomainPipeline.psm1").write_text(r'''
+function Read-BuildDomainManifest($Path) { Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json }
+function Get-BuildDomainById($Manifest, $Id) { $Manifest.domains | Where-Object id -eq $Id }
+function Enter-BuildExclusiveLock($Path, $Timeout, $Description) {
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path)) | Out-Null
+    return [IO.File]::Open($Path, 'OpenOrCreate', 'ReadWrite', 'None')
+}
+function Invoke-BuildDomain($RepositoryRoot, $Domain, $ResourceRoot, $ReceiptRoot, $LockTimeoutMilliseconds) {
+    foreach ($relative in $Domain.outputs) {
+        $path = Join-Path $RepositoryRoot $relative
+        if ($relative.Contains('*')) {
+            $path = $path.Replace('*.json', 'new-generation.json')
+            [IO.File]::WriteAllText((Join-Path ([IO.Path]::GetDirectoryName($path)) 'old-generation.json'), 'changed generation')
+        }
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        [IO.File]::WriteAllText($path, 'new output')
+    }
+    [IO.File]::WriteAllText((Join-Path $ReceiptRoot ($Domain.id + '.receipt.json')), 'new receipt')
+    if ($Domain.id -eq 'gameplay.balance') { throw 'fixture second-domain failure' }
+    return [pscustomobject]@{ reused = $false }
+}
+''', encoding="utf-8")
+            source = root / "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json"
+            source.parent.mkdir(parents=True)
+            source.write_text(json.dumps({"schema": "lostark.kouku-saydon-composition", "formatVersion": 3, "revision": 9}), encoding="utf-8")
+            originals = {
+                product_paths[0]: b"old encounter",
+                bootstrap: b"old bootstrap",
+                generation + "/old-generation.json": b"old generation",
+                "out/BuildPipeline/receipts/koukusaydon.product.receipt.json": b"old receipt",
+                "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap": b"old world placement",
+                "Client/Bin/DataFiles/World/LV_LUT_MIDNIGHTC_ED.viewer.world.json": b"old viewer",
+                "out/BuildPipeline/receipts/world.gameplay.receipt.json": b"old world receipt",
+            }
+            for relative, content in originals.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+            before_source = source.read_bytes()
+            result = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                str(build / "Invoke-BuildDomainOwner.ps1"), "-Owner", "KoukuSaydon",
+                "-ExpectedKoukuSaydonSourceRevision", "9"], capture_output=True, text=True,
+                encoding="utf-8", errors="replace", cwd=root)
+            self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn("previous Product files, Server data and receipts restored", result.stdout, result.stdout + result.stderr)
+            self.assertEqual(originals, {relative: (root / relative).read_bytes() for relative in originals})
+            for relative in (product_paths[1], generation + "/new-generation.json",
+                             "out/BuildPipeline/receipts/gameplay.balance.receipt.json",
+                             "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"):
+                self.assertFalse((root / relative).exists(), relative)
+            self.assertEqual(before_source, source.read_bytes())
+            self.assertEqual([], list(root.rglob("*.rollback")))
 
 
 class BuildDomainManifestContractTests(unittest.TestCase):
@@ -251,7 +324,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
                 "koukusaydon.product", "map.kakulsaydon", "composition.presentation",
                 "world.gameplay", "navigation",
             ],
-            "KoukuSaydon": ["koukusaydon.product", "gameplay.balance"],
+            "KoukuSaydon": ["koukusaydon.product", "world.gameplay", "gameplay.balance"],
             "Server": [
                 "koukusaydon.product", "world.gameplay", "navigation",
                 "world.destruction", "gameplay.balance", "items.catalog", "valtan.rewards",

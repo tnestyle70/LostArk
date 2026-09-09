@@ -110,9 +110,8 @@ private:
     {
         KOUKU_SAYDON_PRESENTATION_KIND kind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
         std::uint32_t effectHandle = 0;
+        std::uint64_t v1EffectHandle = 0;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> effectPivotHistory;
-        float4x4_t effectLastPivot{};
-        float effectRecordedSeconds = -1.f;
         std::uint64_t soundHandle = 0;
         float lastAge = -1.f;
         float startMs = 0.f;
@@ -130,6 +129,13 @@ private:
         bool waitingForAnchor = false;
         bool debugRender = true;
     };
+    struct EFFECT_ANCHOR_HISTORY final
+    {
+        std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> samples;
+        float recordedSeconds = -1.f;
+        float4x4_t recordedPivot{};
+        bool missingSinceSample = false;
+    };
     struct SESSION final
     {
         std::string key;
@@ -140,6 +146,8 @@ private:
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> rootHistory;
         float rootRecordedSeconds = -1.f;
         float4x4_t rootRecordedPivot{};
+        // Pattern time, recorded before each following bone/WORLD cue starts.
+        std::map<std::string, EFFECT_ANCHOR_HISTORY> effectAnchorHistories;
         std::map<std::string, std::shared_ptr<CWorldSequencePlayer>> previewWorlds;
     };
     struct PRODUCT_PATTERN final
@@ -174,6 +182,7 @@ private:
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
     struct CARD final { std::string assetId; std::uint32_t handle = 0; };
     void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
+    void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Sample(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused,
@@ -201,6 +210,11 @@ private:
     std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> m_EffectResources;
     std::map<std::string, std::string> m_EffectResourceFailures;
     std::uint64_t m_iEffectCacheGeneration = 0u;
+    std::set<std::string> m_QueuedV1Effects;
+    std::uint64_t m_iV1CatalogRevision = 0u;
+    std::map<std::string, PRODUCT_PATTERN> m_FearPresentations;
+    SESSION m_FearSession;
+    std::string m_strCompletedFearKey;
     std::map<std::string, PRODUCT_PATTERN> m_Product;
     std::map<std::string, PRODUCT_BUNDLE> m_ProductBundles;
     SESSION m_ProductBundleSession;

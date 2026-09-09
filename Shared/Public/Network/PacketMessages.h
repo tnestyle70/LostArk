@@ -1223,6 +1223,7 @@ namespace LostArk::Shared
 		index the slot resolved to (0..KOUKU_HUD_SLOT_COUNT-1), never a balance
 		skill id. Appended last, same wire rule as FALLING. */
 		INTERACTION,
+		FEAR,
 		END
 	};
 
@@ -1342,6 +1343,9 @@ namespace LostArk::Shared
 		product skill slot while movement remains available. */
 		std::uint32_t iSilenceEndTick = 0;
 		std::uint32_t iSilenceDurationTicks = 0;
+		// FEAR uses iActionStartTick and a Server-owned deadline.
+		std::uint32_t iFearEndTick = 0u;
+		std::string strFearPresentationId;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.

@@ -14,13 +14,39 @@
 
 namespace
 {
+	bool_t Requires_ParticleSceneColor(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const std::string& ProfileId =
+			Element.Material.SourceMaterial.strRuntimeShaderProfileId;
+		const auto* pNativeV = Client::Find_DimensionMasterVProgram(ProfileId);
+		const auto* pNativeALTV = Client::Find_DimensionMasterALTVProgram(ProfileId);
+		const auto* pNativeWR = Client::Find_DimensionMasterWRProgram(ProfileId);
+		const auto* pNativeWarlord = Client::Find_WarlordNativeProgram(ProfileId);
+		const auto* pNativeArtist = Client::Find_ArtistProgram(ProfileId);
+		const auto* pNativeLance = Client::Find_LanceMasterVAProgram(ProfileId);
+		return
+			(nullptr != pNativeLance && pNativeLance->strRendererShape != "screenPost" &&
+			 pNativeLance->bNeedsSceneColor && Client::Has_LanceMasterVAMaterialContract(Element)) ||
+			(nullptr != pNativeWarlord && pNativeWarlord->strRendererShape != "screenPost" &&
+			 pNativeWarlord->bNeedsSceneColor && Client::Has_WarlordNativeMaterialContract(Element)) ||
+			(nullptr != pNativeArtist && pNativeArtist->strRendererShape != "screenPost" &&
+			 pNativeArtist->bNeedsSceneColor && Client::Has_ArtistMaterialContract(Element)) ||
+			(nullptr != pNativeWR && pNativeWR->bNeedsSceneColor &&
+			 Client::Has_DimensionMasterWRMaterialContract(Element)) ||
+			(nullptr != pNativeALTV && pNativeALTV->strRendererShape != "screenPost" &&
+			 pNativeALTV->bNeedsSceneColor && Client::Has_DimensionMasterALTVMaterialContract(Element)) ||
+			Client::Has_EffectCubeSampleSceneContract(Element) ||
+			(nullptr != pNativeV && !pNativeV->bScreenPost && pNativeV->bRequiresSceneColor);
+	}
+
 	struct CONFIGURED_PRESENTATION_COUNTS final
 	{
 		uint64_t iLights = 0u;
 		uint64_t iScreenPosts = 0u;
+		std::vector<std::string> SceneColorElementIds;
 	};
 
-	CONFIGURED_PRESENTATION_COUNTS Count_ConfiguredPresentation(
+	CONFIGURED_PRESENTATION_COUNTS Collect_ConfiguredPresentation(
 		const Client::EFFECT_DOCUMENT_DESC& Document)
 	{
 		CONFIGURED_PRESENTATION_COUNTS Counts;
@@ -28,6 +54,11 @@ namespace
 		{
 			if (!Element.bVisible)
 				continue;
+			if (Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind &&
+				Requires_ParticleSceneColor(Element))
+			{
+				Counts.SceneColorElementIds.push_back(Element.strElementId);
+			}
 			if (Client::EFFECT_ELEMENT_KIND::LIGHT == Element.eKind &&
 				Element.Detail.Light.bEnabled)
 			{
@@ -39,6 +70,7 @@ namespace
 				++Counts.iScreenPosts;
 			}
 		}
+		std::sort(Counts.SceneColorElementIds.begin(), Counts.SceneColorElementIds.end());
 		return Counts;
 	}
 
@@ -185,10 +217,11 @@ bool_t Client::CEffectObject::Stage_Document(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
-	const CONFIGURED_PRESENTATION_COUNTS Counts =
-		Count_ConfiguredPresentation(Document);
+	CONFIGURED_PRESENTATION_COUNTS Counts =
+		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
 	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	m_Playback.Seek(0.f, m_RootWorld);
 	Reset_RenderFailureIsolation();
@@ -223,10 +256,11 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
-	const CONFIGURED_PRESENTATION_COUNTS Counts =
-		Count_ConfiguredPresentation(Document);
+	CONFIGURED_PRESENTATION_COUNTS Counts =
+		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
 	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	Reset_RenderFailureIsolation();
 	m_strStatus = "Prepared Effect Document staged.";
@@ -273,10 +307,11 @@ bool_t Client::CEffectObject::Stage_PrevalidatedVisualProgramDocument(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = bSourceVisualProgramActive;
 	m_bReconstructedSourceRuntimeActive = false;
-	const CONFIGURED_PRESENTATION_COUNTS Counts =
-		Count_ConfiguredPresentation(Document);
+	CONFIGURED_PRESENTATION_COUNTS Counts =
+		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
 	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	Reset_RenderFailureIsolation();
 	m_strStatus = "Admitted source visual-program Effect Document staged.";
@@ -339,6 +374,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
 	m_bReconstructedSourceRuntimeActive = false;
 	m_iConfiguredLightCount = 0u;
 	m_iConfiguredScreenPostCount = 0u;
+	m_SceneColorElementIds.clear();
 	m_LastPresentationSubmissionStats = {};
 	m_bPlaying = false;
 	m_bVisible = false;
@@ -402,10 +438,11 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = true;
 	m_bReconstructedSourceRuntimeActive = true;
-	const CONFIGURED_PRESENTATION_COUNTS Counts =
-		Count_ConfiguredPresentation(Document);
+	CONFIGURED_PRESENTATION_COUNTS Counts =
+		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
 	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	m_bVisible = true;
 	m_Playback.Seek(0.f, m_RootWorld);
@@ -477,10 +514,11 @@ bool_t Client::CEffectObject::
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = true;
 	m_bReconstructedSourceRuntimeActive = true;
-	const CONFIGURED_PRESENTATION_COUNTS Counts =
-		Count_ConfiguredPresentation(pProjection->Get_Document());
+	CONFIGURED_PRESENTATION_COUNTS Counts =
+		Collect_ConfiguredPresentation(pProjection->Get_Document());
 	m_iConfiguredLightCount = Counts.iLights;
 	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	m_bVisible = true;
 	m_Playback.Seek(0.f, m_RootWorld);
@@ -563,6 +601,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedDiagnostic(
 	m_bReconstructedSourceRuntimeActive = false;
 	m_iConfiguredLightCount = 0u;
 	m_iConfiguredScreenPostCount = 0u;
+	m_SceneColorElementIds.clear();
 	m_LastPresentationSubmissionStats = {};
 	m_bPlaying = false;
 	m_bVisible = true;
@@ -586,6 +625,23 @@ void Client::CEffectObject::Set_ReconstructedDiagnosticSolo(
 	m_strStatus = RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH == eSolo ?
 		"Reconstructed Mesh diagnostic solo active; Product execution remains blocked." :
 		"Reconstructed Sprite diagnostic solo active; Product execution remains blocked.";
+}
+
+bool_t Client::CEffectObject::Select_OccurrenceElement(
+    const std::string_view elementId, std::string& status)
+{
+    if (!m_pRenderer || !m_pRenderer->Select_OccurrenceElement(elementId, status)) return false;
+    // Asset-level overlay bindings belong to whole-effect playback, not an element.
+    if (m_pScreenOverlayPresentation) m_pScreenOverlayPresentation->Cancel();
+    m_pScreenOverlayPresentation.reset();
+    return true;
+}
+
+bool_t Client::CEffectObject::Set_SubmissionElementSet(std::vector<std::string> elementIds, std::string& error)
+{
+    if (m_bReconstructedDiagnosticActive || !m_pRenderer)
+    { error = "Element visibility requires a staged document."; return false; }
+    return m_pRenderer->Set_SubmissionElementSet(std::move(elementIds), error);
 }
 
 bool_t Client::CEffectObject::Set_PreviewSubmissionIsolation(
@@ -858,23 +914,25 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 	const shared_ptr<CEffectObject> Self =
 		static_pointer_cast<CEffectObject>(shared_from_this());
 	const auto& Particles = m_Playback.Get_Frame().Particles;
-	const bool_t bNeedsSceneColor = std::ranges::any_of(Particles,
-		[this](const EFFECT_EVALUATED_PARTICLE& Particle)
+	// Staging validates material contracts once for this immutable playback
+	// document. Current visibility, particle alpha and Solo selection still
+	// decide whether this frame actually needs the shared scene-color snapshot.
+	const EFFECT_ELEMENT_DESC* pSceneColorElement = nullptr;
+	bool_t bElementNeedsSceneColor = false;
+	const bool_t bNeedsSceneColor = !m_SceneColorElementIds.empty() &&
+		std::ranges::any_of(Particles,
+		[this, &pSceneColorElement, &bElementNeedsSceneColor](
+			const EFFECT_EVALUATED_PARTICLE& Particle)
 		{
 			if (nullptr == Particle.pElement || !Should_SubmitPreviewElement(Particle.pElement) ||
 				Particle.Color.w <= 0.f) return false;
-			const auto* pNativeV = Find_DimensionMasterVProgram(
-				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
-			const auto* pNativeALTV = Find_DimensionMasterALTVProgram(
-				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
-			const auto* pNativeWR = Find_DimensionMasterWRProgram(
-				Particle.pElement->Material.SourceMaterial.strRuntimeShaderProfileId);
-			return (nullptr != pNativeWR && pNativeWR->bNeedsSceneColor &&
-				Has_DimensionMasterWRMaterialContract(*Particle.pElement)) ||
-				(nullptr != pNativeALTV && pNativeALTV->strRendererShape != "screenPost" &&
-				pNativeALTV->bNeedsSceneColor && Has_DimensionMasterALTVMaterialContract(*Particle.pElement)) ||
-				Has_EffectCubeSampleSceneContract(*Particle.pElement) ||
-				(nullptr != pNativeV && !pNativeV->bScreenPost && pNativeV->bRequiresSceneColor);
+			if (pSceneColorElement == Particle.pElement)
+				return bElementNeedsSceneColor;
+			pSceneColorElement = Particle.pElement;
+			bElementNeedsSceneColor = std::binary_search(
+				m_SceneColorElementIds.begin(), m_SceneColorElementIds.end(),
+				Particle.pElement->strElementId);
+			return bElementNeedsSceneColor;
 		});
 	if (bNeedsSceneColor)
 		CGameInstance::Get().Request_SceneColorSnapshot();
@@ -1012,7 +1070,18 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		if (!Should_SubmitPreviewElement(Evaluated.pElement))
 			continue;
 		PRESENTATION_SCREEN_POST_DESC Post;
-		switch (Evaluated.eProfile)
+		const HRESULT hNative = m_pRenderer->Build_NativeScreenPost(
+			Evaluated, Post.pMaterial, m_strStatus);
+		if (FAILED(hNative))
+		{
+			Record_LocalSubmissionResult(m_LastPresentationSubmissionStats.ScreenPosts, hNative);
+			Presentation.Record_ScreenPostValidationFailure();
+			m_ePresentationFailureScope = PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
+			return Complete(hNative);
+		}
+		if (hNative == S_OK)
+			Post.eProfile = PRESENTATION_SCREEN_POST_PROFILE::PREPARED_MATERIAL;
+		else switch (Evaluated.eProfile)
 		{
 		case EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1:
 			Post.eProfile =

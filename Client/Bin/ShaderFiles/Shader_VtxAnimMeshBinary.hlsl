@@ -48,6 +48,39 @@ sampler MaterialAnisotropicSampler = sampler_state
 
 #include "Shader_SourceCharacterMaterial.hlsli"
 
+// Optional source skeletal material shares this shader's existing skinned VS.
+uint g_ArtistModelCueProfile = 0u;
+float4 g_ArtistModelAmbient = 0.f;
+uint g_SourceTextureClampUMask = 0u;
+uint g_SourceTextureClampVMask = 0u;
+Texture2D g_SourceTexture0;
+Texture2D g_SourceTexture1;
+Texture2D g_SourceTexture2;
+Texture2D g_SourceTexture3;
+Texture2D g_SourceTexture4;
+Texture2D g_SourceTexture5;
+Texture2D g_SourceTexture6;
+Texture2D g_SourceTexture7;
+Texture2D g_SourceTexture8;
+
+SamplerState LinearClampUSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Wrap; };
+SamplerState LinearClampVSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Wrap; AddressV=Clamp; };
+SamplerState LinearClampUVSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Clamp; };
+#define ARTIST_NATIVE_MODEL_ONLY
+#include "Shader_EffectArtistNative.hlsli"
+#undef ARTIST_NATIVE_MODEL_ONLY
+// Native skeletal T material uses the same committed Target_Depth adapter.
+Texture2D g_EffectSceneDepthTexture;
+SamplerState EffectSliceDepthSampler
+{
+    Filter = MIN_MAG_MIP_POINT;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+#define LANCE_VA_NATIVE_MODEL_ONLY
+#include "Shader_EffectLanceMasterVANative.hlsli"
+#undef LANCE_VA_NATIVE_MODEL_ONLY
+
 struct VS_IN
 {
     float3 vPosition : POSITION;
@@ -281,6 +314,86 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
     return diffuse;
 }
 
+float4 PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFrontFace) : SV_TARGET0
+{
+    ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
+    float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    SOURCE_CHARACTER_NATIVE_INPUT basis = MakeSourceCharacterInput(input.vTexcoord,
+        input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz,
+        input.vBinormal.xyz, input.vNormal.xyz, camera, input.vProjPos,
+        mul(g_ViewMatrix,g_ProjMatrix), float3(0.f,1.f,0.f), 0.f, 1.f, frontFace);
+    nativeInput.uv = input.vTexcoord;
+    nativeInput.uv1 = input.vTexcoord;
+    nativeInput.uvNext = input.vTexcoord;
+    nativeInput.sourceBasisX = basis.values[0].xyz;
+    nativeInput.sourceBasisZ = basis.values[1].xyz;
+    nativeInput.handedness = basis.values[1].w;
+    float3 t = SourceCharacterSafeUnit(input.vTangent.xyz);
+    float3 n = SourceCharacterSafeUnit(input.vNormal.xyz);
+    t = SourceCharacterSafeUnit(t - n * dot(t,n));
+    float3 b = SourceCharacterSafeUnit(-input.vBinormal.xyz);
+    float3 view = SourceCharacterSafeUnit(camera-input.vWorldPos.xyz);
+    nativeInput.tangentView = float3(dot(t,view),dot(b,view),dot(n,view));
+    nativeInput.tangentUp = float3(t.y,b.y,n.y);
+    nativeInput.sourceWorldPosition = input.vWorldPos.xzy * 100.f;
+    nativeInput.sourceActorPosition = g_WorldMatrix[3].xzy * 100.f;
+    nativeInput.sourceCameraPosition = camera.xzy * 100.f;
+    [unroll] for(uint i=0u;i<4u;++i) nativeInput.sourceProjection[i] = basis.projection[i];
+    nativeInput.projectionW = input.vProjPos.w;
+    nativeInput.projectionZ = input.vProjPos.z;
+    nativeInput.screenUV = input.vPosition.xy;
+    nativeInput.color = 1.f;
+    nativeInput.vertexColor = 1.f;
+    nativeInput.frontFace = frontFace;
+    nativeInput.ambientColor = g_ArtistModelAmbient.rgb;
+    // Zero sky inputs reflect the current scene contract; native material math is unchanged.
+    float4 color;
+    if ((g_ArtistModelCueProfile >= 560u && g_ArtistModelCueProfile <= 659u) ||
+        (g_ArtistModelCueProfile >= 720u && g_ArtistModelCueProfile <= 819u) ||
+        g_ArtistModelCueProfile == 1360u)
+    {
+        LANCE_VA_NATIVE_INPUT lanceInput = (LANCE_VA_NATIVE_INPUT)0;
+        lanceInput.uv = nativeInput.uv;
+        lanceInput.uv1 = input.vSourceExtraUV.xy;
+        lanceInput.uvNext = nativeInput.uvNext;
+        lanceInput.subUVBlend = nativeInput.subUVBlend;
+        lanceInput.sourceWorldPosition = nativeInput.sourceWorldPosition;
+        lanceInput.sourceBasisX = nativeInput.sourceBasisX;
+        lanceInput.sourceBasisZ = nativeInput.sourceBasisZ;
+        lanceInput.handedness = nativeInput.handedness;
+        lanceInput.vertexColor = nativeInput.vertexColor;
+        lanceInput.screenUV = nativeInput.screenUV;
+        lanceInput.projectionW = nativeInput.projectionW;
+        lanceInput.projectionZ = nativeInput.projectionZ;
+        lanceInput.tangentView = nativeInput.tangentView;
+        lanceInput.color = nativeInput.color;
+        lanceInput.dynamicParameter = nativeInput.dynamicParameter;
+        lanceInput.frontFace = nativeInput.frontFace;
+        lanceInput.tangentUp = nativeInput.tangentUp;
+        lanceInput.sourceCameraPosition = nativeInput.sourceCameraPosition;
+        lanceInput.sourceActorPosition = nativeInput.sourceActorPosition;
+        lanceInput.skyUpperColor = nativeInput.skyUpperColor;
+        lanceInput.skyLowerColor = nativeInput.skyLowerColor;
+        lanceInput.ambientColor = nativeInput.ambientColor;
+        lanceInput.skyIntensity = nativeInput.skyIntensity;
+        [unroll] for(uint i=0u;i<4u;++i) lanceInput.sourceProjection[i] = nativeInput.sourceProjection[i];
+        if (g_ArtistModelCueProfile == 1360u)
+        {
+            // Source clip-space W and the reconstructed scene depth are centimetres.
+            // Derive UV from clip coordinates; SV_POSITION is in viewport pixels.
+            lanceInput.screenUV = input.vProjPos.xy / input.vProjPos.w * float2(.5f,-.5f) + .5f;
+            lanceInput.projectionW *= 100.f;
+            lanceInput.projectionZ *= 100.f;
+        }
+        color = Shade_LanceVAModelNative(g_ArtistModelCueProfile,lanceInput);
+    }
+    else color = Shade_ArtistModelNative(g_ArtistModelCueProfile,nativeInput);
+    color.rgb *= g_EffectModelCueColorMultiply.rgb;
+    color.a = saturate(color.a*g_EffectModelCueColorMultiply.a*g_EffectModelCueOpacity);
+    clip(color.a - 1e-6f);
+    return color;
+}
+
 void PS_MAIN_SHADOW(VS_OUT input)
 {
     float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
@@ -347,6 +460,9 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     }
     return float4(color, 1.f);
 }
+
+VertexShader EffectSourceModelVS = compile vs_5_0 VS_MAIN();
+PixelShader EffectSourceModelPS = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_NATIVE();
 
 technique11 DefaultTechnique
 {
@@ -426,5 +542,25 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    // Appended index 7: recovered translucent skeletal material, existing skinning input.
+    pass EffectModelCueNative
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
+    }
+    // Appended index 8 preserves the source hair material's two-sided rasterizer.
+    pass EffectModelCueNativeTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = EffectSourceModelPS;
     }
 }

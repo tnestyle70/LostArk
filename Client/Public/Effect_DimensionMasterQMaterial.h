@@ -1,5 +1,6 @@
 #pragma once
-// Eight selected Q programs and an exact A identity alias. Engine prefix/fog/depth adapters
+// Eight selected Q programs, an exact A alias and an explicit R authoring overlay.
+// Engine prefix/fog/depth adapters
 // are in Shader_EffectDimensionMasterQNative.hlsli, not unnamed JSON fallbacks.
 #include "Effect_AuthoringDocument.h"
 #include <array>
@@ -325,7 +326,33 @@ inline constexpr std::array<DIMENSIONMASTER_Q_SWITCH_DESC,6> DIMENSIONMASTER_Q_S
     {"use_edgesmooth", false},
 }};
 
-inline constexpr std::array<DIMENSIONMASTER_Q_PROGRAM_DESC,9> DIMENSIONMASTER_Q_PROGRAMS = {{
+// These Q51 overlays are project-authored tuning, not recovered UE3 programs.
+inline constexpr std::string_view DIMENSIONMASTER_R_GLASSHOLE_CORE_PROFILE_ID =
+    "effect.project-tuned.dimensionmaster-r-glasshole-solid-core.v1";
+inline constexpr std::string_view DIMENSIONMASTER_R_GLASSHOLE_CLEAN_CORE_PROFILE_ID =
+    "effect.project-tuned.dimensionmaster-r-glasshole-clean-core.v1";
+inline constexpr std::string_view DIMENSIONMASTER_GLASSHOLE_PURPLE_RIM_PROFILE_ID =
+    "effect.project-tuned.dimensionmaster-glasshole-purple-rim.v1";
+inline constexpr auto DIMENSIONMASTER_GLASSHOLE_PURPLE_RIM_PARAMETERS = []
+{
+    std::array<DIMENSIONMASTER_Q_PARAMETER_DESC,34> Parameters{};
+    std::copy(DIMENSIONMASTER_Q_PARAMETERS_51.begin(),
+        DIMENSIONMASTER_Q_PARAMETERS_51.end(), Parameters.begin());
+    Parameters[32] = {"rimIntensity", 11u, 0u, false};
+    Parameters[33] = {"rimOpacity", 11u, 1u, false};
+    return Parameters;
+}();
+inline constexpr auto DIMENSIONMASTER_R_GLASSHOLE_CORE_PARAMETERS = []
+{
+    std::array<DIMENSIONMASTER_Q_PARAMETER_DESC,34> Parameters{};
+    std::copy(DIMENSIONMASTER_Q_PARAMETERS_51.begin(),
+        DIMENSIONMASTER_Q_PARAMETERS_51.end(), Parameters.begin());
+    Parameters[32] = {"blackCoreWidth", 11u, 0u, false};
+    Parameters[33] = {"blackCoreSoftness", 11u, 1u, false};
+    return Parameters;
+}();
+
+inline constexpr std::array<DIMENSIONMASTER_Q_PROGRAM_DESC,12> DIMENSIONMASTER_Q_PROGRAMS = {{
     {44u,"effect.ue3.q-blackline-aura-native.v1","fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_07_tr","fx_m_mi_j_00.fx_m.fx_j_pa_blacklineaura_01_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.blacklineaura.01.tr.317194a1c8e2",true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_44,DIMENSIONMASTER_Q_PARAMETERS_44,DIMENSIONMASTER_Q_SWITCHES_44},
     {45u,"effect.ue3.q-basic-add-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_gl_01_2_ad","fx_mastermaterial.fx_mm.fx_mm_basic_01_ad","ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",false,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_45,DIMENSIONMASTER_Q_PARAMETERS_45,DIMENSIONMASTER_Q_SWITCHES_45},
     {46u,"effect.ue3.q-missiletrail-sprite-native.v1","fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_8_tr","fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr","ue3.material.fx.m.mi.03.fx.m.fx.m.pa.missiletrail.01.tr.9641f8d91e6a",false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_46,DIMENSIONMASTER_Q_PARAMETERS_46,DIMENSIONMASTER_Q_SWITCHES_46},
@@ -336,6 +363,10 @@ inline constexpr std::array<DIMENSIONMASTER_Q_PROGRAM_DESC,9> DIMENSIONMASTER_Q_
     {51u,"effect.ue3.q-glass-hole-native.v1","fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr","fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_51,DIMENSIONMASTER_Q_PARAMETERS_51,DIMENSIONMASTER_Q_SWITCHES_51},
     // Exact E/A material identities share the selected native program and input layout.
     {44u,"effect.ue3.a-blacklineaura-01-06-native.v1","fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_06_tr","fx_m_mi_j_00.fx_m.fx_j_pa_blacklineaura_01_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.blacklineaura.01.tr.317194a1c8e2",true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_44,DIMENSIONMASTER_Q_PARAMETERS_44,DIMENSIONMASTER_Q_SWITCHES_44},
+    {51u,DIMENSIONMASTER_GLASSHOLE_PURPLE_RIM_PROFILE_ID,"fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr","fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_51,DIMENSIONMASTER_GLASSHOLE_PURPLE_RIM_PARAMETERS,DIMENSIONMASTER_Q_SWITCHES_51},
+    // Only these authored identities populate row11; native Q51 leaves it zero.
+    {51u,DIMENSIONMASTER_R_GLASSHOLE_CORE_PROFILE_ID,"fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr","fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_51,DIMENSIONMASTER_R_GLASSHOLE_CORE_PARAMETERS,DIMENSIONMASTER_Q_SWITCHES_51},
+    {51u,DIMENSIONMASTER_R_GLASSHOLE_CLEAN_CORE_PROFILE_ID,"fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr","fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr","ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_Q_TEXTURES_51,DIMENSIONMASTER_R_GLASSHOLE_CORE_PARAMETERS,DIMENSIONMASTER_Q_SWITCHES_51},
 }};
 
 inline const DIMENSIONMASTER_Q_PROGRAM_DESC* Find_DimensionMasterQProgram(
@@ -384,6 +415,22 @@ inline bool Build_DimensionMasterQParameters(const EFFECT_SOURCE_MATERIAL_DESC& 
             else if (P.iLane==2u) V.z=it->fValue;
             else V.w=it->fValue;
         }
+    }
+    const bool bCleanCore = Source.strRuntimeShaderProfileId ==
+        DIMENSIONMASTER_R_GLASSHOLE_CLEAN_CORE_PROFILE_ID;
+    if (Source.strRuntimeShaderProfileId == DIMENSIONMASTER_R_GLASSHOLE_CORE_PROFILE_ID ||
+        bCleanCore)
+    {
+        const float4_t& Core = Candidate[11];
+        if (Core.x < 0.f || Core.x > 0.5f || Core.y < 0.f || Core.y > 1.f ||
+            (Core.x > 0.f && Core.y <= 0.f)) return false;
+        if (bCleanCore) Candidate[11].z = 1.f;
+    }
+    if (Source.strRuntimeShaderProfileId == DIMENSIONMASTER_GLASSHOLE_PURPLE_RIM_PROFILE_ID)
+    {
+        if (Candidate[11].x < 0.f || Candidate[11].x > 4.f ||
+            Candidate[11].y < 0.f || Candidate[11].y > 1.f) return false;
+        Candidate[11].z = 2.f;
     }
     Output=Candidate;
     return true;

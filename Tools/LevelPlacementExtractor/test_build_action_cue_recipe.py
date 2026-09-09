@@ -55,6 +55,26 @@ class ActionCueRecipeTests(unittest.TestCase):
             cursor += 69
         return base64.b64encode(bytes(raw[: cursor + 16])).decode("ascii")
 
+    def test_empty_particle_anchor_keeps_transform_and_parameter_offsets(self) -> None:
+        for anchors in ([""], ["B_WP_2", ""]):
+            with self.subTest(anchors=anchors):
+                raw = bytearray(base64.b64decode(self._particle_payload(
+                    True, [("Alpha", "scalar", 2.0)])))
+                reference = b"ParticleSystem'FX_TEST.Par_Test'\x00"
+                base = raw.index(reference) + len(reference)
+                suffix = bytes(raw[base + 60:])
+                encoded = b"".join(self._payload_string(name) for name in anchors)
+                # Selector at52 owns the extended transform with its extra float.
+                raw = raw[:base + 52] + struct.pack("<i", len(anchors)) + encoded
+                raw += bytes(4) + suffix
+                typed = decode_typed_payload("PlayParticleEffect", {
+                    "data": base64.b64encode(raw).decode("ascii")})
+                self.assertEqual(typed["attachment"]["sourceAnchorNames"],
+                    [name for name in anchors if name])
+                self.assertEqual(typed["localTransform"]["scale"], [1.0, 1.0, 1.0])
+                self.assertEqual(typed["parameterOverrides"][0]["name"], "Alpha")
+                self.assertEqual(typed["parameterOverrides"][0]["scalarValue"], 2.0)
+
     def test_decodes_standalone_skeletal_model_transform_once(self) -> None:
         raw = bytearray(512)
         signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
@@ -410,6 +430,23 @@ class ActionCueRecipeTests(unittest.TestCase):
         self.assertEqual(vector["vectorValue"], [5.0, 1.0, 1.0])
         self.assertNotIn("vectorValue", scalar)
         self.assertNotIn("scalarValue", vector)
+
+    def test_preserves_none_parameter_without_applying_scalar_override(self) -> None:
+        payload = self._particle_payload(True, [("Color", "scalar", 7.0)])
+        raw = bytearray(base64.b64decode(payload))
+        original = decode_typed_payload("PlayParticleEffect", {"data": payload})
+        value_offset = original["parameterOverrides"][0]["sourceValueByteOffset"]
+        struct.pack_into("<i", raw, value_offset - 4, 0)
+        typed = decode_typed_payload(
+            "PlayParticleEffect", {"data": base64.b64encode(raw).decode("ascii")}
+        )
+        row = typed["parameterOverrides"][0]
+        self.assertEqual(row["sourceTypeCode"], 0)
+        self.assertEqual(row["type"], "none")
+        self.assertFalse(row["enabled"])
+        self.assertNotIn("scalarValue", row)
+        self.assertNotIn("vectorValue", row)
+        self.assertTrue(typed["parameterOverridesDecoded"])
 
     def test_decodes_particle_anchor_and_local_transform(self) -> None:
         raw = bytearray(512)

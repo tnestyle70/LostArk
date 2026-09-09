@@ -15,6 +15,9 @@ struct RENDERING_BENCHMARK_RUN final
 	string strLabel;
 	string strTimestamp;
 	string strQualitySummary;
+	string strComparisonConditions;
+	bool_t bSourceMaterials = true;
+	bool_t bConditionsStable = true;
 	uint32_t iFrames = 0u;
 	uint32_t iGpuFrames = 0u;
 	double fCpuAvgMs = 0.0;
@@ -32,7 +35,8 @@ struct RENDERING_BENCHMARK_RUN final
 /* Rendering Workbench benchmark: captures N frames through the Engine
    profiler and records CPU/GPU/draw statistics next to the quality settings
    that were active, so A/B changes to SSAO/Bloom/Shadow/Fog are measured on
-   the same basis. It never changes rendering settings itself. */
+   the same basis. Explicit Capture A/B changes only the session material mode;
+   camera, lighting and quality remain the user's current settings. */
 class CRenderingBenchmark final
 {
 public:
@@ -65,6 +69,9 @@ private:
 	uint32_t m_iTargetFrames = 0u;
 	string m_strLabel;
 	string m_strQualitySummary;
+	string m_strComparisonConditions;
+	bool_t m_bSourceMaterials = true;
+	bool_t m_bConditionsStable = true;
 	string m_strStatus = "Idle. Capture measures the current viewport with the current quality settings.";
 	array<char_t, 64> m_LabelBuffer = { "baseline" };
 	int32_t m_iFrameInput = 300;

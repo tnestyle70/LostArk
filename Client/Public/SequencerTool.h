@@ -30,13 +30,11 @@ public:
 
     CSequencerTool(
         ICompositionWorkbenchSession* pValtanSession,
-        ICompositionWorkbenchSession* pKoukuSaydonSession);
+        ICompositionWorkbenchSession* pKoukuSaydonSession,
+        bool sequenceWorkspace = false);
 
-    void Open() { m_bOpen = true; }
-    void Open(COMPOSITION_WORKBENCH_BOSS boss) {
-        m_eSelectedBoss = boss;
-        m_bOpen = true;
-    }
+    void Open();
+    void Open(COMPOSITION_WORKBENCH_BOSS boss);
     [[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
     [[nodiscard]] COMPOSITION_WORKBENCH_BOSS Get_SelectedBoss() const noexcept {
         return m_eSelectedBoss;
@@ -49,8 +47,12 @@ public:
     void Set_AnimationPreviewStatus(std::string status);
     bool Consume_AnimationPreviewTransportRequest(ANIMATION_PREVIEW_TRANSPORT& transport);
     void Set_AnimationPreviewState(ANIMATION_PREVIEW_STATE state);
+    [[nodiscard]] const ANIMATION_PREVIEW_STATE& Get_AnimationPreviewState() const noexcept {
+        return m_AnimationPreviewState;
+    }
 
 private:
+    void Select_Boss(COMPOSITION_WORKBENCH_BOSS boss);
     void Render_WindowMenu();
     void Render_BossSelector();
     void Render_PhysicalAnimationBrowser(ICompositionWorkbenchSession& session);
@@ -64,7 +66,10 @@ private:
     ICompositionWorkbenchSession* m_pValtanSession = nullptr;
     ICompositionWorkbenchSession* m_pKoukuSaydonSession = nullptr;
     COMPOSITION_WORKBENCH_BOSS m_eSelectedBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
+    const bool m_bSequenceWorkspace;
     bool_t m_bOpen = true;
+    bool_t m_bRestoreAuthoringPanesRequested = false;
+    bool_t m_bPhysicalAnimationBrowserVisible = false;
     bool_t m_bResetLayoutRequested = false;
     bool_t m_bApplyResetLayoutThisFrame = false;
     bool_t m_bSequencerMaximized = false;

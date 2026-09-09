@@ -597,7 +597,9 @@ namespace LostArk::Server
 		ENTER_AREA,
 		OBJECT_OVERLAP,
 		OBJECT_CONTACT,
-		EXTERNAL_SIGNAL
+		EXTERNAL_SIGNAL,
+		COUNTER_WINDOW,
+        ATTACHMENT_HOLD
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -607,10 +609,12 @@ namespace LostArk::Server
 		MAX_HP_PERCENT_DAMAGE,
 		MADNESS_GAUGE_ADD_PERCENT,
 		CLOWN_TRANSFORM,
+		FEAR,
 		FOLLOWUP_PATTERN,
 		PLAY_WORLD_OBJECT_MOTION,
 		PLAY_CONTACT_WORLD_OBJECT_MOTION,
 		COMPLETE_LOGIC_WINDOW,
+		CAPTURE_PLAYER,
 		/* Hangs the player on the region that judged them and drags them with
 		it. Only an ENTER_AREA window whose regions ride a World Object world
 		track can offer this, because only that region keeps moving. */
@@ -634,6 +638,9 @@ namespace LostArk::Server
 		std::vector<BOSS_LOGIC_CONTACT_MOTION> ContactMotions;
 		std::string strTargetLogicOccurrenceId;
 		std::string strContactTargetWorldOccurrenceId;
+		std::string strFearPresentationId;
+        LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+        std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -712,6 +719,8 @@ namespace LostArk::Server
 		std::string strContactGroupId;
 		std::uint32_t iContactPriority = 0u;
 		bool bHasContactGroup = false;
+		float fBossChargeDistanceM = 0.f;
+        std::string strHoldLogicOccurrenceId;
 	};
 
 	enum class BOSS_PATTERN_MECHANIC_TRIGGER_KIND : std::uint8_t

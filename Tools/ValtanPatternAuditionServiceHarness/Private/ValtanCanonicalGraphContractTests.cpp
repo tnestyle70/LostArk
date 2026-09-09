@@ -32,6 +32,18 @@ bool_t Client::CEffectCatalog::Contains(const std::string&)
 		"canonical graph harness unexpectedly entered Effect catalog prewarm");
 }
 
+// Draft storage tests never render the Effect browser. Keep the additional
+// retained ImGui references fail-closed like Contains above.
+std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Client::CEffectCatalog::Find(const std::string&)
+{
+	throw std::runtime_error("editor harness unexpectedly entered Effect browser lookup");
+}
+
+const std::string& Client::CEffectCatalog::Get_Status()
+{
+	throw std::runtime_error("editor harness unexpectedly entered Effect browser status");
+}
+
 namespace
 {
 	using namespace Client;

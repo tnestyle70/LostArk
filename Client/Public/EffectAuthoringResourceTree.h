@@ -37,6 +37,13 @@ public:
     std::string Selected_ParentName() const;
     EFFECT_RESOURCE_OWNER_KIND Selected_Kind() const;
     void Set_Status(std::string strStatus) { m_strStatus = std::move(strStatus); }
+    struct RESOURCE final
+    {
+        EFFECT_RESOURCE_OWNER_KIND eKind = EFFECT_RESOURCE_OWNER_KIND::END;
+        std::string strAssetId, strDisplayName, strStatus;
+    };
+    // Shared metadata inventory for the saved-resource tree and Composition browser.
+    static bool Read_V1Inventory(std::vector<RESOURCE>& OutRows, std::string& strOutError);
 
 private:
     struct NODE final
@@ -54,11 +61,6 @@ private:
         std::vector<NODE> Nodes;
         std::vector<REFERENCE> References;
     };
-    struct RESOURCE final
-    {
-        EFFECT_RESOURCE_OWNER_KIND eKind = EFFECT_RESOURCE_OWNER_KIND::END;
-        std::string strAssetId, strDisplayName, strStatus;
-    };
 
     static bool Parse(const std::string& strBytes, DOCUMENT& OutDocument, std::string& strOutError);
     static bool Validate(const DOCUMENT& Document, std::string& strOutError);
@@ -66,7 +68,6 @@ private:
     static std::string Root_For(const DOCUMENT& Document, const std::string& strNodeId);
     static bool Read_Source(const std::filesystem::path& Path, std::string& strOutBytes,
         bool& bOutExists, std::string& strOutError);
-    static bool Read_V1Inventory(std::vector<RESOURCE>& OutRows, std::string& strOutError);
     bool Save_Staged(DOCUMENT Candidate, std::string& strOutStatus);
     bool Create_Parent(bool bCategory);
     void Queue_Selected(COMMAND_KIND eCommand);

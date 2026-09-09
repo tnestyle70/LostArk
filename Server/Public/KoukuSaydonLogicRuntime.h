@@ -16,6 +16,7 @@
 
 namespace LostArk::Server
 {
+	class CServerCollisionSystem;
 	/* Per-player verdict inside one judgement window. NONE is "not answered
 	yet" for a continuous window and "not judged yet" for an end-tick window. */
 	enum class KOUKUSAYDON_LOGIC_ANSWER : std::uint8_t
@@ -34,8 +35,12 @@ namespace LostArk::Server
 		std::uint32_t iWindowIndex = 0u;
 		std::uint32_t iStartTick = 0u;
 		std::uint32_t iEndTick = 0u;
+        std::uint32_t iHoldStartTick = 0u, iHoldEndTick = 0u;
 		bool bOpened = false;
 		bool bClosed = false;
+		bool bChargeCaptured = false;
+		bool bChargeStopped = false;
+		std::optional<BOSS_PATTERN_BOSS_MOTION> ChargeMotion;
 		std::set<std::pair<std::string, std::string>> AppliedWorldMotions;
 		std::set<std::string> ContactedWorldOccurrences;
 		/* STAGGER_WINDOW measures the health the boss lost since it opened. */
@@ -87,6 +92,14 @@ namespace LostArk::Server
 		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
 
+    struct KOUKUSAYDON_LOGIC_CAPTURE_REQUEST final
+    {
+        LostArk::Shared::NET_ENTITY_ID iPlayerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+        LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
+        std::uint32_t iHoldEndTick = 0u;
+        std::uint32_t iWindowIndex = 0u;
+    };
+
 	/* What one Update tick asks the room to do. The runtime touches players and
 	the boss directly; anything that reaches the wire or the audition slot list
 	is returned here so the room stays the only owner of those. */
@@ -95,6 +108,7 @@ namespace LostArk::Server
 		std::vector<KOUKUSAYDON_LOGIC_WORLD_PLAY> WorldSequencePlays;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;
 		std::vector<std::string> FollowupPatternIds;
+        std::vector<KOUKUSAYDON_LOGIC_CAPTURE_REQUEST> CaptureRequests;
 		bool bEndPatternEarly = false;
 		std::string strStatus;
 	};
@@ -130,7 +144,9 @@ namespace LostArk::Server
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-			KOUKUSAYDON_LOGIC_OUTPUT& outOutput);
+			KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
+			const CServerNavigation* navigation = nullptr,
+			const CServerCollisionSystem* collision = nullptr);
 		/* One quick-slot press while the DANCE HUD is up. The slot is resolved
 		through the player's own replicated layout; the first answer wins. */
 		static bool Record_InteractionSlot(
@@ -147,6 +163,7 @@ namespace LostArk::Server
 			const KOUKUSAYDON_LOGIC_LEDGER* pActiveLedger,
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick);
+		static bool Update_PlayerFear(SERVER_PLAYER& player, std::uint32_t serverTick);
 		static void Apply_Result(
 			SERVER_PLAYER& player,
 			const BOSS_PATTERN_LOGIC_RESULT& result,

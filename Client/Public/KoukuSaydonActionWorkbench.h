@@ -80,7 +80,7 @@ namespace Client
 	class CKoukuSaydonActionWorkbench final : public ICompositionWorkbenchSession
 	{
 	public:
-		CKoukuSaydonActionWorkbench() = default;
+		explicit CKoukuSaydonActionWorkbench(bool sequenceWorkspace = false);
 		~CKoukuSaydonActionWorkbench();
 
 		void Open();
@@ -94,7 +94,7 @@ namespace Client
 		bool_t Consume_ProductInventoryRefreshRequest() {
 			const bool_t requested = m_bProductInventoryRefreshRequested;
 			m_bProductInventoryRefreshRequested = false;
-			return requested;
+			return !m_bSequenceWorkspace && requested;
 		}
 		bool_t Consume_PresentationPreviewRequest(KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest);
 		/* MainApp supplies admitted camera/audio rows from the existing readers;
@@ -143,11 +143,15 @@ namespace Client
 				m_strStatus = state.strStatus;
 			m_PreviewState = state;
 		}
+		[[nodiscard]] const KOUKU_PREVIEW_STATE& Get_PreviewState() const noexcept {
+			return m_PreviewState;
+		}
 
 
 		bool_t Reload(std::string& outStatus);
 		bool_t Save(std::string& outStatus);
-		bool_t Publish_Product(std::string& outStatus);
+		// Save is source-only; publication always considers the complete saved tree.
+		bool_t Publish_AllPatterns(std::string& outStatus);
 		[[nodiscard]] bool_t Is_PublishRunning() const noexcept {
 			return nullptr != m_hPublishProcess;
 		}
@@ -325,6 +329,8 @@ namespace Client
 			f32_t playRate,
 			std::string_view endPolicy,
 			std::string& outStatus);
+		bool_t Set_AnimationBlend(std::string_view patternId, std::string_view occurrenceId,
+			std::uint32_t blendInMs, std::string& outStatus);
 		bool_t Duplicate_Animation(
 			std::string_view patternId,
 			std::string_view occurrenceId,
@@ -369,6 +375,8 @@ namespace Client
 			std::string_view patternId,
 			std::string_view occurrenceId,
 			std::string& outStatus);
+		bool_t Set_LogicBoxHold(std::string_view patternId, std::string_view occurrenceId,
+			std::string_view holdOccurrenceId, std::string& outStatus);
 		/* Replaces one outcome slot of a DURATION box with an ordered list of up
 		   to four RESULT Logics; an empty list clears the slot. The box owns the
 		   wiring, so the same definition may succeed into different results on
@@ -500,6 +508,17 @@ namespace Client
 			std::string& outStatus);
 
 	private:
+		enum class RENAME_TARGET : std::uint8_t
+		{
+			PATTERN, FOLDER, BUNDLE, LOGIC, SUMMON, WORLD, SCENE_PROFILE, PRESENTATION
+		};
+		bool_t Rename_Item(RENAME_TARGET target, std::string_view id,
+			std::string_view displayName, std::string& outStatus);
+		bool_t Render_RenameControl(RENAME_TARGET target, std::string_view id,
+			std::string_view displayName);
+		void Render_PresentationAnchor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+			KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence, bool_t effect);
+
 		/* One browsable extracted action: indices into the immutable reference
 		   set snapshot that Reload/Save replaced last. */
 		struct RESOURCE_ACTION_LEAF final
@@ -595,6 +614,7 @@ namespace Client
 		void Poll_PublishProcess();
 
 	private:
+		const bool m_bSequenceWorkspace;
 		CKoukuSaydonCompositionDocument m_Document;
 		KOUKU_SAYDON_ACTION_REFERENCE_SET m_ResourceReferences;
 		std::vector<COMPOSITION_ANIMATION_RESOURCE> m_ModelResources;
@@ -638,6 +658,14 @@ namespace Client
 		std::string m_strSelectedPresentationResourceId;
 		std::string m_strSelectedPresentationSourceId;
 		int32_t m_iLightResourceCategory = 0;
+		int32_t m_iEffectResourceVersion = 0;
+		std::string m_strExpandedV1EffectId;
+		std::string m_strV1ElementResourceStatus;
+		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> m_V1ElementResources;
+		char_t m_PresentationResourceSearch[128]{};
+		// Rename text stays local until Apply; stable IDs and references never change.
+		std::string m_strRenameItemId;
+		char_t m_RenameDisplayName[256]{};
 		std::string m_strSelectedPresentationOccurrenceId;
 		char_t m_NewPresentationName[256]{};
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
@@ -740,6 +768,7 @@ namespace Client
 		f32_t m_fPixelsPerSecond = 90.f;
 		char_t m_PatternName[256]{};
 		char_t m_NewPatternName[256]{};
+		int m_iNewPatternCategory = 1;
 		int32_t m_iPatternDurationMs = 0;
 		int32_t m_iNewStageDurationMs = 1000;
 		int32_t m_iOccurrenceStartOffsetMs = 0;
@@ -747,6 +776,7 @@ namespace Client
 		int32_t m_iOccurrencePlayMs = 1;
 		f32_t m_fOccurrencePlayRate = 1.f;
 		int32_t m_iOccurrenceEndPolicy = 0;
+		int32_t m_iOccurrenceBlendInMs = 0;
 		int32_t m_iSelectedNewStageKind = 0;
 		bool_t m_bOpen = true;
 		bool_t m_bSharedWorkspaceActive = false;

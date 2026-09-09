@@ -114,7 +114,8 @@ HRESULT CLight_Manager::Render_Lights(
 			}
 		}
 	}
-	CPresentation_Manager::Get().Clear_TransientLights();
+	// Render_Lights is called for ordinary and source-character passes.
+	// CRenderer::Draw owns Clear_Frame on both success and failure.
 	return hResult;
 }
 

@@ -830,7 +830,7 @@ HRESULT CMainApp::Initialize()
 #ifdef _DEBUG
 namespace
 {
- void Refresh_KoukuPresentationResources(CKoukuSaydonActionWorkbench& workbench,
+ void Refresh_KoukuPresentationResources(const std::vector<CKoukuSaydonActionWorkbench*>& workbenches,
   CRenderingProfileService& profiles, CLightResourceCatalog& lights)
  {
   using Kind = KOUKU_SAYDON_PRESENTATION_KIND;
@@ -848,6 +848,18 @@ namespace
     row.iDurationMs = effect.iDurationMs;
     rows.push_back(std::move(row));
    }
+  for (const auto& id : CEffectCatalog::Get_EffectAssetIds())
+  {
+   if (!CEffectCatalog::Is_DirectAuthoredDocument(id)) continue;
+   KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE row;
+   row.strResourceId = "v1:" + id;
+   row.strAssetId = id;
+   row.strDisplayName = id;
+   row.eKind = Kind::EFFECT;
+   row.strResourceKind = "V1_EFFECT";
+   row.iDurationMs = 3000u;
+   rows.push_back(std::move(row));
+  }
   // This explicit refresh inventories physical Sound assets once. Playback
   // still resolves every Resources-relative ID through the existing audio owner.
   std::error_code ec;
@@ -882,7 +894,7 @@ namespace
     rows.push_back(std::move(row));
    }
   const auto profileIds = profiles.Collect_ProfileIds();
-	(void)lights.Refresh_MapResources(workbench.Get_Composition().strAreaId, status);
+	(void)lights.Refresh_MapResources("LV_LUT_MIDNIGHTC_ED", status);
 	for(const auto& light : lights.Get_Resources())
 	{
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE row;
@@ -891,11 +903,15 @@ namespace
 		row.strDefaultAnchorKind=light.strDefaultAnchorKind;rows.push_back(std::move(row));
 	}
 	std::vector<std::string> protectedProfiles;
-	for(const auto& scene:workbench.Get_Composition().SceneProfiles) protectedProfiles.push_back(scene.strRenderingProfileId);
+	for (const auto* workbench : workbenches)
+		for (const auto& scene : workbench->Get_Composition().SceneProfiles) protectedProfiles.push_back(scene.strRenderingProfileId);
 	profiles.Protect_ProfileIds(protectedProfiles);
-  workbench.Set_RenderingProfileResources(profileIds,
-   "Loaded " + std::to_string(profileIds.size()) + " admitted rendering profiles.");
-  workbench.Set_PresentationResources(std::move(rows), std::move(status));
+  for (auto* workbench : workbenches)
+  {
+   workbench->Set_RenderingProfileResources(profileIds,
+    "Loaded " + std::to_string(profileIds.size()) + " admitted rendering profiles.");
+   workbench->Set_PresentationResources(rows, status);
+  }
  }
 
  bool Begin_KoukuWorldPreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
@@ -1157,6 +1173,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
         if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
+		StopCompositionPreview(m_eCompositionPreviewOwner);
 #endif
 		m_pKoukuPresentationPlayer->Reset();
 		m_pKoukuPresentationPlayer.reset();
@@ -1171,6 +1188,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_pDevice, m_pContext);
 	}
 	CEffectPresentationService::Commit_PendingSpawns();
+	CEffectPresentationService::Prepare_FrameCamera(fTimeDelta);
 	CEffectPresentationService::Synchronize_FollowAnchors();
 	CEffectPresentationService::Update(fTimeDelta);
 	/* Product combat-object groups and Effect Tool previews share one free-group
@@ -1197,6 +1215,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			nullptr != m_pSequencerTool &&
 			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss())
 		{
+			StopCompositionPreview(m_eCompositionPreviewOwner);
 			m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
 			m_strToolStatus =
 				"Valtan Action Workbench reclaimed viewport/preview input.";
@@ -1213,7 +1232,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			 DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner);
+			 DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
+			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
+			 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
+			m_eCompositionPreviewOwner != DEBUG_TOOL::NONE;
 		m_pAnimationTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
@@ -1384,12 +1406,29 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner && nullptr != m_pSequencerTool &&
 			COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss());
 	}
-	// Both boss sessions share the physical inventory. Consume each refresh flag
-	// independently so a simultaneous request does not cause a second read next frame.
-	const bool shellResourceRefresh = nullptr != m_pSequencerTool &&
-		m_pSequencerTool->Consume_ResourceRefreshRequest();
-	const bool koukuResourceRefresh = nullptr != m_pKoukuSaydonActionWorkbench &&
-		m_pKoukuSaydonActionWorkbench->Consume_ResourceRefreshRequest();
+	struct COMPOSITION_SESSION_ROUTE
+	{
+		DEBUG_TOOL owner;
+		CKoukuSaydonActionWorkbench* workbench;
+		CSequencerTool* shell;
+	};
+	const std::array<COMPOSITION_SESSION_ROUTE, 2> compositionRoutes{{
+		{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(), m_pSequencerTool.get()},
+		{DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(), m_pSequenceBenchmarkTool.get()}
+	}};
+	// Drain each edge, read physical inventory once, then distribute immutable rows.
+	bool shellResourceRefresh = false, koukuResourceRefresh = false, presentationResourceRefresh = false;
+	std::vector<CKoukuSaydonActionWorkbench*> resourceSessions;
+	for (const auto& route : compositionRoutes)
+	{
+		if (route.shell) shellResourceRefresh |= route.shell->Consume_ResourceRefreshRequest();
+		if (!route.workbench) continue;
+		resourceSessions.push_back(route.workbench);
+		koukuResourceRefresh |= route.workbench->Consume_ResourceRefreshRequest();
+		presentationResourceRefresh |= route.workbench->Consume_PresentationResourceRefreshRequest();
+	}
+	if (presentationResourceRefresh)
+		Refresh_KoukuPresentationResources(resourceSessions, m_RenderingProfiles, m_LightResources);
 	if (shellResourceRefresh || koukuResourceRefresh)
 	{
 		if (SUCCEEDED(EnsureAnimationPreviewBackend()))
@@ -1433,61 +1472,80 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					sequenceResources.push_back(std::move(resourceSequence));
 				}
 			}
-			if (nullptr != m_pSequencerTool)
-				m_pSequencerTool->Set_AnimationResources(resources, status);
-			if (nullptr != m_pKoukuSaydonActionWorkbench)
+			for (const auto& route : compositionRoutes)
 			{
-				m_pKoukuSaydonActionWorkbench->Set_ModelResources(std::move(resources), std::move(status));
-				m_pKoukuSaydonActionWorkbench->Set_SequenceResources(
-					std::move(sequenceResources), std::move(sequenceStatus), sequencesLoaded);
+				if (route.shell) route.shell->Set_AnimationResources(resources, status);
+				if (!route.workbench) continue;
+				route.workbench->Set_ModelResources(resources, status);
+				route.workbench->Set_SequenceResources(sequenceResources, sequenceStatus, sequencesLoaded);
 			}
 		}
 		else
 		{
 			m_strToolStatus = "Animation preview backend could not initialize for Resources.";
-			if (nullptr != m_pSequencerTool)
-				m_pSequencerTool->Set_AnimationResources({}, m_strToolStatus);
+			for (const auto& route : compositionRoutes)
+				if (route.shell) route.shell->Set_AnimationResources({}, m_strToolStatus);
 		}
 	}
-	if (nullptr != m_pSequencerTool)
+	// A draft generation is local to its session. Give the shared consumer a monotonic
+	// serial only after selecting the owner, so equal occurrence IDs cannot cross drafts.
+	for (const auto& route : compositionRoutes)
+	{
+		if (!route.workbench || !m_pKoukuPresentationPlayer) continue;
+		const bool ownsPreview = route.owner == m_eCompositionPreviewOwner;
+		const bool productDebugAuthoring = m_eCompositionPreviewOwner == DEBUG_TOOL::NONE &&
+			!m_pKoukuPresentationPlayer->Preview_Playing() && route.owner == DEBUG_TOOL::SEQUENCER;
+		if (!ownsPreview && !productDebugAuthoring) continue;
+		const auto generation = route.workbench->Get_DraftGeneration();
+		if (m_eColliderAuthoringOwner != route.owner || m_iColliderAuthoringDraftGeneration != generation)
+		{
+			m_eColliderAuthoringOwner = route.owner;
+			m_iColliderAuthoringDraftGeneration = generation;
+			m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(
+				route.workbench->Get_Composition(), ++m_iColliderAuthoringSerial);
+		}
+	}
+	std::string activePreviewRouteStatus;
+	DEBUG_TOOL previewStatusOwner = DEBUG_TOOL::NONE;
+	for (const auto& route : compositionRoutes)
+	{
+		auto* workbench = route.workbench;
+		auto* shell = route.shell;
+		if (!workbench) continue;
+	if (nullptr != shell)
 	{
 		COMPOSITION_ANIMATION_RESOURCE resource;
-		if (m_pSequencerTool->Consume_AnimationPreviewRequest(resource))
+		if (shell->Consume_AnimationPreviewRequest(resource))
 		{
-			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
 			if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
 			{
 				if (m_pAnimationTool->Preview_CompositionAnimationResource(resource, m_strToolStatus))
 				{
-					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+					ClaimCompositionPreviewOwner(route.owner);
+					m_eDebugInputOwner = route.owner;
 				}
 			}
 			else
 				m_strToolStatus = "Animation preview backend could not initialize for the selected resource.";
-			m_pSequencerTool->Set_AnimationPreviewStatus(m_strToolStatus);
+			shell->Set_AnimationPreviewStatus(m_strToolStatus);
 		}
 	}
 	/* The K Workbench owns only composition data. A click transfers an immutable
 	   occurrence/pattern value to the existing real-CModel preview owner; no
 	   draft pointer or Valtan document crosses this boundary. */
 	std::string previewRouteStatus;
-	if (nullptr != m_pKoukuSaydonActionWorkbench)
+	if (nullptr != workbench)
 	{
-		m_pKoukuSaydonActionWorkbench->Tick_Background();
-		if (m_pKoukuSaydonActionWorkbench->Consume_ProductInventoryRefreshRequest() && m_pKoukuSaydonBossTool)
+		workbench->Tick_Background();
+		if (workbench->Consume_ProductInventoryRefreshRequest() &&
+			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
 			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
-		if (m_pKoukuPresentationPlayer)
-			m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(
-				m_pKoukuSaydonActionWorkbench->Get_Composition(), m_pKoukuSaydonActionWorkbench->Get_DraftGeneration());
-		if (m_pKoukuSaydonActionWorkbench->Consume_PresentationResourceRefreshRequest())
-			Refresh_KoukuPresentationResources(*m_pKoukuSaydonActionWorkbench, m_RenderingProfiles, m_LightResources);
 		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
-		if (m_pKoukuSaydonActionWorkbench->Consume_AnimationPreviewRequest(
+		if (workbench->Consume_AnimationPreviewRequest(
 				occurrence))
 		{
-			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
 			if (SUCCEEDED(EnsureAnimationPreviewBackend()) &&
 				nullptr != m_pAnimationTool)
 			{
@@ -1496,7 +1554,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 						occurrence, m_strToolStatus);
 				if (previewed)
 				{
-					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+					ClaimCompositionPreviewOwner(route.owner);
+					m_eDebugInputOwner = route.owner;
 				}
 				else
 					previewRouteStatus = m_strToolStatus;
@@ -1511,23 +1572,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
 
 		std::string bundlePreviewId;
 		std::uint32_t bundleClockMs = 0; bool_t bundlePaused = false;
-		if (m_pKoukuSaydonActionWorkbench->Consume_BundlePreviewRequest(bundlePreviewId, bundleClockMs, bundlePaused))
+		if (workbench->Consume_BundlePreviewRequest(bundlePreviewId, bundleClockMs, bundlePaused))
 		{
 			if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
-				m_pKoukuSaydonActionWorkbench->Get_Composition(), bundlePreviewId, bundleClockMs, bundlePaused, previewRouteStatus,
+				workbench->Get_Composition(), bundlePreviewId, bundleClockMs, bundlePaused, previewRouteStatus,
 				m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
 			{
 				if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-				m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				ClaimCompositionPreviewOwner(route.owner);
+					m_eDebugInputOwner = route.owner;
 			}
 			else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Bundle preview requires the KoukuSaydon Arena.";
 		}
 		std::string serverBundleId; std::uint32_t bundleRevision = 0;
-		if (m_pKoukuSaydonActionWorkbench->Consume_BundleServerPlayRequest(serverBundleId, bundleRevision))
+		if (workbench->Consume_BundleServerPlayRequest(serverBundleId, bundleRevision) &&
+			route.owner == DEBUG_TOOL::SEQUENCER)
 		{
 			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
 			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
 			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
 		}
@@ -1535,12 +1599,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		std::uint32_t startClockMs = 0u;
 		bool_t startPaused = false;
 		std::string targetAssetName;
-		if (m_pKoukuSaydonActionWorkbench->Consume_PatternPreviewRequest(
+		if (workbench->Consume_PatternPreviewRequest(
     pattern, startClockMs, startPaused, targetAssetName))
   {
-   if ((!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
+   const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
+    [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
+   if (hasAnimation && (!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
    {
-    auto document = m_pKoukuSaydonActionWorkbench->Get_Composition();
+    auto document = workbench->Get_Composition();
     for (auto& previewPattern : document.Patterns)
      if (previewPattern.strPatternId == pattern.strPatternId) { previewPattern = pattern; break; }
     KOUKU_SAYDON_COMPOSITION_BUNDLE single;
@@ -1554,29 +1620,32 @@ void CMainApp::Update(const f32_t fTimeDelta)
     {
      if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
      if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-     m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+     ClaimCompositionPreviewOwner(route.owner);
+					m_eDebugInputOwner = route.owner;
     }
     else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
    }
    else
    {
-   const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
-    [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
    bool previewed = !hasAnimation;
    if (hasAnimation && SUCCEEDED(EnsureAnimationPreviewBackend()) && m_pAnimationTool)
     previewed = targetAssetName.empty() ?
      m_pAnimationTool->Preview_KoukuSaydonCompositionPattern(pattern, m_strToolStatus, startClockMs, startPaused) :
      m_pAnimationTool->Preview_CompositionResourcePattern(pattern, targetAssetName, m_strToolStatus, startClockMs, startPaused);
-   else if (!hasAnimation && m_pAnimationTool)
-    (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
    if (previewed && m_pKoukuPresentationPlayer)
    {
-    const auto& document = m_pKoukuSaydonActionWorkbench->Get_Composition();
+    const auto& document = workbench->Get_Composition();
     previewed = m_pKoukuPresentationPlayer->Begin_Preview(document, pattern,
      !hasAnimation, startClockMs, startPaused, previewRouteStatus);
-    if (previewed) previewed = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-     m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr);
-    if (previewed) m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+    if (previewed)
+    {
+     if (!hasAnimation && m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     ClaimCompositionPreviewOwner(route.owner);
+     m_eDebugInputOwner = route.owner;
+     if (!Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
+      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+      StopCompositionPreview(route.owner);
+    }
    }
    else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    else previewRouteStatus = m_strToolStatus;
@@ -1584,23 +1653,22 @@ void CMainApp::Update(const f32_t fTimeDelta)
   }
 
   KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
-  while (m_pKoukuSaydonActionWorkbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
-   if (m_pKoukuPresentationPlayer)
+  while (workbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
+   if (m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
     (void)m_pKoukuPresentationPlayer->Preview_PresentationGeometry(
      presentationGeometryPreview.strPatternId, presentationGeometryPreview.Occurrence);
 
   KOUKU_PRESENTATION_PREVIEW_REQUEST resourcePreview;
-  if (m_pKoukuSaydonActionWorkbench->Consume_PresentationPreviewRequest(resourcePreview))
+  if (workbench->Consume_PresentationPreviewRequest(resourcePreview))
   {
    if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
-   const bool keepCurrentPreview = m_pKoukuPresentationPlayer &&
+   const bool keepCurrentPreview = m_eCompositionPreviewOwner == route.owner && m_pKoukuPresentationPlayer &&
     m_pKoukuPresentationPlayer->Preview_HasActiveWorldBox(resourcePreview.strEditedOccurrenceId);
    if (!keepCurrentPreview)
    {
-   if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
    if (m_pKoukuPresentationPlayer)
    {
-    auto document = m_pKoukuSaydonActionWorkbench->Get_Composition();
+    auto document = workbench->Get_Composition();
     KOUKU_SAYDON_COMPOSITION_PATTERN resourcePattern;
     resourcePattern.strPatternId = "preview.kouku.resource";
     KOUKU_SAYDON_COMPOSITION_STAGE stage;
@@ -1667,10 +1735,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
     }
     if (m_pKoukuPresentationPlayer->Begin_Preview(document, resourcePattern, true, 0u,
      !resourcePreview.WorldBoxes.empty(), previewRouteStatus))
-     (void)Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus,
+    {
+     if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+     ClaimCompositionPreviewOwner(route.owner);
+     m_eDebugInputOwner = route.owner;
+     if (!Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus,
       m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr,
-      resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD && resourcePreview.WorldBoxes.empty());
-    m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+      resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD && resourcePreview.WorldBoxes.empty()))
+      StopCompositionPreview(route.owner);
+    }
    }
    else previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    }
@@ -1680,7 +1753,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		   resulting identity and clock together to the Workbench. */
 		KOUKU_PREVIEW_TRANSPORT transport = KOUKU_PREVIEW_TRANSPORT::NONE;
 		std::uint32_t seekMs = 0u;
-		if (m_pKoukuSaydonActionWorkbench->Consume_PreviewTransportRequest(transport, seekMs))
+		if (workbench->Consume_PreviewTransportRequest(transport, seekMs) &&
+			m_eCompositionPreviewOwner == route.owner)
 		{
 			const bool ownClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
 			if (ownClock)
@@ -1712,20 +1786,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 			if (transport == KOUKU_PREVIEW_TRANSPORT::STOP)
 			{
-				if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
-				if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+				StopCompositionPreview(route.owner);
 			}
 		}
 
 		std::string serverPatternId;
 		std::uint32_t sourceRevision = 0u;
-		if (m_pKoukuSaydonActionWorkbench->Consume_ServerPlayRequest(
-				serverPatternId, sourceRevision) && (!m_pKoukuPresentationPlayer ||
+		if (workbench->Consume_ServerPlayRequest(
+				serverPatternId, sourceRevision) && route.owner == DEBUG_TOOL::SEQUENCER && (!m_pKoukuPresentationPlayer ||
 			m_pKoukuPresentationPlayer->Reload_Product(m_strToolStatus)))
 		{
 			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) &&
 				nullptr != m_pKoukuSaydonBossTool)
 			{
@@ -1744,21 +1817,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	// Apply shared transport after every queued start. A Stop in Resources
 	// must also cancel a Pattern/row start submitted during the same UI frame.
-	if (nullptr != m_pSequencerTool)
+	if (nullptr != shell)
 	{
 		CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport =
 			CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE;
-		if (m_pSequencerTool->Consume_AnimationPreviewTransportRequest(transport))
+		if (shell->Consume_AnimationPreviewTransportRequest(transport) &&
+			m_eCompositionPreviewOwner == route.owner)
 		{
-			if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock())
+			if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
+				StopCompositionPreview(route.owner);
+			else if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock())
 			{
 				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE) m_pKoukuPresentationPlayer->Pause_Preview(true);
 				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME) m_pKoukuPresentationPlayer->Pause_Preview(false);
-				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
-				{
-					m_pKoukuPresentationPlayer->Stop_Preview();
-					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-				}
 			}
 			else if (nullptr != m_pAnimationTool)
 			{
@@ -1771,17 +1842,24 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
 					break;
 				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP:
-					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-					(void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
-					break;
 				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE:
 					break;
 				}
 			}
 			else
 				m_strToolStatus = "No animation preview backend is active.";
-			m_pSequencerTool->Set_AnimationPreviewStatus(m_strToolStatus);
+			shell->Set_AnimationPreviewStatus(m_strToolStatus);
+		}
+	}
+
+		if (!previewRouteStatus.empty())
+		{
+			auto state = workbench->Get_PreviewState();
+			state.strStatus = previewRouteStatus;
+			workbench->Set_PreviewState(state);
+			if (shell) shell->Set_AnimationPreviewStatus(previewRouteStatus);
+			if (m_eCompositionPreviewOwner == route.owner)
+			{ activePreviewRouteStatus = previewRouteStatus; previewStatusOwner = route.owner; }
 		}
 	}
 	KOUKU_PREVIEW_STATE finalPreview;
@@ -1831,15 +1909,18 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		else if (!pivotReady && finalPreview.bPlaying)
 			finalPreview.strStatus = "Preview requires an active arena character or animation target.";
 	}
-	if (!previewRouteStatus.empty()) finalPreview.strStatus = previewRouteStatus;
-	if (m_pKoukuSaydonActionWorkbench) m_pKoukuSaydonActionWorkbench->Set_PreviewState(finalPreview);
-	if (m_pSequencerTool)
+	if (previewStatusOwner == m_eCompositionPreviewOwner && !activePreviewRouteStatus.empty())
+		finalPreview.strStatus = activePreviewRouteStatus;
+	for (const auto& route : compositionRoutes)
 	{
+		if (route.owner != m_eCompositionPreviewOwner) continue;
+		if (route.workbench) route.workbench->Set_PreviewState(finalPreview);
+		if (!route.shell) continue;
 		CSequencerTool::ANIMATION_PREVIEW_STATE state;
 		state.strPatternId = finalPreview.strPatternId; state.strStatus = finalPreview.strStatus;
 		state.bPlaying = finalPreview.bPlaying; state.bPaused = finalPreview.bPaused;
 		state.iClockMs = finalPreview.iClockMs; state.iDurationMs = finalPreview.iDurationMs;
-		m_pSequencerTool->Set_AnimationPreviewState(std::move(state));
+		route.shell->Set_AnimationPreviewState(std::move(state));
 	}
 
 	if (m_pWorldObjectTool)
@@ -2029,6 +2110,13 @@ HRESULT CMainApp::Render()
 				m_pSequencerTool->Render();
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) && m_pSequenceBenchmarkTool)
+			{
+				focusNextWindow(DEBUG_TOOL::SEQUENCER_BENCHMARK);
+				m_pSequenceBenchmarkTool->Render();
+				if (!m_pSequenceBenchmarkTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 				nullptr != m_pAnimationTool)
@@ -6114,7 +6202,9 @@ void CMainApp::Apply_LevelRequest()
 	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
     if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
 	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
+	StopCompositionPreview(m_eCompositionPreviewOwner);
 	m_pWorldObjectCatalogSource = nullptr;
+	m_iWorldObjectCatalogGeneration = UINT64_MAX;
 #endif
 	const uint32_t iPreviousLevel =
 		CGameInstance::Get().Get_CurrentLevelID();
@@ -6370,6 +6460,8 @@ void CMainApp::SetDebugToolVisible(
 	}
 	if (!bVisible)
 	{
+		if (eCanonicalTool == DEBUG_TOOL::SEQUENCER || eCanonicalTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+			StopCompositionPreview(eCanonicalTool);
 		if (m_eDebugInputOwner == eCanonicalTool)
 			m_eDebugInputOwner = DEBUG_TOOL::NONE;
 		if (m_eDebugWindowFocusPending == eCanonicalTool)
@@ -6385,6 +6477,42 @@ void CMainApp::SetDebugToolVisible(
         else if (DEBUG_TOOL::EFFECT_V2 == eCanonicalTool && m_pEffectToolV2)
             m_pEffectToolV2->Deactivate();
 	}
+}
+
+void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
+{
+	if (m_eCompositionPreviewOwner == owner) return;
+	auto* previousWorkbench = m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER ?
+		m_pKoukuSaydonActionWorkbench.get() :
+		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequenceActionWorkbench.get() : nullptr);
+	auto* previousShell = m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER ? m_pSequencerTool.get() :
+		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequenceBenchmarkTool.get() : nullptr);
+	if (previousWorkbench)
+	{
+		auto state = previousWorkbench->Get_PreviewState();
+		state.bPlaying = false;
+		state.bPaused = true;
+		previousWorkbench->Set_PreviewState(state);
+	}
+	if (previousShell)
+	{
+		auto state = previousShell->Get_AnimationPreviewState();
+		state.bPlaying = false;
+		state.bPaused = true;
+		previousShell->Set_AnimationPreviewState(std::move(state));
+	}
+	m_eCompositionPreviewOwner = owner;
+	m_eColliderAuthoringOwner = DEBUG_TOOL::NONE;
+	m_iColliderAuthoringDraftGeneration = UINT64_MAX;
+}
+
+void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
+{
+	if (owner == DEBUG_TOOL::NONE || m_eCompositionPreviewOwner != owner) return;
+	if (m_pAnimationTool) (void)m_pAnimationTool->Stop_KoukuCompositionPreview(m_strToolStatus);
+	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+	ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 }
 
 void CMainApp::CloseAllDebugTools()
@@ -6516,6 +6644,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (nullptr == m_pKoukuSaydonActionWorkbench)
 		{
 			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
+			m_pWorldObjectCatalogSource = nullptr;
+			m_iWorldObjectCatalogGeneration = UINT64_MAX;
 			m_pKoukuSaydonActionWorkbench->Set_WorldPlacementResolver(
 				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 				{
@@ -6538,7 +6668,41 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
 		}
 		else
-			m_pSequencerTool->Open();
+		{
+			const auto level = CGameInstance::Get().Get_CurrentLevelID();
+			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
+			if (level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+			else if (level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
+			else m_pSequencerTool->Open();
+		}
+		break;
+	case DEBUG_TOOL::SEQUENCER_BENCHMARK:
+		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
+		if (!m_pSequenceActionWorkbench)
+		{
+			m_pSequenceActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>(true);
+			m_pSequenceActionWorkbench->Set_WorldPlacementResolver(
+				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
+				{
+					auto* arena = CLevel_KakulSaydonArena::Get_Active();
+					float3_t position{};
+					if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
+					if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
+					placement = {};
+					placement.Position = {position.x, position.y, position.z};
+					return true;
+				});
+			m_pWorldObjectCatalogSource = nullptr;
+			m_iWorldObjectCatalogGeneration = UINT64_MAX;
+		}
+		if (!m_pSequenceBenchmarkTool)
+		{
+			m_pSequenceBenchmarkTool = make_unique<CSequencerTool>(nullptr, m_pSequenceActionWorkbench.get(), true);
+			m_pSequenceBenchmarkTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+		}
+		else m_pSequenceBenchmarkTool->Open();
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
@@ -8089,7 +8253,7 @@ void CMainApp::Save_KoukuTuning()
 	m_strKoukuTuneStatus = "Saved bodyModelPreScale " + Format_TuningNumber(bodyScale) +
 		" (big Saydon), position (" + Format_TuningNumber(position.x) + ", " +
 		Format_TuningNumber(position.y) + ", " + Format_TuningNumber(position.z) + "); " + summary +
-		"Scale/rotation apply on the next Client run; position/yaw after Publish-WorldGameplay + Server restart. The live offsets stay until Reload.";
+		"Scale/rotation apply on the next Client run; position/yaw after Save -> Publish All Patterns -> restart Server. The live offsets stay until Reload.";
 }
 
 void CMainApp::RenderKoukuSaydonBossTuningControls()
@@ -8099,7 +8263,7 @@ void CMainApp::RenderKoukuSaydonBossTuningControls()
 		return;
 	ImGui::SeparatorText("Arena Boss Tuning (temporary)");
 	ImGui::TextDisabled(
-		"Live values are Client-side multipliers/offsets on the spawned bodies. Save writes catalog scale/rotation (next Client run) and world position/yaw (world publish + Server restart). Remove this slice once tuned.");
+		"Live values are Client-side multipliers/offsets on the spawned bodies. Save writes catalog scale/rotation (next Client run) and world position/yaw (Save -> Publish All Patterns -> restart Server). Remove this slice once tuned.");
 	if (!m_bKoukuTuneLoaded)
 		Load_KoukuTuningBaseline();
 	if (ImGui::SmallButton("Reload Baseline##KoukuTune"))
@@ -8213,10 +8377,10 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 {
 	if (!ImGui::CollapsingHeader("KoukuSaydon Complete Play (Server Boss Replay)")) return;
 	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
-	ImGui::TextWrapped("Choose a Gate, then a saved playback bundle or one child Pattern. Parent folders only organize the list.");
+	ImGui::TextWrapped("This is the Boss Patterns tree from Composition > Publish All Patterns. Choose a Gate, bundle or child Pattern; unavailable rows show what needs authoring.");
 	if (ImGui::SmallButton(m_bKoukuCompletePlayLoadAttempted ? "Reload KoukuSaydon Inventory" : "Load KoukuSaydon Inventory"))
 	{ (void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus); m_bKoukuCompletePlayLoadAttempted = true; }
-	if (!m_bKoukuCompletePlayLoadAttempted) { ImGui::TextDisabled("Load the saved Product inventory to list Patterns."); return; }
+	if (!m_bKoukuCompletePlayLoadAttempted) { ImGui::TextDisabled("Load the published Boss Patterns tree."); return; }
 	static const char* labels[] = { "\x31\xEA\xB4\x80\xEB\xAC\xB8", "\x32\xEA\xB4\x80\xEB\xAC\xB8", "\x33\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
 	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
 	m_iKoukuCompletePlayGate = (std::clamp)(m_iKoukuCompletePlayGate, 0, 3);
@@ -8224,56 +8388,12 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	{ m_iKoukuCompletePlaySelection = 0; m_strKoukuCompletePlayPatternId.clear(); }
 	const std::string gate = gates[m_iKoukuCompletePlayGate];
 	const auto patterns = m_pKoukuSaydonBossTool->Get_ProductPatterns();
-	const auto folders = m_pKoukuSaydonBossTool->Get_ProductFolders();
 	const auto bundles = m_pKoukuSaydonBossTool->Get_ProductBundles();
 	const auto findPattern = [&](const std::string& id) -> const CKoukuSaydonBossTool::PRODUCT_PATTERN* {
 		auto it=std::find_if(patterns.begin(),patterns.end(),[&](const auto& p){return p.strPatternId==id;}); return it==patterns.end()?nullptr:&*it; };
-	const auto selectPattern = [&](const CKoukuSaydonBossTool::PRODUCT_PATTERN& pattern, const std::string& uiId) {
-		if (ImGui::Selectable((pattern.strDisplayName+(pattern.strLoadError.empty()?"":" [Error]")+"##"+uiId).c_str(),m_iKoukuCompletePlaySelection==3 && m_strKoukuCompletePlayPatternId==pattern.strPatternId))
-		{ m_iKoukuCompletePlaySelection=3; m_strKoukuCompletePlayPatternId=pattern.strPatternId; }
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s",pattern.strPatternId.c_str(),pattern.strTargetBossPlacementId.c_str());
-	};
-	bool gateHasProduct=false;
+	bool gateHasProduct = false;
 	if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0,240), true))
-	{
-		for (const auto& folder : folders)
-		{
-			if (folder.strGateId!=gate) continue;
-			gateHasProduct=true;
-			const bool open=ImGui::TreeNodeEx((folder.strDisplayName+" [Parent]##"+folder.strFolderId).c_str(),ImGuiTreeNodeFlags_DefaultOpen|ImGuiTreeNodeFlags_OpenOnArrow|
-				(m_iKoukuCompletePlaySelection==1 && m_strKoukuCompletePlayPatternId==folder.strFolderId?ImGuiTreeNodeFlags_Selected:0));
-			if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen()) { m_iKoukuCompletePlaySelection=1; m_strKoukuCompletePlayPatternId=folder.strFolderId; }
-			if (open)
-			{
-				for (const auto& bundle : bundles)
-				{
-					if (bundle.strFolderId!=folder.strFolderId || bundle.strGateId!=gate) continue;
-					const bool bundleOpen=ImGui::TreeNodeEx((bundle.strDisplayName+" ["+std::to_string(bundle.Members.size())+" actors]##"+bundle.strBundleId).c_str(),ImGuiTreeNodeFlags_DefaultOpen|ImGuiTreeNodeFlags_OpenOnArrow|
-						(m_iKoukuCompletePlaySelection==2 && m_strKoukuCompletePlayPatternId==bundle.strBundleId?ImGuiTreeNodeFlags_Selected:0));
-					if (ImGui::IsItemClicked()&&!ImGui::IsItemToggledOpen()) { m_iKoukuCompletePlaySelection=2; m_strKoukuCompletePlayPatternId=bundle.strBundleId; }
-					if (bundleOpen)
-					{
-						for (const auto& member : bundle.Members)
-							if (const auto* pattern=findPattern(member.strPatternId)) selectPattern(*pattern,member.strMemberId);
-							else ImGui::TextDisabled("Missing: %s",member.strPatternId.c_str());
-						ImGui::TreePop();
-					}
-				}
-				for (const auto& pattern : patterns)
-					if (pattern.strGateId==gate && pattern.strFolderId==folder.strFolderId) selectPattern(pattern,pattern.strPatternId);
-				ImGui::TreePop();
-			}
-		}
-		for (const auto& pattern : patterns)
-		{
-			if (pattern.strGateId!=gate) continue;
-			gateHasProduct=true;
-			const bool linked=std::any_of(bundles.begin(),bundles.end(),[&](const auto& b){return std::any_of(b.Members.begin(),b.Members.end(),[&](const auto& m){return m.strPatternId==pattern.strPatternId;});});
-			const bool parented=std::any_of(folders.begin(),folders.end(),[&](const auto& folder){return folder.strFolderId==pattern.strFolderId && folder.strGateId==gate;});
-			if (!linked && !parented) selectPattern(pattern,pattern.strPatternId);
-		}
-		if (!gateHasProduct) ImGui::TextDisabled("No published Patterns for this Gate. Save and Publish in Composition.");
-	}
+		gateHasProduct = m_pKoukuSaydonBossTool->Render_PatternTree(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId);
 	ImGui::EndChild();
 	const auto* pattern=m_iKoukuCompletePlaySelection==3?findPattern(m_strKoukuCompletePlayPatternId):nullptr;
 	const auto selectedBundle=std::find_if(bundles.begin(),bundles.end(),[&](const auto& b){return m_iKoukuCompletePlaySelection==2 && b.strBundleId==m_strKoukuCompletePlayPatternId && b.strGateId==gate;});
@@ -8285,24 +8405,28 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		{ const auto* p=findPattern(member.strPatternId); ImGui::BulletText("%s -> %s | %u ms",member.strTargetBossPlacementId.c_str(),p?p->strDisplayName.c_str():member.strPatternId.c_str(),member.iStartOffsetMs); }
 		if (!selectedBundle->strLoadError.empty()) ImGui::TextWrapped("%s",selectedBundle->strLoadError.c_str());
 	}
-	else if (pattern) ImGui::TextWrapped("Selected Pattern: %s | %s",pattern->strDisplayName.c_str(),pattern->strTargetBossPlacementId.c_str());
+	else if (pattern)
+	{
+		ImGui::TextWrapped("Selected Pattern: %s | %s",pattern->strDisplayName.c_str(),pattern->strTargetBossPlacementId.c_str());
+		if (!pattern->strLoadError.empty()) ImGui::TextWrapped("%s",pattern->strLoadError.c_str());
+	}
 	else ImGui::TextDisabled("Select a playback bundle or child Pattern. Parent folders are not executable.");
 	auto& service=CKoukuSaydonPatternAuditionService::Get(); const auto audition=service.Get_Snapshot();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
-	const bool ready=bundleSelected?selectedBundle->strLoadError.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
+	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight());
 	const auto prepareSavedProduct = [&]() {
 		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition())
 		{
 			if (m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
-			{ m_strKoukuCompletePlayStatus = "Saved PRODUCT is still being published. Wait for completion before Complete Play."; return false; }
+			{ m_strKoukuCompletePlayStatus = "Publish All Patterns is still running. Wait for completion before Complete Play."; return false; }
 			if (m_pKoukuSaydonActionWorkbench->Is_Dirty())
-			{ m_strKoukuCompletePlayStatus = "Save Composition changes before Complete Play."; return false; }
+			{ m_strKoukuCompletePlayStatus = "Save Composition changes and use Publish All Patterns before Complete Play."; return false; }
 		}
 		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
 		if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Has_Composition() &&
 			m_pKoukuSaydonActionWorkbench->Get_Composition().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
-		{ m_strKoukuCompletePlayStatus = "Saved Composition and published PRODUCT differ. Complete Save/publish and restart Server before Complete Play."; return false; }
+		{ m_strKoukuCompletePlayStatus = "Saved Composition and published Boss Patterns differ. Use Publish All Patterns and restart Server before Complete Play."; return false; }
 		return true;
 	};
 	const std::string playLabel=(bundleSelected?"Complete Play - "+std::to_string(selectedBundle->Members.size())+" actors":"Complete Play - Selected Pattern")+"##KoukuServerPattern";
@@ -8730,7 +8854,7 @@ void CMainApp::RenderServerArenaActiveControls()
 
 void CMainApp::RefreshWorldObjectResources()
 {
-	if (!m_pKoukuSaydonActionWorkbench) return;
+	if (!m_pKoukuSaydonActionWorkbench && !m_pSequenceActionWorkbench) return;
 	const auto* level = CLevel_KakulSaydonArena::Get_Active();
 	const CWorldSequenceDocument* document = m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr;
 	const uint64_t generation = document ? m_pWorldObjectTool->Get_SavedGeneration() : 0;
@@ -8787,9 +8911,11 @@ void CMainApp::RefreshWorldObjectResources()
 			resources.push_back(std::move(row));
 		}
 	}
-	m_pKoukuSaydonActionWorkbench->Set_WorldSequenceResources(std::move(resources), document ?
+	const std::string status = document ?
 		"Objects saved in Object Tool. Select an Object to preview or append; edit its animations in Object Tool." :
-		"Enter KoukuSaydon or open Object Tool to load saved Objects.");
+		"Enter KoukuSaydon or open Object Tool to load saved Objects.";
+	if (m_pKoukuSaydonActionWorkbench) m_pKoukuSaydonActionWorkbench->Set_WorldSequenceResources(resources, status);
+	if (m_pSequenceActionWorkbench) m_pSequenceActionWorkbench->Set_WorldSequenceResources(std::move(resources), status);
 }
 
 void CMainApp::RenderDeveloperTools()
@@ -8879,6 +9005,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Valtan Logic Pattern", DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
+		toolButton("Sequencer Benchmark", DEBUG_TOOL::SEQUENCER_BENCHMARK, true);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
@@ -8893,11 +9020,12 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 14>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 15>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "World Object Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
+			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Sequencer Benchmark" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool V1" },
             { DEBUG_TOOL::EFFECT_V2, "Effect Tool V2" },
@@ -9308,11 +9436,11 @@ void CMainApp::RenderRenderingWorkbench()
 			CGameInstance::Get().Get_Profiler(), strQualitySummary);
 	}
 
-	ImGui::SeparatorText("Floor Materials");
+	ImGui::SeparatorText("Map Materials");
 	MATERIAL_RENDER_SETTINGS materialSettings =
 		CGameInstance::Get().Get_MaterialRenderSettings();
 	bool_t materialChanged = ImGui::Checkbox(
-		"Recovered floor materials (A/B)", &materialSettings.bUseSourceMaterials);
+		"Recovered map materials (B)", &materialSettings.bUseSourceMaterials);
 	static constexpr const char* materialViews[] = {
 		"Final", "Base color", "Normal", "Direct specular", "Reflection delta",
 		"Roughness", "Metallic", "Material AO"
@@ -9335,7 +9463,7 @@ void CMainApp::RenderRenderingWorkbench()
 	const auto surfaceBindings = CMapAssetRenderUtils::Get_RecentSurfaceBindings();
 	ImGui::TextDisabled("Successful material bindings in the last second (up to 32).");
 	if (surfaceBindings.empty())
-		ImGui::TextDisabled("No declared floor material was recently bound.");
+		ImGui::TextDisabled("No declared map material was recently bound.");
 	else if (ImGui::BeginTable("RecentFloorMaterialBindings", 4,
 		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
 	{
@@ -9684,6 +9812,8 @@ void CMainApp::Free()
 	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 		pProfiler->Set_Enabled(false);
 	m_pSequencerTool.reset();
+	m_pSequenceBenchmarkTool.reset();
+	m_pSequenceActionWorkbench.reset();
 	m_pProfilerTool.reset();
 	m_pRenderingBenchmark.reset();
 	m_pKoukuSaydonActionWorkbench.reset();

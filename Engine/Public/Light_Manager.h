@@ -17,6 +17,8 @@ public:
 	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
 		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
 		bool_t bEnableSceneDirectionalShadow);
+	// Rendering-thread view of the currently committed scene lighting.
+	const vector<LIGHT_DESC>& Get_SceneLights() const { return m_SceneLights; }
 	uint32_t Get_SceneLightCount() const {
 		return static_cast<uint32_t>(m_SceneLights.size());
 	}

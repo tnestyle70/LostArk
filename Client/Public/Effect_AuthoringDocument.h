@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -1067,6 +1068,10 @@ struct EFFECT_PARTICLE_BURST_DESC final
 struct EFFECT_CASCADE_RECIPE_DESC final
 {
 	bool_t bEnabled = false;
+	// Native ERM_None emitters still own live particles used by sibling emitters.
+	bool_t bSimulationOnly = false;
+	std::string strParticleSystemOccurrenceId;
+	std::string strEmitterName;
 	/* Explicit authoring ownership of portable module values. The source
 	   simulator and material contract remain active; native evidence stays read-only. */
 	bool_t bAuthoredModuleOverrides = false;
@@ -1130,6 +1135,7 @@ enum class EFFECT_SCREEN_POST_PROFILE : uint8_t
 	RGB_NOISE_RECONSTRUCTED_V1,
 	ZOOM_BLUR_RECONSTRUCTED_V1,
 	FILM_NOISE_RECONSTRUCTED_V1,
+	MOTION_BLUR_RECONSTRUCTED_V1,
 	END
 };
 
@@ -1501,6 +1507,12 @@ inline bool_t Is_EffectWorldMarkCarrier(const EFFECT_ELEMENT_DESC& Element)
 /* Admission is still validated by the codec and resource stage. This gate
    lets one occurrence use its complete slot set without activating the unused
    primary Required.Material (often EngineMaterials.DefaultMaterial). */
+inline bool_t Is_EffectSimulationOnlyParticle(const EFFECT_ELEMENT_DESC& Element)
+{
+	return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Element.SourceRecipe.bEnabled && Element.SourceRecipe.bSimulationOnly;
+}
+
 inline bool_t Is_EffectElementAuthoringExecutionTarget(
 	const EFFECT_ELEMENT_DESC& Element)
 {
@@ -1841,6 +1853,8 @@ struct EFFECT_MODEL_CUE_DESC final
 		EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
 	bool_t bHoldLastFrame = false;
 	bool_t bVisible = true;
+	// Absent preserves the cooked CMaterial; present owns the recovered skeletal material.
+	std::optional<EFFECT_MATERIAL_DESC> Material;
 };
 
 struct EFFECT_PARTICLE_SYSTEM_DESC final

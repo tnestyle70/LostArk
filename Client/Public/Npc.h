@@ -3,12 +3,14 @@
 #include "Client_Defines.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "GameObject.h"
+#include "PlayerHandGripTransform.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
 #include <string>
+#include <optional>
 
 NS_BEGIN(Engine)
 class CShader;
@@ -209,7 +211,7 @@ model and nothing to assemble.
 Everything an instance starts with is in NPC_DESC, so the placement tool can
 spawn the same prototype many times; product movement and later action edges are
 then supplied by Client replication. */
-class CNpc final : public CGameObject
+class CNpc final : public CGameObject, public IPlayerHandGripSocketSource
 {
 public:
 	typedef struct tagNpcDesc : public CGameObject::GAMEOBJECT_DESC
@@ -274,11 +276,21 @@ public:
 	}
 	const std::string& Get_EffectV2BindingOwner() const { return m_strEffectV2BindingOwner; }
 	bool_t Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& outView) const;
+	bool_t Set_PlayerHandGripLocalOffset(const PLAYER_HAND_GRIP_LOCAL_OFFSET& offset);
+	void Clear_PlayerHandGripLocalOffset() { m_PlayerHandGripLocalOffset.reset(); }
+	bool_t Try_Get_PlayerHandGripSocketView(LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const override;
+	bool_t Try_Get_PlayerHandGripLocalOffset(LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const override;
 	void Synchronize_WeaponPose();
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Restarts the selected clip even when the previous action used the same
 	clip. The network action edge owns restart timing; the model only owns how
 	the authored clip is blended and played. */
+	// A zero hold deadline preserves the existing whole-stage action lifetime.
+	bool_t Set_NetworkAnimationWindow(f32_t ageSeconds, f32_t holdSeconds);
+	bool_t Apply_NetworkAnimationTransition(const char_t* sourceClip, f32_t sourceMs,
+		f32_t durationMs, f32_t ageSeconds, f32_t playRate);
 	bool_t Play_NetworkAction(
 		const char_t* pClipName,
 		bool_t isLoop,
@@ -349,6 +361,14 @@ private:
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	std::string m_strDefaultIdleClip;
+	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> m_PlayerHandGripLocalOffset;
+	bool_t m_bNetworkAnimationTransition = false;
+	bool_t m_isNetworkAnimationLoop = false;
+	f32_t m_fNetworkAnimationAgeSeconds = 0.f, m_fNetworkAnimationHoldSeconds = 0.f;
+	f32_t m_fNetworkAnimationPlayRate = 1.f;
+	uint32_t m_iTransitionSourceIndex = UINT32_MAX;
+	f32_t m_fTransitionSourceTicks = 0.f, m_fTransitionDurationSeconds = 0.f;
+	f32_t m_fTransitionAgeSeconds = 0.f, m_fTransitionPlayRate = 1.f;
 	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
 	bool_t m_bSuppressRootMotion = false;
 	bool_t m_bInterpolateNetworkTransform = false;

@@ -10,6 +10,7 @@ struct MODEL_SKELETON_DATA;
 class ENGINE_DLL CMesh final : public CVIBuffer
 {
 private:
+	friend class CModel;
 	CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 public:
 	virtual ~CMesh();
@@ -31,7 +32,8 @@ public:
 public:
 	HRESULT Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pConstantName, const vector<shared_ptr<class CBone>>& Bones);
 	HRESULT Render_Instanced(ID3D11Buffer* pInstanceBuffer,
-		uint32_t iInstanceStride, uint32_t iNumInstances);
+		uint32_t iInstanceStride, uint32_t iNumInstances,
+		uint32_t iInstanceByteOffset = 0u);
 
 public:
 	/* True once Make_VertexBuffer_Unique() has run on this instance -- i.e. it has read back

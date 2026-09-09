@@ -1,0 +1,3010 @@
+{
+  "sourceActionExclusions": [
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-006",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-026",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_01",
+      "sourceNotify": "action-34040/stage-000/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34040,
+      "clipName": "flm_sk_sharpswing_02",
+      "sourceNotify": "action-34040/stage-001/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-013",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34090,
+      "clipName": "flm_sk_dragonkick",
+      "sourceNotify": "action-34090/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-004",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_01",
+      "sourceNotify": "action-34100/stage-000/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-011",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-013",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_02",
+      "sourceNotify": "action-34100/stage-001/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-008",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-010",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-011",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-026",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34100,
+      "clipName": "flm_sk_cycloinclance_03_re",
+      "sourceNotify": "action-34100/stage-002/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-037",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-040",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-042",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-052",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_01",
+      "sourceNotify": "action-34160/stage-000/notify-054",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_02",
+      "sourceNotify": "action-34160/stage-001/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_02",
+      "sourceNotify": "action-34160/stage-001/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34160,
+      "clipName": "flm_sk_riseup_02",
+      "sourceNotify": "action-34160/stage-001/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-004",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-005",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-010",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-029",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-037",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-038",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-039",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-042",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-044",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-045",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-046",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-047",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-055",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-056",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-057",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-061",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-062",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-063",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34110,
+      "clipName": "flm_sk_crescentsweep",
+      "sourceNotify": "action-34110/stage-000/notify-064",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-026",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-029",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-031",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-033",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-047",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-048",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-049",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-051",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-054",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-055",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-057",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-058",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-059",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-062",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34150,
+      "clipName": "flm_sk_crushingblow",
+      "sourceNotify": "action-34150/stage-000/notify-063",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34020,
+      "clipName": "flm_sk_moving_normal_1",
+      "sourceNotify": "action-34020/stage-000/notify-015",
+      "reason": "SOURCE_NOTIFY_HAS_NO_PARTICLE_SYSTEM",
+      "labels": [
+        "Empty-for-Avatar",
+        "FXAVATAR",
+        "CEFParticleData"
+      ]
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-029",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34540,
+      "clipName": "flm_sk_stab",
+      "sourceNotify": "action-34540/stage-000/notify-031",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-038",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-039",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-040",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-042",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-043",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34550,
+      "clipName": "flm_sk_talonstrike",
+      "sourceNotify": "action-34550/stage-000/notify-044",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-006",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-008",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-009",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-011",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_02",
+      "sourceNotify": "action-34560/stage-001/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34560,
+      "clipName": "flm_sk_penetrationlunge_03",
+      "sourceNotify": "action-34560/stage-002/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-008",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-010",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-031",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-032",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-033",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-034",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_01",
+      "sourceNotify": "action-34570/stage-000/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-009",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-010",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-011",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-013",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-029",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-036",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-037",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-038",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-039",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-047",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-048",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-049",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-050",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-051",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-054",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-055",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-056",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-057",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34570,
+      "clipName": "flm_sk_dragonupfly_02_re",
+      "sourceNotify": "action-34570/stage-001/notify-058",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_01",
+      "sourceNotify": "action-34580/stage-000/notify-011",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_01",
+      "sourceNotify": "action-34580/stage-000/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_01",
+      "sourceNotify": "action-34580/stage-000/notify-013",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_01",
+      "sourceNotify": "action-34580/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_02",
+      "sourceNotify": "action-34580/stage-001/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_02",
+      "sourceNotify": "action-34580/stage-001/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_02",
+      "sourceNotify": "action-34580/stage-001/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_02",
+      "sourceNotify": "action-34580/stage-001/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34580,
+      "clipName": "flm_sk_counterattack_02",
+      "sourceNotify": "action-34580/stage-001/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-004",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-006",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-008",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_start",
+      "sourceNotify": "action-34590/stage-000/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-012",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-015",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-022",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-026",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-028",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-031",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-032",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-034",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-036",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-038",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_loop",
+      "sourceNotify": "action-34590/stage-001/notify-039",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-014",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-016",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-017",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-018",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-019",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-020",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-021",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-023",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-024",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-025",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-026",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-027",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-029",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-030",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-031",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-032",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-033",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-034",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-035",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34590,
+      "clipName": "flm_sk_lastwhisper_end",
+      "sourceNotify": "action-34590/stage-002/notify-040",
+      "reason": "SOURCE_ACTION_NOTIFY_DISABLED"
+    },
+    {
+      "skillId": 34520,
+      "clipName": "flm_sk_moving_normal_2",
+      "sourceNotify": "action-34520/stage-000/notify-015",
+      "reason": "SOURCE_NOTIFY_HAS_NO_PARTICLE_SYSTEM",
+      "labels": [
+        "Empty-for-Avatar",
+        "FXAVATAR",
+        "CEFParticleData"
+      ]
+    }
+  ],
+  "emptyStages": [
+    {
+      "skillId": 34140,
+      "sourceStageIndex": 2,
+      "stageIndex": 16,
+      "clipName": "flm_sk_chestdestruction_03",
+      "comboStage": 1,
+      "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip1.full.restore",
+      "sourceCandidates": [
+        2,
+        10
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 1.3333330154418945,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    },
+    {
+      "skillId": 34000,
+      "sourceStageIndex": 0,
+      "stageIndex": 23,
+      "clipName": "flm_mode_identity1",
+      "comboStage": null,
+      "effectAssetId": "effect.lancemaster.skill.34000.full.restore",
+      "sourceCandidates": [
+        0
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 0.6000000238418579,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    },
+    {
+      "skillId": 34560,
+      "sourceStageIndex": 0,
+      "stageIndex": 31,
+      "clipName": "flm_sk_penetrationlunge_01",
+      "comboStage": null,
+      "effectAssetId": "effect.lancemaster.skill.34560.clip1.full.restore",
+      "sourceCandidates": [
+        0,
+        4,
+        11
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 0.699999988079071,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    },
+    {
+      "skillId": 34560,
+      "sourceStageIndex": 3,
+      "stageIndex": 34,
+      "clipName": "flm_sk_penetrationlunge_04",
+      "comboStage": null,
+      "effectAssetId": "effect.lancemaster.skill.34560.clip4.full.restore",
+      "sourceCandidates": [
+        3,
+        9,
+        14
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 0.43333300948143005,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    },
+    {
+      "skillId": 34570,
+      "sourceStageIndex": 2,
+      "stageIndex": 37,
+      "clipName": "flm_sk_dragonupfly_03_re",
+      "comboStage": null,
+      "effectAssetId": "effect.lancemaster.skill.34570.clip3.full.restore",
+      "sourceCandidates": [
+        2
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 1.0333329439163208,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    },
+    {
+      "skillId": 34500,
+      "sourceStageIndex": 0,
+      "stageIndex": 43,
+      "clipName": "flm_mode_identity2",
+      "comboStage": null,
+      "effectAssetId": "effect.lancemaster.skill.34500.full.restore",
+      "sourceCandidates": [
+        0
+      ],
+      "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP",
+      "durationSeconds": 0.800000011920929,
+      "reason": "SOURCE_HAS_NO_ACTIVE_RENDERABLE_OCCURRENCE"
+    }
+  ],
+  "occurrences": [
+    {
+      "document": "effect.lancemaster.skill.34650.clip2.full.restore",
+      "elementId": "authored.lance-all.383515a6e0321cd7491f012c",
+      "sourceActionCueId": "action-34650/stage-001/notify-019",
+      "sourceEmitter": "fx_pc_flm_08.par_t_flm_dragoncleave_00_03.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_15_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34650.clip2.full.restore",
+      "elementId": "authored.lance-all.7f92cdab43a450e196d517dd",
+      "sourceActionCueId": "action-34650/stage-001/notify-019",
+      "sourceEmitter": "fx_pc_flm_08.par_t_flm_dragoncleave_00_03.particlespriteemitter_21",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34010.ba1.full.restore",
+      "elementId": "authored.lance-all.c6ed42635b65a0d7f4441838",
+      "sourceActionCueId": "action-34010/stage-000/notify-009",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34010.ba2.full.restore",
+      "elementId": "authored.lance-all.a72fe3ae7b8354a9373df7fb",
+      "sourceActionCueId": "action-34010/stage-001/notify-007",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34010.ba3.full.restore",
+      "elementId": "authored.lance-all.dbee6fd3b18941dbcff3ec18",
+      "sourceActionCueId": "action-34010/stage-002/notify-009",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34010.ba4.full.restore",
+      "elementId": "authored.lance-all.266e75aa84a2680fb202acf0",
+      "sourceActionCueId": "action-34010/stage-003/notify-011",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34090.full.restore",
+      "elementId": "authored.lance-all.6e0e916e0ba59898da299f4f",
+      "sourceActionCueId": "action-34090/stage-000/notify-017",
+      "sourceEmitter": "fx_pc_flm_04.par_s_flm_dragon_kick_01_1.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_s_00.fx_mi.fx_s_de_ground_01_1_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34100.clip2.full.restore",
+      "elementId": "authored.lance-all.d08a6fc00c3180325e485482",
+      "sourceActionCueId": "action-34100/stage-001/notify-006",
+      "sourceEmitter": "fx_post.fx_par.par_c_motionblur_v_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_post.fx_mi.fx_c_pa_motionblur_02_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34100.clip3.full.restore",
+      "elementId": "authored.lance-all.04c3f2d2def548e011a7c269",
+      "sourceActionCueId": "action-34100/stage-002/notify-019",
+      "sourceEmitter": "fx_pc_flm_06.par_v_flm_dragon_hit_00.particlespriteemitter_2",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_simple_01_33_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34160.ba1.full.restore",
+      "elementId": "authored.lance-all.3426271b1c6900ce2747b44b",
+      "sourceActionCueId": "action-34160/stage-000/notify-012",
+      "sourceEmitter": "fx_pc_flm_04.par_s_flm_riseup_atk_01_1.particlespriteemitter_40",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_40_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34110.full.restore",
+      "elementId": "authored.lance-all.cf5b7a1886761f0375583715",
+      "sourceActionCueId": "action-34110/stage-000/notify-036",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_decal_01.particlespriteemitter_11",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_de_master_01_01_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34110.full.restore",
+      "elementId": "authored.lance-all.ba253f1e436657af3168fad3",
+      "sourceActionCueId": "action-34110/stage-000/notify-036",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_decal_01.particlespriteemitter_15",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_49_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34110.full.restore",
+      "elementId": "authored.lance-all.5995bc90dd6ccb5d935bcd9e",
+      "sourceActionCueId": "action-34110/stage-000/notify-054",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_spark_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34110.full.restore",
+      "elementId": "authored.lance-all.5ad2ba253bf8646c56398570",
+      "sourceActionCueId": "action-34110/stage-000/notify-002",
+      "sourceEmitter": "fx_post.fx_par.par_c_motionblur_v_02.particlespriteemitter_0",
+      "sourceMaterial": "fx_post.fx_mi.fx_c_pa_motionblur_02_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34020.full.restore",
+      "elementId": "authored.lance-all.9dafdac001f2157bc2f898a0",
+      "sourceActionCueId": "action-34020/stage-000/notify-004",
+      "sourceEmitter": "fx_pc_flm_05.par_d_flm_trail_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_k_pa_electric_trail_02_1_ad",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34020.full.restore",
+      "elementId": "authored.lance-all.800adeb4562a22c0f49053ee",
+      "sourceActionCueId": "action-34020/stage-000/notify-017",
+      "sourceEmitter": "fx_pc_flm_05.par_d_flm_trail_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_k_pa_electric_trail_02_1_ad",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34030.full.restore",
+      "elementId": "authored.lance-all.70130815352a388e89258ebe",
+      "sourceActionCueId": "action-34030/stage-000/notify-001",
+      "sourceEmitter": "fx_pc_flm_05.par_o_standupribbon_01.particlespriteemitter_1",
+      "sourceMaterial": "fx_m_mi_05.fx_m.fx_b_pa_trail_09_ts_ad",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "efparticlemodulelocationemitter",
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34030.full.restore",
+      "elementId": "authored.lance-all.24453e0d9a57e523b34adf86",
+      "sourceActionCueId": "action-34030/stage-000/notify-001",
+      "sourceEmitter": "fx_pc_flm_05.par_o_standupribbon_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_05.fx_m.fx_b_pa_trail_09_ts_ad",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "efparticlemodulelocationemitter",
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34030.full.restore",
+      "elementId": "authored.lance-all.939be5969c6ae6328e480f19",
+      "sourceActionCueId": "action-34030/stage-000/notify-001",
+      "sourceEmitter": "fx_pc_flm_05.par_o_standupribbon_01.particlespriteemitter_22",
+      "sourceMaterial": "",
+      "reason": "MATERIAL_MAP_MISSING",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34030.full.restore",
+      "elementId": "authored.lance-all.0e9215f532d0efca22a092a1",
+      "sourceActionCueId": "action-34030/stage-000/notify-001",
+      "sourceEmitter": "fx_pc_flm_05.par_o_standupribbon_01.particlespriteemitter_23",
+      "sourceMaterial": "",
+      "reason": "MATERIAL_MAP_MISSING",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34550.full.restore",
+      "elementId": "authored.lance-all.a4637b973d7e2bf2ab460c3e",
+      "sourceActionCueId": "action-34550/stage-000/notify-002",
+      "sourceEmitter": "fx_pc_flm_03.par_n_flm_dust_01.particlespriteemitter_21",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_d_pa_dissolve_01_04_ma",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "blockingModules": [
+        "efparticlemodulelocationemitter"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34550.full.restore",
+      "elementId": "authored.lance-all.a51e9d59817cc971a9c31a06",
+      "sourceActionCueId": "action-34550/stage-000/notify-014",
+      "sourceEmitter": "fx_pc_flm_03.par_n_flm_spearaura_01.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_01.fx_mi.fx_e_me_ap_01_1_ts_tr",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "blockingModules": [
+        "particlemoduleeventgenerator",
+        "particlemoduleeventgenerator"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34560.clip2.full.restore",
+      "elementId": "authored.lance-all.b9f5c170303ef7fb3e9116e3",
+      "sourceActionCueId": "action-34560/stage-001/notify-005",
+      "sourceEmitter": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_00.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_pa_worldoffset_02_01_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34560.clip3.full.restore",
+      "elementId": "authored.lance-all.273d462cddf0d853c46a2e98",
+      "sourceActionCueId": "action-34560/stage-002/notify-013",
+      "sourceEmitter": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_00.particlespriteemitter_20",
+      "sourceMaterial": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34560.clip3.full.restore",
+      "elementId": "authored.lance-all.13b200425c9e545d69f6150f",
+      "sourceActionCueId": "action-34560/stage-002/notify-011",
+      "sourceEmitter": "fx_pc_flm_00.par_k_flm_penetrationlunge_dust_00.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_k_de_master_01_09_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34570.clip1.full.restore",
+      "elementId": "authored.lance-all.8f0dd06524ceb4b10f08a959",
+      "sourceActionCueId": "action-34570/stage-000/notify-030",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_4_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34570.clip2.full.restore",
+      "elementId": "authored.lance-all.825ddbd0f369fe2267399a1d",
+      "sourceActionCueId": "action-34570/stage-001/notify-046",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_att_02.particlespriteemitter_16",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_j_de_master_01_17_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34570.clip2.full.restore",
+      "elementId": "authored.lance-all.411fc0860f612dfb0f78537e",
+      "sourceActionCueId": "action-34570/stage-001/notify-007",
+      "sourceEmitter": "fx_pc_flm_01.par_m_flm_ribbon_01.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_4_tr",
+      "reason": "SOURCE_RIBBON_HISTORY_GEOMETRY_NOT_SUPPORTED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34580.ba2.full.restore",
+      "elementId": "authored.lance-all.438012c817d2019742d38343",
+      "sourceActionCueId": "action-34580/stage-001/notify-016",
+      "sourceEmitter": "fx_pc_flm_00.par_k_flm_counterattack_atk_00.particlespriteemitter_3",
+      "sourceMaterial": "fx_m_mi_k_00.fx_mi.fx_k_pa_worldoffset_02_01_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34590.ba2.full.restore",
+      "elementId": "authored.lance-all.c8a576915a98431ac7055415",
+      "sourceActionCueId": "action-34590/stage-001/notify-010",
+      "sourceEmitter": "fx_pc_flm_01.par_m_hitzone_01.particlespriteemitter_14",
+      "sourceMaterial": "fx_m_mi_m_00.fx_mi.fx_m_pa_worldoffset_02_1_tr",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34590.ba3.full.restore",
+      "elementId": "authored.lance-all.de8be43e1abb30b0c575d048",
+      "sourceActionCueId": "action-34590/stage-002/notify-028",
+      "sourceEmitter": "fx_pc_flm_06.par_v_flm_red_decal_atk_00.particlespriteemitter_9",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_56_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34590.ba3.full.restore",
+      "elementId": "authored.lance-all.2593789d41cb7e2fa84d1b62",
+      "sourceActionCueId": "action-34590/stage-002/notify-028",
+      "sourceEmitter": "fx_pc_flm_06.par_v_flm_red_decal_atk_00.particlespriteemitter_11",
+      "sourceMaterial": "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr",
+      "reason": "SOURCE_VF_NOT_COMPILED",
+      "blockingModules": []
+    },
+    {
+      "document": "effect.lancemaster.skill.34520.full.restore",
+      "elementId": "authored.lance-all.5e5c8d871e02afa60a24d0bc",
+      "sourceActionCueId": "action-34520/stage-000/notify-001",
+      "sourceEmitter": "fx_cm_03.trail.par_c_trail_01.particlespriteemitter_0",
+      "sourceMaterial": "fx_m_mi_02.fx_m.fx_k_pa_electric_trail_02_1_ad",
+      "reason": "SOURCE_ENGINE_PREFIX_OR_VERTEX_PROGRAM_UNCLOSED",
+      "blockingModules": [
+        "particlemoduletypedataribbon"
+      ]
+    }
+  ],
+  "altVExclusions": [
+    {
+      "document": "effect.lancemaster.skill.34630.clip3.full.restore",
+      "elementId": "authored.lance-va.a98926db66d1a03240f656bd",
+      "sourceNode": "authored-source-particle:effect.lancemaster.skill.34630.clip3.full.restore|source:fx_pc_flm_09.par_s_flm_superlance_horse_ground_01.particlespriteemitter_102",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_d_me_master_01_ph_02_msk",
+      "reason": "SOURCE_COLLISION_SIMULATION_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "fx_gibs_00:export:2845@ref:12",
+          "className": "particlemodulecollision",
+          "objectPath": "fx_gibs_00.par.fx_par_gibsdark_ice.particlemodulecollision_7",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bcollideonlyifvisible",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcollidewithworld",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdropdetail",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bpawnsdonotdecrementcount",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "collisioncompletionoption",
+              "kind": "string",
+              "value": "epcc_freezemovement"
+            },
+            {
+              "propertyPath": "dirscalar",
+              "kind": "number",
+              "value": 3.5
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxcollisiondistance",
+              "kind": "number",
+              "value": 1000.0
+            },
+            {
+              "propertyPath": "verticalfudgefactor",
+              "kind": "number",
+              "value": 0.10000000149011612
+            }
+          ],
+          "distributions": [
+            {
+              "propertyPath": "dampingfactor",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.5,
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.30000001192092896,
+                0.5,
+                0.5,
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.30000001192092896
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "dampingfactorrotation",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 3,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "delayamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 1,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "maxcollisions",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 1,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                3.0,
+                3.0,
+                3.0,
+                3.0
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "particlemass",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 0,
+              "lookupTableNumElements": 0,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [],
+              "keys": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34630.clip4.full.restore",
+      "elementId": "authored.lance-va.f0e41d27d39db69f242e5b38",
+      "sourceNode": "authored-source-particle:effect.lancemaster.skill.34630.clip4.full.restore|source:fx_pc_flm_09.par_s_flm_superlance_horse_ground_01.particlespriteemitter_102",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_d_me_master_01_ph_02_msk",
+      "reason": "SOURCE_COLLISION_SIMULATION_NOT_SUPPORTED",
+      "modules": [
+        {
+          "stableId": "fx_gibs_00:export:2845@ref:12",
+          "className": "particlemodulecollision",
+          "objectPath": "fx_gibs_00.par.fx_par_gibsdark_ice.particlemodulecollision_7",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "bcollideonlyifvisible",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bcollidewithworld",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bdropdetail",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bpawnsdonotdecrementcount",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "collisioncompletionoption",
+              "kind": "string",
+              "value": "epcc_freezemovement"
+            },
+            {
+              "propertyPath": "dirscalar",
+              "kind": "number",
+              "value": 3.5
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            },
+            {
+              "propertyPath": "maxcollisiondistance",
+              "kind": "number",
+              "value": 1000.0
+            },
+            {
+              "propertyPath": "verticalfudgefactor",
+              "kind": "number",
+              "value": 0.10000000149011612
+            }
+          ],
+          "distributions": [
+            {
+              "propertyPath": "dampingfactor",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 2,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 6,
+              "lookupTableNumElements": 2,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.5,
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.30000001192092896,
+                0.5,
+                0.5,
+                0.10000000149011612,
+                0.5,
+                0.5,
+                0.30000001192092896
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "dampingfactorrotation",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 3,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 3,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224,
+                0.20000000298023224
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "delayamount",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 1,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "maxcollisions",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 1,
+              "lookupTableNumElements": 1,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [
+                3.0,
+                3.0,
+                3.0,
+                3.0
+              ],
+              "keys": []
+            },
+            {
+              "propertyPath": "particlemass",
+              "sourceClass": "",
+              "sourceObjectPath": "",
+              "componentCount": 1,
+              "operation": 1,
+              "randomLockAxes": 0,
+              "lookupTableChunkSize": 0,
+              "lookupTableNumElements": 0,
+              "lookupTableTimeScale": 0.0,
+              "lookupTableStartTime": 0.0,
+              "defaultMinimum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "defaultMaximum": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lookupTable": [],
+              "keys": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34630.clip3.full.restore",
+      "elementId": "authored.lance-va.addfa29391c21e75d83c23bc",
+      "sourceNode": "authored-source-particle:effect.lancemaster.skill.34630.clip3.full.restore|source:fx_pc_flm_09.par_s_flm_superlance_atk_04.particlespriteemitter_22",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "fx_bs_08:export:17070@ref:1",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        },
+        {
+          "stableId": "fx_bs_08:export:17070@ref:15",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34630.clip3.full.restore",
+      "elementId": "authored.lance-va.5703bab9f418e89f37d67357",
+      "sourceNode": "authored-source-particle:effect.lancemaster.skill.34630.clip3.full.restore|source:fx_pc_flm_09.par_s_flm_superlance_atk_04_2.particlespriteemitter_28",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "fx_bs_08:export:17070@ref:1",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        },
+        {
+          "stableId": "fx_bs_08:export:17070@ref:15",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    },
+    {
+      "document": "effect.lancemaster.skill.34630.clip3.full.restore",
+      "elementId": "authored.lance-va.0390d9ca187508d239ef4c9c",
+      "sourceNode": "authored-source-particle:effect.lancemaster.skill.34630.clip3.full.restore|source:fx_pc_flm_09.par_s_flm_superlance_atk_06.particlespriteemitter_18",
+      "sourceMaterial": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+      "reason": "SOLO_REQUIRES_LIVE_SIBLING_PARTICLE_PROVIDER",
+      "modules": [
+        {
+          "stableId": "fx_bs_08:export:17070@ref:1",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        },
+        {
+          "stableId": "fx_bs_08:export:17070@ref:9",
+          "className": "particlemoduleeventgenerator",
+          "objectPath": "fx_bs_08.buff.par_l_shipslow_01.particlemoduleeventgenerator_2",
+          "literals": [
+            {
+              "propertyPath": "basynctickable",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "beditable",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "benabled",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bspawnmodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "bupdatemodule",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "events[0].customname",
+              "kind": "string",
+              "value": "aaa"
+            },
+            {
+              "propertyPath": "events[0].firsttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].frequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].lasttimeonly",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "events[0].lowfreq",
+              "kind": "number",
+              "value": -1.0
+            },
+            {
+              "propertyPath": "events[0].particlefrequency",
+              "kind": "number",
+              "value": 0.0
+            },
+            {
+              "propertyPath": "events[0].type",
+              "kind": "string",
+              "value": "epet_spawn"
+            },
+            {
+              "propertyPath": "events[0].usereflectedimpactvector",
+              "kind": "boolean",
+              "value": false
+            },
+            {
+              "propertyPath": "lodduplicate",
+              "kind": "boolean",
+              "value": true
+            },
+            {
+              "propertyPath": "lodvalidity",
+              "kind": "number",
+              "value": 3.0
+            }
+          ],
+          "distributions": []
+        }
+      ]
+    }
+  ]
+}

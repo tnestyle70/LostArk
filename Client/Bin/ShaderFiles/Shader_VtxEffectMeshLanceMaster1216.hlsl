@@ -1,0 +1,3 @@
+#define EFFECT_SHADER_FAMILY 8
+#define EFFECT_NATIVE_PROFILE_GROUP 1216
+#include "Shader_EffectMeshFamilyCarrier.hlsli"

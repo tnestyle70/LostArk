@@ -83,6 +83,12 @@ V1 All Effects는 기존 Product `.unified`와 이름이 대응하는 `.restore`
 EffectCatalog나 `.animevents`를 자동 변경하지 않는다. 경로·ID 불일치와 원본 누락은
 해당 항목에 표시하고 제품 스킬의 기존 문서를 유지한다.
 
+워로드·도화가·창술사는 사용자의 전체 full restore 적용 요청에 따라 명시적으로 승격한 예외다.
+현재 EffectCatalog의 full asset92개를 등록하고 `.animevents`의 실제 clip91개가 이를 참조한다.
+워로드 V 통합 검토본은 Tool에 유지하고 실행에는 start/loop/attack별 문서를 사용한다.
+원본 `src=orig` 이벤트와 Server skillbindings·timing은 그대로 유지한다. 복구본을 새로 만드는
+일반 Tool 작업은 이 사례를 근거로 catalog나 gameplay binding을 자동 변경하지 않는다.
+
 복구본의 Play/Play All은 CharacterPreviewPanel의 실제 모델과 저장된 skillbindings의
 클립 순서를 EffectAuthoringSequencer로 재생한다. Model View에서 root/bone anchor를
 선택하고, Sequencer는 occurrence 시간·offset·anchor를 소유한다. SourceRecipe 내부의
@@ -1053,8 +1059,15 @@ Rotation, Scale을 조절하면 해당 occurrence의 보이는 Object에 즉시 
 Object Tool Save는 source와 연결 placement의 외부 변경을 검사하고 원자 저장한 뒤, 기존 publisher의
 WorldSequences 전용 scope로 runtime을 비동기 반영한다. 별도 Publish 단계는 없다. 적용 실패는 저장본과
 기존 runtime을 보존하고 같은 Save로 재시도한다. 진행 중 재생은 시작한 revision을 유지한다.
-Composition Save도 준비된 PRODUCT의 runtime 생성까지 연결하며, 정상 Object 배치 편집 때문에
-기존 PRODUCT를 DRAFT로 내리지 않는다. 새 DRAFT는 편집·저장·Preview 가능하고 자동 승격하지 않는다.
+Composition의 Toolbar/Boss Pattern/Sequencer Save는 모두 전체 Composition 수정분을 원자 저장한다.
+Save는 runtime을 게시하지 않는다. Boss Pattern 아래의 `Publish All Patterns`를 한 번 눌러
+선택·Gate·Model View 필터와 관계없이 모든 Parent/Bundle/Pattern을 F1에 동기화한다.
+개별 Pattern이나 Bundle의 PRODUCT 선택은 필요하지 않다. Publisher가 기존 실행 검증으로 준비된
+대상을 판정하며 빈 Stage/Bundle과 미완성 항목도 F1의 같은 계층에 남겨 재생 불가 사유를 표시한다.
+표시용 전체 계층은 기존 Encounter의 `patternInventory`, 실제 실행은 기존 Encounter/patternbindings와
+Server bootstrap이 소유한다. 별도 source나 두 번째 실행 경로는 없다. 미저장 수정은 Save를 요구한다.
+게시 도중에는 편집과 중복 게시를 막고, domain 실패 시 이전 생성물·receipt를 복구하며 성공 후에만 F1을 갱신한다.
+실행 가능한 Pattern이 하나도 없거나 전체 ID/계층이 손상되면 publish를 거절하고 이전 게시물을 보존한다.
 새 Server 실행 자료는 Server 재시작 뒤 적용한다. Physical Resources 검색은 여러 frame에 나누므로
 Save 위젯은 검색 완료를 기다리지 않는다. 정본은 Area `.worldsequences.json` v3이다.
 커튼/룰렛은 기존 sequence ID를 가리키므로 Object Detail의 편집이 원래 상태를 갱신한다.
@@ -1179,4 +1192,53 @@ Preview에만 반영되며 `Apply → Save`로 저장한다. Resource 목록의 
 
 Collider 중심은 실제 Bone의 XZ 위치를 따라가고 offset과 수평 형상 방향은 보스 yaw 및 저작 Rotation을 사용한다. 내려치는 높이 자체는 접촉 활성화 조건이 아니다. Publish는 기존 WModel pose sampler로 실제 body/weapon clip과 attachment에서 boss-local Bone 궤적을 만들어 Server fixed tick 판정에 연결한다. 해당 Bone CONTACT Pattern의 제품 애니메이션은 궤적과 맞도록 전환 blend를 사용하지 않는다. Server는 모델 파일이나 Client Transform을 받아 판정하지 않는다.
 
-Object Tool Save/Publish로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Product Publish한다. Server를 재시작한 뒤 Complete Play로 실제 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.
+Object Tool Save로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Publish All Patterns로 저장·게시한다. Server를 재시작한 뒤 Complete Play로 실제 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.
+
+
+### 17.8 Effect Sequencer의 Composition Resources와 여섯 트랙
+
+Effect Tool V1/V2의 Sequencer는 Animation / Effect / Collider / Sound / Camera / Screen Post를
+같은 시간에 배치한다. `Resources` 또는 `Window → Composition Resources`에서 종류와 항목을
+선택하고 `Add / Append`로 현재 cursor에 추가한다. Animation은 먼저 Model View에서 실제 모델을
+선택한다. 목록은 현재 모델의 clip이며 다른 캐릭터·보스의 모든 clip을 자동으로 합치지 않는다.
+Effect는 저장 V1 document 또는 V2 GROUP/LEAF 전체를 하나의 박스로 추가한다.
+
+복구본 `.restore`의 한 element만 확인할 때는 기존 `Solo` 또는 선택한 Effect Detail의
+`Timeline Solo`를 누른다. Sequencer에는 임시 element 행 하나와 참고 animation만 나타나고,
+커서는 원래 등장 시각에서 정지한다. `Time`/시간 눈금으로 앞뒤를 탐색하고 `Play`로 재생한다.
+Detail의 값 변경은 같은 scope와 cursor에서 미리보기를 갱신하며 지연·수명 변경도 행 길이에 반영한다.
+`Stop`은 임시 행을 닫고 기존 저장행을 다시 표시한다. 선택 element 행은 미리보기 전용이므로
+Append/Save할 수 없다. 전체 Effect를 저장행에 추가하려면 Stop 또는 전체 Preview 후 Append한다.
+
+상단 시간 눈금의 원하는 지점을 누르거나 drag하면 노란 커서로 여섯 트랙을 함께 seek한다.
+박스 본체는 이동, 양 끝은 trim이며 mouse release 때 유효한 값을 적용한다. 겹치는 박스는 같은
+트랙 안에서 아래로 나뉜다. `Details` / `Window → Box Detail`에서 시작·길이·Mute와 해당 종류의
+속성을 편집한다. Animation은 source start/play·배율·Loop, Sound는 source start·Volume,
+Effect는 Offset·Bone/socket, Collider는 Offset·Rotation·Scale·Bone/socket·Debug Render를
+사용한다. 값 입력을 마치거나 `Apply`로 적용하고, Detail의 `Revert`로 미적용 편집을 되돌린다.
+`Duplicate`와 `Remove`는 선택한 occurrence를 대상으로 한다.
+
+Animation 수정은 이 Sequence의 custom 배치에 저장한다. 단일 모델에서 활성 clip 구간이 겹치면
+기존 값을 유지하고 이유를 표시한다. 원래 skillbindings와 쿠크 Pattern/Bundle의 clip은 이 Save로
+변경하지 않는다. `Play`, `Pause/Resume`, `Restart`, `Stop`, `Loop`는 공통 clock을 사용한다.
+Sound의 박스가 실제 source보다 길면 남은 구간은 침묵이며, 정지 상태 seek는 소리를 재생하지 않는다.
+
+Sound asset은 `Sound/...` 상대 ID이고 실제 파일은 `Client/Bin/Resources/Sound/...`에 있어야 한다.
+기존 Resources를 재사용하므로 이번 기능이 별도 binary pack을 생성·전달하지 않는다. 다른 PC는
+팀 Drive로 관리하는 해당 Effect/Character/Sound 파일을 같은 Resources 상대 위치에 준비한다.
+Camera의 Resources 항목은 현재 view capture이며 기존 recovery camera도 재사용한다. Screen Post는
+V2의 해당 LEAF를 사용한다. Collider는 현재 쿠크의 GEOMETRY 7개만 형상 Preview로 추가할 수 있다.
+룰렛 카드 영역 8개는 gameplay Logic이 필요하므로 Action Workbench에서 편집한다. 이 Sequencer의
+Collider wire는 충돌·피해를 판정하지 않으며 Server gameplay 권위를 바꾸지 않는다.
+
+전체 문서의 임시 Effect Preview가 있으면 Add / Append가 그 Preview와 camera를 먼저 Sequence에 편입한다.
+같은 Effect 선택은 Preview 하나를 편입하며 중복 생성하지 않는다. `Sequence ID → Save`는
+`Data/Effects/Sequences/<ID>.effectsequence.json`의 v4 배치를 저장한다. `Load`는 v1~v4를 읽고,
+모델 clip이나 Bone이 필요하면 먼저 해당 모델을 Model View에 준비한다. 외부 파일이 바뀌었거나
+입력이 잘못되면 현재 timeline을 보존하고 이유를 표시한다. 전체 트랙 복구에는 Sequencer의 Load를
+사용한다. Recovery camera 추출은 Effect와 Camera만 사용한다. 원본 Effect 저장이나 Product의
+Composition publish를 대신하지 않는다.
+
+자동 검증은 G28 RESULT의 codec 29개와 FMOD 무출력 15개까지이며 최종 Product 빌드는 별도 기록한다.
+새 EXE에서 Add / Append → cursor/box drag → Play/Pause → Save/Load의 실제 동작과
+모델·Effect·Collider·camera·음향 결과는 사용자가 직접 확인한다.

@@ -104,6 +104,8 @@ const CHARACTER_SPEC Spec_GunSlinger =
 		"gdh_standup_1",
 		/* No Esther animation set is attached for this class yet. */
 		nullptr,
+		nullptr, // CUSTOMIZING_IDLE
+		"gdh_abn_fear_1",
 	},
 
 	&Create_Logic,

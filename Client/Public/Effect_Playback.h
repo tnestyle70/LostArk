@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <memory>
+#include <span>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -214,6 +215,8 @@ public:
 	struct PREPARED_RESOURCES;
 
 private:
+	struct SOURCE_VECTOR_FIELD_UPDATE;
+	struct SOURCE_UPDATE_MODULE;
 	struct AUTHORED_PARTICLE_SPAWN_SAMPLE final
 	{
 		float3_t vPosition{};
@@ -248,16 +251,20 @@ private:
 		float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vDynamicParameter{};
 		float3_t vOrbitOffset{};
+		float3_t vBaseOrbitOffset{};
 		float3_t vSourceOrbitRotationDegrees{};
 		float3_t vSourceOrbitRotationRateDegreesPerSecond{};
 		f32_t fVectorFieldScale = 1.f;
 		f32_t fCameraOffset = 0.f;
 		f32_t fSubImageIndex = 0.f;
+		f32_t fSourceSubUVLastRandomAge = 0.f;
+		bool_t bSourceRandomSubUV = false;
 		f32_t fDistributionRandom = 0.f;
 		f32_t fSpawnEmitterTimeSeconds = 0.f;
 		f32_t fAgeSeconds = 0.f;
 		f32_t fLifeTimeSeconds = 1.f;
 		uint64_t iSpawnSimulationStep = 0u;
+		bool_t bSourceEmitterLocationResolved = true;
 		std::string strSourceAnchorName;
 		float3_t vSourceAnchorOffset{};
 		bool_t bUpdateSourceAnchor = false;
@@ -307,6 +314,7 @@ private:
 		std::unordered_map<std::string, MODULE_RANDOM_STATE> ModuleRandomStates;
 		std::unordered_map<std::string, uint32_t> EventTrackingCounts;
 		std::unordered_map<std::string, uint32_t> BoneSocketNextIndices;
+		std::unordered_map<std::string, uint32_t> LocationEmitterNextIndices;
 		std::vector<PARTICLE_STATE> Particles;
 		std::deque<EFFECT_EVALUATED_TRAIL_POINT> TrailPoints;
 		std::deque<AFTERIMAGE_STATE> AfterImages;
@@ -318,11 +326,14 @@ public:
 	static bool_t Validate_ReconstructedSourceModuleExecution(
 		const EFFECT_SOURCE_MODULE_DESC& Module,
 		std::string& strOutError);
+	static bool_t Validate_SourceParticleProviders(
+		const EFFECT_DOCUMENT_DESC& Document, std::string& strOutError);
 	static bool_t Prepare_DocumentResources(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
 		std::string& strOutError,
-		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument = nullptr);
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument = nullptr,
+		bool_t bRequireCanonicalIdentity = true);
 	/* Validated Element timing shared by playback staging and authoring UI. */
 	static f32_t Calculate_ElementEndSeconds(
 		const EFFECT_ELEMENT_DESC& Element,
@@ -485,12 +496,26 @@ private:
 		ELEMENT_STATE& State,
 		f32_t fFixedDelta,
 		const float4x4_t& RootWorld);
+	void Apply_SourceSubUV(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		PARTICLE_STATE& Particle,
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		f32_t fNormalizedAge,
+		bool_t bSpawn,
+		f32_t fEmitterTimeSeconds,
+		f32_t fFixedDelta,
+		const SOURCE_UPDATE_MODULE* pPreparedModule = nullptr);
 	void Apply_SourceSpawnModules(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
 		PARTICLE_STATE& Particle,
 		f32_t fEmitterTimeSeconds,
-		const float4x4_t& ElementWorld);
+		const float4x4_t& ElementWorld,
+		const float4x4_t& RootWorld);
+	std::vector<SOURCE_VECTOR_FIELD_UPDATE> Prepare_SourceVectorFieldUpdates(
+		const EFFECT_ELEMENT_DESC& Element, f32_t fEmitterTimeSeconds,
+		std::span<const size_t> ModuleIndices) const;
 	void Apply_SourceUpdateModules(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -498,7 +523,9 @@ private:
 		f32_t fEmitterTimeSeconds,
 		f32_t fNormalizedAge,
 		f32_t fFixedDelta,
-		const float4x4_t& ElementWorld);
+		const float4x4_t& ElementWorld,
+		const std::vector<SOURCE_VECTOR_FIELD_UPDATE>& VectorFieldUpdates,
+		const std::vector<SOURCE_UPDATE_MODULE>& UpdateModules);
 	float3_t Apply_TargetAttractor(
 		const EFFECT_ELEMENT_DESC& Element,
 		PARTICLE_STATE& Particle,
@@ -519,10 +546,22 @@ private:
 		std::string_view PropertyPath,
 		f32_t fTime,
 		f32_t fFallback);
+	f32_t Evaluate_ModuleFloat(
+		ELEMENT_STATE& State,
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const EFFECT_DISTRIBUTION_DESC* pDistribution,
+		f32_t fTime,
+		f32_t fFallback);
 	float3_t Evaluate_ModuleVector(
 		ELEMENT_STATE& State,
 		const EFFECT_SOURCE_MODULE_DESC& Module,
 		std::string_view PropertyPath,
+		f32_t fTime,
+		const float3_t& Fallback);
+	float3_t Evaluate_ModuleVector(
+		ELEMENT_STATE& State,
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const EFFECT_DISTRIBUTION_DESC* pDistribution,
 		f32_t fTime,
 		const float3_t& Fallback);
 	void Queue_SpawnEvents(

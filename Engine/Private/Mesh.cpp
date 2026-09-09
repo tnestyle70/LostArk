@@ -174,7 +174,8 @@ HRESULT CMesh::Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pC
 }
 
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
-	uint32_t iInstanceStride, uint32_t iNumInstances)
+	uint32_t iInstanceStride, uint32_t iNumInstances,
+	uint32_t iInstanceByteOffset)
 {
 	if (nullptr == pInstanceBuffer ||
 		0 == iInstanceStride ||
@@ -182,6 +183,16 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	{
 		return E_INVALIDARG;
 	}
+
+	D3D11_BUFFER_DESC instanceDesc{};
+	pInstanceBuffer->GetDesc(&instanceDesc);
+	const uint64_t requiredBytes = static_cast<uint64_t>(iInstanceByteOffset) +
+		static_cast<uint64_t>(iInstanceStride) * iNumInstances;
+	if (nullptr == m_pVB || nullptr == m_pIB || 0u == m_iNumIndices ||
+		0u == (instanceDesc.BindFlags & D3D11_BIND_VERTEX_BUFFER) ||
+		0u != (iInstanceByteOffset % sizeof(f32_t)) ||
+		requiredBytes > instanceDesc.ByteWidth)
+		return E_INVALIDARG;
 
 	ID3D11Buffer* vertexBuffers[] =
 	{
@@ -197,7 +208,7 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	const uint32_t offsets[] =
 	{
 		0,
-		0
+		iInstanceByteOffset
 	};
 
 	m_pContext->IASetVertexBuffers(

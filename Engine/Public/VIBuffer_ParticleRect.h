@@ -66,6 +66,9 @@ private:
 	ComPtr<ID3D11Buffer> m_pInstanceBuffer;
 	uint32_t m_iCapacity = 0u;
 	uint32_t m_iNumInstances = 0u;
+	// Append only into unused instances until WRITE_DISCARD starts a new span.
+	uint32_t m_iNextInstanceIndex = 0u;
+	uint32_t m_iInstanceByteOffset = 0u;
 
 public:
 	static unique_ptr<CVIBuffer_ParticleRect> Create(

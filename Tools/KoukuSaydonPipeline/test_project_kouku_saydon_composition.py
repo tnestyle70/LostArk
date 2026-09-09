@@ -42,6 +42,45 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         for pattern in cls.document["patterns"]:
             pattern.pop("folderId", None)
 
+    def test_animation_transition_projects_the_fixed_previous_endpoint(self):
+        document = copy.deepcopy(self.document)
+        for pattern in document["patterns"]:
+            pattern["authoringStatus"] = "DRAFT"
+        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_13")
+        pattern["authoringStatus"] = "PRODUCT"
+        clips = [row for stage in pattern["stages"] for row in stage["animationOccurrences"]]
+        selected = next(row for row in clips if row["occurrenceId"].endswith(".animation.16"))
+        selected["blendInMs"] = 100
+        previous, seconds = subject._animation_blend_source(pattern, selected)
+        self.assertTrue(previous["occurrenceId"].endswith(".animation.6"))
+        self.assertEqual(1.0, seconds)
+        row = next(row for row in subject.project_presentation(document)["bindings"]
+                   if row["occurrenceId"] == selected["occurrenceId"])
+        self.assertEqual(100, row["blendInMs"])
+        self.assertEqual(previous["runtimeClip"], row["blendFromClip"])
+        self.assertEqual(1000.0, row["blendFromSourceMs"])
+        # The same clip can restart from a different source endpoint.
+        selected["runtimeClip"] = previous["runtimeClip"]
+        self.assertEqual(previous, subject._animation_blend_source(pattern, selected)[0])
+        clips[0]["blendInMs"] = 100
+        with self.assertRaisesRegex(subject.CompositionError, "previous occurrence"):
+            subject._animation_blend_source(pattern, clips[0])
+        clips[0].pop("blendInMs")
+        previous["playMs"] -= 1
+        with self.assertRaisesRegex(subject.CompositionError, "adjacent EXACT"):
+            subject._animation_blend_source(pattern, selected)
+
+    def test_bone_transition_interpolates_local_rotation_before_hierarchy(self):
+        left = subject.wmodel_pose.affine_matrix((1, 1, 1), (0, 0, 0, 1), (0, 0, 0))
+        right = subject.wmodel_pose.affine_matrix((2, 2, 2), (0, 0, 1, 0), (2, 4, 6))
+        blended = subject._blend_local_matrix(left, right, 0.5)
+        point = subject.wmodel_pose.transform_point((1, 0, 0), blended)
+        for actual, expected in zip(point, (1, 3.5, 3)):
+            self.assertAlmostEqual(expected, actual, places=6)
+        for alpha, expected in ((0, left), (1, right)):
+            for actual, value in zip(subject._blend_local_matrix(left, right, alpha), expected):
+                self.assertAlmostEqual(value, actual, places=6)
+
     def validate(self, document):
         subject.validate_document(document, ROOT)
 
@@ -1122,7 +1161,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         with self.assertRaisesRegex(subject.CompositionError, "control characters"):
             self.validate(control)
 
-    def test_product_requires_one_full_stage_animation(self):
+    def test_product_requires_one_animation_at_stage_entry(self):
         missing = copy.deepcopy(self.document)
         self.first_product(missing)["stages"][0]["animationOccurrences"] = []
         with self.assertRaisesRegex(subject.CompositionError, "exactly one"):
@@ -1132,8 +1171,34 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         occurrence = self.first_product(offset)["stages"][0]["animationOccurrences"][0]
         occurrence["startOffsetMs"] = 1
         occurrence["playMs"] -= 1
-        with self.assertRaisesRegex(subject.CompositionError, "whole stage"):
+        with self.assertRaisesRegex(subject.CompositionError, "stage entry"):
             self.validate(offset)
+
+    def test_product_short_clip_holds_its_endpoint_and_keeps_loop_policy(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.first_product(document)
+        stage = pattern["stages"][0]
+        animation = stage["animationOccurrences"][0]
+        stage["durationMs"] = 1000
+        animation.update(startOffsetMs=0, sourceStartMs=0, playMs=600, playRate=1.5, endPolicy="EXACT")
+        self.validate(document)
+        binding = next(row for row in subject.project_presentation(document)["bindings"]
+                       if row["occurrenceId"] == animation["occurrenceId"])
+        self.assertTrue(binding["holdAtWindowEnd"])
+        # At the authored cut and in the remaining stage gap the source is fixed.
+        for clock_ms in (600, 700, 950):
+            selected, seconds = subject._bone_bake_clip_sample(pattern, clock_ms)
+            self.assertEqual(animation["occurrenceId"], selected["occurrenceId"])
+            self.assertAlmostEqual(0.9, seconds)
+        animation.update(playMs=1000, endPolicy="LOOP_TO_WINDOW")
+        self.validate(document)
+        binding = next(row for row in subject.project_presentation(document)["bindings"]
+                       if row["occurrenceId"] == animation["occurrenceId"])
+        self.assertEqual("LOOP_TO_WINDOW", binding["endPolicy"])
+        self.assertNotIn("holdAtWindowEnd", binding)
+        animation["endPolicy"] = "HOLD_LAST_POSE"
+        self.validate(document)
+        self.assertTrue(subject._animation_holds_window_end(stage, animation))
 
     def test_product_rejects_presentation_policies_the_client_cannot_run(self):
         variants = []
@@ -1150,13 +1215,6 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         stage["animationOccurrences"][0]["playMs"] = 100
         stage["animationOccurrences"][0]["playRate"] = 0.05
         variants.append(slow_rate)
-
-        hold = copy.deepcopy(self.document)
-        stage = self.first_product(hold)["stages"][0]
-        stage["durationMs"] = 100
-        stage["animationOccurrences"][0]["playMs"] = 100
-        stage["animationOccurrences"][0]["endPolicy"] = "HOLD_LAST_POSE"
-        variants.append(hold)
 
         for mutation in variants:
             with self.subTest(mutation=mutation):
@@ -1390,22 +1448,27 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             len(subject.project_presentation(document)["bindings"]),
         )
 
-    def test_bad_draft_does_not_block_product_publish(self):
+    def test_incomplete_row_is_visible_without_blocking_other_saved_patterns(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / subject.SOURCE_PATH
             source.parent.mkdir(parents=True)
             copy_repository_inputs(root)
             document = copy.deepcopy(self.document)
-            document["patterns"] = [
-                {"authoringStatus": "DRAFT", "stages": "broken"} if p["patternId"] == DRAFT_ID else p
-                for p in document["patterns"]
-            ]
+            self.draft(document)["stages"] = "broken"
             source.write_text(json.dumps(document), encoding="utf-8")
             result = subject.run(root, "publish")
             self.assertEqual(2, result["outputCount"])
-            before = (root / subject.ENCOUNTER_PATH).read_bytes()
+            published = subject.load_json(root / subject.ENCOUNTER_PATH)
+            self.assertTrue(self.find(published["patternInventory"], DRAFT_ID)["unavailableReason"])
             self.first_product(document)["stages"][0]["animationOccurrences"] = []
+            source.write_text(json.dumps(document), encoding="utf-8")
+            subject.run(root, "publish")
+            published = subject.load_json(root / subject.ENCOUNTER_PATH)
+            self.assertNotIn(FIRST_PRODUCT_ID, published["playAllPatternIds"])
+            self.assertTrue(self.find(published["patternInventory"], FIRST_PRODUCT_ID)["unavailableReason"])
+            before = (root / subject.ENCOUNTER_PATH).read_bytes()
+            document["patterns"].append(copy.deepcopy(document["patterns"][0]))
             source.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaises(subject.CompositionError):
                 subject.run(root, "publish")
@@ -1676,6 +1739,49 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.first_product(wrong_list)["logicOccurrences"][0]["onFailLogicIds"] = "kakulsaydon.g1.logic.3"
         with self.assertRaisesRegex(subject.CompositionError, "list of text"):
             self.validate(wrong_list)
+
+    def test_fear_result_projects_only_stable_server_presentation_and_rejects_bad_references(self):
+        document = copy.deepcopy(self.document)
+        logic = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.2")
+        logic.clear()
+        logic.update(logicId="kakulsaydon.g1.logic.2", displayName="Fear", logicType="RESULT",
+                     outcomeKind="FEAR", durationMs=3000,
+                     sceneProfileId=document["sceneProfiles"][0]["sceneProfileId"])
+        self.validate(document)
+        server = subject._project_outcomes({logic["logicId"]: logic}, [logic["logicId"]])[0]
+        self.assertEqual({"kind": "FEAR", "percent": 0, "durationMs": 3000,
+                          "patternId": "", "presentationId": logic["logicId"]}, server)
+        client = subject.project_presentation(document)["fearPresentations"][0]
+        self.assertEqual(document["sceneProfiles"][0]["renderingProfileId"], client["sceneProfileId"])
+        self.assertIsNone(client["effectResource"])
+        for change in ({"durationMs": 0}, {"sceneProfileId": "missing"},
+                       {"effectResourceId": "missing"}, {"effectDelayMs": 1000},
+                       {"lightResourceId": "missing"}):
+            invalid = copy.deepcopy(document)
+            next(row for row in invalid["logics"] if row["logicId"] == logic["logicId"]).update(change)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
+
+    def test_counter_window_projects_followup_and_refuses_per_player_fail(self):
+        document = copy.deepcopy(self.document)
+        logic = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.1")
+        logic.clear()
+        logic.update(logicId="kakulsaydon.g1.logic.1", displayName="Counter", logicType="DURATION",
+                     judgementKind="COUNTER_WINDOW", endsPatternOnSuccess=True)
+        pattern = self.first_product(document)
+        pattern["presentationOccurrences"] = [row for row in pattern.get("presentationOccurrences", [])
+                                              if not row.get("logicOccurrenceId")]
+        self.validate(document)
+        server = next(row for row in subject.project_encounter(document)["patterns"]
+                      if row["patternId"] == FIRST_PRODUCT_ID)
+        window = next(row for row in server["logicWindows"] if row["kind"] == "COUNTER_WINDOW")
+        self.assertTrue(window["endsPatternOnSuccess"])
+        self.assertEqual("FOLLOWUP_PATTERN", window["onSuccess"][0]["kind"])
+        invalid = copy.deepcopy(document)
+        next(row for row in self.first_product(invalid)["logicOccurrences"]
+             if row["logicId"] == logic["logicId"])["onFailLogicIds"] = ["kakulsaydon.g1.logic.2"]
+        with self.assertRaises(subject.CompositionError):
+            self.validate(invalid)
 
     def test_typed_logic_definitions_follow_their_kind(self):
         logics = {logic["logicId"]: logic for logic in self.document["logics"]}
@@ -2229,7 +2335,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             copy_repository_inputs(root)
             result = subject.run(root, "publish")
             self.assertEqual(2, result["outputCount"])
-            expected = subject.projected_outputs(subject.load_and_validate(root), root)
+            product, inventory = subject.prepare_publication(subject.load_json(source), root)
+            expected = subject.projected_outputs(product, root, inventory)
             subject.validate_outputs(root, expected)
             encounter = root / subject.ENCOUNTER_PATH
             encounter.write_text("{}\n", encoding="utf-8")
@@ -2329,6 +2436,138 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 pattern["presentationOccurrences"][0]["durationMs"] = 999
                 with self.assertRaisesRegex(subject.CompositionError,"identical timing"):
                     self.validate(document)
+
+    def capture_fixture(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.strip_lanes(self.first_product(document))
+        ordinal = document["nextLogicOrdinal"]
+        trigger_id, hold_id, result_id = [f"kakulsaydon.g1.logic.{ordinal + i}" for i in range(3)]
+        document["nextLogicOrdinal"] += 3
+        document["logics"].extend([
+            dict(logicId=trigger_id, displayName="Grab contact", logicType="TRIGGER", triggerKind="ENTER_AREA"),
+            dict(logicId=hold_id, displayName="Hold deadline", logicType="DURATION", judgementKind="ATTACHMENT_HOLD"),
+            dict(logicId=result_id, displayName="Left hand", logicType="RESULT", outcomeKind="CAPTURE_PLAYER",
+                 attachmentSlot="BOSS_LEFT_HAND", gripLocalOffset=dict(forwardM=.2, upM=-.1, rightM=.3)),
+        ])
+        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        document["nextPresentationResourceOrdinal"] += 1
+        document["presentationResources"].append(dict(resourceId=resource_id, displayName="Grab fan", kind="COLLIDER",
+                                                     assetId="", shape="SECTOR", radiusM=4, halfAngleDegrees=45))
+        trigger_box, hold_box = [pattern["patternId"] + f".logic.{i}" for i in (1, 2)]
+        pattern["nextLogicOccurrenceOrdinal"] = 3
+        pattern["logicOccurrences"] = [
+            dict(occurrenceId=trigger_box, logicId=trigger_id, startMs=100, durationMs=300,
+                 holdLogicOccurrenceId=hold_box, onSuccessLogicIds=[result_id]),
+            dict(occurrenceId=hold_box, logicId=hold_id, startMs=100, durationMs=900),
+        ]
+        pattern["nextPresentationOccurrenceOrdinal"] = 2
+        pattern["presentationOccurrences"] = [dict(occurrenceId=pattern["patternId"] + ".presentation.1",
+            resourceId=resource_id, startMs=100, durationMs=300, logicOccurrenceId=trigger_box, followBoss=True)]
+        return document, pattern, document["logics"][-1]
+
+    def test_capture_projects_independent_hold_deadline_and_single_pattern_grip(self):
+        document, pattern, result = self.capture_fixture()
+        self.validate(document)
+        server = next(row for row in subject.project_encounter(document)["patterns"] if row["patternId"] == pattern["patternId"])
+        trigger, hold = server["logicWindows"]
+        self.assertEqual(hold["windowId"], trigger["holdLogicOccurrenceId"])
+        self.assertEqual((100, 300, 100, 900), (trigger["startMs"], trigger["durationMs"], hold["startMs"], hold["durationMs"]))
+        self.assertEqual("ATTACHMENT_HOLD", hold["kind"])
+        self.assertEqual(([], [], [], []), (hold["cardRegions"], hold["onSuccess"], hold["onFail"], hold["onTimeout"]))
+        self.assertEqual(result["gripLocalOffset"], trigger["onSuccess"][0]["gripLocalOffset"])
+        grip = next(row for row in subject.project_presentation(document)["attachmentGrips"] if row["patternId"] == pattern["patternId"])
+        self.assertEqual([.2, -.1, .3], grip["gripLocalOffset"])
+        self.assertEqual("BOSS_LEFT_HAND", grip["attachmentSlot"])
+
+    def test_capture_rejects_bad_hold_links_outcomes_regions_and_grip(self):
+        for bad in ("missing", "wrong_kind", "late_start", "early_end", "disabled", "hold_outcome", "hold_collider",
+                    "mixed_success", "timeout_capture", "bad_slot", "offset_range", "offset_schema", "missing_offset"):
+            document, pattern, result = self.capture_fixture()
+            trigger, hold = pattern["logicOccurrences"]
+            if bad == "missing": trigger.pop("holdLogicOccurrenceId")
+            elif bad == "wrong_kind": trigger["holdLogicOccurrenceId"] = trigger["occurrenceId"]
+            elif bad == "late_start": hold["startMs"] = 101
+            elif bad == "early_end": hold["durationMs"] = 299
+            elif bad == "disabled": hold["enabled"] = False
+            elif bad == "hold_outcome": hold["onSuccessLogicIds"] = [result["logicId"]]
+            elif bad == "hold_collider":
+                pattern["presentationOccurrences"][0].update(logicOccurrenceId=hold["occurrenceId"], durationMs=900)
+            elif bad == "mixed_success": trigger["onSuccessLogicIds"].append("kakulsaydon.g1.logic.4")
+            elif bad == "timeout_capture": trigger["onTimeoutLogicIds"] = trigger.pop("onSuccessLogicIds")
+            elif bad == "bad_slot": result["attachmentSlot"] = "NONE"
+            elif bad == "offset_range": result["gripLocalOffset"]["forwardM"] = 10.01
+            elif bad == "offset_schema": result["gripLocalOffset"]["x"] = 0
+            elif bad == "missing_offset": result.pop("gripLocalOffset")
+            with self.subTest(bad=bad), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_capture_draft_preserves_incomplete_wiring_but_rejects_conflicting_product_grips(self):
+        document, pattern, result = self.capture_fixture()
+        trigger = pattern["logicOccurrences"][0]
+        pattern["authoringStatus"] = "DRAFT"
+        pattern["logicOccurrences"][1]["startMs"] = 101
+        document["playAllPatternIds"].remove(pattern["patternId"])
+        self.validate(document)
+        trigger.pop("holdLogicOccurrenceId")
+        self.validate(document)
+        document, pattern, result = self.capture_fixture()
+        other = copy.deepcopy(result)
+        other["logicId"] = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        document["nextLogicOrdinal"] += 1
+        document["logics"].append(other)
+        clone = copy.deepcopy(pattern["logicOccurrences"][0])
+        clone.update(occurrenceId=pattern["patternId"] + ".logic.3", onSuccessLogicIds=[other["logicId"]])
+        pattern["logicOccurrences"].append(clone)
+        pattern["nextLogicOccurrenceOrdinal"] = 4
+        # Two capture attempts may share one Hold and one grip.
+        self.validate(document)
+        self.assertEqual(1, sum(row["patternId"] == pattern["patternId"] for row in subject._project_attachment_grips(document)))
+        other["gripLocalOffset"]["upM"] = 1
+        with self.assertRaisesRegex(subject.CompositionError, "consistent capture grip"):
+            self.validate(document)
+        with self.assertRaisesRegex(subject.CompositionError, "consistent capture grip"):
+            subject._project_attachment_grips(document)
+
+    def test_enter_area_charge_uses_its_window_and_rejects_motion_conflicts(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.strip_lanes(self.first_product(document))
+        pattern.pop("bossMotion", None)
+        for stage in pattern["stages"]:
+            stage.pop("retargetOnEnter", None)
+        logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        document["nextLogicOrdinal"] += 1
+        document["logics"].append({"logicId": logic_id, "displayName": "Body charge", "logicType": "TRIGGER",
+                                   "triggerKind": "ENTER_AREA", "bossChargeDistanceM": 7})
+        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        document["nextPresentationResourceOrdinal"] += 1
+        document["presentationResources"].append({"resourceId": resource_id, "displayName": "Body", "kind": "COLLIDER",
+                                                  "assetId": "", "shape": "CIRCLE", "radiusM": 1})
+        box_id = pattern["patternId"] + ".logic.1"
+        pattern["nextLogicOccurrenceOrdinal"] = 2
+        pattern["logicOccurrences"] = [{"occurrenceId": box_id, "logicId": logic_id, "startMs": 0, "durationMs": 1000}]
+        pattern["nextPresentationOccurrenceOrdinal"] = 2
+        pattern["presentationOccurrences"] = [{"occurrenceId": pattern["patternId"] + ".presentation.1", "resourceId": resource_id,
+            "startMs": 0, "durationMs": 1000, "logicOccurrenceId": box_id, "anchorKind": "BOSS", "followBoss": True}]
+        self.validate(document)
+        row = next(row for row in subject.project_encounter(document)["patterns"] if row["patternId"] == FIRST_PRODUCT_ID)
+        self.assertEqual((0, 1000, 7), tuple(row["logicWindows"][0][key] for key in ("startMs", "durationMs", "bossChargeDistanceM")))
+        self.assertEqual("BOSS_CURRENT", row["logicWindows"][0]["cardRegions"][0]["anchorKind"])
+        for conflict in ("overlap", "bossMotion", "retarget"):
+            invalid = copy.deepcopy(document)
+            owner = self.first_product(invalid)
+            if conflict == "overlap":
+                owner["logicOccurrences"].append({**owner["logicOccurrences"][0], "occurrenceId": owner["patternId"] + ".logic.2"})
+                owner["nextLogicOccurrenceOrdinal"] = 3
+            elif conflict == "bossMotion":
+                owner["bossMotion"] = {"startMs": 0, "endMs": 1000, "startPosition": [0, 0, 0], "endPosition": [0, 0, 7], "yawDegrees": 0}
+            else:
+                owner["stages"][0]["retargetOnEnter"] = True
+            with self.subTest(conflict=conflict), self.assertRaisesRegex(subject.CompositionError, "[Cc]harge"):
+                self.validate(invalid)
+        invalid = copy.deepcopy(document)
+        next(row for row in invalid["logics"] if row["logicId"] == logic_id)["bossChargeDistanceM"] = -1
+        with self.assertRaises(subject.CompositionError):
+            self.validate(invalid)
 
     def test_circle_fail_duration_preserves_authored_result_and_debug_render(self):
         document = copy.deepcopy(self.document)
@@ -2787,6 +3026,117 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             encounter["bundles"][0]["members"][1]["targetBossPlacementId"] = "boss.kakulsaydon.g1.saydon"
             product_path.write_text(json.dumps(encounter), encoding="utf-8")
             self.assertNotEqual(0, run().returncode)
+
+class KoukuPublishAllInventoryTests(unittest.TestCase):
+    def source(self):
+        source = subject.load_json(ROOT / subject.SOURCE_PATH)
+        by_id = {p["patternId"]: p for p in source["patterns"]}
+        source["patterns"] = [by_id[f"KAKULSAYDON_G1_PATTERN_{n}"] for n in (8, 9, 3)]
+        for row in source["patterns"]:
+            KoukuSaydonCompositionProjectionTests.strip_lanes(row)
+            row["authoringStatus"] = "DRAFT"
+            row.pop("folderId", None)
+        source["patterns"][2]["stages"] = []
+        for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
+            source[key] = []
+        source["folders"] = [f for f in source["folders"] if f["folderId"] in {"kakulsaydon.folder.1", "kakulsaydon.folder.4"}]
+        source["bundles"] = [b for b in source["bundles"] if b["bundleId"] in {"kakulsaydon.bundle.1", "kakulsaydon.bundle.4"}]
+        for row in source["bundles"]:
+            row.update(authoringStatus="DRAFT", sceneProfileOccurrences=[], presentationOccurrences=[])
+        source["playAllPatternIds"] = []
+        return source
+
+    def test_all_saved_rows_survive_and_ready_drafts_publish_without_source_mutation(self):
+        source = self.source()
+        original = copy.deepcopy(source)
+        product, inventory = subject.prepare_publication(source)
+        self.assertEqual(original, source)
+        self.assertEqual([p["patternId"] for p in source["patterns"][:2]], product["playAllPatternIds"])
+        self.assertEqual((3, 2, 2), tuple(len(inventory[k]) for k in ("patterns", "folders", "bundles")))
+        self.assertEqual(["kakulsaydon.bundle.1"], [b["bundleId"] for b in product["bundles"]])
+        self.assertIn("no stages", inventory["patterns"][2]["unavailableReason"])
+        self.assertIn("at least one member", inventory["bundles"][1]["unavailableReason"])
+        outputs = subject.projected_outputs(product, ROOT, inventory)
+        encounter = json.loads(outputs[subject.ENCOUNTER_PATH])
+        self.assertEqual(inventory, encounter["patternInventory"])
+        self.assertNotIn("patternInventory", json.loads(outputs[subject.PRESENTATION_PATH]))
+        for collection, key in (("patterns", "patternId"), ("bundles", "bundleId")):
+            self.assertEqual({r[key] for r in encounter[collection]},
+                             {r[key] for r in inventory[collection] if not r["unavailableReason"]})
+
+    def test_category_is_preserved_and_unavailable_member_disables_only_its_bundle(self):
+        source = self.source()
+        source["patterns"][0]["category"] = "NORMAL"
+        product, inventory = subject.prepare_publication(source)
+        self.assertEqual("NORMAL", source["patterns"][0]["category"])
+        self.assertEqual("NORMAL", inventory["patterns"][0]["category"])
+        self.assertIn("MECHANIC category", inventory["patterns"][0]["unavailableReason"])
+        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertIn("child is unavailable", inventory["bundles"][0]["unavailableReason"])
+
+    def test_followup_dependency_cannot_publish_without_its_incomplete_target(self):
+        source = self.source()
+        source["logics"] = [
+            {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Window", "logicType": "DURATION",
+             "judgementKind": "STAGGER_WINDOW", "threshold": 1, "shieldArcDegrees": 0},
+            {"logicId": "kakulsaydon.g1.logic.2", "displayName": "Follow-up", "logicType": "RESULT",
+             "outcomeKind": "FOLLOWUP_PATTERN", "followupPatternId": "KAKULSAYDON_G1_PATTERN_3"},
+        ]
+        first = source["patterns"][0]
+        first["nextLogicOccurrenceOrdinal"] = 2
+        first["logicOccurrences"] = [{"occurrenceId": first["patternId"] + ".logic.1",
+            "logicId": "kakulsaydon.g1.logic.1", "startMs": 0, "durationMs": 100,
+            "onSuccessLogicIds": ["kakulsaydon.g1.logic.2"]}]
+        product, inventory = subject.prepare_publication(source)
+        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertIn("no stages", inventory["patterns"][0]["unavailableReason"])
+        self.assertIn("PATTERN_3", inventory["patterns"][0]["unavailableReason"])
+
+    def test_ambiguous_tree_identity_fails_globally(self):
+        source = self.source()
+        source["patterns"].append(copy.deepcopy(source["patterns"][0]))
+        with self.assertRaisesRegex(subject.CompositionError, "duplicate saved patternId"):
+            subject.prepare_publication(source)
+
+    def test_clone_dependency_is_admitted_together_and_incomplete_clone_is_isolated(self):
+        source = self.source()
+        source["logics"] = [{"logicId": "kakulsaydon.g1.logic.1", "displayName": "Clone", "logicType": "TRIGGER",
+            "triggerKind": "REAL_GAZE_TELEPORT", "teleportPosition": [0, 0, 0],
+            "clonePatternId": "KAKULSAYDON_G1_PATTERN_9", "clockHours": [4, 7, 10]}]
+        first = source["patterns"][0]
+        first.pop("bossMotion", None)
+        first["nextLogicOccurrenceOrdinal"] = 2
+        first["logicOccurrences"] = [{"occurrenceId": first["patternId"] + ".logic.1",
+            "logicId": "kakulsaydon.g1.logic.1", "startMs": 0, "durationMs": 100}]
+        product, inventory = subject.prepare_publication(source)
+        self.assertEqual(2, len(product["patterns"]))
+        self.assertEqual("", inventory["patterns"][0]["unavailableReason"])
+        source["logics"][0]["clonePatternId"] = "KAKULSAYDON_G1_PATTERN_3"
+        product, inventory = subject.prepare_publication(source)
+        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertIn("no stages", inventory["patterns"][0]["unavailableReason"])
+
+    def test_publish_then_validate_uses_the_same_complete_inventory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            copy_repository_inputs(root)
+            path = root / subject.SOURCE_PATH
+            path.parent.mkdir(parents=True)
+            path.write_bytes(subject.serialize_json(self.source()))
+            before = path.read_bytes()
+            result = subject.run(root, "publish")
+            self.assertEqual((3, 2, 2, 1), tuple(result[k] for k in
+                ("savedPatternCount", "productPatternCount", "savedBundleCount", "productBundleCount")))
+            self.assertEqual(result, subject.run(root, "validate"))
+            self.assertEqual(before, path.read_bytes())
+            old_outputs = {relative: (root / relative).read_bytes() for relative in (subject.ENCOUNTER_PATH, subject.PRESENTATION_PATH)}
+            broken = self.source()
+            broken["folders"][0]["gateId"] = "UNKNOWN_GATE"
+            path.write_bytes(subject.serialize_json(broken))
+            with self.assertRaises(subject.CompositionError):
+                subject.run(root, "publish")
+            self.assertEqual(old_outputs, {relative: (root / relative).read_bytes() for relative in old_outputs})
+
 
 if __name__ == "__main__":
     unittest.main()

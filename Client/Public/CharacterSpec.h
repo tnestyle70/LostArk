@@ -23,6 +23,7 @@ enum class CHARACTER_ANIM {
 	so a class without that attachment keeps nullptr here and creation falls back
 	to the class's own idle. */
 	CUSTOMIZING_IDLE,
+	FEAR,
 	END
 };
 

@@ -90,7 +90,7 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
-uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs)
+uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused)
 {
 	if (!std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem) return 0u;
 	auto* sound = Find_Or_LoadSound(path, false);
@@ -100,11 +100,27 @@ uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint
 	FMOD::Channel* channel = nullptr;
 	if (m_pSystem->playSound(sound, nullptr, true, &channel) != FMOD_OK || !channel) return 0u;
 	if (channel->setVolume(volume) != FMOD_OK || channel->setPosition(ageMs, FMOD_TIMEUNIT_MS) != FMOD_OK ||
-		channel->setPaused(false) != FMOD_OK)
+		channel->setPaused(paused) != FMOD_OK)
 	{ channel->stop(); return 0u; }
 	const uint64_t handle = m_iNextCueHandle++;
 	m_CueChannels.emplace(handle, channel);
 	return handle;
+}
+bool_t CSound_Manager::Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs)
+{
+	if (!m_pSystem) return false;
+	auto* sound = Find_Or_LoadSound(path, false);
+	unsigned int length = 0u;
+	if (!sound || sound->getLength(&length, FMOD_TIMEUNIT_MS) != FMOD_OK || !length) return false;
+	durationMs = length;
+	return true;
+}
+bool_t CSound_Manager::Is_SoundCueActive(uint64_t handle) const
+{
+	const auto found = m_CueChannels.find(handle);
+	if (found == m_CueChannels.end()) return false;
+	bool playing = false;
+	return found->second->isPlaying(&playing) == FMOD_OK && playing;
 }
 void CSound_Manager::Pause_SoundCue(uint64_t handle, bool_t paused)
 {

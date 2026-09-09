@@ -131,6 +131,17 @@ namespace
 				DATA_JSON_VALUE value;
 				if (!ReadValue(depth + 1u, value))
 					return false;
+				// map's move may throw, so vector growth otherwise deep-copies
+				// parsed subtrees. Only this private staging array is relocated;
+				// the caller's outValue is still committed after complete parsing.
+				if (values.size() == values.capacity())
+				{
+					DATA_JSON_VALUE::ARRAY expanded;
+					expanded.reserve(values.empty() ? 4u : values.size() * 2u);
+					for (DATA_JSON_VALUE& existing : values)
+						expanded.push_back(move(existing));
+					values.swap(expanded);
+				}
 				values.push_back(move(value));
 				SkipWhitespace();
 				if (Consume(']'))

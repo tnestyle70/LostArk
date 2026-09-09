@@ -1352,6 +1352,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+		PLAYER_ACTION_STATE::FEAR == player.eAction ||
 		player.fKnockbackRemainingSeconds > 0.f ||
 		static_cast<std::int32_t>(
 			player.iHitReactionGraceEndTick - serverTick) > 0)

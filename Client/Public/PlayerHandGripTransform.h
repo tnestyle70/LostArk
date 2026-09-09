@@ -11,7 +11,7 @@ NS_BEGIN(Client)
 
 /* Authored CAPTURE hit value in metres, resolved from the admitted Product
    encounter document. The Client composes it every frame onto the owner's
-   replicated attachment socket (Valtan left hand) as a presentation-only
+   replicated attachment socket (Valtan or Kouku family left hand) as a presentation-only
    position; the Server keeps its boss-local anchor for judgement, release and
    ejection. The struct is also the typed shape that Balance Tool, Composition
    Detail, the encounter reference parser and the gameplay publisher validate. */
@@ -35,7 +35,7 @@ struct PLAYER_HAND_GRIP_SOCKET_VIEW final
 	float4x4_t OwnerYawBasis{};
 };
 
-/* Implemented by the replicated owner presentation (CValtan). CCharacter holds
+/* Implemented by the replicated owner presentation (CValtan or CNpc). CCharacter holds
    it weakly and asks every Update while the Server reports GRABBED; a false
    answer keeps the Server fallback transform for that frame. */
 class IPlayerHandGripSocketSource

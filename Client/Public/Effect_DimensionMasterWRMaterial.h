@@ -1564,6 +1564,12 @@ inline constexpr std::array<DIMENSIONMASTER_WR_PARAMETER_DESC,40> DIMENSIONMASTE
     {"spheremask_strength_min", 7u, 1u, false},
     {"maintex_alpha_strength", 3u, 0u, false},
 }};
+// Native CPU uniform rotation occupies a free row of the existing V packet.
+inline constexpr uint32_t DIMENSIONMASTER_WR_260_CPU_ROTATION_ROW = 13u;
+static_assert(std::all_of(DIMENSIONMASTER_WR_PARAMETERS_260.begin(),
+    DIMENSIONMASTER_WR_PARAMETERS_260.end(), [](const auto& Parameter)
+    { return Parameter.iRow < DIMENSIONMASTER_WR_260_CPU_ROTATION_ROW; }));
+
 inline constexpr std::array<DIMENSIONMASTER_WR_SWITCH_DESC,20> DIMENSIONMASTER_WR_SWITCHES_260 = {{
     {"use_dissolve", true},
     {"use_meshtype", true},
@@ -1902,6 +1908,15 @@ inline bool Build_DimensionMasterWRParameters(const EFFECT_SOURCE_MATERIAL_DESC&
             else if (P.iLane==2u) V.z=it->fValue;
             else V.w=it->fValue;
         }
+    }
+    if (Program->iProfileIndex == 260u)
+    {
+        // Source FMaterialUniformExpressionSine evaluates this material-only
+        // rotation on the CPU before upload, including edited rotator values.
+        const float fDissolveRadians = Candidate[1u].w * 0.25f;
+        auto& Rotation = Candidate[DIMENSIONMASTER_WR_260_CPU_ROTATION_ROW];
+        Rotation.x = std::cos(fDissolveRadians);
+        Rotation.y = std::sin(fDissolveRadians);
     }
     Output=Candidate;
     return true;

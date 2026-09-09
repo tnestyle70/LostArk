@@ -7,6 +7,8 @@
 #include "ProjectDataRoot.h"
 #include "AnimationTargetService.h"
 #include "Model.h"
+#include "Effect_Catalog.h"
+#include "Effect_AuthoringDocument.h"
 
 #include <Windows.h>
 
@@ -876,6 +878,13 @@ namespace
 	}
 }
 
+Client::CKoukuSaydonActionWorkbench::CKoukuSaydonActionWorkbench(const bool sequenceWorkspace)
+	: m_bSequenceWorkspace(sequenceWorkspace)
+	, m_Document(sequenceWorkspace ? CKoukuSaydonCompositionDocument::Resolve_SequencePath() :
+		CKoukuSaydonCompositionDocument::Resolve_Path())
+{
+}
+
 void Client::CKoukuSaydonActionWorkbench::Open()
 {
 	m_bOpen = true;
@@ -966,19 +975,6 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 				if (box.strOccurrenceId == edit.Occurrence.strOccurrenceId)
 				{ Copy_PresentationGeometry(edit.Occurrence, box); break; }
 		}
-		for (const auto& pattern : candidate.Patterns)
-			if (pattern.strAuthoringStatus == "PRODUCT" && pattern.strLoadError.empty())
-				for (const auto& box : pattern.PresentationOccurrences)
-				{
-					const auto* resource = Find_PresentationResource(candidate, box.strResourceId);
-					if (resource && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && !box.strLogicOccurrenceId.empty() &&
-						(box.RotationDegrees[0] != 0.0 || box.RotationDegrees[2] != 0.0))
-					{
-						outStatus = m_strStatus = "Save rejected: " + pattern.strDisplayName + " / " + box.strOccurrenceId +
-							" is a gameplay Collider and supports Yaw (Y rotation) only. Clear X/Z rotation in Collider Detail; saved source is unchanged.";
-						return false;
-					}
-				}
 		if (!m_Document.Save_Atomic(candidate, outStatus))
 		{ m_strStatus = outStatus; return false; }
 		m_Draft = m_Document.Get_LastGood();
@@ -990,34 +986,24 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		Normalize_Selection();
 		Synchronize_EditorFields();
 	}
-	if (m_Draft.PlayAllPatternIds.empty())
-	{
-		outStatus = m_strStatus = "Saved. Drafts are available for Preview; no PRODUCT Pattern is ready for Server play yet.";
-		return true;
-	}
-	std::string applyStatus;
-	if (!Publish_Product(applyStatus))
-		outStatus = m_strStatus = "Saved; runtime apply could not start. Press Save to retry. " + applyStatus;
-	else
-		outStatus = m_strStatus = "Saved; applying ready PRODUCT Patterns in the background.";
-	// The authoring transaction succeeded even if runtime promotion could not start.
+	outStatus = m_strStatus = m_bSequenceWorkspace ?
+		"Saved all Sequence changes to the independent Sequencer workspace." :
+		"Saved all Composition changes. Use Publish All Patterns to synchronize the F1 tree.";
 	return true;
 }
 
-bool_t Client::CKoukuSaydonActionWorkbench::Publish_Product(
+bool_t Client::CKoukuSaydonActionWorkbench::Publish_AllPatterns(
 	std::string& outStatus)
 {
+	if (m_bSequenceWorkspace)
+	{
+		outStatus = m_strStatus = "The Sequencer workspace supports local preview and Save only.";
+		return false;
+	}
 	if (!m_bHasDraft || Is_Dirty() || !m_Document.Is_Fresh())
 	{
 		outStatus =
-			"Publish requires one clean, freshly reopened KoukuSaydon Save.";
-		m_strStatus = outStatus;
-		return false;
-	}
-	if (m_Draft.PlayAllPatternIds.empty())
-	{
-		outStatus =
-			"Publish requires at least one validated PRODUCT Pattern.";
+			"Save all Composition changes before Publish All Patterns; reload if the saved source changed.";
 		m_strStatus = outStatus;
 		return false;
 	}
@@ -1124,7 +1110,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Publish_Product(
 	m_hPublishProcess = process.hProcess;
 	m_iPublishStartedAtMilliseconds = GetTickCount64();
 	outStatus =
-		"Publishing saved KoukuSaydon Product. Authoring source writes are locked until completion.";
+		"Publishing saved Patterns and Kouku world placements. Editing is locked until completion.";
 	m_strStatus = outStatus;
 	return true;
 }
@@ -1162,10 +1148,10 @@ void Client::CKoukuSaydonActionWorkbench::Poll_PublishProcess()
 	{
 		m_bProductInventoryRefreshRequested = true;
 		m_strStatus =
-			"Saved and applied ready PRODUCT Patterns. Restart the Server to load this revision, then use Complete Play (Server).";
+			"Published saved Patterns and Kouku world placements. F1 shows unavailable items with their reasons. Restart the Server, then use Complete Play (Server).";
 		return;
 	}
-	m_strStatus = "Saved; runtime apply failed. Press Save to retry";
+	m_strStatus = "Publish All Patterns failed. Previous runtime data is retained unless the log reports a rollback failure. Use Publish All Patterns to retry";
 	if (exitKnown)
 		m_strStatus += " with exit code " + std::to_string(exitCode);
 	m_strStatus += ". Preserved log: " + m_PublishDiagnosticPath.string();
@@ -1289,6 +1275,9 @@ void Client::CKoukuSaydonActionWorkbench::Set_PresentationResources(
 {
 	m_PresentationResourceInventory = std::move(resources);
 	m_strPresentationResourceStatus = std::move(status);
+	m_strExpandedV1EffectId.clear();
+	m_strV1ElementResourceStatus.clear();
+	m_V1ElementResources.clear();
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Consume_PresentationResourceRefreshRequest()
@@ -1331,7 +1320,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_ServerPlayRequest(
 	std::string& outPatternId,
 	std::uint32_t& outSourceRevision)
 {
-	if (!m_bServerPlayRequestPending)
+	if (m_bSequenceWorkspace || !m_bServerPlayRequestPending)
 		return false;
 	outPatternId = std::move(m_strPendingServerPlayPatternId);
 	outSourceRevision = m_iPendingServerPlaySourceRevision;
@@ -1523,6 +1512,90 @@ bool_t Client::CKoukuSaydonActionWorkbench::Rename_Pattern(
 		"Renamed KoukuSaydon Pattern display name.", outStatus);
 }
 
+bool_t Client::CKoukuSaydonActionWorkbench::Rename_Item(const RENAME_TARGET target,
+	const std::string_view id, const std::string_view displayName, std::string& outStatus)
+{
+	if (displayName.empty() || displayName.size() >= std::size(m_RenameDisplayName) ||
+		std::all_of(displayName.begin(), displayName.end(), [](const unsigned char c) { return std::isspace(c) != 0; }))
+	{ outStatus = m_strStatus = "Enter a non-empty display name of at most 255 UTF-8 bytes."; return false; }
+	auto candidate = m_Draft;
+	std::string* name = nullptr;
+	switch (target)
+	{
+	case RENAME_TARGET::PATTERN:
+		if (auto* row = Find_Pattern(candidate, id); row && row->strLoadError.empty()) name = &row->strDisplayName;
+		break;
+	case RENAME_TARGET::FOLDER:
+		for (auto& row : candidate.Folders) if (row.strFolderId == id && row.strLoadError.empty()) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::BUNDLE:
+		for (auto& row : candidate.Bundles) if (row.strBundleId == id && row.strLoadError.empty()) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::LOGIC:
+		for (auto& row : candidate.Logics) if (row.strLogicId == id) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::SUMMON:
+		for (auto& row : candidate.Summons) if (row.strSummonId == id) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::WORLD:
+		for (auto& row : candidate.Worlds) if (row.strWorldId == id) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::SCENE_PROFILE:
+		for (auto& row : candidate.SceneProfiles) if (row.strSceneProfileId == id) name = &row.strDisplayName;
+		break;
+	case RENAME_TARGET::PRESENTATION:
+		for (auto& row : candidate.PresentationResources) if (row.strResourceId == id) name = &row.strDisplayName;
+		break;
+	}
+	if (!m_bHasDraft || !name)
+	{ outStatus = m_strStatus = "Rename target is unavailable; the previous name is preserved."; return false; }
+	if (*name == displayName)
+	{ outStatus = m_strStatus = "The display name is unchanged."; return true; }
+	*name = std::string(displayName);
+	return Commit_Candidate(std::move(candidate), "Renamed selected item. Save keeps the name and all existing connections.", outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Render_RenameControl(const RENAME_TARGET target,
+	const std::string_view id, const std::string_view displayName)
+{
+	const char* const popup = m_bSequenceWorkspace ?
+		"Rename selected item###SequenceRenameSelectedItem" : "Rename selected item";
+	ImGui::PushID(static_cast<int>(target));
+	bool_t applied = false;
+	if (ImGui::Button("Rename"))
+	{
+		if (Copy_Text(m_RenameDisplayName, std::size(m_RenameDisplayName), displayName))
+		{
+			m_strRenameItemId = id;
+			ImGui::OpenPopup(popup);
+		}
+		else m_strStatus = "The current name exceeds the editor capacity; the previous name is preserved.";
+	}
+	if (ImGui::BeginPopupModal(popup, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextWrapped("%s", m_strRenameItemId.c_str());
+		if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+		ImGui::SetNextItemWidth(380.f);
+		const bool enter = ImGui::InputText("Display name", m_RenameDisplayName,
+			std::size(m_RenameDisplayName), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+		ImGui::BeginDisabled(m_RenameDisplayName[0] == '\0');
+		if (ImGui::Button("Apply name") || (enter && m_RenameDisplayName[0] != '\0'))
+		{
+			std::string status;
+			applied = Rename_Item(target, m_strRenameItemId, m_RenameDisplayName, status);
+			if (applied) ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+		ImGui::TextDisabled("Apply changes the draft. Save writes the composition.");
+		if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
+		ImGui::EndPopup();
+	}
+	ImGui::PopID();
+	return applied;
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Set_PatternFolder(
 	const std::string_view patternId, const std::string_view folderId, std::string& outStatus)
 {
@@ -1638,34 +1711,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_Stage(
 	const std::string_view stageId,
 	std::string& outStatus)
 {
-	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
-	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
-	if (nullptr == pattern)
-	{
-		outStatus = "KoukuSaydon Stage delete Pattern is absent.";
-		return false;
-	}
-	const auto found = std::find_if(pattern->Stages.begin(), pattern->Stages.end(),
-		[stageId](const KOUKU_SAYDON_COMPOSITION_STAGE& stage)
-		{
-			return stage.strStageId == stageId;
-		});
-	if (found == pattern->Stages.end())
-	{
-		outStatus = "KoukuSaydon Stage delete target is absent.";
-		return false;
-	}
-	pattern->Stages.erase(found);
-	Mark_Draft(candidate, *pattern);
-	if (!Commit_Candidate(std::move(candidate), "Deleted KoukuSaydon Stage.", outStatus))
-		return false;
-	if (m_strSelectedStageId == stageId)
-	{
-		m_strSelectedStageId.clear();
-		m_strSelectedOccurrenceId.clear();
-		Synchronize_EditorFields();
-	}
-	return true;
+	// Detail and timeline Delete share the same lane/movement clock splice.
+	return Delete_TimelineSelection(patternId, { std::string(stageId) }, {}, outStatus);
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Append_AnimationAsStage(
@@ -2678,6 +2725,19 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_ActionToStage(
 	return true;
 }
 
+bool_t Client::CKoukuSaydonActionWorkbench::Set_AnimationBlend(const std::string_view patternId,
+	const std::string_view occurrenceId, const std::uint32_t blendInMs, std::string& outStatus)
+{
+	auto candidate = m_Draft;
+	auto* pattern = Find_Pattern(candidate, patternId);
+	const auto found = pattern ? Find_Occurrence(*pattern, occurrenceId) : MUTABLE_OCCURRENCE{};
+	if (!pattern || !pattern->strLoadError.empty() || !found.pOccurrence || blendInMs > 1000u)
+	{ outStatus = m_strStatus = "Choose an editable Animation box and Blend In between 0 and 1000 ms."; return false; }
+	found.pOccurrence->iBlendInMs = blendInMs;
+	Mark_Draft(candidate, *pattern);
+	return Commit_Candidate(std::move(candidate), "Updated Animation Blend In. Zero uses an immediate transition.", outStatus);
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Set_AnimationPlayback(
 	const std::string_view patternId,
 	const std::string_view occurrenceId,
@@ -2830,6 +2890,7 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 	m_iOccurrencePlayMs = 1;
 	m_fOccurrencePlayRate = 1.f;
 	m_iOccurrenceEndPolicy = 0;
+	m_iOccurrenceBlendInMs = 0;
 	m_iLogicBoxStartMs = 0;
 	m_iLogicBoxDurationMs = 1000;
 	m_iSummonBoxStartMs = 0;
@@ -2890,6 +2951,7 @@ void Client::CKoukuSaydonActionWorkbench::Synchronize_EditorFields()
 	m_iOccurrenceStartOffsetMs = static_cast<int32_t>(occurrence->iStartOffsetMs);
 	m_iOccurrenceSourceStartMs = static_cast<int32_t>(occurrence->iSourceStartMs);
 	m_iOccurrencePlayMs = static_cast<int32_t>(occurrence->iPlayMs);
+	m_iOccurrenceBlendInMs = static_cast<int32_t>(occurrence->iBlendInMs);
 	m_fOccurrencePlayRate = occurrence->fPlayRate;
 	for (int32_t index = 0; index < static_cast<int32_t>(END_POLICIES.size()); ++index)
 	{
@@ -2927,20 +2989,23 @@ void Client::CKoukuSaydonActionWorkbench::Render_Toolbar()
 	}
 	ImGui::EndDisabled();
 
-	ImGui::SameLine();
-	const auto* selectedPattern = Find_Pattern(m_Draft, m_strSelectedPatternId);
-	const auto bundle = std::find_if(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& item) { return item.strBundleId == m_strSelectedBundleId; });
-	const bool bundleSelected = m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE && bundle != m_Draft.Bundles.end();
-	const bool executable = bundleSelected ? bundle->strAuthoringStatus == "PRODUCT" :
-		(m_ePatternSelection == KOUKU_PATTERN_SELECTION::PATTERN && selectedPattern && selectedPattern->strAuthoringStatus == "PRODUCT");
-	ImGui::BeginDisabled(publishing || Is_Dirty() || !executable);
-	if (ImGui::Button("Complete Play (Server)"))
+	if (!m_bSequenceWorkspace)
 	{
-		if (bundleSelected) { m_strPendingBundleServerId = bundle->strBundleId; m_iPendingBundleServerRevision = m_Draft.iRevision; }
-		else { m_strPendingServerPlayPatternId = m_strSelectedPatternId; m_iPendingServerPlaySourceRevision = m_Draft.iRevision; m_bServerPlayRequestPending = true; }
-		m_strStatus = "Requested the saved execution unit on the Server.";
+		ImGui::SameLine();
+		const auto* selectedPattern = Find_Pattern(m_Draft, m_strSelectedPatternId);
+		const auto bundle = std::find_if(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& item) { return item.strBundleId == m_strSelectedBundleId; });
+		const bool bundleSelected = m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE && bundle != m_Draft.Bundles.end();
+		const bool executionSelected = bundleSelected ? bundle->strLoadError.empty() :
+			(m_ePatternSelection == KOUKU_PATTERN_SELECTION::PATTERN && selectedPattern && selectedPattern->strLoadError.empty());
+		ImGui::BeginDisabled(publishing || Is_Dirty() || !m_Document.Is_Fresh() || !executionSelected);
+		if (ImGui::Button("Complete Play (Server)"))
+		{
+			if (bundleSelected) { m_strPendingBundleServerId = bundle->strBundleId; m_iPendingBundleServerRevision = m_Draft.iRevision; }
+			else { m_strPendingServerPlayPatternId = m_strSelectedPatternId; m_iPendingServerPlaySourceRevision = m_Draft.iRevision; m_bServerPlayRequestPending = true; }
+			m_strStatus = "Requested the saved execution unit on the Server.";
+		}
+		ImGui::EndDisabled();
 	}
-	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Fit"))
 		m_bFitRequested = true;
@@ -3083,7 +3148,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Link_BundlePattern(const std::string
 
 void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 {
-	ImGui::SeparatorText("Patterns by Gate");
+	ImGui::SeparatorText(m_bSequenceWorkspace ? "Sequences by Gate" : "Patterns by Gate");
 	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh());
 	if (ImGui::Button("Save##PatternsByGate"))
 	{
@@ -3094,7 +3159,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 	ImGui::SameLine();
 	ImGui::TextUnformatted(Is_Dirty() ? "Unsaved changes" : "Saved");
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Save keeps all gates, parents, bundles and patterns, then applies ready PRODUCT runtime data.");
+		ImGui::SetTooltip("%s", m_bSequenceWorkspace ?
+			"Save stores all sequences in this independent workspace." :
+			"Save stores changes across all gates, parents, bundles and patterns. Publish All Patterns synchronizes F1 separately.");
 	if (ImGui::BeginCombo("Gate##Composition", Gate_Label(m_strSelectedGateId)))
 	{
 		for (const auto* gate : {"GATE1", "GATE2", "GATE3", "BINGO"})
@@ -3130,7 +3197,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 				for (const auto& bundle : m_Draft.Bundles)
 				{
 					if (bundle.strFolderId != folder.strFolderId || !bundleMatches(bundle)) continue;
-					const bool childOpen = ImGui::TreeNodeEx((bundle.strDisplayName + " [Bundle / " + bundle.strAuthoringStatus + "]##" + bundle.strBundleId).c_str(),
+					const bool childOpen = ImGui::TreeNodeEx((bundle.strDisplayName + " [Bundle]##" + bundle.strBundleId).c_str(),
 						ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen | (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE && m_strSelectedBundleId == bundle.strBundleId ? ImGuiTreeNodeFlags_Selected : 0));
 					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::BUNDLE, bundle.strBundleId);
 					if (childOpen)
@@ -3153,7 +3220,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 				for (const auto& pattern : m_Draft.Patterns)
 				{
 					if (pattern.strFolderId != folder.strFolderId || !matches(pattern)) continue;
-					const auto label = pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId) + "] [" + pattern.strAuthoringStatus + "]##" + pattern.strPatternId;
+					const auto label = pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId) + "]##" + pattern.strPatternId;
 					if (ImGui::Selectable(label.c_str(), m_strSelectedPatternId == pattern.strPatternId))
 					{ m_strBundleReturnId.clear(); std::string status; (void)Select_PatternById(pattern.strPatternId, status); }
 				}
@@ -3166,35 +3233,39 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 			if (!matches(pattern) || (parent && parent->strGateId == pattern.strGateId)) continue;
 			const bool linked = std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& b) { return std::any_of(b.Members.begin(), b.Members.end(), [&](const auto& m) { return m.strPatternId == pattern.strPatternId; }); });
 			if (linked) continue;
-			if (ImGui::Selectable((pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId) + "] [" + pattern.strAuthoringStatus + "]##" + pattern.strPatternId).c_str(), m_strSelectedPatternId == pattern.strPatternId))
+			if (ImGui::Selectable((pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId) + "]##" + pattern.strPatternId).c_str(), m_strSelectedPatternId == pattern.strPatternId))
 			{ m_strBundleReturnId.clear(); m_strCreateBundleId.clear(); std::string status; (void)Select_PatternById(pattern.strPatternId, status); }
 		}
 	}
 	ImGui::EndChild();
-	const auto* selectedProductPattern = m_ePatternSelection == KOUKU_PATTERN_SELECTION::PATTERN ?
-		Find_Pattern(m_Draft, m_strSelectedPatternId) : nullptr;
-	if (selectedProductPattern)
-		ImGui::TextWrapped("Selected: %s [%s]", selectedProductPattern->strDisplayName.c_str(), selectedProductPattern->strAuthoringStatus.c_str());
-	ImGui::BeginDisabled(Is_PublishRunning() || !selectedProductPattern ||
-		!selectedProductPattern->strLoadError.empty() || !m_Document.Is_Fresh());
-	if (ImGui::Button("Set Pattern to PRODUCT##PatternList"))
+	if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::PATTERN)
 	{
-		const std::string patternId = selectedProductPattern->strPatternId;
-		std::string status;
-		if (selectedProductPattern->strAuthoringStatus == "PRODUCT" || Set_PatternAuthoringStatus(patternId, "PRODUCT", status))
+		if (const auto* item = Find_Pattern(m_Draft, m_strSelectedPatternId); item && item->strLoadError.empty())
+			if (Render_RenameControl(RENAME_TARGET::PATTERN, item->strPatternId, item->strDisplayName)) return;
+	}
+	else if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::FOLDER)
+	{
+		if (const auto* item = Find_Folder(m_Draft, m_strSelectedFolderId); item && item->strLoadError.empty())
+			if (Render_RenameControl(RENAME_TARGET::FOLDER, item->strFolderId, item->strDisplayName)) return;
+	}
+	else if (m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE)
+	{
+		if (const auto* item = Find_Bundle(m_Draft, m_strSelectedBundleId); item && item->strLoadError.empty())
+			if (Render_RenameControl(RENAME_TARGET::BUNDLE, item->strBundleId, item->strDisplayName)) return;
+	}
+	if (!m_bSequenceWorkspace)
+	{
+		ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || Is_Dirty() || !m_Document.Is_Fresh());
+		if (ImGui::Button("Publish All Patterns##PatternList"))
 		{
-			(void)Save(status);
-			for (const auto& bundle : m_Draft.Bundles)
-				if (bundle.strAuthoringStatus != "PRODUCT" && std::any_of(bundle.Members.begin(), bundle.Members.end(),
-					[&](const auto& member) { return member.strPatternId == patternId; }))
-					m_strStatus += " Bundle '" + bundle.strDisplayName + "' [" + bundle.strBundleId +
-						"] is still DRAFT; select that Bundle and set it to PRODUCT for combined playback.";
+			std::string status;
+			(void)Publish_AllPatterns(status);
 		}
 		ImGui::EndDisabled();
-		return;
+		ImGui::TextWrapped("Publishes every saved Parent, Bundle and Pattern across all gates. Unavailable items stay in the F1 tree with a reason; no individual publish selection is needed.");
+		if (Is_Dirty()) ImGui::TextDisabled("Save changes before Publish All Patterns.");
+		ImGui::TextDisabled("After publish, restart the Server before Complete Play.");
 	}
-	ImGui::EndDisabled();
-	ImGui::TextDisabled("Set Pattern to PRODUCT saves and publishes. Wait for publish, restart the Server, then use Complete Play. Bundles have their own PRODUCT status.");
 	ImGui::SeparatorText("Create Parent");
 	ImGui::InputTextWithHint("##NewFolder", "Parent name", m_NewFolderName, std::size(m_NewFolderName));
 	ImGui::BeginDisabled(!m_bHasDraft || m_NewFolderName[0] == '\0');
@@ -3204,8 +3275,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 	ImGui::BeginDisabled(!Find_Folder(m_Draft, m_strSelectedFolderId) || m_NewBundleName[0] == '\0');
 	if (ImGui::Button("Create Bundle")) (void)Create_Hierarchy(true);
 	ImGui::EndDisabled();
-	ImGui::SeparatorText("Create Pattern");
-	ImGui::InputTextWithHint("##NewKoukuPattern", "Pattern display name", m_NewPatternName, std::size(m_NewPatternName));
+	ImGui::SeparatorText(m_bSequenceWorkspace ? "Create Sequence" : "Create Pattern");
+	ImGui::InputTextWithHint("##NewKoukuPattern", m_bSequenceWorkspace ? "Sequence display name" : "Pattern display name", m_NewPatternName, std::size(m_NewPatternName));
 	if (ImGui::BeginCombo("Target Boss", Actor_Label(m_strCreateActorProfileId)))
 	{
 		for (const auto* actor : ACTOR_PROFILES)
@@ -3240,11 +3311,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 	parent = Find_Folder(m_Draft, m_strCreateFolderId);
 	destination = Find_Bundle(m_Draft, m_strCreateBundleId);
 	ImGui::TextWrapped("Destination: %s / %s / %s", Gate_Label(m_strSelectedGateId),
-		parent ? parent->strDisplayName.c_str() : "Gate root", destination ? destination->strDisplayName.c_str() : "Independent Pattern");
-	static int categoryIndex = 1;
-	ImGui::Combo("Category##CreatePattern", &categoryIndex, PATTERN_CATEGORIES.data(), static_cast<int>(PATTERN_CATEGORIES.size()));
+		parent ? parent->strDisplayName.c_str() : "Gate root", destination ? destination->strDisplayName.c_str() :
+		(m_bSequenceWorkspace ? "Independent Sequence" : "Independent Pattern"));
+	ImGui::Combo("Category##CreatePattern", &m_iNewPatternCategory, PATTERN_CATEGORIES.data(), static_cast<int>(PATTERN_CATEGORIES.size()));
 	ImGui::BeginDisabled(!m_bHasDraft || m_NewPatternName[0] == '\0');
-	if (ImGui::Button("Create Pattern")) { std::string id, status; if (Create_Pattern(m_NewPatternName, PATTERN_CATEGORIES[categoryIndex], id, status)) m_NewPatternName[0] = '\0'; }
+	if (ImGui::Button(m_bSequenceWorkspace ? "Create Sequence###Create Pattern" : "Create Pattern")) { std::string id, status; if (Create_Pattern(m_NewPatternName, PATTERN_CATEGORIES[m_iNewPatternCategory], id, status)) m_NewPatternName[0] = '\0'; }
 	ImGui::EndDisabled();
 }
 
@@ -3257,7 +3328,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundlePreviewRequest(std::st
 
 bool_t Client::CKoukuSaydonActionWorkbench::Consume_BundleServerPlayRequest(std::string& id, std::uint32_t& revision)
 {
-	if (m_strPendingBundleServerId.empty()) return false;
+	if (m_bSequenceWorkspace || m_strPendingBundleServerId.empty()) return false;
 	id = std::move(m_strPendingBundleServerId); m_strPendingBundleServerId.clear(); revision = m_iPendingBundleServerRevision; return true;
 }
 
@@ -3315,7 +3386,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_BundleTimeline()
 	const auto* selected = Find_Bundle(m_Draft, m_strSelectedBundleId);
 	if (!selected) { ImGui::TextDisabled("The selected bundle is unavailable."); return; }
 	const auto bundle = *selected;
-	ImGui::BeginDisabled(!m_bHasDraft || Is_PublishRunning());
+	ImGui::BeginDisabled(Is_PublishRunning() || !m_bHasDraft || !m_Document.Is_Fresh());
 	if (ImGui::Button("Save##BundleSequence")) { std::string status; (void)Save(status); }
 	ImGui::EndDisabled(); ImGui::SameLine(); Render_BundleTransport();
 	const auto duration = Bundle_DurationMs(m_Draft, bundle);
@@ -3460,14 +3531,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_HierarchyDetails()
 			return;
 		}
 	}
-	if (ImGui::BeginCombo("Authoring##Bundle", bundle.strAuthoringStatus.c_str()))
-	{
-		std::string requested;
-		for (const auto* state : {"DRAFT", "PRODUCT"}) if (ImGui::Selectable(state, bundle.strAuthoringStatus == state)) requested = state;
-		ImGui::EndCombo();
-		if (!requested.empty()) { auto candidate = m_Draft; Find_Bundle(candidate, id)->strAuthoringStatus = requested; std::string status; (void)Commit_Candidate(std::move(candidate), "Changed bundle authoring status.", status); return; }
-	}
-	ImGui::SeparatorText("Connected Patterns");
+	if (!m_bSequenceWorkspace)
+		ImGui::TextDisabled("Publish All Patterns checks this bundle and its children together.");
+	ImGui::SeparatorText(m_bSequenceWorkspace ? "Connected Sequences" : "Connected Patterns");
 	for (const auto& member : bundle.Members)
 	{
 		const auto* pattern = Find_Pattern(m_Draft, member.strPatternId);
@@ -3493,7 +3559,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_HierarchyDetails()
 		}
 		ImGui::PopID(); ImGui::Separator();
 	}
-	if (ImGui::BeginCombo("Link Existing Pattern", "Choose a Pattern from this Gate"))
+	if (ImGui::BeginCombo(m_bSequenceWorkspace ? "Link Existing Sequence###Link Existing Pattern" : "Link Existing Pattern",
+		m_bSequenceWorkspace ? "Choose a Sequence from this Gate" : "Choose a Pattern from this Gate"))
 	{
 		std::string target;
 		for (const auto& pattern : m_Draft.Patterns)
@@ -3579,8 +3646,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_BundleCommonDetails()
 void Client::CKoukuSaydonActionWorkbench::Render_ResourcesWindow()
 {
 	if (!m_bResourcesOpen || !m_bOpen) return;
-	ImGui::SetNextWindowSize(ImVec2(450.f, 600.f), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("Composition Resources###KoukuCompositionResources", &m_bResourcesOpen))
+	ImGui::SetNextWindowSize(ImVec2(540.f, 820.f), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin(m_bSequenceWorkspace ? "Composition Resources###KoukuSequenceResources" :
+		"Composition Resources###KoukuCompositionResources", &m_bResourcesOpen))
 		Render_ResourceTree();
 	ImGui::End();
 }
@@ -4191,7 +4259,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 	const bool_t patternPreview = patternReady && m_PreviewState.bPlaying &&
 		m_PreviewState.strPatternId == pattern->strPatternId;
 	ImGui::BeginDisabled(!patternReady);
-	if (ImGui::Button("Play Pattern"))
+	if (ImGui::Button(m_bSequenceWorkspace ? "Play Sequence###Play Pattern" : "Play Pattern"))
 	{
 		std::string status;
 		(void)Request_PatternPreview(pattern->strPatternId, m_iCursorMs, status);
@@ -4303,6 +4371,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	while (expanded)
 	{
 		expanded = false;
+		for (const auto& box : source.LogicOccurrences)
+			if (selected.contains(box.strOccurrenceId) && !box.strHoldLogicOccurrenceId.empty())
+				expanded |= selected.insert(box.strHoldLogicOccurrenceId).second;
 		for (const auto& box : source.PresentationOccurrences)
 		{
 			const auto* resource = Find_PresentationResource(candidate, box.strResourceId);
@@ -4422,9 +4493,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	if (splice && pattern->BossMotion)
 	{
 		auto& motion = *pattern->BossMotion;
-		if (motion.iStartMs < insertMs && motion.iEndMs > insertMs)
-			return reject("Duplicate cannot insert inside the two-point Boss Motion; choose a boundary outside its movement.");
 		if (motion.iStartMs >= insertMs) { motion.iStartMs += static_cast<std::uint32_t>(delta); motion.iEndMs += static_cast<std::uint32_t>(delta); }
+		else if (motion.iEndMs > insertMs) motion.iEndMs += static_cast<std::uint32_t>(delta);
 	}
 	const auto shiftLane = [&](auto& rows) {
 		for (auto& row : rows)
@@ -4491,6 +4561,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	for (std::size_t index = source.LogicOccurrences.size(); index < pattern->LogicOccurrences.size(); ++index)
 	{
 		auto& row = pattern->LogicOccurrences[index];
+		remap(row.strHoldLogicOccurrenceId, ids);
 		if (!cloneLogic(row.strLogicId)) return reject("Duplicate Logic definition is unavailable or its IDs are exhausted.");
 		for (auto* outcomes : { &row.OnSuccessLogicIds, &row.OnFailLogicIds, &row.OnTimeoutLogicIds })
 			for (auto& id : *outcomes) if (!cloneLogic(id)) return reject("Duplicate outcome definition is unavailable or its IDs are exhausted.");
@@ -4530,6 +4601,16 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_TimelineSelection(
 	for (const auto& id : stages) if (!Find_Stage(*pattern, id)) return reject("Delete Stage is unavailable: " + id);
 	for (const auto& id : boxes) if (!Has_TimelineOccurrence(*pattern, id)) return reject("Delete box is unavailable: " + id);
 	// Deleting an Object removes its owned companion, as the single-row command does.
+	// A capture Trigger owns its Hold only while no surviving Trigger shares it.
+	for (const auto& row : pattern->LogicOccurrences)
+		if (boxes.contains(row.strOccurrenceId) && !row.strHoldLogicOccurrenceId.empty() &&
+			std::none_of(pattern->LogicOccurrences.begin(), pattern->LogicOccurrences.end(), [&](const auto& other) {
+				return !boxes.contains(other.strOccurrenceId) && other.strHoldLogicOccurrenceId == row.strHoldLogicOccurrenceId; }))
+			boxes.insert(row.strHoldLogicOccurrenceId);
+	for (auto& row : pattern->LogicOccurrences)
+		if (boxes.contains(row.strHoldLogicOccurrenceId)) row.strHoldLogicOccurrenceId.clear();
+	for (const auto& row : pattern->PresentationOccurrences)
+		if (!row.strLogicOccurrenceId.empty() && boxes.contains(row.strLogicOccurrenceId)) boxes.insert(row.strOccurrenceId);
 	for (const auto& row : pattern->PresentationOccurrences)
 		if (!row.strWorldOccurrenceId.empty() && boxes.contains(row.strWorldOccurrenceId)) boxes.insert(row.strOccurrenceId);
 	std::vector<std::pair<std::uint64_t, std::uint64_t>> removed;
@@ -4561,11 +4642,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_TimelineSelection(
 	if (pattern->BossMotion && !removed.empty())
 	{
 		auto& motion = *pattern->BossMotion;
-		for (const auto& [first, last] : removed)
-			if (first < motion.iEndMs && last > motion.iStartMs)
-				return reject("Delete cannot cut the two-point Boss Motion interval.");
-		motion.iStartMs = static_cast<std::uint32_t>(mappedTime(motion.iStartMs));
-		motion.iEndMs = static_cast<std::uint32_t>(mappedTime(motion.iEndMs));
+		const auto startMs = mappedTime(motion.iStartMs), endMs = mappedTime(motion.iEndMs);
+		if (endMs <= startMs)
+			return reject("This selection removes the whole Boss Motion interval. Disable Move boss during Pattern before deleting that complete interval.");
+		// Animation splices change the movement clock, preserving authored
+		// positions and yaw. The same time mapping already retimes other lanes.
+		motion.iStartMs = static_cast<std::uint32_t>(startMs);
+		motion.iEndMs = static_cast<std::uint32_t>(endMs);
 	}
 	std::erase_if(pattern->Stages, [&](const auto& stage) { return stages.contains(stage.strStageId); });
 	for (auto& stage : pattern->Stages)
@@ -4678,7 +4761,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		m_PreviewState.strPatternId == patternId;
 	const bool_t canPlayPattern = patternReady && durationMs > 0u;
 	const bool_t publishing = Is_PublishRunning();
-	ImGui::BeginDisabled(publishing || !m_bHasDraft || !Is_Dirty() || !m_Document.Is_Fresh());
+	ImGui::BeginDisabled(publishing || !m_bHasDraft || !m_Document.Is_Fresh());
 	const bool_t saveRequested = ImGui::Button("Save##KoukuSequencer");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -5675,7 +5758,23 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxWindow(
 			collider.iStartMs = startMs;
 			collider.iDurationMs = durationMs;
 		}
+	Mark_Draft(candidate, *pattern);
 	return Commit_Candidate(std::move(candidate), "Updated Logic window and its linked Collider boxes.", outStatus);
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxHold(
+	const std::string_view patternId, const std::string_view occurrenceId,
+	const std::string_view holdOccurrenceId, std::string& outStatus)
+{
+	auto candidate = m_Draft;
+	auto* pattern = Find_Pattern(candidate, patternId);
+	auto* box = pattern ? Find_LogicBox(*pattern, occurrenceId) : nullptr;
+	const auto* logic = box ? Find_Logic(candidate, box->strLogicId) : nullptr;
+	if (!logic || logic->strTriggerKind != "ENTER_AREA")
+	{ outStatus = m_strStatus = "Select an ENTER_AREA Trigger window to connect its Hold."; return false; }
+	box->strHoldLogicOccurrenceId = holdOccurrenceId;
+	Mark_Draft(candidate, *pattern);
+	return Commit_Candidate(std::move(candidate), "Updated capture Hold connection. Press Save.", outStatus);
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Delete_LogicBox(
@@ -5683,33 +5782,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_LogicBox(
 	const std::string_view occurrenceId,
 	std::string& outStatus)
 {
-	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
-	KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern = Find_Pattern(candidate, patternId);
-	if (nullptr == pattern)
-	{
-		outStatus = m_strStatus = "Logic box delete Pattern is absent.";
-		return false;
-	}
-	const auto found = std::find_if(
-		pattern->LogicOccurrences.begin(), pattern->LogicOccurrences.end(),
-		[occurrenceId](const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& box)
-		{
-			return box.strOccurrenceId == occurrenceId;
-		});
-	if (found == pattern->LogicOccurrences.end())
-	{
-		outStatus = m_strStatus = "Logic box delete target is absent.";
-		return false;
-	}
-	pattern->LogicOccurrences.erase(found);
-	if (!Commit_Candidate(std::move(candidate), "Deleted Logic box.", outStatus))
-		return false;
-	if (m_strSelectedLogicOccurrenceId == occurrenceId)
-	{
-		m_strSelectedLogicOccurrenceId.clear();
-		Synchronize_EditorFields();
-	}
-	return true;
+	return Delete_TimelineSelection(patternId, {}, {std::string(occurrenceId)}, outStatus);
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxOutcomes(
@@ -5762,6 +5835,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxOutcomes(
 		return true;
 	}
 	current = resultLogicIds;
+	Mark_Draft(candidate, *pattern);
 	return Commit_Candidate(std::move(candidate),
 		std::string("Wired the ") + Outcome_SlotLabel(slot) + " outcomes. Press Save to keep them.",
 		outStatus);
@@ -5793,8 +5867,40 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicDefinitionValues(
 		return true;
 	}
 	*found = std::move(updated);
+	// Editing a shared definition may make its users temporarily incomplete.
+	// Publish All Patterns evaluates readiness after the source has been saved.
+	for (auto& pattern : candidate.Patterns)
+	{
+		if (!pattern.strLoadError.empty()) continue;
+		const bool usesDefinition = std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+			[&](const auto& box) {
+				if (box.strLogicId == logicId) return true;
+				for (const auto slot : { KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS,
+					KOUKU_SAYDON_OUTCOME_SLOT::FAIL, KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT })
+					if (std::find(box.Outcomes(slot).begin(), box.Outcomes(slot).end(), logicId) != box.Outcomes(slot).end())
+						return true;
+				return false;
+			});
+		if (usesDefinition)
+		{
+			for (auto& box : pattern.LogicOccurrences)
+			{
+				if (box.strLogicId == logicId && found->strTriggerKind != "ENTER_AREA") box.strHoldLogicOccurrenceId.clear();
+				if (const auto* hold = Find_LogicBox(pattern, box.strHoldLogicOccurrenceId);
+					hold && hold->strLogicId == logicId && found->strJudgementKind != "ATTACHMENT_HOLD") box.strHoldLogicOccurrenceId.clear();
+				if (box.strLogicId == logicId && found->strJudgementKind == "ATTACHMENT_HOLD")
+				{
+					box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
+					for (auto& collider : pattern.PresentationOccurrences)
+						if (collider.strLogicOccurrenceId == box.strOccurrenceId) collider.strLogicOccurrenceId.clear();
+				}
+			}
+			Mark_Draft(candidate, pattern);
+		}
+	}
 	return Commit_Candidate(std::move(candidate),
-		"Applied the Logic values. Save stores them and updates ready PRODUCT runtime data.",
+		m_bSequenceWorkspace ? "Applied the Logic values. Save stores them in the Sequence workspace." :
+		"Applied the Logic values. Save stores them; Publish All Patterns updates the F1 tree.",
 		outStatus);
 }
 
@@ -6046,6 +6152,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_SummonResources()
 	const std::size_t references = Count_SummonReferences(m_Draft, summonId, &unresolvedReferences);
 	ImGui::SeparatorText("Selected Summon");
 	ImGui::TextWrapped("%s", summonName.c_str());
+	if (Render_RenameControl(RENAME_TARGET::SUMMON, summonId, summonName)) return;
 	ImGui::TextDisabled("%s | %zu box(es)", summonId.c_str(), references);
 	ImGui::Checkbox("Until Pattern end##NewKoukuSummonBox", &m_bNewSummonBoxToPatternEnd);
 	if (!m_bNewSummonBoxToPatternEnd)
@@ -6794,7 +6901,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_PresentationSource(
 	const auto existing = std::find_if(candidate.PresentationResources.begin(), candidate.PresentationResources.end(),
 		[&](const auto& item) {
 			return item.eKind == source.eKind && item.strAssetId == source.strAssetId &&
-				item.strResourceKind == source.strResourceKind &&
+				item.strResourceKind == source.strResourceKind && item.strElementId == source.strElementId &&
 				(item.eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT ||
 					item.strDefaultAnchorKind == source.strDefaultAnchorKind);
 		});
@@ -7014,7 +7121,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	{
 		// Reuse the typed definition, but unrelated boxes get independent windows.
 		auto logic = std::find_if(candidate.Logics.begin(), candidate.Logics.end(), [](const auto& row) {
-			return row.strLogicType == "TRIGGER" && row.strTriggerKind == "ENTER_AREA"; });
+			return row.strLogicType == "TRIGGER" && row.strTriggerKind == "ENTER_AREA" && row.fBossChargeDistanceM == 0.0; });
 		if (logic == candidate.Logics.end())
 		{
 			if (candidate.iNextLogicOrdinal >= 1000000u)
@@ -7227,10 +7334,25 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 	ImGui::TextWrapped("%s", m_strPresentationResourceStatus.c_str());
 	std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> sources;
 	const bool lightFamily = kind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT;
+	const bool effectFamily = kind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 	const char* lightAnchors[] = { "MAP", "PLAYER", "BOSS" };
 	if (lightFamily) ImGui::Combo("Category##LightResources", &m_iLightResourceCategory, "Map\0Character\0Boss\0");
+	if (effectFamily)
+	{
+		if (ImGui::RadioButton("V2", m_iEffectResourceVersion == 0)) m_iEffectResourceVersion = 0;
+		ImGui::SameLine();
+		if (ImGui::RadioButton("V1", m_iEffectResourceVersion == 1)) m_iEffectResourceVersion = 1;
+		ImGui::InputTextWithHint("##EffectSourceSearch", "Search saved Effects", m_PresentationResourceSearch, std::size(m_PresentationResourceSearch));
+	}
+	const auto versionMatches = [&](const auto& item) {
+		return !effectFamily || (m_iEffectResourceVersion == 0 ? item.strResourceKind == "GROUP" :
+			(item.strResourceKind == "V1_EFFECT" || item.strResourceKind == "V1_ELEMENT"));
+	};
 	for (const auto& item : m_PresentationResourceInventory)
-		if (item.eKind == kind && (!lightFamily || item.strDefaultAnchorKind == lightAnchors[m_iLightResourceCategory])) sources.push_back(item);
+		if (item.eKind == kind && versionMatches(item) &&
+			(!lightFamily || item.strDefaultAnchorKind == lightAnchors[m_iLightResourceCategory]) &&
+			(!effectFamily || ContainsInsensitive(item.strDisplayName, m_PresentationResourceSearch) ||
+				ContainsInsensitive(item.strAssetId, m_PresentationResourceSearch) || ContainsInsensitive(item.strElementId, m_PresentationResourceSearch))) sources.push_back(item);
 	if (kind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
 	{
 		auto* level = CLevel_KakulSaydonArena::Get_Active();
@@ -7275,24 +7397,83 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 		}
 		ImGui::TextDisabled("Region authoring and visual preview. Gameplay outcomes remain in explicit Logic definitions.");
 	}
-	ImGui::BeginChild("##PresentationSources", ImVec2(0.f, 180.f), ImGuiChildFlags_Borders);
-	for (const auto& item : sources)
-	{
-		const std::string id = std::to_string(static_cast<int>(item.eKind)) + ":" + item.strResourceKind + ":" +
-			(item.strAssetId.empty() ? item.strResourceId : item.strAssetId);
+	const auto sourceId = [](const auto& item) {
+		return std::to_string(static_cast<int>(item.eKind)) + ":" + item.strResourceKind + ":" +
+			(item.strAssetId.empty() ? item.strResourceId : item.strAssetId) +
+			(item.strElementId.empty() ? "" : ":" + item.strElementId);
+	};
+	const auto selectSource = [&](const auto& item) {
+		m_strSelectedPresentationSourceId = sourceId(item);
+		(void)Copy_Text(m_NewPresentationName, std::size(m_NewPresentationName), item.strDisplayName);
+	};
+	const auto drawSource = [&](const auto& item) {
+		const std::string id = sourceId(item);
 		const std::string label = (kind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ? item.strResourceKind + "  " : "") +
 			item.strDisplayName + "##" + id;
 		if (ImGui::Selectable(label.c_str(), m_strSelectedPresentationSourceId == id))
+			selectSource(item);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s%s | native %u ms", item.strAssetId.c_str(),
+			item.strElementId.empty() ? "" : " | ", item.strElementId.c_str(), item.iDurationMs);
+	};
+	ImGui::BeginChild("##PresentationSources", ImVec2(0.f, effectFamily ? 360.f : 180.f), ImGuiChildFlags_Borders);
+	for (auto& item : sources)
+	{
+		if (!effectFamily || item.strResourceKind != "V1_EFFECT")
+		{ drawSource(item); continue; }
+		ImGui::SetNextItemOpen(m_strExpandedV1EffectId == item.strAssetId, ImGuiCond_Always);
+		const auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+			(m_strSelectedPresentationSourceId == sourceId(item) ? ImGuiTreeNodeFlags_Selected : 0);
+		const bool open = ImGui::TreeNodeEx((item.strDisplayName + "##" + sourceId(item)).c_str(), flags);
+		const bool select = ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen();
+		if (select) selectSource(item);
+		if ((open || select) && m_strExpandedV1EffectId != item.strAssetId)
 		{
-			m_strSelectedPresentationSourceId = id;
-			(void)Copy_Text(m_NewPresentationName, std::size(m_NewPresentationName), item.strDisplayName);
+			m_strExpandedV1EffectId = item.strAssetId;
+			m_V1ElementResources.clear();
+			m_strV1ElementResourceStatus.clear();
+			if (const auto document = CEffectCatalog::Find(item.strAssetId))
+			{
+				std::uint32_t durationMs = 1u;
+				for (const auto& element : document->Elements)
+				{
+					auto child = item;
+					child.strResourceKind = "V1_ELEMENT";
+					child.strElementId = element.strElementId;
+					child.strDisplayName = element.strDisplayName.empty() ? element.strElementId : element.strDisplayName;
+					const auto& timing = element.Detail.Timing;
+					child.iDurationMs = static_cast<std::uint32_t>(std::clamp(
+						std::ceil(1000.0 * (timing.fStartDelaySeconds + timing.fLifeTimeSeconds + timing.fAfterImageSeconds)),
+						1.0, static_cast<double>(MAX_EDITOR_TIME_MS)));
+					durationMs = (std::max)(durationMs, child.iDurationMs);
+					m_V1ElementResources.push_back(std::move(child));
+				}
+				for (const auto& cue : document->ModelCues)
+					durationMs = (std::max)(durationMs, static_cast<std::uint32_t>(std::clamp(
+						std::ceil(1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds)), 1.0, static_cast<double>(MAX_EDITOR_TIME_MS))));
+				item.iDurationMs = durationMs;
+				for (auto& row : m_PresentationResourceInventory)
+					if (row.strAssetId == item.strAssetId && row.strResourceKind == "V1_EFFECT") row.iDurationMs = durationMs;
+			}
+			else m_strV1ElementResourceStatus = "Effect unavailable: " + CEffectCatalog::Get_Status();
 		}
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s | native %u ms", item.strAssetId.c_str(), item.iDurationMs);
+		if (!open)
+		{
+			if (!select && ImGui::IsItemToggledOpen() && m_strExpandedV1EffectId == item.strAssetId)
+				m_strExpandedV1EffectId.clear();
+			continue;
+		}
+		if (m_strExpandedV1EffectId == item.strAssetId)
+		{
+			if (!m_strV1ElementResourceStatus.empty()) ImGui::TextWrapped("%s", m_strV1ElementResourceStatus.c_str());
+			for (const auto& child : m_V1ElementResources) drawSource(child);
+		}
+		ImGui::TreePop();
 	}
 	ImGui::EndChild();
+	if (effectFamily && m_iEffectResourceVersion == 1)
+		sources.insert(sources.end(), m_V1ElementResources.begin(), m_V1ElementResources.end());
 	const auto source = std::find_if(sources.begin(), sources.end(), [&](const auto& item) {
-		return m_strSelectedPresentationSourceId == std::to_string(static_cast<int>(item.eKind)) + ":" + item.strResourceKind + ":" +
-			(item.strAssetId.empty() ? item.strResourceId : item.strAssetId); });
+		return m_strSelectedPresentationSourceId == sourceId(item); });
 	ImGui::InputText("Display name", m_NewPresentationName, std::size(m_NewPresentationName));
 	ImGui::BeginDisabled(source == sources.end());
 	if (ImGui::Button("Preview Source") && source != sources.end()) Queue_PresentationPreview(*source);
@@ -7321,21 +7502,27 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 		}
 		ImGui::EndDisabled();
 		if (kind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
-			ImGui::TextDisabled("Select a child Pattern with animation timing. GROUP appends one saved reference with all its children.");
+			ImGui::TextWrapped(m_iEffectResourceVersion == 0 ?
+				"GROUP appends its saved children together. Select a child Pattern with animation timing." :
+				"V1 Effect appends the complete saved effect; V1 Element appends the selected stable element. Source tuning is preserved.");
 		if (lightFamily) ImGui::TextDisabled("Light shape and RGB are saved in Rendering Workbench. Boxes own timing and anchor.");
 	}
 	ImGui::SeparatorText("Created Resources");
+	ImGui::BeginChild("##CreatedPresentationResources", ImVec2(0.f, effectFamily ? 110.f : 140.f), ImGuiChildFlags_Borders);
 	for (const auto& item : m_Draft.PresentationResources)
 	{
-		if (item.eKind != kind || (lightFamily && item.strDefaultAnchorKind != lightAnchors[m_iLightResourceCategory])) continue;
+		if (item.eKind != kind || !versionMatches(item) || (lightFamily && item.strDefaultAnchorKind != lightAnchors[m_iLightResourceCategory])) continue;
 		const auto label = item.strDisplayName + "##" + item.strResourceId;
 		if (ImGui::Selectable(label.c_str(), m_strSelectedPresentationResourceId == item.strResourceId))
 			m_strSelectedPresentationResourceId = item.strResourceId;
 	}
+	ImGui::EndChild();
 	const auto* selected = Find_PresentationResource(m_Draft, m_strSelectedPresentationResourceId);
-	if (nullptr != selected && selected->eKind == kind)
+	if (nullptr != selected && selected->eKind == kind && versionMatches(*selected))
 	{
 		const auto resource = *selected;
+		if (Render_RenameControl(RENAME_TARGET::PRESENTATION, resource.strResourceId, resource.strDisplayName))
+		{ ImGui::PopID(); return; }
 		if (kind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA && source == sources.end()) Render_CameraAuthoring(resource.strAssetId);
 		if (ImGui::Button("Preview")) Queue_PresentationPreview(resource);
 		ImGui::SameLine();
@@ -7349,6 +7536,99 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOU
 	}
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::PopID();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
+	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+	KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& edit, const bool_t effect)
+{
+	if (ImGui::BeginCombo("Anchor", edit.strAnchorKind.c_str()))
+	{
+		for (const char* kind : { "BOSS", "WORLD" })
+			if (ImGui::Selectable(kind, edit.strAnchorKind == kind))
+			{
+				edit.strAnchorKind = kind;
+				edit.strWorldOccurrenceId.clear();
+				if (edit.strAnchorKind == "BOSS") edit.strWorldId.clear();
+				else { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
+			}
+		ImGui::EndCombo();
+	}
+	if (edit.strAnchorKind == "WORLD")
+	{
+		if (ImGui::BeginCombo("World anchor", edit.strWorldId.empty() ? "(world position)" : edit.strWorldId.c_str()))
+		{
+			if (ImGui::Selectable("(world position)", edit.strWorldId.empty()))
+			{ edit.strWorldId.clear(); edit.strWorldOccurrenceId.clear(); }
+			for (const auto& world : m_Draft.Worlds)
+				if (ImGui::Selectable((world.strDisplayName + "##" + world.strWorldId).c_str(), edit.strWorldId == world.strWorldId))
+				{ edit.strWorldId = world.strWorldId; edit.strWorldOccurrenceId.clear(); }
+			ImGui::EndCombo();
+		}
+		if (!edit.strWorldId.empty() && ImGui::BeginCombo("World box##Anchor", edit.strWorldOccurrenceId.empty() ? "(single matching box)" : edit.strWorldOccurrenceId.c_str()))
+		{
+			if (ImGui::Selectable("(single matching box)", edit.strWorldOccurrenceId.empty())) edit.strWorldOccurrenceId.clear();
+			for (const auto& worldBox : pattern.WorldOccurrences)
+				if (worldBox.strWorldId == edit.strWorldId && ImGui::Selectable(worldBox.strOccurrenceId.c_str(), edit.strWorldOccurrenceId == worldBox.strOccurrenceId))
+					edit.strWorldOccurrenceId = worldBox.strOccurrenceId;
+			ImGui::EndCombo();
+		}
+	}
+	if (edit.strAnchorKind == "BOSS")
+	{
+		ANIMATION_MODEL_TARGET_VIEW bodyView, weaponView;
+		const bool matchingTarget = CAnimationTargetService::Resolve_AssetName() == pattern.strActorProfileId;
+		const bool hasBody = matchingTarget && CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::BODY, bodyView);
+		const bool hasWeapon = matchingTarget && CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
+		ImGui::BeginDisabled(!hasBody);
+		if (ImGui::BeginCombo("Bone target##PresentationAnchor", edit.strBoneTarget.c_str()))
+		{
+			if (ImGui::Selectable("BODY", edit.strBoneTarget == "BODY"))
+			{ edit.strBoneTarget = "BODY"; edit.strBone.clear(); }
+			ImGui::BeginDisabled(!hasWeapon);
+			if (ImGui::Selectable("WEAPON", edit.strBoneTarget == "WEAPON"))
+			{ edit.strBoneTarget = "WEAPON"; edit.strBone.clear(); edit.bFollowBoss = true; }
+			ImGui::EndDisabled();
+			ImGui::EndCombo();
+		}
+		const auto& targetView = edit.strBoneTarget == "WEAPON" ? weaponView : bodyView;
+		const auto bones = targetView.Model ? targetView.Model->Get_BoneNames() : std::vector<std::string>{};
+		if (ImGui::BeginCombo("Bone##PresentationAnchor", edit.strBone.empty() ? "(pivot)" : edit.strBone.c_str()))
+		{
+			if (edit.strBoneTarget == "BODY" && ImGui::Selectable("(pivot)", edit.strBone.empty())) edit.strBone.clear();
+			for (const auto& bone : bones)
+				if (ImGui::Selectable(bone.c_str(), edit.strBone == bone))
+				{ edit.strBone = bone; edit.bFollowBoss = true; }
+			ImGui::EndCombo();
+		}
+		ImGui::EndDisabled();
+		if (!hasBody) ImGui::TextDisabled("Preview this Pattern's model to choose its actual bones.");
+		else if (edit.strBoneTarget == "WEAPON" && !hasWeapon) ImGui::TextDisabled("This preview model has no registered weapon.");
+		else if (!edit.strBone.empty() && std::find(bones.begin(), bones.end(), edit.strBone) == bones.end())
+			ImGui::TextDisabled("The saved bone is unavailable on this target.");
+		ImGui::TextWrapped("BODY (pivot) follows the boss body. Named bones follow their position; rotation uses boss facing and this box's rotation.");
+	}
+	if (effect && ImGui::BeginCombo("Copy Collider anchor", "(choose Collider box)"))
+	{
+		for (const auto& collider : pattern.PresentationOccurrences)
+		{
+			const auto* resource = Find_PresentationResource(m_Draft, collider.strResourceId);
+			if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) continue;
+			if (ImGui::Selectable((resource->strDisplayName + " | " + collider.strOccurrenceId).c_str()))
+			{
+				edit.strAnchorKind = collider.strAnchorKind;
+				edit.strBoneTarget = collider.strBoneTarget;
+				edit.strBone = collider.strBone;
+				edit.strWorldId = collider.strWorldId;
+				edit.strWorldOccurrenceId = collider.strWorldOccurrenceId;
+				edit.bFollowBoss = collider.bFollowBoss;
+				edit.PositionOffset = collider.PositionOffset;
+				edit.RotationDegrees = collider.RotationDegrees;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	if (effect) ImGui::TextDisabled("Copy takes anchor, position offset and rotation. Apply and Save keep it.");
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
@@ -7392,7 +7672,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		{ edit.RotationDegrees[1] = yaw; geometryChanged = true; }
 		if (edit.RotationDegrees[0] != 0.0 || edit.RotationDegrees[2] != 0.0)
 		{
-			ImGui::TextWrapped("Gameplay Collider supports Y rotation only. X %.3f / Z %.3f blocks PRODUCT Save.", edit.RotationDegrees[0], edit.RotationDegrees[2]);
+			ImGui::TextWrapped("Gameplay Collider supports Y rotation only. X %.3f / Z %.3f makes this Pattern unavailable after publish.", edit.RotationDegrees[0], edit.RotationDegrees[2]);
 			if (ImGui::Button("Clear X/Z rotation##GameplayCollider"))
 			{ edit.RotationDegrees[0] = edit.RotationDegrees[2] = 0.0; geometryChanged = true; }
 		}
@@ -7431,6 +7711,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			if (ImGui::InputText("Bone (empty = pivot)##Light", bone, std::size(bone))) edit.strBone = bone;
 		}
 	}
+	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
+		Render_PresentationAnchor(pattern, edit, definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT);
 	if (!cameraBox && (!light || edit.strAnchorKind == "BOSS")) ImGui::Checkbox("Follow anchor##PresentationBox", &edit.bFollowBoss);
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
 	{
@@ -7442,9 +7724,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		if (ImGui::SliderFloat("Dissolve out start", &startRatio, 0.f, 1.f)) edit.fDissolveStart = startRatio;
 		if (ImGui::SliderFloat("Dissolve out end", &endRatio, 0.f, 1.f)) edit.fDissolveEnd = endRatio;
 		ImGui::EndDisabled();
-		char bone[128]{};
-		(void)Copy_Text(bone, std::size(bone), edit.strBone);
-		if (ImGui::InputText("Bone (empty = pivot)", bone, std::size(bone))) edit.strBone = bone;
 		ImGui::TextDisabled("Fade 0 keeps authored alpha/dissolve. Positive fades override; dissolve-out follows Fade Out.");
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
@@ -7454,40 +7733,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
 	{
-		if (edit.strAnchorKind == "BOSS")
-		{
-			ANIMATION_MODEL_TARGET_VIEW bodyView, weaponView;
-			const bool matchingTarget = CAnimationTargetService::Resolve_AssetName() == pattern.strActorProfileId;
-			const bool hasBody = matchingTarget && CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::BODY, bodyView);
-			const bool hasWeapon = matchingTarget && CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
-			ImGui::BeginDisabled(!hasBody);
-			if (ImGui::BeginCombo("Bone target##Collider", edit.strBoneTarget.c_str()))
-			{
-				if (ImGui::Selectable("BODY", edit.strBoneTarget == "BODY"))
-				{ edit.strBoneTarget = "BODY"; edit.strBone.clear(); }
-				ImGui::BeginDisabled(!hasWeapon);
-				if (ImGui::Selectable("WEAPON", edit.strBoneTarget == "WEAPON"))
-				{ edit.strBoneTarget = "WEAPON"; edit.strBone.clear(); edit.bFollowBoss = true; }
-				ImGui::EndDisabled();
-				ImGui::EndCombo();
-			}
-			const auto& targetView = edit.strBoneTarget == "WEAPON" ? weaponView : bodyView;
-			const auto bones = targetView.Model ? targetView.Model->Get_BoneNames() : std::vector<std::string>{};
-			if (ImGui::BeginCombo("Bone##Collider", edit.strBone.empty() ? "(pivot)" : edit.strBone.c_str()))
-			{
-				if (edit.strBoneTarget == "BODY" && ImGui::Selectable("(pivot)", edit.strBone.empty())) edit.strBone.clear();
-				for (const auto& bone : bones)
-					if (ImGui::Selectable(bone.c_str(), edit.strBone == bone))
-					{ edit.strBone = bone; edit.bFollowBoss = true; }
-				ImGui::EndCombo();
-			}
-			ImGui::EndDisabled();
-			if (!hasBody) ImGui::TextDisabled("Preview this Pattern's model to choose its actual bones.");
-			else if (edit.strBoneTarget == "WEAPON" && !hasWeapon) ImGui::TextDisabled("This preview model has no registered weapon.");
-			else if (!edit.strBone.empty() && std::find(bones.begin(), bones.end(), edit.strBone) == bones.end())
-				ImGui::TextDisabled("The saved bone is unavailable on this target.");
-			ImGui::TextDisabled("Follows the bone position. Rotation uses Boss facing plus the authored rotation.");
-		}
 		const auto* linkedBox = Find_LogicBox(pattern, edit.strLogicOccurrenceId);
 		const auto* linkedLogic = nullptr == linkedBox ? nullptr : Find_Logic(m_Draft, linkedBox->strLogicId);
 		if (m_strColliderExecutionEditId != occurrenceId)
@@ -7540,7 +7785,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			ImGui::EndCombo();
 		}
 		if (m_strColliderExecutionType == "TRIGGER" && compatibleWindowCount == 0)
-			ImGui::TextWrapped("Shared windows need ENTER_AREA or OBJECT_CONTACT. Set the Trigger kind and target cards below, then Apply Values to save its definition and Collider connection together.");
+			ImGui::TextWrapped("No reusable Trigger window is placed yet. Choose a Logic definition below and Apply Values to create its window and connect this Collider.");
+		if (m_strColliderExecutionType == "TRIGGER")
+			ImGui::TextWrapped("ENTER_AREA detects players entering this Collider, including a following boss-body region. OBJECT_CONTACT detects authored World card placements for hammer reactions.");
 		const auto* definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
 		std::string definitionLabel = definitionLogic ? definitionLogic->strDisplayName : "(select Logic)";
 		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && definitionLogic->strTriggerKind.empty())
@@ -7560,29 +7807,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		}
 		// A selection above may have changed the definition in this same frame.
 		definitionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
-		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && definitionLogic->strTriggerKind.empty())
+		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER")
 		{
-			ImGui::TextWrapped("This Trigger only has a name. Choose OBJECT_CONTACT and at least one target card, then Apply Values to connect this Collider. Save keeps the definition and window link together.");
-			const bool editingTrigger = m_strLogicValueDraftId == definitionLogic->strLogicId &&
-				!m_LogicValueDraft.strTriggerKind.empty();
-			if (!editingTrigger && ImGui::Button("Use as Card Contact Trigger (OBJECT_CONTACT)"))
-			{
-				m_strLogicValueDraftId = definitionLogic->strLogicId;
-				m_LogicValueDraft = *definitionLogic;
-				m_LogicValueDraft.strTriggerKind = "OBJECT_CONTACT";
-				m_LogicValueDraft.fTargetRadiusM = 1.0;
-			}
-			if (m_strLogicValueDraftId == definitionLogic->strLogicId && !m_LogicValueDraft.strTriggerKind.empty())
-			{
-				const auto definitionCopy = *definitionLogic;
-				const auto pendingPresentation = edit;
-				const auto generation = m_iDraftGeneration;
-				Render_LogicDefinitionValues(definitionCopy, patternId, &pendingPresentation);
-				// A successful atomic Apply already committed both the transform and link.
-				if (generation == m_iDraftGeneration) m_PresentationBoxEdit = pendingPresentation;
-				ImGui::TextWrapped("%s", m_strStatus.c_str());
-				return;
-			}
+			const auto definitionCopy = *definitionLogic;
+			const auto pendingPresentation = edit;
+			const auto generation = m_iDraftGeneration;
+			Render_LogicDefinitionValues(definitionCopy, patternId, &pendingPresentation);
+			// One Apply commits the edited definition, interval and Collider link.
+			if (generation != m_iDraftGeneration) return;
+			m_PresentationBoxEdit = pendingPresentation;
 		}
 		ImGui::BeginDisabled(!definitionLogic || !Kouku_LogicAcceptsColliders(*definitionLogic));
 		if (ImGui::Button("Append / reuse Logic window"))
@@ -7653,33 +7886,6 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			std::string status;
 			(void)Commit_Candidate(std::move(candidate), "Updated shared Collider resource kind.", status);
 			return;
-		}
-		if (ImGui::BeginCombo("Anchor", edit.strAnchorKind.c_str()))
-		{
-			for (const char* kind : { "BOSS", "WORLD" })
-				if (ImGui::Selectable(kind, edit.strAnchorKind == kind))
-				{
-					edit.strAnchorKind = kind;
-					edit.strWorldOccurrenceId.clear();
-					if (edit.strAnchorKind == "BOSS") edit.strWorldId.clear();
-					else { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
-				}
-			ImGui::EndCombo();
-		}
-		if (edit.strAnchorKind == "WORLD" && ImGui::BeginCombo("World anchor", edit.strWorldId.empty() ? "(select World)" : edit.strWorldId.c_str()))
-		{
-			for (const auto& world : m_Draft.Worlds)
-				if (ImGui::Selectable((world.strDisplayName + "##" + world.strWorldId).c_str(), edit.strWorldId == world.strWorldId))
-				{ edit.strWorldId = world.strWorldId; edit.strWorldOccurrenceId.clear(); }
-			ImGui::EndCombo();
-		}
-		if (edit.strAnchorKind == "WORLD" && ImGui::BeginCombo("World box##Collider", edit.strWorldOccurrenceId.empty() ? "(single matching box)" : edit.strWorldOccurrenceId.c_str()))
-		{
-			if (ImGui::Selectable("(single matching box)", edit.strWorldOccurrenceId.empty())) edit.strWorldOccurrenceId.clear();
-			for (const auto& worldBox : pattern.WorldOccurrences)
-				if (worldBox.strWorldId == edit.strWorldId && ImGui::Selectable(worldBox.strOccurrenceId.c_str(), edit.strWorldOccurrenceId == worldBox.strOccurrenceId))
-					edit.strWorldOccurrenceId = worldBox.strOccurrenceId;
-			ImGui::EndCombo();
 		}
 		if (definition.strColliderKind == "ROULETTE_CARD_REGION")
 		{
@@ -7840,6 +8046,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldResources()
 	ImGui::EndDisabled();
 	ImGui::TextDisabled("Pattern: %s | Start: %u ms", selectedPattern ? selectedPattern->strDisplayName.c_str() : "Select a Pattern", m_iCursorMs);
 	ImGui::TextWrapped("Append creates one Object box. Select the box to adjust its Transform and view its linked animations, then Save.");
+	ImGui::SeparatorText("Composition World Resources");
+	ImGui::BeginChild("##CompositionWorldNames", ImVec2(0.f, 110.f), ImGuiChildFlags_Borders);
+	for (const auto& world : m_Draft.Worlds)
+		if (ImGui::Selectable((world.strDisplayName + "##" + world.strWorldId).c_str(), m_strSelectedWorldId == world.strWorldId))
+			m_strSelectedWorldId = world.strWorldId;
+	ImGui::EndChild();
+	if (const auto* world = Find_World(m_Draft, m_strSelectedWorldId))
+		if (Render_RenameControl(RENAME_TARGET::WORLD, world->strWorldId, world->strDisplayName)) return;
 	if (!m_strWorldSequenceResourceStatus.empty()) ImGui::TextDisabled("%s", m_strWorldSequenceResourceStatus.c_str());
 	if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 }
@@ -7942,7 +8156,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 			m_fWorldBoxPlaybackSpeed, status);
 		return;
 	}
-	ImGui::TextWrapped("Preview and Server Play use this box placement at Start ms with its playback speed. Lifetime ms limits the active World box; sequence motion uses its authored length and speed. Pattern lifetime %u ms.",
+	ImGui::TextWrapped(m_bSequenceWorkspace ?
+		"Preview uses this box placement at Start ms with its playback speed. Lifetime ms limits the active World box; sequence motion uses its authored length and speed. Sequence lifetime %u ms." :
+		"Preview and Server Play use this box placement at Start ms with its playback speed. Lifetime ms limits the active World box; sequence motion uses its authored length and speed. Pattern lifetime %u ms.",
 		lifetimeMs);
 	if (ImGui::Button("Delete World Box"))
 	{
@@ -8033,6 +8249,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_SceneProfileResources()
 	const std::size_t references = Count_SceneProfileReferences(m_Draft, sceneProfileId, &unresolvedReferences);
 	ImGui::SeparatorText("Selected Scene Profile");
 	ImGui::TextWrapped("%s", profileName.c_str());
+	if (Render_RenameControl(RENAME_TARGET::SCENE_PROFILE, sceneProfileId, profileName)) return;
 	ImGui::TextDisabled("%s | %s | %zu box(es)", sceneProfileId.c_str(), renderingId.c_str(), references);
 	if (!m_RenderingProfileIds.empty() &&
 		m_RenderingProfileIds.end() == std::find(m_RenderingProfileIds.begin(), m_RenderingProfileIds.end(), renderingId))
@@ -8172,7 +8389,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 						draft.fHalfAngleDegrees = 45.0;
 						draft.fMaxDistanceM = 30.0;
 					}
-					else if ("EXTERNAL_SIGNAL" == draft.strJudgementKind) draft.bEndsPatternOnSuccess = true;
+					else if ("EXTERNAL_SIGNAL" == draft.strJudgementKind || "COUNTER_WINDOW" == draft.strJudgementKind) draft.bEndsPatternOnSuccess = true;
 					else if ("STAGGER_WINDOW" == draft.strJudgementKind)
 					{
 						draft.iThreshold = 1000u;
@@ -8238,6 +8455,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::Checkbox("End Pattern on success", &draft.bEndsPatternOnSuccess);
 			ImGui::TextWrapped("Waits for COMPLETE_LOGIC_WINDOW from a contact Trigger. Success runs this window's Results and cancels its Timeout. Without a signal, Timeout runs at the deadline.");
 		}
+		else if ("COUNTER_WINDOW" == draft.strJudgementKind)
+		{
+			ImGui::Checkbox("End Pattern on counter success", &draft.bEndsPatternOnSuccess);
+			ImGui::TextWrapped("A Server-approved counter hit during this window runs Success. Connect a FOLLOWUP_PATTERN Result to play groggy; without a counter the window runs Timeout.");
+		}
+		else if ("ATTACHMENT_HOLD" == draft.strJudgementKind)
+			ImGui::TextWrapped("Keeps captured players attached until this window ends. It has no Collider or outcome slots. Select this window in the capture Trigger's Hold connection.");
 		else if ("AREA_OVERLAP" == draft.strJudgementKind)
 		{
 			if (ImGui::BeginCombo("Inside outcome", draft.strInsideOutcome.c_str()))
@@ -8300,6 +8524,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					draft.strOutcomeKind = kind;
 					if ("MAX_HP_PERCENT_DAMAGE" == draft.strOutcomeKind || "MADNESS_GAUGE_ADD_PERCENT" == draft.strOutcomeKind)
 						draft.iPercent = 10u;
+					if ("FEAR" == draft.strOutcomeKind) draft.iDurationMs = 3000u;
+					if ("CAPTURE_PLAYER" == draft.strOutcomeKind) draft.strAttachmentSlot = "BOSS_LEFT_HAND";
 				}
 			}
 			ImGui::EndCombo();
@@ -8318,6 +8544,60 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			if (ImGui::InputInt("Hold ms (0 = encounter policy)##KoukuLogicValue", &durationMs, 100, 1000))
 				draft.iDurationMs = static_cast<std::uint32_t>(std::clamp(durationMs, 0, static_cast<int32_t>(MAX_EDITOR_TIME_MS)));
 		}
+		if ("CAPTURE_PLAYER" == draft.strOutcomeKind)
+		{
+			ImGui::TextUnformatted("Attachment: BOSS_LEFT_HAND");
+			float offset[3] = {float(draft.GripLocalOffset[0]), float(draft.GripLocalOffset[1]), float(draft.GripLocalOffset[2])};
+			if (ImGui::InputFloat3("Grip forward / up / right (m)", offset, "%.3f"))
+				for (std::size_t axis = 0u; axis < 3u; ++axis) draft.GripLocalOffset[axis] = std::clamp(offset[axis], -10.f, 10.f);
+			ImGui::TextWrapped("Connect this Result alone to ENTER_AREA Success and select that Trigger's Hold window. Zero offset uses the left-hand socket. Release happens at the Hold end, even for players captured later.");
+		}
+		if ("FEAR" == draft.strOutcomeKind)
+		{
+			int durationMs = static_cast<int>(draft.iDurationMs);
+			if (ImGui::InputInt("Fear duration ms", &durationMs, 100, 1000))
+				draft.iDurationMs = static_cast<std::uint32_t>(std::clamp(durationMs, 1, static_cast<int>(MAX_EDITOR_TIME_MS)));
+			const auto* profile = Find_SceneProfile(m_Draft, draft.strSceneProfileId);
+			if (ImGui::BeginCombo("Fear Scene Profile", profile ? profile->strDisplayName.c_str() :
+				(draft.strSceneProfileId.empty() ? "(none)" : "(missing saved profile)")))
+			{
+				if (ImGui::Selectable("(none)", draft.strSceneProfileId.empty())) draft.strSceneProfileId.clear();
+				for (const auto& item : m_Draft.SceneProfiles)
+					if (ImGui::Selectable((item.strDisplayName + "##" + item.strSceneProfileId).c_str(), draft.strSceneProfileId == item.strSceneProfileId))
+						draft.strSceneProfileId = item.strSceneProfileId;
+				ImGui::EndCombo();
+			}
+			const auto* effect = Find_PresentationResource(m_Draft, draft.strEffectResourceId);
+			const auto* light = Find_PresentationResource(m_Draft, draft.strLightResourceId);
+			if (ImGui::BeginCombo("Fear Character Light", light ? light->strDisplayName.c_str() :
+				(draft.strLightResourceId.empty() ? "(none)" : "(missing saved Light)")))
+			{
+				if (ImGui::Selectable("(none)", draft.strLightResourceId.empty())) draft.strLightResourceId.clear();
+				for (const auto& item : m_Draft.PresentationResources)
+					if (item.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && item.strDefaultAnchorKind == "PLAYER" &&
+						ImGui::Selectable((item.strDisplayName + "##" + item.strResourceId).c_str(), draft.strLightResourceId == item.strResourceId))
+						draft.strLightResourceId = item.strResourceId;
+				ImGui::EndCombo();
+			}
+			if (ImGui::BeginCombo("Fear Effect", effect ? effect->strDisplayName.c_str() :
+				(draft.strEffectResourceId.empty() ? "(none)" : "(missing saved Effect)")))
+			{
+				if (ImGui::Selectable("(none)", draft.strEffectResourceId.empty()))
+				{ draft.strEffectResourceId.clear(); draft.iEffectDelayMs = 0u; }
+				for (const auto& item : m_Draft.PresentationResources)
+					if (item.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+						ImGui::Selectable((item.strDisplayName + "##" + item.strResourceId).c_str(), draft.strEffectResourceId == item.strResourceId))
+						draft.strEffectResourceId = item.strResourceId;
+				ImGui::EndCombo();
+			}
+			ImGui::BeginDisabled(draft.strEffectResourceId.empty());
+			int delayMs = static_cast<int>(draft.iEffectDelayMs);
+			if (ImGui::InputInt("Effect delay from Fear start ms", &delayMs, 100, 1000))
+				draft.iEffectDelayMs = static_cast<std::uint32_t>(std::clamp(delayMs, 0,
+					(std::max)(0, static_cast<int>(draft.iDurationMs) - 1)));
+			ImGui::EndDisabled();
+			ImGui::TextWrapped("Server Fear locks movement and skills and plays the character's fear animation. The affected local player sees this Scene Profile and optional delayed Effect for the same duration. A full-screen face belongs to a Screen Effect resource.");
+		}
 		if ("FOLLOWUP_PATTERN" == draft.strOutcomeKind)
 		{
 			if (ImGui::BeginCombo("Follow-up Pattern##KoukuLogicValue",
@@ -8333,7 +8613,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				}
 				ImGui::EndCombo();
 			}
-			ImGui::TextDisabled("Only a stagger window may start a follow-up; the target must be PRODUCT to publish.");
+			if (!m_bSequenceWorkspace)
+				ImGui::TextDisabled("Counter, stagger and supported success windows may start a follow-up; Publish All Patterns validates the target.");
 		}
 		if ("PLAY_WORLD_OBJECT_MOTION" == draft.strOutcomeKind)
 		{
@@ -8477,7 +8758,12 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::EndCombo();
 		}
 		if (draft.strTriggerKind == "ENTER_AREA")
-			ImGui::TextWrapped("A linked Collider supplies the region. First entry is Success once; no entry before the window ends is Timeout.");
+		{
+			float distance = static_cast<float>(draft.fBossChargeDistanceM);
+			if (ImGui::InputFloat("Charge distance (m)", &distance, 0.5f, 1.f, "%.2f"))
+				draft.fBossChargeDistanceM = std::clamp(distance, 0.f, 1000.f);
+			ImGui::TextWrapped("A linked Collider supplies the player-contact region. First entry is Success once; no entry before the window ends is Timeout. Charge distance 0 keeps the boss still; positive distance uses this Trigger window and captures its target direction once at the window start.");
+		}
 		else if (draft.strTriggerKind == "OBJECT_CONTACT")
 		{
 			float radius = static_cast<float>(draft.fTargetRadiusM);
@@ -8622,6 +8908,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicResources()
 	const std::size_t references = Count_LogicReferences(m_Draft, logicId, &unresolvedReferences);
 	ImGui::SeparatorText("Selected Logic");
 	ImGui::TextWrapped("%s", logicName.c_str());
+	if (Render_RenameControl(RENAME_TARGET::LOGIC, logicId, logicName)) return;
 	ImGui::TextDisabled("%s | %s | %zu box(es)", logicId.c_str(), logicType.c_str(), references);
 	Render_LogicDefinitionValues(*selectedLogic);
 	if (nullptr == Find_Logic(m_Draft, logicId))
@@ -8667,6 +8954,30 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_LogicOutcomeSlots(
 	const auto* box = nullptr == pattern ? nullptr : Find_LogicBox(*pattern, occurrenceId);
 	if (nullptr == box) return false;
 	const auto* logic = Find_Logic(m_Draft, box->strLogicId);
+	if (logic && logic->strJudgementKind == "ATTACHMENT_HOLD")
+		ImGui::TextWrapped("Attachment Hold ends at %u ms. It owns the release deadline and has no Collider or outcome slots.", box->iStartMs + box->iDurationMs);
+	if (logic && logic->strTriggerKind == "ENTER_AREA")
+	{
+		const auto* hold = Find_LogicBox(*pattern, box->strHoldLogicOccurrenceId);
+		const auto* holdLogic = hold ? Find_Logic(m_Draft, hold->strLogicId) : nullptr;
+		std::string selectedHold = box->strHoldLogicOccurrenceId;
+		bool changed = false;
+		if (ImGui::BeginCombo("Capture Hold window", holdLogic ? holdLogic->strDisplayName.c_str() : "(none)"))
+		{
+			if (ImGui::Selectable("(none)", selectedHold.empty())) { selectedHold.clear(); changed = true; }
+			for (const auto& candidate : pattern->LogicOccurrences)
+			{
+				const auto* definition = Find_Logic(m_Draft, candidate.strLogicId);
+				if (definition && definition->strLogicType == "DURATION" && definition->strJudgementKind == "ATTACHMENT_HOLD" &&
+					ImGui::Selectable((definition->strDisplayName + " | " + std::to_string(candidate.iStartMs) + ".." +
+						std::to_string(candidate.iStartMs + candidate.iDurationMs) + " ms##" + candidate.strOccurrenceId).c_str(),
+						selectedHold == candidate.strOccurrenceId))
+				{ selectedHold = candidate.strOccurrenceId; changed = true; }
+			}
+			ImGui::EndCombo();
+		}
+		if (changed) { std::string status; (void)Set_LogicBoxHold(patternId, occurrenceId, selectedHold, status); return true; }
+	}
 	if (nullptr != logic && Kouku_LogicOwnsOutcomes(*logic))
 	{
 		/* Each outcome slot lists up to four RESULT Logics in the order the
@@ -8675,7 +8986,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_LogicOutcomeSlots(
 		ImGui::SeparatorText("Outcomes");
 		if (Kouku_LogicOutcomeKind(*logic).empty())
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.24f, 1.f),
-				"Give this Logic a judgement kind in Resources > Logic before the Pattern can be PRODUCT.");
+				"Give this Logic a judgement kind in Resources > Logic before this Pattern can run on the Server.");
 		else
 			ImGui::TextDisabled("%s", Kouku_LogicOutcomeKind(*logic).c_str());
 		const bool_t hasResult = m_Draft.Logics.end() != std::find_if(m_Draft.Logics.begin(), m_Draft.Logics.end(),
@@ -8828,7 +9139,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		Find_Pattern(m_Draft, m_strSelectedPatternId);
 	if (nullptr == pattern)
 	{
-		ImGui::TextDisabled("No Pattern selected.");
+		ImGui::TextDisabled("%s", m_bSequenceWorkspace ? "No Sequence selected." : "No Pattern selected.");
 		return;
 	}
 	const std::string patternId = pattern->strPatternId;
@@ -8836,7 +9147,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 	{
 		ImGui::TextWrapped("%s", pattern->strLoadError.c_str());
 		ImGui::TextWrapped("Original pattern JSON is preserved. Repair the source and Reload, or delete this pattern.");
-		if (ImGui::Button("Delete Invalid Pattern"))
+		if (ImGui::Button(m_bSequenceWorkspace ? "Delete Invalid Sequence###Delete Invalid Pattern" : "Delete Invalid Pattern"))
 		{
 			std::string status;
 			(void)Delete_Pattern(patternId, status);
@@ -8848,8 +9159,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		if (ImGui::Button("Back to Bundle")) { Select_Hierarchy(KOUKU_PATTERN_SELECTION::BUNDLE, m_strBundleReturnId); return; }
 	}
 	ImGui::TextWrapped("%s | %s", Gate_Label(pattern->strGateId), pattern->strTargetBossPlacementId.c_str());
-	ImGui::TextDisabled("Pattern ID: %s", patternId.c_str());
-	ImGui::SeparatorText("Pattern");
+	ImGui::TextDisabled("%s ID: %s", m_bSequenceWorkspace ? "Sequence" : "Pattern", patternId.c_str());
+	ImGui::SeparatorText(m_bSequenceWorkspace ? "Sequence" : "Pattern");
 	if (ImGui::InputText("Display Name", m_PatternName, std::size(m_PatternName),
 			ImGuiInputTextFlags_EnterReturnsTrue))
 	{
@@ -8894,26 +9205,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		(void)Set_PatternCategory(patternId, requestedCategory, status);
 		return;
 	}
-	std::string requestedAuthoringStatus;
-	if (ImGui::BeginCombo("Authoring", pattern->strAuthoringStatus.c_str()))
-	{
-		for (const char_t* const value : { "DRAFT", "PRODUCT" })
-		{
-			if (ImGui::Selectable(value, pattern->strAuthoringStatus == value))
-			{
-				requestedAuthoringStatus = value;
-				break;
-			}
-		}
-		ImGui::EndCombo();
-	}
-	if (!requestedAuthoringStatus.empty())
-	{
-		std::string status;
-		(void)Set_PatternAuthoringStatus(
-			patternId, requestedAuthoringStatus, status);
-		return;
-	}
+	if (!m_bSequenceWorkspace)
+		ImGui::TextDisabled("Publish All Patterns checks whether this Pattern is ready for Server playback.");
 	bool resetToSpawn = pattern->bResetBossToSpawn;
 	if (ImGui::Checkbox("Reset boss to spawn at Pattern start", &resetToSpawn))
 	{
@@ -9018,7 +9311,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 			return;
 		}
 	}
-	if (ImGui::Button("Delete Pattern"))
+	if (ImGui::Button(m_bSequenceWorkspace ? "Delete Sequence###Delete Pattern" : "Delete Pattern"))
 	{
 		std::string status;
 		(void)Delete_Pattern(patternId, status);
@@ -9233,6 +9526,17 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		return;
 	}
 	ImGui::TextDisabled("PRODUCT v1 plays whole-stage EXACT rows: source start 0, play rate 0.1..4.");
+	ImGui::InputInt("Blend In ms", &m_iOccurrenceBlendInMs, 10, 100);
+	m_iOccurrenceBlendInMs = std::clamp(m_iOccurrenceBlendInMs, 0, 1000);
+	if (ImGui::Button("Apply Blend In"))
+	{
+		std::string status;
+		(void)Set_AnimationBlend(patternId, occurrenceId, static_cast<std::uint32_t>(m_iOccurrenceBlendInMs), status);
+		return;
+	}
+	ImGui::TextWrapped("%s", m_bSequenceWorkspace ?
+		"Blends the previous animation into this box. Compare 0 ms and 100 ms in Preview, then Save." :
+		"Blends the previous animation into this box. Compare 0 ms and 100 ms, then Save and Publish for Server playback.");
 	std::string requestedTargetStageId;
 	if (ImGui::BeginCombo("Move to Stage", stage->strStageId.c_str()))
 	{
@@ -9273,12 +9577,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 
 void Client::CKoukuSaydonActionWorkbench::Render_ReloadConfirmation()
 {
+	const char* const popup = m_bSequenceWorkspace ?
+		"Discard Sequence draft?###SequenceReloadConfirmation" : "Discard KoukuSaydon composition draft?";
 	if (m_bReloadConfirmationRequested)
 	{
-		ImGui::OpenPopup("Discard KoukuSaydon composition draft?");
+		ImGui::OpenPopup(popup);
 		m_bReloadConfirmationRequested = false;
 	}
-	if (!ImGui::BeginPopupModal("Discard KoukuSaydon composition draft?", nullptr,
+	if (!ImGui::BeginPopupModal(popup, nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		return;
@@ -9349,7 +9655,8 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 		(void)Reload(status);
 	}
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 720.f), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("KoukuSaydon Composition###KoukuSaydonActionWorkbench", &m_bOpen))
+	if (!ImGui::Begin(m_bSequenceWorkspace ? "Sequencer Benchmark###KoukuSequenceWorkbench" :
+		"KoukuSaydon Composition###KoukuSaydonActionWorkbench", &m_bOpen))
 	{
 		ImGui::End();
 		Render_ResourcesWindow();
@@ -9364,7 +9671,7 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 	else if (ImGui::BeginTable("##KoukuWorkbenchColumns", 3,
 		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
 	{
-		ImGui::TableSetupColumn("Patterns / Resources", ImGuiTableColumnFlags_WidthFixed, 300.f);
+		ImGui::TableSetupColumn(m_bSequenceWorkspace ? "Sequences / Resources" : "Patterns / Resources", ImGuiTableColumnFlags_WidthFixed, 300.f);
 		ImGui::TableSetupColumn("Stage + Animation", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthFixed, 300.f);
 		ImGui::TableNextColumn();

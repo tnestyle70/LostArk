@@ -204,6 +204,8 @@ namespace LostArk::Server
 		/* KNOCKDOWN holds until this tick; move and skill commands are rejected
 		while it runs and the action returns to NONE when it expires. */
 		std::uint32_t iKnockdownEndTick = 0;
+		std::uint32_t iFearEndTick = 0u;
+		std::string strFearPresentationId;
 		/* Get-up grace: until this tick no new hit reaction arms (damage still
 		lands), so a boss cannot chain the player from one knockdown straight
 		into the next. Set when a knockdown ends by expiry or by the STANDUP
@@ -353,6 +355,8 @@ namespace LostArk::Server
 		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 		std::uint32_t iAttachmentPatternSequence = 0u;
+        // Zero keeps the existing stage-controlled Valtan attachment lifetime.
+        std::uint32_t iAttachmentEndTick = 0u;
 		float fAttachmentLocalOffsetX = 0.f;
 		float fAttachmentLocalOffsetY = 0.f;
 		float fAttachmentLocalOffsetZ = 0.f;
@@ -374,6 +378,7 @@ namespace LostArk::Server
 				LostArk::Shared::INVALID_NET_ENTITY_ID;
 			eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 			iAttachmentPatternSequence = 0u;
+            iAttachmentEndTick = 0u;
 			fAttachmentLocalOffsetX = 0.f;
 			fAttachmentLocalOffsetY = 0.f;
 			fAttachmentLocalOffsetZ = 0.f;

@@ -53,7 +53,9 @@ public: /* For.Input_Device */
 #ifdef _WIN64
 public: /* For.Sound_Manager */
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
-	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u);
+	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u, bool_t paused = false);
+	bool_t Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs);
+	bool_t Is_SoundCueActive(uint64_t handle) const;
 	void Pause_SoundCue(uint64_t handle, bool_t paused);
 	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
 	void Stop_SoundCue(uint64_t handle);
@@ -115,6 +117,7 @@ public: /* For.PipeLine */
 public: /* For.Light */
 	
 	HRESULT Add_Light(const LIGHT_DESC& LightDesc);
+	const vector<LIGHT_DESC>& Get_SceneLights() const;
 	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
 		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
 		bool_t bEnableSceneDirectionalShadow);

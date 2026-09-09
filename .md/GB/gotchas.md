@@ -829,3 +829,16 @@ Server 회귀에서는 Pattern ID branch가 `Reset_ValtanBossOnlyAuditionState`�
 - Play All/Family/Element는 preview이고 Append만 저장 sequence occurrence를 만든다. Preview 버튼 처리에 Append를 재사용하면 Play할 때마다 저장 행이 쌓인다.
 - Patterns by Gate의 Create Parent/Bundle은 메모리 변경이다. 전체 Composition Save 이전에는 EXE 종료 후 보존을 보장하지 않으며 트리 옆에 Saved/Unsaved와 Save를 표시한다.
 - World Object model/texture는 기존 Effect domain scan 밖에 있을 수 있다. 저장 Object resource에서 확인한 상대 ID와 file kind를 동일 resource binder에 전달해야 목록만 보이고 Bind가 거부되는 상태를 피할 수 있다.
+
+
+### Product 빌드와 같은 import library를 읽는 probe 링크를 겹치지 않는다
+
+Windows에서 Engine.lib를 쓰는 제품 링크와 같은 파일을 입력으로 여는 별도 probe 링크가
+겹치면 LNK1114/오류5와 같은 공유·접근 실패가 발생할 수 있다. 사용자에게 소스 동결과
+빌드 인계를 했으면 Product 빌드뿐 아니라 같은 import library를 읽는 out 검사 compile/link도
+중단한다. 원본 로그에 잠금 소유자 정보가 없으면 동시 실행만으로 특정 프로세스를 확정하지 않는다.
+
+Engine 링크 실패는0바이트 Engine.dll을 남길 수 있고, DLL 존재만 검사하는 Client 배포는 그
+파일을 복사할 수 있다. EXE 링크 성공만으로 실행 준비 완료라고 판단하지 말고 Engine 원본과
+Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실패 출력은 크기와 정확한 workspace
+경로를 확인한 뒤 필요한 파일만 재생성하며, 사용자 Client를 자동 실행하지 않는다.

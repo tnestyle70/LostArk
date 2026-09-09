@@ -276,6 +276,39 @@ class UmodelGltfPsaCookerTests(unittest.TestCase):
         self.assertEqual(receipt["output"]["gltfSha256"], _sha256(self.output_gltf))
         self.assertEqual(receipt["output"]["bufferSha256"], _sha256(self.output_bin))
 
+    def test_actorx_mirror_matches_umodel_root_and_child_rotation(self) -> None:
+        # UModel ExportPsk.cpp mirrors source Y/W; ExportGLTF.cpp swaps Y/Z
+        # and conjugates only the root. Use an asymmetric source quaternion
+        # so preserving the root while reversing a child cannot pass by sign.
+        _write_gltf(self.gltf, joint_names=("root", "child"))
+        source_gltf = json.loads(self.gltf.read_text(encoding="utf-8"))
+        source_gltf["nodes"][0]["children"] = [1]
+        self.gltf.write_text(json.dumps(source_gltf), encoding="utf-8")
+        _write_psa(self.psa, bone_names=("root", "child"), frame_count=1)
+        length = 30.0 ** 0.5
+        x, y, z, w = [value / length for value in (1.0, 2.0, 3.0, 4.0)]
+        mirrored = ANIM_KEY.pack(0.0, 0.0, 0.0, x, -y, z, -w, 1.0)
+        raw = self.psa.read_bytes()
+        self.psa.write_bytes(raw[:-2 * ANIM_KEY.size] + mirrored + mirrored)
+        result = self.run_cooker()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        staged = json.loads(self.output_gltf.read_text(encoding="utf-8"))
+        payload = self.output_bin.read_bytes()
+        animation = staged["animations"][0]
+        expected = {0: (-x, -z, -y, w), 1: (x, z, y, w)}
+        checked = []
+        for channel in animation["channels"]:
+            if channel["target"]["path"] != "rotation":
+                continue
+            node = channel["target"]["node"]
+            sampler = animation["samplers"][channel["sampler"]]
+            actual = _read_floats(staged, payload, sampler["output"], 4)[0]
+            # q and -q represent the same physical rotation.
+            dot = sum(a * b for a, b in zip(actual, expected[node]))
+            self.assertAlmostEqual(abs(dot), 1.0, places=6, msg=f"bone {node}")
+            checked.append(node)
+        self.assertEqual(checked, [0, 1])
+
     def test_scale_moves_mesh_bind_pose_and_translation_keys_together(self) -> None:
         # The converter's own --scale only multiplies mesh vertices, which
         # desynchronises a skinned asset from its skeleton. Staging has to move

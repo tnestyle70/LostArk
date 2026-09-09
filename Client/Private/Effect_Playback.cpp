@@ -611,6 +611,75 @@ namespace
 		return Class == BaseClass;
 	}
 
+	enum class SOURCE_UPDATE_MODULE_KIND : uint8_t
+	{
+		NONE,
+		LOCATION_DIRECT,
+		LOCATION_BONE_SOCKET,
+		LOCAL_VECTOR_FIELD,
+		ACCELERATION,
+		VELOCITY_OVER_LIFETIME,
+		SIZE_MULTIPLY_LIFE,
+		SIZE_MULTIPLY_VELOCITY,
+		SIZE_SCALE_BY_TIME,
+		SIZE_SCALE,
+		COLOR_OVER_LIFE,
+		COLOR_SCALE_OVER_LIFE,
+		MESH_ROTATION_RATE_MULTIPLY_LIFE,
+		ROTATION_RATE_MULTIPLY_LIFE,
+		MESH_ROTATION_RATE_OVER_LIFE,
+		CAMERA_OFFSET,
+		SUB_UV,
+		PARAMETER_DYNAMIC,
+		ORBIT,
+		VORTEX,
+	};
+
+	SOURCE_UPDATE_MODULE_KIND Classify_SourceUpdateModule(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+	{
+		if (SourceClass_Matches(Module, "particlemodulelocationdirect"))
+			return SOURCE_UPDATE_MODULE_KIND::LOCATION_DIRECT;
+		if (SourceClass_Matches(Module, "particlemodulelocationbonesocket"))
+			return SOURCE_UPDATE_MODULE_KIND::LOCATION_BONE_SOCKET;
+		if (SourceClass_Matches(Module, "particlemodulelocalvectorfield"))
+			return SOURCE_UPDATE_MODULE_KIND::LOCAL_VECTOR_FIELD;
+		if (SourceClass_Matches(Module, "particlemoduleacceleration"))
+			return SOURCE_UPDATE_MODULE_KIND::ACCELERATION;
+		if (SourceClass_Matches(Module, "particlemodulevelocityoverlifetime"))
+			return SOURCE_UPDATE_MODULE_KIND::VELOCITY_OVER_LIFETIME;
+		if (SourceClass_Matches(Module, "particlemodulesizemultiplylife"))
+			return SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulesizemultiplyvelocity"))
+			return SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_VELOCITY;
+		if (SourceClass_Matches(Module, "particlemodulesizescalebytime"))
+			return SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE_BY_TIME;
+		if (SourceClass_Matches(Module, "particlemodulesizescale"))
+			return SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE;
+		if (SourceClass_Matches(Module, "particlemodulecoloroverlife"))
+			return SOURCE_UPDATE_MODULE_KIND::COLOR_OVER_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulecolorscaleoverlife"))
+			return SOURCE_UPDATE_MODULE_KIND::COLOR_SCALE_OVER_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulemeshrotationratemultiplylife"))
+			return SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_MULTIPLY_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulerotationratemultiplylife"))
+			return SOURCE_UPDATE_MODULE_KIND::ROTATION_RATE_MULTIPLY_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulemeshrotationrateoverlife"))
+			return SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_OVER_LIFE;
+		if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
+			return SOURCE_UPDATE_MODULE_KIND::CAMERA_OFFSET;
+		if (SourceClass_Matches(Module, "particlemodulesubuv") ||
+			SourceClass_Matches(Module, "particlemodulesubuvmovie"))
+			return SOURCE_UPDATE_MODULE_KIND::SUB_UV;
+		if (SourceClass_Matches(Module, "particlemoduleparameterdynamic"))
+			return SOURCE_UPDATE_MODULE_KIND::PARAMETER_DYNAMIC;
+		if (SourceClass_Matches(Module, "particlemoduleorbit"))
+			return SOURCE_UPDATE_MODULE_KIND::ORBIT;
+		if (SourceClass_Matches(Module, "particlemodulevortex"))
+			return SOURCE_UPDATE_MODULE_KIND::VORTEX;
+		return SOURCE_UPDATE_MODULE_KIND::NONE;
+	}
+
 	const Client::EFFECT_ELEMENT_DESC* Find_ElementById(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		const std::string_view strElementId)
@@ -1091,6 +1160,75 @@ namespace
 		return nullptr != pLiteral &&
 			Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER == pLiteral->eKind ?
 			static_cast<f32_t>(pLiteral->fNumber) : fFallback;
+	}
+
+	float3_t Apply_SourceSizeVelocity(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const float3_t& CurrentSize, const float3_t& CurrentVelocity,
+		const float3_t& SourceMultiplier, const float3_t& Mask,
+		const float3_t& CapMin, const float3_t& CapMax)
+	{
+		// Cascade multiplies live Size, leaving BaseSize for the next update.
+		// Velocity is stored in metres/sec here; the source uses centimetres/sec.
+		const float3_t Scale = Scale3(UE3_SizeToClient(Element, SourceMultiplier),
+			Length3(CurrentVelocity) * 100.f);
+		const auto Axis = [](const f32_t Size, const f32_t Factor,
+			const f32_t Enabled, const f32_t Minimum, const f32_t Maximum)
+		{
+			if (Enabled == 0.f) return Size;
+			f32_t Result = Size * Factor;
+			if (Minimum > 0.f) Result = (std::max)(Result, Minimum);
+			if (Maximum > 0.f) Result = (std::min)(Result, Maximum);
+			return Result;
+		};
+		return { Axis(CurrentSize.x, Scale.x, Mask.x, CapMin.x, CapMax.x),
+			Axis(CurrentSize.y, Scale.y, Mask.y, CapMin.y, CapMax.y),
+			Axis(CurrentSize.z, Scale.z, Mask.z, CapMin.z, CapMax.z) };
+	}
+
+	float3_t Apply_SourceSizeVelocity(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const float3_t& CurrentSize, const float3_t& CurrentVelocity,
+		const float3_t& SourceMultiplier)
+	{
+		const float3_t Mask = UE3_SizeToClient(Element, float3_t(
+			SourceBool(Module, "multiplyx", true) ? 1.f : 0.f,
+			SourceBool(Module, "multiplyy", true) ? 1.f : 0.f,
+			SourceBool(Module, "multiplyz", true) ? 1.f : 0.f));
+		const float3_t CapMin = UE3_StartSizeToClient(Element, float3_t(
+			SourceNumber(Module, "capminsize.x", 0.f),
+			SourceNumber(Module, "capminsize.y", 0.f),
+			SourceNumber(Module, "capminsize.z", 0.f)));
+		const float3_t CapMax = UE3_StartSizeToClient(Element, float3_t(
+			SourceNumber(Module, "capmaxsize.x", 0.f),
+			SourceNumber(Module, "capmaxsize.y", 0.f),
+			SourceNumber(Module, "capmaxsize.z", 0.f)));
+		return Apply_SourceSizeVelocity(Element, CurrentSize, CurrentVelocity,
+			SourceMultiplier, Mask, CapMin, CapMax);
+	}
+
+	float3_t Apply_SourceSizeLife(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::array<bool_t, 3u>& MultiplyAxis,
+		const float3_t& CurrentSize, const float3_t& SourceMultiplier)
+	{
+		const float3_t Scale = UE3_SizeToClient(Element, float3_t(
+			MultiplyAxis[0u] ? SourceMultiplier.x : 1.f,
+			MultiplyAxis[1u] ? SourceMultiplier.y : 1.f,
+			MultiplyAxis[2u] ? SourceMultiplier.z : 1.f));
+		return Multiply3(CurrentSize, Scale);
+	}
+
+	float3_t Apply_SourceSizeLife(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const float3_t& CurrentSize, const float3_t& SourceMultiplier)
+	{
+		return Apply_SourceSizeLife(Element,
+			std::array<bool_t, 3u>{ SourceBool(Module, "multiplyx", true),
+				SourceBool(Module, "multiplyy", true), SourceBool(Module, "multiplyz", true) },
+			CurrentSize, SourceMultiplier);
 	}
 
 	std::string_view SourceString(
@@ -1643,7 +1781,7 @@ namespace
 		std::string& strOutError)
 	{
 		strOutError.clear();
-		static constexpr std::array<std::string_view, 34u> Supported = {
+		static constexpr std::array<std::string_view, 38u> Supported = {
 			"particlemoduleacceleration",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
@@ -1653,6 +1791,8 @@ namespace
 			"particlemodulelocation",
 			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
+			"particlemodulelocationemitter",
+			"efparticlemodulelocationemitter",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
 			"particlemodulelocationprimitivecylinderspin",
@@ -1668,9 +1808,11 @@ namespace
 			"particlemodulerotationrate",
 			"particlemodulesize",
 			"particlemodulesizemultiplylife",
+			"particlemodulesizemultiplyvelocity",
 			"particlemodulespawn",
 			"particlemodulespawnperunit",
 			"particlemodulesubuv",
+			"particlemodulesubuvmovie",
 			"particlemoduletypedatadecal",
 			"particlemoduletypedatalight",
 			"particlemoduletypedatamesh",
@@ -1689,6 +1831,33 @@ namespace
 			strOutError = "source module class is not in the strict executor allowlist";
 			return false;
 		}
+		if (Module.strClassName == "particlemodulelocationemitter" ||
+			Module.strClassName == "efparticlemodulelocationemitter")
+		{
+			for (const auto Path : { "benabled", "bspawnmodule", "bupdatemodule",
+				"inheritsourcevelocity", "binheritsourcerotation" })
+				if (!Validate_ReconstructedSourceLiteral(Module, Path,
+					Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError)) return false;
+			for (const auto Path : { "emittername", "selectionmethod", "runtime.providerelementid" })
+				if (!Validate_ReconstructedSourceLiteral(Module, Path,
+					Client::EFFECT_SOURCE_LITERAL_KIND::STRING, strOutError)) return false;
+			for (const auto Path : { "inheritsourcevelocityscale", "inheritsourcerotationscale" })
+				if (!Validate_ReconstructedSourceLiteral(Module, Path,
+					Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError)) return false;
+			if (!Module.Distributions.empty() ||
+				SourceString(Module, "emittername").empty() ||
+				SourceString(Module, "runtime.providerelementid").empty() ||
+				SourceString(Module, "selectionmethod") != "elesm_sequential" ||
+				!SourceBool(Module, "bspawnmodule", true) ||
+				SourceBool(Module, "bupdatemodule", false) ||
+				SourceBool(Module, "inheritsourcevelocity", false) ||
+				SourceBool(Module, "binheritsourcerotation", false))
+			{
+				strOutError = "LocationEmitter requires a sequential live provider with spawn-only position inheritance; velocity/rotation inheritance is unsupported.";
+				return false;
+			}
+			return true;
+		}
 		if (SourceClass_Matches(Module,
 				"particlemodulelocationcirclesurface"))
 		{
@@ -1696,6 +1865,20 @@ namespace
 		}
 		if (SourceClass_Matches(Module, "particlemodulevortex"))
 			return Validate_ReconstructedVortex(Module, strOutError);
+		if (SourceClass_Matches(Module, "particlemodulesizemultiplyvelocity"))
+		{
+			for (const auto Path : { "multiplyx", "multiplyy", "multiplyz",
+				"bspawnmodule", "bupdatemodule" })
+				if (!Validate_ReconstructedSourceLiteral(Module, Path,
+					Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError)) return false;
+			for (const auto Path : { "capminsize.x", "capminsize.y", "capminsize.z",
+				"capmaxsize.x", "capmaxsize.y", "capmaxsize.z" })
+				if (!Validate_ReconstructedSourceLiteral(Module, Path,
+					Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError)) return false;
+			return Module.Distributions.size() == 1u &&
+				Validate_ReconstructedSourceDistribution(Module,
+					"velocitymultiplier", 3u, strOutError);
+		}
 		strOutError.clear();
 		return true;
 	}
@@ -2030,6 +2213,156 @@ bool_t Client::CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
 		Module, strOutError);
 }
 
+struct Client::CEffectPlayback::SOURCE_UPDATE_MODULE final
+{
+	static constexpr size_t MISSING_INDEX = (std::numeric_limits<size_t>::max)();
+	size_t iModuleIndex = 0u;
+	SOURCE_UPDATE_MODULE_KIND eKind = SOURCE_UPDATE_MODULE_KIND::NONE;
+	// Slots follow each module's source evaluation order; only indices survive staging.
+	std::array<size_t, 4u> DistributionIndices =
+		{ MISSING_INDEX, MISSING_INDEX, MISSING_INDEX, MISSING_INDEX };
+	std::array<bool_t, 4u> Process = { true, true, true, true };
+	std::array<bool_t, 4u> UseEmitterTime{};
+	std::array<bool_t, 4u> ScaleVelocityByValue{};
+	std::array<bool_t, 3u> MultiplyAxis = { true, true, true };
+	bool_t bUpdateEnabled = true;
+	bool_t bWorldSpace = false;
+	bool_t bAbsoluteVelocity = false;
+	bool_t bEffectAcceleration = false;
+	bool_t bDirectScaleIdentity = false;
+	bool_t bSubUVMovie = false;
+	size_t iRequiredModuleIndex = MISSING_INDEX;
+	uint32_t iSubUVCount = 1u;
+	f32_t fRandomImageChanges = 0.f;
+	f32_t fRandomImageTime = 1.f;
+	uint8_t iCameraMethod = 0u; // 0=set, 1=additive, 2=scalar, as the source suffix rule.
+	f32_t fPower = 1.f;
+	float3_t SizeVelocityMask{};
+	float3_t SizeCapMin{};
+	float3_t SizeCapMax{};
+
+	const EFFECT_DISTRIBUTION_DESC* Distribution(
+		const EFFECT_SOURCE_MODULE_DESC& Module, const size_t iSlot) const
+	{
+		const size_t Index = DistributionIndices[iSlot];
+		return Index == MISSING_INDEX ? nullptr : &Module.Distributions[Index];
+	}
+
+	static SOURCE_UPDATE_MODULE Prepare(
+		const EFFECT_ELEMENT_DESC& Element, const size_t iModule)
+	{
+		SOURCE_UPDATE_MODULE Result;
+		Result.iModuleIndex = iModule;
+		const auto& Module = Element.SourceRecipe.Modules[iModule];
+		Result.eKind = Classify_SourceUpdateModule(Module);
+		Result.bUpdateEnabled = SourceBool(Module, "bupdatemodule", true);
+		const auto Bind = [&Result, &Module](const size_t Slot, const std::string_view Path)
+		{
+			const auto* Distribution = Find_SourceDistribution(&Module, Path);
+			if (Distribution != nullptr)
+				Result.DistributionIndices[Slot] =
+					static_cast<size_t>(Distribution - Module.Distributions.data());
+		};
+		switch (Result.eKind)
+		{
+		case SOURCE_UPDATE_MODULE_KIND::LOCATION_DIRECT:
+			Bind(0u, "location"); Bind(1u, "locationoffset");
+			Bind(2u, "scalefactor"); Bind(3u, "direction");
+			Result.bDirectScaleIdentity = Is_Warlord17090ChainTypedScaleIdentity(Element, Module);
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::ACCELERATION:
+			Result.bEffectAcceleration = Module.strClassName.starts_with("ef");
+			Bind(0u, Result.bEffectAcceleration ? "acceldata" : "acceleration");
+			Result.bWorldSpace = SourceBool(Module, "balwaysinworldspace", false);
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::VELOCITY_OVER_LIFETIME:
+			Bind(0u, "veloverlife");
+			Result.bAbsoluteVelocity = SourceBool(Module, "absolute", false) ||
+				SourceBool(Module, "babsolute", false);
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_LIFE:
+		case SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_VELOCITY:
+			Bind(0u, Result.eKind == SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_LIFE ?
+				"lifemultiplier" : "velocitymultiplier");
+			Result.MultiplyAxis = { SourceBool(Module, "multiplyx", true),
+				SourceBool(Module, "multiplyy", true), SourceBool(Module, "multiplyz", true) };
+			Result.SizeVelocityMask = UE3_SizeToClient(Element, float3_t(
+				Result.MultiplyAxis[0u] ? 1.f : 0.f,
+				Result.MultiplyAxis[1u] ? 1.f : 0.f,
+				Result.MultiplyAxis[2u] ? 1.f : 0.f));
+			Result.SizeCapMin = UE3_StartSizeToClient(Element, float3_t(
+				SourceNumber(Module, "capminsize.x", 0.f),
+				SourceNumber(Module, "capminsize.y", 0.f),
+				SourceNumber(Module, "capminsize.z", 0.f)));
+			Result.SizeCapMax = UE3_StartSizeToClient(Element, float3_t(
+				SourceNumber(Module, "capmaxsize.x", 0.f),
+				SourceNumber(Module, "capmaxsize.y", 0.f),
+				SourceNumber(Module, "capmaxsize.z", 0.f)));
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE_BY_TIME: Bind(0u, "sizescalebytime"); break;
+		case SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE: Bind(0u, "sizescale"); break;
+		case SOURCE_UPDATE_MODULE_KIND::COLOR_OVER_LIFE:
+			Bind(0u, "coloroverlife"); Bind(1u, "alphaoverlife"); break;
+		case SOURCE_UPDATE_MODULE_KIND::COLOR_SCALE_OVER_LIFE:
+			Bind(0u, "colorscaleoverlife"); Bind(1u, "alphascaleoverlife");
+			Result.UseEmitterTime[0u] = SourceBool(Module, "bemittertime", false);
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_MULTIPLY_LIFE:
+		case SOURCE_UPDATE_MODULE_KIND::ROTATION_RATE_MULTIPLY_LIFE:
+			Bind(0u, "lifemultiplier"); break;
+		case SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_OVER_LIFE: Bind(0u, "rotrate"); break;
+		case SOURCE_UPDATE_MODULE_KIND::CAMERA_OFFSET:
+		{
+			Bind(0u, "cameraoffset");
+			const auto Method = SourceString(Module, "updatemethod");
+			Result.iCameraMethod = Method.ends_with("additive") ? 1u :
+				Method.ends_with("scalar") ? 2u : 0u;
+			break;
+		}
+		case SOURCE_UPDATE_MODULE_KIND::SUB_UV:
+		{
+			Result.bSubUVMovie = SourceClass_Matches(Module, "particlemodulesubuvmovie");
+			Bind(0u, Result.bSubUVMovie ? "framerate" : "subimageindex");
+			Result.UseEmitterTime[0u] = SourceBool(Module, "buseemittertime", false);
+			if (const auto* Required = Find_SourceModule(Element, "particlemodulerequired"))
+			{
+				Result.iRequiredModuleIndex = static_cast<size_t>(
+					Required - Element.SourceRecipe.Modules.data());
+				const uint32_t Columns = static_cast<uint32_t>(SourceNumber(*Required, "subimages_horizontal", 1.f));
+				const uint32_t Rows = static_cast<uint32_t>(SourceNumber(*Required, "subimages_vertical", 1.f));
+				Result.iSubUVCount = (std::max)(1u, Columns * Rows);
+				Result.fRandomImageChanges = SourceNumber(*Required, "randomimagechanges", 0.f);
+				Result.fRandomImageTime = SourceNumber(*Required, "randomimagetime", 1.f);
+			}
+			break;
+		}
+		case SOURCE_UPDATE_MODULE_KIND::PARAMETER_DYNAMIC:
+			for (size_t Slot = 0u; Slot < 4u; ++Slot)
+			{
+				const auto& Paths = DYNAMIC_PARAMETER_PATHS[Slot];
+				Bind(Slot, Paths.strValue);
+				Result.Process[Slot] = !SourceBool(Module, Paths.strSpawnTimeOnly, false);
+				Result.UseEmitterTime[Slot] = SourceBool(Module, Paths.strUseEmitterTime, false);
+				Result.ScaleVelocityByValue[Slot] = SourceBool(Module, Paths.strScaleVelocityByValue, false);
+			}
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::ORBIT:
+			Bind(0u, "offsetamount"); Bind(1u, "rotationamount"); Bind(2u, "rotationrateamount");
+			Result.Process[0u] = SourceBool(Module, "offsetoptions.bprocessduringupdate", false);
+			Result.Process[1u] = SourceBool(Module, "rotationoptions.bprocessduringupdate", false);
+			Result.Process[2u] = SourceBool(Module, "rotationrateoptions.bprocessduringupdate", false);
+			Result.UseEmitterTime[0u] = SourceBool(Module, "offsetoptions.buseemittertime", false);
+			Result.UseEmitterTime[1u] = SourceBool(Module, "rotationoptions.buseemittertime", false);
+			Result.UseEmitterTime[2u] = SourceBool(Module, "rotationrateoptions.buseemittertime", false);
+			break;
+		case SOURCE_UPDATE_MODULE_KIND::VORTEX:
+			Bind(0u, "poweracceleration"); Result.fPower = SourceNumber(Module, "power", 1.f); break;
+		default: break;
+		}
+		return Result;
+	}
+};
+
 struct Client::CEffectPlayback::PREPARED_RESOURCES final
 {
 	std::string strEffectAssetId;
@@ -2037,6 +2370,23 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument;
 	std::unordered_map<std::string, std::shared_ptr<const SOURCE_VECTOR_FIELD>>
 		VectorFields;
+	std::unordered_map<std::string, std::vector<SOURCE_UPDATE_MODULE>>
+		SourceUpdateModules;
+	std::unordered_map<std::string, std::vector<size_t>> SourceVectorFieldModuleIndices;
+	std::unordered_map<std::string, size_t> ParticleProviderElementIndices;
+};
+
+struct Client::CEffectPlayback::SOURCE_VECTOR_FIELD_UPDATE final
+{
+	const EFFECT_SOURCE_MODULE_DESC* pModule = nullptr;
+	std::shared_ptr<const SOURCE_VECTOR_FIELD> pField;
+	float4x4_t FieldRotation{};
+	float4x4_t EmitterToField{};
+	float3_t vTiling{};
+	float3_t vVolumeSize{};
+	f32_t fIntensity = 1.f;
+	f32_t fTightness = 0.f;
+	std::vector<const EFFECT_SOURCE_MODULE_DESC*> ScaleModules;
 };
 
 const Client::EFFECT_DOCUMENT_DESC&
@@ -2216,6 +2566,109 @@ bool_t Client::CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
 	return true;
 }
 
+bool_t Client::CEffectPlayback::Validate_SourceParticleProviders(
+	const EFFECT_DOCUMENT_DESC& Document, std::string& strOutError)
+{
+	std::unordered_map<std::string, size_t> Indices;
+	std::unordered_map<std::string, size_t> References;
+	std::unordered_map<std::string, std::unordered_set<std::string>> ProviderNames;
+	for (size_t Index = 0u; Index < Document.Elements.size(); ++Index)
+		Indices.emplace(Document.Elements[Index].strElementId, Index);
+	const auto Reject = [&strOutError](const char_t* Message,
+		const EFFECT_ELEMENT_DESC& Element)
+	{
+		strOutError = std::string("Particle provider: ") + Message + " / " + Element.strElementId;
+		return false;
+	};
+	for (size_t Index = 0u; Index < Document.Elements.size(); ++Index)
+	{
+		const auto& Element = Document.Elements[Index];
+		const auto& Recipe = Element.SourceRecipe;
+		const EFFECT_SOURCE_MODULE_DESC* Location = nullptr;
+		for (const auto& Module : Recipe.Modules)
+		{
+			if (!SourceModule_Enabled(Module) ||
+				(Module.strClassName != "particlemodulelocationemitter" &&
+				 Module.strClassName != "efparticlemodulelocationemitter"))
+				continue;
+			if (Location != nullptr)
+				return Reject("multiple live location modules are unsupported", Element);
+			if (!Validate_ReconstructedSourceModuleExecutionContract(Module, strOutError))
+				return false;
+			Location = &Module;
+		}
+		const bool_t bUsesProvider = nullptr != Location;
+		if (!Recipe.bSimulationOnly && !bUsesProvider)
+		{
+			if (!Recipe.strParticleSystemOccurrenceId.empty() || !Recipe.strEmitterName.empty())
+				return Reject("orphaned particle-system metadata", Element);
+			continue;
+		}
+		if (Document.bSourceContract || !Recipe.bEnabled || !Element.bVisible ||
+			Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+			Recipe.strParticleSystemOccurrenceId.empty() ||
+			Recipe.strParticleSystemOccurrenceId.size() > 256u || Recipe.strEmitterName.size() > 128u ||
+			Recipe.iEmitterLoopCount != 1u || Recipe.fEmitterDurationSeconds <= 0.f ||
+			Element.Detail.Particle.iMaxParticles == 0u ||
+			Element.Detail.Particle.SourceScale.fCount <= 0.f ||
+			Element.TransformInheritance.bEnabled || Element.SourcePresentation.bEnabled ||
+			Element.Renderer.eType != EFFECT_RENDERER_TYPE::END)
+			return Reject("requires an enabled ordinary particle occurrence with a finite single emission", Element);
+		if (Recipe.bSimulationOnly)
+		{
+			if (bUsesProvider || Recipe.strEmitterName.empty() ||
+				Recipe.strRendererShape != "sprite" || !Element.ResourceBindings.empty() ||
+				Element.Material.strTemplateId != "effect.standard" ||
+				Element.Material.SourceMaterial.bEnabled || Element.Material.Execution.bEnabled ||
+				Element.Material.Execution.bFailClosed || Element.Material.Execution.bAuthoringApproximate ||
+				!Element.Detail.Mesh.SourceMaterialSlots.empty())
+				return Reject("simulation-only providers cannot draw or form provider chains", Element);
+			if (!ProviderNames[Recipe.strParticleSystemOccurrenceId].insert(Recipe.strEmitterName).second)
+				return Reject("provider name is ambiguous within the particle-system occurrence", Element);
+			const auto* Required = Find_SourceModule(Element, "particlemodulerequired");
+			if (nullptr == Required || SourceString(*Required, "source.emitterrendermode") != "erm_none")
+				return Reject("simulation-only requires the recovered ERM_None source mode", Element);
+			const auto* LifetimeModule = Find_SourceModule(Element, "particlemodulelifetime");
+			const auto* Lifetime = Find_SourceDistribution(LifetimeModule, "lifetime");
+			if (nullptr == Lifetime || Lifetime->iComponentCount != 1u ||
+				Lifetime->iOperation != 1u || !Lifetime->Keys.empty() || Lifetime->LookupTable.empty())
+				return Reject("provider requires a recovered constant positive particle lifetime", Element);
+			const f32_t Life = Lifetime->LookupTable.front();
+			if (!std::isfinite(Life) || Life <= 0.f ||
+				!std::ranges::all_of(Lifetime->LookupTable, [Life](f32_t Value) { return Value == Life; }) ||
+				Life * Element.Detail.Particle.SourceScale.fLifeTime < Recipe.fEmitterDurationSeconds)
+				return Reject("provider particles must survive the complete emission interval", Element);
+			continue;
+		}
+		const std::string ProviderId(SourceString(*Location, "runtime.providerelementid"));
+		const auto Found = Indices.find(ProviderId);
+		if (Found == Indices.end() || Found->second >= Index)
+			return Reject("provider is missing or does not precede its dependent in source order", Element);
+		const auto& Provider = Document.Elements[Found->second];
+		const auto& ProviderRecipe = Provider.SourceRecipe;
+		if (!Is_EffectSimulationOnlyParticle(Provider) || !Provider.bVisible ||
+			ProviderRecipe.strParticleSystemOccurrenceId != Recipe.strParticleSystemOccurrenceId ||
+			ProviderRecipe.strEmitterName != SourceString(*Location, "emittername"))
+			return Reject("provider name, visibility or particle-system occurrence differs", Element);
+		const auto Start = [](const EFFECT_ELEMENT_DESC& Value)
+		{
+			return Value.Detail.Timing.fStartDelaySeconds + Value.SourceRecipe.fEmitterDelaySeconds *
+				Value.Detail.Particle.SourceScale.fSpawnDelay;
+		};
+		if (Start(Provider) > Start(Element) ||
+			Start(Provider) + ProviderRecipe.fEmitterDurationSeconds <
+			Start(Element) + Recipe.fEmitterDurationSeconds)
+			return Reject("provider does not cover the dependent emission interval", Element);
+		++References[ProviderId];
+	}
+	for (const auto& Element : Document.Elements)
+		if (Element.SourceRecipe.bSimulationOnly && !References.contains(Element.strElementId))
+			return Reject("unreferenced simulation-only row has no visible dependent", Element);
+	strOutError.clear();
+	return true;
+}
+
+
 bool_t Client::CEffectPlayback::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -2223,7 +2676,7 @@ bool_t Client::CEffectPlayback::Stage_Document(
 	if (!CEffectDocumentCodec::Validate(Document, strOutError))
 		return false;
 	std::shared_ptr<const PREPARED_RESOURCES> Prepared;
-	if (!Prepare_DocumentResources(Document, Prepared, strOutError))
+	if (!Prepare_DocumentResources(Document, Prepared, strOutError, nullptr, false))
 		return false;
 	return Stage_PrevalidatedDocument(
 		Document, std::move(Prepared), strOutError);
@@ -2233,7 +2686,8 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
 	std::string& strOutError,
-	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument)
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument,
+	const bool_t bRequireCanonicalIdentity)
 {
 	if (nullptr != pImmutableDocument &&
 		pImmutableDocument.get() != &Document)
@@ -2244,15 +2698,22 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 	}
 	auto Staged = std::make_shared<PREPARED_RESOURCES>();
 	Staged->strEffectAssetId = Document.strEffectAssetId;
-	Staged->strDocumentCanonicalSha256 =
-		CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
-			Document, strOutError);
-	if (Staged->strDocumentCanonicalSha256.empty())
+	/* Ordinary authored staging already validates the document and permits
+	   value edits against prepared resources. It never consumes a canonical
+	   digest. Avoid serializing its complete source recipe again; immutable
+	   catalogs and visual/reconstructed admission still require the digest. */
+	if (bRequireCanonicalIdentity || nullptr != pImmutableDocument)
 	{
-		if (strOutError.empty())
-			strOutError =
-				"Prepared Effect document canonical identity is unavailable.";
-		return false;
+		Staged->strDocumentCanonicalSha256 =
+			CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+				Document, strOutError);
+		if (Staged->strDocumentCanonicalSha256.empty())
+		{
+			if (strOutError.empty())
+				strOutError =
+					"Prepared Effect document canonical identity is unavailable.";
+			return false;
+		}
 	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
@@ -2543,7 +3004,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		strOutError = "Prepared Effect playback resources are missing.";
 		return false;
 	}
-	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& pImmutableDocument =
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument =
 		pPreparedResources->pImmutableDocument;
 	if (nullptr != pImmutableDocument &&
 		pImmutableDocument.get() != &Document)
@@ -2581,6 +3042,36 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			}
 		}
 	}
+	/* Prepared resources can be reused for authored value edits and reconstructed
+	   runtime documents. Derive dispatch from this staged document, not the
+	   resource bundle's earlier document. Resource payloads remain shared. */
+	auto StagedPreparedResources =
+		std::make_shared<PREPARED_RESOURCES>(*pPreparedResources);
+	StagedPreparedResources->SourceUpdateModules.clear();
+	StagedPreparedResources->SourceVectorFieldModuleIndices.clear();
+	StagedPreparedResources->ParticleProviderElementIndices.clear();
+	if (!Validate_SourceParticleProviders(Document, strOutError)) return false;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (Is_EffectSimulationOnlyParticle(Element))
+			StagedPreparedResources->ParticleProviderElementIndices.emplace(
+				Element.strElementId, static_cast<size_t>(&Element - Document.Elements.data()));
+		auto& UpdateModules =
+			StagedPreparedResources->SourceUpdateModules[Element.strElementId];
+		for (size_t iModule = 0u;
+			iModule < Element.SourceRecipe.Modules.size(); ++iModule)
+		{
+			const auto& Module = Element.SourceRecipe.Modules[iModule];
+			if (!SourceModule_Enabled(Module))
+				continue;
+			const auto Kind = Classify_SourceUpdateModule(Module);
+			if (Kind != SOURCE_UPDATE_MODULE_KIND::NONE)
+				UpdateModules.push_back(SOURCE_UPDATE_MODULE::Prepare(Element, iModule));
+			if (Kind == SOURCE_UPDATE_MODULE_KIND::LOCAL_VECTOR_FIELD)
+				StagedPreparedResources->SourceVectorFieldModuleIndices[Element.strElementId].push_back(iModule);
+		}
+	}
+	pPreparedResources = std::move(StagedPreparedResources);
 	EFFECT_DOCUMENT_DESC StagedOwnedDocument;
 	const EFFECT_DOCUMENT_DESC* pStagedDocument = &Document;
 	if (nullptr == pImmutableDocument)
@@ -3181,6 +3672,8 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 	std::string& strOutError)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Playback.HistoryUpdate");
 	std::string GateStatus;
 	if ((!m_bReconstructedSourceRuntimeActive &&
 		 !m_bSourceVisualProgramActive &&
@@ -3401,10 +3894,15 @@ bool_t Client::CEffectPlayback::Step(
 					static_cast<f32_t>(
 						Element.SourceRecipe.iEmitterLoopCount)) :
 			Element.Detail.Timing.fLifeTimeSeconds;
+		const bool_t bFirstManualBurstStep = !State.bBurstSpawned &&
+			Is_ManualBurstOnlyParticle(
+				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
+			m_iSimulationStep == Calculate_ManualBurstFirstSpawnStep(
+				Element.Detail.Timing.fStartDelaySeconds);
 		if (Is_ParticleSimulationElement(
 				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
 			fEmitterElapsed >= 0.f &&
-			fEmitterElapsed <= fSourceEmissionDuration)
+			(fEmitterElapsed <= fSourceEmissionDuration || bFirstManualBurstStep))
 		{
 			if (Element.SourceRecipe.bEnabled)
 			{
@@ -3802,7 +4300,8 @@ void Client::CEffectPlayback::Spawn_Particles(
 				fEmitterElapsed;
 			Particle.fSpawnEmitterTimeSeconds = fEmitterTime;
 			Apply_SourceSpawnModules(
-				Element, State, Particle, fEmitterTime, ElementWorld);
+				Element, State, Particle, fEmitterTime, ElementWorld, RootWorld);
+			if (!Particle.bSourceEmitterLocationResolved) continue;
 			/* Authored trim over what the modules just produced.  Scaling the
 			   base size here carries through Apply_SourceUpdateModules, which
 			   re-derives vSize from vBaseSize every step, and scaling the
@@ -3811,7 +4310,7 @@ void Client::CEffectPlayback::Spawn_Particles(
 			{
 				Particle.vBaseSize = Scale3(
 					Particle.vBaseSize, Desc.SourceScale.fSize);
-				Particle.vSize = Particle.vBaseSize;
+				Particle.vSize = Scale3(Particle.vSize, Desc.SourceScale.fSize);
 				Particle.fLifeTimeSeconds *= Desc.SourceScale.fLifeTime;
 				/* Velocity is scaled on both the live and the base copy so the
 				   update modules that re-derive from vBaseVelocity keep the
@@ -4203,11 +4702,20 @@ f32_t Client::CEffectPlayback::Evaluate_ModuleFloat(
 	const f32_t fTime,
 	const f32_t fFallback)
 {
-	const EFFECT_DISTRIBUTION_DESC* pDistribution =
-		Find_SourceDistribution(&Module, PropertyPath);
+	return Evaluate_ModuleFloat(State, Module,
+		Find_SourceDistribution(&Module, PropertyPath), fTime, fFallback);
+}
+
+f32_t Client::CEffectPlayback::Evaluate_ModuleFloat(
+	ELEMENT_STATE& State,
+	const EFFECT_SOURCE_MODULE_DESC& Module,
+	const EFFECT_DISTRIBUTION_DESC* pDistribution,
+	const f32_t fTime,
+	const f32_t fFallback)
+{
 	if (nullptr == pDistribution)
 		return fFallback;
-	if (Uses_ImplicitAlphaIdentity(*pDistribution, PropertyPath))
+	if (Uses_ImplicitAlphaIdentity(*pDistribution, pDistribution->strPropertyPath))
 		return fFallback;
 	float4_t RandomUnits{};
 	if (2u == pDistribution->iOperation || 3u == pDistribution->iOperation)
@@ -4223,12 +4731,29 @@ float3_t Client::CEffectPlayback::Evaluate_ModuleVector(
 	const f32_t fTime,
 	const float3_t& Fallback)
 {
-	const EFFECT_DISTRIBUTION_DESC* pDistribution =
-		Find_SourceDistribution(&Module, PropertyPath);
+	return Evaluate_ModuleVector(State, Module,
+		Find_SourceDistribution(&Module, PropertyPath), fTime, Fallback);
+}
+
+float3_t Client::CEffectPlayback::Evaluate_ModuleVector(
+	ELEMENT_STATE& State,
+	const EFFECT_SOURCE_MODULE_DESC& Module,
+	const EFFECT_DISTRIBUTION_DESC* pDistribution,
+	const f32_t fTime,
+	const float3_t& Fallback)
+{
 	if (nullptr == pDistribution)
 		return Fallback;
 	float4_t RandomUnits{};
-	if (2u == pDistribution->iOperation)
+	if (4u == pDistribution->iOperation)
+	{
+		// The source draws its Max/Min selector before the three axis values.
+		RandomUnits.w = Next_ModuleRandom(State, Module);
+		RandomUnits.x = Next_ModuleRandom(State, Module);
+		RandomUnits.y = Next_ModuleRandom(State, Module);
+		RandomUnits.z = Next_ModuleRandom(State, Module);
+	}
+	else if (2u == pDistribution->iOperation)
 	{
 		RandomUnits.x = Next_ModuleRandom(State, Module);
 		RandomUnits.y = Next_ModuleRandom(State, Module);
@@ -4256,17 +4781,104 @@ float3_t Client::CEffectPlayback::Evaluate_ModuleVector(
 	return { Value.x, Value.y, Value.z };
 }
 
+void Client::CEffectPlayback::Apply_SourceSubUV(
+	const EFFECT_ELEMENT_DESC& Element, ELEMENT_STATE& State,
+	PARTICLE_STATE& Particle, const EFFECT_SOURCE_MODULE_DESC& Module,
+	const f32_t fNormalizedAge, const bool_t bSpawn,
+	const f32_t fEmitterTimeSeconds, const f32_t fFixedDelta,
+	const SOURCE_UPDATE_MODULE* pPreparedModule)
+{
+	if (!(pPreparedModule != nullptr ? pPreparedModule->bUpdateEnabled :
+		SourceBool(Module, bSpawn ? "bspawnmodule" : "bupdatemodule", true)))
+		return;
+	const auto* Required = pPreparedModule != nullptr ?
+		(pPreparedModule->iRequiredModuleIndex == SOURCE_UPDATE_MODULE::MISSING_INDEX ? nullptr :
+			&Element.SourceRecipe.Modules[pPreparedModule->iRequiredModuleIndex]) :
+		Find_SourceModule(Element, "particlemodulerequired");
+	if (pPreparedModule != nullptr ? pPreparedModule->bSubUVMovie :
+		SourceClass_Matches(Module, "particlemodulesubuvmovie"))
+	{
+		const uint32_t Columns = pPreparedModule ? pPreparedModule->iSubUVCount :
+			(Required ? static_cast<uint32_t>(SourceNumber(*Required, "subimages_horizontal", 1.f)) : 1u);
+		const uint32_t Rows = pPreparedModule ? 1u :
+			(Required ? static_cast<uint32_t>(SourceNumber(*Required, "subimages_vertical", 1.f)) : 1u);
+		const uint32_t Count = (std::max)(1u, Columns * Rows);
+		if (bSpawn)
+		{
+			const f32_t StartingFrame = SourceNumber(Module, "startingframe", 1.f);
+			// UE3 uses one-based explicit frames; zero chooses once at birth.
+			Particle.fSubImageIndex = StartingFrame == 0.f ?
+				static_cast<f32_t>((std::min)(Count - 1u,
+					static_cast<uint32_t>(Next_ModuleRandom(State, Module) * Count))) :
+				std::fmod(StartingFrame - 1.f, static_cast<f32_t>(Count));
+		}
+		else
+		{
+			const f32_t RateTime = (pPreparedModule ? pPreparedModule->UseEmitterTime[0u] :
+				SourceBool(Module, "buseemittertime", false)) ?
+				fEmitterTimeSeconds : fNormalizedAge;
+			const f32_t Rate = Evaluate_ModuleFloat(State, Module,
+				pPreparedModule ? pPreparedModule->Distribution(Module, 0u) :
+				Find_SourceDistribution(&Module, "framerate"), RateTime, 0.f);
+			const f32_t FrameCount = static_cast<f32_t>(Count);
+			Particle.fSubImageIndex = std::fmod(Particle.fSubImageIndex +
+				Rate * fFixedDelta, FrameCount);
+			if (Particle.fSubImageIndex < 0.f) Particle.fSubImageIndex += FrameCount;
+		}
+		return;
+	}
+	if (bSpawn)
+	{
+		const auto& Profile = Element.Material.SourceMaterial.strRuntimeShaderProfileId;
+		Particle.bSourceRandomSubUV = Required &&
+			SourceString(*Required, "interpolationmethod") == "psuvim_random" &&
+			(Find_ArtistProgram(Profile) || Find_WarlordNativeProgram(Profile) ||
+				Find_LanceMasterVAProgram(Profile));
+	}
+	if (!Particle.bSourceRandomSubUV || !Required)
+	{
+		Particle.fSubImageIndex = Evaluate_ModuleFloat(State, Module,
+			pPreparedModule ? pPreparedModule->Distribution(Module, 0u) :
+			Find_SourceDistribution(&Module, "subimageindex"), fNormalizedAge, 0.f);
+		return;
+	}
+	// UE3 Random chooses at birth. Changes==0 holds that image for life.
+	// The cooked RandomImageTime is a relative-age interval, not seconds.
+	if (!bSpawn && (pPreparedModule ? pPreparedModule->fRandomImageChanges :
+		SourceNumber(*Required, "randomimagechanges", 0.f)) == 0.f)
+		return;
+	const f32_t Interval = pPreparedModule ? pPreparedModule->fRandomImageTime :
+		SourceNumber(*Required, "randomimagetime", 1.f);
+	if (bSpawn || Interval == 0.f || Particle.fSourceSubUVLastRandomAge == 0.f ||
+		fNormalizedAge - Particle.fSourceSubUVLastRandomAge > Interval)
+	{
+		const uint32_t Columns = pPreparedModule ? pPreparedModule->iSubUVCount :
+			static_cast<uint32_t>(SourceNumber(*Required, "subimages_horizontal", 1.f));
+		const uint32_t Rows = pPreparedModule ? 1u :
+			static_cast<uint32_t>(SourceNumber(*Required, "subimages_vertical", 1.f));
+		const uint32_t Count = (std::max)(1u, Columns * Rows);
+		Particle.fSubImageIndex = static_cast<f32_t>((std::min)(Count - 1u,
+			static_cast<uint32_t>(Next_ModuleRandom(State, Module) * Count)));
+		Particle.fSourceSubUVLastRandomAge = fNormalizedAge;
+	}
+}
+
 void Client::CEffectPlayback::Apply_SourceSpawnModules(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
 	PARTICLE_STATE& Particle,
 	const f32_t fEmitterTimeSeconds,
-	const float4x4_t& ElementWorld)
+	const float4x4_t& ElementWorld,
+	const float4x4_t& RootWorld)
 {
 	const auto* pQProgram = Find_DimensionMasterQProgram(
 		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
-	if (Element.Material.SourceMaterial.bEnabled && nullptr != pQProgram &&
-		(45u == pQProgram->iProfileIndex || 49u == pQProgram->iProfileIndex) &&
+	const auto* pVProgram = Find_DimensionMasterVProgram(
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	if (Element.Material.SourceMaterial.bEnabled &&
+		((nullptr != pQProgram &&
+		  (45u == pQProgram->iProfileIndex || 49u == pQProgram->iProfileIndex)) ||
+		 (nullptr != pVProgram && 69u == pVProgram->iProfileIndex)) &&
 		std::none_of(Element.SourceRecipe.Modules.begin(),
 			Element.SourceRecipe.Modules.end(),
 			[](const EFFECT_SOURCE_MODULE_DESC& Module)
@@ -4276,17 +4888,24 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			}))
 	{
 		// These source sprite VFs use the all-one Null Dynamic stream when
-		// no module supplies it. Zero collapses Q45 UVs and Q45/Q49 opacity.
+		// no module supplies it. Zero collapses Q45 UVs, Q45/Q49 opacity,
+		// and V69 splitline opacity through floor(texture.r + dynamic.z).
 		Particle.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
 	}
 
 	const auto* pALTVProgram = Find_DimensionMasterALTVProgram(
 		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	const auto* pLanceProgram = Find_LanceMasterVAProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	const auto* pWarlordProgram = Find_WarlordNativeProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId);
+	const auto* pArtistProgram = Find_ArtistProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId);
 	const auto* pWRProgram = Find_DimensionMasterWRProgram(
 		Element.Material.SourceMaterial.strRuntimeShaderProfileId);
 	if (Element.Material.SourceMaterial.bEnabled &&
 		((nullptr != pALTVProgram && pALTVProgram->bDynamicVertexFactory) ||
-		 (nullptr != pWRProgram && pWRProgram->bDynamicVertexFactory)) &&
+		 (nullptr != pWRProgram && pWRProgram->bDynamicVertexFactory) ||
+		 (nullptr != pArtistProgram && pArtistProgram->bDynamicVertexFactory) ||
+		 (nullptr != pLanceProgram && pLanceProgram->bDynamicVertexFactory) ||
+		 (nullptr != pWarlordProgram && pWarlordProgram->bDynamicVertexFactory)) &&
 		std::none_of(Element.SourceRecipe.Modules.begin(), Element.SourceRecipe.Modules.end(),
 			[](const EFFECT_SOURCE_MODULE_DESC& Module)
 			{
@@ -4297,7 +4916,21 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		Particle.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
 	}
 
-	bool_t bHasSize = false;
+	const bool_t bHasSize = std::ranges::any_of(Element.SourceRecipe.Modules,
+		[](const EFFECT_SOURCE_MODULE_DESC& Module)
+		{
+			if (!SourceModule_Enabled(Module) ||
+				!SourceClass_Matches(Module, "particlemodulesize")) return false;
+			const auto* Distribution = Find_SourceDistribution(&Module, "startsize");
+			return nullptr != Distribution && !Is_SourceNullCdoDistribution(*Distribution, 3u);
+		});
+	if (!bHasSize)
+	{
+		const auto& Desc = Element.Detail.Particle;
+		Particle.vBaseSize = { Desc.vStartSize.x, Desc.vStartSize.y,
+			0.5f * (Desc.vStartSize.x + Desc.vStartSize.y) };
+		Particle.vSize = Particle.vBaseSize;
+	}
 	const bool_t bSourceVisualDecalParticle =
 		Is_SourceVisualDecalParticle(
 			Element, Is_SourceVisualProgramElementAdmitted(Element));
@@ -4312,6 +4945,45 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			Particle.fLifeTimeSeconds += (std::max)(0.f,
 				Evaluate_ModuleFloat(State, Module, "lifetime",
 					fEmitterTimeSeconds, 0.f));
+		}
+		else if (Module.strClassName == "particlemodulelocationemitter" ||
+			Module.strClassName == "efparticlemodulelocationemitter")
+		{
+			Particle.bSourceEmitterLocationResolved = false;
+			const std::string ProviderId(SourceString(Module, "runtime.providerelementid"));
+			const auto ProviderIndex = m_pPreparedResources->ParticleProviderElementIndices.find(ProviderId);
+			const auto ProviderState = m_States.find(ProviderId);
+			if (ProviderIndex == m_pPreparedResources->ParticleProviderElementIndices.end() ||
+				ProviderState == m_States.end()) continue;
+			const auto& Provider = Get_StagedDocument().Elements[ProviderIndex->second];
+			const auto& ProviderParticles = ProviderState->second.Particles;
+			const auto IsAlive = [](const PARTICLE_STATE& Value)
+			{
+				return std::isfinite(Value.fLifeTimeSeconds) && Value.fLifeTimeSeconds > 0.f &&
+					Value.fAgeSeconds >= 0.f && Value.fAgeSeconds < Value.fLifeTimeSeconds;
+			};
+			const uint32_t ActiveCount = static_cast<uint32_t>(
+				std::ranges::count_if(ProviderParticles, IsAlive));
+			if (0u == ActiveCount) continue;
+			// UE3's per-module payload increments before selecting and wraps to 0.
+			// Each dependent owns its cursor, so the petals of one flower coincide.
+			auto& SelectedIndex = State.LocationEmitterNextIndices[Module.strStableId];
+			SelectedIndex = SelectedIndex + 1u >= ActiveCount ? 0u : SelectedIndex + 1u;
+			uint32_t LiveIndex = 0u;
+			for (const auto& SourceParticle : ProviderParticles)
+			{
+				if (!IsAlive(SourceParticle)) continue;
+				if (LiveIndex++ != SelectedIndex) continue;
+				const float4x4_t ProviderWorld = Provider.Detail.Particle.bLocalSpace ?
+					Evaluate_ElementWorld(Provider, m_fSampleTimeSeconds, RootWorld) :
+					SourceParticle.SpawnRootWorld;
+				const float3_t WorldPosition = Transform_Coord(SourceParticle.vPosition,
+					XMLoadFloat4x4(&ProviderWorld));
+				Particle.vPosition = Transform_Coord(WorldPosition,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
+				Particle.bSourceEmitterLocationResolved = true;
+				break;
+			}
 		}
 		else if (SourceClass_Matches(Module, "particlemodulelocation"))
 		{
@@ -4683,11 +5355,26 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			{
 				continue;
 			}
-			Particle.vBaseSize = Add3(Particle.vBaseSize,
-				UE3_StartSizeToClient(Element, Evaluate_ModuleVector(
-					State, Module, "startsize", fEmitterTimeSeconds,
-					float3_t{})));
-			bHasSize = true;
+			const float3_t StartSize = UE3_StartSizeToClient(Element,
+				Evaluate_ModuleVector(State, Module, "startsize",
+					fEmitterTimeSeconds, float3_t{}));
+			Particle.vBaseSize = Add3(Particle.vBaseSize, StartSize);
+			Particle.vSize = Add3(Particle.vSize, StartSize);
+		}
+		else if (SourceClass_Matches(Module, "particlemodulesizemultiplylife"))
+		{
+			if (SourceBool(Module, "bspawnmodule", true))
+				Particle.vSize = Apply_SourceSizeLife(Element, Module, Particle.vSize,
+					Evaluate_ModuleVector(State, Module, "lifemultiplier", 0.f,
+						float3_t(1.f, 1.f, 1.f)));
+		}
+		else if (SourceClass_Matches(Module, "particlemodulesizemultiplyvelocity"))
+		{
+			if (SourceBool(Module, "bspawnmodule", true))
+				Particle.vSize = Apply_SourceSizeVelocity(Element, Module,
+					Particle.vSize, Multiply3(Particle.vVelocity, Particle.vVelocityScale),
+					Evaluate_ModuleVector(State, Module, "velocitymultiplier", 0.f,
+						float3_t{}));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecolor"))
 		{
@@ -4772,10 +5459,10 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			else
 				Particle.fCameraOffset = fValue;
 		}
-		else if (SourceClass_Matches(Module, "particlemodulesubuv"))
+		else if (SourceClass_Matches(Module, "particlemodulesubuv") ||
+			SourceClass_Matches(Module, "particlemodulesubuvmovie"))
 		{
-			Particle.fSubImageIndex = Evaluate_ModuleFloat(
-				State, Module, "subimageindex", 0.f, 0.f);
+			Apply_SourceSubUV(Element, State, Particle, Module, 0.f, true, fEmitterTimeSeconds, 0.f);
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemoduleparameterdynamic"))
@@ -4806,27 +5493,32 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		}
 		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
 		{
-			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
-				UE3_CentimetersToClient(Evaluate_ModuleVector(
-					State, Module, "offsetamount", 0.f, float3_t{})));
-			Particle.vSourceOrbitRotationDegrees = Add3(
-				Particle.vSourceOrbitRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
-					0.f, float3_t{}), 360.f));
-			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vSourceOrbitRotationRateDegreesPerSecond,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
-					0.f, float3_t{}), 360.f));
+			if (SourceBool(Module, "offsetoptions.bprocessduringspawn", true))
+			{
+				const f32_t Time = SourceBool(Module, "offsetoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : 0.f;
+				const float3_t Offset = UE3_CentimetersToClient(Evaluate_ModuleVector(
+					State, Module, "offsetamount", Time, float3_t{}));
+				Particle.vBaseOrbitOffset = Add3(Particle.vBaseOrbitOffset, Offset);
+				Particle.vOrbitOffset = Add3(Particle.vOrbitOffset, Offset);
+			}
+			if (SourceBool(Module, "rotationoptions.bprocessduringspawn", true))
+			{
+				const f32_t Time = SourceBool(Module, "rotationoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : 0.f;
+				Particle.vSourceOrbitRotationDegrees = Add3(Particle.vSourceOrbitRotationDegrees,
+					Scale3(Evaluate_ModuleVector(State, Module, "rotationamount", Time, float3_t{}), 360.f));
+			}
+			if (SourceBool(Module, "rotationrateoptions.bprocessduringspawn", true))
+			{
+				const f32_t Time = SourceBool(Module, "rotationrateoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : 0.f;
+				Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+					Particle.vSourceOrbitRotationRateDegreesPerSecond,
+					Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount", Time, float3_t{}), 360.f));
+			}
 		}
 	}
-	if (!bHasSize)
-	{
-		const EFFECT_PARTICLE_DESC& Desc = Element.Detail.Particle;
-		Particle.vBaseSize = float3_t(
-			Desc.vStartSize.x, Desc.vStartSize.y,
-			0.5f * (Desc.vStartSize.x + Desc.vStartSize.y));
-	}
-	Particle.vSize = Particle.vBaseSize;
 }
 
 void Client::CEffectPlayback::Update_Particles(
@@ -4835,6 +5527,8 @@ void Client::CEffectPlayback::Update_Particles(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
+	if (State.Particles.empty())
+		return;
 	const f32_t fEmitterElapsed = (std::max)(0.f,
 		m_fSampleTimeSeconds -
 		Element.Detail.Timing.fStartDelaySeconds -
@@ -4883,24 +5577,33 @@ void Client::CEffectPlayback::Update_Particles(
 				Particle.fAgeSeconds + fFixedDelta >=
 					Particle.fLifeTimeSeconds;
 		});
+	if (State.Particles.empty() || !Can_EvaluateElementWorld(Element))
+		return;
+	// Every particle in this emitter uses the same evaluated root for this tick.
+	const float4x4_t ElementWorld = Evaluate_ElementWorld(
+		Element, m_fSampleTimeSeconds, RootWorld);
+	const auto FieldModules = m_pPreparedResources->SourceVectorFieldModuleIndices.find(Element.strElementId);
+	const auto VectorFieldUpdates = FieldModules ==
+		m_pPreparedResources->SourceVectorFieldModuleIndices.end() ?
+		std::vector<SOURCE_VECTOR_FIELD_UPDATE>{} :
+		Prepare_SourceVectorFieldUpdates(Element, fEmitterTime, FieldModules->second);
+	const auto& SourceUpdateModules =
+		m_pPreparedResources->SourceUpdateModules.at(Element.strElementId);
 	for (PARTICLE_STATE& Particle : State.Particles)
 	{
-		if (!Can_EvaluateElementWorld(Element))
-			return;
 		const bool_t bBirthStep =
 			Particle.iSpawnSimulationStep == m_iSimulationStep;
 		if (!bBirthStep)
 			Particle.fAgeSeconds += fFixedDelta;
 		if (bBirthStep && bDeferEnhancedNativeBirthIntegration)
 			continue;
-		const float4x4_t ElementWorld = Evaluate_ElementWorld(
-			Element, m_fSampleTimeSeconds, RootWorld);
 		const f32_t fNormalizedAge = Clamp01(
 			Particle.fAgeSeconds / Particle.fLifeTimeSeconds);
 		if (Element.SourceRecipe.bEnabled)
 		{
 			Apply_SourceUpdateModules(Element, State, Particle, fEmitterTime,
-				fNormalizedAge, fFixedDelta, ElementWorld);
+				fNormalizedAge, fFixedDelta, ElementWorld, VectorFieldUpdates,
+				SourceUpdateModules);
 		}
 		else
 		{
@@ -5027,6 +5730,94 @@ float3_t Client::CEffectPlayback::Apply_TargetAttractor(
 	return Transform_Normal(EffectiveWorldVelocity, InverseParticleRoot);
 }
 
+std::vector<Client::CEffectPlayback::SOURCE_VECTOR_FIELD_UPDATE>
+Client::CEffectPlayback::Prepare_SourceVectorFieldUpdates(
+	const EFFECT_ELEMENT_DESC& Element, const f32_t fEmitterTimeSeconds,
+	const std::span<const size_t> ModuleIndices) const
+{
+	std::vector<SOURCE_VECTOR_FIELD_UPDATE> Updates;
+	if (!Element.SourceRecipe.bEnabled)
+		return Updates;
+	for (const size_t iModule : ModuleIndices)
+	{
+		const auto& Module = Element.SourceRecipe.Modules[iModule];
+		const std::string_view AssetId =
+			SourceString(Module, "vectorfield.assetid");
+		std::shared_ptr<const SOURCE_VECTOR_FIELD> Field;
+		if (nullptr != m_pPreparedResources)
+		{
+			const auto PreparedField = m_pPreparedResources->VectorFields.find(
+				std::string(AssetId));
+			if (PreparedField != m_pPreparedResources->VectorFields.end())
+				Field = PreparedField->second;
+		}
+		if (nullptr == Field)
+			continue;
+		float3_t Rotation(
+			SourceNumber(Module, "relativerotation.x", 0.f),
+			SourceNumber(Module, "relativerotation.y", 0.f),
+			SourceNumber(Module, "relativerotation.z", 0.f));
+		for (const EFFECT_SOURCE_MODULE_DESC& RotationModule :
+			Element.SourceRecipe.Modules)
+		{
+			if (!SourceModule_Enabled(RotationModule) ||
+				!SourceClass_Matches(RotationModule,
+					"particlemodulevectorfieldrotationrate"))
+			{
+				continue;
+			}
+			Rotation = Add3(Rotation, Scale3(float3_t(
+				SourceNumber(RotationModule, "rotationrate.x", 0.f),
+				SourceNumber(RotationModule, "rotationrate.y", 0.f),
+				SourceNumber(RotationModule, "rotationrate.z", 0.f)),
+				fEmitterTimeSeconds));
+		}
+		const float3_t FieldScale = Scale3(float3_t(
+			SourceNumber(Module, "relativescale3d.x", 1.f),
+			SourceNumber(Module, "relativescale3d.y", 1.f),
+			SourceNumber(Module, "relativescale3d.z", 1.f)), 0.01f);
+		const float3_t Translation = UE3_CentimetersToClient(float3_t(
+			SourceNumber(Module, "relativetranslation.x", 0.f),
+			SourceNumber(Module, "relativetranslation.y", 0.f),
+			SourceNumber(Module, "relativetranslation.z", 0.f)));
+		// WVF1 retains source XYZ sample order. Convert the field domain and
+		// sampled vectors together before comparing them with Client particles.
+		const matrix_t FieldRotation = XMMatrixSet(
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 0.f, -1.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 0.f, 1.f) *
+			UE3_EulerDegreesToClientRotation(Rotation);
+		const matrix_t FieldToEmitter = XMMatrixScaling(
+			FieldScale.x, FieldScale.y, FieldScale.z) *
+			FieldRotation * XMMatrixTranslation(
+				Translation.x, Translation.y, Translation.z);
+		SOURCE_VECTOR_FIELD_UPDATE Context;
+		Context.pModule = &Module;
+		Context.pField = std::move(Field);
+		XMStoreFloat4x4(&Context.FieldRotation, FieldRotation);
+		XMStoreFloat4x4(&Context.EmitterToField,
+			XMMatrixInverse(nullptr, FieldToEmitter));
+		Context.vTiling = float3_t(SourceBool(Module, "btilex", false) ? 1.f : 0.f,
+			SourceBool(Module, "btiley", false) ? 1.f : 0.f,
+			SourceBool(Module, "btilez", false) ? 1.f : 0.f);
+		Context.vVolumeSize = float3_t(static_cast<f32_t>(Context.pField->iSizeX),
+			static_cast<f32_t>(Context.pField->iSizeY),
+			static_cast<f32_t>(Context.pField->iSizeZ));
+		Context.fIntensity = SourceNumber(Module, "intensity", 1.f);
+		Context.fTightness = Clamp01(SourceNumber(Module, "tightness", 0.f));
+		for (const EFFECT_SOURCE_MODULE_DESC& ScaleModule :
+			Element.SourceRecipe.Modules)
+		{
+			if (SourceModule_Enabled(ScaleModule) && SourceClass_Matches(ScaleModule,
+				"particlemodulevectorfieldscaleoverlife"))
+				Context.ScaleModules.push_back(&ScaleModule);
+		}
+		Updates.push_back(std::move(Context));
+	}
+	return Updates;
+}
+
 void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
@@ -5034,9 +5825,13 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	const f32_t fEmitterTimeSeconds,
 	const f32_t fNormalizedAge,
 	const f32_t fFixedDelta,
-	const float4x4_t& ElementWorld)
+	const float4x4_t& ElementWorld,
+	const std::vector<SOURCE_VECTOR_FIELD_UPDATE>& VectorFieldUpdates,
+	const std::vector<SOURCE_UPDATE_MODULE>& UpdateModules)
 {
 	Particle.vSize = Particle.vBaseSize;
+	// UE resets live Orbit offset before applying this tick's curve samples.
+	Particle.vOrbitOffset = Particle.vBaseOrbitOffset;
 	Particle.vColor = Particle.vBaseColor;
 	Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 	Particle.vRotationRateScale = { 1.f, 1.f, 1.f };
@@ -5045,32 +5840,31 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		Is_SourceVisualDecalParticle(
 			Element, Is_SourceVisualProgramElementAdmitted(Element));
 
-	for (const EFFECT_SOURCE_MODULE_DESC& Module :
-		Element.SourceRecipe.Modules)
+	for (const SOURCE_UPDATE_MODULE& PreparedModule : UpdateModules)
 	{
-		if (!SourceModule_Enabled(Module))
-			continue;
+		const auto& Module =
+			Element.SourceRecipe.Modules[PreparedModule.iModuleIndex];
+		const auto Kind = PreparedModule.eKind;
 
-		if (SourceClass_Matches(
-			Module, "particlemodulelocationdirect"))
+		if (Kind == SOURCE_UPDATE_MODULE_KIND::LOCATION_DIRECT)
 		{
 			/* Cascade LocationDirect evaluates its curves over particle relative
 			   time.  Replacing only the module's previous contribution preserves
 			   every other source module and makes the source 0.9 -> 1.0 return
 			   segment execute instead of freezing at its spawn sample. */
 			const float3_t Location = Evaluate_ModuleVector(
-				State, Module, "location", fNormalizedAge, float3_t{});
+				State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge, float3_t{});
 			const float3_t Offset = Evaluate_ModuleVector(
-				State, Module, "locationoffset", fNormalizedAge, float3_t{});
+				State, Module, PreparedModule.Distribution(Module, 1u), fNormalizedAge, float3_t{});
 			const float3_t Scale =
-				Is_Warlord17090ChainTypedScaleIdentity(Element, Module) ?
+				PreparedModule.bDirectScaleIdentity ?
 				float3_t(1.f, 1.f, 1.f) : Evaluate_ModuleVector(
-					State, Module, "scalefactor", fNormalizedAge,
+					State, Module, PreparedModule.Distribution(Module, 2u), fNormalizedAge,
 					float3_t(1.f, 1.f, 1.f));
 			const float3_t DirectLocation = UE3_CentimetersToClient(
 				Add3(Multiply3(Location, Scale), Offset));
 			const float3_t DirectDirection = UE3_CentimetersToClient(
-				Evaluate_ModuleVector(State, Module, "direction",
+				Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 3u),
 					fNormalizedAge, float3_t{}));
 			Particle.vPosition = Add3(Particle.vPosition,
 				Subtract3(DirectLocation,
@@ -5081,7 +5875,7 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			Particle.vSourceDirectLocationContribution = DirectLocation;
 			Particle.vSourceDirectDirectionContribution = DirectDirection;
 		}
-		else if (SourceClass_Matches(Module, "particlemodulelocationbonesocket"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::LOCATION_BONE_SOCKET)
 		{
 			if (!Particle.bUpdateSourceAnchor ||
 				Particle.strSourceAnchorName.empty())
@@ -5102,77 +5896,26 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			XMStoreFloat4x4(&Stored, AnchorLocal);
 			Particle.vPosition = Get_Translation(Stored);
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulelocalvectorfield"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::LOCAL_VECTOR_FIELD)
 		{
-			const std::string_view AssetId =
-				SourceString(Module, "vectorfield.assetid");
-			std::shared_ptr<const SOURCE_VECTOR_FIELD> Field;
-			if (nullptr != m_pPreparedResources)
-			{
-				const auto PreparedField = m_pPreparedResources->VectorFields.find(
-					std::string(AssetId));
-				if (PreparedField != m_pPreparedResources->VectorFields.end())
-					Field = PreparedField->second;
-			}
-			if (nullptr == Field)
+			const auto Context = std::find_if(VectorFieldUpdates.begin(),
+				VectorFieldUpdates.end(), [&Module](const SOURCE_VECTOR_FIELD_UPDATE& Value)
+				{ return Value.pModule == &Module; });
+			if (Context == VectorFieldUpdates.end())
 				continue;
-			float3_t Rotation(
-				SourceNumber(Module, "relativerotation.x", 0.f),
-				SourceNumber(Module, "relativerotation.y", 0.f),
-				SourceNumber(Module, "relativerotation.z", 0.f));
-			for (const EFFECT_SOURCE_MODULE_DESC& RotationModule :
-				Element.SourceRecipe.Modules)
-			{
-				if (!SourceModule_Enabled(RotationModule) ||
-					!SourceClass_Matches(RotationModule,
-						"particlemodulevectorfieldrotationrate"))
-				{
-					continue;
-				}
-				Rotation = Add3(Rotation, Scale3(float3_t(
-					SourceNumber(RotationModule, "rotationrate.x", 0.f),
-					SourceNumber(RotationModule, "rotationrate.y", 0.f),
-					SourceNumber(RotationModule, "rotationrate.z", 0.f)),
-					fEmitterTimeSeconds));
-			}
-			const float3_t FieldScale = Scale3(float3_t(
-				SourceNumber(Module, "relativescale3d.x", 1.f),
-				SourceNumber(Module, "relativescale3d.y", 1.f),
-				SourceNumber(Module, "relativescale3d.z", 1.f)), 0.01f);
-			const float3_t Translation = UE3_CentimetersToClient(float3_t(
-				SourceNumber(Module, "relativetranslation.x", 0.f),
-				SourceNumber(Module, "relativetranslation.y", 0.f),
-				SourceNumber(Module, "relativetranslation.z", 0.f)));
-			// WVF1 retains source XYZ sample order. Convert the field domain and
-			// sampled vectors together before comparing them with Client particles.
-			const matrix_t FieldRotation = XMMatrixSet(
-				1.f, 0.f, 0.f, 0.f,
-				0.f, 0.f, -1.f, 0.f,
-				0.f, 1.f, 0.f, 0.f,
-				0.f, 0.f, 0.f, 1.f) *
-				UE3_EulerDegreesToClientRotation(Rotation);
-			const matrix_t FieldToEmitter = XMMatrixScaling(
-				FieldScale.x, FieldScale.y, FieldScale.z) *
-				FieldRotation * XMMatrixTranslation(
-					Translation.x, Translation.y, Translation.z);
+			const auto& Field = Context->pField;
+			const matrix_t FieldRotation = XMLoadFloat4x4(&Context->FieldRotation);
 			const float3_t FieldPosition = Transform_Coord(
-				Particle.vPosition, XMMatrixInverse(nullptr, FieldToEmitter));
+				Particle.vPosition, XMLoadFloat4x4(&Context->EmitterToField));
 			float3_t UV(
 				0.5f * (FieldPosition.x + 1.f),
 				0.5f * (FieldPosition.y + 1.f),
 				0.5f * (FieldPosition.z + 1.f));
-			const float3_t Tiling(
-				SourceBool(Module, "btilex", false) ? 1.f : 0.f,
-				SourceBool(Module, "btiley", false) ? 1.f : 0.f,
-				SourceBool(Module, "btilez", false) ? 1.f : 0.f);
+			const float3_t& Tiling = Context->vTiling;
 			if (Tiling.x > 0.f) UV.x -= std::floor(UV.x);
 			if (Tiling.y > 0.f) UV.y -= std::floor(UV.y);
 			if (Tiling.z > 0.f) UV.z -= std::floor(UV.z);
-			const float3_t VolumeSize(
-				static_cast<f32_t>(Field->iSizeX),
-				static_cast<f32_t>(Field->iSizeY),
-				static_cast<f32_t>(Field->iSizeZ));
+			const float3_t& VolumeSize = Context->vVolumeSize;
 			const float3_t AxisWeight(
 				Clamp01(UV.x * VolumeSize.x) *
 					Clamp01((1.f - UV.x) * VolumeSize.x),
@@ -5185,24 +5928,16 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			if (fDistanceWeight <= 0.f)
 				continue;
 			f32_t fPerParticleScale = 1.f;
-			for (const EFFECT_SOURCE_MODULE_DESC& ScaleModule :
-				Element.SourceRecipe.Modules)
+			for (const EFFECT_SOURCE_MODULE_DESC* pScaleModule : Context->ScaleModules)
 			{
-				if (!SourceModule_Enabled(ScaleModule) ||
-					!SourceClass_Matches(ScaleModule,
-						"particlemodulevectorfieldscaleoverlife"))
-				{
-					continue;
-				}
-				fPerParticleScale *= Evaluate_ModuleFloat(State, ScaleModule,
+				fPerParticleScale *= Evaluate_ModuleFloat(State, *pScaleModule,
 					"scaleoverlife", fNormalizedAge, 1.f);
 			}
 			const float3_t Sample = Transform_Normal(
 				Sample_VectorField(*Field, UV, Tiling), FieldRotation);
-			const f32_t fIntensity = SourceNumber(Module, "intensity", 1.f) *
+			const f32_t fIntensity = Context->fIntensity *
 				Particle.fVectorFieldScale * fPerParticleScale;
-			const f32_t fTightness = Clamp01(
-				SourceNumber(Module, "tightness", 0.f));
+			const f32_t fTightness = Context->fTightness;
 			const float3_t FieldVelocity = Scale3(
 				Sample, fIntensity * 0.01f);
 			Particle.vVelocity = Lerp3Clamped(Particle.vVelocity,
@@ -5210,18 +5945,15 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(FieldVelocity, fDistanceWeight * fFixedDelta));
 		}
-		else if (SourceClass_Matches(Module, "particlemoduleacceleration"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::ACCELERATION)
 		{
-			const bool_t bEffectAcceleration =
-				Module.strClassName.starts_with("ef");
-			const std::string_view PropertyPath =
-				bEffectAcceleration ? "acceldata" : "acceleration";
+			const bool_t bEffectAcceleration = PreparedModule.bEffectAcceleration;
 			const f32_t fTime = bEffectAcceleration ? fNormalizedAge :
 				Particle.fSpawnEmitterTimeSeconds;
 			float3_t Acceleration = UE3_CentimetersToClient(
-				Evaluate_ModuleVector(State, Module, PropertyPath, fTime,
+				Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 0u), fTime,
 					float3_t{}));
-			if (SourceBool(Module, "balwaysinworldspace", false))
+			if (PreparedModule.bWorldSpace)
 			{
 				const float4x4_t& ParticleRoot =
 					Element.Detail.Particle.bLocalSpace ?
@@ -5233,14 +5965,12 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Acceleration, fFixedDelta));
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulevelocityoverlifetime"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::VELOCITY_OVER_LIFETIME)
 		{
 			const float3_t Velocity = Evaluate_ModuleVector(
-				State, Module, "veloverlife", fNormalizedAge,
+				State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge,
 				float3_t(1.f, 1.f, 1.f));
-			if (SourceBool(Module, "absolute", false) ||
-				SourceBool(Module, "babsolute", false))
+			if (PreparedModule.bAbsoluteVelocity)
 			{
 				Particle.vVelocity = UE3_CentimetersToClient(Velocity);
 				Particle.vVelocityScale = { 1.f, 1.f, 1.f };
@@ -5252,49 +5982,54 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 					UE3_AxisScaleToClient(Velocity));
 			}
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulesizemultiplylife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_LIFE)
+		{
+			if (PreparedModule.bUpdateEnabled)
+				Particle.vSize = Apply_SourceSizeLife(Element, PreparedModule.MultiplyAxis, Particle.vSize,
+					Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge,
+						float3_t(1.f, 1.f, 1.f)));
+		}
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::SIZE_MULTIPLY_VELOCITY)
+		{
+			if (PreparedModule.bUpdateEnabled)
+				Particle.vSize = Apply_SourceSizeVelocity(Element,
+					Particle.vSize, Multiply3(Particle.vVelocity, Particle.vVelocityScale),
+					Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge,
+						float3_t{}), PreparedModule.SizeVelocityMask,
+					PreparedModule.SizeCapMin, PreparedModule.SizeCapMax);
+		}
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE_BY_TIME)
 		{
 			Particle.vSize = Multiply3(Particle.vSize,
 				UE3_SizeToClient(Element, Evaluate_ModuleVector(
-					State, Module, "lifemultiplier", fNormalizedAge,
+					State, Module, PreparedModule.Distribution(Module, 0u), Particle.fAgeSeconds,
 					float3_t(1.f, 1.f, 1.f))));
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulesizescalebytime"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::SIZE_SCALE)
 		{
 			Particle.vSize = Multiply3(Particle.vSize,
 				UE3_SizeToClient(Element, Evaluate_ModuleVector(
-					State, Module, "sizescalebytime", Particle.fAgeSeconds,
+					State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge,
 					float3_t(1.f, 1.f, 1.f))));
 		}
-		else if (SourceClass_Matches(Module, "particlemodulesizescale"))
-		{
-			Particle.vSize = Multiply3(Particle.vSize,
-				UE3_SizeToClient(Element, Evaluate_ModuleVector(
-					State, Module, "sizescale", fNormalizedAge,
-					float3_t(1.f, 1.f, 1.f))));
-		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulecoloroverlife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::COLOR_OVER_LIFE)
 		{
 			const float3_t Color = Evaluate_ModuleVector(
-				State, Module, "coloroverlife", fNormalizedAge,
+				State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge,
 				float3_t(1.f, 1.f, 1.f));
 			const f32_t fAlpha = Evaluate_ModuleFloat(
-				State, Module, "alphaoverlife", fNormalizedAge, 1.f);
+				State, Module, PreparedModule.Distribution(Module, 1u), fNormalizedAge, 1.f);
 			Particle.vColor = { Color.x, Color.y, Color.z, fAlpha };
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulecolorscaleoverlife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::COLOR_SCALE_OVER_LIFE)
 		{
-			const f32_t fTime = SourceBool(Module, "bemittertime", false) ?
+			const f32_t fTime = PreparedModule.UseEmitterTime[0u] ?
 				fEmitterTimeSeconds : fNormalizedAge;
 			const float3_t Scale = Evaluate_ModuleVector(
-				State, Module, "colorscaleoverlife", fTime,
+				State, Module, PreparedModule.Distribution(Module, 0u), fTime,
 				float3_t(1.f, 1.f, 1.f));
 			const f32_t fAlpha = Evaluate_ModuleFloat(
-				State, Module, "alphascaleoverlife", fTime, 1.f);
+				State, Module, PreparedModule.Distribution(Module, 1u), fTime, 1.f);
 			Particle.vColor = {
 				Particle.vColor.x * Scale.x,
 				Particle.vColor.y * Scale.y,
@@ -5302,110 +6037,95 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				Particle.vColor.w * fAlpha
 			};
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulemeshrotationratemultiplylife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_MULTIPLY_LIFE)
 		{
 			Particle.vSourceMeshRotationRateScale = Multiply3(
 				Particle.vSourceMeshRotationRateScale,
-				Evaluate_ModuleVector(State, Module, "lifemultiplier",
+				Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 0u),
 					fNormalizedAge, float3_t(1.f, 1.f, 1.f)));
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulerotationratemultiplylife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::ROTATION_RATE_MULTIPLY_LIFE)
 		{
 			f32_t& fYawOrSpriteRollRateScale = bSourceVisualDecalParticle ?
 				Particle.vRotationRateScale.y : Particle.vRotationRateScale.z;
 			fYawOrSpriteRollRateScale *= Evaluate_ModuleFloat(
-				State, Module, "lifemultiplier", fNormalizedAge, 1.f);
+				State, Module, PreparedModule.Distribution(Module, 0u), fNormalizedAge, 1.f);
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemodulemeshrotationrateoverlife"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::MESH_ROTATION_RATE_OVER_LIFE)
 		{
 			Particle.vSourceMeshRotationDegrees = Add3(
 				Particle.vSourceMeshRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotrate",
+				Scale3(Evaluate_ModuleVector(State, Module, PreparedModule.Distribution(Module, 0u),
 					fNormalizedAge, float3_t{}), 360.f * fFixedDelta *
 						Element.Detail.Particle.SourceScale.fRotation));
 		}
-		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::CAMERA_OFFSET)
 		{
 			const f32_t fValue = Evaluate_ModuleFloat(State, Module,
-				"cameraoffset", fNormalizedAge, 0.f) * 0.01f;
-			const std::string_view Method = SourceString(Module, "updatemethod");
-			if (Method.ends_with("additive"))
+				PreparedModule.Distribution(Module, 0u), fNormalizedAge, 0.f) * 0.01f;
+			if (PreparedModule.iCameraMethod == 1u)
 				Particle.fCameraOffset += fValue;
-			else if (Method.ends_with("scalar"))
+			else if (PreparedModule.iCameraMethod == 2u)
 				Particle.fCameraOffset *= fValue;
 			else
 				Particle.fCameraOffset = fValue;
 		}
-		else if (SourceClass_Matches(Module, "particlemodulesubuv"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::SUB_UV)
 		{
-			Particle.fSubImageIndex = Evaluate_ModuleFloat(
-				State, Module, "subimageindex", fNormalizedAge, 0.f);
+			Apply_SourceSubUV(Element, State, Particle, Module, fNormalizedAge, false,
+				fEmitterTimeSeconds, fFixedDelta, &PreparedModule);
 		}
-		else if (SourceClass_Matches(
-			Module, "particlemoduleparameterdynamic"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::PARAMETER_DYNAMIC)
 		{
 			f32_t* pValues = &Particle.vDynamicParameter.x;
 			for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
 			{
-				const DYNAMIC_PARAMETER_PROPERTY_PATHS& Paths =
-					DYNAMIC_PARAMETER_PATHS[iParameter];
-				if (SourceBool(Module, Paths.strSpawnTimeOnly, false))
+				if (!PreparedModule.Process[iParameter])
 					continue;
-				const f32_t fTime = SourceBool(Module,
-					Paths.strUseEmitterTime, false) ?
+				const f32_t fTime = PreparedModule.UseEmitterTime[iParameter] ?
 					fEmitterTimeSeconds : fNormalizedAge;
 				pValues[iParameter] = Evaluate_ModuleFloat(State, Module,
-					Paths.strValue, fTime, 0.f);
-				if (SourceBool(Module,
-					Paths.strScaleVelocityByValue, false))
+					PreparedModule.Distribution(Module, iParameter), fTime, 0.f);
+				if (PreparedModule.ScaleVelocityByValue[iParameter])
 				{
 					pValues[iParameter] *= Length3(Particle.vVelocity);
 				}
 			}
 		}
-		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::ORBIT)
 		{
-			if (SourceBool(Module,
-				"offsetoptions.bprocessduringupdate", false))
+			if (PreparedModule.Process[0u])
 			{
-				const f32_t fTime = SourceBool(Module,
-					"offsetoptions.buseemittertime", false) ?
+				const f32_t fTime = PreparedModule.UseEmitterTime[0u] ?
 					fEmitterTimeSeconds : fNormalizedAge;
 				Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
 					UE3_CentimetersToClient(Evaluate_ModuleVector(
-						State, Module, "offsetamount", fTime, float3_t{})));
+						State, Module, PreparedModule.Distribution(Module, 0u), fTime, float3_t{})));
 			}
-			if (SourceBool(Module,
-				"rotationoptions.bprocessduringupdate", false))
+			if (PreparedModule.Process[1u])
 			{
-				const f32_t fTime = SourceBool(Module,
-					"rotationoptions.buseemittertime", false) ?
+				const f32_t fTime = PreparedModule.UseEmitterTime[1u] ?
 					fEmitterTimeSeconds : fNormalizedAge;
 				Particle.vSourceOrbitRotationDegrees = Add3(
 					Particle.vSourceOrbitRotationDegrees,
 					Scale3(Evaluate_ModuleVector(State, Module,
-						"rotationamount", fTime, float3_t{}), 360.f));
+						PreparedModule.Distribution(Module, 1u), fTime, float3_t{}), 360.f));
 			}
-			if (SourceBool(Module,
-				"rotationrateoptions.bprocessduringupdate", false))
+			if (PreparedModule.Process[2u])
 			{
-				const f32_t fTime = SourceBool(Module,
-					"rotationrateoptions.buseemittertime", false) ?
+				const f32_t fTime = PreparedModule.UseEmitterTime[2u] ?
 					fEmitterTimeSeconds : fNormalizedAge;
 				Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
 					Particle.vSourceOrbitRotationRateDegreesPerSecond,
 					Scale3(Evaluate_ModuleVector(State, Module,
-						"rotationrateamount", fTime, float3_t{}), 360.f));
+						PreparedModule.Distribution(Module, 2u), fTime, float3_t{}), 360.f));
 			}
 		}
-		else if (SourceClass_Matches(Module, "particlemodulevortex"))
+		else if (Kind == SOURCE_UPDATE_MODULE_KIND::VORTEX)
 		{
-			const f32_t fPower = SourceNumber(Module, "power", 1.f) *
+			const f32_t fPower = PreparedModule.fPower *
 				Evaluate_ModuleFloat(State, Module,
-					"poweracceleration", fNormalizedAge, 1.f);
+					PreparedModule.Distribution(Module, 0u), fNormalizedAge, 1.f);
 			const float3_t Radial = Normalize3(Particle.vPosition);
 			const float3_t Tangent(-Radial.z, 0.f, Radial.x);
 			Particle.vVelocity = Add3(Particle.vVelocity,
@@ -6225,6 +6945,8 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
 
 void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 {
+	Engine::CProfilerScope profile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Playback.FrameRebuild");
 	if (!Refresh_ModelCueAnchors(m_fSampleTimeSeconds, RootWorld))
 		return;
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
@@ -6244,7 +6966,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
 	{
 		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
-		if (!Element.bVisible)
+		if (!Element.bVisible || Is_EffectSimulationOnlyParticle(Element))
 			continue;
 		/* GPU occurrence denominators describe every visible carrier in document
 		   order, including fail-closed rows that are intentionally dormant.  Keep
@@ -6503,11 +7225,32 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			if (!pManualScaleElement->Detail.LinearLerp.bScale)
 				pManualScaleElement = nullptr;
 		}
+		/* These source presentation inputs are immutable within an element.
+		   Keep signed Size and age-dependent values in the particle loop. */
+		const bool_t bHasParticles = !State.Particles.empty();
+		const bool_t bMeshParticle = bHasParticles && Is_MeshParticle(Element);
+		const matrix_t TypeDataPreRotation = bMeshParticle ?
+			UE3_EulerDegreesToClientRotation(
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees) :
+			XMMatrixIdentity();
+		EFFECT_PARTICLE_SPRITE_ALIGNMENT eSpriteAlignment{};
+		float2_t vSpritePivot{};
+		bool_t bSourceImageFlipping = false;
+		if (bHasParticles)
+		{
+			Resolve_SourceSpritePresentation(Element,
+				eSpriteAlignment, vSpritePivot, bSourceImageFlipping);
+		}
 		float4x4_t ParticleElementWorld{};
-		if (!State.Particles.empty() && Element.Detail.Particle.bLocalSpace)
+		matrix_t InverseParticleElementWorld = XMMatrixIdentity();
+		if (bHasParticles && Element.Detail.Particle.bLocalSpace)
 		{
 			ParticleElementWorld = Evaluate_ElementWorld(
 				Element, m_fSampleTimeSeconds, RootWorld);
+			// Local-space particles share this exact root, including invalid results.
+			// World-space particles retain their individual frozen birth roots.
+			InverseParticleElementWorld = XMMatrixInverse(
+				nullptr, XMLoadFloat4x4(&ParticleElementWorld));
 		}
 		for (const PARTICLE_STATE& Particle : State.Particles)
 		{
@@ -6539,7 +7282,6 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Element.Detail.Particle.bLocalSpace ? ParticleElementWorld :
 					nullptr != pManualScaleElement ? AnimatedSpawnRoot :
 						Particle.SpawnRootWorld;
-			const bool_t bMeshParticle = Is_MeshParticle(Element);
 			const f32_t fDepthScale = bMeshParticle ?
 				(Element.SourceRecipe.bEnabled ? Size.z :
 					0.5f * (Size.x + Size.y)) : 1.f;
@@ -6567,10 +7309,6 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 					XMConvertToRadians(Particle.vRotationDegrees.x),
 					XMConvertToRadians(Particle.vRotationDegrees.y),
 					XMConvertToRadians(Particle.vRotationDegrees.z));
-			const matrix_t TypeDataPreRotation = bMeshParticle ?
-				UE3_EulerDegreesToClientRotation(
-					Element.Detail.Mesh.vSourceTypeDataRotationDegrees) :
-				XMMatrixIdentity();
 			const matrix_t World = TypeDataPreRotation *
 				XMMatrixScaling(WorldScale.x, WorldScale.y, WorldScale.z) *
 				ParticleRotation *
@@ -6631,9 +7369,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Element.Detail.Sprite.fBillboardRollDegreesPerSecond *
 					Particle.fAgeSeconds;
 			Evaluated.fCameraOffset = Particle.fCameraOffset;
-			Resolve_SourceSpritePresentation(Element,
-				Evaluated.eSpriteAlignment, Evaluated.vSpritePivot,
-				Evaluated.bSourceImageFlipping);
+			Evaluated.eSpriteAlignment = eSpriteAlignment;
+			Evaluated.vSpritePivot = vSpritePivot;
+			Evaluated.bSourceImageFlipping = bSourceImageFlipping;
 			if (Evaluated.bSourceImageFlipping)
 			{
 				Evaluated.vSourceImageFlipSign = {
@@ -6645,7 +7383,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Particle.vVelocity, Particle.vVelocityScale);
 			const float3_t EvaluatedVelocity = Add3(SourceVelocity,
 				Transform_Normal(Particle.vTargetAttractorWorldVelocity,
-					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ParticleRoot))));
+					Element.Detail.Particle.bLocalSpace ? InverseParticleElementWorld :
+						XMMatrixInverse(nullptr, XMLoadFloat4x4(&ParticleRoot))));
 			XMStoreFloat3(&Evaluated.vWorldVelocity,
 				XMVector3TransformNormal(
 					XMLoadFloat3(&EvaluatedVelocity),

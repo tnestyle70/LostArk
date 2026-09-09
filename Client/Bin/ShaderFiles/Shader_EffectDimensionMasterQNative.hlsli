@@ -1272,17 +1272,17 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 6: mul r0.w, r0.z, r0.z
     r0.w = ((r0.zzzz)*(r0.zzzz)).w;
     // 7: mad r1.x, r0.w, l(0.020835), l(-0.085133)
-    r1.x = ((r0.wwww)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).x;
+    r1.x = ((r0.wwww)*(float4(asfloat(0x3caaae5fu),asfloat(0x3caaae5fu),asfloat(0x3caaae5fu),asfloat(0x3caaae5fu)))+(float4(asfloat(0xbdae5a36u),asfloat(0xbdae5a36u),asfloat(0xbdae5a36u),asfloat(0xbdae5a36u)))).x;
     // 8: mad r1.x, r0.w, r1.x, l(0.180141)
     r1.x = ((r0.wwww)*(r1.xxxx)+(float4(0.180141,0.180141,0.180141,0.180141))).x;
     // 9: mad r1.x, r0.w, r1.x, l(-0.330299)
-    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).x;
+    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(asfloat(0xbea91d04u),asfloat(0xbea91d04u),asfloat(0xbea91d04u),asfloat(0xbea91d04u)))).x;
     // 10: mad r0.w, r0.w, r1.x, l(0.999866)
     r0.w = ((r0.wwww)*(r1.xxxx)+(float4(0.999866,0.999866,0.999866,0.999866))).w;
     // 11: mul r1.x, r0.w, r0.z
     r1.x = ((r0.wwww)*(r0.zzzz)).x;
     // 12: mad r1.x, r1.x, l(-2.000000), l(1.570796)
-    r1.x = ((r1.xxxx)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).x;
+    r1.x = ((r1.xxxx)*(float4(asfloat(0xc0000000u),asfloat(0xc0000000u),asfloat(0xc0000000u),asfloat(0xc0000000u)))+(float4(asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu)))).x;
     // 13: lt r1.y, |r0.y|, |r0.x|
     r1.y = (asfloat((uint4)((abs(r0.yyyy))<(abs(r0.xxxx))) * 0xffffffffu)).y;
     // 14: and r1.x, r1.y, r1.x
@@ -1318,7 +1318,7 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 29: dp2 r0.z, r0.zzzz, cb0[17].wwww
     r0.z = (dot((r0.zzzz).xy,(source[17].wwww).xy).xxxx).z;
     // 30: mad r0.y, r0.y, l(0.318310), r0.z
-    r0.y = ((r0.yyyy)*(float4(0.318310,0.318310,0.318310,0.318310))+(r0.zzzz)).y;
+    r0.y = ((r0.yyyy)*(float4(asfloat(0x3ea2f983u),asfloat(0x3ea2f983u),asfloat(0x3ea2f983u),asfloat(0x3ea2f983u)))+(r0.zzzz)).y;
     // 31: add r0.y, r0.y, cb0[18].x
     r0.y = ((r0.yyyy)+(source[18].xxxx)).y;
     // 32: mul r1.x, r0.y, cb0[18].w
@@ -1334,7 +1334,7 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 37: mul r0.y, r0.y, v4.w
     r0.y = ((r0.yyyy)*(v4.wwww)).y;
     // 38: lt r0.z, r0.x, l(0.000000)
-    r0.z = (asfloat((uint4)((r0.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).z;
+    r0.z = (asfloat((uint4)((r0.xxxx)<(float4(asfloat(0x350637bdu),asfloat(0x350637bdu),asfloat(0x350637bdu),asfloat(0x350637bdu)))) * 0xffffffffu)).z;
     // 39: mad r0.x, -r0.x, l(2.000000), l(1.000000)
     r0.x = ((-(r0.xxxx))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
     // 40: max r0.x, r0.x, l(0.000000)
@@ -1382,17 +1382,17 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 61: mul r2.z, r1.w, r1.w
     r2.z = ((r1.wwww)*(r1.wwww)).z;
     // 62: mad r2.w, r2.z, l(0.020835), l(-0.085133)
-    r2.w = ((r2.zzzz)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).w;
+    r2.w = ((r2.zzzz)*(float4(asfloat(0x3caaae5fu),asfloat(0x3caaae5fu),asfloat(0x3caaae5fu),asfloat(0x3caaae5fu)))+(float4(asfloat(0xbdae5a36u),asfloat(0xbdae5a36u),asfloat(0xbdae5a36u),asfloat(0xbdae5a36u)))).w;
     // 63: mad r2.w, r2.z, r2.w, l(0.180141)
     r2.w = ((r2.zzzz)*(r2.wwww)+(float4(0.180141,0.180141,0.180141,0.180141))).w;
     // 64: mad r2.w, r2.z, r2.w, l(-0.330299)
-    r2.w = ((r2.zzzz)*(r2.wwww)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).w;
+    r2.w = ((r2.zzzz)*(r2.wwww)+(float4(asfloat(0xbea91d04u),asfloat(0xbea91d04u),asfloat(0xbea91d04u),asfloat(0xbea91d04u)))).w;
     // 65: mad r2.z, r2.z, r2.w, l(0.999866)
     r2.z = ((r2.zzzz)*(r2.wwww)+(float4(0.999866,0.999866,0.999866,0.999866))).z;
     // 66: mul r2.w, r1.w, r2.z
     r2.w = ((r1.wwww)*(r2.zzzz)).w;
     // 67: mad r2.w, r2.w, l(-2.000000), l(1.570796)
-    r2.w = ((r2.wwww)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).w;
+    r2.w = ((r2.wwww)*(float4(asfloat(0xc0000000u),asfloat(0xc0000000u),asfloat(0xc0000000u),asfloat(0xc0000000u)))+(float4(asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu),asfloat(0x3fc90fdbu)))).w;
     // 68: lt r3.x, |r2.y|, |r2.x|
     r3.x = (asfloat((uint4)((abs(r2.yyyy))<(abs(r2.xxxx))) * 0xffffffffu)).x;
     // 69: and r2.w, r2.w, r3.x
@@ -1418,7 +1418,7 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 79: movc r1.w, r2.x, -r1.w, r1.w
     r1.w = ((asuint(r2.xxxx) != 0u) ? (-(r1.wwww)) : (r1.wwww)).w;
     // 80: mad r2.x, r1.w, l(0.159155), l(0.500000)
-    r2.x = ((r1.wwww)*(float4(0.159155,0.159155,0.159155,0.159155))+(float4(0.500000,0.500000,0.500000,0.500000))).x;
+    r2.x = ((r1.wwww)*(float4(asfloat(0x3e22f983u),asfloat(0x3e22f983u),asfloat(0x3e22f983u),asfloat(0x3e22f983u)))+(float4(asfloat(0x3f000000u),asfloat(0x3f000000u),asfloat(0x3f000000u),asfloat(0x3f000000u)))).x;
     // 81: mad r3.xy, v2.xyxx, cb0[6].xyxx, cb0[7].xyxx
     r3.xy = ((v2.xyxx)*(source[6].xyxx)+(source[7].xyxx)).xy;
     // 82: sample_b_indexable(texture2d)(float,float,float,float) r1.w, r3.xyxx, t0.yzwx, s1, l(0.000000)
@@ -1502,7 +1502,7 @@ float4 QNative51(Q_NATIVE_INPUT input)
     // 126: add r1.x, r1.x, -v7.w
     r1.x = ((r1.xxxx)+(-(v7.wwww))).x;
     // 127: mul_sat r1.xy, r1.xxxx, l(0.034483, 0.066667, 0.000000, 0.000000)
-    r1.xy = (saturate((r1.xxxx)*(float4(0.034483,0.066667,0.000000,0.000000)))).xy;
+    r1.xy = (saturate((r1.xxxx)*(float4(asfloat(0x3d0d3dcbu),asfloat(0x3d888889u),asfloat(0x00000000u),asfloat(0x00000000u))))).xy;
     // 128: add r1.y, -r1.y, l(1.000000)
     r1.y = ((-(r1.yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
     // 129: mul r1.z, r1.y, r1.y
@@ -1594,6 +1594,26 @@ float4 QNative51(Q_NATIVE_INPUT input)
     return output;
 }
 
+// R authoring overlay: preserve the original fill by default. The clean-core
+// identity additionally suppresses native grain only inside the authored coverage.
+float4 Apply_ProjectTunedRBlackCore(float4 nativeColor, float2 uv,
+    float sourceDepthFade, float particleAlpha, float2 coreParameters,
+    float cleanSurface = 0.f)
+{
+    if (coreParameters.x <= 0.f)
+        return nativeColor;
+    const float2 centered = (uv - 0.5f) / float2(0.48f, coreParameters.x);
+    const float coverage = 1.f - smoothstep(
+        1.f - coreParameters.y, 1.f, length(centered));
+    const float coreAlpha = saturate(coverage * sourceDepthFade * particleAlpha);
+    if (coreAlpha <= 0.f)
+        return nativeColor;
+    const float combinedAlpha = nativeColor.a + coreAlpha * (1.f - nativeColor.a);
+    const float nativeContribution = 1.f - saturate(coverage * cleanSurface);
+    return float4(nativeColor.rgb * (nativeColor.a / combinedAlpha) *
+        nativeContribution, combinedAlpha);
+}
+
 EFFECT_PS_OUT Shade_EffectDimensionMasterQNative(uint profile, float2 uv,
     float2 sourceUV1, float2 pixelPosition, float sourceProjectionW,
     float3 tangentView, float4 particleColor, float4 rawDynamic)
@@ -1620,6 +1640,27 @@ EFFECT_PS_OUT Shade_EffectDimensionMasterQNative(uint profile, float2 uv,
     case 49u: nativeColor=QNative49(input); break;
     case 50u: nativeColor=QNative50(input); break;
     case 51u: nativeColor=QNative51(input); break;
+    }
+    if (profile == 51u && g_QSourceMaterialParameters[11u].z > 1.5f)
+    {
+        // Authored dust treatment: native black has zero coverage. Keep the
+        // moving native boundary, its depth fade and particle fade, in purple.
+        const float rim = saturate(max(nativeColor.r,
+            max(nativeColor.g, nativeColor.b)) * g_QSourceMaterialParameters[11u].x);
+        nativeColor = float4(float3(0.48f, 0.12f, 0.90f),
+            nativeColor.a * rim * g_QSourceMaterialParameters[11u].y);
+    }
+    else if (profile == 51u && g_QSourceMaterialParameters[11u].x > 0.f)
+    {
+        // Match Q51 RT0 opacity's 29 cm source depth fade; the fill must not
+        // survive an occluding surface or the source particle alpha fade.
+        const float sceneDepthCM = g_EffectSceneDepthTexture.SampleLevel(
+            EffectSliceDepthSampler, input.screenUV, 0.f).y * 100000.f;
+        const float sourceDepthFade = saturate(
+            (sceneDepthCM - input.projectionW) * 0.034483f);
+        nativeColor = Apply_ProjectTunedRBlackCore(nativeColor, input.uv,
+            sourceDepthFade, input.color.a, g_QSourceMaterialParameters[11u].xy,
+            g_QSourceMaterialParameters[11u].z);
     }
     // Native additive PS already weights RGB by opacity and writes A=0.
     // Product additive uses SrcAlpha, so A=1 preserves that native RGB once.

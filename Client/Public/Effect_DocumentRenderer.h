@@ -1,4 +1,5 @@
 #pragma once
+#include "Effect_ShaderFamily.h"
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
@@ -25,6 +26,7 @@
 NS_BEGIN(Engine)
 class CModel;
 class CShader;
+class IPresentationScreenPostMaterial;
 class CVIBuffer_Rect;
 class CVIBuffer_ParticleRect;
 class CVIBuffer_DynamicTrail;
@@ -33,6 +35,21 @@ struct VTXEFFECT_TRAIL;
 NS_END
 
 NS_BEGIN(Client)
+
+// Slot 1 payload for native mesh particles; vertex geometry remains CModel VTXMESH.
+struct EFFECT_NATIVE_MESH_INSTANCE final
+{
+    float4x4_t World;
+    float4x4_t NormalMatrix;
+    float4_t Color;
+    float4_t DynamicParameter;
+    float4_t SubUVCurrent;
+    float4_t SubUVNext;
+    float2_t LifeBlend;
+};
+static_assert(sizeof(EFFECT_NATIVE_MESH_INSTANCE) == 200u);
+static_assert(offsetof(EFFECT_NATIVE_MESH_INSTANCE, Color) == 128u);
+static_assert(offsetof(EFFECT_NATIVE_MESH_INSTANCE, LifeBlend) == 192u);
 
 enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t
 {
@@ -235,9 +252,10 @@ private:
 		/* One lane per EFFECT_RESOURCE_SLOT texture slot, indexed by
 		   slot - BASE_TEXTURE. Grew from 5 to 8 with base2/mask2/noise2. */
 		std::array<ComPtr<ID3D11ShaderResourceView>, 8> Textures;
-		std::array<ComPtr<ID3D11ShaderResourceView>, 7> SourceTextures;
+		std::array<ComPtr<ID3D11ShaderResourceView>, 9> SourceTextures;
 		uint32_t iSourceTextureMask = 0u;
 		uint32_t iSourceMaterialProfile = 0u;
+		uint32_t iShaderProgramIndex = UINT32_MAX;
 		float4_t vSourceScalars0{};
 		float4_t vSourceScalars1{};
 		float4_t vSourceVector0{};
@@ -246,7 +264,10 @@ private:
 		std::array<float4_t, 32u> QSourceMaterialParameters{};
 		std::array<float4_t, 32u> VSourceMaterialParameters{};
 		std::array<float4_t, 32u> ALTVSourceMaterialParameters{};
+		std::array<float4_t, 32u> ArtistSourceMaterialParameters{};
+		std::array<float4_t, 32u> LanceVASourceMaterialParameters{};
 		bool_t bSourceRequiresSceneColor = false;
+		bool_t bSourceRequiresSceneDepth = false;
 		uint32_t iSourceMeshHasUV1 = 0u;
 		std::array<float4_t, 16u> LinearFlowParameters{};
 		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
@@ -325,6 +346,7 @@ private:
 	struct MODEL_CUE_RESOURCE final
 	{
 		shared_ptr<Engine::CModel> pModel;
+		std::shared_ptr<const ELEMENT_RESOURCE> pMaterialResource;
 		uint32_t iAnimationIndex = 0u;
 		f32_t fTicksPerSecond = 0.f;
 		f32_t fDurationSeconds = 0.f;
@@ -595,6 +617,9 @@ public:
 			OutSnapshots,
 		std::string& strOutError);
 
+	HRESULT Build_NativeScreenPost(const EFFECT_EVALUATED_SCREEN_POST& Evaluated,
+		std::shared_ptr<const Engine::IPresentationScreenPostMaterial>& OutMaterial,
+		std::string& strOutError) const;
 	HRESULT Initialize();
 	void Preserve_StartingSceneCapture(const CEffectDocumentRenderer& Previous);
 	bool_t Stage_Prepared(
@@ -645,6 +670,8 @@ public:
 	HRESULT Render_ReconstructedDiagnostic(
 		const float4x4_t& RootWorld,
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Select_OccurrenceElement(std::string_view elementId, std::string& status);
+	bool_t Set_SubmissionElementSet(std::vector<std::string> elementIds, std::string& error);
 	bool_t Set_PreviewSubmissionIsolation(
 		const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
 		std::string& strOutError);
@@ -722,6 +749,8 @@ private:
 		ELEMENT_RESOURCE& InOutResource,
 		std::string& strOutError,
 		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
+	HRESULT Bind_ModelCueNativeMaterial(
+		const ELEMENT_RESOURCE& Resource, f32_t fLocalTimeSeconds);
 	HRESULT Stage_ModelCueResource(
 		const EFFECT_MODEL_CUE_DESC& Cue,
 		MODEL_CUE_RESOURCE& OutResource,
@@ -763,7 +792,8 @@ private:
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fAlphaScale = 1.f,
-		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr,
+		const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram = nullptr);
 	HRESULT Bind_Common(
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_ELEMENT_DESC& Element,
@@ -772,7 +802,8 @@ private:
 		f32_t fNormalizedLife,
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fAlphaScale = 1.f,
-		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr,
+		const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram = nullptr);
 	HRESULT Bind_MaterialInputs(
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_ELEMENT_DESC& Element,
@@ -781,10 +812,14 @@ private:
 		f32_t fNormalizedLife,
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fAlphaScale = 1.f,
-		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr,
+		const EFFECT_SHADER_PROGRAM_DESC* pShaderProgram = nullptr);
 	HRESULT Render_Element(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource);
+	shared_ptr<Engine::CShader> Resolve_DrawShader(
+        const ELEMENT_RESOURCE& Resource, EFFECT_SHADER_CARRIER eCarrier,
+        const EFFECT_SHADER_PROGRAM_DESC*& pOutProgram) const;
 	HRESULT Render_Mesh(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
@@ -793,7 +828,14 @@ private:
 		const float4_t* pDynamicParameter = nullptr,
 		const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride = nullptr,
 		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr,
-		uint32_t iSourceMaterialIndex = UINT32_MAX);
+		uint32_t iSourceMaterialIndex = UINT32_MAX,
+		std::span<const EFFECT_NATIVE_MESH_INSTANCE> Instances = {},
+		uint32_t iInstanceByteOffset = 0u,
+		uint32_t iOrderedGeometryHandle = UINT32_MAX);
+	HRESULT Try_RenderNativeMeshParticles(
+		const EFFECT_EVALUATED_FRAME& Frame,
+		std::span<const EFFECT_EVALUATED_PARTICLE> Particles,
+		const ELEMENT_RESOURCE& Resource, bool_t& bOutHandled);
 	HRESULT Render_Rect(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
@@ -861,8 +903,10 @@ private:
 		m_pReconstructedDiagnostic;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
+	std::array<shared_ptr<Engine::CShader>, EFFECT_SHADER_PROGRAMS.size()> m_ShaderPrograms;
 	shared_ptr<Engine::CShader> m_pMeshShader;
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
+	shared_ptr<Engine::CShader> m_pNativeScreenPostShader;
 	shared_ptr<Engine::CShader> m_pRectShader;
 	shared_ptr<Engine::CShader> m_pParticleShader;
 	shared_ptr<Engine::CShader> m_pTrailShader;
@@ -875,6 +919,10 @@ private:
 	   trail occurrence.  One renderer instance is consumed serially, so retain
 	   these capacities across frames without changing draw order or payloads. */
 	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstanceScratch;
+	std::vector<EFFECT_NATIVE_MESH_INSTANCE> m_NativeMeshInstanceScratch;
+	std::vector<uint32_t> m_NativeMeshPassScratch;
+	ComPtr<ID3D11Buffer> m_pNativeMeshInstanceBuffer;
+	uint32_t m_iNativeMeshInstanceCapacity = 0u;
 	std::vector<EFFECT_EVALUATED_TRAIL_POINT> m_TrailPointScratch;
 	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertexScratch;
 	std::vector<uint32_t> m_TrailIndexScratch;
@@ -885,6 +933,7 @@ private:
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	bool_t m_bSourceVisualProgramActive = false;
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;
+	bool_t m_bOccurrenceElementSelected = false;
 	EFFECT_GPU_RENDER_SUBMISSION_STATS m_LastRenderSubmissionStats;
 	bool_t m_bWorldMarkSubmissionPending = false;
 	uint64_t m_iWorldMarkSubmissionSerial = 0u;

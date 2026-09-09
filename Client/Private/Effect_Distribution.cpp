@@ -122,6 +122,24 @@ float4_t Client::CEffectDistribution::Evaluate(
 	const f32_t fTime,
 	const float4_t& vRandomUnits)
 {
+	if (4u == Distribution.iOperation)
+	{
+		// Unbaked UDistributionVectorUniformRange selects Max or Min first,
+		// then samples X/Y/Z within that branch; crossing the gap is invalid.
+		if (Distribution.LookupTable.size() != 14u)
+			return {};
+		const size_t iHigh = COOKED_LOOKUP_RANGE_VALUE_COUNT +
+			(vRandomUnits.w < 0.5f ? 0u : 6u);
+		const auto& Values = Distribution.LookupTable;
+		return {
+			std::lerp(Values[iHigh], Values[iHigh + 3u],
+				std::clamp(vRandomUnits.x, 0.f, 1.f)),
+			std::lerp(Values[iHigh + 1u], Values[iHigh + 4u],
+				std::clamp(vRandomUnits.y, 0.f, 1.f)),
+			std::lerp(Values[iHigh + 2u], Values[iHigh + 5u],
+				std::clamp(vRandomUnits.z, 0.f, 1.f)), 0.f
+		};
+	}
 	if (!Distribution.LookupTable.empty())
 	{
 		const size_t iChunkSize = ResolveTableChunkSize(Distribution);
@@ -207,7 +225,7 @@ bool_t Client::CEffectDistribution::Validate(
 		Distribution.strSourceObjectPath.size() > 512u ||
 		Distribution.iComponentCount < 1u ||
 		Distribution.iComponentCount > 4u ||
-		Distribution.iOperation > 3u ||
+		Distribution.iOperation > 4u ||
 		Distribution.iRandomLockAxes > 4u ||
 		Distribution.iLookupTableChunkSize > 32u ||
 		Distribution.iLookupTableNumElements > 4u ||
@@ -229,7 +247,25 @@ bool_t Client::CEffectDistribution::Validate(
 			return false;
 		}
 	}
-	if (!Distribution.LookupTable.empty())
+	if (4u == Distribution.iOperation)
+	{
+		if (Distribution.strSourceClass != "distributionvectoruniformrange" ||
+			Distribution.strSourceObjectPath.empty() ||
+			Distribution.iComponentCount != 3u ||
+			Distribution.iRandomLockAxes != 0u ||
+			Distribution.iLookupTableChunkSize != 12u ||
+			Distribution.iLookupTableNumElements != 4u ||
+			Distribution.fLookupTableTimeScale != 0.f ||
+			Distribution.fLookupTableStartTime != 0.f ||
+			Distribution.LookupTable.size() != 14u ||
+			!Distribution.Keys.empty())
+		{
+			strOutError =
+				"Effect unbaked vector random-range payload shape is invalid.";
+			return false;
+		}
+	}
+	else if (!Distribution.LookupTable.empty())
 	{
 		const size_t iChunkSize = ResolveTableChunkSize(Distribution);
 		const uint32_t iExpectedNumElements =
