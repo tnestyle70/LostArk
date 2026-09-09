@@ -1028,22 +1028,17 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 	const shared_ptr<CCharacter>& pCharacter)
 {
 	const bool_t bOpen = PICKER_SURFACE_NONE != m_iPickerSurface;
-	/* Skin does not pick a hue in the source game -- its colour model is a named ramp
-	(SkinColor / GN_F_SkinColor), not the free HSV wheel hair and eyes use. So the wheel is
-	not offered for it and the bar alone moves the tone lighter or darker. */
-	const bool_t bSkinPicker = bOpen && SKIN_SURFACE_INDEX == m_iPickerSurface;
+	/* Skin does not pick a free hue in the source game: its colour model is a named ramp
+	(SkinColor / GN_F_SkinColor / SkinColor_USA) rather than the HSV wheel hair and eyes use.
+	That ramp's own colours are not in anything extracted so far -- EFTable_CharacterCustomizing
+	carries indices, not values -- so until they are, skin opens the same wheel as every other
+	surface. Hiding the wheel and leaving the value bar alone, which is what this did before,
+	showed an all but empty panel. */
 	static constexpr const char_t* PICKER_SLOTS[] = {
-		"CC_PickerBg", "CC_PickerBar",
+		"CC_PickerBg", "CC_PickerBar", "CC_PickerWheel", "CC_PickerCursor",
 		"CC_PickerBarThumb", "CC_PickerPreview", "CC_PickerApply", "CC_PickerCancel" };
 	for (const char_t* pSlotId : PICKER_SLOTS)
 		m_pView->Set_SlotVisible(pSlotId, bOpen);
-	m_pView->Set_SlotVisible("CC_PickerWheel", bOpen && !bSkinPicker);
-	m_pView->Set_SlotVisible("CC_PickerCursor", bOpen && !bSkinPicker);
-	if (bSkinPicker)
-	{
-		m_fPickerHue = 0.f;
-		m_fPickerSaturation = 0.f;
-	}
 	if (!bOpen)
 	{
 		m_isPickerWheelDragging = false;
@@ -1061,8 +1056,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 	}
 
 	f32_t fWheelX = 0.f, fWheelY = 0.f, fWheelW = 0.f, fWheelH = 0.f;
-	if (!bSkinPicker &&
-		Get_SlotRect("CC_PickerWheel", fWheelX, fWheelY, fWheelW, fWheelH) && fWheelW > 0.f)
+	if (Get_SlotRect("CC_PickerWheel", fWheelX, fWheelY, fWheelW, fWheelH) && fWheelW > 0.f)
 	{
 		const f32_t fRadius = fWheelW * 0.5f;
 		const f32_t fCentreX = fWheelX + fRadius;
@@ -1089,19 +1083,6 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 			m_pView->Set_SlotPosition("CC_PickerCursor",
 				fCentreX + std::cos(fAngle) * m_fPickerSaturation * fRadius - fCursorW * 0.5f,
 				fCentreY + std::sin(fAngle) * m_fPickerSaturation * fRadius - fCursorH * 0.5f);
-		}
-	}
-
-	/* With the wheel hidden the bar would sit alone under a gap, so it moves up into the
-	space the wheel would have taken. */
-	if (bSkinPicker)
-	{
-		f32_t fWX = 0.f, fWY = 0.f, fWW = 0.f, fWH = 0.f;
-		f32_t fBX = 0.f, fBY = 0.f, fBW = 0.f, fBH = 0.f;
-		if (Get_SlotRect("CC_PickerWheel", fWX, fWY, fWW, fWH) &&
-			Get_SlotRect("CC_PickerBar", fBX, fBY, fBW, fBH))
-		{
-			m_pView->Set_SlotPosition("CC_PickerBar", fBX, fWY + fWH * 0.5f);
 		}
 	}
 

@@ -2903,6 +2903,23 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 
+}
+
+void CLevel_CharacterSelect::Render_CreateCharacterModalText()
+{
+	/* Split out of Render_ArenaSpawnLabels: that pass is skipped while the customizing screen
+	is up (its spawn-button captions must not float over it), and the nickname step opens from
+	inside that screen -- so the modal drew its art with none of its text, which also looked
+	like the field refusing to type. This runs whenever the modal is open, whatever is behind
+	it. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
 	/* Create Character modal text -- real Draw_Text same as everything else above.
 	Render_CreateCharacterModal owns the CUI_Sprite art state and the WM_CHAR editing; every
 	glyph the modal shows (title/labels, the nickname itself, the IME's in-progress syllable,
@@ -3052,6 +3069,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 }
+
 
 #ifdef _DEBUG
 void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()

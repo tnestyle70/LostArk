@@ -2273,6 +2273,9 @@ HRESULT CMainApp::Render()
 			// its text labels, drawn from this separate text pass.
 			if (!isCharSelectOverlayOpen)
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			/* Outside that gate: the nickname step opens from the customizing screen, so the
+			gate that hides the spawn captions would take every glyph of this modal with it. */
+			pCharacterSelect->Render_CreateCharacterModalText();
 			pCharacterSelect->Render_CustomizingText();
 #ifdef _DEBUG
 			pCharacterSelect->Render_RaidEntryDebugPreviewText();
