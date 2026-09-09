@@ -298,7 +298,11 @@ public:
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };
-	Assimp::Importer					m_Importer = {};
+	/* Built only for a model that actually goes through Assimp. Its constructor registers
+	every importer Assimp ships, and the runtime loads .wmodel exclusively, so as a plain
+	member it built that whole registry for every model in the game and never read a file
+	with it -- which is also what the CRT leak dump was full of. */
+	unique_ptr<Assimp::Importer>		m_pImporter;
 
 private:
 	MODEL								m_eType = { MODEL::END };

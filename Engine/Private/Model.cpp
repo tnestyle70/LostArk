@@ -822,7 +822,8 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
     if (MODEL::NONANIM == eType)
         iFlag |= aiProcess_PreTransformVertices;
 
-    m_pAIScene = m_Importer.ReadFile(pModelFilePath, iFlag);
+    m_pImporter = make_unique<Assimp::Importer>();
+    m_pAIScene = m_pImporter->ReadFile(pModelFilePath, iFlag);
     if (nullptr == m_pAIScene)
         return E_FAIL;
 
@@ -2045,6 +2046,6 @@ shared_ptr<CPrototype> CModel::Clone(void* pArg)
 
 void CModel::Free()
 {
-    if (false == m_isCloned)
-        m_Importer.FreeScene();    
+    if (false == m_isCloned && nullptr != m_pImporter)
+        m_pImporter->FreeScene();
 }
