@@ -135,6 +135,17 @@ public:
 	void Clear_AnimationTransitionPose() { m_bExplicitAnimationPose = false; }
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
+	/* Poses this model's skeleton from another one, matched by bone name, for a worn part that
+	rides a body's animation. A bone the source also has takes the source's combined matrix; a
+	bone only this model has -- the costume-only chains a hairstyle or a dress adds -- is
+	rebuilt from its own rest local onto whichever parent was just posed, so it hangs off the
+	animated body instead of collapsing.
+
+	Without this a part with extra bones cannot be drawn from its own palette at all: the body's
+	palette is shorter, and every vertex weighted past its end reads a zero matrix. Returns how
+	many bones the source supplied, so a caller can tell a matched skeleton from an unrelated
+	one. Bones are stored parent-before-child, so one forward pass is enough. */
+	uint32_t Pose_BonesFrom(const CModel& source);
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
@@ -310,6 +321,10 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
+	/* Pose_BonesFrom's name join, kept because it is the same two skeletons every frame.
+	-1 marks a bone the source does not have. */
+	vector<int32_t>						m_SourcePoseBoneIndices;
+	const CModel*						m_pSourcePoseModel = { nullptr };
 	vector<float4x4_t>					m_BoneRestLocalTransforms;
 	uint64_t							m_iSkeletonHash = {};
 

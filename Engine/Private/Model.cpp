@@ -605,6 +605,50 @@ bool_t CModel::Set_BoneLocalMatrix(
     return true;
 }
 
+uint32_t CModel::Pose_BonesFrom(const CModel& source)
+{
+    /* By name, because the two skeletons are cooked separately and neither order nor count
+       matches: a worn part carries the body's bones plus its own. */
+    if (m_SourcePoseBoneIndices.size() != m_Bones.size() ||
+        m_pSourcePoseModel != &source)
+    {
+        m_SourcePoseBoneIndices.assign(m_Bones.size(), -1);
+        for (size_t index = 0; index < m_Bones.size(); ++index)
+        {
+            if (nullptr == m_Bones[index])
+                continue;
+            for (size_t other = 0; other < source.m_Bones.size(); ++other)
+            {
+                if (nullptr == source.m_Bones[other] ||
+                    !source.m_Bones[other]->Compare_Name(m_Bones[index]->Get_Name()))
+                    continue;
+                m_SourcePoseBoneIndices[index] = static_cast<int32_t>(other);
+                break;
+            }
+        }
+        m_pSourcePoseModel = &source;
+    }
+
+    uint32_t supplied = 0u;
+    for (size_t index = 0; index < m_Bones.size(); ++index)
+    {
+        if (nullptr == m_Bones[index])
+            continue;
+        const int32_t other = m_SourcePoseBoneIndices[index];
+        if (other >= 0)
+        {
+            m_Bones[index]->Set_CombinedTransformationMatrix(
+                source.m_Bones[static_cast<size_t>(other)]->Get_CombinedTransformationMatrix());
+            ++supplied;
+            continue;
+        }
+        /* A costume-only bone: its parent was posed already, so its own rest local carries it. */
+        m_Bones[index]->Update_CombinedTransformationMatrix(
+            m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+    }
+    return supplied;
+}
+
 void CModel::Refresh_BoneCombinedMatrices()
 {
     for (auto& pBone : m_Bones)

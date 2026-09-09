@@ -46,6 +46,25 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
 
+	/* Costume-only bones -- the chains a hairstyle or a dress adds to the class skeleton --
+	have no slot in the body's palette, so a piece that has any must be drawn from its own.
+	Measured across the installed sets, 76 of them do; the rest keep binding the body's palette
+	exactly as before. */
+	if (m_strSocketBoneName.empty() && nullptr != m_pModelCom)
+	{
+		for (const string& strBone : m_pModelCom->Get_BoneNames())
+		{
+			if (m_pSkeletonModelCom->Has_Bone(strBone.c_str()))
+				continue;
+			/* The exporter writes the mesh's own root node into the bone list; it deforms
+			nothing and is not a reason to leave the shared palette. */
+			if (strBone.size() > 3 && strBone.compare(strBone.size() - 3, 3, "_sk") == 0)
+				continue;
+			m_hasOwnBones = true;
+			break;
+		}
+	}
+
 	return S_OK;
 }
 
@@ -107,16 +126,26 @@ HRESULT CPart_Equipment::Render_Pass(
 		return E_FAIL;
 
 	/* The cooked path gives every skinned mesh the same skeleton-wide palette, so
-	one bind covers all of this piece's meshes and any body mesh index produces it. */
-	if (m_strSocketBoneName.empty() &&
+	one bind covers all of this piece's meshes and any body mesh index produces it.
+
+	A piece that carries costume-only bones cannot use the body's palette: those bones have no
+	slot in it, and every vertex weighted to one reads past the end. Such a piece poses its own
+	skeleton from the body by name and binds its own palette per mesh instead. */
+	const bool_t isSkinned = m_strSocketBoneName.empty();
+	if (isSkinned && !m_hasOwnBones &&
 		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
 			m_pShaderCom, "g_BoneMatrices", 0)))
 		return E_FAIL;
+	if (isSkinned && m_hasOwnBones)
+		m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
 	{
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
+		if (isSkinned && m_hasOwnBones &&
+			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)))
+			return E_FAIL;
 
 		const DEFERRED_MATERIAL_PROFILE Profile =
 			Resolve_DeferredMaterialProfile(
@@ -139,11 +168,15 @@ HRESULT CPart_Equipment::Render_Shadow()
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;
 
-	if (m_strSocketBoneName.empty() &&
-		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
-			m_pShaderCom, "g_BoneMatrices", 0)))
+	if (m_strSocketBoneName.empty())
 	{
-		return E_FAIL;
+		if (m_hasOwnBones)
+			m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
+		else if (FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
+			m_pShaderCom, "g_BoneMatrices", 0)))
+		{
+			return E_FAIL;
+		}
 	}
 
 	const uint32_t iShadowPass = m_strSocketBoneName.empty() ?
@@ -168,6 +201,11 @@ HRESULT CPart_Equipment::Render_Shadow()
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
+		if (m_strSocketBoneName.empty() && m_hasOwnBones &&
+			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)))
+		{
+			return E_FAIL;
+		}
 		const DEFERRED_MATERIAL_PROFILE Profile =
 			Resolve_DeferredMaterialProfile(
 				m_strMaterialProfileId,
