@@ -36,6 +36,26 @@ namespace
 	constexpr int32_t HAIR_TAB_INDEX = 2;
 	constexpr int32_t EYE_TAB_INDEX = 3;
 	constexpr int32_t SKIN_TAB_INDEX = 4;
+
+	/* One adorn page: the retail head material's colour for that layer, the cooked stamp list
+	it picks from, and the texture register that stamp goes on. The eyebrow page has no stamp
+	list -- retail changes the brow with a mesh type, not a texture -- so it carries a colour
+	only. See Data/UI/Customizing/CustomizingMeshTypes.json. */
+	struct ADORN_PAGE
+	{
+		const char_t* pColorParameter;
+		const char_t* pTextureKind;
+		int32_t iStampRegister;
+	};
+	constexpr ADORN_PAGE ADORN_PAGES[] = {
+		{ "var_makeup_lipcolor_ui",     "lip",     4 },
+		{ "var_makeup_cheekcolor_ui",   "cheek",   6 },
+		{ "var_makeup_eyelinecolor_ui", "eyemake", 5 },
+		{ "var_eye_browcolor_ui",       nullptr,  -1 },
+	};
+	constexpr const char_t* EYESHADOW_COLOR_PARAMETER = "var_makeup_eyeshadowcolor_ui";
+	constexpr const char_t* SKIN_COLOR_PARAMETER = "var_base_skincolor_ui";
+	constexpr const char_t* SKIN_GLOSS_PARAMETER = "var_base_skinspecularintensity_ui";
 	constexpr int32_t ADORN_TAB_INDEX = 5;
 	/* Voice is left out on purpose: its list needs audio this project has none of, so drawing
 	its rows would only add a row of dead buttons. */
@@ -683,6 +703,37 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 	}
 	m_iSelectedFacePreset = -1;
 	m_iSelectedEyeIris = -1;
+	/* Every face-material control starts where this class was authored: the make-up colours
+	and their strengths are the retail values, so a slider or a swatch shows what is actually
+	on the face rather than black at zero. A class whose face is not on a native head program
+	leaves them unset, and those controls draw without moving anything. */
+	m_SelectedAdornItems.fill(-1);
+	m_fSkinGloss = -1.f;
+	for (size_t iPage = 0; iPage < std::size(ADORN_PAGES); ++iPage)
+	{
+		const size_t iSurface = FIRST_MAKEUP_SURFACE_INDEX + iPage;
+		float4_t vAuthored{};
+		if (!pCharacter->Try_Get_FaceMaterialParameter(
+			ADORN_PAGES[iPage].pColorParameter, vAuthored))
+		{
+			continue;
+		}
+		m_SurfaceColors[iSurface] = vAuthored;
+		m_AdornStrength[iPage] = std::clamp(vAuthored.w, 0.f, 1.f);
+	}
+	{
+		float4_t vShadow{};
+		if (pCharacter->Try_Get_FaceMaterialParameter(EYESHADOW_COLOR_PARAMETER, vShadow))
+		{
+			m_SurfaceColors[EYESHADOW_SURFACE_INDEX] = vShadow;
+			m_AdornStrength[m_AdornStrength.size() - 1u] = std::clamp(vShadow.w, 0.f, 1.f);
+		}
+	}
+	{
+		float4_t vSkin{};
+		if (pCharacter->Try_Get_FaceMaterialParameter(SKIN_COLOR_PARAMETER, vSkin))
+			m_SurfaceColors[SKIN_SURFACE_INDEX] = vSkin;
+	}
 	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
 	if (nullptr == pIcons)
 		return;
@@ -915,6 +966,35 @@ float4_t Client::CCustomizingView::HsvToRgb(
 	}
 }
 
+bool_t Client::CCustomizingView::Apply_SurfaceColor(
+	const shared_ptr<CCharacter>& pCharacter, const int32_t iSurface,
+	const float4_t& vColor) const
+{
+	if (nullptr == pCharacter || iSurface < 0)
+		return false;
+	if (iSurface < FIRST_MAKEUP_SURFACE_INDEX)
+	{
+		/* Skin is a parameter of the retail head material, not a dye. A class whose face is
+		not on that program still takes the plain tint it took before. */
+		if (SKIN_SURFACE_INDEX == iSurface &&
+			pCharacter->Set_FaceMaterialParameter(SKIN_COLOR_PARAMETER, vColor))
+		{
+			return true;
+		}
+		return pCharacter->Set_DyeColor(
+			static_cast<CCharacter::DYE_SURFACE>(iSurface), vColor, vColor);
+	}
+	const int32_t iPage = iSurface - FIRST_MAKEUP_SURFACE_INDEX;
+	const char_t* pParameter = EYESHADOW_SURFACE_INDEX == iSurface ?
+		EYESHADOW_COLOR_PARAMETER : ADORN_PAGES[iPage].pColorParameter;
+	/* Alpha carries the layer strength, so the wheel moves only the hue and the page's
+	strength slider keeps whatever it was set to. */
+	const size_t iStrength = EYESHADOW_SURFACE_INDEX == iSurface ?
+		m_AdornStrength.size() - 1u : static_cast<size_t>(iPage);
+	return pCharacter->Set_FaceMaterialParameter(pParameter,
+		float4_t(vColor.x, vColor.y, vColor.z, m_AdornStrength[iStrength]));
+}
+
 bool_t Client::CCustomizingView::Update_ColorPicker(
 	const shared_ptr<CCharacter>& pCharacter)
 {
@@ -1020,8 +1100,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 	and Apply just closes the picker rather than being the moment it lands. */
 	if (nullptr != pCharacter)
 	{
-		const bool_t bApplied = pCharacter->Set_DyeColor(
-			static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface), vChosen, vChosen);
+		const bool_t bApplied = Apply_SurfaceColor(pCharacter, m_iPickerSurface, vChosen);
 		if (bApplied != m_bLastDyeApplied)
 		{
 			m_bLastDyeApplied = bApplied;
@@ -1043,8 +1122,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 		{
 			/* The second hair colour follows the first until its own picker exists; a
 			hairstyle with no second colour ignores it either way. */
-			pCharacter->Set_DyeColor(
-				static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface), vChosen, vChosen);
+			Apply_SurfaceColor(pCharacter, m_iPickerSurface, vChosen);
 		}
 		m_SurfaceColors[static_cast<size_t>(m_iPickerSurface)] = vChosen;
 		m_iPickerSurface = PICKER_SURFACE_NONE;
@@ -1055,9 +1133,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 		CMainApp::Play_UIButtonClickSound();
 		if (nullptr != pCharacter)
 		{
-			pCharacter->Set_DyeColor(
-				static_cast<CCharacter::DYE_SURFACE>(m_iPickerSurface),
-				m_vPickerRestore, m_vPickerRestore);
+			Apply_SurfaceColor(pCharacter, m_iPickerSurface, m_vPickerRestore);
 		}
 		m_iPickerSurface = PICKER_SURFACE_NONE;
 		return true;
@@ -1265,8 +1341,26 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 
 	m_pView->Set_SlotVisible("CC_SkinDivision", bSkin);
 	Fn_ShowPicker("CC_SkinColor", bSkin, 2);
+	/* Wrinkle and freckle stay unbound. The rule documents give the wrinkle slider two
+	candidate variables and name neither, and the only freckle parameter is a colour whose
+	driven channel they do not state -- an unbound control draws and does not move rather
+	than being wired to a guess. Gloss is Skin/SpecularIntensity, which they do resolve. */
 	Fn_ShowSlider("CC_Slider_skin_age", bSkin);
-	Fn_ShowSlider("CC_Slider_skin_shine", bSkin);
+	if (bSkin && nullptr != pCharacter && m_fSkinGloss < 0.f)
+	{
+		float4_t vGloss{};
+		m_fSkinGloss = pCharacter->Try_Get_FaceMaterialParameter(SKIN_GLOSS_PARAMETER, vGloss) ?
+			std::clamp(vGloss.x, 0.f, 1.f) : 0.f;
+	}
+	{
+		f32_t fGloss = m_fSkinGloss < 0.f ? 0.f : m_fSkinGloss;
+		if (Fn_ShowSlider("CC_Slider_skin_shine", bSkin, &fGloss) && nullptr != pCharacter)
+		{
+			m_fSkinGloss = fGloss;
+			pCharacter->Set_FaceMaterialParameter(SKIN_GLOSS_PARAMETER,
+				float4_t(fGloss, fGloss, fGloss, fGloss));
+		}
+	}
 	Fn_ShowSlider("CC_Slider_skin_freckles", bSkin);
 
 	m_pView->Set_SlotVisible("CC_AdornDivision", bAdorn);
@@ -1293,13 +1387,74 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 		m_iAdornScrollRow = Clamp_ScrollRow(m_iAdornScrollRow,
 			static_cast<int32_t>(Page.size()), ADORN_ITEM_COUNT);
 		Fill_ScrollingGrid("CC_AdornItem", ADORN_ITEM_COUNT, m_iAdornScrollRow, Page);
+
+		/* The icon list and the cooked stamp list are the same retail list, so a cell's icon
+		index is its texture index -- the same join the iris grid uses. A cell whose texture
+		this client does not ship stays clickable and changes nothing, rather than putting a
+		neighbour's make-up on the face. The eyebrow page has no grid at all. */
+		const ADORN_PAGE& AdornPage = ADORN_PAGES[m_iSelectedAdornSub];
+		const auto* pStamps = nullptr != AdornPage.pTextureKind ?
+			m_FaceTextureDocument.Find(m_strIconClassAssetId, AdornPage.pTextureKind) : nullptr;
+		const int32_t iIconCount = static_cast<int32_t>(Page.size());
+		for (int32_t i = 0; i < ADORN_ITEM_COUNT; ++i)
+		{
+			const int32_t iEntry = m_iAdornScrollRow * GRID_COLUMNS + i;
+			if (iEntry >= iIconCount)
+				break;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!Get_SlotRect(("CC_AdornItem" + std::to_string(i)).c_str(),
+				fX, fY, fWidth, fHeight))
+			{
+				continue;
+			}
+			if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
+				continue;
+
+			CMainApp::Play_UIButtonClickSound();
+			if (nullptr == pStamps || m_iSelectedAdornSub >= 3)
+			{
+				OutputDebugStringA("[FaceMakeup] this page has no stamp list\n");
+				continue;
+			}
+			m_SelectedAdornItems[static_cast<size_t>(m_iSelectedAdornSub)] = iEntry;
+			if (nullptr == pCharacter)
+				continue;
+			const std::string strAsset =
+				static_cast<size_t>(iEntry) < pStamps->size() ? (*pStamps)[iEntry] : std::string();
+			if (strAsset.empty())
+			{
+				OutputDebugStringA(("[FaceMakeup] cell " + std::to_string(iEntry) +
+					" has no cooked texture\n").c_str());
+				continue;
+			}
+			pCharacter->Set_FaceStampTexture(
+				static_cast<CCharacter::FACE_STAMP>(AdornPage.iStampRegister), strAsset);
+		}
 	}
-	Fn_ShowSlider("CC_Slider_adorn_strength", bAdorn);
-	Fn_ShowPicker("CC_AdornColor", bAdorn);
+	/* The strength slider is the layer colour's alpha; see Apply_SurfaceColor. */
+	{
+		const size_t iPage = static_cast<size_t>(m_iSelectedAdornSub);
+		if (Fn_ShowSlider("CC_Slider_adorn_strength", bAdorn, &m_AdornStrength[iPage]))
+		{
+			const int32_t iSurface = FIRST_MAKEUP_SURFACE_INDEX + m_iSelectedAdornSub;
+			Apply_SurfaceColor(pCharacter, iSurface,
+				m_SurfaceColors[static_cast<size_t>(iSurface)]);
+		}
+	}
+	Fn_ShowPicker("CC_AdornColor", bAdorn,
+		bAdorn ? FIRST_MAKEUP_SURFACE_INDEX + m_iSelectedAdornSub : -1);
 	/* Only the eye-line page carries the second slider/chip pair. */
 	const bool_t bAdornShadow = bAdorn && 2 == m_iSelectedAdornSub;
-	Fn_ShowSlider("CC_Slider_adorn_shadow", bAdornShadow);
-	Fn_ShowPicker("CC_AdornShadowColor", bAdornShadow);
+	{
+		const size_t iShadow = m_AdornStrength.size() - 1u;
+		if (Fn_ShowSlider("CC_Slider_adorn_shadow", bAdornShadow, &m_AdornStrength[iShadow]))
+		{
+			Apply_SurfaceColor(pCharacter, EYESHADOW_SURFACE_INDEX,
+				m_SurfaceColors[EYESHADOW_SURFACE_INDEX]);
+		}
+	}
+	Fn_ShowPicker("CC_AdornShadowColor", bAdornShadow,
+		bAdornShadow ? EYESHADOW_SURFACE_INDEX : -1);
 
 	if (bHair)
 	{

@@ -12,6 +12,7 @@ struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
 struct MODEL_COLOR_TINT;
 struct MODEL_SURFACE_PARAMETERS;
+struct MODEL_SOURCE_CHARACTER_PARAMETERS;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -231,6 +232,17 @@ public:
 	because a plain multiply needs no mask to ride on. */
 	uint32_t Override_MaterialDiffuseTint(
 		const char_t* pMaterialNameFragment, const float4_t& vTint);
+	/* The same match by name fragment, for a material drawn by a native source-character
+	program: the creation screen's skin and make-up choices are that program's own constants
+	and texture registers. See CMaterial::Set_SourceCharacterConstants. Only materials on such
+	a program take these, so the count says whether the choice landed on anything at all. */
+	uint32_t Override_SourceCharacterConstants(
+		const char_t* pMaterialNameFragment,
+		const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
+	uint32_t Override_SourceCharacterTexture(
+		const char_t* pMaterialNameFragment, uint32_t iRegister,
+		ComPtr<ID3D11ShaderResourceView> pTexture);
+	void Clear_SourceCharacterOverrides();
 	/* Null when the mesh or its material is out of range. */
 	const float4_t* Get_MaterialDiffuseTint(uint32_t iMeshIndex) const;
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;

@@ -20,6 +20,7 @@
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
 #include "RuntimeAssetRoot.h"
+#include "SourceCharacterMaterialParameters.h"
 #include "SoundCueCatalog.h"
 #include "Gameplay/WorldCollisionContract.h"
 
@@ -2403,6 +2404,130 @@ bool_t CCharacter::Set_DyeColor(
 		std::to_string(iMatched) + " material(s)" +
 		(isTintSurface ? " (tint)" : " (dye)") + "\n").c_str());
 	return 0u != iMatched;
+}
+
+namespace
+{
+	/* The retail head material every playable face is on; the skin, make-up and decal
+	variables are its parameters. See Data/Actors/CharacterCatalog.json. */
+	constexpr const char_t* FACE_MATERIAL_FAMILY = "source.character.classic-head.v1";
+}
+
+bool_t CCharacter::Prepare_FaceMaterial()
+{
+	if (!m_strFaceMaterialFamily.empty())
+		return true;
+	if (nullptr == m_pBodyModel)
+		return false;
+
+	const CHARACTER_ACTOR_ENTRY* pActor = CActorCatalog::Find_Character(m_eCharacterClass);
+	if (nullptr == pActor)
+		return false;
+	const auto found = pActor->modelMaterialParameters.find(pActor->bodyModel);
+	if (found == pActor->modelMaterialParameters.end())
+		return false;
+	/* The head program is what the skin and make-up variables belong to. A class whose face
+	is drawn some other way has no such row, and every one of these controls reports false
+	rather than painting the wrong material. */
+	for (const CHARACTER_MATERIAL_PARAMETERS& material : found->second)
+	{
+		if (material.family != FACE_MATERIAL_FAMILY)
+			continue;
+		m_strFaceMaterialName = material.materialName;
+		m_strFaceMaterialFamily = material.family;
+		m_FaceMaterialParameters = material.values;
+		return true;
+	}
+	return false;
+}
+
+bool_t CCharacter::Set_FaceMaterialParameter(
+	const std::string& strName, const float4_t& vValue)
+{
+	if (!Prepare_FaceMaterial())
+		return false;
+	const auto found = m_FaceMaterialParameters.find(strName);
+	if (found == m_FaceMaterialParameters.end())
+	{
+		OutputDebugStringA(("[FaceMaterial] " + m_strFaceMaterialName +
+			" has no parameter " + strName + "\n").c_str());
+		return false;
+	}
+	const std::array<f32_t, 4> previous = found->second;
+	found->second = { vValue.x, vValue.y, vValue.z, vValue.w };
+
+	Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed{};
+	if (!SourceCharacterMaterial::Configure(
+		m_strFaceMaterialFamily, m_FaceMaterialParameters, packed) ||
+		0u == m_pBodyModel->Override_SourceCharacterConstants(
+			m_strFaceMaterialName.c_str(), packed))
+	{
+		/* Nothing partial: the face keeps the value it was showing. */
+		found->second = previous;
+		return false;
+	}
+	return true;
+}
+
+bool_t CCharacter::Try_Get_FaceMaterialParameter(
+	const std::string& strName, float4_t& outValue)
+{
+	if (!Prepare_FaceMaterial())
+		return false;
+	const auto found = m_FaceMaterialParameters.find(strName);
+	if (found == m_FaceMaterialParameters.end())
+		return false;
+	outValue = float4_t(found->second[0], found->second[1], found->second[2], found->second[3]);
+	return true;
+}
+
+bool_t CCharacter::Set_FaceStampTexture(
+	const FACE_STAMP eStamp, const std::string& strTextureAssetId)
+{
+	if (!Prepare_FaceMaterial())
+		return false;
+	const uint32_t iRegister = static_cast<uint32_t>(eStamp);
+	if (strTextureAssetId.empty())
+	{
+		return 0u != m_pBodyModel->Override_SourceCharacterTexture(
+			m_strFaceMaterialName.c_str(), iRegister, nullptr);
+	}
+
+	ComPtr<ID3D11ShaderResourceView>& pTexture = m_FaceIrisTextures[strTextureAssetId];
+	if (nullptr == pTexture)
+	{
+		const std::filesystem::path path = CRuntimeAssetRoot::Resolve(strTextureAssetId);
+		if (path.empty() || !std::filesystem::exists(path))
+		{
+			OutputDebugStringA(("[FaceMaterial] no file for " + strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+		/* A stamp is a colour slot, decoded the same sRGB way as the transparent Null the
+		material ships in that register -- otherwise the make-up would light differently from
+		the face it sits on. */
+		if (FAILED(DirectX::CreateDDSTextureFromFileEx(
+			m_pDevice.Get(), path.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+			DirectX::DDS_LOADER_FORCE_SRGB, nullptr, &pTexture)))
+		{
+			OutputDebugStringA(("[FaceMaterial] DDS decode failed for " +
+				strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+	}
+	return 0u != m_pBodyModel->Override_SourceCharacterTexture(
+		m_strFaceMaterialName.c_str(), iRegister, pTexture);
+}
+
+void CCharacter::Reset_FaceMaterial()
+{
+	if (nullptr != m_pBodyModel)
+		m_pBodyModel->Clear_SourceCharacterOverrides();
+	m_strFaceMaterialName.clear();
+	m_strFaceMaterialFamily.clear();
+	m_FaceMaterialParameters.clear();
 }
 
 bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)

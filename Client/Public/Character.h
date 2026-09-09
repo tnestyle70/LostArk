@@ -11,6 +11,8 @@
 #include "FaceMorphApplier.h"
 #include "NavPathFollower.h"
 
+#include <array>
+#include <map>
 #include <unordered_map>
 #include "PlayerHandGripTransform.h"
 #include "Network/PacketMessages.h"
@@ -286,6 +288,34 @@ public:
 	/* The hair tab's two sliders. Leaves the authored colours alone and moves only how much
 	of the second one blends and how far up the strand it reaches. */
 	bool_t Set_HairTwoTone(f32_t fStrength, f32_t fRange);
+	/* One named parameter of the face's retail head material -- skin colour and gloss, the
+	freckle colour, the make-up colours, the decal placement. These are the source game's own
+	variable names (var_base_skincolor_ui and the rest); the screen states what it wants by
+	name and this re-packs the whole constant row from the class' authored values, so nothing
+	the player has not touched drifts. A scalar parameter reads x and ignores the rest.
+
+	Returns false when this class' face is not on a native head program, so the screen can say
+	the control is unbound rather than pretend it took. */
+	bool_t Set_FaceMaterialParameter(const std::string& strName, const float4_t& vValue);
+	/* What the face is currently showing for one parameter, so a control can start where the
+	class was authored instead of at zero. False when the face is not on a native head
+	program or the material never states that name. */
+	bool_t Try_Get_FaceMaterialParameter(const std::string& strName, float4_t& outValue);
+	/* Which make-up stamp a texture choice replaces. The values are the native program's own
+	texture registers, measured against Data/UI/Customizing/CustomizingMeshTypes.json and the
+	colour each register is sampled beside. */
+	enum class FACE_STAMP { LIP = 4, EYE_MAKEUP = 5, CHEEK = 6, DECAL = 7 };
+	/* Puts one of the class' cooked stamps (Character/<Class>/FaceTextures/<kind>/...) on that
+	register. An empty id restores the authored one, which is the transparent Null the retail
+	material ships -- that is how "none" is expressed. */
+	bool_t Set_FaceStampTexture(FACE_STAMP eStamp, const std::string& strTextureAssetId);
+	/* Puts every face-material choice back to what the class was authored with. */
+	void Reset_FaceMaterial();
+private:
+	/* Takes this class' authored head-material values from the actor catalog on the first
+	creation choice. False when the class' face is not on a native head program. */
+	bool_t Prepare_FaceMaterial();
+public:
 	/* Character-creation preview appearance: the class's own default outfit with no helmet,
 	no avatar costume and no weapon, so the face and the plain silhouette are what the player
 	judges. false restores the weapons and whatever avatar pieces were worn before. */
@@ -430,6 +460,13 @@ private:
 	stepping through the iris list does not reload the same texture every click, and so the
 	SRV outlives the call that handed it to the material. */
 	std::unordered_map<std::string, ComPtr<ID3D11ShaderResourceView>> m_FaceIrisTextures;
+	/* This character's copy of its face material's authored parameters, taken from the actor
+	catalog the first time a creation choice moves one. The copy is per character: two of the
+	same class on screen keep their own faces. Empty family means the class' face is not on a
+	native head program, or the catalog has not been consulted yet. */
+	std::string m_strFaceMaterialName;
+	std::string m_strFaceMaterialFamily;
+	std::map<std::string, std::array<f32_t, 4>> m_FaceMaterialParameters;
 	bool_t m_isEquipmentPreviewActive = false;
 	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
 	/* Set_AvatarPartVisible state; Apply_DefaultEquipmentVisibility derives the parts from it. */

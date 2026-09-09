@@ -1102,6 +1102,76 @@ uint32_t CModel::Override_MaterialDyeColor(
     return matched;
 }
 
+namespace
+{
+    /* Every Override_* below matches a material the same way: case-insensitively, on a
+    fragment of its name, so a caller never has to know a class rig's material order. */
+    bool_t MaterialNameContains(const string& name, const string& fragment)
+    {
+        string lowered = name;
+        transform(lowered.begin(), lowered.end(), lowered.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        return lowered.find(fragment) != string::npos;
+    }
+
+    string LoweredFragment(const char_t* pMaterialNameFragment)
+    {
+        string fragment = nullptr != pMaterialNameFragment ? pMaterialNameFragment : "";
+        transform(fragment.begin(), fragment.end(), fragment.begin(),
+            [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
+        return fragment;
+    }
+}
+
+uint32_t CModel::Override_SourceCharacterConstants(
+    const char_t* pMaterialNameFragment,
+    const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters)
+{
+    const string fragment = LoweredFragment(pMaterialNameFragment);
+    if (fragment.empty())
+        return 0u;
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
+            !MaterialNameContains(pMaterial->Get_Name(), fragment))
+            continue;
+        if (pMaterial->Set_SourceCharacterConstants(parameters))
+            ++matched;
+    }
+    return matched;
+}
+
+uint32_t CModel::Override_SourceCharacterTexture(
+    const char_t* pMaterialNameFragment, const uint32_t iRegister,
+    ComPtr<ID3D11ShaderResourceView> pTexture)
+{
+    const string fragment = LoweredFragment(pMaterialNameFragment);
+    if (fragment.empty())
+        return 0u;
+
+    uint32_t matched = 0u;
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
+            !MaterialNameContains(pMaterial->Get_Name(), fragment))
+            continue;
+        if (pMaterial->Set_SourceCharacterTextureOverride(iRegister, pTexture))
+            ++matched;
+    }
+    return matched;
+}
+
+void CModel::Clear_SourceCharacterOverrides()
+{
+    for (auto& pMaterial : m_Materials)
+    {
+        if (nullptr != pMaterial)
+            pMaterial->Clear_SourceCharacterOverrides();
+    }
+}
+
 uint32_t CModel::Override_MaterialDiffuseTint(
     const char_t* pMaterialNameFragment, const float4_t& vTint)
 {

@@ -5,6 +5,7 @@
 #include "Network/PacketType.h"
 #include "BinaryAsset/ModelAssetData.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -16,6 +17,20 @@ NS_BEGIN(Client)
 
 inline constexpr std::size_t MAX_BOSS_ARMOR_PARTS = 4u;
 inline constexpr std::size_t MAX_BOSS_COMBAT_OBJECT_VISUALS = 16u;
+
+/* What a native source-character material was authored with, kept past load.
+The catalog states these once as JSON, but the character-creation screen moves
+some of them while the character is on screen -- skin colour and gloss, the
+make-up colours, the decal placement -- and the program reads them packed into
+its constant rows, so a screen that changes one has to re-pack from all of
+them. The value type matches SourceCharacterMaterial::PARAMETER_VALUES; this
+header states it directly rather than pulling the generated packing in. */
+struct CHARACTER_MATERIAL_PARAMETERS final
+{
+	std::string materialName;
+	std::string family;
+	std::map<std::string, std::array<float, 4>> values;
+};
 
 struct CHARACTER_ACTOR_ENTRY final
 {
@@ -29,6 +44,10 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::vector<std::string> equipmentModels;
 	std::vector<std::string> weaponModels;
 	std::map<std::string, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>, std::less<>> modelMaterialOverrides;
+	/* Aligned with modelMaterialOverrides by material name, for the rows a native
+	source-character program drives. Empty for every other material. */
+	std::map<std::string, std::vector<CHARACTER_MATERIAL_PARAMETERS>, std::less<>>
+		modelMaterialParameters;
 	/* Shared-clip animation sets (.wmodel carriers) attached onto the body model
 	at admission, in declaration order. A class ships one per clip family it
 	borrows -- the Esther call, the customizing idle -- and the list is empty

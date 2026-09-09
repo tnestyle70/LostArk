@@ -51,6 +51,26 @@ public:
 	both authored at identity so nothing changes until a colour is chosen. */
 	void Set_DiffuseTint(const float4_t& vTint) { m_vDiffuseTint = vTint; }
 	const float4_t& Get_DiffuseTint() const { return m_vDiffuseTint; }
+	/* The creation screen's skin and make-up choices are named parameters of the retail head
+	material, and the native program reads them already packed into its constant rows. The
+	Client owns that packing (Client/Public/SourceCharacterMaterialParameters.h) because the
+	names and the arithmetic between them are LostArk's; the Engine only carries the result.
+	The program and its texture masks stay the material's own -- only the constants move, so a
+	choice can never turn a face into a different surface. Non-finite or absurd values are
+	refused rather than reaching the GPU. */
+	bool_t Set_SourceCharacterConstants(const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
+	/* One texture register of that program, for the lip, eye make-up, cheek and decal stamps
+	the screen puts on a face. Like Set_TextureOverride this rides on the clone rather than the
+	loaded texture, so two characters sharing a material prototype keep their own choice, and a
+	null view restores what the asset loaded. A register the material's masks do not use is
+	refused: binding one would be a silent no-op. */
+	bool_t Set_SourceCharacterTextureOverride(
+		uint32_t iRegister, ComPtr<ID3D11ShaderResourceView> pTexture);
+	void Clear_SourceCharacterOverrides();
+	bool_t Has_SourceCharacterProgram() const
+	{
+		return m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
+	}
 	bool_t Has_DyeColor() const { return m_ColorTint.isEnabled; }
 	const string& Get_Name() const { return m_strName; }
 	uint64_t Get_NameHash() const { return m_iNameHash; }
@@ -73,6 +93,11 @@ private:
 	float4_t									m_vDiffuseTint = { 1.f, 1.f, 1.f, 1.f };
 	MODEL_SURFACE_PARAMETERS m_Surface;
     std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_CHARACTER_TEXTURE_COUNT> m_SourceCharacterTextures;
+    /* Sparse: only the registers a creation choice repainted. The authored views stay in
+    m_SourceCharacterTextures above, so clearing restores them exactly. */
+    unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_SourceCharacterTextureOverrides;
+    /* What the asset shipped, so clearing the choices puts the whole program back. */
+    MODEL_SOURCE_CHARACTER_PARAMETERS m_AuthoredSourceCharacter;
     HRESULT Bind_SourceCharacterInputs(shared_ptr<class CShader> shader, bool lightPass, uint32_t row);
 	uint32_t m_iDiffuseMirrorU = 0u;
 	/* Separate views keep the legacy A/B inputs unchanged when the source

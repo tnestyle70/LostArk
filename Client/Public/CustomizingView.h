@@ -180,11 +180,18 @@ private:
 	come from the wheel (angle and radius, the way the source art is drawn) and value from
 	the bar beside it. The choice only reaches the model on Apply, so cancelling leaves the
 	character exactly as it was. */
-	/* CCharacter::DYE_SURFACE as an index, so this header keeps its forward declaration
-	instead of pulling the character in for one enum. PICKER_SURFACE_NONE is its END. */
+	/* Which surface the open picker paints. 0-2 are CCharacter::DYE_SURFACE (hair, eye,
+	skin) so this header keeps its forward declaration instead of pulling the character in
+	for one enum; the rest are the face material's own make-up colours, which are named
+	parameters of the retail head material rather than dyes. PICKER_SURFACE_NONE is none. */
 	static constexpr int32_t PICKER_SURFACE_NONE = -1;
 	/* CCharacter::DYE_SURFACE::SKIN. */
 	static constexpr int32_t SKIN_SURFACE_INDEX = 2;
+	static constexpr int32_t FIRST_MAKEUP_SURFACE_INDEX = 3;
+	/* Lip, cheek, eye line, eyebrow -- the four adorn pages, in sub-tab order -- then the
+	eye shadow the eye-line page carries alongside its own colour. */
+	static constexpr int32_t EYESHADOW_SURFACE_INDEX = 7;
+	static constexpr size_t SURFACE_COLOR_COUNT = 8;
 	int32_t m_iPickerSurface = PICKER_SURFACE_NONE;
 	f32_t m_fPickerHue = 0.f;
 	f32_t m_fPickerSaturation = 0.f;
@@ -197,7 +204,22 @@ private:
 	bool_t m_bLastDyeApplied = false;
 	/* What each surface is currently wearing, so a swatch shows the choice and re-opening
 	the picker starts from it. w < 0 means the authored colour is still in place. */
-	std::array<float4_t, 3> m_SurfaceColors{};
+	std::array<float4_t, SURFACE_COLOR_COUNT> m_SurfaceColors{};
+	/* How strongly each make-up layer shows. Measured on the retail values: the cheek colour
+	is authored with alpha 0 and the lip with 1, so alpha is the layer's strength and the
+	page's strength slider is that channel. Indexed by adorn sub-tab, with the eye-line page's
+	second slider (the eye shadow) last. */
+	std::array<f32_t, 5> m_AdornStrength{ 1.f, 0.f, 1.f, 1.f, 1.f };
+	/* Which stamp each adorn page is showing, as an index into that page's icon list. -1 is
+	the authored one, which is the transparent Null the retail material ships. */
+	std::array<int32_t, 3> m_SelectedAdornItems{ -1, -1, -1 };
+	/* Skin gloss: var_base_skinspecularintensity_ui, seeded from the class' authored value
+	the first frame the tab is shown so the thumb starts where retail put it. */
+	f32_t m_fSkinGloss = -1.f;
+	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
+	and a non-native skin, a named head-material parameter for everything else. */
+	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,
+		int32_t iSurface, const float4_t& vColor) const;
 	/* Set for the whole frame the picker is up, so the panel underneath reads no clicks --
 	the wheel sits directly over the swatches and sliders that opened it. The picker tests
 	its own widgets against the router instead of the view's helper. */
