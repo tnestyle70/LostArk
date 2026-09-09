@@ -251,6 +251,9 @@ public:
 		bool_t bColorMulLerp = false;
 		COLOR_CLIP_CHANNEL eColorClipChannel = COLOR_CLIP_CHANNEL::ALPHA;
 		f32_t fColorClip = 0.f;
+		f32_t fSectorStartDegrees = 0.f;
+		f32_t fSectorDegrees = 0.f;
+		f32_t fSectorSoftness = 0.f;
 		float4_t vRimColor = { 1.f, 1.f, 1.f, 1.f };
 		f32_t fRimPower = 3.f;
 		f32_t fRimIntensity = 0.f;
