@@ -266,7 +266,7 @@ def main() -> int:
                              % (args.class_id, index, far, distances[far]))
         before, after = collections.Counter(), collections.Counter()
         offset, count = submeshes[index]
-        already = 0
+        already = deliberate = 0
         for vertex in range(count):
             at = vertex_base + (offset + vertex) * stride
             indices = struct.unpack_from("<4I", data, at + _tp.COOKED_INDEX_OFFSET)
@@ -294,15 +294,24 @@ def main() -> int:
                 already += 1
                 continue
 
+            # An eyeball bind_eyeball_to_eye_bones.py put on the eye bones is a deliberate
+            # deviation from this extract -- Artist's retail body leaves its eyeballs on
+            # bip001-head, which no facial slider can move -- so restoring it would silently
+            # undo that. The two tools are both safe to re-run because of this.
+            if any(cooked_bones[bone].endswith("_eye_ani") for bone in current) and                     not any(name.endswith("_eye_ani") for name, _w in entries):
+                deliberate += 1
+                continue
+
             # The cook parks every unused influence slot on bone 0 -- measured, that is the
             # only index any zero-weight slot holds in LanceMaster and DimensionMaster.
             padded = resolved + [(0, 0.0)] * (4 - len(resolved))
             struct.pack_into("<4I", data, at + _tp.COOKED_INDEX_OFFSET, *[e[0] for e in padded])
             struct.pack_into("<4f", data, at + _tp.COOKED_WEIGHT_OFFSET, *[e[1] for e in padded])
             written += 1
-        print("   submesh %d %-26s %4d verts, max pair distance %.7f, %d already correct: "
-              "%s -> %s" % (index, repr(material_of[index]), count, distances.max(), already,
-                            dict(before.most_common(3)), dict(after.most_common(3))))
+        print("   submesh %d %-26s %4d verts, max pair distance %.7f, %d already correct, "
+              "%d bound to the eye bones on purpose: %s -> %s"
+              % (index, repr(material_of[index]), count, distances.max(), already, deliberate,
+                 dict(before.most_common(3)), dict(after.most_common(3))))
 
     identical = bytes(data) == original
     if identical != (written == 0):
