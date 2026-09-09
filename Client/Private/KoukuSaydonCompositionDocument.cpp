@@ -1523,6 +1523,9 @@ namespace
 							return false;
 						}
 						const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& result = *findLogic(target);
+						if (result.strOutcomeKind == "GRAB_TO_WORLD_OBJECT" &&
+							(owner.strTriggerKind != "ENTER_AREA" || slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS))
+						{ outStatus = "GRAB_TO_WORLD_OBJECT belongs to ENTER_AREA Success only."; return false; }
 						if (result.strOutcomeKind == "CAPTURE_PLAYER")
 						{
 							if (owner.strTriggerKind != "ENTER_AREA" || slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS)
