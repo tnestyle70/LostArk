@@ -72,7 +72,9 @@ namespace LostArk::Server
 			std::string_view bossArchetypeId,
 			std::vector<std::string>& outPatternIds,
 			std::vector<std::uint32_t>& outTransitionTicks,
-			std::string& status);
+			std::string& status,
+			std::string_view gateId = {},
+			std::string_view targetBossPlacementId = {});
 		[[nodiscard]] static std::uint32_t Resolve_ProductSourceRevision(
 			const CGameplayCatalog& catalog) noexcept;
 		[[nodiscard]] bool Begin_Pattern(

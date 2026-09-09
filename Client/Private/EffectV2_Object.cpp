@@ -1743,6 +1743,9 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_ColorOffset", &vColorOffset, sizeof(vColorOffset))) ||
 		FAILED(pShader->Bind_RawValue("g_ColorClip", &P.fColorClip, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_ColorClipChannel", &iColorClipChannel, sizeof(iColorClipChannel))) ||
+		FAILED(pShader->Bind_RawValue("g_SectorStartDegrees", &P.fSectorStartDegrees, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_SectorDegrees", &P.fSectorDegrees, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_SectorSoftness", &P.fSectorSoftness, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_BloomIntensity", &P.fBloomIntensity, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DistortionIntensity", &P.fDistortionIntensity, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_UVStart", &P.vUVStart, sizeof(P.vUVStart))) ||

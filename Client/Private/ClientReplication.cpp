@@ -1546,6 +1546,8 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			Pending.Snapshot.fYawDegrees,
 			isMoving,
 			Pending.iServerTick) ||
+		!pCharacter->Apply_MarioPresentation(
+			Pending.Snapshot.iMarioStage >= 1u && Pending.Snapshot.iMarioStage <= 4u) ||
 		!pCharacter->Apply_NetworkAction(
 			Pending.Snapshot.eAction,
 			Pending.Snapshot.iSkillId,
@@ -3323,6 +3325,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			player.fYawDegrees,
 			isMoving,
 			snapshot.iServerTick) ||
+			!character->Apply_MarioPresentation(
+				player.iMarioStage >= 1u && player.iMarioStage <= 4u) ||
 			!character->Apply_NetworkAction(
 				player.eAction,
 				player.iSkillId,
@@ -3374,7 +3378,11 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
                     }
                 }
 			}
-			if (nullptr == owner)
+			/* A world-object slot has no boss socket to follow: the Server
+			position is the presentation, and asking for a grip would report a
+			failure that is not one. */
+			if (nullptr == owner ||
+				PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND != player.eAttachmentSlot)
 				character->Clear_NetworkAttachment();
 			else if (!character->Apply_NetworkAttachment(
 					owner, player.eAttachmentSlot) &&
@@ -3893,6 +3901,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	CCombatHUDViewModel::Get().Apply_EstherGauge(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
+	CCombatHUDViewModel::Get().Apply_BingoBoard(snapshot.Bingo);
 
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;

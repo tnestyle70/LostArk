@@ -347,6 +347,47 @@ def scale_bind_geometry(document: dict, payload: bytearray, scale: float) -> dic
     }
 
 
+def materialize_skin_weights(document: dict, payload: bytearray) -> int:
+    """Expand normalized integer glTF weights before the Assimp intake.
+
+    The bundled importer misreads UModel's byte weights as float storage.
+    Explicit float accessors preserve the source weights without changing
+    geometry, joints or the bind pose.
+    """
+    converted = {}
+    for mesh in document.get("meshes", []):
+        for primitive in mesh.get("primitives", []):
+            attributes = primitive.get("attributes", {})
+            for name, index in list(attributes.items()):
+                if not name.startswith("WEIGHTS_"):
+                    continue
+                if index in converted:
+                    attributes[name] = converted[index]
+                    continue
+                accessor = document["accessors"][index]
+                component = accessor["componentType"]
+                if component == 5126:
+                    continue
+                if component not in (5121, 5123) or not accessor.get("normalized") or accessor["type"] != "VEC4":
+                    raise RuntimeError("Unsupported glTF skin weight accessor")
+                view = document["bufferViews"][accessor["bufferView"]]
+                if view.get("buffer", 0) != 0 or "sparse" in accessor:
+                    raise RuntimeError("Skin weights must use the staged dense buffer")
+                width = 1 if component == 5121 else 2
+                stride = view.get("byteStride", width * 4)
+                start = view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
+                end = start + (accessor["count"] - 1) * stride + width * 4
+                if stride < width * 4 or start < 0 or end > len(payload) or end > view.get("byteOffset", 0) + view["byteLength"]:
+                    raise RuntimeError("Skin weight accessor exceeds its buffer view")
+                fmt = "<4B" if component == 5121 else "<4H"
+                maximum = 255. if component == 5121 else 65535.
+                rows = [[value / maximum for value in struct.unpack_from(fmt, payload, start + row * stride)]
+                        for row in range(accessor["count"])]
+                converted[index] = append_accessor(document, payload, rows, "VEC4", 4)
+                attributes[name] = converted[index]
+    return len(converted)
+
+
 def normalize_quaternion(value: tuple[float, float, float, float]) -> tuple[float, ...]:
     length = math.sqrt(sum(component * component for component in value))
     if not math.isfinite(length) or length <= 1e-8:
@@ -366,6 +407,15 @@ def build_animations(
     keys = psa["animation_keys"]
     scale_keys = psa["scale_keys"]
     receipts = []
+    # ActorX stores child-bone rotations conjugated relative to glTF; its
+    # skeleton root is the exception. Use the mesh hierarchy, not PSA track
+    # order/parent metadata (UModel AnimSet exports can flatten those parents).
+    joint_set = set(joints)
+    child_joints = {
+        child for node_index in joints
+        for child in document["nodes"][node_index].get("children", [])
+        if child in joint_set
+    }
     for sequence in psa["sequences"]:
         frame_count = sequence["frame_count"]
         first_frame = sequence["first_frame"]
@@ -395,12 +445,13 @@ def build_animations(
                 # scale keeps translation keys in the same unit as the bind pose.
                 unit = 0.01 * translation_scale
                 translations.append((key[0] * unit, key[2] * unit, -key[1] * unit))
-                # ActorX mirrors source quaternion Y and W. Undo that mirror,
-                # then use UModel glTF's Y/Z swap and root-only conjugation.
-                # The root is equivalent to the old tuple up to quaternion sign;
-                # non-root W must be negated or the skin rotates the wrong way.
-                rotation_w = -key[6] if psa["parents"][bone_index] >= 0 else key[6]
-                rotation = normalize_quaternion((key[3], key[5], -key[4], rotation_w))
+                # ActorX mirrors source Y/W. The UModel glTF basis swap plus
+                # root-only conjugation leaves the root tuple below unchanged.
+                # For a child, conjugating XYZ is equivalent to negating only W
+                # up to quaternion sign; classify roots by the mesh hierarchy.
+                rotation = normalize_quaternion((key[3], key[5], -key[4], key[6]))
+                if node_index in child_joints:
+                    rotation = (-rotation[0], -rotation[1], -rotation[2], rotation[3])
                 if previous_rotation is not None and sum(
                     a * b for a, b in zip(previous_rotation, rotation)
                 ) < 0.0:
@@ -499,6 +550,7 @@ def main() -> None:
     source_buffer, joints = validate_gltf(document, source_gltf, psa)
     payload = bytearray(source_buffer.read_bytes())
     scaled = scale_bind_geometry(document, payload, args.scale)
+    materialized_weights = materialize_skin_weights(document, payload)
     receipts = build_animations(document, payload, psa, joints, args.scale)
     align4(payload)
     document["buffers"][0]["uri"] = output_bin.name
@@ -522,6 +574,7 @@ def main() -> None:
         "jointCount": len(joints),
         "scale": args.scale,
         "scaled": scaled,
+        "materializedWeightAccessors": materialized_weights,
         "clips": receipts,
         "output": {
             "gltf": str(output_gltf),

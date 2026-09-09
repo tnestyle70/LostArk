@@ -167,6 +167,42 @@ def _sha256(path: Path) -> str:
 
 
 class UmodelGltfPsaCookerTests(unittest.TestCase):
+    def test_normalized_byte_skin_weights_are_materialized_as_floats(self) -> None:
+        from build_umodel_gltf_psa import materialize_skin_weights
+        payload = bytearray([233, 22, 0, 0, 255, 0, 0, 0])
+        document = {"bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 8}],
+                    "accessors": [{"bufferView": 0, "componentType": 5121, "normalized": True,
+                                   "type": "VEC4", "count": 2}],
+                    "meshes": [{"primitives": [{"attributes": {"WEIGHTS_0": 0}}]}]}
+        self.assertEqual(materialize_skin_weights(document, payload), 1)
+        index = document["meshes"][0]["primitives"][0]["attributes"]["WEIGHTS_0"]
+        rows = _read_floats(document, payload, index, 4)
+        self.assertEqual(document["accessors"][index]["componentType"], 5126)
+        self.assertAlmostEqual(rows[0][0], 233 / 255)
+        self.assertAlmostEqual(rows[0][1], 22 / 255)
+        self.assertEqual(rows[1], (1., 0., 0., 0.))
+        self.assertEqual(materialize_skin_weights(document, payload), 0)
+
+    def test_actorx_child_rotation_is_conjugated_but_mesh_root_is_not(self) -> None:
+        from build_umodel_gltf_psa import build_animations
+        # Track order is intentionally child,root and PSA parents are flattened.
+        document = {"nodes": [{"name": "root", "children": [1]}, {"name": "hand"}],
+                    "accessors": [], "bufferViews": []}
+        payload = bytearray()
+        source = (0., 0., 0., .5, .5, .5, .5, 0.)
+        psa = {"animation_keys": [source, source], "scale_keys": None,
+               "parents": [0, 0], "sequences": [{"name": "attack", "frame_count": 1,
+                                                  "first_frame": 0, "rate": 30.}]}
+        build_animations(document, payload, psa, [1, 0])
+        animation = document["animations"][0]
+        actual = {}
+        for channel in animation["channels"]:
+            if channel["target"]["path"] == "rotation":
+                sampler = animation["samplers"][channel["sampler"]]
+                actual[channel["target"]["node"]] = _read_floats(document, payload, sampler["output"], 4)[0]
+        self.assertEqual(actual[0], (.5, .5, -.5, .5))
+        self.assertEqual(actual[1], (-.5, -.5, .5, .5))
+
     def setUp(self) -> None:
         self._temporary_directory = tempfile.TemporaryDirectory()
         self.root = Path(self._temporary_directory.name)
@@ -245,6 +281,9 @@ class UmodelGltfPsaCookerTests(unittest.TestCase):
         # and conjugates only the root. Use an asymmetric source quaternion
         # so preserving the root while reversing a child cannot pass by sign.
         _write_gltf(self.gltf, joint_names=("root", "child"))
+        source_gltf = json.loads(self.gltf.read_text(encoding="utf-8"))
+        source_gltf["nodes"][0]["children"] = [1]
+        self.gltf.write_text(json.dumps(source_gltf), encoding="utf-8")
         _write_psa(self.psa, bone_names=("root", "child"), frame_count=1)
         length = 30.0 ** 0.5
         x, y, z, w = [value / length for value in (1.0, 2.0, 3.0, 4.0)]

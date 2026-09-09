@@ -19,6 +19,8 @@ namespace LostArk::Server
 
 		bool Initialize(const CSpawnGroupBootstrap& bootstrap, std::string& outStatus);
 		bool Activate(const std::string& spawnGroupId);
+		// Caller removes this group's live entities before resetting its schedule.
+		bool Reset_Group(const std::string& spawnGroupId);
 		bool Activate_Immediate(const std::string& spawnGroupId,
 			const CSpawnGroupBootstrap& bootstrap,
 			const SPAWN_CALLBACK& spawn);

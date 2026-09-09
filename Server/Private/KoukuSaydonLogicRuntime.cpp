@@ -274,6 +274,74 @@ namespace
 		return Circle_IntersectsForwardBox(target, centerX - forwardX * halfZ,
 			centerZ - forwardZ * halfZ, forwardX, forwardZ, halfZ * 2.f, halfX);
 	}
+
+	/* Puts the player on the region that just caught them. The region rides a
+	World Object's transform track, so this is what "hanging from the hook"
+	means on the Server: one attachment naming that region, and a deadline the
+	room enforces even if this pattern stops running. The player keeps their own
+	Y, so the hook drags them across the floor instead of lifting them off it. */
+	bool Hang_PlayerOnRegion(LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss, const std::uint32_t patternElapsedTicks,
+		const std::uint32_t windowIndex, const std::uint32_t regionIndex,
+		const std::uint32_t releaseTick, const std::uint32_t serverTick) noexcept
+	{
+		using namespace LostArk::Shared;
+		LOGIC_REGION_TRANSFORM transform;
+		if (0u == releaseTick || 0u == player.iCurrentHp ||
+			PLAYER_ACTION_STATE::DEAD == player.eAction ||
+			!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
+			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
+			!std::isfinite(transform.yaw))
+			return false;
+		player.iAttachmentOwnerNetEntityId = boss.iNetEntityId;
+		player.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+		player.iAttachmentPatternSequence = boss.iPatternSequence;
+		player.fAttachmentLocalOffsetX = 0.f;
+		player.fAttachmentLocalOffsetY = 0.f;
+		player.fAttachmentLocalOffsetZ = 0.f;
+		// Caught facing whatever way they were running: keep that on the hook.
+		player.fAttachmentYawOffsetDegrees = Wrap180(player.fYawDegrees - transform.yaw);
+		player.iAttachmentWindowIndex = windowIndex;
+		player.iAttachmentRegionIndex = regionIndex;
+		player.iAttachmentReleaseTick = releaseTick;
+		player.eAction = PLAYER_ACTION_STATE::GRABBED;
+		player.iActionStartTick = serverTick;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
+		player.iComboStage = 0u;
+		player.hasBufferedComboInput = false;
+		player.hasReleasedHold = false;
+		player.PendingCommand.Clear();
+		player.TriggerMove = {};
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		player.isCombatReady = false;
+		player.fPositionX = transform.centerX;
+		player.fPositionZ = transform.centerZ;
+		return true;
+	}
+
+	/* One tick of being dragged. False means the hook is no longer there - its
+	track ran out or hid it - which is the Server's cue to let the player go. */
+	bool Drag_HookedPlayer(LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t patternElapsedTicks) noexcept
+	{
+		LOGIC_REGION_TRANSFORM transform;
+		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
+			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
+			!std::isfinite(transform.yaw))
+			return false;
+		player.fPositionX = transform.centerX;
+		player.fPositionZ = transform.centerZ;
+		player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
+		player.hasMoveGoal = false;
+		player.isCombatReady = false;
+		return true;
+	}
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
@@ -592,6 +660,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION:
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION:
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW:
+	/* The grab needs the exact region that caught this player, which only the
+	ENTER_AREA seam in Update knows, so it is applied there. */
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT:
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::NONE:
 	default:
 		break;
@@ -671,6 +742,26 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 {
 	if (!ledger.Is_Active() || ledger.strPatternId != pattern.strPatternId)
 		return;
+	/* Anyone already hanging rides the same authored region that caught them.
+	The region is catalog data, so this keeps working after the window that
+	judged them closed, and the moment the World Object's track hides the hook
+	the deadline collapses to now and the room releases them. */
+	for (auto& [hangingPlayerId, hanging] : players)
+	{
+		(void)hangingPlayerId;
+		if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != hanging.eAction ||
+			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP != hanging.eAttachmentSlot ||
+			hanging.iAttachmentOwnerNetEntityId != boss.iNetEntityId ||
+			hanging.iAttachmentPatternSequence != boss.iPatternSequence ||
+			hanging.iAttachmentWindowIndex >= pattern.LogicWindows.size())
+			continue;
+		const BOSS_PATTERN_LOGIC_WINDOW& carrier = pattern.LogicWindows[hanging.iAttachmentWindowIndex];
+		if (hanging.iAttachmentRegionIndex >= carrier.CardRegions.size())
+			continue;
+		if (!Drag_HookedPlayer(hanging, carrier.CardRegions[hanging.iAttachmentRegionIndex],
+			boss, serverTick - ledger.iPatternStartTick))
+			hanging.iAttachmentReleaseTick = serverTick;
+	}
 	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.MechanicTriggers)
 	{
 		if (cue.bStarted || cue.iIndex >= pattern.MechanicTriggers.size() ||
@@ -963,17 +1054,30 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			{
 				if (!Is_Judgeable(player) || (enter && KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
-				const bool inside = std::any_of(window.CardRegions.begin(), window.CardRegions.end(),
+				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& region) { return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick); });
+				const bool inside = window.CardRegions.end() != caught;
 				if (!inside && !reachedEnd) continue;
-                const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
-                    window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
-                // Capture is committed by the room; an ineligible candidate remains retryable.
-                if (!captureCandidate)
-				    state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
-				        KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
-				Apply_Results(inside ? (window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout, state, &player, players,
+				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
+					window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
+				// Capture is committed by the room; an ineligible candidate remains retryable.
+				if (!captureCandidate)
+					state.Answers[playerId] = inside ? (window.bInsideIsFail ? KOUKUSAYDON_LOGIC_ANSWER::FAIL :
+						KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) : KOUKUSAYDON_LOGIC_ANSWER::TIMEOUT;
+				const std::vector<BOSS_PATTERN_LOGIC_RESULT>& answered = inside ?
+					(window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout;
+				Apply_Results(answered, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+				/* Only this seam knows which region caught this player, and that
+				region is the thing that will carry them, so the grab happens here
+				rather than in the typed result switch. */
+				if (inside && std::any_of(answered.begin(), answered.end(),
+					[](const BOSS_PATTERN_LOGIC_RESULT& result)
+					{ return BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT == result.eKind; }))
+					(void)Hang_PlayerOnRegion(player, *caught, boss,
+						serverTick - ledger.iPatternStartTick, state.iWindowIndex,
+						static_cast<std::uint32_t>(caught - window.CardRegions.begin()),
+						state.iEndTick, serverTick);
 			}
 			if (reachedEnd) Close_Window(boss, window, state, players);
 			break;
@@ -1184,6 +1288,155 @@ namespace
 		const float dz = az - bz;
 		return std::sqrt(dx * dx + dz * dz);
 	}
+}
+
+void LostArk::Server::CKoukuBingoRuntime::Promote_Lines() noexcept
+{
+	using namespace LostArk::Shared;
+	for (std::int32_t line = 0; line < KOUKU_BINGO_LINE_COUNT; ++line)
+	{
+		const std::uint32_t lineMask = Kouku_BingoLineMask(line);
+		if (0u != lineMask && lineMask == (m_iWhiteMask & lineMask))
+			m_iRedMask |= lineMask;
+	}
+}
+
+void LostArk::Server::CKoukuBingoRuntime::Fill(const std::uint32_t cellMask) noexcept
+{
+	using namespace LostArk::Shared;
+	m_iWhiteMask |= cellMask & KOUKU_BINGO_ALL_CELLS_MASK;
+	Promote_Lines();
+}
+
+void LostArk::Server::CKoukuBingoRuntime::Detonate(const std::uint32_t cellMask) noexcept
+{
+	using namespace LostArk::Shared;
+	/* A finished bingo is never disturbed, so red cells drop out first and
+	the rest is decided against the board as it stands right now. */
+	const std::uint32_t affected =
+		(cellMask & KOUKU_BINGO_ALL_CELLS_MASK) & ~m_iRedMask;
+	const std::uint32_t cleared = affected & m_iWhiteMask;
+	const std::uint32_t lit = affected & ~m_iWhiteMask;
+	m_iWhiteMask = (m_iWhiteMask & ~cleared) | lit;
+	Promote_Lines();
+}
+
+bool LostArk::Server::CKoukuBingoRuntime::Start_Bomb(
+	const LostArk::Shared::NET_ENTITY_ID carrier,
+	const std::uint32_t detonateTick) noexcept
+{
+	using namespace LostArk::Shared;
+	if (INVALID_NET_ENTITY_ID == carrier)
+		return false;
+	std::size_t freeSlot = m_Bombs.size();
+	for (std::size_t slot = 0u; slot < m_Bombs.size(); ++slot)
+	{
+		const BOMB& bomb = m_Bombs[slot];
+		if (BINGO_BOMB_PHASE::NONE == bomb.ePhase)
+		{
+			if (freeSlot == m_Bombs.size())
+				freeSlot = slot;
+			continue;
+		}
+		if (BINGO_BOMB_PHASE::MARKED == bomb.ePhase &&
+			bomb.iCarrierNetEntityId == carrier)
+		{
+			return false;
+		}
+	}
+	if (freeSlot == m_Bombs.size())
+		return false;
+	BOMB& started = m_Bombs[freeSlot];
+	started = {};
+	started.ePhase = BINGO_BOMB_PHASE::MARKED;
+	started.iCarrierNetEntityId = carrier;
+	started.iDetonateTick = detonateTick;
+	return true;
+}
+
+void LostArk::Server::CKoukuBingoRuntime::Plant_Bomb(
+	const std::size_t slot, const float x, const float z,
+	const std::uint32_t fuseTick) noexcept
+{
+	using namespace LostArk::Shared;
+	if (slot >= m_Bombs.size() ||
+		BINGO_BOMB_PHASE::MARKED != m_Bombs[slot].ePhase)
+	{
+		return;
+	}
+	BOMB& bomb = m_Bombs[slot];
+	bomb.ePhase = BINGO_BOMB_PHASE::PLANTED;
+	bomb.iCarrierNetEntityId = INVALID_NET_ENTITY_ID;
+	bomb.fPositionX = x;
+	bomb.fPositionZ = z;
+	bomb.iDetonateTick = fuseTick;
+}
+
+void LostArk::Server::CKoukuBingoRuntime::Clear_Bomb(
+	const std::size_t slot) noexcept
+{
+	if (slot < m_Bombs.size())
+		m_Bombs[slot] = {};
+}
+
+bool LostArk::Server::CKoukuBingoRuntime::Start_Hammer(
+	const std::int32_t anchor, const std::uint32_t startTick,
+	const std::uint32_t endTick) noexcept
+{
+	using namespace LostArk::Shared;
+	if (BINGO_HAMMER_PHASE::NONE != m_Hammer.ePhase ||
+		!Is_KoukuBingoHammerAnchor(anchor) || endTick <= startTick)
+	{
+		return false;
+	}
+	m_Hammer.iAnchor = anchor;
+	m_Hammer.ePhase = BINGO_HAMMER_PHASE::RAISED;
+	m_Hammer.iPhaseStartTick = startTick;
+	m_Hammer.iPhaseEndTick = endTick;
+	return true;
+}
+
+bool LostArk::Server::CKoukuBingoRuntime::Advance_Hammer(
+	const std::uint32_t tick) noexcept
+{
+	using namespace LostArk::Shared;
+	if (BINGO_HAMMER_PHASE::NONE == m_Hammer.ePhase)
+		return false;
+	if (tick < m_Hammer.iPhaseEndTick)
+		return true;
+	/* Each phase hands its end tick to the next one, so the three windows
+	stay contiguous however late this tick arrives. */
+	const auto ticksFor = [](const std::uint32_t milliseconds) noexcept
+	{
+		return (milliseconds * 30u + 999u) / 1000u;
+	};
+	m_Hammer.iPhaseStartTick = m_Hammer.iPhaseEndTick;
+	if (BINGO_HAMMER_PHASE::RAISED == m_Hammer.ePhase)
+	{
+		m_Hammer.ePhase = BINGO_HAMMER_PHASE::DESCENDING;
+		m_Hammer.iPhaseEndTick +=
+			ticksFor(KOUKU_BINGO_HAMMER_DESCEND_MS);
+		return true;
+	}
+	if (BINGO_HAMMER_PHASE::DESCENDING == m_Hammer.ePhase)
+	{
+		m_Hammer.ePhase = BINGO_HAMMER_PHASE::SWEEPING;
+		m_Hammer.iPhaseEndTick +=
+			ticksFor(KOUKU_BINGO_HAMMER_SWEEP_MS);
+		return true;
+	}
+	m_Hammer = {};
+	return false;
+}
+
+bool LostArk::Server::CKoukuBingoRuntime::Is_Safe(
+	const float x, const float z) const noexcept
+{
+	using namespace LostArk::Shared;
+	const std::int32_t cell = Kouku_BingoCellAt(x, z);
+	if (!Is_KoukuBingoCell(cell))
+		return false;
+	return 0u != (m_iRedMask & (1u << cell));
 }
 
 const char* LostArk::Server::CKoukuCardMazeRuntime::Archetype_ForSuit(

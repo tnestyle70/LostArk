@@ -3700,7 +3700,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$hasFollowup = -not [string]::IsNullOrEmpty($followup)
 				if ($outcomeKind -cnotin @(
 						'INSTANT_DEATH','MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT',
-						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER') -or
+						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER','GRAB_TO_WORLD_OBJECT') -or
 					$isFollowup -ne $hasFollowup -or
 					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL')) -or
 					($outcomeKind -cin @('MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT') -and
@@ -3725,6 +3725,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
                     if ($outcome.durationMs -eq 0 -or $outcome.percent -ne 0) { throw 'Fear needs a positive duration and no percent' }
                     $motionIds = @($outcome.presentationId)
                 }
+				if ($outcomeKind -ceq 'GRAB_TO_WORLD_OBJECT') {
+					if ($windowKind -cne 'ENTER_AREA' -or $slotName -cne 'SUCCESS' -or
+						$outcome.percent -ne 0 -or $outcome.durationMs -ne 0) {
+						throw 'A world-object grab only answers an ENTER_AREA success and carries no value'
+					}
+				}
 				if ($outcomeKind -ceq 'CAPTURE_PLAYER') {
 					if ($windowKind -cne 'ENTER_AREA' -or $slotName -cne 'SUCCESS' -or $outcomes.Count -ne 1 -or
 						$null -eq $window.PSObject.Properties['holdLogicOccurrenceId'] -or
@@ -6139,6 +6145,11 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
+# Matches CGameplayCatalog admission; reject before any bootstrap is staged.
+$maximumGameplayBootstrapRows = 8192
+if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
+    throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
+}
 $gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 33 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows

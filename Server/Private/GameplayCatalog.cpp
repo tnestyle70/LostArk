@@ -22,6 +22,8 @@ namespace
 	/* Mirror of the publisher's $maximumDamageRatePercent: a rate only one side
 	accepts would make Validate and Load disagree about the same document. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
+	// Matches the publisher bound for the complete gameplay document.
+	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 8192u;
 	/* The wire names one plate per bit, so a boss cannot wear more than the
 	snapshot can carry. The publisher rejects a larger authored count. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
@@ -589,6 +591,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
 		else if ("COMPLETE_LOGIC_WINDOW" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
+		else if ("GRAB_TO_WORLD_OBJECT" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT;
 		else
 			return false;
 		return true;
@@ -1559,7 +1563,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
 		!ParseNumber(header[1], version) ||
 		GAMEPLAY_BOOTSTRAP_VERSION != version ||
-		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
+		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
 		return false;
@@ -2791,6 +2795,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			if (window->eKind == BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP &&
 				(!worldMotion || result.strTargetWorldInstanceId != window->strTargetWorldInstanceId))
 			{ m_strStatus = "OBJECT_OVERLAP Result must apply a motion to the same target World Object"; return false; }
+			if ((BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT == result.eKind) &&
+				(window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || fields[4] != "SUCCESS" ||
+					result.iPercent || result.iDurationMs))
+			{ m_strStatus = "A world-object grab only answers an ENTER_AREA success and carries no value"; return false; }
 			const bool contactResult = result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION ||
 				result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::COMPLETE_LOGIC_WINDOW;
 			if ((contactResult && (window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT || fields[4] != "SUCCESS" ||

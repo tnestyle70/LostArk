@@ -1470,6 +1470,51 @@ bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
  return Build_Packet_Frame(PACKET_TYPE::C2S_INTERACTION_SLOT, writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_DebugBingoFill(std::uint32_t sequence,
+ std::uint32_t cellMask, bool reset)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_FILL message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.iCellMask = cellMask;
+ message.bReset = reset;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_FILL, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugBingoBomb(std::uint32_t sequence)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_BOMB message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_BOMB, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Send_DebugBingoHammer(std::uint32_t sequence)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+  return false;
+ C2S_DEBUG_BINGO_HAMMER message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_DebugKoukuHudMode(std::uint32_t sequence,
  LostArk::Shared::KOUKU_HUD_MODE mode)
 {

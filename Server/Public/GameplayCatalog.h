@@ -614,7 +614,11 @@ namespace LostArk::Server
 		PLAY_WORLD_OBJECT_MOTION,
 		PLAY_CONTACT_WORLD_OBJECT_MOTION,
 		COMPLETE_LOGIC_WINDOW,
-        CAPTURE_PLAYER
+		CAPTURE_PLAYER,
+		/* Hangs the player on the region that judged them and drags them with
+		it. Only an ENTER_AREA window whose regions ride a World Object world
+		track can offer this, because only that region keeps moving. */
+		GRAB_TO_WORLD_OBJECT
 	};
 
 	struct BOSS_LOGIC_CONTACT_MOTION final

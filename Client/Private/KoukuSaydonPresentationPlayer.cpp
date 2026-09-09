@@ -12,6 +12,7 @@
 #include "EffectV2_Object.h"
 #include "EffectV2_Runtime.h"
 #include "GameInstance.h"
+#include "CombatHUDViewModel.h"
 #include "Level_KakulSaydonArena.h"
 #include "LightResourceCatalog.h"
 #include "Presentation_Manager.h"
@@ -2260,6 +2261,137 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             i = marks.erase(i);
         }
     };
+    /* The bingo board. Both masks are room state the Server owns, so this
+       only chooses which of the two authored decals sits on each painted
+       cell and drops the ones the Server has cleared. */
+    {
+        const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
+        std::set<std::int32_t> liveBingo;
+        for (std::int32_t cell = 0; cell < LostArk::Shared::KOUKU_BINGO_CELL_COUNT; ++cell)
+        {
+            const std::uint32_t bit = 1u << cell;
+            if (0u == (board.iWhiteMask & bit)) continue;
+            liveBingo.insert(cell);
+            float4x4_t pivot;
+            XMStoreFloat4x4(&pivot, XMMatrixTranslation(
+                LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
+                LostArk::Shared::Kouku_BingoCellCenterZ(cell)));
+            Sync_MazeMark(m_BingoMarks[cell],
+                (0u != (board.iRedMask & bit)) ? "bingo.skull.red" : "bingo.skull.white",
+                pivot);
+        }
+        for (auto i = m_BingoMarks.begin(); i != m_BingoMarks.end();)
+        {
+            if (liveBingo.contains(i->first)) { ++i; continue; }
+            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
+            i = m_BingoMarks.erase(i);
+        }
+    }
+    /* Bingo bombs. The Server owns both phases and their clock: a mark
+       rides its carrier, and a planted bomb stays where that carrier was
+       standing when the mark expired. Height and size live in the two
+       authored documents, so the pivot here is only the ground point. */
+    {
+        const auto& bombBoard = CCombatHUDViewModel::Get().Get_BingoBoard();
+        std::set<std::int32_t> liveBombs;
+        for (std::uint8_t index = 0u; index < bombBoard.iBombCount; ++index)
+        {
+            const auto& bomb = bombBoard.Bombs[index];
+            const char* bombAsset = nullptr;
+            float4x4_t bombPivot;
+            if (LostArk::Shared::BINGO_BOMB_PHASE::MARKED == bomb.ePhase)
+            {
+                std::shared_ptr<CCharacter> carrier;
+                for (const auto& view : players)
+                    if (view.Snapshot.iNetEntityId == bomb.iCarrierNetEntityId)
+                    { carrier = view.pCharacter.lock(); break; }
+                if (!carrier || !carrier->Get_Transform()) continue;
+                const float4x4_t& carrierWorld =
+                    *carrier->Get_Transform()->Get_WorldMatrixPtr();
+                XMStoreFloat4x4(&bombPivot, XMMatrixTranslation(
+                    carrierWorld._41, carrierWorld._42, carrierWorld._43));
+                bombAsset = "bingo.bomb.mark";
+            }
+            else if (LostArk::Shared::BINGO_BOMB_PHASE::PLANTED == bomb.ePhase)
+            {
+                XMStoreFloat4x4(&bombPivot, XMMatrixTranslation(
+                    bomb.fPositionX, 0.f, bomb.fPositionZ));
+                bombAsset = "bingo.bomb";
+            }
+            else continue;
+            const std::int32_t slot = static_cast<std::int32_t>(index);
+            liveBombs.insert(slot);
+            Sync_MazeMark(m_BingoBombs[slot], bombAsset, bombPivot);
+        }
+        for (auto i = m_BingoBombs.begin(); i != m_BingoBombs.end();)
+        {
+            if (liveBombs.contains(i->first)) { ++i; continue; }
+            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
+            i = m_BingoBombs.erase(i);
+        }
+    }
+    /* The bingo hammer. The Server owns the anchor and the phase window;
+       this only interpolates that window against the replicated tick, so
+       the sweep stays smooth between snapshots without the Client ever
+       deciding where the hammer is. */
+    {
+        using namespace LostArk::Shared;
+        const auto& hammer = CCombatHUDViewModel::Get().Get_BingoBoard().Hammer;
+        const CLevel_KakulSaydonArena* hammerArena = CLevel_KakulSaydonArena::Get_Active();
+        if (BINGO_HAMMER_PHASE::NONE == hammer.ePhase ||
+            !Is_KoukuBingoHammerAnchor(hammer.iAnchor) ||
+            hammer.iPhaseEndTick <= hammer.iPhaseStartTick ||
+            nullptr == hammerArena)
+        {
+            if (m_BingoHammer.handle) CEffectV2Runtime::Stop_Group(m_BingoHammer.handle);
+            m_BingoHammer = {};
+        }
+        else
+        {
+            const BINGO_HAMMER_PATH path = Kouku_BingoHammerPath(hammer.iAnchor);
+            const std::uint32_t tick = hammerArena->Get_PresentationServerTick();
+            const float window = float(hammer.iPhaseEndTick - hammer.iPhaseStartTick);
+            const float elapsed = tick > hammer.iPhaseStartTick ?
+                float(tick - hammer.iPhaseStartTick) : 0.f;
+            const float ratio = (std::min)(1.f, elapsed / window);
+            /* The model is authored hanging: head at the origin, chain up
+               its own +Y. So the pivot is simply where the head goes. */
+            float x = path.fStartX, z = path.fStartZ, y = KOUKU_BINGO_HAMMER_SKY_Y;
+            if (BINGO_HAMMER_PHASE::DESCENDING == hammer.ePhase)
+            {
+                /* Smoothstep so the drop eases in and settles instead of
+                   dropping at a constant rate. */
+                const float fall = ratio * ratio * (3.f - 2.f * ratio);
+                y = KOUKU_BINGO_HAMMER_SKY_Y * (1.f - fall);
+            }
+            float lean = 0.f;
+            if (BINGO_HAMMER_PHASE::SWEEPING == hammer.ePhase)
+            {
+                y = 0.f;
+                x = path.fStartX + (path.fEndX - path.fStartX) * ratio;
+                z = path.fStartZ + (path.fEndZ - path.fStartZ) * ratio;
+                /* The head stays down; only the lean changes, so the
+                   hammer is flung rather than swung up. */
+                const float t = (std::min)(1.f,
+                    ratio / (std::max)(KOUKU_BINGO_HAMMER_LEAN_RATIO, 0.01f));
+                lean = XMConvertToRadians(KOUKU_BINGO_HAMMER_LEAN_DEGREES) *
+                    t * t * (3.f - 2.f * t);
+            }
+            /* The drum is a cylinder about the model's own X, so its two
+               flat faces are what it strikes with. Yaw puts that X down the
+               line so a face leads instead of the barrel's side, and the
+               lean then tips the chain toward travel by rotating about the
+               model's Z, which is the axis left across the line. */
+            const float dx = path.fEndX - path.fStartX;
+            const float dz = path.fEndZ - path.fStartZ;
+            float4x4_t hammerPivot;
+            XMStoreFloat4x4(&hammerPivot,
+                XMMatrixRotationZ(-lean) *
+                XMMatrixRotationY(std::atan2(-dz, dx)) *
+                XMMatrixTranslation(x, y, z));
+            Sync_MazeMark(m_BingoHammer, "bingo.hammer", hammerPivot);
+        }
+    }
     removeStale(m_MazePlayerMarks, livePlayers);
     removeStale(m_MazeTargetMarks, liveTargets);
     removeStale(m_MazeExits, liveExits);
@@ -2280,6 +2412,14 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
     m_Cards.clear();
+    for (const auto& [cell, mark] : m_BingoMarks)
+        if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
+    m_BingoMarks.clear();
+    for (const auto& [slot, bomb] : m_BingoBombs)
+        if (bomb.handle) CEffectV2Runtime::Stop_Group(bomb.handle);
+    m_BingoBombs.clear();
+    if (m_BingoHammer.handle) CEffectV2Runtime::Stop_Group(m_BingoHammer.handle);
+    m_BingoHammer = {};
     for (const auto& [id, exit] : m_MazeExits)
         if (exit.handle) CEffectV2Runtime::Stop_Group(exit.handle);
     m_MazeExits.clear();

@@ -72,4 +72,3 @@ header_path.write_text(final,encoding='utf8')
 (O/'native_material_patch.json').write_text(json.dumps(dict(programs=materials),indent=2),encoding='utf8')
 (O/'native_header_contract.json').write_text(json.dumps(rows,indent=2))
 print('header/models',len(rows),'extendExisting',arguments.extend_existing)
-

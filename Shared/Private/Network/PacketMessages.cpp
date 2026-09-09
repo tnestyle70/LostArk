@@ -158,6 +158,8 @@ namespace
 			LostArk::Shared::Is_Valid_KoukuHudMode(snapshot.eKoukuHudMode) &&
 			Is_Valid_KoukuHudSlots(snapshot) &&
 			snapshot.iMarioStage <= 4u &&
+			snapshot.iMarioLayoutVariant <= 3u &&
+			(snapshot.iMarioStage != 0u || snapshot.iMarioLayoutVariant == 0u) &&
 			snapshot.CardMaze.flags <= 15u &&
 			std::isfinite(snapshot.CardMaze.exitX) && std::isfinite(snapshot.CardMaze.exitY) &&
 			std::isfinite(snapshot.CardMaze.exitZ) &&
@@ -200,7 +202,7 @@ namespace
 				(snapshot.iAttachmentOwnerNetEntityId !=
 					LostArk::Shared::INVALID_NET_ENTITY_ID &&
 				 snapshot.iAttachmentOwnerNetEntityId != snapshot.iNetEntityId &&
-				 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ==
+				 LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE !=
 					snapshot.eAttachmentSlot &&
 				 std::abs(snapshot.fAttachmentLocalOffsetX) <= 1000.f &&
 				 std::abs(snapshot.fAttachmentLocalOffsetY) <= 1000.f &&
@@ -2324,6 +2326,104 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_BINGO_FILL& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		0u != (message.iCellMask & ~KOUKU_BINGO_ALL_CELLS_MASK))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U32(message.iCellMask);
+	writer.Write_U8(message.bReset ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_BINGO_FILL& message)
+{
+	C2S_DEBUG_BINGO_FILL decoded{};
+	std::uint16_t rawWorldId = 0u;
+	std::uint8_t rawReset = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+		!reader.Read_U32(decoded.iCellMask) ||
+		0u != (decoded.iCellMask & ~KOUKU_BINGO_ALL_CELLS_MASK) ||
+		!reader.Read_U8(rawReset) || rawReset > 1u)
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.bReset = 0u != rawReset;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_BINGO_BOMB& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_BINGO_BOMB& message)
+{
+	C2S_DEBUG_BINGO_BOMB decoded{};
+	std::uint16_t rawWorldId = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)))
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_BINGO_HAMMER& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_BINGO_HAMMER& message)
+{
+	C2S_DEBUG_BINGO_HAMMER decoded{};
+	std::uint16_t rawWorldId = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)))
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -2614,6 +2714,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		message.DamageEvents.size() > MAX_DAMAGE_EVENTS ||
 		message.BossCombatEvents.size() > MAX_BOSS_COMBAT_EVENTS ||
 		message.CombatObjects.size() > MAX_COMBAT_OBJECTS_PER_SNAPSHOT ||
+		!Is_Valid_BingoBoardSnapshot(message.Bingo) ||
 		!Are_Valid_RequiredPinnedRevisions(
 			message.ActiveGameplayRevision,
 			message.RequiredPinnedGameplayRevisions) ||
@@ -2711,6 +2812,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 				static_cast<int>(player.ModeSkillIndexBySlot[slot]) + 1));
 		}
 		writer.Write_U8(player.iMarioStage);
+		writer.Write_U8(player.iMarioLayoutVariant);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeRole));
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeSuit));
 		writer.Write_U8(player.iCardMazeKills);
@@ -2804,6 +2906,21 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U8(damage.isOutgoing ? 1u : 0u);
 		writer.Write_U8(static_cast<std::uint8_t>(damage.eCardMazeSuit));
 	}
+	writer.Write_U32(message.Bingo.iWhiteMask);
+	writer.Write_U32(message.Bingo.iRedMask);
+	writer.Write_U8(message.Bingo.iBombCount);
+	for (std::uint8_t bombIndex = 0u; bombIndex < message.Bingo.iBombCount; ++bombIndex)
+	{
+		const BINGO_BOMB_SNAPSHOT& bomb = message.Bingo.Bombs[bombIndex];
+		writer.Write_U32(bomb.iCarrierNetEntityId);
+		writer.Write_F32(bomb.fPositionX);
+		writer.Write_F32(bomb.fPositionZ);
+		writer.Write_U8(static_cast<std::uint8_t>(bomb.ePhase));
+	}
+	writer.Write_U32(static_cast<std::uint32_t>(message.Bingo.Hammer.iAnchor));
+	writer.Write_U32(message.Bingo.Hammer.iPhaseStartTick);
+	writer.Write_U32(message.Bingo.Hammer.iPhaseEndTick);
+	writer.Write_U8(static_cast<std::uint8_t>(message.Bingo.Hammer.ePhase));
 	for (const BOSS_COMBAT_EVENT& event : message.BossCombatEvents)
 	{
 		Write_U64(writer, event.iEventSequence);
@@ -2942,6 +3059,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			rawHudMode >= static_cast<std::uint8_t>(KOUKU_HUD_MODE::END) ||
 			!Read_KoukuHudSlots(reader, player) ||
 			!reader.Read_U8(player.iMarioStage) || player.iMarioStage > 4u ||
+			!reader.Read_U8(player.iMarioLayoutVariant) || player.iMarioLayoutVariant > 3u ||
+			(player.iMarioStage == 0u && player.iMarioLayoutVariant != 0u) ||
 			!reader.Read_U8(rawCardMazeRole) ||
 			rawCardMazeRole >= static_cast<std::uint8_t>(CARD_MAZE_ROLE::END) ||
 			!reader.Read_U8(rawCardMazeSuit) ||
@@ -3112,6 +3231,41 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			return false;
 		decoded.DamageEvents.push_back(damage);
 	}
+	std::uint8_t bingoBombCount = 0u;
+	if (!reader.Read_U32(decoded.Bingo.iWhiteMask) ||
+		!reader.Read_U32(decoded.Bingo.iRedMask) ||
+		!reader.Read_U8(bingoBombCount) ||
+		static_cast<std::int32_t>(bingoBombCount) > KOUKU_BINGO_MAX_BOMBS)
+	{
+		return false;
+	}
+	decoded.Bingo.iBombCount = bingoBombCount;
+	for (std::uint8_t bombIndex = 0u; bombIndex < bingoBombCount; ++bombIndex)
+	{
+		BINGO_BOMB_SNAPSHOT& bomb = decoded.Bingo.Bombs[bombIndex];
+		std::uint8_t rawBombPhase = 0u;
+		if (!reader.Read_U32(bomb.iCarrierNetEntityId) ||
+			!reader.Read_F32(bomb.fPositionX) ||
+			!reader.Read_F32(bomb.fPositionZ) ||
+			!reader.Read_U8(rawBombPhase))
+		{
+			return false;
+		}
+		bomb.ePhase = static_cast<BINGO_BOMB_PHASE>(rawBombPhase);
+	}
+	std::uint8_t rawHammerPhase = 0u;
+	std::uint32_t rawHammerAnchor = 0u;
+	if (!reader.Read_U32(rawHammerAnchor) ||
+		!reader.Read_U32(decoded.Bingo.Hammer.iPhaseStartTick) ||
+		!reader.Read_U32(decoded.Bingo.Hammer.iPhaseEndTick) ||
+		!reader.Read_U8(rawHammerPhase))
+	{
+		return false;
+	}
+	decoded.Bingo.Hammer.iAnchor = static_cast<std::int32_t>(rawHammerAnchor);
+	decoded.Bingo.Hammer.ePhase = static_cast<BINGO_HAMMER_PHASE>(rawHammerPhase);
+	if (!Is_Valid_BingoBoardSnapshot(decoded.Bingo))
+		return false;
 	for (std::uint8_t index = 0; index < bossCombatEventCount; ++index)
 	{
 		BOSS_COMBAT_EVENT event{};

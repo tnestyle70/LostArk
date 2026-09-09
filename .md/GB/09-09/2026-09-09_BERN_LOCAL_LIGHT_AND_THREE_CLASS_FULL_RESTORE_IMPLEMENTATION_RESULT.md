@@ -407,3 +407,74 @@ section을 유지했다. 정본 입력은 `Character/Warlord/Warlord.wmodel`과
 미확정과는 다른 범위다. weapon emissive의 미확정 instance phase를 추정하지 않고 원본에
 노출된 fixed-speed 옵션을1로 설정했다. 이 값은 프로젝트 튜닝이며 원작 기본0의 복제가
 아니다. original engine prefix/ambient 전부의 동일성이나 최종 색·광택은 승인하지 않았다.
+
+## G18. 꽃밭 provider와 창술사 검격·T 연결 확인
+
+도화가 Field01은 기존 170행의 저작 값을 보존하고 simulationOnly 위치 provider 2행과
+꽃 30행을 연결해 202행이다. 실제 제품 codec/playback에서 Save/Reload, 30개 Solo,
+5개 Seek 및 13개 잘못된 참조의 거절을 확인했다. Seek 최대 위치 차이와 숨은 provider의
+draw 제출은 모두 0이다. 속도·회전 상속과 provider chain은 지원으로 기록하지 않는다.
+증거는 `out/ArtistWarlordVisualFollowup20260910/Field01/provider-final-result.log`다.
+
+창술사 BA/Q/W/E/R/S는 사용자가 지정한 A 첫 검격의 4개 mesh 구성을 재사용했다.
+S의 네 타격과 V 마지막 돌진에 기존 v1/애니메이션 시각을 맞췄다. 변경 대상 16문서의
+232개 element와 23개 presentation을 실제 codec으로 읽고 저장하는 검사는 통과했다.
+기존 유지 행 141개는 모든 field가 동일하다. 기존 Server root motion은 계속 이동 권위를 가진다.
+
+짧은창 T 34650 clip2는 원본 PlaySkeletalMesh notify의 용 모델을 기존 CModel 경로에
+연결했다. 기존 74개 element를 보존하고 bone child 6개 및 model cue 2개를 추가했다.
+0.5초 시작, 1.2초 노출과 `sk_dragoncleave_03` clip을 사용한다. 실제 제품 codec의
+80개 element 왕복과 CModel 2개·clip 2개·finite palette 18개 검사가 통과했다.
+모델 내부 상대 경로가 요구하는 `Models/SK_FLM_GDR_01/textures/fx_c_noise_009.dds`를
+추가해 실제 CModel 로드 누락을 수정했다. 증거는
+`out/ArtistWarlordVisualFollowup20260910/LanceT/t_models_codec_probe-final.log`다.
+이 항목 역시 사용자의 실제 화면 확인은 별도다.
+
+## G19. main 통합과 최소 리소스 전달 — 2026-09-10
+
+사용자 요청에 따라 추가 복원 작업을 중단하고 전체 변경을 PR #348
+`effect restore, kouku pattern 2` 기준으로 통합했다. 사용자 commit `c67a47b2`를 보존하고,
+PR #346을 먼저 병합한 main `a83f2a31`을 작업 브랜치에 병합했다.
+충돌은 stable ID 기준으로 양쪽 변경을 보존했다. World Sequences는 revision 423,
+resource 19개·template 149개·instance 185개이며 Composition은 revision 230,
+저장 pattern 26개다. main의 갈고리 pattern 18/19와 충돌한 기존 공포/Mario pattern은
+25/26으로 참조와 함께 옮겼다. Shared protocol은 FEAR와 Bingo/Mario/hook을 함께 담는
+78이며 73/77 EXE와 혼용하지 않는다.
+
+Map WorldSequences publish와 KoukuSaydon domain publish는 통과했다. 갈고리 outcome을
+거절하던 Gameplay publisher를 기존 Server 계약에 맞췄다. 통합 데이터의 bootstrap이
+4,122행이 되어 기존 4,096행 상한을 넘는 실제 로드 오류도 확인했다. 문서 전체 행 상한을
+Server와 publisher 모두 8,192로 맞추고 개별 curve의 4,096 제한은 보존했다.
+publisher 경계 검사는 0/8,193행 거절과 4,122/8,192행 허용을 확인했다.
+Bingo 테스트의 폭탄 carrier가 snapshot Players에 없던 fixture도 해당 player로 보완했다.
+
+Engine, Server, Client의 최종 Debug x64 Build가 모두 오류 0으로 끝났다.
+Client는 3분 08.05초이며 기존 shader 및 DirectXTK PDB 경고를 포함해 경고 7,610개다.
+Client/Bin/Debug에 Client.exe와 Engine.dll을 배포했고 G29 개별 Element Sequencer도 포함한다.
+NetworkProtocolHarness 전체 실행은 failures 0이다. 변경 JSON 127개와 XML 2개 parse,
+충돌 표식 및 미해결 index 검사를 통과했다. ActorX의 현재 코드·테스트 해시는 기존 11개
+테스트 통과 당시와 동일하다. PR 변경 범위의 `git diff --check origin/main`도 통과했다.
+검증 로그는 `out/FullRestoreMergeReview20260910/`에 있다.
+
+최소 리소스는 최초 조사 시 2026-09-09 13:00 KST 이후 생성·수정 후보 576개,
+Downloads/다운리소스에만 있던 추가 필요 경로 57개, T 모델 2개와 필수 DDS 1개를 합친
+636개·390,187,854 bytes다. 다운로드의 동일 파일 3,954개는 제외했다.
+서로 다른 두 파일은 현재 runtime 정본을 보존했고, 시간 범위 밖 기존 파일은 다시 넣지 않았다.
+파일 시각은 복사 과정에서 달라질 수 있으므로 과거 변경 이력의 확정 증거로 주장하지 않는다.
+
+전달 폴더는 `out/ResourceDelivery20260910/staged-minimal/GB_Resources/`이고
+단일 ZIP은 `out/ResourceDelivery20260910/GB_Resources.zip`이다. ZIP은 142,356,663 bytes,
+README 포함 637개 entry로 내부 ZIP은 없다. 전체 CRC·경로·크기와 현재 runtime 대비
+내용 비교를 통과했다. Character/Effect/Map 폴더를 기존 Client/Bin/Resources에 병합한다.
+Resources와 EXE·중간 산출물은 Git에 추가하지 않는다.
+
+최종 Server 계약 검사는 Bundle 38개, Bingo 45개, ObjectOverlap 55개,
+WorldPlayback 12개로 합계 150개 통과·실패 0이다. 마지막 Bundle 검사에서 관문 전체 재생이
+보스 archetype만 확인해 GATE1 목록에 GATE3 갈고리 두 패턴을 넣고 후단 검증에서 전체를
+거절하는 실제 통합 오류를 확인했다. 기존 selector에 호출자가 가진 gate/target placement
+범위를 전달해 최초 선택에서 필터하고 순서·transition·후단 guard는 보존했다.
+이 수정 뒤 Server를 다시 빌드하고 실패했던 Bundle 38개만 재실행해 통과했다.
+최종 로그는 `server-contracts/kouku-bundle-final-scope.log`다.
+
+Client를 자율 실행하거나 화면을 캡처하지 않았으며 사용자 visual PASS로 기록하지 않는다.
+이 검증 상태의 전체 변경을 기존 PR #348로 push하고 merge한다.

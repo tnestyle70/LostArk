@@ -61,8 +61,17 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
-	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 73;
+	51 adds Server-owned Pattern bind and silence deadlines to player snapshots.
+	74 adds the bingo bomb phases to the board snapshot.
+	75 adds the bingo hammer anchor and phase clock.
+	76 adds the Server-selected Mario source layout to player snapshots.
+	77 adds the world-object attachment slot: a grabbed player may hang from a
+	World Object instead of a boss hand, so the snapshot admits any known slot.
+	A v76 peer rejects the new slot value and drops the snapshot.
+	78 combines the v77 snapshot with Server-owned fear state, deadline and
+	presentation identity. The independent v73 fear branch and v77 main are
+	both incompatible with this combined layout. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 78;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -312,7 +321,16 @@ namespace LostArk::Shared
 		C2S_MARIO_MOVE,
 		C2S_DEBUG_WORLD_PLAYBACK,
 		S2C_DEBUG_WORLD_PLAYBACK_RESULT,
-		S2C_KOUKUSAYDON_BUNDLE_STATE
+		S2C_KOUKUSAYDON_BUNDLE_STATE,
+
+		// Bingo board: Debug-only cell fill. The board itself rides the world
+		// snapshot, so the fill has no separate result message.
+		C2S_DEBUG_BINGO_FILL,
+		// Bingo bomb: Debug-only mark on the requesting session's own player.
+		// The bomb rides the same snapshot, so there is no result message.
+		C2S_DEBUG_BINGO_BOMB,
+		// Bingo hammer: Debug-only start on a random row or column.
+		C2S_DEBUG_BINGO_HAMMER
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -402,6 +420,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_INTERACT_TRIGGER:
 		case PACKET_TYPE::C2S_DEBUG_WORLD_PLAYBACK:
 		case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
+		case PACKET_TYPE::C2S_DEBUG_BINGO_FILL:
+		case PACKET_TYPE::C2S_DEBUG_BINGO_BOMB:
+		case PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER:
 		case PACKET_TYPE::C2S_INTERACTION_SLOT:
 		case PACKET_TYPE::C2S_DEBUG_SET_KOUKU_HUD_MODE:
 		case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:

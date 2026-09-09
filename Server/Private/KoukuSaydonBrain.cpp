@@ -413,7 +413,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Select_AnimationOnlySequence(
 	const std::string_view bossArchetypeId,
 	std::vector<std::string>& outPatternIds,
 	std::vector<std::uint32_t>& outTransitionTicks,
-	std::string& status)
+	std::string& status,
+	const std::string_view gateId,
+	const std::string_view targetBossPlacementId)
 {
 	if (sequence.PatternIds.empty() ||
 		sequence.PatternIds.size() != sequence.iExpectedStepCount ||
@@ -443,7 +445,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Select_AnimationOnlySequence(
 			pattern->AuditionBossArchetypeIds.end() != std::find(
 				pattern->AuditionBossArchetypeIds.begin(),
 				pattern->AuditionBossArchetypeIds.end(), bossArchetypeId);
-		if (!admitted)
+		if (!admitted ||
+			(!gateId.empty() && !pattern->strGateId.empty() && pattern->strGateId != gateId) ||
+			(!targetBossPlacementId.empty() && !pattern->strTargetBossPlacementId.empty() &&
+				pattern->strTargetBossPlacementId != targetBossPlacementId))
 			continue;
 		if (!selectedPatterns.empty())
 			selectedTransitions.push_back(

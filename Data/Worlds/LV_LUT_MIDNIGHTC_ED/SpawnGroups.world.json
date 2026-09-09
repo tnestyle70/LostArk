@@ -2,7 +2,7 @@
   "schema": "lostark.world-spawn-groups",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 194,
+  "revision": 195,
   "anchors": [
     {
       "anchorId": "anchor.valtan.editor",
@@ -21,6 +21,366 @@
         1351.65
       ],
       "yawDegrees": 0
+    },
+    {
+      "anchorId": "anchor.mario1.source.634",
+      "position": [
+        -1165.809140625,
+        -11.51,
+        -926.0428125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario1.source.635",
+      "position": [
+        -1197.8326562500001,
+        -11.51,
+        -953.0159375000001
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario1.source.636",
+      "position": [
+        -1204.4496093750001,
+        -11.51,
+        -963.0384375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.362",
+      "position": [
+        -1443.15546875,
+        -9.01,
+        -1188.130625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.363",
+      "position": [
+        -1444.00828125,
+        -9.01,
+        -1189.296640625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.368",
+      "position": [
+        -1438.95390625,
+        -3.89,
+        -1213.991328125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.369",
+      "position": [
+        -1440.7467187500001,
+        -3.89,
+        -1215.76125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.370",
+      "position": [
+        -1439.85734375,
+        -3.89,
+        -1214.8792968750001
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario2.source.629",
+      "position": [
+        -1441.8134375,
+        -6.45,
+        -1195.92984375
+      ],
+      "yawDegrees": 168.75
+    },
+    {
+      "anchorId": "anchor.mario2.source.641",
+      "position": [
+        -1426.1765625,
+        -3.89,
+        -1201.003359375
+      ],
+      "yawDegrees": 129.9957275390625
+    },
+    {
+      "anchorId": "anchor.mario3.source.411",
+      "position": [
+        -1891.73234375,
+        -8.97,
+        -1660.6940625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.412",
+      "position": [
+        -1892.77109375,
+        -8.97,
+        -1662.2267187500001
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.413",
+      "position": [
+        -1892.69359375,
+        -6.41,
+        -1664.91625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.414",
+      "position": [
+        -1891.87640625,
+        -6.41,
+        -1663.93953125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.416",
+      "position": [
+        -1919.48,
+        -6.41,
+        -1688.39921875
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.417",
+      "position": [
+        -1918.30515625,
+        -6.41,
+        -1687.5353125000001
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.548",
+      "position": [
+        -1929.82015625,
+        -8.97,
+        -1688.24734375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.549",
+      "position": [
+        -1928.540625,
+        -8.97,
+        -1687.76859375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.646",
+      "position": [
+        -1896.7928125,
+        -11.53,
+        -1662.4575
+      ],
+      "yawDegrees": 112.5
+    },
+    {
+      "anchorId": "anchor.mario3.source.655",
+      "position": [
+        -1909.16625,
+        -8.97,
+        -1679.659375
+      ],
+      "yawDegrees": 157.5
+    },
+    {
+      "anchorId": "anchor.mario3.source.408",
+      "position": [
+        -1890.756875,
+        -8.97,
+        -1659.21359375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.418",
+      "position": [
+        -1916.7884375,
+        -6.41,
+        -1686.59796875
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.550",
+      "position": [
+        -1927.26640625,
+        -8.97,
+        -1687.21265625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario3.source.409",
+      "position": [
+        -1893.71171875,
+        -6.41,
+        -1666.1746875000001
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.599",
+      "position": [
+        -1632.7150000000001,
+        -17.92,
+        -1420.051875
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.600",
+      "position": [
+        -1634.3739062500001,
+        -17.92,
+        -1419.739375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.602",
+      "position": [
+        -1621.94921875,
+        -12.8,
+        -1441.66609375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.603",
+      "position": [
+        -1623.5101562500001,
+        -15.36,
+        -1421.39390625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.604",
+      "position": [
+        -1620.5415625,
+        -12.8,
+        -1444.16625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.605",
+      "position": [
+        -1624.9754687500001,
+        -15.36,
+        -1422.3440625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.606",
+      "position": [
+        -1645.95890625,
+        -17.92,
+        -1448.68453125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.607",
+      "position": [
+        -1645.0065625,
+        -17.92,
+        -1450.77140625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.609",
+      "position": [
+        -1627.96640625,
+        -15.35,
+        -1444.7390625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.610",
+      "position": [
+        -1629.2128125,
+        -15.35,
+        -1445.12203125
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.667",
+      "position": [
+        -1640.32078125,
+        -20.48,
+        -1409.2278125
+      ],
+      "yawDegrees": 135.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.668",
+      "position": [
+        -1614.734375,
+        -15.36,
+        -1415.54390625
+      ],
+      "yawDegrees": 146.25
+    },
+    {
+      "anchorId": "anchor.mario4.source.689",
+      "position": [
+        -1648.83453125,
+        -17.92,
+        -1441.4646875
+      ],
+      "yawDegrees": 67.5
+    },
+    {
+      "anchorId": "anchor.mario4.source.608",
+      "position": [
+        -1644.19453125,
+        -17.92,
+        -1452.68265625
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.598",
+      "position": [
+        -1631.224375,
+        -17.92,
+        -1420.249375
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.mario4.source.669",
+      "position": [
+        -1626.21515625,
+        -15.36,
+        -1423.203125
+      ],
+      "yawDegrees": 0.0
     }
   ],
   "spawnGroups": [
@@ -65,6 +425,358 @@
               "anchorId": "anchor.kouku.cardmaze.profiles",
               "initialDelayMs": 0,
               "spawnIntervalMs": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.mario1.source",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 3,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.source",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario1.source.634",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario1.source.635",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario1.source.636",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.mario2.source",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 7,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.source",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.362",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.363",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.368",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.369",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_DIAMOND",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.370",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.629",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario2.source.641",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.mario3.source",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 14,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.source",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.411",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.412",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.413",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.414",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.416",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.417",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.548",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.549",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.646",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.655",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.408",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.418",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_REUP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.550",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_RHKP",
+              "count": 1,
+              "anchorId": "anchor.mario3.source.409",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.mario4.source",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 16,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.source",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_MARIO_DIAMOND",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.599",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.600",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_DIAMOND",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.602",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.603",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.604",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.605",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_DIAMOND",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.606",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.607",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.609",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CLUB",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.610",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.667",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.668",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_CDMD",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.689",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.608",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.598",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_MARIO_HEART",
+              "count": 1,
+              "anchorId": "anchor.mario4.source.669",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
             }
           ]
         }

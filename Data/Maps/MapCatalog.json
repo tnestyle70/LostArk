@@ -120,7 +120,7 @@
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
       "gameplayDocument": "Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json",
       "placementCount": 2971,
-      "assetCount": 318,
+      "assetCount": 330,
       "runtimeAssetRoot": "Map/LV_LUT_MIDNIGHTC_ED"
     }
   ],
