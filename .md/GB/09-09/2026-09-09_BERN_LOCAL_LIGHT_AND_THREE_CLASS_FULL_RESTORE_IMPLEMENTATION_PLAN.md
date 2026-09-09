@@ -120,3 +120,27 @@ Engine source program 상한과 Client parameter compiler·HLSLI의새switch를 
 재사용2D반사와scene-ownedcube를구분한다. 검증은 실제catalog stage/적용/CModel재질
 로드·필수shadercompile·검증용수치입력에대한finite출력과직접광응답, 최소Client/Engine
 compile, JSON/XML parse/diff check다. 실행중Client/Server는사용자종료전건드리지않는다.
+
+## G20. 쿠크 F1 시야 설정의 실패 재로드와 갈고리 admission 교정
+
+사용자가 1관문 idle 3.5FPS와 CPU 288.948ms 화면을 제공했고 F1과의 연관을 확인했다.
+현재 MainApp의 시야 설정은 `gazeLoaded`에 성공 여부와 최초 시도 여부를 함께 저장한다.
+새 GRAB_TO_WORLD_OBJECT가 Client outcome 목록에 없어 Reload가 실패하면 매 프레임
+446,862-byte Composition 전체를 다시 읽는다. 수정 전 실제 C++ Reload 12회가 모두
+logic.28의 Unknown outcome으로 실패했고 평균 254.665ms였다.
+
+`Client/Private/MainApp.cpp`의 기존 시야 설정 블록에 `gazeLoadAttempted`를 둔다.
+최초 시도 전에 true로 기록하고 이후에는 명시적 Reload Sight Settings에서만 재시도한다.
+성공한 `gazeLoaded`는 값 읽기와 저장 가능 여부를 계속 소유한다. 실패 메시지와 last-good
+보존은 기존 CKoukuSaydonCompositionDocument가 유지한다.
+
+`Client/Public/KoukuSaydonCompositionDocument.h`의 기존 outcome 배열에
+GRAB_TO_WORLD_OBJECT를 추가한다. `Client/Private/KoukuSaydonCompositionDocument.cpp`는
+기존 outcome 연결 검증에서 해당 결과를 ENTER_AREA의 SUCCESS에만 허용한다.
+percent/duration/followup/grip 등 불필요한 값의 기존 거절은 유지해 Server/publisher와 맞춘다.
+Source JSON, 갈고리 경로, Sequence Viewer 목록과 게임플레이 판정은 변경하지 않는다.
+
+새 제품 파일과 project/filter 등록은 필요 없다. 실제 Reload의 수정 전후 결과와
+잘못된 outcome/slot의 거절·실패 시 이전 문서 보존, 해당 Client 최소 컴파일,
+PR 범위 diff check로 확인한다. 실행 중인 Client는 유지하고 최종 링크는 사용자가 종료한
+뒤 진행한다. 프레임 회복의 최종 화면 확인은 사용자가 한다.

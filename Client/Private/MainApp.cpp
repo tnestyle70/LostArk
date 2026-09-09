@@ -7697,13 +7697,17 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 
 	ImGui::SeparatorText("--진짜 쿠크세이튼 찾기 시야 콜라이더--");
 	static CKoukuSaydonCompositionDocument gazeDocument;
+	static bool gazeLoadAttempted = false;
 	static bool gazeLoaded = false;
 	static bool gazeVisible = false;
 	static float gazeHalfAngle = 45.f, gazeDistance = 30.f;
 	static std::string gazeStatus;
 	const bool reloadGaze = ImGui::SmallButton("Reload Sight Settings");
-	if (!gazeLoaded || reloadGaze)
+	if (!gazeLoadAttempted || reloadGaze)
 	{
+		// A rejected document keeps its error until an explicit reload. Retrying
+		// the complete composition from this render path stalls every F1 frame.
+		gazeLoadAttempted = true;
 		gazeLoaded = gazeDocument.Reload(gazeStatus);
 		if (gazeLoaded)
 			for (const auto& logic : gazeDocument.Get_LastGood().Logics)
