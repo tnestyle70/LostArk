@@ -227,6 +227,22 @@ private:
 	/* Iris clarity: the alpha of var_eye_iriscolor_ui, which the eye program uses as the weight of
 	the iris colour over the base colour. Seeded like the size, -1 until then. */
 	f32_t m_fEyeIrisAlpha = -1.f;
+	/* The left column's six preset slots. A slot holds what this player made, so it is not
+	project data: it is written next to the executable, the way the session diagnostics are,
+	and the class is part of the file name so a Warlord face cannot be loaded onto an Artist. */
+	static constexpr int32_t SAVE_SLOT_COUNT = 6;
+	int32_t m_iSelectedSaveSlot = 0;
+	std::array<bool_t, SAVE_SLOT_COUNT> m_SaveSlotFilled{};
+	void Refresh_SaveSlots();
+	bool_t Save_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
+	bool_t Load_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
+	/* Every material control back to what the class was authored with, and the view's own
+	copies of those values with it. Shared by the first frame of a class and by the whole
+	reset, which is why it is not inline in either. */
+	void Seed_MaterialControls(const shared_ptr<CCharacter>& pCharacter);
+	/* The bottom bar's reset. The face button next to the preset grid resets the face only;
+	this one is the retail avatar reset and puts colour, make-up, hair and eyes back too. */
+	void Reset_All(const shared_ptr<CCharacter>& pCharacter);
 	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
 	and a non-native skin, a named head-material parameter for everything else. */
 	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,

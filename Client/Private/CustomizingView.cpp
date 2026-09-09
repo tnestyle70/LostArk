@@ -13,7 +13,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
+#include <sstream>
 
 namespace
 {
@@ -707,11 +710,17 @@ void Client::CCustomizingView::Update_Tabs()
 			m_iSelectedCostume = i;
 		}
 	}
-	for (int32_t i = 0; i < 6; ++i)
+	/* The six preset slots. An empty one is dimmed the same way an unsupported tab is, and
+	the one the save and load buttons act on is the bright one. */
+	for (int32_t i = 0; i < SAVE_SLOT_COUNT; ++i)
 	{
 		const string strId = "CC_LeftSave" + std::to_string(i);
 		m_pView->Set_SlotVisible(strId, true);
 		m_pView->Set_SlotVisible(strId + "_Plate", true);
+		const bool_t bSelected = i == m_iSelectedSaveSlot;
+		const f32_t fLevel = bSelected ? 1.f : (m_SaveSlotFilled[static_cast<size_t>(i)] ?
+			0.7f : 0.45f);
+		m_pView->Set_SlotTint(strId, float4_t(fLevel, fLevel, fLevel, 1.f));
 	}
 	for (const char_t* pSlotId : { "CC_LeftSaveBtn", "CC_LeftLoadBtn" })
 		m_pView->Set_SlotVisible(pSlotId, true);
@@ -727,35 +736,375 @@ void Client::CCustomizingView::Apply_SliderVisibility()
 	}
 }
 
-void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCharacter)
+namespace
 {
-	if (nullptr == pCharacter || nullptr == pCharacter->Get_Spec())
-		return;
-	const char_t* pAssetName = pCharacter->Get_Spec()->pAssetName;
-	if (nullptr == pAssetName || m_strIconClassAssetId == pAssetName)
-		return;
-	m_strIconClassAssetId = pAssetName;
+	/* A preset slot is what this player made, not project data, so it goes next to the
+	executable the way the session JSONL does. The class asset id is part of the name: the
+	slider set, the make-up parameters and the eye material all differ per class, so a slot
+	written on one class is not loadable on another and is simply not offered there. */
+	std::filesystem::path SaveSlotPath(const std::string& strClassAssetId, const int32_t iSlot)
+	{
+		wchar_t modulePath[MAX_PATH]{};
+		if (strClassAssetId.empty() || 0 == GetModuleFileNameW(nullptr, modulePath, MAX_PATH))
+			return {};
+		return std::filesystem::path(modulePath).parent_path() / L"CustomizingPresets" /
+			(strClassAssetId + ".slot" + std::to_string(iSlot) + ".json");
+	}
 
-	if (!m_IconDocument.Load())
+	/* Small enough to write by hand: the payload is numbers, short arrays and one string
+	map, and the reader is CDataJson as everywhere else. */
+	void WriteNumber(std::ostringstream& out, const f32_t fValue)
 	{
-		OutputDebugStringA(
-			("[CustomizingView][Icons] " + m_IconDocument.Get_Status() + "\n").c_str());
+		out << static_cast<double>(fValue);
+	}
+
+	void WriteVector(std::ostringstream& out, const char_t* pName, const float4_t& vValue)
+	{
+		out << "  \"" << pName << "\": [";
+		for (const f32_t f : { vValue.x, vValue.y, vValue.z, vValue.w })
+		{
+			WriteNumber(out, f);
+			if (&f != &vValue.w)
+				out << ", ";
+		}
+		out << "],\n";
+	}
+
+	f32_t ReadNumber(const DATA_JSON_VALUE* pValue, const f32_t fFallback)
+	{
+		return nullptr != pValue && pValue->Is_Number() ?
+			static_cast<f32_t>(pValue->Get_Number()) : fFallback;
+	}
+
+	bool_t ReadVector(const DATA_JSON_VALUE* pValue, float4_t& outValue)
+	{
+		if (nullptr == pValue || !pValue->Is_Array() || 4u != pValue->Get_Array().size())
+			return false;
+		f32_t* pChannels = &outValue.x;
+		for (size_t i = 0; i < 4u; ++i)
+		{
+			const DATA_JSON_VALUE& channel = pValue->Get_Array()[i];
+			if (!channel.Is_Number())
+				return false;
+			pChannels[i] = static_cast<f32_t>(channel.Get_Number());
+		}
+		return true;
+	}
+}
+
+void Client::CCustomizingView::Refresh_SaveSlots()
+{
+	for (int32_t i = 0; i < SAVE_SLOT_COUNT; ++i)
+	{
+		const std::filesystem::path path = SaveSlotPath(m_strIconClassAssetId, i);
+		std::error_code error;
+		m_SaveSlotFilled[static_cast<size_t>(i)] =
+			!path.empty() && std::filesystem::exists(path, error) && !error;
+	}
+}
+
+bool_t Client::CCustomizingView::Save_Slot(
+	const shared_ptr<CCharacter>& pCharacter, const int32_t iSlot)
+{
+	if (nullptr == pCharacter || iSlot < 0 || iSlot >= SAVE_SLOT_COUNT)
+		return false;
+	const std::filesystem::path path = SaveSlotPath(m_strIconClassAssetId, iSlot);
+	if (path.empty())
+		return false;
+	std::error_code error;
+	std::filesystem::create_directories(path.parent_path(), error);
+	if (error)
+		return false;
+
+	std::ostringstream out;
+	out << "{\n";
+	out << "  \"schema\": \"lostark.customizing-preset\",\n";
+	out << "  \"formatVersion\": 1,\n";
+	out << "  \"class\": \"" << m_strIconClassAssetId << "\",\n";
+	/* Sliders are stored by their own id rather than by index: the index is a position in
+	whatever list the class' race document happens to carry, and that is not a save key. */
+	out << "  \"faceSliders\": {\n";
+	const CFaceCustomizeApplier& Face = pCharacter->Get_FaceCustomize();
+	for (size_t i = 0; i < Face.Get_SliderCount(); ++i)
+	{
+		out << "    \"" << Face.Get_SliderId(i) << "\": ";
+		WriteNumber(out, Face.Get_Weight(i));
+		out << (i + 1u < Face.Get_SliderCount() ? ",\n" : "\n");
+	}
+	out << "  },\n";
+	out << "  \"facePreset\": " << m_iSelectedFacePreset << ",\n";
+	out << "  \"surfaceColors\": [\n";
+	for (size_t i = 0; i < m_SurfaceColors.size(); ++i)
+	{
+		out << "    [";
+		const float4_t& v = m_SurfaceColors[i];
+		for (const f32_t f : { v.x, v.y, v.z, v.w })
+		{
+			WriteNumber(out, f);
+			if (&f != &v.w)
+				out << ", ";
+		}
+		out << (i + 1u < m_SurfaceColors.size() ? "],\n" : "]\n");
+	}
+	out << "  ],\n";
+	out << "  \"adornStrength\": [";
+	for (size_t i = 0; i < m_AdornStrength.size(); ++i)
+	{
+		WriteNumber(out, m_AdornStrength[i]);
+		out << (i + 1u < m_AdornStrength.size() ? ", " : "");
+	}
+	out << "],\n";
+	out << "  \"adornItems\": [";
+	for (size_t i = 0; i < m_SelectedAdornItems.size(); ++i)
+		out << m_SelectedAdornItems[i] << (i + 1u < m_SelectedAdornItems.size() ? ", " : "");
+	out << "],\n";
+	out << "  \"skinSliders\": [";
+	for (size_t i = 0; i < m_SkinSliderValues.size(); ++i)
+	{
+		WriteNumber(out, m_SkinSliderValues[i]);
+		out << (i + 1u < m_SkinSliderValues.size() ? ", " : "");
+	}
+	out << "],\n";
+	out << "  \"eyeIrisSize\": "; WriteNumber(out, m_fEyeIrisSize); out << ",\n";
+	out << "  \"eyeIrisAlpha\": "; WriteNumber(out, m_fEyeIrisAlpha); out << ",\n";
+	out << "  \"eyeOdd\": " << (m_isEyeOddSelected ? "true" : "false") << ",\n";
+	out << "  \"hairTwoTone\": " << (m_isHairTwoTone ? "true" : "false") << ",\n";
+	out << "  \"hairTwoToneStrength\": "; WriteNumber(out, m_fHairTwoToneStrength); out << ",\n";
+	out << "  \"hairTwoToneRange\": "; WriteNumber(out, m_fHairTwoToneRange); out << ",\n";
+	out << "  \"hair\": " << m_iSelectedHair << ",\n";
+	out << "  \"eyeIris\": " << m_iSelectedEyeIris << ",\n";
+	out << "  \"costume\": " << m_iSelectedCostume << "\n";
+	out << "}\n";
+
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
+	if (!file.is_open())
+		return false;
+	const std::string text = out.str();
+	file.write(text.data(), static_cast<std::streamsize>(text.size()));
+	if (!file.good())
+		return false;
+	file.close();
+	m_SaveSlotFilled[static_cast<size_t>(iSlot)] = true;
+	return true;
+}
+
+bool_t Client::CCustomizingView::Load_Slot(
+	const shared_ptr<CCharacter>& pCharacter, const int32_t iSlot)
+{
+	if (nullptr == pCharacter || iSlot < 0 || iSlot >= SAVE_SLOT_COUNT)
+		return false;
+	const std::filesystem::path path = SaveSlotPath(m_strIconClassAssetId, iSlot);
+	if (path.empty())
+		return false;
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open())
+		return false;
+	const std::string text((std::istreambuf_iterator<char_t>(file)),
+		std::istreambuf_iterator<char_t>());
+	DATA_JSON_VALUE root;
+	std::string error;
+	if (!CDataJson::Parse(text, root, error) || !root.Is_Object())
+		return false;
+	/* A slot written on another class names a slider set and a material this one does not
+	have. Rather than apply the half that happens to overlap, the load is refused. */
+	const DATA_JSON_VALUE* pClass = root.Find("class");
+	if (nullptr == pClass || !pClass->Is_String() || pClass->Get_String() != m_strIconClassAssetId)
+		return false;
+
+	/* Back to the authored state first, so anything the slot does not mention is the class'
+	own value rather than whatever the screen happened to be showing. */
+	Reset_All(pCharacter);
+
+	const DATA_JSON_VALUE* pSliders = root.Find("faceSliders");
+	if (nullptr != pSliders && pSliders->Is_Object())
+	{
+		const CFaceCustomizeApplier& Face = pCharacter->Get_FaceCustomize();
+		for (size_t i = 0; i < Face.Get_SliderCount(); ++i)
+		{
+			const DATA_JSON_VALUE* pWeight = pSliders->Find(Face.Get_SliderId(i));
+			if (nullptr != pWeight && pWeight->Is_Number())
+				pCharacter->Set_FaceSliderWeight(i, static_cast<f32_t>(pWeight->Get_Number()));
+		}
+	}
+	const DATA_JSON_VALUE* pPreset = root.Find("facePreset");
+	if (nullptr != pPreset && pPreset->Is_Number())
+	{
+		m_iSelectedFacePreset = static_cast<int32_t>(pPreset->Get_Number());
+		Apply_FacePreset(pCharacter, m_iSelectedFacePreset);
+	}
+
+	const DATA_JSON_VALUE* pAdornStrength = root.Find("adornStrength");
+	if (nullptr != pAdornStrength && pAdornStrength->Is_Array())
+	{
+		const auto& Values = pAdornStrength->Get_Array();
+		for (size_t i = 0; i < m_AdornStrength.size() && i < Values.size(); ++i)
+		{
+			if (Values[i].Is_Number())
+				m_AdornStrength[i] = static_cast<f32_t>(Values[i].Get_Number());
+		}
+	}
+	m_isEyeOddSelected = nullptr != root.Find("eyeOdd") && root.Find("eyeOdd")->Is_Boolean() &&
+		root.Find("eyeOdd")->Get_Boolean();
+	{
+		const f32_t fOdd = m_isEyeOddSelected ? 1.f : 0.f;
+		pCharacter->Set_FaceMaterialParameter(EYE_ODD_COLOR_PARAMETER,
+			float4_t(fOdd, fOdd, fOdd, fOdd));
+	}
+	m_fEyeIrisAlpha = ReadNumber(root.Find("eyeIrisAlpha"), m_fEyeIrisAlpha);
+
+	/* Colours after the strengths and the odd-eye flag: a make-up colour carries its layer
+	strength in alpha and an eye colour carries the clarity, and Apply_SurfaceColor packs
+	both from the values just restored. */
+	const DATA_JSON_VALUE* pColors = root.Find("surfaceColors");
+	if (nullptr != pColors && pColors->Is_Array())
+	{
+		const auto& Rows = pColors->Get_Array();
+		for (size_t i = 0; i < m_SurfaceColors.size() && i < Rows.size(); ++i)
+		{
+			float4_t vColor{};
+			if (!ReadVector(&Rows[i], vColor) || vColor.w < 0.f)
+				continue;
+			m_SurfaceColors[i] = vColor;
+			Apply_SurfaceColor(pCharacter, static_cast<int32_t>(i), vColor);
+		}
+	}
+
+	const DATA_JSON_VALUE* pSkin = root.Find("skinSliders");
+	if (nullptr != pSkin && pSkin->Is_Array())
+	{
+		const auto& Values = pSkin->Get_Array();
+		for (size_t i = 0; i < m_SkinSliderValues.size() && i < Values.size(); ++i)
+		{
+			if (!Values[i].Is_Number())
+				continue;
+			const f32_t fValue = static_cast<f32_t>(Values[i].Get_Number());
+			m_SkinSliderValues[i] = fValue;
+			float4_t vAuthored{};
+			if (fValue < 0.f ||
+				!pCharacter->Try_Get_FaceMaterialParameter(SKIN_SLIDERS[i].pParameter, vAuthored))
+			{
+				continue;
+			}
+			pCharacter->Set_FaceMaterialParameter(SKIN_SLIDERS[i].pParameter,
+				SKIN_SLIDERS[i].isColorAlpha ?
+				float4_t(vAuthored.x, vAuthored.y, vAuthored.z, fValue) :
+				float4_t(fValue, fValue, fValue, fValue));
+		}
+	}
+
+	m_fEyeIrisSize = ReadNumber(root.Find("eyeIrisSize"), m_fEyeIrisSize);
+	if (m_fEyeIrisSize >= 0.f)
+	{
+		pCharacter->Set_FaceMaterialParameter(EYE_IRIS_SIZE_PARAMETER,
+			float4_t(m_fEyeIrisSize, m_fEyeIrisSize, m_fEyeIrisSize, m_fEyeIrisSize));
+	}
+
+	m_isHairTwoTone = nullptr != root.Find("hairTwoTone") &&
+		root.Find("hairTwoTone")->Is_Boolean() && root.Find("hairTwoTone")->Get_Boolean();
+	m_fHairTwoToneStrength = ReadNumber(root.Find("hairTwoToneStrength"), m_fHairTwoToneStrength);
+	m_fHairTwoToneRange = ReadNumber(root.Find("hairTwoToneRange"), m_fHairTwoToneRange);
+	pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+
+	/* The stamps and the meshes the lists pick are applied by the tab that owns them; the
+	load states the choice and marks it changed so the owning Level re-dresses the model. */
+	const DATA_JSON_VALUE* pAdornItems = root.Find("adornItems");
+	if (nullptr != pAdornItems && pAdornItems->Is_Array())
+	{
+		const auto& Values = pAdornItems->Get_Array();
+		for (size_t i = 0; i < m_SelectedAdornItems.size() && i < Values.size(); ++i)
+		{
+			if (Values[i].Is_Number())
+				m_SelectedAdornItems[i] = static_cast<int32_t>(Values[i].Get_Number());
+		}
+	}
+	m_iSelectedEyeIris = static_cast<int32_t>(ReadNumber(root.Find("eyeIris"), -1.f));
+	const int32_t iHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), 0.f));
+	if (iHair != m_iSelectedHair)
+	{
+		m_iSelectedHair = iHair;
+		m_bHairChanged = true;
+	}
+	const int32_t iCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), 0.f));
+	if (iCostume != m_iSelectedCostume)
+	{
+		m_iSelectedCostume = iCostume;
+		m_bCostumeChanged = true;
+	}
+
+	/* The stamps and the iris are textures, so they are re-applied here rather than waiting
+	for the tab that owns the grid to be opened. A cell whose texture this client does not
+	ship is skipped, the same as clicking it would be. */
+	for (size_t iPage = 0; iPage < m_SelectedAdornItems.size(); ++iPage)
+	{
+		const int32_t iEntry = m_SelectedAdornItems[iPage];
+		const ADORN_PAGE& Page = ADORN_PAGES[iPage];
+		const auto* pStamps = nullptr != Page.pTextureKind ?
+			m_FaceTextureDocument.Find(m_strIconClassAssetId, Page.pTextureKind) : nullptr;
+		if (iEntry < 0 || nullptr == pStamps || static_cast<size_t>(iEntry) >= pStamps->size())
+			continue;
+		const std::string& strAsset = (*pStamps)[static_cast<size_t>(iEntry)];
+		if (!strAsset.empty())
+		{
+			pCharacter->Set_FaceStampTexture(
+				static_cast<CCharacter::FACE_STAMP>(Page.iStampRegister), strAsset);
+		}
+	}
+	if (m_iSelectedEyeIris >= 0)
+	{
+		const auto* pIrisTextures = m_FaceTextureDocument.Find(m_strIconClassAssetId, "iris");
+		if (nullptr != pIrisTextures &&
+			static_cast<size_t>(m_iSelectedEyeIris) < pIrisTextures->size())
+		{
+			pCharacter->Set_FaceIrisTexture((*pIrisTextures)[static_cast<size_t>(m_iSelectedEyeIris)]);
+		}
+	}
+	return true;
+}
+
+void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacter)
+{
+	if (nullptr == pCharacter)
 		return;
-	}
-	/* A missing preset document leaves the grid drawn and clickable but with nothing to
-	apply, the same way a class with no face morph data behaves. */
-	if (!m_FacePresetDocument.Load())
-	{
-		OutputDebugStringA(
-			("[CustomizingView][FacePresets] " + m_FacePresetDocument.Get_Status() + "\n").c_str());
-	}
-	if (!m_FaceTextureDocument.Load())
-	{
-		OutputDebugStringA(
-			("[CustomizingView][FaceTextures] " + m_FaceTextureDocument.Get_Status() + "\n").c_str());
-	}
+	pCharacter->Reset_FaceSliders();
 	m_iSelectedFacePreset = -1;
+	Apply_FacePreset(pCharacter, -1);
+	/* Dropping the overrides puts the retail head, skin and eye materials back on the values
+	the catalog states, which is what every control seeds from. An unset dye colour (w < 0)
+	does the same for the surfaces that are painted rather than parameterised. */
+	pCharacter->Reset_FaceMaterial();
+	static constexpr float4_t UNSET{ 0.f, 0.f, 0.f, -1.f };
+	for (int32_t i = 0; i < static_cast<int32_t>(CCharacter::DYE_SURFACE::END); ++i)
+		pCharacter->Set_DyeColor(static_cast<CCharacter::DYE_SURFACE>(i), UNSET, UNSET);
+	m_SurfaceColors.fill(float4_t(0.f, 0.f, 0.f, -1.f));
+	m_AdornStrength = { 1.f, 0.f, 1.f, 1.f, 1.f };
+	m_fHairTwoToneStrength = 0.f;
+	m_fHairTwoToneRange = 0.f;
+	pCharacter->Set_HairTwoTone(m_fHairTwoToneStrength, m_fHairTwoToneRange);
+	m_isHairTwoTone = false;
+	m_isEyeOddSelected = false;
 	m_iSelectedEyeIris = -1;
+	m_iSelectedAdornSub = 0;
+	m_iHairScrollRow = 0;
+	m_iEyeIrisScrollRow = 0;
+	m_iAdornScrollRow = 0;
+	if (0 != m_iSelectedHair)
+	{
+		m_iSelectedHair = 0;
+		m_bHairChanged = true;
+	}
+	if (0 != m_iSelectedCostume)
+	{
+		m_iSelectedCostume = 0;
+		m_bCostumeChanged = true;
+	}
+	Seed_MaterialControls(pCharacter);
+}
+
+void Client::CCustomizingView::Seed_MaterialControls(
+	const shared_ptr<CCharacter>& pCharacter)
+{
+	if (nullptr == pCharacter)
+		return;
 	/* Every face-material control starts where this class was authored: the make-up colours
 	and their strengths are the retail values, so a slider or a swatch shows what is actually
 	on the face rather than black at zero. A class whose face is not on a native head program
@@ -810,6 +1159,39 @@ void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCh
 			m_fEyeIrisAlpha = std::clamp(vEye.w, 0.f, 1.f);
 		}
 	}
+}
+
+void Client::CCustomizingView::Apply_ListIcons(const shared_ptr<CCharacter>& pCharacter)
+{
+	if (nullptr == pCharacter || nullptr == pCharacter->Get_Spec())
+		return;
+	const char_t* pAssetName = pCharacter->Get_Spec()->pAssetName;
+	if (nullptr == pAssetName || m_strIconClassAssetId == pAssetName)
+		return;
+	m_strIconClassAssetId = pAssetName;
+
+	if (!m_IconDocument.Load())
+	{
+		OutputDebugStringA(
+			("[CustomizingView][Icons] " + m_IconDocument.Get_Status() + "\n").c_str());
+		return;
+	}
+	/* A missing preset document leaves the grid drawn and clickable but with nothing to
+	apply, the same way a class with no face morph data behaves. */
+	if (!m_FacePresetDocument.Load())
+	{
+		OutputDebugStringA(
+			("[CustomizingView][FacePresets] " + m_FacePresetDocument.Get_Status() + "\n").c_str());
+	}
+	if (!m_FaceTextureDocument.Load())
+	{
+		OutputDebugStringA(
+			("[CustomizingView][FaceTextures] " + m_FaceTextureDocument.Get_Status() + "\n").c_str());
+	}
+	m_iSelectedFacePreset = -1;
+	m_iSelectedEyeIris = -1;
+	Seed_MaterialControls(pCharacter);
+	Refresh_SaveSlots();
 	const auto* pIcons = m_IconDocument.Find(m_strIconClassAssetId);
 	if (nullptr == pIcons)
 		return;
@@ -1766,12 +2148,30 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 	};
 	constexpr TEXT_BUTTON BUTTONS[] = {
 		{ "CC_LeftResetBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
+		{ "CC_LeftSaveBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
+		{ "CC_LeftLoadBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
 		{ "CC_FaceRandomBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
 		{ "CC_FaceResetBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
 		{ "CC_CreateBtn", ASSET_BUTTON_NORMAL, ASSET_BUTTON_OVER },
 		{ "CC_BackIcon", ASSET_BACK_ICON, ASSET_BACK_ICON_OVER },
 		{ "CC_ResetAllIcon", ASSET_RESET_ICON, ASSET_RESET_ICON_OVER },
 	};
+
+	/* Picking the slot the two buttons act on. */
+	for (int32_t i = 0; i < SAVE_SLOT_COUNT; ++i)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!Get_SlotRect(("CC_LeftSave" + std::to_string(i)).c_str(),
+			fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
+		if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedSaveSlot = i;
+		}
+	}
 
 	m_pView->Set_SlotVisible("CC_CreateBtn", true);
 	m_pView->Set_SlotVisible("CC_LeftResetBtn", true);
@@ -1824,16 +2224,32 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 		CMainApp::Play_UIButtonClickSound();
 		if (0 == std::strcmp(Button.pSlotId, "CC_FaceRandomBtn"))
 			Fn_RandomizeFace();
-		else if (0 == std::strcmp(Button.pSlotId, "CC_FaceResetBtn") ||
-			0 == std::strcmp(Button.pSlotId, "CC_ResetAllIcon") ||
-			0 == std::strcmp(Button.pSlotId, "CC_LeftResetBtn"))
+		else if (0 == std::strcmp(Button.pSlotId, "CC_FaceResetBtn"))
 		{
+			/* The face button resets the face. Same reason as the randomise path: the shape
+			is the preset's MorphTargets, so a reset that only cleared the sliders left the
+			previous face on screen. */
 			if (nullptr != pCharacter)
 				pCharacter->Reset_FaceSliders();
-			/* Same reason as the randomise path: the shape is the preset's MorphTargets, so
-			a reset that only cleared the sliders left the previous face on screen. */
 			m_iSelectedFacePreset = -1;
 			Apply_FacePreset(pCharacter, -1);
+		}
+		else if (0 == std::strcmp(Button.pSlotId, "CC_ResetAllIcon") ||
+			0 == std::strcmp(Button.pSlotId, "CC_LeftResetBtn"))
+		{
+			/* The bottom bar's is the retail avatar reset: colour, make-up, hair and eyes
+			go back to the class' authored values too, not the face alone. */
+			Reset_All(pCharacter);
+		}
+		else if (0 == std::strcmp(Button.pSlotId, "CC_LeftSaveBtn"))
+		{
+			if (!Save_Slot(pCharacter, m_iSelectedSaveSlot))
+				OutputDebugStringA("[CustomizingView] preset save failed\n");
+		}
+		else if (0 == std::strcmp(Button.pSlotId, "CC_LeftLoadBtn"))
+		{
+			if (!Load_Slot(pCharacter, m_iSelectedSaveSlot))
+				OutputDebugStringA("[CustomizingView] preset load failed\n");
 		}
 		else if (0 == std::strcmp(Button.pSlotId, "CC_CreateBtn"))
 			m_bDecideRequested = true;
