@@ -1359,6 +1359,21 @@ void Client::CEffectV2Runtime::Invalidate_Caches()
 	}
 }
 
+void Client::CEffectV2Runtime::Release_Resources()
+{
+	/* ObjectManager and tool owners have already released their effects. Drop
+	   callbacks/snapshots before the pool, since they can retain resource owners. */
+	g_TargetStates.clear();
+	g_IgnoredTargets.clear();
+	g_FreeGroups.clear();
+	g_FreeGroupTerminalFailures.clear();
+	Invalidate_Caches();
+	g_iNextFreeGroupHandle = 1u;
+	g_bPrototypeRegistered = false;
+	g_strLastError.clear();
+	CEffectV2Object::Clear_ResourceCache();
+}
+
 uint64_t Client::CEffectV2Runtime::Cache_Generation() { return g_iCacheGeneration; }
 
 const std::string& Client::CEffectV2Runtime::Last_Error()

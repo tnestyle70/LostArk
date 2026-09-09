@@ -932,6 +932,7 @@ private:
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
 	bool_t Try_PlayActiveUnifiedEffect();
+	bool_t Prepare_RecoveryPreviewTarget();
 	bool_t Try_PlayRecoveryEffect();
 	void Render_RecoveryEffectForProduct(const std::string& strProductEffectId);
 	bool_t Try_PlaySavedUnifiedEffect(
@@ -1159,6 +1160,7 @@ private:
     unique_ptr<CEffectThumbnailCache> m_pThumbnailCache;
     shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel;
     weak_ptr<CEffectObject> m_pWorldPreviewObject;
+    optional<EFFECT_DOCUMENT_DESC> m_WorldPreviewDocument;
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
@@ -1384,6 +1386,7 @@ private:
 	uint32_t m_iValtanReferenceEffectStartMs = 0u;
 	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
+    bool_t m_bSkipNextWorldPreviewDelta = false;
     bool_t m_bPreviewLoop = true;
 	bool_t m_bPreviewVisibleRequested = false;
 	bool_t m_bPreviewScreenPostEnabled = true;

@@ -86,6 +86,27 @@ class EffectV2OccurrenceRuntimeContractTests(unittest.TestCase):
         self.assertIn("Resolve_StageSpawnClock", self.runtime_cpp)
         self.assertIn("Pending.Binding.strClipOccurrenceId", self.runtime_cpp)
 
+    def test_shutdown_releases_retained_lanes_before_gpu_caches_after_loader_join(self) -> None:
+        source = (ROOT / "Client/Private/MainApp.cpp").read_text(encoding="utf-8")
+        shutdown = source.split("void CMainApp::Free()", 1)[1]
+        release = self.runtime_cpp.split(
+            "void Client::CEffectV2Runtime::Release_Resources()", 1
+        )[1].split("uint64_t Client::CEffectV2Runtime::Cache_Generation()", 1)[0]
+        self.assertLess(
+            shutdown.index("CGameInstance::Get().Release_Engine()"),
+            shutdown.index("CEffectV2Runtime::Release_Resources()"),
+        )
+        for owner in (
+            "g_TargetStates", "g_IgnoredTargets", "g_FreeGroups",
+            "g_FreeGroupTerminalFailures",
+        ):
+            self.assertLess(
+                release.index(f"{owner}.clear()"),
+                release.index("CEffectV2Object::Clear_ResourceCache()"),
+            )
+        self.assertIn("Invalidate_Caches()", release)
+        self.assertIn("g_bPrototypeRegistered = false", release)
+
     def test_each_loop_is_epoch_driven_and_bounded(self) -> None:
         for token in (
             "iNextLoopEpoch",

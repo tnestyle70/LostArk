@@ -3592,6 +3592,22 @@ namespace
 					B.Detail.Mesh.fModelPreScale ||
 				A.ResourceBindings.size() != B.ResourceBindings.size())
 				return false;
+			if (A.Detail.Mesh.SourceMaterialSlots.size() != B.Detail.Mesh.SourceMaterialSlots.size())
+				return false;
+			for (size_t j = 0u; j < A.Detail.Mesh.SourceMaterialSlots.size(); ++j)
+			{
+				const auto& X = A.Detail.Mesh.SourceMaterialSlots[j];
+				const auto& Y = B.Detail.Mesh.SourceMaterialSlots[j];
+				if (X.iSourceMaterialIndex != Y.iSourceMaterialIndex ||
+					X.Material.strTemplateId != Y.Material.strTemplateId ||
+					X.Material.strSourceMaterialPath != Y.Material.strSourceMaterialPath ||
+					X.Material.bColorTexturesSRGB != Y.Material.bColorTexturesSRGB ||
+					X.Material.eRenderProfile != Y.Material.eRenderProfile ||
+					!Same_MaterialExecutionResourceSignature(X.Material.Execution, Y.Material.Execution) ||
+					!Client::Is_EffectSourceMaterialStagingSignatureEqual(
+						X.Material.SourceMaterial, Y.Material.SourceMaterial))
+					return false;
+			}
 			for (size_t j = 0u; j < A.ResourceBindings.size(); ++j)
 			{
 				if (A.ResourceBindings[j].strSlotId != B.ResourceBindings[j].strSlotId ||
@@ -3731,8 +3747,16 @@ namespace
 				(iSourceMaterialProfile == 43u || iSourceMaterialProfile == 45u ||
 				 iSourceMaterialProfile == 46u || iSourceMaterialProfile == 47u ||
 				 iSourceMaterialProfile == 48u || iSourceMaterialProfile == 49u ||
-				 iSourceMaterialProfile == 51u ||
-				 iSourceMaterialProfile == 63u ||
+				 iSourceMaterialProfile == 51u || iSourceMaterialProfile == 58u ||
+				 iSourceMaterialProfile == 63u || iSourceMaterialProfile == 65u ||
+				 iSourceMaterialProfile == 67u || iSourceMaterialProfile == 69u ||
+				 iSourceMaterialProfile == 80u || iSourceMaterialProfile == 81u ||
+				 iSourceMaterialProfile == 82u || iSourceMaterialProfile == 127u ||
+				 iSourceMaterialProfile == 129u || iSourceMaterialProfile == 169u ||
+				 iSourceMaterialProfile == 185u || iSourceMaterialProfile == 191u ||
+				 iSourceMaterialProfile == 194u || iSourceMaterialProfile == 195u ||
+				 iSourceMaterialProfile == 196u || iSourceMaterialProfile == 200u ||
+				 iSourceMaterialProfile == 201u || iSourceMaterialProfile == 202u ||
 				 (iSourceMaterialProfile >= 208u && iSourceMaterialProfile <= 263u || (iSourceMaterialProfile >= 277u && iSourceMaterialProfile <= 280u)));
 			if (bNativeVelocityBasis)
 			{
@@ -5813,6 +5837,68 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	const f32_t fModelPreScale) const
 {
 	ELEMENT_RESOURCE Staged;
+	if (!Element.Detail.Mesh.SourceMaterialSlots.empty())
+	{
+		const auto& Slots = Element.Detail.Mesh.SourceMaterialSlots;
+		if (Slots.size() > 32u || !Is_EffectElementAuthoringExecutionTarget(Element))
+		{
+			strOutError = "Mesh source material slots are not executable.";
+			return E_INVALIDARG;
+		}
+		PREWARM_ASSET_CACHE LocalAssets;
+		PREWARM_ASSET_CACHE* pSlotAssets = nullptr != pSharedAssets ? pSharedAssets : &LocalAssets;
+		EFFECT_ELEMENT_DESC Leaf = Element;
+		Leaf.Detail.Mesh.SourceMaterialSlots.clear();
+		std::unordered_set<uint32_t> ExpectedSlots;
+		for (const auto& Slot : Slots)
+		{
+			if (!ExpectedSlots.insert(Slot.iSourceMaterialIndex).second)
+			{
+				strOutError = "Mesh source material slot is duplicated.";
+				return E_INVALIDARG;
+			}
+			Leaf.Material = Slot.Material;
+			auto pLeaf = std::make_shared<ELEMENT_RESOURCE>();
+			if (FAILED(Stage_ElementResource(Leaf, *pLeaf, strOutError,
+				pSlotAssets, fModelPreScale)))
+				return E_FAIL;
+			if (nullptr == pLeaf->pModel || pLeaf->bSourceMaterialFallbackBlocked ||
+				pLeaf->bOccurrenceVisualSuppressed || !pLeaf->SourceMaterialSlots.empty())
+			{
+				strOutError = "Mesh source material slot preparation was incomplete.";
+				return E_FAIL;
+			}
+			if (nullptr == Staged.pModel)
+				Staged.pModel = pLeaf->pModel;
+			if (Staged.pModel != pLeaf->pModel)
+			{
+				strOutError = "Mesh source material slots must share the same CModel.";
+				return E_FAIL;
+			}
+			Staged.bSourceRequiresSceneColor |= pLeaf->bSourceRequiresSceneColor;
+			Staged.SourceMaterialSlots.push_back({ Slot.iSourceMaterialIndex, std::move(pLeaf) });
+		}
+		std::unordered_set<uint32_t> ActualSlots;
+		for (uint32_t iMesh = 0u; iMesh < Staged.pModel->Get_NumMeshes(); ++iMesh)
+		{
+			uint32_t iMaterialIndex = 0u;
+			if (!Staged.pModel->Try_GetSourceMaterialIndex(iMesh, iMaterialIndex))
+			{
+				strOutError = "CModel source material index is invalid.";
+				return E_FAIL;
+			}
+			ActualSlots.insert(iMaterialIndex);
+		}
+		if (ActualSlots != ExpectedSlots)
+		{
+			strOutError = "Mesh source material slots do not exactly cover CModel material indices.";
+			return E_FAIL;
+		}
+		// Publish only after every texture/program/model slot has succeeded.
+		OutResource = std::move(Staged);
+		return S_OK;
+	}
+
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 		(EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind &&
 		 nullptr == Find_DimensionMasterVProgram(Element.Material.SourceMaterial.strRuntimeShaderProfileId) &&
@@ -6171,7 +6257,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	}
 
 	if (nullptr != Staged.pModel &&
-		((Staged.iSourceMaterialProfile >= 44u && Staged.iSourceMaterialProfile <= 76u) ||
+		((Staged.iSourceMaterialProfile == 324u) ||
+		 (Staged.iSourceMaterialProfile >= 44u && Staged.iSourceMaterialProfile <= 76u) ||
 		 (Staged.iSourceMaterialProfile >= 80u && Staged.iSourceMaterialProfile <= 205u) ||
 		 (Staged.iSourceMaterialProfile >= 208u && Staged.iSourceMaterialProfile <= 263u || (Staged.iSourceMaterialProfile >= 277u && Staged.iSourceMaterialProfile <= 280u))))
 	{
@@ -15117,7 +15204,8 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			}
 		}
 		ELEMENT_RESOURCE Resource;
-		const bool_t bOrdinaryFailClosed = nullptr == pPreparation &&
+		const bool_t bOrdinaryFailClosed = Element.Detail.Mesh.SourceMaterialSlots.empty() &&
+			nullptr == pPreparation &&
 			nullptr == pVisualProgramProjection &&
 			Element.Material.Execution.bFailClosed &&
 			!Element.Material.Execution.bAuthoringApproximate;
@@ -18135,11 +18223,12 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 	const shared_ptr<Engine::CShader>& pShader,
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource,
-	const f32_t fAlphaScale)
+	const f32_t fAlphaScale,
+	const EFFECT_MATERIAL_DESC* pMaterialOverride)
 {
 	return Bind_Common(pShader, *Element.pElement, Element.Color,
 		Element.fLocalTimeSeconds, Element.fNormalizedLife,
-		Resource, fAlphaScale);
+		Resource, fAlphaScale, pMaterialOverride);
 }
 
 HRESULT Client::CEffectDocumentRenderer::Bind_Common(
@@ -18149,7 +18238,8 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 	const f32_t fLocalTimeSeconds,
 	const f32_t fNormalizedLife,
 	const ELEMENT_RESOURCE& Resource,
-	const f32_t fAlphaScale)
+	const f32_t fAlphaScale,
+	const EFFECT_MATERIAL_DESC* pMaterialOverride)
 {
 	if (nullptr == pShader)
 		return Fail_RenderOperation(
@@ -18174,7 +18264,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_Common(
 				"Particle camera-position shader binding failed.", hResult);
 	}
 	return Bind_MaterialInputs(pShader, Element, Color,
-		fLocalTimeSeconds, fNormalizedLife, Resource, fAlphaScale);
+		fLocalTimeSeconds, fNormalizedLife, Resource, fAlphaScale, pMaterialOverride);
 }
 
 HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
@@ -18184,8 +18274,11 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	const f32_t fLocalTimeSeconds,
 	const f32_t fNormalizedLife,
 	const ELEMENT_RESOURCE& Resource,
-	const f32_t fAlphaScale)
+	const f32_t fAlphaScale,
+	const EFFECT_MATERIAL_DESC* pMaterialOverride)
 {
+	const EFFECT_MATERIAL_DESC& Material = nullptr != pMaterialOverride ?
+		*pMaterialOverride : Element.Material;
 	if (nullptr == pShader)
 		return Fail_RenderOperation(
 			"Material bind failed: shader is null.", E_INVALIDARG);
@@ -18570,12 +18663,12 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 				Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
 			nullptr != Resource.pModel &&
 			!Element.SourceRecipe.bEnabled &&
-			Element.Material.strTemplateId ==
+			Material.strTemplateId ==
 				EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
-			Element.Material.eRenderProfile !=
+			Material.eRenderProfile !=
 				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
-			!Element.Material.SourceMaterial.bEnabled &&
-			!Element.Material.Execution.bEnabled &&
+			!Material.SourceMaterial.bEnabled &&
+			!Material.Execution.bEnabled &&
 			0u == Resource.iSourceMaterialProfile &&
 			0u == Resource.iReconstructedMaterialEvaluatorEnabled &&
 			0u == Resource.iArtistVisualV4Opcode &&
@@ -18648,14 +18741,14 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
 			!Element.SourceRecipe.bEnabled &&
 			!Element.SourcePresentation.bEnabled &&
-			Element.Material.strTemplateId ==
+			Material.strTemplateId ==
 				EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
-			Element.Material.strSourceMaterialPath.empty() &&
-			!Element.Material.SourceMaterial.bEnabled &&
-			!Element.Material.Execution.bEnabled &&
-			!Element.Material.Execution.bFailClosed &&
-			!Element.Material.Execution.bAuthoringApproximate &&
-			Element.Material.eRenderProfile !=
+			Material.strSourceMaterialPath.empty() &&
+			!Material.SourceMaterial.bEnabled &&
+			!Material.Execution.bEnabled &&
+			!Material.Execution.bFailClosed &&
+			!Material.Execution.bAuthoringApproximate &&
+			Material.eRenderProfile !=
 				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE &&
 			0u == Resource.iSourceMaterialProfile &&
 			0u == Resource.iReconstructedMaterialEvaluatorEnabled &&
@@ -18783,14 +18876,40 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const f32_t fAlphaScale,
 	const float4x4_t* pWorldOverride,
 	const float4_t* pDynamicParameter,
-	const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride)
+	const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride,
+	const EFFECT_MATERIAL_DESC* pMaterialOverride,
+	const uint32_t iSourceMaterialIndex)
 {
 	if (nullptr == Resource.pModel || nullptr == Element.pElement ||
 		nullptr == m_pMeshShader)
 		return Fail_RenderOperation(
 			"Mesh resource/model/shader contract is missing.", E_FAIL, true);
+	if (!Resource.SourceMaterialSlots.empty())
+	{
+		const auto& Slots = Element.pElement->Detail.Mesh.SourceMaterialSlots;
+		if (Slots.size() != Resource.SourceMaterialSlots.size())
+			return Fail_RenderOperation("Prepared mesh source slots changed.", E_FAIL, true);
+		bool_t bSubmitted = false;
+		for (const auto& PreparedSlot : Resource.SourceMaterialSlots)
+		{
+			const auto Slot = std::find_if(Slots.begin(), Slots.end(), [&](const auto& Row)
+				{ return Row.iSourceMaterialIndex == PreparedSlot.iSourceMaterialIndex; });
+			if (Slot == Slots.end() || nullptr == PreparedSlot.pResource ||
+				!PreparedSlot.pResource->SourceMaterialSlots.empty() ||
+				PreparedSlot.pResource->pModel != Resource.pModel)
+				return Fail_RenderOperation("Prepared mesh source slot is missing.", E_FAIL, true);
+			const HRESULT Result = Render_Mesh(Element, *PreparedSlot.pResource,
+				fAlphaScale, pWorldOverride, pDynamicParameter, pSubUVOverride,
+				&Slot->Material, Slot->iSourceMaterialIndex);
+			if (FAILED(Result)) return Result;
+			bSubmitted |= Result == S_OK;
+		}
+		return bSubmitted ? S_OK : S_FALSE;
+	}
+	const EFFECT_MATERIAL_DESC& Material = nullptr != pMaterialOverride ?
+		*pMaterialOverride : Element.pElement->Material;
 	uint32_t iPass = Select_Pass(
-		Element.pElement->Material.eRenderProfile);
+		Material.eRenderProfile);
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation(
 			"Mesh render-profile pass is invalid.", E_INVALIDARG, true);
@@ -18833,7 +18952,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			Element.pElement->SourceRecipe.strRendererShape != "mesh" ||
 			nullptr == Find_Binding(
 				*Element.pElement, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
-			Element.pElement->Material.eRenderProfile != Adapter.eRenderProfile ||
+			Material.eRenderProfile != Adapter.eRenderProfile ||
 			(!bBoundStandardColor && !bBoundRuntimeMaterial) ||
 			iPass != Adapter.iPassIndex ||
 			Engine::CRenderOutputContract::Get_Active() !=
@@ -19039,7 +19158,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			"Mesh shader bind failed: StandardColorV1 SubUV packet.",
 			hResult, true);
 	}
-	hResult = Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale);
+	hResult = Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale, pMaterialOverride);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Mesh common/material shader bind failed.", hResult);
@@ -19067,7 +19186,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			return Fail_RenderOperation("CubeSample scene-color snapshot is unavailable.", E_FAIL, true);
 	}
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
-	if ((Resource.iSourceMaterialProfile >= 44u && Resource.iSourceMaterialProfile <= 76u) ||
+	if ((Resource.iSourceMaterialProfile == 324u) ||
+		(Resource.iSourceMaterialProfile >= 44u && Resource.iSourceMaterialProfile <= 76u) ||
 		(Resource.iSourceMaterialProfile >= 80u && Resource.iSourceMaterialProfile <= 205u) ||
 		(Resource.iSourceMaterialProfile >= 208u && Resource.iSourceMaterialProfile <= 263u || (Resource.iSourceMaterialProfile >= 277u && Resource.iSourceMaterialProfile <= 280u)))
 	{
@@ -19099,6 +19219,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	bool_t bSubmitted = false;
 	for (uint32_t iMesh = 0u; iMesh < Resource.pModel->Get_NumMeshes(); ++iMesh)
 	{
+		if (iSourceMaterialIndex != UINT32_MAX)
+		{
+			uint32_t iActualSlot = 0u;
+			if (!Resource.pModel->Try_GetSourceMaterialIndex(iMesh, iActualSlot))
+				return Fail_RenderOperation("CModel source material index is invalid.", E_FAIL, true);
+			if (iActualSlot != iSourceMaterialIndex)
+				continue;
+		}
 		if (iUseBaseOverride)
 		{
 			hResult = m_pMeshShader->Bind_Texture("g_BaseTexture", BaseOverride);

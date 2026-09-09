@@ -218,11 +218,40 @@ inline constexpr std::array<DIMENSIONMASTER_SD_SWITCH_DESC,10> DIMENSIONMASTER_S
     {"00.uselight", false},
 }};
 
-inline constexpr std::array<DIMENSIONMASTER_SD_PROGRAM_DESC,4> DIMENSIONMASTER_SD_PROGRAMS = {{
+
+inline constexpr std::array<std::string_view,3> DIMENSIONMASTER_SD_TEXTURES_324 = {{"01.icemap","01.specmap","native_texture_2"}};
+inline constexpr std::array<DIMENSIONMASTER_SD_PARAMETER_DESC,15> DIMENSIONMASTER_SD_PARAMETERS_324 = {{
+    {"selectioncolor", 6u, 0u, true},
+    {"05.specmap_uvscale.x", 1u, 1u, false},
+    {"06.specmap_uvscale.y", 1u, 2u, false},
+    {"02.icemap_uv.x", 0u, 0u, false},
+    {"03.icemap_uv.y", 0u, 2u, false},
+    {"09.specmap_color", 4u, 0u, true},
+    {"06.icemap_color", 3u, 0u, true},
+    {"meshemitterdynamicparameter", 5u, 0u, true},
+    {"02.specmap_str", 0u, 1u, false},
+    {"07.desaturation", 1u, 3u, false},
+    {"08.specmap_power", 2u, 0u, false},
+    {"09.ice_deep", 2u, 1u, false},
+    {"04.desaturation", 0u, 3u, false},
+    {"05.icemap_power", 1u, 0u, false},
+    {"51.fresnal_power", 2u, 2u, false},
+}};
+inline constexpr std::array<DIMENSIONMASTER_SD_SWITCH_DESC,6> DIMENSIONMASTER_SD_SWITCHES_324 = {{
+    {"00.usedistortion", false},
+    {"00.checkisdepthbiasalpha", false},
+    {"10.usesnow", false},
+    {"00.useshadow", false},
+    {"--usespecullar", true},
+    {"00.useemission", false},
+}};
+
+inline constexpr std::array<DIMENSIONMASTER_SD_PROGRAM_DESC,5> DIMENSIONMASTER_SD_PROGRAMS = {{
     {320u,"effect.ue3.sd-320-native.v1","fx_m_mi_01.fx_mi.fx_e_pa_gl_10_1_tr","fx_mastermaterial.fx_mm.fx_mm_maskcontrol_01_tr","ue3.material.fx.mastermaterial.fx.mm.fx.mm.maskcontrol.01.tr.30a3b56d23fe",false,"sprite",false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_SD_TEXTURES_320,DIMENSIONMASTER_SD_PARAMETERS_320,DIMENSIONMASTER_SD_SWITCHES_320},
     {321u,"effect.ue3.sd-321-native.v1","fx_m_mi_r_00.fx_mi.fx_r_pa_spritewave_24_02_tr","fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr","ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",false,"sprite",false,false,false,EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_SD_TEXTURES_321,DIMENSIONMASTER_SD_PARAMETERS_321,DIMENSIONMASTER_SD_SWITCHES_321},
     {322u,"effect.ue3.sd-322-native.v1","fx_m_mi_r_00.fx_mi.fx_r_pa_spritewave_30_01_tr","fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr","ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",false,"sprite",false,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_SD_TEXTURES_322,DIMENSIONMASTER_SD_PARAMETERS_322,DIMENSIONMASTER_SD_SWITCHES_322},
     {323u,"effect.ue3.sd-323-native.v1","fx_m_mi_r_00.fx_mi.fx_r_pa_twirl_03_09_ad","fx_m_mi_03.fx_m.fx_d_pa_twirl_05_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.twirl.05.ad.2b8e151c3da1",false,"sprite",false,true,false,EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ,DIMENSIONMASTER_SD_TEXTURES_323,DIMENSIONMASTER_SD_PARAMETERS_323,DIMENSIONMASTER_SD_SWITCHES_323},
+    {324u,"effect.ue3.sd-324-native.v1","fx_m_mi_00.fx_mi.fx_d_me_ice_01_02_tr","fx_m_mi_00.fx_m.fx_d_me_ice_01_tr","ue3.material.fx.m.mi.00.fx.m.fx.d.me.ice.01.tr.b5fca778c01f",true,"mesh",false,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,DIMENSIONMASTER_SD_TEXTURES_324,DIMENSIONMASTER_SD_PARAMETERS_324,DIMENSIONMASTER_SD_SWITCHES_324},
 }};
 
 inline const DIMENSIONMASTER_SD_PROGRAM_DESC* Find_DimensionMasterSDProgram(

@@ -13116,7 +13116,7 @@
       "displayName": "particlespriteemitter_3",
       "groupId": "authored.source-particle.full-s",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050220.full.restore|source:effect.dimensionmaster.skill.2050220.imported|element:fx_pc_swp_02.par_r_swp_momentaryrift_00_02.particlespriteemitter_3",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -13213,10 +13213,6 @@
             "unbound"
           ],
           "subUVMode": "none"
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
         }
       },
       "actionCueAttachment": {
@@ -14680,34 +14676,49 @@
                 "value": 3.0
               },
               {
-                "propertyPath": "offsetoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "offsetoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "offsetoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "rotationrateoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "rotationoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationrateoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               }
             ],
             "distributions": [
@@ -15345,7 +15356,7 @@
       "displayName": "particlespriteemitter_4",
       "groupId": "authored.source-particle.full-s",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050220.full.restore|source:effect.dimensionmaster.skill.2050220.imported|element:fx_pc_swp_02.par_r_swp_momentaryrift_00_02.particlespriteemitter_4",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -15442,10 +15453,6 @@
             "unbound"
           ],
           "subUVMode": "none"
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
         }
       },
       "actionCueAttachment": {
@@ -16909,34 +16916,49 @@
                 "value": 3.0
               },
               {
-                "propertyPath": "offsetoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "offsetoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "offsetoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "rotationrateoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "rotationoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationrateoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               }
             ],
             "distributions": [
@@ -31777,7 +31799,7 @@
       "displayName": "particlespriteemitter_3",
       "groupId": "authored.source-particle.full-s",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050220.full.restore|source:effect.dimensionmaster.skill.2050220.imported|element:fx_pc_swp_02.par_r_swp_momentaryrift_00_04.particlespriteemitter_3",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -31874,10 +31896,6 @@
             "unbound"
           ],
           "subUVMode": "none"
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
         }
       },
       "actionCueAttachment": {
@@ -33341,34 +33359,49 @@
                 "value": 3.0
               },
               {
-                "propertyPath": "offsetoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "offsetoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "offsetoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "rotationrateoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "rotationoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationrateoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               }
             ],
             "distributions": [
@@ -34006,7 +34039,7 @@
       "displayName": "particlespriteemitter_4",
       "groupId": "authored.source-particle.full-s",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050220.full.restore|source:effect.dimensionmaster.skill.2050220.imported|element:fx_pc_swp_02.par_r_swp_momentaryrift_00_04.particlespriteemitter_4",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -34103,10 +34136,6 @@
             "unbound"
           ],
           "subUVMode": "none"
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
         }
       },
       "actionCueAttachment": {
@@ -35570,34 +35599,49 @@
                 "value": 3.0
               },
               {
-                "propertyPath": "offsetoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "offsetoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "offsetoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "offsetoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
               },
               {
-                "propertyPath": "rotationrateoptions.hex",
-                "kind": "string",
-                "value": "fd0c000000000000de0b000000000000000000000000000001fe0c0000000000"
+                "propertyPath": "rotationoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
               },
               {
-                "propertyPath": "rotationrateoptions.size",
-                "kind": "number",
-                "value": 83.0
+                "propertyPath": "rotationoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringspawn",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "rotationrateoptions.bprocessduringupdate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "rotationrateoptions.buseemittertime",
+                "kind": "boolean",
+                "value": false
               }
             ],
             "distributions": [
@@ -44492,7 +44536,7 @@
       "displayName": "particlespriteemitter_48",
       "groupId": "authored.source-particle.full-s",
       "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050220.full.restore|source:effect.dimensionmaster.skill.2050220.imported|element:fx_pc_swp_02.par_r_swp_momentaryrift_00_05.particlespriteemitter_48",
-      "visible": false,
+      "visible": true,
       "kind": "particle",
       "resources": [
         {
@@ -44501,15 +44545,154 @@
         }
       ],
       "material": {
-        "templateId": "effect.standard",
+        "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
-          "enabled": false
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+          "runtimeShaderProfileId": "effect.ue3.v-fx-d-pa-atta-09-02-ad-native.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "emissive_tex",
+              "sourceObjectPath": "fx_tex_02.fx_d_atypical_034_cl",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_034_cl.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "uv_scale",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "dynamic_parameter_explanation",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_desaturation",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "emissive_power",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [
+            {
+              "name": "use_mesh_world_normal",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_depth_alpha",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_distortion",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_meshtype",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_subuv_tex",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_alpha_tex",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_uv_panning",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_uv_rotation",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_uv_noise_tex",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_fresnel_alpha",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_camera_alpha",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_edge_glow",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_distortion_floor",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "non_alpha_chanel",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_dynparam_panning",
+              "group": "None",
+              "value": false
+            },
+            {
+              "name": "use_axisy",
+              "group": "None",
+              "value": true
+            },
+            {
+              "name": "use_uv_noise_tex_02",
+              "group": "None",
+              "value": false
+            }
+          ],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
         }
       },
       "actionCueAttachment": {

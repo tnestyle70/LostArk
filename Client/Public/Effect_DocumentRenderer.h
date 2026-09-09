@@ -222,8 +222,15 @@ public:
 	struct PRODUCT_TARGET_STAGE;
 
 private:
+	struct ELEMENT_RESOURCE;
+	struct SOURCE_MATERIAL_SLOT_RESOURCE final
+	{
+		uint32_t iSourceMaterialIndex = 0u;
+		std::shared_ptr<const ELEMENT_RESOURCE> pResource;
+	};
 	struct ELEMENT_RESOURCE final
 	{
+		std::vector<SOURCE_MATERIAL_SLOT_RESOURCE> SourceMaterialSlots;
 		shared_ptr<Engine::CModel> pModel;
 		/* One lane per EFFECT_RESOURCE_SLOT texture slot, indexed by
 		   slot - BASE_TEXTURE. Grew from 5 to 8 with base2/mask2/noise2. */
@@ -755,7 +762,8 @@ private:
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
-		f32_t fAlphaScale = 1.f);
+		f32_t fAlphaScale = 1.f,
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
 	HRESULT Bind_Common(
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_ELEMENT_DESC& Element,
@@ -763,7 +771,8 @@ private:
 		f32_t fLocalTimeSeconds,
 		f32_t fNormalizedLife,
 		const ELEMENT_RESOURCE& Resource,
-		f32_t fAlphaScale = 1.f);
+		f32_t fAlphaScale = 1.f,
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
 	HRESULT Bind_MaterialInputs(
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_ELEMENT_DESC& Element,
@@ -771,7 +780,8 @@ private:
 		f32_t fLocalTimeSeconds,
 		f32_t fNormalizedLife,
 		const ELEMENT_RESOURCE& Resource,
-		f32_t fAlphaScale = 1.f);
+		f32_t fAlphaScale = 1.f,
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr);
 	HRESULT Render_Element(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource);
@@ -781,7 +791,9 @@ private:
 		f32_t fAlphaScale = 1.f,
 		const float4x4_t* pWorldOverride = nullptr,
 		const float4_t* pDynamicParameter = nullptr,
-		const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride = nullptr);
+		const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride = nullptr,
+		const EFFECT_MATERIAL_DESC* pMaterialOverride = nullptr,
+		uint32_t iSourceMaterialIndex = UINT32_MAX);
 	HRESULT Render_Rect(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,

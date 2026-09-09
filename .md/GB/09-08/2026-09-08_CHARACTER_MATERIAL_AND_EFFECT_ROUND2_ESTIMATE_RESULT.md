@@ -883,3 +883,112 @@ Client/Server는 빌드 전 종료 상태였고 에이전트가 실행하지 않
 20260908T171737881Z-debug-product.json, out/DimensionMasterSlashFix20260909/의
 product_debug_build.log, product_imgui_incremental_build.log, imgui_delta.json,
 product_build_final.json. 신규 Resources/Drive 전달 및 stage/commit/push는 없다.
+
+## G32. 09-09 Solo·운동·검격·D/V mesh 복원 2차와 종료 자원 정리
+
+사용자 요청으로 최신 main을 fast-forward pull해 PR344 포함 `94e90fd9`에서 시작했고,
+깨끗한 worktree에서 `codex/dimensionmaster-effect-round2`를 만들었다. LAN 설정은
+server-host, TCP7777 LocalSubnet 준비, 시작 당시 listener 없음이었다. Client/UI는 실행하거나
+조작·캡처하지 않았다. 사용자의 마무리 요청 뒤 추가 복원 조사는 중단하고 아래 수정 검증만 수행한다.
+
+### 실제 반영
+
+- Solo는 선택 요소가 요구하는 model cue를 숨긴 pose 공급자로 보존한다. Alt V full 자식27개가
+  부모 cue 삭제로 실패하던 문제를 수정했다. Update/Seek도 실제 stage한 필터·draft 문서를
+  소비한다. Open Editor 다음 Solo가 기존 character/skill target을 준비하며 첫 준비 프레임의
+  긴 delta가 짧은 효과의 수명을 소모하지 않게 했다. Play All은 기존 sequencer를 사용한다.
+- LocalVectorField의 domain·translation·rotation·sample velocity를 원본 XYZ에서 Client
+  `(x,z,-y)`로 함께 변환했다. CylinderSpin의 radialvelocity는 높이축 속도를 제외한다.
+- S의 단일 Orbit4행은 원본 CDO의83-byte Options를 typed spawn-only 값으로 해석해 연결했다.
+  raw/live 옵션·복수 LINK는 계속 거부한다. 네 행에 남던 hold execution도 해제했다.
+- S e48은 V58, D의 `ad182…/85f2…`는 E259와 정확한 PS/MIC를 공유한다. offset-center와
+  regular VS의 pivot `.5/.5` 동등성까지 확인한 뒤 기존 native material을 재사용했다.
+- V58/65/67/69와 ALT80/81/82/127/129/169/185/191/194/195/196/200/201/202를 기존 native
+  velocity basis에 연결했다. 여섯 source VS의 geometry 계산을 대조했고 원본 pivot·UV를
+  보존한다. 원작 전체 CPU 난수열·packing의 동일성을 주장하지 않는다.
+- V57/58/59/60/70/71/73/74/75의 MIC two-sided override를 descriptor와 A/V full14행에
+  반영했다. 추가 S58도 같은 상태를 쓴다. parent만 읽은 생성 정보가 V70 반구를 단면으로
+  지정하던 오류였으며 전체 blend/alpha를 바꾸지 않았다.
+- D crack `7508b2684fd272292d7b`의 source materialIndex0/1을 각각 V66 LocalCrack과
+  SD324 Ice로 연결했다. 원본 모델의286/565 triangles, 같은 particle motion·clock을 유지한다.
+  optional `detail.mesh.sourceMaterialSlots`는 기존 material parser/validator와 CModel stage를
+  재사용한다. 원본 MeshMaterial 경로·실제 슬롯 coverage를 확인하고 전부 준비한 뒤 commit한다.
+  Tool/Playback도 effective slot 재질을 사용하며 사용하지 않는 primary defaultmaterial은 보존한다.
+- Ice324는 원본 PS `046f090de8eb2f408bbb8debf92fd28f`의49 RT0 명령, 일반 texture3장과
+  tangentView를 사용한다. 별도 SceneColor/Depth sample이나 다른 유리의 계산을 끼우지 않았다.
+- V2 종료 시 target/group callback·snapshot과 source cache를 비우고 GPU cache·particle pool을
+  마지막에 해제한다. loader join 및 Level/tool 객체 소멸 후 `CMainApp::Free`가 호출한다.
+  전체 CRT 누수나 반복 플레이의 지속 증가를 재현·종료한 것은 아니다.
+
+새 C++/HLSL 파일과 vcxproj/filter 등록은 없다. Engine은 원본 mesh materialIndex의 읽기 전용
+`Try_GetSourceMaterialIndex`만 추가했다. 기존 C++ 인코딩과 사용자 full 선별 W20/E64/R30/A104,
+Alt340 및 모든 기존 stable element ID를 보존했다. 제품 `.unified`는 변경하지 않았다.
+
+### 자동 검증과 실제 한계
+
+| 검사 | 실행 결과 |
+|---|---|
+| pull 직후 Debug Product | Engine/Shared/Server/Client compile·deploy PASS |
+| D 슬롯 추가 전 Debug Product | 41,769ms, 네 프로젝트 PASS, missing runtime input0 |
+| 최종 D 슬롯 포함 Debug Product | 232,702ms, Engine/Shared/Server/Client compile·deploy PASS, missing runtime input0. 20260909T032304606Z-debug-product.json |
+| Release Product | 실행했으나 D 추가 전 시작한 장시간 optimized particle FXC를 마무리 요청 뒤 중단. Release 완료/PASS 아님 |
+| Solo scope 실제 함수 | 28,411 assertions/실패0. baseline에서 Alt 부모 삭제 재현 |
+| 준비 프레임 시계 실제 함수 | baseline2.5초 delta 건너뜀 재현, 수정 후0초→16ms |
+| native velocity 실제 함수 | 3,023 checks/실패0, 최대 모서리 오차9.83e-7m |
+| 운동 실제 코드 block/분포 | 359 checks/실패0, 이전 구현67사례 실패 재현 |
+| S Orbit 실제 codec | 43 checks/실패0, 네 Solo 및 unsupported 입력 거부 |
+| D 슬롯 실제 최신 codec | 18 checks/실패0. 왕복, primary 보존, 누락·중복·잘못된 슬롯/MIC/texture/profile/cull/형식 거부 |
+| 실제 D CModel | 새 Engine DLL에서 source slots0/1 draw261/68 pixels, invalid index 출력 보존·실패한 load 뒤 clone68 pixels 유지, nonfinite0 |
+| Ice324 | 원본49명령과 별도 수식108사례 일치, 최대오차4.44e-16. 현재 HLSLI의 최소 PS FXC PASS |
+| V2 종료 실제 함수 CPU/COM | 소유 sentinel10/10 소멸, WARP SRV 참조12→1, cache empty·반복 release PASS |
+| F1 V1/V2·resource facade | 기존25 tests PASS. 별도 entry/lazy 생성·visible/focus·typed open 경로 확인 |
+| Tool metadata/clone/order | 기존31 tests PASS, 슬롯 admission/Detail 복사 실제 header580 checks/실패0 |
+| shader closure·culling | 기존 fixture의 누락 UV1 선언을 교정한 Debug closure PASS(24 producers/23 consumers). 기존 compiled pass8 draw에서 역면 OneSided0→TwoSided1352 pixels, nonfinite0 |
+
+D 슬롯까지 포함한 최종27 restore 문서의 Save→Reload canonical equality는27/27이었다.
+최신 ABI로 재컴파일한 검사에서890개 중 visible704/hidden186이며 Tool이 허용한693개의 실제
+Solo codec 검사가 통과했다. D crack1개가 추가됐고 Alt full27+tuning11의 숨긴 모델
+anchor 의존성을 보존했다. 원시 전체 검사 exit1은 기존 비활성 Light11개 때문이며 그대로
+보존했다. W/R/S 각1, A4, F2, D2는 baseline과 element 전체가 같고 codec은 허용하나 Tool이
+거부하던 placeholder다. 최종 검사도 같은11개만 남아 새 회귀는0이다. 이11개를 새 회귀나
+재생 완료로 기록하지 않는다. 변경 JSON4개와 기존 project/filter XML4개의 parse,
+전체 변경의 `git diff --check`도 통과했다.
+
+별도 확장 검사에서 Valtan 기존 기대값2개도 baseline부터 불일치했다. high-jump spawn count와
+V1 lazy constructor의 옛 open 호출 기대이며 이번 기능 코드와 무관해 변경하지 않았다.
+기존 C4828/C4819·FXC X4000/X3577·외부 PDB 경고는 남아 있다. 사용자 화면 확인과 장시간
+Client 누수 검사는 하지 않았다. 원시 로그/부분 probe와 Product compile을 혼용하지 않는다.
+
+### Resources와 사용자가 요청한 중첩 폴더 검토
+
+이번 단계의 Resources 추가·교체는0이다. D Ice는 기존
+`Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_018.dds`(32,896B),
+`fx_d_environ_035.dds`(32,896B), `FX_TEX_00/fx_a_atypical_043.dds`(8,320B)를 사용한다.
+새 Drive 전달 payload나 ZIP은 없다. 같은 효과 Resources가 있는 팀 PC에는 코드/Data를 공유한다.
+
+사용자가 물은 `Character/DimensionMaster/DimensionMaster/`는 이전 사본이다. 바깥의
+74,781,640B Character.wmodel은 UV 복원 receipt.afterSha 및 실제 activation_installed와
+일치하고, 안쪽74,641,016B는 복원 전 파일과 일치한다. 상대 경로112쌍 중111쌍은 동일하며
+texture71개도 모두 같다. CharacterCatalog와 AnimationPreviewAssets는 바깥 asset ID를 쓰고,
+ActorCatalog/PlayableCharacterAssetService/CharacterPreviewPanel은 그 정확한 경로를 resolve한다.
+현재 resource root 환경 override나 Debug/Release 옆의 별도 Resources 폴더는 없다.
+현재 정규 로딩이 안쪽 사본을 자동 선택한다는 근거는 없으며 폴더를 삭제·이동하지 않았다.
+어제 실행한 EXE/수동 선택 상태까지 현재 파일 검사만으로 단정하지 않는다.
+
+### 다음 사용자 확인
+
+Visual Studio Debug/x64의 **Server + Client** profile을 Ctrl+F5로 시작한다.
+Character Select에서 차원술사 선택 → F1 → **Effect Tool V1** → All Effects →
+S/R/A/D/V/Alt V Recovery → Open Editor → Current Effect의 Solo/Play Family/Play All 순서다.
+D crack은 하나의 element에서 두 재질이 함께 나오는지, Alt V 자식 Solo는 부모 모델을 숨긴
+상태에서 재생되는지 확인한다. V2는 별도 F1 버튼에서 열고 각 창의 draft/닫기 상태를 확인한다.
+
+S는30중29 visible, D는51중26 visible이다. 기존 inert Light와 보류 source 모듈은 별도로 남는다.
+Alt V 후반 skinned native capture override와 원본 capture-view 행렬, live/multi-LINK Orbit,
+CylinderSpin의 일부 방향 옵션은 이번에 완료하지 않았다. CameraOffset은 로컬 UE5와 방향 차이는
+확인했지만 원작 UE3 실행 근거가 없고 핵심 S Shine/V 반구/crack/초기 box의 원인이 아니어서
+변경하지 않았다. 최종 외형·색·투명도·사용자 visual PASS는 미완료다.
+
+근거는 `out/DimensionMasterRound2_20260909/`의 memory_notes.md, motion_notes.md, tool_notes.md,
+native source inventory/geometry proof, 각 CPU/COM/codec/FXC 로그, data delta audit 및
+dimensionmaster_nested_resource_audit.json이다. 이 로컬 분석·빌드 산출물과 binary는 Git에 넣지 않는다.

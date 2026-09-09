@@ -36841,7 +36841,7 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
-        "renderProfile": "additive_one_sided_depth_read",
+        "renderProfile": "additive_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",

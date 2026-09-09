@@ -607,6 +607,13 @@ struct EFFECT_MESH_RING_FILL_DESC final
 	}
 };
 
+struct EFFECT_SOURCE_MATERIAL_SLOT_DESC final
+{
+	// Stable source material slot retained by CModel, never a mesh vector index.
+	uint32_t iSourceMaterialIndex = 0u;
+	EFFECT_MATERIAL_DESC Material;
+};
+
 struct EFFECT_MESH_DETAIL_DESC final
 {
 	bool_t bUseModelMaterial = true;
@@ -616,6 +623,8 @@ struct EFFECT_MESH_DETAIL_DESC final
 	// UE source order: roll(X), pitch(Y), yaw(Z), in degrees.
 	float3_t vSourceTypeDataRotationDegrees = { 0.f, 0.f, 0.f };
 	EFFECT_MESH_RING_FILL_DESC RingFill;
+	// When present, these exact source slots own all mesh material execution.
+	std::vector<EFFECT_SOURCE_MATERIAL_SLOT_DESC> SourceMaterialSlots;
 };
 
 struct EFFECT_SPRITE_DETAIL_DESC final
@@ -1484,6 +1493,26 @@ inline bool_t Is_EffectWorldMarkCarrier(const EFFECT_ELEMENT_DESC& Element)
 		Element.ResourceBindings)
 	{
 		if (Binding.strSlotId == "meshModel")
+			return false;
+	}
+	return true;
+}
+
+/* Admission is still validated by the codec and resource stage. This gate
+   lets one occurrence use its complete slot set without activating the unused
+   primary Required.Material (often EngineMaterials.DefaultMaterial). */
+inline bool_t Is_EffectElementAuthoringExecutionTarget(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.Detail.Mesh.SourceMaterialSlots.empty())
+		return Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
+	if (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+		!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "mesh")
+		return false;
+	for (const EFFECT_SOURCE_MATERIAL_SLOT_DESC& Slot : Element.Detail.Mesh.SourceMaterialSlots)
+	{
+		if (!Slot.Material.SourceMaterial.bEnabled ||
+			!Is_EffectAuthoringExecutionTarget(Slot.Material.Execution))
 			return false;
 	}
 	return true;

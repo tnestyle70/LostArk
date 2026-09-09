@@ -9653,5 +9653,6 @@ void CMainApp::Free()
 	m_pImGuiLayer.reset();
 	CGameInstance::Get().Release_Engine();
 	CEffectPresentationService::Release_PreparedResources();
+	CEffectV2Runtime::Release_Resources();
 	CEffectCatalog::Clear();
 }
