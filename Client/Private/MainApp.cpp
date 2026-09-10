@@ -6399,6 +6399,7 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 	register them explicitly or the CUI_Sprite clone fails to find a texture prototype. */
 	for (const wchar_t* pLoadingBackground : {
 		L"UI/Loading/Loading_Background_Valtan.png",
+		L"UI/Loading/Loading_Background_Kouku.png",
 		L"UI/Loading/Loading_Background_Prologue.png" })
 	{
 		const filesystem::path resolvedPath =
