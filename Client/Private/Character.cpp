@@ -2085,15 +2085,32 @@ void CCharacter::Set_CreationPreviewActive(const bool_t isActive)
 	/* Set before the idle is re-driven below so Set_Animation picks the right
 	pose on the way in and on the way out.
 
-	Only on the edge. The creation screen re-applies this every frame so a class change or a
-	replicated respawn puts the fresh character's helmet back off, and a fresh character comes
-	in with the flag clear, so the edge still fires for it. Driving the idle unconditionally
-	instead stomped whatever else was playing one frame later -- which is what the screen's
-	action list showed: the clip started and was replaced by the pose on the next frame. */
+	Driving it unconditionally stomped whatever else was playing one frame later, because the
+	creation screen re-applies this every frame -- which is what the action list showed: the
+	clip started and the pose replaced it on the next frame.
+
+	But the pose still has to survive a body swap. A class change fits a new model onto the
+	same character and that model starts on the class' own locomotion idle, which for these
+	classes is the battle stance -- spear up, shifting weight. So besides the flag's edge, the
+	locomotion idle itself is corrected back to the pose. Only that one clip: anything the
+	screen deliberately started is left alone. */
 	const bool_t wasActive = m_isCreationPreviewActive;
 	m_isCreationPreviewActive = isActive;
 	if (wasActive != isActive)
+	{
 		Set_Animation(CHARACTER_ANIM::IDLE, true);
+	}
+	else if (isActive && nullptr != m_pBodyModel)
+	{
+		const char_t* pPlaying =
+			m_pBodyModel->Get_AnimationName(m_pBodyModel->Get_CurrentAnimIndex());
+		const char_t* pLocomotionIdle = Resolve_LocomotionClip(CHARACTER_ANIM::IDLE);
+		if (nullptr != pPlaying && nullptr != pLocomotionIdle &&
+			0 == std::strcmp(pPlaying, pLocomotionIdle))
+		{
+			Set_Animation(CHARACTER_ANIM::IDLE, true);
+		}
+	}
 
 	/* Weapons are their own part list, so restoring them is an explicit show rather than
 	part of the equipment visibility rule. */
