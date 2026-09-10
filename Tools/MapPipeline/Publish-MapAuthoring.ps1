@@ -1423,7 +1423,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','defaultMotionInstanceId')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1437,8 +1437,25 @@ function Read-WorldSequenceDocument {
                 throw "Invalid world object resource: $($resource.objectId)"
             }
             Assert-SequenceVector $resource.scale 'World object scale' $true
-            if ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cnotin @('WORLD','PLAYER')) {
-                throw 'World object resource anchor must be WORLD or PLAYER'
+            if ($null -ne $resource.PSObject.Properties['anchorKind'] -and $resource.anchorKind -cnotin @('WORLD','PLAYER','BOSS')) {
+                throw 'World object resource anchor must be WORLD, PLAYER or BOSS'
+            }
+            $resourceAnchor = 'WORLD'
+            if ($null -ne $resource.PSObject.Properties['anchorKind']) { $resourceAnchor = [string]$resource.anchorKind }
+            $anchorBossArchetypeId = ''
+            $anchorBone = ''
+            foreach ($field in @('anchorBossArchetypeId','anchorBone')) {
+                if ($null -ne $resource.PSObject.Properties[$field] -and $resource.$field -isnot [string]) {
+                    throw "World object $field must be text"
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['anchorBossArchetypeId']) { $anchorBossArchetypeId = $resource.anchorBossArchetypeId }
+            if ($null -ne $resource.PSObject.Properties['anchorBone']) { $anchorBone = $resource.anchorBone }
+            if ([Text.UTF8Encoding]::new($false, $true).GetByteCount($anchorBone) -gt 128 -or
+                $anchorBone -match '[\x00-\x1f\x7f]' -or
+                ($resourceAnchor -ceq 'BOSS' -and $anchorBossArchetypeId -cnotmatch $stableId) -or
+                ($resourceAnchor -cne 'BOSS' -and ($anchorBossArchetypeId -cne '' -or $anchorBone -cne ''))) {
+                throw 'World object boss anchor requires a stable boss ID and bounded optional bone; other anchors cannot carry boss fields'
             }
             $alias = $null -ne $resource.PSObject.Properties['sequenceInstanceId'] -and $resource.sequenceInstanceId -ne ''
             if ($alias) {
@@ -1656,7 +1673,9 @@ function Read-WorldSequenceDocument {
             if ($document.formatVersion -eq 3 -and $null -ne $instance.PSObject.Properties[$optional]) { $instanceProperties += $optional }
         }
         Assert-ExactJsonProperties $instance $instanceProperties 'World sequence instance'
-        if ($null -ne $instance.PSObject.Properties['anchorKind'] -and $instance.anchorKind -cnotin @('WORLD','PLAYER')) { throw 'Invalid world object anchor' }
+        if ($null -ne $instance.PSObject.Properties['anchorKind'] -and $instance.anchorKind -cnotin @('WORLD','PLAYER','BOSS')) { throw 'Invalid world object anchor' }
+        $instanceAnchor = 'WORLD'
+        if ($null -ne $instance.PSObject.Properties['anchorKind']) { $instanceAnchor = [string]$instance.anchorKind }
         if ($null -ne $instance.PSObject.Properties['position']) { Assert-SequenceVector $instance.position 'World object instance position' }
         if ($instance.instanceId -isnot [string] -or
             $instance.instanceId -notmatch $stableId -or
@@ -1677,6 +1696,9 @@ function Read-WorldSequenceDocument {
         $bindings = @($instance.bindings)
         if ($bindings.Count -ne $trackCounts[[string]$instance.templateId]) {
             throw "World sequence instance binding count does not match its template: $($instance.instanceId)"
+        }
+        if ($instanceAnchor -ceq 'BOSS' -and ($bindings.Count -ne 1 -or $bindings[0].targetKind -cne 'OBJECT_RESOURCE')) {
+            throw 'Boss-anchored world sequence requires exactly one Object Resource binding'
         }
         $motionEnd = 'STOP'
         if ($null -ne $instance.PSObject.Properties['motionEnd']) {
@@ -1752,6 +1774,11 @@ function Read-WorldSequenceDocument {
             if ($binding.targetKind -eq 'OBJECT_RESOURCE') {
                 if (-not $objectResources.ContainsKey($binding.targetId)) { throw 'Unknown world object binding resource' }
                 $resource = $objectResources[$binding.targetId]
+                $resourceAnchor = 'WORLD'
+                if ($null -ne $resource.PSObject.Properties['anchorKind']) { $resourceAnchor = [string]$resource.anchorKind }
+                if (($instanceAnchor -ceq 'BOSS') -ne ($resourceAnchor -ceq 'BOSS')) {
+                    throw 'Boss-anchored world sequence and Object Resource anchors must match'
+                }
                 if ($resource.modelAssetId -eq '' -or ($animationTracks.Count -gt 0 -and -not $resource.animated) -or
                     ($transformTracks.Count -eq 0 -and $animationTracks.Count -eq 0)) { throw 'Invalid object resource slot or animation binding' }
             } else {

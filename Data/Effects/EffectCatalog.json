@@ -992,14 +992,9 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31910.full.restore.effect.json"
     },
     {
-      "effectAssetId": "effect.artist.skill.31930.clip1.full.restore",
+      "effectAssetId": "effect.artist.skill.31930.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip1.full.restore.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31930.clip2.full.restore",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip2.full.restore.effect.json"
+      "authoringPath": "Effects/Authored/effect.artist.skill.31930.full.restore.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31950.full.restore",

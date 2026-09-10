@@ -24,6 +24,7 @@
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace
 {
@@ -931,6 +932,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 
 	const std::string previousPatternId = m_strSelectedPatternId;
 	m_Draft = m_Document.Get_LastGood();
+	m_strLogicValueDraftId.clear();
+	m_strColliderLogicValueDraftId.clear();
 	m_ResourceReferences = m_Document.Get_References();
 	m_bResourceTreeDirty = true;
 	m_bHasDraft = true;
@@ -1164,7 +1167,7 @@ void Client::CKoukuSaydonActionWorkbench::Poll_PublishProcess()
 	{
 		m_bProductInventoryRefreshRequested = true;
 		m_strStatus =
-			"Published saved Patterns and Kouku world placements. F1 shows unavailable items with their reasons. Restart the Server, then use Complete Play (Server).";
+			"Published saved Patterns. The next Complete Play admits this revision on the Server; a running replay keeps its original revision. F1 shows unavailable items with their reasons. World placement edits still require a Server restart.";
 		return;
 	}
 	m_strStatus = "Publish All Patterns failed. Previous runtime data is retained unless the log reports a rollback failure. Use Publish All Patterns to retry";
@@ -1382,6 +1385,15 @@ bool_t Client::CKoukuSaydonActionWorkbench::Commit_Candidate(
 		outStatus = "KoukuSaydon edit rejected; draft preserved: " + validationStatus;
 		m_strStatus = outStatus;
 		return false;
+	}
+	// Refresh only a definition that another committed edit actually changed;
+	// unrelated geometry/timing edits must keep either panel's pending inputs.
+	for (auto* draftId : { &m_strLogicValueDraftId, &m_strColliderLogicValueDraftId })
+	{
+		if (draftId->empty()) continue;
+		const auto* previous = Find_Logic(m_Draft, *draftId);
+		const auto* next = Find_Logic(candidate, *draftId);
+		if (!previous || !next || *previous != *next) draftId->clear();
 	}
 	m_Draft = std::move(candidate);
 	m_bDirty = true;
@@ -2825,6 +2837,8 @@ void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()
 		m_strSelectedPresentationResourceId.clear();
 	if (!m_strLogicValueDraftId.empty() && nullptr == Find_Logic(m_Draft, m_strLogicValueDraftId))
 		m_strLogicValueDraftId.clear();
+	if (!m_strColliderLogicValueDraftId.empty() && nullptr == Find_Logic(m_Draft, m_strColliderLogicValueDraftId))
+		m_strColliderLogicValueDraftId.clear();
 	const KOUKU_SAYDON_COMPOSITION_PATTERN* const pattern =
 		Find_Pattern(m_Draft, m_strSelectedPatternId);
 	if (nullptr == pattern)
@@ -3281,7 +3295,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 		ImGui::EndDisabled();
 		ImGui::TextWrapped("Publishes every saved Parent, Bundle and Pattern across all gates. Unavailable items stay in the F1 tree with a reason; no individual publish selection is needed.");
 		if (Is_Dirty()) ImGui::TextDisabled("Save changes before Publish All Patterns.");
-		ImGui::TextDisabled("After publish, restart the Server before Complete Play.");
+		ImGui::TextDisabled("After publish, use Complete Play to run the new revision. Stop an active replay before starting the updated Pattern.");
 	}
 	ImGui::SeparatorText("Create Parent");
 	ImGui::InputTextWithHint("##NewFolder", "Parent name", m_NewFolderName, std::size(m_NewFolderName));
@@ -7081,8 +7095,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderLogicValues(
 		return reject("Collider connection needs a Duration or ENTER_AREA/OBJECT_CONTACT Trigger. Complete the Trigger settings before Apply; previous draft preserved.");
 	*definition = std::move(updated);
 
-	// Explicit Shared selection owns its clock. Otherwise reuse only the exact
-	// authored interval so a later hammer strike cannot move to the first strike.
+	// Explicit Shared selection owns its clock. The current link or a single
+	// unconnected window adopts this Collider's clock without replacing its ID.
+	bool_t adoptColliderClock = false;
 	auto window = pattern->LogicOccurrences.end();
 	if (!occurrence.strLogicOccurrenceId.empty())
 	{
@@ -7100,6 +7115,18 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderLogicValues(
 			}
 	if (window == pattern->LogicOccurrences.end())
 	{
+		for (auto row = pattern->LogicOccurrences.begin(); row != pattern->LogicOccurrences.end(); ++row)
+			if (row->strLogicId == definition->strLogicId &&
+				std::none_of(pattern->PresentationOccurrences.begin(), pattern->PresentationOccurrences.end(),
+					[&](const auto& other) { return other.strLogicOccurrenceId == row->strOccurrenceId; }))
+			{
+				if (window != pattern->LogicOccurrences.end()) return reject("Several unconnected Logic windows use this definition. Select the intended Shared Logic window; previous draft preserved.");
+				window = row;
+				adoptColliderClock = true;
+			}
+	}
+	if (window == pattern->LogicOccurrences.end())
+	{
 		if (pattern->iNextLogicOccurrenceOrdinal >= 1000000u) return reject("Logic window IDs are exhausted; previous draft preserved.");
 		KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE created;
 		created.strOccurrenceId = std::string(patternId) + ".logic." + std::to_string(pattern->iNextLogicOccurrenceOrdinal++);
@@ -7107,6 +7134,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderLogicValues(
 		created.iStartMs = occurrence.iStartMs; created.iDurationMs = occurrence.iDurationMs;
 		pattern->LogicOccurrences.push_back(std::move(created));
 		window = std::prev(pattern->LogicOccurrences.end());
+	}
+	if (adoptColliderClock || collider->strLogicOccurrenceId == window->strOccurrenceId)
+	{
+		window->iStartMs = occurrence.iStartMs; window->iDurationMs = occurrence.iDurationMs;
+		for (auto& other : pattern->PresentationOccurrences)
+			if (other.strLogicOccurrenceId == window->strOccurrenceId)
+			{ other.iStartMs = occurrence.iStartMs; other.iDurationMs = occurrence.iDurationMs; }
 	}
 	*collider = occurrence;
 	collider->strLogicOccurrenceId = window->strOccurrenceId;
@@ -7822,7 +7856,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		const auto compatibleWindowCount = std::count_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
 			[&](const auto& window) {
 				const auto* logic = Find_Logic(m_Draft, window.strLogicId);
-				return logic && logic->strLogicType == m_strColliderExecutionType && Kouku_LogicAcceptsColliders(*logic);
+				return logic && logic->strLogicType == m_strColliderExecutionType &&
+					(Kouku_LogicAcceptsColliders(*logic) || (logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty()));
 			});
 		if (ImGui::BeginCombo("Shared Logic window", nullptr == linkedBox ? "(none)" : linkedBox->strOccurrenceId.c_str()))
 		{
@@ -7831,9 +7866,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			for (const auto& window : pattern.LogicOccurrences)
 			{
 				const auto* logic = Find_Logic(m_Draft, window.strLogicId);
+				const bool nameOnlyTrigger = logic && logic->strLogicType == "TRIGGER" && logic->strTriggerKind.empty();
 				if (nullptr == logic || logic->strLogicType != m_strColliderExecutionType ||
-					!Kouku_LogicAcceptsColliders(*logic)) continue;
-				const auto label = logic->strDisplayName + " | " + window.strOccurrenceId;
+					(!Kouku_LogicAcceptsColliders(*logic) && !nameOnlyTrigger)) continue;
+				const auto label = logic->strDisplayName + (nameOnlyTrigger ? " (set Trigger kind)" : "") + " | " + window.strOccurrenceId;
 				if (ImGui::Selectable(label.c_str(), edit.strLogicOccurrenceId == window.strOccurrenceId))
 				{
 					edit.strLogicOccurrenceId = window.strOccurrenceId;
@@ -7878,12 +7914,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			if (generation != m_iDraftGeneration) return;
 			m_PresentationBoxEdit = pendingPresentation;
 		}
-		ImGui::BeginDisabled(!definitionLogic || !Kouku_LogicAcceptsColliders(*definitionLogic));
+		const auto* connectionLogic = definitionLogic;
+		if (definitionLogic && definitionLogic->strLogicType == "TRIGGER" && m_strColliderLogicValueDraftId == definitionLogic->strLogicId)
+			connectionLogic = &m_ColliderLogicValueDraft;
+		ImGui::BeginDisabled(!connectionLogic || !Kouku_LogicAcceptsColliders(*connectionLogic));
 		if (ImGui::Button("Append / reuse Logic window"))
 		{
 			std::string status;
 			const auto value = edit;
-			(void)Connect_ColliderLogic(patternId, value, m_strColliderLogicDefinitionId, status);
+			(void)Set_ColliderLogicValues(patternId, value, *connectionLogic, status);
 			ImGui::EndDisabled();
 			return;
 		}
@@ -7895,7 +7934,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			(void)Set_PresentationBoxDebugRender(patternId, occurrenceId, debugRender, status);
 			return;
 		}
-		ImGui::TextWrapped("A linked Collider shares its start/lifetime and Result slots with one Logic window. Eight roulette regions can share that same window.");
+		ImGui::TextWrapped("Apply keeps this Collider's 3D size and synchronizes its start/lifetime with the current Logic window and linked Colliders. Selecting a different Shared Logic window first adopts that window's time. Result slots remain shared.");
 		const auto* executionLogic = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
 		if (m_strColliderExecutionType == "TRIGGER" && executionLogic && executionLogic->strTriggerKind == "ENTER_AREA")
 		{
@@ -7911,7 +7950,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 				return;
 			}
 			ImGui::EndDisabled();
-			ImGui::TextWrapped("Creates or reuses ENTER_AREA and a max-HP damage Result together. First entry runs Success once; no entry runs Timeout. Other Result slots are preserved.");
+			ImGui::TextWrapped("Creates or reuses ENTER_AREA and a max-HP damage Result together. Entry runs Success per player; the Trigger re-entry setting controls later hits. No entry runs Timeout. Other Result slots are preserved.");
 		}
 		if (nullptr != linkedLogic && linkedLogic->strJudgementKind == "AREA_OVERLAP" &&
 			ImGui::BeginCombo("Inside outcome##ColliderBox", linkedLogic->strInsideOutcome.c_str()))
@@ -8001,7 +8040,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		{
 			const auto* selected = Find_Logic(m_Draft, m_strColliderLogicDefinitionId);
 			const auto* linked = Find_LogicBox(pattern, value.strLogicOccurrenceId);
-			if (selected && linked && linked->strLogicId == selected->strLogicId)
+			if (selected && selected->strLogicType == "TRIGGER" && m_strColliderLogicValueDraftId == selected->strLogicId)
+				(void)Set_ColliderLogicValues(patternId, value, m_ColliderLogicValueDraft, status);
+			else if (selected && linked && linked->strLogicId == selected->strLogicId)
 				(void)Set_PresentationBox(patternId, value, status);
 			else (void)Connect_ColliderLogic(patternId, value, m_strColliderLogicDefinitionId, status);
 		}
@@ -8074,7 +8115,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldResources()
 	if (selected)
 	{
 		ImGui::TextUnformatted(selected->strObjectDisplayName.c_str());
-		ImGui::TextDisabled("%s", selected->strAnchorKind == "PLAYER" ? "Anchor / Character" : "Map");
+		ImGui::TextDisabled("%s", selected->strAnchorKind == "BOSS" ? "Anchor / Boss BODY Bone" : selected->strAnchorKind == "PLAYER" ? "Anchor / Character" : "Map");
 		if (ready) ImGui::TextWrapped("Default: %s", selected->strDisplayName.c_str());
 		else ImGui::TextWrapped("Set an enabled default animation in Object Tool, then Save.");
 	}
@@ -8416,14 +8457,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	const std::string_view colliderPatternId,
 	const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* collider)
 {
-	/* The draft copies the definition once per selection so typing never
-	   commits half a value; Apply Values commits the whole set. */
-	if (m_strLogicValueDraftId != logic.strLogicId)
+	// Resources and Collider Detail can render different Logics in one frame.
+	// Each keeps its pending values until its own Apply or Revert.
+	auto& draftId = collider ? m_strColliderLogicValueDraftId : m_strLogicValueDraftId;
+	auto& draft = collider ? m_ColliderLogicValueDraft : m_LogicValueDraft;
+	if (draftId != logic.strLogicId)
 	{
-		m_LogicValueDraft = logic;
-		m_strLogicValueDraftId = logic.strLogicId;
+		draft = logic;
+		draftId = logic.strLogicId;
 	}
-	KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& draft = m_LogicValueDraft;
 	ImGui::SeparatorText("DURATION" == logic.strLogicType ? "Judgement" : "TRIGGER" == logic.strLogicType ? "Trigger" : "Outcome");
 	if ("DURATION" == logic.strLogicType)
 	{
@@ -8535,7 +8577,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			float distance = static_cast<float>(draft.fMaxDistanceM);
 			if (ImGui::InputFloat("Max distance m##KoukuLogicValue", &distance, 1.f, 5.f, "%.1f"))
 				draft.fMaxDistanceM = std::clamp(distance, 0.f, 1000.f);
-			ImGui::TextDisabled("Judged once when the window ends: the player's facing must hold the real boss inside this cone.");
+			if (ImGui::BeginCombo("Facing boss outcome##KoukuLogicValue", draft.strInsideOutcome.c_str()))
+			{
+				for (const char* outcome : { "SUCCESS", "FAIL" })
+					if (ImGui::Selectable(outcome, draft.strInsideOutcome == outcome)) draft.strInsideOutcome = outcome;
+				ImGui::EndCombo();
+			}
+			ImGui::TextDisabled("At the window end, the real boss inside this cone runs the selected Result slot; outside runs the opposite slot.");
 		}
 		else if ("POSE_INPUT" == draft.strJudgementKind)
 		{
@@ -8592,6 +8640,25 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			int32_t percent = static_cast<int32_t>(draft.iPercent);
 			if (ImGui::InputInt("Percent##KoukuLogicValue", &percent, 1, 10))
 				draft.iPercent = static_cast<std::uint32_t>(std::clamp(percent, 1, 100));
+		}
+		if ("MAX_HP_PERCENT_DAMAGE" == draft.strOutcomeKind)
+		{
+			bool knockback = draft.fPushRangeM > 0.0;
+			if (ImGui::Checkbox("Knockback##KoukuLogicValue", &knockback))
+			{
+				draft.fPushRangeM = knockback ? 2.0 : 0.0;
+				draft.iPushMs = knockback ? 242u : 0u;
+			}
+			if (knockback)
+			{
+				float distance = static_cast<float>(draft.fPushRangeM);
+				int timeMs = static_cast<int>(draft.iPushMs);
+				if (ImGui::InputFloat("Knockback distance (m)", &distance, .1f, 1.f, "%.2f"))
+					draft.fPushRangeM = std::clamp(distance, .01f, 20.f);
+				if (ImGui::InputInt("Knockback time (ms)", &timeMs, 10, 100))
+					draft.iPushMs = static_cast<std::uint32_t>(std::clamp(timeMs, 1, static_cast<int>(MAX_EDITOR_TIME_MS)));
+				ImGui::TextWrapped("Pushes the hit player away from this boss using the Server hit reaction and collision rules.");
+			}
 		}
 		if ("CLOWN_TRANSFORM" == draft.strOutcomeKind)
 		{
@@ -8799,10 +8866,21 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		if (ImGui::BeginCombo("Trigger kind", draft.strTriggerKind.empty() ? "(name only)" : draft.strTriggerKind.c_str()))
+		const std::array<std::pair<const char*, const char*>, 5u> triggerKinds = {{
+			{"", "(choose what activates this Trigger)"},
+			{"ENTER_AREA", "Player contact (ENTER_AREA)"},
+			{"OBJECT_CONTACT", "World object contact (OBJECT_CONTACT)"},
+			{"HUD_ENTER", "Switch player HUD at start (HUD_ENTER)"},
+			{"REAL_GAZE_TELEPORT", "Teleport real Saydon and spawn decoys (REAL_GAZE_TELEPORT)"}
+		}};
+		const auto selectedKind = std::find_if(triggerKinds.begin(), triggerKinds.end(),
+			[&](const auto& entry) { return draft.strTriggerKind == entry.first; });
+		if (ImGui::BeginCombo("Trigger kind", selectedKind == triggerKinds.end() ? draft.strTriggerKind.c_str() : selectedKind->second))
 		{
-			for (const char* kind : { "", "ENTER_AREA", "OBJECT_CONTACT", "HUD_ENTER", "REAL_GAZE_TELEPORT" })
-				if (ImGui::Selectable(*kind == '\0' ? "(name only)" : kind, draft.strTriggerKind == kind) && draft.strTriggerKind != kind)
+			for (const auto& [kind, label] : triggerKinds)
+			{
+				if (collider && *kind != '\0' && std::string_view(kind) != "ENTER_AREA" && std::string_view(kind) != "OBJECT_CONTACT") continue;
+				if (ImGui::Selectable(label, draft.strTriggerKind == kind) && draft.strTriggerKind != kind)
 				{
 					draft = KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION{ logic.strLogicId, logic.strDisplayName, logic.strLogicType };
 					draft.strTriggerKind = kind;
@@ -8810,14 +8888,20 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					if (draft.strTriggerKind == "OBJECT_CONTACT") draft.fTargetRadiusM = 1.0;
 					if (draft.strTriggerKind == "REAL_GAZE_TELEPORT") draft.ClockHours = { 4u, 7u, 10u };
 				}
+			}
 			ImGui::EndCombo();
 		}
+		if (collider)
+			ImGui::TextWrapped("This Collider supplies the contact shape, position and size. Apply Values also matches the linked Trigger's start/lifetime to the Collider. HUD and teleport Triggers are placed on the Logic lane without a Collider.");
 		if (draft.strTriggerKind == "ENTER_AREA")
 		{
+			int repeat = draft.bRepeatAfterKnockback ? 2 : draft.bRearmOnExit ? 1 : 0;
+			if (ImGui::Combo("Contact repetition", &repeat, "Once per player\0On exit and re-entry\0After knockback finishes (while inside)\0"))
+			{ draft.bRearmOnExit = repeat == 1; draft.bRepeatAfterKnockback = repeat == 2; }
 			float distance = static_cast<float>(draft.fBossChargeDistanceM);
 			if (ImGui::InputFloat("Charge distance (m)", &distance, 0.5f, 1.f, "%.2f"))
 				draft.fBossChargeDistanceM = std::clamp(distance, 0.f, 1000.f);
-			ImGui::TextWrapped("A linked Collider supplies the player-contact region. First entry is Success once; no entry before the window ends is Timeout. Charge distance 0 keeps the boss still; positive distance uses this Trigger window and captures its target direction once at the window start.");
+			ImGui::TextWrapped("A linked Collider supplies the player-contact region. Entry runs Success for each player. After knockback finishes repeats while inside, with no hit during knockback. Connect one damage Result with Knockback enabled. Exit/re-entry mode requires leaving all linked Colliders first. No entry before the window ends is Timeout. Charge distance 0 keeps the boss still; positive distance uses this Trigger window and captures its target direction once at the window start.");
 		}
 		else if (draft.strTriggerKind == "OBJECT_CONTACT")
 		{
@@ -8887,7 +8971,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Revert##KoukuLogicValue"))
-		m_strLogicValueDraftId.clear();
+		draftId.clear();
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_LogicResources()

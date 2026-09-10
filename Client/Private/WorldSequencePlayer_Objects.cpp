@@ -19,6 +19,25 @@ using namespace Engine;
 
 CWorldSequencePlayer::~CWorldSequencePlayer() { Clear(); }
 
+bool_t CWorldSequencePlayer::Resolve_BossBoneAnchor(const std::shared_ptr<CModel>& model,
+    const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status)
+{
+    if (!model || (!bone.empty() && !model->Has_Bone(bone.c_str())))
+    { status = "World Object boss BODY bone is unavailable: " + bone; return false; }
+    const matrix_t basis = bone.empty() ? XMLoadFloat4x4(&root) :
+        model->Get_BoneMatrix(bone.c_str()) * XMLoadFloat4x4(&root);
+    XMStoreFloat4x4(&out.world, basis);
+    const auto* values = reinterpret_cast<const f32_t*>(&out.world);
+    for (size_t i = 0u; i < 16u; ++i)
+        if (!std::isfinite(values[i]))
+        { status = "World Object boss BODY bone pose is not finite: " + bone; return false; }
+    if (std::abs(XMVectorGetX(XMMatrixDeterminant(basis))) < .000001f)
+    { status = "World Object boss BODY bone pose is singular: " + bone; return false; }
+    // The object sampler preserves the socket translation and normalizes its
+    // axes. Import scale belongs to the prop; boss scale is already in this pose.
+    return true;
+}
+
 void CWorldSequencePlayer::Collect_ValidationTargets(const TARGET_SET& targets,
     WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy)
 {
@@ -220,7 +239,7 @@ bool_t CWorldSequencePlayer::Get_EmissionAnchor(ACTIVE_INSTANCE& active, const T
     const std::string& key, const f32_t birthMs, const PLAYER_ANCHOR& baseline, PLAYER_ANCHOR& out)
 {
     out = baseline;
-    if (!targets.objectEmissionAnchor) return true;
+    if (!targets.objectEmissionAnchor || baseline.liveBossAnchor) return true;
     const auto existing = active.emissionAnchors.find(key);
     if (existing != active.emissionAnchors.end()) { out = existing->second; return true; }
     if (!std::isfinite(birthMs) || birthMs < 0.f || !targets.objectEmissionAnchor(birthMs, out.world))
@@ -304,7 +323,21 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
     if (!visible || std::none_of(instance.bindings.begin(), instance.bindings.end(),
         [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; })) return true;
     std::vector<PLAYER_ANCHOR> anchors;
-    if (!targets.objectEmissionAnchor && instance.anchorKind == "PLAYER")
+    if (instance.anchorKind == "BOSS")
+    {
+        const auto* resource = m_Document.Find_ObjectResource(instance.bindings.front().targetId);
+        PLAYER_ANCHOR anchor;
+        anchor.liveBossAnchor = true;
+        if (!resource || !targets.bossAnchor || !targets.bossAnchor(resource->anchorBossArchetypeId,
+            resource->anchorBone, anchor, active.objectSampleStatus))
+        {
+            if (active.objectSampleStatus.empty()) active.objectSampleStatus = "World Object Boss anchor is unavailable.";
+            m_Status = active.objectSampleStatus;
+            return true;
+        }
+        anchors.push_back(anchor);
+    }
+    else if (!targets.objectEmissionAnchor && instance.anchorKind == "PLAYER")
     {
         if (targets.playerAnchors) anchors = targets.playerAnchors();
         if (anchors.empty())
@@ -379,7 +412,15 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
     const WORLD_SEQUENCE_INSTANCE& instance, const TARGET_SET& targets)
 {
     std::vector<PLAYER_ANCHOR> anchors;
-    if (!targets.objectEmissionAnchor && instance.anchorKind == "PLAYER")
+    if (instance.anchorKind == "BOSS")
+    {
+        const auto* resource = m_Document.Find_ObjectResource(instance.bindings.front().targetId);
+        PLAYER_ANCHOR anchor;
+        anchor.liveBossAnchor = true;
+        if (resource && targets.bossAnchor && targets.bossAnchor(resource->anchorBossArchetypeId,
+            resource->anchorBone, anchor, active.objectSampleStatus)) anchors.push_back(anchor);
+    }
+    else if (!targets.objectEmissionAnchor && instance.anchorKind == "PLAYER")
     {
         if (targets.playerAnchors) anchors = targets.playerAnchors();
     }

@@ -3427,6 +3427,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			'maxDistanceM','poseIndex','threshold','shieldArcDegrees',
 			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
 		if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) { $windowProperties += 'bossChargeDistanceM' }
+		if ($null -ne $window.PSObject.Properties['rearmOnExit']) { $windowProperties += 'rearmOnExit' }
+		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) { $windowProperties += 'repeatAfterKnockback' }
 		if ($null -ne $window.PSObject.Properties['holdLogicOccurrenceId']) { $windowProperties += 'holdLogicOccurrenceId' }
 		if ($window.kind -ceq 'OBJECT_OVERLAP') { $windowProperties += @('targetWorldInstanceId','targetWorldX','targetWorldZ','targetRadiusM') }
 		if ($window.kind -ceq 'OBJECT_CONTACT') { $windowProperties += @('contactTargets','contactGroupId','contactPriority') }
@@ -3444,7 +3446,26 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			Assert-JsonNumber $window.$field "KoukuSaydon logic window $field"
 		}
 		$windowKind = [string]$window.kind
-		if ($window.insideOutcome -cnotin @('SUCCESS','FAIL') -or ($window.insideOutcome -ceq 'FAIL' -and $windowKind -cnotin @('AREA_OVERLAP','OBJECT_OVERLAP'))) { throw 'KoukuSaydon insideOutcome is invalid' }
+		$rearmOnExit = $false
+		if ($null -ne $window.PSObject.Properties['rearmOnExit']) {
+			if ($windowKind -cne 'ENTER_AREA' -or $window.rearmOnExit -isnot [bool]) {
+				throw 'Only ENTER_AREA owns a boolean rearmOnExit'
+			}
+			$rearmOnExit = [bool]$window.rearmOnExit
+		}
+		if ($window.insideOutcome -cnotin @('SUCCESS','FAIL') -or ($window.insideOutcome -ceq 'FAIL' -and $windowKind -cnotin @('AREA_OVERLAP','OBJECT_OVERLAP','GAZE_REAL_BOSS'))) { throw 'KoukuSaydon insideOutcome is invalid' }
+		$repeatAfterKnockback = $false
+		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) {
+			if ($windowKind -cne 'ENTER_AREA' -or $window.repeatAfterKnockback -isnot [bool]) { throw 'Only ENTER_AREA owns boolean repeatAfterKnockback' }
+			$repeatAfterKnockback = [bool]$window.repeatAfterKnockback
+		}
+		if ($repeatAfterKnockback -and $rearmOnExit) { throw 'Choose one contact repeat policy' }
+		if ($repeatAfterKnockback) {
+			$repeatHits = @($window.onSuccess)
+			if ($repeatHits.Count -ne 1 -or $repeatHits[0].kind -cne 'MAX_HP_PERCENT_DAMAGE' -or
+				$null -eq $repeatHits[0].PSObject.Properties['pushRangeM'] -or $repeatHits[0].pushRangeM -le 0 -or
+				$null -eq $repeatHits[0].PSObject.Properties['pushMs'] -or $repeatHits[0].pushMs -le 0) { throw 'Repeat after knockback requires one damage Success with positive knockback' }
+		}
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
@@ -3540,6 +3561,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			[uint32]$window.poseIndex, [uint32]$window.threshold,
 			(Format-InvariantFloat $window.shieldArcDegrees 'KoukuSaydon logic window shieldArcDegrees'),
 			$endsPatternFlag, $symbolText, (Format-InvariantSignedFloat $window.normalYawOffsetDegrees 'KoukuSaydon shield normal offset'), $insideFail) + $objectTargetFields -join "`t"))
+		if ($rearmOnExit -or $repeatAfterKnockback) {
+			$repeatMode = if ($repeatAfterKnockback) { 'AFTER_KNOCKBACK' } else { 'ON_REENTER' }
+			$patternRows.Add((@('PATTERNLOGICREARM', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $window.windowId, $repeatMode) -join "`t"))
+		}
         if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) {
             Assert-JsonNumber $window.bossChargeDistanceM 'Boss charge distance'
             if ($windowKind -cne 'ENTER_AREA' -or $window.bossChargeDistanceM -le 0 -or $window.bossChargeDistanceM -gt 1000 -or
@@ -3677,6 +3703,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			for ($ordinal = 0; $ordinal -lt $outcomes.Count; ++$ordinal) {
 				$outcome = $outcomes[$ordinal]
 				$outcomeProperties = @('kind','percent','durationMs','patternId')
+				foreach ($field in @('pushRangeM','pushMs')) {
+					if ($null -ne $outcome.PSObject.Properties[$field]) { $outcomeProperties += $field }
+				}
 				if ($outcome.kind -ceq 'FEAR') { $outcomeProperties += 'presentationId' }
 				if ($outcome.kind -ceq 'CAPTURE_PLAYER') { $outcomeProperties += @('attachmentSlot','gripLocalOffset') }
 				if ($outcome.kind -ceq 'PLAY_WORLD_OBJECT_MOTION') { $outcomeProperties += @('targetWorldInstanceId','motionInstanceId') }
@@ -3691,6 +3720,26 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					throw "KoukuSaydon logic outcome patternId must be text: $($window.windowId)"
 				}
 				$outcomeKind = [string]$outcome.kind
+				$outcomePushRangeM = 0.0
+				$outcomePushMs = 0
+				if ($null -ne $outcome.PSObject.Properties['pushRangeM'] -or $null -ne $outcome.PSObject.Properties['pushMs']) {
+					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE') { throw 'Only MAX_HP_PERCENT_DAMAGE owns push values' }
+					if (($null -ne $outcome.PSObject.Properties['pushRangeM']) -ne ($null -ne $outcome.PSObject.Properties['pushMs'])) {
+						throw 'KoukuSaydon outcome pushRangeM and pushMs must be supplied together'
+					}
+					if ($null -ne $outcome.PSObject.Properties['pushRangeM']) {
+						Assert-JsonNumber $outcome.pushRangeM 'KoukuSaydon outcome pushRangeM'
+						$outcomePushRangeM = [double]$outcome.pushRangeM
+					}
+					if ($null -ne $outcome.PSObject.Properties['pushMs']) {
+						Assert-JsonInteger $outcome.pushMs 'KoukuSaydon outcome pushMs' 0 600000
+						$outcomePushMs = [uint32]$outcome.pushMs
+					}
+					if ($outcomePushRangeM -lt 0 -or $outcomePushRangeM -gt 20 -or
+						(($outcomePushRangeM -eq 0) -ne ($outcomePushMs -eq 0))) {
+						throw 'KoukuSaydon outcome pushRangeM 0..20 and pushMs 0..600000 must both be zero or positive'
+					}
+				}
 				$isContactResult = $outcomeKind -cin @('PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW')
 				if ($isContactResult -ne ($windowKind -ceq 'OBJECT_CONTACT')) { throw 'OBJECT_CONTACT requires contact motion or window signal results' }
 				if ($windowKind -ceq 'OBJECT_OVERLAP' -and ($outcomeKind -cne 'PLAY_WORLD_OBJECT_MOTION' -or
@@ -3754,6 +3803,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
 					$outcomeKind, [uint32]$outcome.percent, [uint32]$outcome.durationMs,
 					$followupText) + $motionIds -join "`t"))
+				if ($outcomePushRangeM -gt 0) {
+					$patternRows.Add((@('PATTERNLOGICPUSH', $koukuEncounterDocument.encounterId,
+						$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
+						(Format-InvariantFloat $outcomePushRangeM 'KoukuSaydon outcome pushRangeM'), $outcomePushMs) -join "`t"))
+				}
 				if ($isContactResult -and ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0)) { throw 'Contact result does not take percent or durationMs' }
 				if ($outcomeKind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') {
 					if ($outcome.contactMotions -isnot [Array] -or @($outcome.contactMotions).Count -ne $contactTargetIds.Count) { throw 'Contact motion must map every candidate' }

@@ -1573,7 +1573,7 @@ HRESULT CModel::Ready_BinaryModel(
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 14u || mask == 0u ||
+            if (source.program == 0u || source.program > 20u || mask == 0u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
                 replacement.surface.hasBakedLighting || replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
@@ -1602,7 +1602,8 @@ HRESULT CModel::Ready_BinaryModel(
             {
                 if (material.name != replacement.materialName) continue;
                 const size_t materialIndex = static_cast<size_t>(&material - asset.materials.data());
-                if ((source.program == 5u || source.program == 7u) &&
+                if ((source.program == 5u || source.program == 7u ||
+                    source.program == 18u || source.program == 19u) &&
                     any_of(asset.meshes.begin(), asset.meshes.end(), [&](const MODEL_MESH_DATA& mesh) {
                         return mesh.materialIndex == materialIndex &&
                             (!mesh.hasTexcoord1 || (source.program == 5u && !mesh.hasTexcoord2));

@@ -1762,6 +1762,24 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 self.validate(invalid)
 
+    def test_gaze_facing_outcome_projects_and_preserves_default(self):
+        document = copy.deepcopy(self.document)
+        logics = {row["logicId"]: row for row in document["logics"]}
+        gaze = logics["kakulsaydon.g1.logic.16"]
+        gaze.pop("insideOutcome", None)
+        box = next(row for row in self.find(document, GAZE_ID)["logicOccurrences"]
+                   if row["logicId"] == gaze["logicId"])
+        self.assertEqual("SUCCESS", subject._project_logic_window(box, gaze, logics, 0)["insideOutcome"])
+        gaze["insideOutcome"] = "FAIL"
+        self.validate(document)
+        projected = subject._project_logic_window(box, gaze, logics, 0)
+        self.assertEqual("FAIL", projected["insideOutcome"])
+        self.assertEqual("GAZE_REAL_BOSS", projected["kind"])
+        self.assertEqual("INSTANT_DEATH", projected["onFail"][0]["kind"])
+        gaze["insideOutcome"] = "TIMEOUT"
+        with self.assertRaisesRegex(subject.CompositionError, "insideOutcome"):
+            self.validate(document)
+
     def test_counter_window_projects_followup_and_refuses_per_player_fail(self):
         document = copy.deepcopy(self.document)
         logic = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.1")
@@ -2527,6 +2545,154 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.validate(document)
         with self.assertRaisesRegex(subject.CompositionError, "consistent capture grip"):
             subject._project_attachment_grips(document)
+
+    def reenter_damage_document(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.strip_lanes(self.first_product(document))
+        pattern["authoringStatus"] = "PRODUCT"
+        document["playAllPatternIds"] = [row["patternId"] for row in self.product_patterns(document)]
+        ordinal = document["nextLogicOrdinal"]
+        trigger_id, result_id = (f"kakulsaydon.g1.logic.{ordinal + index}" for index in range(2))
+        document["nextLogicOrdinal"] += 2
+        document["logics"].extend([
+            dict(logicId=trigger_id, displayName="Reenter hit", logicType="TRIGGER",
+                 triggerKind="ENTER_AREA", rearmOnExit=True),
+            dict(logicId=result_id, displayName="Hit and push", logicType="RESULT",
+                 outcomeKind="MAX_HP_PERCENT_DAMAGE", percent=10, pushRangeM=2.0, pushMs=242),
+        ])
+        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        document["nextPresentationResourceOrdinal"] += 1
+        document["presentationResources"].append(dict(resourceId=resource_id, displayName="Hit circle",
+            kind="COLLIDER", assetId="", shape="CIRCLE", radiusM=3))
+        window_id = pattern["patternId"] + ".logic.1"
+        pattern["nextLogicOccurrenceOrdinal"] = pattern["nextPresentationOccurrenceOrdinal"] = 2
+        pattern["logicOccurrences"] = [dict(occurrenceId=window_id, logicId=trigger_id,
+            startMs=0, durationMs=1000, onSuccessLogicIds=[result_id])]
+        pattern["presentationOccurrences"] = [dict(occurrenceId=pattern["patternId"] + ".presentation.1",
+            resourceId=resource_id, startMs=0, durationMs=1000, logicOccurrenceId=window_id,
+            anchorKind="BOSS", followBoss=True)]
+        return document
+
+    def test_enter_area_rearm_and_damage_push_project_without_changing_legacy_defaults(self):
+        document = self.reenter_damage_document()
+        self.validate(document)
+        window = self.first_product(subject.project_encounter(document))["logicWindows"][0]
+        self.assertTrue(window["rearmOnExit"])
+        self.assertEqual((10, 2.0, 242), tuple(window["onSuccess"][0][key]
+            for key in ("percent", "pushRangeM", "pushMs")))
+        self.assertEqual(("BOSS_CURRENT", 3), tuple(window["cardRegions"][0][key]
+            for key in ("anchorKind", "radiusM")))
+        trigger, result = document["logics"][-2:]
+        for explicit_defaults in (False, True):
+            if explicit_defaults:
+                trigger["rearmOnExit"] = False
+                result.update(pushRangeM=0, pushMs=0)
+            else:
+                trigger.pop("rearmOnExit", None)
+                result.pop("pushRangeM", None)
+                result.pop("pushMs", None)
+            self.validate(document)
+            legacy = self.first_product(subject.project_encounter(document))["logicWindows"][0]
+            self.assertNotIn("rearmOnExit", legacy)
+            self.assertNotIn("pushRangeM", legacy["onSuccess"][0])
+            self.assertNotIn("pushMs", legacy["onSuccess"][0])
+            self.assertEqual(10, legacy["onSuccess"][0]["percent"])
+
+    def test_contact_repeats_after_knockback_with_one_positive_push_result(self):
+        document = self.reenter_damage_document()
+        trigger, result = document["logics"][-2:]
+        trigger.pop("rearmOnExit")
+        trigger["repeatAfterKnockback"] = True
+        self.validate(document)
+        window = self.first_product(subject.project_encounter(document))["logicWindows"][0]
+        self.assertTrue(window["repeatAfterKnockback"])
+        self.assertNotIn("rearmOnExit", window)
+        for invalid in (dict(trigger, rearmOnExit=True), dict(trigger, repeatAfterKnockback=1),
+                        dict(trigger, triggerKind="HUD_ENTER", hudMode="NONE")):
+            with self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(invalid, "Continuous contact", document["nextLogicOrdinal"])
+        result.update(pushRangeM=0, pushMs=0)
+        with self.assertRaisesRegex(subject.CompositionError, "positive knockback"):
+            self.validate(document)
+
+    def test_rearm_and_push_reject_wrong_owner_type_bounds_and_unpaired_values(self):
+        document = self.reenter_damage_document()
+        trigger, result = document["logics"][-2:]
+        invalid_rows = [dict(trigger, rearmOnExit=value) for value in (1, "true", None)]
+        invalid_rows.append(dict(trigger, triggerKind="HUD_ENTER", hudMode="NONE"))
+        invalid_rows.extend(dict(result, pushRangeM=value) for value in (-1, 20.01, float("inf"), float("nan"), True, "2"))
+        invalid_rows.extend(dict(result, pushMs=value) for value in (-1, 600001, 0.5, True, "242"))
+        invalid_rows.extend([dict(result, pushMs=0), dict(result, pushRangeM=0),
+                             dict(result, outcomeKind="MADNESS_GAUGE_ADD_PERCENT")])
+        for omitted in ("pushRangeM", "pushMs"):
+            for other_value in (0, 2):
+                invalid = dict(result, pushRangeM=other_value, pushMs=other_value)
+                del invalid[omitted]
+                invalid_rows.append(invalid)
+        for row in invalid_rows:
+            with self.subTest(row=row), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(row, "Reentry/push fixture", document["nextLogicOrdinal"])
+        for row in (dict(trigger, rearmOnExit=False), dict(result, pushRangeM=20, pushMs=600000),
+                    dict(result, pushRangeM=0, pushMs=0)):
+            subject._validate_logic_definition(row, "Reentry/push bounds", document["nextLogicOrdinal"])
+
+    def test_rearm_and_push_bootstrap_sidecars_keep_existing_main_row_contract(self):
+        projected = self.first_product(subject.project_encounter(self.reenter_damage_document()))
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                       for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                                    "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
+        start = publisher.index("\t$koukuWindowIds =")
+        end = publisher.index("\tif ($koukuPattern.mechanicTriggers", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            source = folder / "pattern.json"
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]+$'\n" + "\n".join(definitions)
+            script += "\n$koukuPattern=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$koukuPatternDurationMs=600000; $koukuEncounterDocument=[pscustomobject]@{encounterId='encounter.test'}\n"
+            script += "$patternRows=[Collections.Generic.List[string]]::new(); $koukuFollowupTargets=[Collections.Generic.List[string]]::new()\n"
+            script += publisher[start:end] + "\nConvertTo-Json -InputObject @($patternRows) -Compress\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            def run(value):
+                source.write_text(json.dumps(value), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                      capture_output=True, text=True, timeout=45)
+            result = run(projected)
+            self.assertEqual(0, result.returncode, result.stderr)
+            rows = [row.split("\t") for row in json.loads(result.stdout)]
+            self.assertEqual(22, len(next(row for row in rows if row[0] == "PATTERNLOGIC")))
+            self.assertEqual(10, len(next(row for row in rows if row[0] == "PATTERNLOGICOUTCOME")))
+            rearm = next(row for row in rows if row[0] == "PATTERNLOGICREARM")
+            push = next(row for row in rows if row[0] == "PATTERNLOGICPUSH")
+            self.assertEqual((5, "ON_REENTER"), (len(rearm), rearm[-1]))
+            self.assertEqual(8, len(push))
+            self.assertEqual(["SUCCESS", "0", "2", "242"], push[-4:])
+            self.assertEqual(rearm[1:4], push[1:4])
+            for field, value in (("pushRangeM", -1), ("pushRangeM", 20.01), ("pushRangeM", 0),
+                                 ("pushMs", 0), ("pushMs", 600001), ("pushMs", 0.5),
+                                 ("kind", "MADNESS_GAUGE_ADD_PERCENT")):
+                invalid = copy.deepcopy(projected)
+                invalid["logicWindows"][0]["onSuccess"][0][field] = value
+                with self.subTest(field=field, value=value):
+                    self.assertNotEqual(0, run(invalid).returncode)
+            for field, value in (("rearmOnExit", 1), ("kind", "AREA_OVERLAP")):
+                invalid = copy.deepcopy(projected)
+                invalid["logicWindows"][0][field] = value
+                with self.subTest(field=field, value=value):
+                    self.assertNotEqual(0, run(invalid).returncode)
+            for omitted in ("pushRangeM", "pushMs"):
+                invalid = copy.deepcopy(projected)
+                invalid["logicWindows"][0]["onSuccess"][0].update(pushRangeM=0, pushMs=0)
+                del invalid["logicWindows"][0]["onSuccess"][0][omitted]
+                with self.subTest(omitted=omitted):
+                    self.assertNotEqual(0, run(invalid).returncode)
+            projected["logicWindows"][0]["rearmOnExit"] = False
+            projected["logicWindows"][0]["onSuccess"][0].update(pushRangeM=0, pushMs=0)
+            result = run(projected)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse(any(row.startswith(("PATTERNLOGICREARM\t", "PATTERNLOGICPUSH\t"))
+                                 for row in json.loads(result.stdout)))
 
     def test_enter_area_charge_uses_its_window_and_rejects_motion_conflicts(self):
         document = copy.deepcopy(self.document)

@@ -1,6 +1,7 @@
 #include "Material.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "Shader.h"
+#include "GameInstance.h"
 
 #include <algorithm>
 #include <array>
@@ -711,6 +712,15 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
 {
     if (!shader) return E_INVALIDARG;
     const auto& source = m_Surface.sourceCharacter;
+    if (!lightPass)
+    {
+        const auto environment = CGameInstance::Get().Get_RenderEnvironment();
+        const uint32_t enabled = environment.pCube ? 1u : 0u;
+        if (FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentEnabled", &enabled, sizeof(enabled))) ||
+            FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentColor", &environment.vColor, sizeof(float4_t))) ||
+            FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentRotation", &environment.vRotationIntensity, sizeof(float4_t))) ||
+            FAILED(shader->Bind_Texture("g_SourceCharacterEnvironmentCube", environment.pCube))) return E_FAIL;
+    }
     const auto& constants = lightPass ? source.lightConstants : source.baseConstants;
     const uint32_t mask = lightPass ? source.lightTextureMask : source.baseTextureMask;
     if (FAILED(shader->Bind_RawValue("g_SourceCharacterTime", &g_SourceCharacterTime, sizeof(g_SourceCharacterTime))) ||

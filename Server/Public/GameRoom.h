@@ -524,12 +524,16 @@ namespace LostArk::Server
 			std::uint32_t iCommonStartTick = 0u;
 			LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
 			std::uint32_t iPinnedSourceRevision = 0u;
+			/* Global gameplay authority remains PinnedGameplayRevision. The
+			   separate Kouku Product source owns pattern/logic rows for this run. */
+			std::shared_ptr<const CGameplayCatalog> pProductGeneration;
 			std::vector<KOUKUSAYDON_PATTERN_AUDITION_MEMBER> Members;
 			std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> WorldPlays;
 			std::vector<KOUKU_SCHEDULED_SUPPORT_SURFACE> SupportSchedule;
 		};
 		KOUKUSAYDON_PATTERN_AUDITION_MEMBER* Find_KoukuAuditionMember(LostArk::Shared::NET_ENTITY_ID bossId);
 		KOUKUSAYDON_LOGIC_LEDGER* Active_KoukuPlayerLedger();
+		[[nodiscard]] const CGameplayCatalog* Resolve_KoukuProductCatalog() const noexcept;
 		void Prepare_KoukuAuditionTick(std::uint32_t serverTick);
 		bool Refresh_KoukuSupportSurfaces(std::uint32_t serverTick);
 		bool Build_KoukuBundleState(LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& message) const;
@@ -1469,6 +1473,7 @@ namespace LostArk::Server
 		};
 		std::uint32_t m_iNextKoukuSaydonPatternAuditionEpoch = 1u;
 		KOUKUSAYDON_PATTERN_AUDITION_STATE m_KoukuSaydonPatternAudition;
+		std::shared_ptr<const CGameplayCatalog> m_pKoukuPublishedProductGeneration;
 		std::unordered_map<SESSION_ID, KOUKUSAYDON_PATTERN_AUDITION_RECEIPT>
 			m_KoukuSaydonPatternAuditionReceiptBySessionId;
 		std::vector<TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>

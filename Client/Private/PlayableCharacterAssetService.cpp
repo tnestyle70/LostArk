@@ -223,12 +223,15 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 	const size_t totalModelCount =
 		1u + pTags->iEquipmentCount + pTags->iWeaponCount;
 	staged.reserve(totalModelCount);
+	CModel* pBodyPalette = nullptr;
 	const auto StageModel = [
 		&staged,
+		&pBodyPalette,
 		&pDevice,
 		&pContext,
 		&progress,
         &loadDescription,
+		characterClass,
 		totalModelCount](
 		const tchar_t* pTag,
 		const std::string& assetId,
@@ -243,7 +246,7 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			return false;
 		MODEL_ASSET_LOAD_DESC description;
 		if (!loadDescription(assetId, description)) return false;
-		unique_ptr<CPrototype> pModel = CModel::Create(
+		unique_ptr<CModel> pModel = CModel::Create(
 			pDevice,
 			pContext,
 			modelType,
@@ -251,6 +254,41 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 			transform);
 		if (nullptr == pModel)
 			return false;
+		bool requiresBodyPalette = false;
+		// This source-normalized rig contract belongs to the DimensionMaster pack.
+		if (modelType == MODEL::ANIM &&
+			characterClass == LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER)
+		{
+			for (uint32_t mesh = 0; mesh < pModel->Get_NumMeshes(); ++mesh)
+			{
+				const auto* surface = pModel->Get_MaterialSurface(mesh);
+				requiresBodyPalette = requiresBodyPalette || (surface &&
+					surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+					(surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u));
+			}
+		}
+		if (requiresBodyPalette)
+		{
+			const auto boneNames = pModel->Get_BoneNames();
+			bool compatible = pBodyPalette &&
+				pModel->Get_SkeletonHash() == pBodyPalette->Get_SkeletonHash() &&
+				boneNames == pBodyPalette->Get_BoneNames();
+			for (uint32_t bone = 0; compatible && bone < boneNames.size(); ++bone)
+			{
+				matrix_t equipmentRest, bodyRest;
+				compatible = pModel->Get_BoneParentIndex(bone) == pBodyPalette->Get_BoneParentIndex(bone) &&
+					pModel->Get_BoneRestLocalMatrix(bone, equipmentRest) &&
+					pBodyPalette->Get_BoneRestLocalMatrix(bone, bodyRest);
+				for (uint32_t row = 0; compatible && row < 4u; ++row)
+					compatible = XMVector4Equal(equipmentRest.r[row], bodyRest.r[row]);
+			}
+			if (!compatible)
+			{
+				OutputDebugStringA(("[PlayableCharacterAssetService] Equipment body palette mismatch: " +
+					assetId + "\n").c_str());
+				return false;
+			}
+		}
 		staged.emplace_back(pTag, std::move(pModel));
 		if (progress)
 			progress(staged.size(), totalModelCount, assetId);
@@ -297,6 +335,7 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 				return E_FAIL;
 			}
 		}
+		pBodyPalette = pBodyModel.get();
 		staged.emplace_back(pTags->pBody, std::move(pBodyModel));
 		if (progress)
 			progress(staged.size(), totalModelCount, pActor->bodyModel);

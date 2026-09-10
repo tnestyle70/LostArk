@@ -111,6 +111,41 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             generated_document["globalQuality"]["bloomScatter"],
         )
 
+    def test_environment_round_trip_and_invalid_input_preserves_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            destination = Path(temporary_directory) / "runtime.json"
+            document = copy.deepcopy(self.source_document)
+            environment = {
+                "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+                "color": [1, 1, 1, 0],
+                "rotationIntensity": [0, 1, 1, 0],
+            }
+            document["profiles"][0]["environment"] = environment
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            original = destination.read_bytes()
+            self.assertEqual(environment, json.loads(original)["profiles"][0]["environment"])
+            for field, value in (
+                ("cubeTexture", "../outside.dds"),
+                ("cubeTexture", "C:/outside.dds"),
+                ("cubeTexture", "Map\\outside.dds"),
+                ("cubeTexture", "Map/./outside.dds"),
+                ("cubeTexture", "Map/outside.tga"),
+                ("color", [1, -1, 1, 0]),
+                ("rotationIntensity", [0, 0, 1, 0]),
+                ("rotationIntensity", [0, 1, 1, 1]),
+                ("rotationIntensity", [0, 1, "1", 0]),
+            ):
+                with self.subTest(field=field, value=value):
+                    invalid = copy.deepcopy(document)
+                    invalid["profiles"][0]["environment"][field] = value
+                    self.write_document(source, invalid)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(original, destination.read_bytes())
+
     def test_workbench_float32_boundary_values_are_accepted(self) -> None:
         boundary_cases = (
             (to_float32(0.0312), to_float32(0.0156)),

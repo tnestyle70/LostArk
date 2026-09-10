@@ -1,19 +1,25 @@
-"""Append the requested golden F-derived strikes without rebuilding tuned V rows.
+"""Restore F lightning color and duplicate the requested AltV lightning rows.
 
 The four extra waves are project-authored user tuning, not recovered V counts.
-Existing elements (including positions/rotations), F, and the V startup clip are
-preserved. Re-running is a no-op and never overwrites a subsequently tuned wave.
+Existing transforms/times, F, and the V startup clip are preserved. The two old
+fixed-color overrides are restored only while equal to this script's original
+values. User-edited distributions and already duplicated rows are never replaced.
 """
 from pathlib import Path
 import copy
 import hashlib
 import json
+import os
 
 
 ROOT = Path(__file__).resolve().parents[2]
 AUTHORED = ROOT / "Data/Effects/Authored"
 OUT = ROOT / "out/ArtistWarlordVisualFollowup20260910/Warlord"
 PREFIX = "authored.warlord.v.golden-guardian-lightning."
+ALT_LIGHTNING_IDS = (
+    "981227451bbcb3791340", "522d5a0e988cf10a2c8a", "a7e449ba34d000861ce8",
+    "8bce29d1c389261ef8bd", "ce6fd53e38bad2acbe3b", "da9e99a88cbcaee64d0e",
+)
 
 
 def read(path):
@@ -30,6 +36,92 @@ def constant(distribution, values):
                   lookupTable=[min(values), max(values)] + list(values) * 2,
                   keys=[])
     return result
+
+
+def install(path, before_bytes, document):
+    backup = OUT / "lightning_resume_before" / path.name
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    if not backup.exists():
+        backup.write_bytes(before_bytes)
+    temporary = path.with_name(path.name + ".lightning.tmp")
+    temporary.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+                         encoding="utf-8")
+    if path.read_bytes() != before_bytes:
+        temporary.unlink()
+        raise RuntimeError(f"Document changed during lightning patch: {path}")
+    os.replace(temporary, path)
+
+
+def restore_f_color(element, original):
+    source_distributions = {
+        d["propertyPath"]: d for m in original["sourceRecipe"]["modules"]
+        for d in m["distributions"]
+        if d["propertyPath"] in ("startcolor", "colorscaleoverlife")
+    }
+    repaired = []
+    for module in element["sourceRecipe"]["modules"]:
+        for index, distribution in enumerate(module["distributions"]):
+            name = distribution["propertyPath"]
+            if name not in source_distributions:
+                continue
+            source = source_distributions[name]
+            legacy = constant(source, [1.0, 0.72, 0.08] if name == "startcolor"
+                              else [1.0, 1.0, 1.0])
+            if distribution == legacy:
+                module["distributions"][index] = copy.deepcopy(source)
+                repaired.append(name)
+    return repaired
+
+
+def duplicate_altv_lightning(receipt):
+    path = AUTHORED / "effect.warlord.skill.17250.clip1.full.restore.effect.json"
+    before_bytes = path.read_bytes()
+    document = read(path)
+    before = copy.deepcopy(document)
+    existing = {e["id"]: e for e in document["elements"]}
+    inserted = []
+    for index, suffix in enumerate(ALT_LIGHTNING_IDS, 1):
+        original_id = "authored.source-particle.full-warlord-alt_v." + suffix
+        original = existing[original_id]
+        assert original["material"]["sourceProfile"]["runtimeShaderProfileId"] == \
+            "effect.ue3.warlord-1166-native.v1"
+        assert any(r["assetId"].endswith("/fx_e_electric_005.dds")
+                   for r in original["resources"])
+        duplicate_id = "authored.copy." + original_id + ".lightning2"
+        assert len(duplicate_id) <= 128
+        if duplicate_id in existing:
+            continue
+        extra = copy.deepcopy(original)
+        extra.update(id=duplicate_id, sourceNode="authored-copy:" + original_id,
+                     displayName=original["displayName"] + " Lightning Extra")
+        # Portable authored copies preserve the source RNG identity. A distinct
+        # seed is therefore required to add spatially independent particles.
+        extra["detail"]["particle"]["randomSeed"] = 172500 + index
+        assert extra["detail"]["particle"]["randomSeed"] != \
+            original["detail"]["particle"]["randomSeed"]
+        extra["sourcePresentation"].update(
+            enabled=False, profileId="", status="unresolved", sourceObjectPath="",
+            sourceActionCueId="", sourceEventId="", sourceOccurrenceIndex=0,
+            sourceTimeSeconds=0.0, parameters=[])
+        document["elements"].append(extra)
+        inserted.append({"id": duplicate_id, "sourceId": original_id,
+                         "randomSeed": extra["detail"]["particle"]["randomSeed"],
+                         "time": extra["detail"]["timing"]["startDelaySeconds"]})
+    assert document["elements"][:len(before["elements"])] == before["elements"]
+    assert {k: v for k, v in document.items() if k != "elements"} == \
+        {k: v for k, v in before.items() if k != "elements"}
+    if inserted:
+        install(path, before_bytes, document)
+    receipt["altV"] = {
+        "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+        "sourceOccurrenceCount": 6, "targetOccurrenceCount": 12,
+        "burstParticlesBefore": 24, "burstParticlesAfter": 48,
+        "preservedElementCount": len(before["elements"]),
+        "finalElementCount": len(document["elements"]), "inserted": inserted,
+        "beforeSha256": hashlib.sha256(before_bytes).hexdigest(),
+        "afterSha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "allPreviousElementFieldsPreserved": True,
+    }
 
 
 def main():
@@ -53,16 +145,12 @@ def main():
                        f"derived-from:{original['id']}|wave:{ordinal}")
         element["detail"]["timing"]["startDelaySeconds"] = start
         element["detail"]["particle"]["randomSeed"] = 171700 + ordinal
-        # Keep the approved F geometry, WPO/dissolve, alpha and lifetime curves.
-        # Only these new occurrences receive a fixed yellow hue and ring radius.
+        # Keep the approved F HDR color, geometry, WPO/dissolve and lifetime.
+        # These new occurrences change only timing, radius and seed.
         for module in element["sourceRecipe"]["modules"]:
             for index, distribution in enumerate(module["distributions"]):
                 name = distribution["propertyPath"]
-                if name == "startcolor":
-                    module["distributions"][index] = constant(distribution, [1.0, 0.72, 0.08])
-                elif name == "colorscaleoverlife":
-                    module["distributions"][index] = constant(distribution, [1.0, 1.0, 1.0])
-                elif name == "startradius":
+                if name == "startradius":
                     distribution["lookupTable"] = list(radius) * 3
         element["sourcePresentation"].update(
             sourceActionCueId="", sourceEventId="", sourceOccurrenceIndex=0,
@@ -72,7 +160,7 @@ def main():
     receipt = {"classification": "USER_REQUESTED_PROJECT_TUNING",
                "source": str(source_path.relative_to(ROOT)).replace("\\", "/"),
                "sourceSha256": hashlib.sha256(source_bytes).hexdigest(),
-               "newWaveCount": len(waves), "sourceBurstPerWave": 4,
+               "requestedVWaveCount": len(waves), "sourceBurstPerWave": 4,
                "unchangedF": True, "documents": []}
     for suffix, selected, offset in [
             ("full", waves, 0.0), ("clip2.full", waves[:3], 1.1667),
@@ -83,6 +171,14 @@ def main():
         before_elements = copy.deepcopy(document["elements"])
         existing_ids = {e["id"] for e in before_elements}
         inserted = []
+        repaired = []
+        expected_existing = copy.deepcopy(before_elements)
+        for element, expected in zip(document["elements"], expected_existing):
+            if element["id"].startswith(PREFIX):
+                fields = restore_f_color(element, original)
+                assert restore_f_color(expected, original) == fields
+                if fields:
+                    repaired.append({"id": element["id"], "distributions": fields})
         for wave in selected:
             if wave["id"] in existing_ids:
                 continue
@@ -91,21 +187,20 @@ def main():
                 element["detail"]["timing"]["startDelaySeconds"] - offset, 7)
             document["elements"].append(element)
             inserted.append(element["id"])
-        assert document["elements"][:len(before_elements)] == before_elements
-        if inserted:
-            # Avoid clobbering an editor save that arrived after this read.
-            assert path.read_bytes() == before_bytes, f"Document changed during patch: {path}"
-            path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n",
-                            encoding="utf-8")
+        assert document["elements"][:len(before_elements)] == expected_existing
+        if inserted or repaired:
+            install(path, before_bytes, document)
         receipt["documents"].append({
             "path": str(path.relative_to(ROOT)).replace("\\", "/"),
             "beforeSha256": hashlib.sha256(before_bytes).hexdigest(),
             "afterSha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            "preservedElementCount": len(before_elements), "insertedIds": inserted,
-            "allPreviousElementFieldsPreserved": True})
+            "existingElementCount": len(before_elements), "insertedIds": inserted,
+            "restoredFColor": repaired,
+            "allOtherPreviousElementFieldsPreserved": True})
+    duplicate_altv_lightning(receipt)
     assert source_path.read_bytes() == source_bytes
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "v-lightning-patch.json").write_text(
+    (OUT / "v-altv-lightning-resume.json").write_text(
         json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(receipt, ensure_ascii=True))
 

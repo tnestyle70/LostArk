@@ -1,4 +1,5 @@
 #include "Part_Equipment.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
@@ -147,6 +148,17 @@ HRESULT CPart_Equipment::Render_Pass(
 			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)))
 			return E_FAIL;
 
+		uint32_t materialPass = iPassIndex;
+		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
+		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&
+			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+			(surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
+             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 19u ||
+             surface->sourceCharacter.program == 20u))
+		{
+			materialPass = 6u;
+		}
+
 		const DEFERRED_MATERIAL_PROFILE Profile =
 			Resolve_DeferredMaterialProfile(
 				m_strMaterialProfileId,
@@ -154,7 +166,7 @@ HRESULT CPart_Equipment::Render_Pass(
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, Profile,
 				m_pEmissiveOverride)) ||
-			FAILED(m_pShaderCom->Begin(iPassIndex)) ||
+			FAILED(m_pShaderCom->Begin(materialPass)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}

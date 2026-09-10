@@ -709,7 +709,7 @@ void Client::CKoukuSaydonBossTool::Render()
 			ImGui::TextColored(LIVE_COLOR, "%s", audition.strStatus.c_str());
 		else if (KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE == audition.eState)
 			ImGui::TextWrapped(
-				"Server playback is active for a different local Product source revision; reload/restart before trusting Live markers.");
+				"This replay keeps its original Product revision. Stop Server Play, then start Complete Play to use the newly published revision.");
 		else
 			ImGui::TextWrapped("%s", audition.strStatus.c_str());
 	}

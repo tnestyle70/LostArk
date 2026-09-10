@@ -48,6 +48,7 @@ public:
 		uint64_t entityId = 0;
 		float4x4_t world{};
 		bool_t emissionOverride = false;
+		bool_t liveBossAnchor = false;
 	};
 	struct TARGET_SET final
 	{
@@ -58,6 +59,8 @@ public:
 		ComPtr<ID3D11Device> device;
 		ComPtr<ID3D11DeviceContext> context;
 		std::function<std::vector<PLAYER_ANCHOR>()> playerAnchors;
+		// Live BODY bone pose; separate from a frozen projectile emission origin.
+		std::function<bool_t(const std::string&, const std::string&, PLAYER_ANCHOR&, std::string&)> bossAnchor;
 		// Occurrence-local real milliseconds at birth -> frozen world origin.
 		std::function<bool_t(f32_t, float4x4_t&)> objectEmissionAnchor;
 
@@ -89,6 +92,8 @@ public:
 	bool_t Load_Area(const std::string& areaId, const TARGET_SET& targets);
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
 	bool_t Prepare_InstanceResources(const std::string& instanceId, const TARGET_SET& targets);
+	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
+		const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status);
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }

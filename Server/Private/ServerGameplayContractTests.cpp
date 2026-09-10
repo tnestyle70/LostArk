@@ -1220,6 +1220,30 @@ namespace
             afraid.eAction == PLAYER_ACTION_STATE::DEAD && afraid.iFearEndTick == 0u,
             "Death cancels fear without reviving the player");
 
+        std::map<PLAYER_ID, SERVER_PLAYER> invertedGazePlayers;
+        for (PLAYER_ID id = 1u; id <= 6u; ++id)
+        {
+            auto& target = invertedGazePlayers[id];
+            target = player; target.iPlayerId = id; target.fYawDegrees = 0.f;
+        }
+        invertedGazePlayers.at(2u).fYawDegrees = 45.f;
+        invertedGazePlayers.at(3u).fYawDegrees = 45.1f;
+        invertedGazePlayers.at(4u).fYawDegrees = 180.f;
+        invertedGazePlayers.at(5u).fPositionZ = -51.f;
+        invertedGazePlayers.at(6u).fPositionZ = 0.f;
+        gaze.bInsideIsFail = true; pattern.LogicWindows = {gaze};
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 300u, ledger);
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, invertedGazePlayers,
+            catalog, nullptr, 330u, events, output);
+        tests.Require(invertedGazePlayers.at(1u).eAction == PLAYER_ACTION_STATE::FEAR &&
+            invertedGazePlayers.at(2u).eAction == PLAYER_ACTION_STATE::FEAR &&
+            invertedGazePlayers.at(3u).eAction == PLAYER_ACTION_STATE::NONE &&
+            invertedGazePlayers.at(4u).eAction == PLAYER_ACTION_STATE::NONE &&
+            invertedGazePlayers.at(5u).eAction == PLAYER_ACTION_STATE::NONE &&
+            invertedGazePlayers.at(6u).eAction == PLAYER_ACTION_STATE::FEAR,
+            "Facing-is-fail gaze fears inside and boundary players, including co-location, while outside angle or range stays safe");
+
         BOSS_PATTERN_LOGIC_WINDOW counter{};
         counter.strWindowId = "counter.1"; counter.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW;
         counter.iDurationMs = 1000u; counter.bEndsPatternOnSuccess = true;
@@ -1891,6 +1915,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = boss.strPatternId;
         BOSS_PATTERN_LOGIC_WINDOW trigger{};
         trigger.strWindowId = "grab.trigger"; trigger.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        trigger.bRearmOnExit = true;
         trigger.iStartMs = 2029u; trigger.iDurationMs = 788u; trigger.strHoldLogicOccurrenceId = "grab.hold";
         BOSS_PATTERN_LOGIC_RESULT capture{}; capture.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER;
         capture.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND; trigger.OnSuccess = {capture};
@@ -1975,6 +2000,134 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
             other.eAction == PLAYER_ACTION_STATE::GRABBED && room->m_KoukuSaydonPatternAudition.Members.empty(),
             "The Stop/Restart/disconnect cleanup releases its own grab and preserves unrelated boss attachments");
     }
+	{
+		using namespace LostArk::Shared;
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		const auto arenaNavigation = room->m_ServerNavigation;
+		room->m_ServerNavigation = CServerNavigation{};
+		std::string collisionStatus;
+		room->m_ServerCollisionSystem.Initialize({}, collisionStatus);
+		room->m_ServerCollisionSystem.Set_BlockingBodies({});
+		auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+		boss->iNetEntityId = 8000u; boss->iPatternSequence = 1u;
+		boss->strPatternId = "whirlwind.reentry"; boss->iCurrentHp = 1000u;
+		BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = boss->strPatternId;
+		BOSS_PATTERN_LOGIC_WINDOW trigger{};
+		trigger.strWindowId = "whirlwind.hit"; trigger.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+		trigger.iDurationMs = 10000u; trigger.bRearmOnExit = true;
+		BOSS_LOGIC_REGION region{}; region.strRegionId = "whirlwind.body";
+		region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT; region.bCircle = true; region.fRadiusM = 4.f;
+		trigger.CardRegions = {region};
+		BOSS_PATTERN_LOGIC_RESULT damage{}; damage.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
+		damage.iPercent = 10u; damage.fPushRangeM = 2.f; damage.iPushMs = 242u;
+		trigger.OnSuccess = {damage};
+		BOSS_PATTERN_LOGIC_RESULT timeout{}; timeout.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE; timeout.iPercent = 5u;
+		trigger.OnTimeout = {timeout}; pattern.LogicWindows = {trigger};
+		for (PLAYER_ID id = 1u; id <= 3u; ++id)
+		{
+			SERVER_PLAYER player{}; player.iPlayerId = id; player.iNetEntityId = 8100u + id;
+			player.iCurrentHp = player.iMaximumHp = 1000u; player.isCombatReady = true;
+			player.fPositionX = id == 1u ? 1.f : id == 2u ? 9.f : 50.f;
+			room->m_Players.emplace(id, player);
+		}
+		auto& first = room->m_Players.at(1u); auto& second = room->m_Players.at(2u);
+		KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+		std::vector<DAMAGE_EVENT> events;
+		CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+		const auto update = [&](unsigned tick) {
+			CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, room->m_Players, catalog, nullptr, tick, events, output);
+		};
+		update(100u); update(101u); update(102u);
+		tests.Require(first.iCurrentHp == 900u && second.iCurrentHp == 1000u && events.size() == 1u &&
+			std::abs(first.fKnockbackDirectionX - 1.f) < .0001f && std::abs(first.fKnockbackDirectionZ) < .0001f &&
+			std::abs(first.fKnockbackSpeed * first.fKnockbackRemainingSeconds - 2.f) < .0001f,
+			"Reentry trigger hits on first entry, stays latched inside, and arms two-metre boss-away knockback");
+		room->Advance_PlayerKnockback(first, .1f);
+		room->Advance_PlayerKnockback(first, .1f);
+		room->Advance_PlayerKnockback(first, .1f);
+		tests.Require(std::abs(first.fPositionX - 3.f) < .0001f && first.fKnockbackRemainingSeconds == 0.f,
+			"Existing authoritative knockback mover consumes exactly two metres over the 242ms window");
+		first.fPositionX = 6.f; update(110u);
+		first.fPositionX = -1.f; second.fPositionX = 0.f; second.fPositionZ = 1.5f; update(111u); update(112u);
+		tests.Require(first.iCurrentHp == 800u && second.iCurrentHp == 900u && events.size() == 3u &&
+			first.fKnockbackDirectionX < -.9999f && second.fKnockbackDirectionZ > .9999f,
+			"Leaving rearms only that player; reentry and another player's first entry each hit once in their own outward direction");
+		room->Advance_PlayerKnockback(first, .242f); room->Advance_PlayerKnockback(second, .242f);
+		boss->fPositionX = 20.f; update(120u); boss->fPositionX = 0.f; update(121u);
+		tests.Require(first.iCurrentHp == 700u && second.iCurrentHp == 800u && events.size() == 5u,
+			"Boss-follow collider movement also records a real exit before its next entry hit");
+		first.fPositionX = second.fPositionX = 50.f; update(400u); update(401u);
+		tests.Require(first.iCurrentHp == 700u && second.iCurrentHp == 800u && room->m_Players.at(3u).iCurrentHp == 950u && events.size() == 6u,
+			"Reentry window Timeout runs once only for the player who never entered; previous entrants are not punished on exit");
+		pattern.LogicWindows.front().bRearmOnExit = false;
+		pattern.LogicWindows.front().bRepeatAfterKnockback = true;
+		pattern.LogicWindows.front().iDurationMs = 1000u;
+		CKoukuSaydonLogicRuntime::Build(pattern, *boss, 500u, ledger);
+		first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+		first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 1.f;
+		events.clear(); update(500u);
+		room->Advance_PlayerKnockback(first, .1f); update(501u); update(508u);
+		tests.Require(first.iCurrentHp == 900u && events.size() == 1u && first.fKnockbackRemainingSeconds > 0.f,
+			"Continuous contact suppresses all additional damage while knockback is still moving, even after its minimum hit interval");
+		room->Advance_PlayerKnockback(first, .2f); update(509u); update(510u);
+		tests.Require(first.iCurrentHp == 800u && events.size() == 2u && first.fKnockbackRemainingSeconds > 0.f,
+			"Finishing knockback inside the same collider rearms the next hit without any exit or six duplicated triggers");
+		first.fKnockbackRemainingSeconds = first.fKnockbackSpeed = 0.f; update(511u); update(516u);
+		tests.Require(first.iCurrentHp == 800u && events.size() == 2u,
+			"An early collision stop cannot cause a new contact hit before the authored 242ms interval");
+		update(517u);
+		tests.Require(first.iCurrentHp == 700u && events.size() == 3u,
+			"An inside player can be hit again after the complete knockback interval");
+		room->Advance_PlayerKnockback(first, .3f); first.fPositionX = 6.f; update(526u);
+		tests.Require(first.iCurrentHp == 700u && events.size() == 3u, "Finished knockback outside the collider does not hit again");
+		first.fPositionX = 1.f; update(527u); update(530u); update(540u);
+		tests.Require(first.iCurrentHp == 600u && events.size() == 6u,
+			"A later entry hits once and the window deadline ends contact processing (two never-entered players receive Timeout)");
+		pattern.LogicWindows.front().bRepeatAfterKnockback = false;
+		pattern.LogicWindows.front().iDurationMs = 10000u;
+		CKoukuSaydonLogicRuntime::Build(pattern, *boss, 200u, ledger);
+		first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+		first.iCurrentHp = first.iMaximumHp = 1000u; first.isCombatReady = true; first.fPositionX = 1.f;
+		second.fPositionX = 50.f; second.fPositionZ = 0.f; events.clear();
+		update(200u); first.fPositionX = 6.f; update(201u); first.fPositionX = 1.f; update(202u);
+		tests.Require(first.iCurrentHp == 900u && events.size() == 1u,
+			"Existing ENTER_AREA defaults remain one-shot even after leaving and reentering");
+		first.fKnockbackRemainingSeconds = first.fKnockbackSpeed = 0.f;
+		first.fPositionX = 1.f; first.fPositionZ = 0.f;
+		WORLD_BOOTSTRAP_PLACEMENT wall{}; wall.strPlacementId = "whirlwind.wall";
+		wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX; wall.fPositionX = 2.f;
+		wall.fHalfExtentX = .1f; wall.fHalfExtentY = wall.fHalfExtentZ = 10.f;
+		const bool wallReady = room->m_ServerCollisionSystem.Initialize({wall}, collisionStatus);
+		CKoukuSaydonLogicRuntime::Apply_Result(first, damage, *boss, catalog, nullptr, 220u, events);
+		room->Advance_PlayerKnockback(first, .242f);
+		tests.Require(wallReady && first.fPositionX > 1.f && first.fPositionX < 1.9f &&
+			first.fKnockbackRemainingSeconds == 0.f,
+			"Whirlwind push stops at the same swept collision wall as ordinary Server knockback");
+		room->m_ServerCollisionSystem.Initialize({}, collisionStatus);
+		room->m_ServerNavigation = arenaNavigation;
+		const auto* spawn = room->Find_Placement("boss.kakulsaydon.g2.kouku");
+		bool foundBoundary = false;
+		if (spawn && arenaNavigation.Is_Loaded())
+		{
+			for (unsigned step = 1u; step < 4000u; ++step)
+			{
+				const float x = spawn->fPositionX + .25f * step;
+				if (arenaNavigation.Is_PointWalkableExact(x, spawn->fPositionZ)) continue;
+				SERVER_NAV_POINT ground{};
+				if (!arenaNavigation.Sample_Position(x - .25f, spawn->fPositionZ, ground)) break;
+				first.fPositionX = x - .25f; first.fPositionY = ground.y; first.fPositionZ = spawn->fPositionZ;
+				first.fKnockbackRemainingSeconds = first.fKnockbackSpeed = 0.f;
+				boss->fPositionX = first.fPositionX - 1.f; boss->fPositionZ = first.fPositionZ;
+				const float before = first.fPositionX;
+				CKoukuSaydonLogicRuntime::Apply_Result(first, damage, *boss, catalog, nullptr, 230u, events);
+				room->Advance_PlayerKnockback(first, .242f);
+				foundBoundary = first.fPositionX < before + 2.f && first.fKnockbackRemainingSeconds == 0.f &&
+					arenaNavigation.Is_PointWalkableExact(first.fPositionX, first.fPositionZ);
+				break;
+			}
+		}
+		tests.Require(foundBoundary, "Whirlwind push preserves navigation bounds through the existing Server mover");
+	}
 #endif
 	std::cout << "failures : " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
@@ -2978,6 +3131,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		appendPattern("KAKULSAYDON_G1_BUNDLE_A", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
 		appendPattern("KAKULSAYDON_G1_BUNDLE_B", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
 		appendPattern("KAKULSAYDON_G1_BUNDLE_A_FOLLOW", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
+		const std::string reentryId = "KAKULSAYDON_G1_REENTRY_CONTRACT";
+		appendPattern(reentryId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 10000u);
+		bytes += "PATTERNLOGIC\t" + encounter + "\t" + reentryId + "\t0\treentry.hit\tENTER_AREA\t0\t10000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
+		bytes += "PATTERNLOGICREARM\t" + encounter + "\t" + reentryId + "\treentry.hit\tON_REENTER\n";
+		bytes += "PATTERNLOGICREGION\t" + encounter + "\t" + reentryId + "\treentry.hit\t0\treentry.body\tBOSS_CURRENT\tCIRCLE\t0\t0\t0\t0\t1\t1\t1\t4\t45\tNONE\tNONE\n";
+		bytes += "PATTERNLOGICOUTCOME\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
+		bytes += "PATTERNLOGICPUSH\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\t2\t242\n";
 		const std::string retargetId = "KAKULSAYDON_G1_RETARGET_CONTRACT";
 		bytes += "PATTERN\t" + encounter + "\t" + retargetId + "\t" + retargetId + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t3\tANY\tANY\t0\n";
 		bytes += "PATTERNBOSS\t" + encounter + "\t" + retargetId + "\tBOSS_KAKULSAYDON_G2_BIG_SAYDON\n";
@@ -3053,6 +3213,23 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool loaded = !error && CServerApp::Hash_GameplayFileForAdmission(path, revision, status) && generation->Load_FromBootstrap(fs::canonical(path), revision, revision);
 		if (!loaded) std::cout << "[STATUS] Bundle fixture: " << generation->Get_Status() << " / " << status << '\n';
 		tests.Require(loaded, "Bundle loads typed target/member rows through normal catalog admission");
+		if (loaded)
+		{
+			const auto* reentry = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, reentryId, status);
+			tests.Require(reentry && reentry->LogicWindows.size() == 1u && reentry->LogicWindows.front().bRearmOnExit &&
+				reentry->LogicWindows.front().OnSuccess.front().fPushRangeM == 2.f &&
+				reentry->LogicWindows.front().OnSuccess.front().iPushMs == 242u,
+				"Published supplemental rearm and push rows reach the admitted Kouku pattern");
+			if (reentry)
+			{
+				auto invalid = *reentry; invalid.LogicWindows.front().eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+				tests.Require(!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(invalid, status), "Only ENTER_AREA may rearm on exit");
+				invalid = *reentry; invalid.LogicWindows.front().OnSuccess.front().iPushMs = 0u;
+				tests.Require(!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(invalid, status), "Push range and duration must be paired");
+				invalid = *reentry; invalid.LogicWindows.front().OnSuccess.front().fPushRangeM = 21.f;
+				tests.Require(!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(invalid, status), "Logic push cannot exceed the authored twenty-metre bound");
+			}
+		}
 		if (loaded)
 		{
 			const auto makeRoom = [&]()
@@ -3282,6 +3459,141 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			tests.Require(failed->Evaluate_KoukuSaydonPatternAudition(903u,failRequest,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_BOSS_DEAD && failFirst->fPositionX == before && failFirst->strPatternId.empty() && failed->m_KoukuSaydonPatternAudition.Members.empty(), "Second actor failure does not reset or start the first actor");
 			auto lost = makeRoom(); auto lostRequest = requestFor(*lost,67u); lost->Evaluate_KoukuSaydonPatternAudition(904u,lostRequest,result); tick(*lost); getBoss(*lost,true)->iCurrentHp = 0u; tick(*lost);
 			tests.Require(lost->m_KoukuSaydonPatternAudition.Members.empty() && getBoss(*lost,false)->strPatternId.empty(), "Delayed participant death aborts and cleans the entire bundle");
+		}
+		if (loaded)
+		{
+			// The production admission reads a newly published file while this room
+			// retains its original process catalog. Never replace the user's Product.
+			auto reloadRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
+			for (const char* id : {"boss.kakulsaydon.g2.kouku", "boss.kakulsaydon.g2.big-saydon"})
+			{
+				const auto* placement = reloadRoom->Find_Placement(id); SERVER_WORLD_ENTITY entity;
+				if (placement && reloadRoom->Build_WorldEntity(*placement, reloadRoom->m_iNextNetEntityId, entity))
+				{ ++reloadRoom->m_iNextNetEntityId; reloadRoom->m_WorldEntities.push_back(std::move(entity)); }
+			}
+			const auto oldSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
+			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST play{};
+			play.iRequestSequence = 1u; play.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
+			play.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; play.Scope.strEncounterId = encounter;
+			play.Scope.strGateId = "GATE2"; play.Scope.ExpectedGameplayRevision = revision;
+			play.Scope.iExpectedSourceRevision = oldSource; play.strBundleId = "kakulsaydon.bundle.contract.0";
+			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED, "Kouku live reload begins from the original room generation");
+			const auto initialPin = reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration;
+			const auto initialEpoch = result.iRoomAuditionEpoch;
+			const auto publishProject = directory / L"published";
+			const auto publishRoot = publishProject / L"Server" / L"Bin" / L"DataFiles";
+			fs::create_directories(publishRoot / L"Gameplay", error);
+			const auto ownerScript = publishProject / L"Tools" / L"Build" / L"Invoke-BuildDomainOwner.ps1";
+			const auto lockPath = publishProject / L"out" / L"BuildPipeline" / L"receipts" / L"locks" / L"runtime-owner.lock";
+			fs::create_directories(ownerScript.parent_path(), error);
+			fs::create_directories(lockPath.parent_path(), error);
+			{ std::ofstream marker(ownerScript); marker << "# Temporary publisher lock fixture\n"; }
+			const auto publishedPath = publishRoot / L"Gameplay" / L"Gameplay.bootstrap";
+			const std::string sourcePrefix = "KOUKUSAYDONPRODUCTREVISION\t" + encounter + "\tBOSS_KAKULSAYDON_G1_KOUKU\t";
+			const auto changeSource = [&](std::string value, unsigned source)
+			{
+				const auto start = value.find(sourcePrefix) + sourcePrefix.size();
+				value.replace(start, value.find_first_of("\r\n", start) - start, std::to_string(source));
+				return value;
+			};
+			std::string published = changeSource(bytes, oldSource + 1u);
+			const std::string shortStage = "KAKULSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t200\t";
+			const auto stageAt = published.find(shortStage);
+			if (stageAt != std::string::npos) published.replace(stageAt, shortStage.size(),
+				"KAKULSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t700\t");
+			const auto publish = [&](const std::string& contents)
+			{
+				std::ofstream output(publishedPath, std::ios::binary | std::ios::trunc);
+				output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+			};
+			publish(published);
+			std::vector<wchar_t> previousRoot(32768u);
+			const auto previousLength = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previousRoot.data(), static_cast<DWORD>(previousRoot.size()));
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", publishRoot.c_str());
+			const HANDLE publishing = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+				0u, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			CGameplayCatalog blockedProduct;
+			tests.Require(publishing != INVALID_HANDLE_VALUE && !blockedProduct.Load_PublishedKoukuProduct() &&
+				blockedProduct.Get_Status().find("publish is in progress") != std::string::npos,
+				"Kouku admission cannot read a publisher transaction before commit or rollback");
+			auto restart = play; restart.iRequestSequence = 2u;
+			restart.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::RESTART_BUNDLE;
+			restart.iExpectedRunEpoch = initialEpoch;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, restart, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED && result.iPinnedSourceRevision == oldSource &&
+				reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration == initialPin,
+				"Publish preserves the original immutable Product when restarting an existing run");
+			if (publishing != INVALID_HANDLE_VALUE) CloseHandle(publishing);
+			auto stop = restart; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
+			stop.iRequestSequence = 3u; stop.iExpectedRunEpoch = result.iRoomAuditionEpoch;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, stop, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::STOPPED, "Original source can stop its run after Publish");
+			play.iRequestSequence = 4u; play.Scope.iExpectedSourceRevision = oldSource + 1u;
+			const bool refreshed = reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+			if (!refreshed) std::cout << "[STATUS] Kouku live reload: " << result.strReason << '\n';
+			const auto refreshedPin = reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration;
+			tests.Require(refreshed && result.iPinnedSourceRevision == oldSource + 1u &&
+				refreshedPin != initialPin && refreshedPin && refreshedPin->Get_ActiveRevision() != revision &&
+				reloadRoom->Get_ActiveGameplayGeneration() == generation && result.PinnedGameplayRevision == revision,
+				"Next Complete Play admits published Kouku source while preserving the real process gameplay hash");
+			for (unsigned tick = 0u; tick < 10u && refreshed; ++tick)
+			{ reloadRoom->Update_WorldEntities(1.f / 30.f); ++reloadRoom->m_iServerTick; }
+			auto* liveBoss = reloadRoom->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU");
+			tests.Require(refreshed && liveBoss && liveBoss->strPatternId == "KAKULSAYDON_G1_BUNDLE_A" &&
+				liveBoss->PinnedDefinitionRevision == revision,
+				"Server ticks consume the newly published 700ms stage instead of the old 200ms stage");
+			const auto refreshedEpoch = reloadRoom->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
+			stop = play; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
+			stop.iRequestSequence = 5u; stop.iExpectedRunEpoch = refreshedEpoch;
+			stop.Scope.iExpectedSourceRevision = oldSource;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, stop, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH &&
+				reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration == refreshedPin &&
+				reloadRoom->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch == refreshedEpoch,
+				"Stale source Stop preserves the exact running generation and epoch");
+			stop.iRequestSequence = 6u; stop.Scope.iExpectedSourceRevision = oldSource + 1u;
+			(void)reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, stop, result);
+			play.iRequestSequence = 7u; play.Scope.iExpectedSourceRevision = oldSource + 2u;
+			publish("truncated published candidate\n");
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH &&
+				reloadRoom->m_pKoukuPublishedProductGeneration == refreshedPin &&
+				reloadRoom->m_KoukuSaydonPatternAudition.Members.empty(),
+				"Corrupt published bootstrap cannot replace the last successful Product or start a partial run");
+			publish(published);
+			play.iRequestSequence = 8u;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH &&
+				reloadRoom->m_pKoukuPublishedProductGeneration == refreshedPin,
+				"Unpublished requested source cannot borrow a different published revision");
+			auto foreign = changeSource(published, oldSource + 2u);
+			const auto damageAt = foreign.find("\nDAMAGE\t");
+			if (damageAt != std::string::npos)
+			{
+				const auto damageEnd = foreign.find('\n', damageAt + 1u);
+				const auto valueAt = foreign.rfind('\t', damageEnd) + 1u;
+				foreign.replace(valueAt, damageEnd - valueAt, "99999");
+			}
+			publish(foreign); play.iRequestSequence = 9u;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_REVISION_MISMATCH &&
+				reloadRoom->m_pKoukuPublishedProductGeneration == refreshedPin &&
+				reloadRoom->Get_ActiveGameplayGeneration() == generation,
+				"Kouku reload rejects unrelated damage changes and retains process balance");
+			publish(published); play.iRequestSequence = 10u; play.Scope.iExpectedSourceRevision = oldSource;
+			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SOURCE_REVISION_MISMATCH,
+				"A new run cannot roll back to an older source after a newer Product was admitted");
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previousLength && previousLength < previousRoot.size() ? previousRoot.data() : nullptr);
+			fs::remove(publishedPath, error); fs::remove(publishRoot / L"Gameplay", error); fs::remove(publishRoot, error);
+			fs::remove(publishRoot.parent_path(), error); fs::remove(publishProject / L"Server", error);
+			fs::remove(ownerScript, error); fs::remove(ownerScript.parent_path(), error); fs::remove(publishProject / L"Tools", error);
+			fs::remove(lockPath, error); fs::remove(lockPath.parent_path(), error);
+			fs::remove(publishProject / L"out" / L"BuildPipeline" / L"receipts", error);
+			fs::remove(publishProject / L"out" / L"BuildPipeline", error); fs::remove(publishProject / L"out", error); fs::remove(publishProject, error);
 		}
 		fs::remove(path,error); fs::remove(directory,error);
 	}

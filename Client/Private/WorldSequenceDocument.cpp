@@ -382,7 +382,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -402,8 +402,15 @@ bool_t Client::CWorldSequenceDocument::Load(
 			}
 			if (const auto* anchor = row.Find("anchorKind"))
 			{
-				if (!anchor->Is_String()) { outStatus = "World object resource anchor must be WORLD or PLAYER"; return false; }
+				if (!anchor->Is_String()) { outStatus = "World object resource anchor must be WORLD, PLAYER or BOSS"; return false; }
 				object.anchorKind = anchor->Get_String();
+			}
+			for (const char_t* key : { "anchorBossArchetypeId", "anchorBone" })
+			{
+				const auto* field = row.Find(key);
+				if (!field) continue;
+				if (!field->Is_String()) { outStatus = "World object boss anchor fields must be text"; return false; }
+				(std::string(key) == "anchorBone" ? object.anchorBone : object.anchorBossArchetypeId) = field->Get_String();
 			}
 			for (const char_t* key : { "diffuseTextureAssetId", "sequenceInstanceId" })
 			{
@@ -768,6 +775,9 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"animated\": " << (object.animated ? "true" : "false") << ",\n"
 			<< "      \"scale\": [" << object.scale.x << ", " << object.scale.y << ", " << object.scale.z << "],\n"
 			<< "      \"sequenceInstanceId\": \"" << CDataJson::Escape(object.sequenceInstanceId) << "\"";
+		if (object.anchorKind == "BOSS")
+			output << ",\n      \"anchorBossArchetypeId\": \"" << CDataJson::Escape(object.anchorBossArchetypeId)
+				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
 		if (!object.defaultMotionInstanceId.empty())
 			output << ",\n      \"defaultMotionInstanceId\": \"" << CDataJson::Escape(object.defaultMotionInstanceId) << "\"";
 		output << "\n    }";
@@ -940,7 +950,10 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		if (!Is_ValidStableId(object.objectId) || !objectIds.insert(object.objectId).second ||
 			object.displayName.empty() || object.displayName.size() > 128u ||
 			!Is_ValidUtf8DisplayText(object.displayName) ||
-			(object.anchorKind != "WORLD" && object.anchorKind != "PLAYER") ||
+			(object.anchorKind != "WORLD" && object.anchorKind != "PLAYER" && object.anchorKind != "BOSS") ||
+			(object.anchorKind == "BOSS" ? !Is_ValidStableId(object.anchorBossArchetypeId) :
+				(!object.anchorBossArchetypeId.empty() || !object.anchorBone.empty())) ||
+			object.anchorBone.size() > 128u || !Is_ValidUtf8DisplayText(object.anchorBone) ||
 			(alias && object.anchorKind != "WORLD") ||
 			!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE ||
 			object.modelPreScale > MAX_COMPONENT || !Is_BoundedFloat3(object.scale) ||
@@ -1095,7 +1108,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			value.startDelayMs > MAX_DURATION_MS ||
 			!std::isfinite(value.playbackSpeed) || value.playbackSpeed < 0.05f ||
 			value.playbackSpeed > 8.f ||
-			(value.anchorKind != "WORLD" && value.anchorKind != "PLAYER") ||
+			(value.anchorKind != "WORLD" && value.anchorKind != "PLAYER" && value.anchorKind != "BOSS") ||
 			!Is_BoundedFloat3(value.position) ||
 			value.bindings.size() != Count_BoundSlots(*targetTemplate))
 		{
@@ -1178,7 +1191,9 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			{
 				const auto* object = Find_ObjectResource(binding.targetId);
 				if (!object || object->modelAssetId.empty() || !object->sequenceInstanceId.empty() ||
-					(hasAnimationSlot && !object->animated))
+					(hasAnimationSlot && !object->animated) ||
+					((value.anchorKind == "BOSS" || object->anchorKind == "BOSS") &&
+					 (value.anchorKind != "BOSS" || object->anchorKind != "BOSS" || value.bindings.size() != 1u)))
 				{ outStatus = "Invalid object resource binding: " + value.instanceId + "/" + binding.slotId; return false; }
 				continue;
 			}
@@ -1398,7 +1413,8 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		const auto& left = m_ObjectResources[index];
 		const auto& right = other.m_ObjectResources[index];
 		if (left.objectId != right.objectId || left.displayName != right.displayName ||
-			left.anchorKind != right.anchorKind ||
+			left.anchorKind != right.anchorKind || left.anchorBossArchetypeId != right.anchorBossArchetypeId ||
+			left.anchorBone != right.anchorBone ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||

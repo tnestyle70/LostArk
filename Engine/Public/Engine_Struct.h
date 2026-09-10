@@ -7,6 +7,16 @@
 
 namespace Engine
 {
+	// The renderer owns the active scene cube; a staged value retains its SRV
+	// without changing current lighting until the profile transaction commits.
+	struct RENDER_ENVIRONMENT_STATE final
+	{
+		ComPtr<ID3D11ShaderResourceView> pCube;
+		wstring_t strCubePath;
+		float4_t vColor = { 1.f, 1.f, 1.f, 0.f };
+		float4_t vRotationIntensity = { 0.f, 1.f, 1.f, 0.f };
+	};
+
 	typedef struct tagEngineDesc
 	{
 		HINSTANCE	hInstance = {};

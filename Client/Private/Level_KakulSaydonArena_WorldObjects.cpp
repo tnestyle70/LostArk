@@ -1,5 +1,6 @@
 #include "Level_KakulSaydonArena.h"
 #include "Character.h"
+#include "Npc.h"
 #include "CombatHUDViewModel.h"
 #include "DeployPropObject.h"
 #include "KoukuSaydonPresentationPlayer.h"
@@ -311,6 +312,26 @@ CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTarg
             anchors.push_back({player.Snapshot.iNetEntityId, *character->Get_Transform()->Get_WorldMatrixPtr()});
         }
         return anchors;
+    };
+    targets.bossAnchor = [this](const std::string& archetype, const std::string& bone,
+        CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
+    {
+        std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+        std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+        m_Replication.Collect_KoukuPresentationViews(bosses, players);
+        const KOUKU_BOSS_PRESENTATION_VIEW* selected = nullptr;
+        for (const auto& boss : bosses)
+        {
+            if (boss.strArchetypeId != archetype || boss.iOwnerBossNetEntityId || !boss.Snapshot.iCurrentHp) continue;
+            if (selected) { status = "World Object Boss anchor is ambiguous: " + archetype; return false; }
+            selected = &boss;
+        }
+        const auto actor = selected ? selected->pNpc.lock() : nullptr;
+        if (!actor || !actor->Get_Transform())
+        { status = "World Object Boss anchor is waiting for its living replicated actor: " + archetype; return false; }
+        out.entityId = selected->Snapshot.iNetEntityId;
+        return CWorldSequencePlayer::Resolve_BossBoneAnchor(actor->Get_Model(),
+            *actor->Get_Transform()->Get_WorldMatrixPtr(), bone, out, status);
     };
     return targets;
 }

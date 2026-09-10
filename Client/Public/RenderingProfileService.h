@@ -29,6 +29,11 @@ struct SCENE_RENDERING_PROFILE final
 	/* Fog belongs to the scene profile because it is a per Level mood value
 	   that the F1 tool already saves, publishes and reloads. */
 	HEIGHT_FOG_SETTINGS Fog{};
+	// Empty cube ID explicitly disables scene reflection. RGBM6 decode remains
+	// in the selected source program; this profile owns only scene inputs.
+	string strEnvironmentCubeAssetId;
+	float4_t vEnvironmentColor{ 1.f, 1.f, 1.f, 0.f };
+	float4_t vEnvironmentRotationIntensity{ 0.f, 1.f, 1.f, 0.f };
 };
 
 class CRenderingProfileService final
@@ -110,7 +115,8 @@ private:
 	bool_t Commit_Resolved(
 		const SCENE_RENDERING_PROFILE& Profile,
 		const RENDER_QUALITY_SETTINGS& Effective,
-		string& strOutStatus);
+		string& strOutStatus,
+		bool_t forceReloadEnvironment = false);
 
 #ifdef _DEBUG
 	static string Serialize_Catalog(const CATALOG& Catalog);

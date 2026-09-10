@@ -28,6 +28,11 @@ public:
 	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);
 	const HEIGHT_FOG_SETTINGS& Get_HeightFogSettings() const { return m_HeightFogSettings; }
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
+	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
+		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
+	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
+	RENDER_ENVIRONMENT_STATE Get_RenderEnvironment() const;
+
 	/* The renderer owns the clock the deferred fog drifts on so no caller
 	   has to feed a time value into every screen pass. */
 	void Advance_PresentationClock(f32_t fTimeDelta);
@@ -66,6 +71,7 @@ private:
 	uint32_t								m_iScenePostFinalTarget = {};
 	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
 	MATERIAL_RENDER_SETTINGS m_MaterialRenderSettings = {};
+	RENDER_ENVIRONMENT_STATE m_RenderEnvironment;
 	HEIGHT_FOG_SETTINGS				m_HeightFogSettings = {};
 	bool_t m_bSceneColorSnapshotRequested = false;
 	f32_t							m_fPresentationClock = 0.f;

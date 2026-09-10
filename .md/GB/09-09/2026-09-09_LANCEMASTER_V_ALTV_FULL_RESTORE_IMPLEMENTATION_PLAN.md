@@ -55,3 +55,11 @@ T 34650은 clip1 원본 30/30, clip2 74/76 요소가 연결되어 있고 제외 
 
 
 T 추가 조사에서 base stage1 notify014는 clip local 0.5초부터1.2초의 PlaySkeletalMesh이며 기존 PPE 전용 generator의 범위 밖이라 빠졌음을 확정했다. `SK_FLM_GDR_01.Mesh.SK_FLM_PMSHB_00_SK`, source animation set `SK_FLM_GDR_01.Ani.SK_FLM_PMSHB_00_Ani`, source material `FX_M_MI_T_00.FX_MI.FX_T_Me_Master_02_01_Sk_Dt_Tr`와 child `Par_T_FLM_DragonCleave_01_Cast_01`를 기존 ModelCue·native source material·bone attachment로 복구한다. 현재 native653/654의 static 무기소품은 돌진 용 본체와 다르다. T 전용 모델·재질·clip2 문서의 추가는 artist 담당이 수행하고 현재74개 요소를 보존한다. 새 native 번호가 필요하면1360~1399를 사용하며 source clip `SK_DragonCleave_03`의0.5초 cue 시각은 바꾸지 않는다.
+
+## G19. T 용 모델의 원본 재질 입력 연결 마무리
+
+중단 후 현재 입력을 다시 확인했다. T clip1은30Element, clip2는80Element와2ModelCue이며 두 용 section과 본 부착 child6개가 이미 저장되어 있다. 기존 실제 CModel 검사에서 두 모델/clip과18개 유한 bone palette가 통과했다. 이 저장본과 발생 시각은 유지한다.
+
+`Shader_VtxAnimMeshBinary.hlsl`의 `PS_MAIN_EFFECT_MODEL_CUE_NATIVE`는 zero-init한 particle 입력의 DynamicParameter를 skeletal model-cue에도 전달한다. T의 native1360은 이 값의 x를 opacity에 사용하므로0을 받으면 원본 noise가 있어도 투명해진다.1360 분기에서 기존에 bind된 `g_LanceVASourceMaterialParameters[8u]`의 원본 `MeshEmitterDynamicParameter=(1,1,1,1)`을 소비하도록 연결한다. 다른 native profile의 입력은 바꾸지 않는다.
+
+새 C++ 파일이나 project/filter 등록은 없다. 기존 PS 수치 probe로0 입력의 투명 결과와 원본 재질 입력의 비영 alpha를 비교하고, Client 제품 FX 컴파일과 배포 CSO 갱신을 확인한다. Product 빌드와 같은 output/library를 쓰는 별도 probe 링크는 직렬로 수행한다. Client/UI 재생과 용의 크기·색·시각 일치는 사용자가 새 EXE에서 확인한다.

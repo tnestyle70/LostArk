@@ -5,6 +5,7 @@
 #include "Npc.h"
 #include "Model.h"
 #include "ActionPresentationTimeline.h"
+#include "AnimationTargetService.h"
 
 #include "Camera_Free.h"
 #include "CameraTool.h"
@@ -728,6 +729,17 @@ void Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		const auto& cue = playback.cue;
 		auto& player = *playback.player;
 		targets.objectEmissionAnchor = cue.emissionAnchor;
+		if (!cue.actorProfileId.empty())
+			targets.bossAnchor = [&cue](const std::string& archetype, const std::string& bone,
+				CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
+			{
+				ANIMATION_MODEL_TARGET_VIEW view;
+				if (archetype != cue.bossArchetypeId ||
+					CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(CAnimationTargetService::Resolve_AssetName()) != cue.actorProfileId ||
+					!CAnimationTargetService::Resolve_ModelTarget(ANIMATION_BONE_TARGET::BODY, view))
+				{ status = "World Object Boss anchor is waiting for its matching Model View actor: " + archetype; return false; }
+				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
+			};
 		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
 		if (clockMs < cue.startMs || clockMs - cue.startMs >= span)
 		{

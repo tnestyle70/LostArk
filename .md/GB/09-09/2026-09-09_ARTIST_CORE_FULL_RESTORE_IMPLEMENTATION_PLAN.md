@@ -39,3 +39,13 @@ T MakeFlow03 helix3개와 ribbon을 본체와 별도로 복원한다. V/Alt V는
 TIG의 실제 sk_cloudtiger clip은0.733333초이며 원본 bone animation clock을 정지 pose로 대체하지 않는다. DRA는 원본부터 XZ 바닥에 놓이는 얇은 skin plane이고2초 clip의 vertex 위치가 시간별로 변한다. 두 자산을 다른 임의 모델로 바꾸지 않고 원본 skin pose와 제품 CModel clip sampling을 먼저 대조한다. 원본의1000tick/s와 CAnimation의 고정30tick/s 차이를 source cook의 모든 key time·duration 정규화로 교정한다. DRA 원본 projectile은 FIXAREA/speed0이므로 이동을 임의로 추가하지 않고 바닥을 따라 변하는2초 skin motion과 원본5초 수명을 보존한다. Server damage/gameplay는 바꾸지 않는다. Alt V 꽃밭은 기존 연결을 유지하며 이번 일반 슬롯 뒤에만 추가 비용을 쓴다.
 
 새 C++ 파일을 추가하지 않는다. Artist material header/HLSLI와 신규 Authored JSON의 프로젝트/카탈로그/ResourceTree 및 실제 animevents 연결은 공용 통합 담당이 수행한다. JSON parse, 상대 asset 실물, source pose 수치와 필요한 shader/제품 최소 컴파일을 분리한다. Client/UI 실행·캡처와 최종 시각 판정은 사용자만 수행한다.
+
+## G07. 사용자 재검토의 미르새김 몸통 폭과 Alt V 단일 restore
+
+미르새김31950의 설치 DRA는 어제 non-root 회전 부호를 교정한 모델과 byte exact이며 원본 projectile scale1/FIXAREA speed0과도 일치한다. 원본 GPU skin VS에 별도 폭 WPO는 없다. 이전 수정은 뒤집힌 면을 고쳤고 bind 폭0.190895m를 유지했다. 사용자가 다시 요청한 두꺼운 몸통은 원본 회수값과 구분한 PROJECT_AUTHORED 횡폭5배로 적용한다. 기존 DRA cooker의 옵션으로 정점의 bind 횡폭만0.954474m로 늘리고 골격·두 clip·가중치·중심 경로와 사용자 cue/별도 helix3개를 보존한다. 기존 폭5 후보의122pose 수치 검사를 재사용한다.
+
+Alt V31930은 사용자 관찰에서 clip1의 카메라는 정상이고 clip2의 꽃밭은 invalid로 재생되지 않는다. 실제 `CEffectDocumentCodec::Validate_Drawable`의 Element 루프가 simulation-only provider에도 일반 Base texture를 요구하는 결함을 고친다. provider의 graph/순서 검증은 계속 수행하고 drawable binding 검사만 제외한다. 꽃밭 provider32행을 지우거나 일반 sprite로 위장하지 않는다.
+
+clip1의52행과 clip2의202행을 기존 source clock에 따라 하나의 `effect.artist.skill.31930.full.restore`로 합친다. clip2는 실제 clip1 길이1733.333ms 뒤로 옮기고, Element 시간·provider 참조·카메라 clock을 함께 맞춘다. 정상인 컷신 카메라4행/1065key와254Element의 원래 배치·재질을 보존한다. animevent는 첫 clip에서 한 번 호출하며 뒤 clip에서는 중복 생성하지 않는다. Tool Catalog/ResourceTree와 project None 목록도 이 단일 정본을 사용한다. 기존 두 파일과 사용자 저장본은 검토 가능한 백업으로 보존한다.
+
+새 C++ 파일은 없다. 기존 full codec/Playback과 원본 카메라 sampler를 재사용해 저장·재로드·full drawable·provider closure·시간 경계와 카메라 값 보존을 확인한다. Resources 설치와 Data 변경은 현재 bytes가 그대로인 경우에만 commit한다. Product 빌드 뒤 사용자 재실행에서 두꺼운 몸통과 Alt V의 카메라→꽃밭 전체 재생을 확인한다.

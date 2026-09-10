@@ -2473,6 +2473,26 @@ namespace
 			findCollider(sharedCollider.strOccurrenceId).iStartMs == 800u &&
 			findCollider(sharedCollider.strOccurrenceId).iDurationMs == 200u,
 			"explicit Shared selection failed to preserve the selected window clock");
+		auto resizedTrigger = findCollider(laterCollider.strOccurrenceId);
+		resizedTrigger.iStartMs = 700u; resizedTrigger.iDurationMs = 300u;
+		resizedTrigger.Scale = {2.0, 3.0, 2.0};
+		auto expectedShared = findCollider(sharedCollider.strOccurrenceId);
+		expectedShared.iStartMs = resizedTrigger.iStartMs; expectedShared.iDurationMs = resizedTrigger.iDurationMs;
+		RequireEditorStep(workbench.Set_ColliderLogicValues(patternId, resizedTrigger, contact, status), status,
+			"resize an already linked Trigger from Collider Apply Values");
+		const auto& resizedWindows = EditorPattern(workbench, patternId).LogicOccurrences;
+		const auto resizedWindow = std::find_if(resizedWindows.begin(), resizedWindows.end(),
+			[&](const auto& row) { return row.strOccurrenceId == secondWindow; });
+		Require(resizedWindow != resizedWindows.end() && resizedWindow->iStartMs == 700u && resizedWindow->iDurationMs == 300u &&
+			findCollider(laterCollider.strOccurrenceId) == resizedTrigger && findCollider(sharedCollider.strOccurrenceId) == expectedShared &&
+			findCollider(collider.strOccurrenceId) == expectedCollider &&
+			EditorPattern(workbench, patternId).iNextLogicOccurrenceOrdinal == initialOrdinal + 2u,
+			"Trigger Apply Values discarded Collider timing/size, failed to synchronize its shared window, or moved another strike");
+		const auto beforeRejectedResize = workbench.Get_Composition();
+		auto invalidResize = resizedTrigger; invalidResize.iDurationMs = duration + 1u;
+		Require(!workbench.Set_ColliderLogicValues(patternId, invalidResize, contact, status) &&
+			workbench.Get_Composition() == beforeRejectedResize,
+			"invalid Trigger resize changed the linked window or another Collider");
 
 		const auto stageId = EditorPattern(workbench, patternId).Stages.front().strStageId;
 		Require(!EditorPattern(workbench, patternId).Stages.front().bRetargetOnEnter,
@@ -2484,8 +2504,8 @@ namespace
 		RequireEditorRoundtrip(workbench);
 		Require(EditorPattern(workbench, patternId).Stages.front().bRetargetOnEnter &&
 			findCollider(collider.strOccurrenceId) == expectedCollider &&
-			findCollider(laterCollider.strOccurrenceId).strLogicOccurrenceId == secondWindow,
-			"Save/Reload dropped Stage retarget or the Collider definition/window link");
+			findCollider(laterCollider.strOccurrenceId) == resizedTrigger && findCollider(sharedCollider.strOccurrenceId) == expectedShared,
+			"Save/Reload dropped Stage retarget or the Collider definition/window timing and geometry");
 		for (const auto& previous : baseline.Patterns)
 			if (previous.strPatternId != patternId)
 				Require(EditorPattern(workbench, previous.strPatternId) == previous, "Collider Apply changed an unrelated Pattern");
@@ -2586,6 +2606,141 @@ namespace
 		Require(!workbench.Is_Dirty() && ReadText(sourcePath) == colliderSavedBytes,
 			"correcting Collider geometry to saved values unnecessarily rewrote the source");
 		while (workbench.Consume_PresentationGeometryPreviewRequest(noGeometry)) {}
+
+		// First connection reuses a placed name-only Trigger even when its interval differs.
+		{
+			const auto triggerDataRoot = scratchRoot / "FirstTrigger/Data";
+			const auto triggerSourcePath = triggerDataRoot / relativeSource;
+			for (const char* profile : { "MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00" })
+			{
+				const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+					(std::string(profile) + ".actionreference.json");
+				Require(CopyFixture(dataRoot / relative, triggerDataRoot / relative), "could not copy first Trigger fixture reference");
+			}
+			auto triggerSource = expectedColliderSave;
+			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION firstContact;
+			firstContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
+			firstContact.strDisplayName = "Native first Trigger connection"; firstContact.strLogicType = "TRIGGER";
+			triggerSource.Logics.push_back(firstContact);
+			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION result;
+			result.strLogicId = "kakulsaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
+			result.strDisplayName = "Native preserved contact result"; result.strLogicType = "RESULT";
+			result.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; result.iPercent = 10u;
+			triggerSource.Logics.push_back(result);
+			KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE placed;
+			placed.strLogicId = firstContact.strLogicId; placed.iStartMs = 3992u; placed.iDurationMs = 301u;
+			auto firstBox = collider; firstBox.iStartMs = 3992u; firstBox.iDurationMs = 316u;
+			firstBox.PositionOffset = {1.0, 2.0, 3.0}; firstBox.Scale = {2.0, 3.0, 2.0};
+			for (auto& pattern : triggerSource.Patterns) if (pattern.strPatternId == patternId)
+			{
+				pattern.Stages.front().iDurationMs = (std::max)(pattern.Stages.front().iDurationMs, 5000u);
+				pattern.LogicOccurrences.clear(); pattern.PresentationOccurrences = {firstBox};
+				pattern.WorldOccurrences.clear(); pattern.SceneProfileOccurrences.clear(); pattern.SummonOccurrences.clear();
+				placed.strOccurrenceId = patternId + ".logic." + std::to_string(pattern.iNextLogicOccurrenceOrdinal++);
+				pattern.LogicOccurrences.push_back(placed);
+			}
+			Require(WriteText(triggerSourcePath, CKoukuSaydonCompositionDocument::Serialize(triggerSource)),
+				"could not write first Trigger connection fixture");
+			SCOPED_ENVIRONMENT_VARIABLE triggerEnvironment(L"LOSTARK_PROJECT_DATA_ROOT");
+			Require(triggerEnvironment.Set(triggerDataRoot), "could not select first Trigger connection fixture");
+			CKoukuSaydonActionWorkbench firstTriggerWorkbench;
+			RequireEditorStep(firstTriggerWorkbench.Reload(status), status, "load name-only placed Trigger with unlinked Collider");
+			const auto triggerBaseline = firstTriggerWorkbench.Get_Composition();
+			const auto triggerBytes = ReadText(triggerSourcePath);
+			const auto nextWindowOrdinal = EditorPattern(firstTriggerWorkbench, patternId).iNextLogicOccurrenceOrdinal;
+			firstContact.strTriggerKind = "ENTER_AREA"; firstContact.bRearmOnExit = true;
+			auto invalidFirstBox = firstBox; invalidFirstBox.iDurationMs = 600001u;
+			Require(!firstTriggerWorkbench.Set_ColliderLogicValues(patternId, invalidFirstBox, firstContact, status) &&
+				firstTriggerWorkbench.Get_Composition() == triggerBaseline && ReadText(triggerSourcePath) == triggerBytes,
+				"rejected first Trigger Apply changed its name-only definition, unconnected window or source");
+			RequireEditorStep(firstTriggerWorkbench.Set_ColliderLogicValues(patternId, firstBox, firstContact, status), status,
+				"apply selected Trigger kind and connect its placed window using the Collider interval");
+			auto expectedFirstBox = firstBox; expectedFirstBox.strLogicOccurrenceId = placed.strOccurrenceId;
+			const auto& connected = EditorPattern(firstTriggerWorkbench, patternId);
+			Require(connected.LogicOccurrences.size() == 1u && connected.iNextLogicOccurrenceOrdinal == nextWindowOrdinal &&
+				connected.LogicOccurrences.front().strOccurrenceId == placed.strOccurrenceId &&
+				connected.LogicOccurrences.front().iStartMs == 3992u && connected.LogicOccurrences.front().iDurationMs == 316u &&
+				connected.PresentationOccurrences == std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>{expectedFirstBox},
+				"first Trigger connection duplicated the placed window or lost Collider time/geometry");
+			result.fPushRangeM = 2.0; result.iPushMs = 242u;
+			RequireEditorStep(firstTriggerWorkbench.Set_LogicDefinitionValues(result.strLogicId, result, status), status,
+				"set contact damage with knockback");
+			RequireEditorStep(firstTriggerWorkbench.Set_LogicBoxOutcomes(patternId, placed.strOccurrenceId,
+				KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS, {result.strLogicId}, status), status, "connect first Trigger Success result");
+			auto resizedFirstBox = expectedFirstBox; resizedFirstBox.iStartMs = 3800u; resizedFirstBox.iDurationMs = 600u;
+			RequireEditorStep(firstTriggerWorkbench.Set_ColliderLogicValues(patternId, resizedFirstBox, firstContact, status), status,
+				"resize first connected Trigger while preserving its Result");
+			RequireEditorRoundtrip(firstTriggerWorkbench);
+			const auto& reopened = EditorPattern(firstTriggerWorkbench, patternId);
+			Require(reopened.LogicOccurrences.size() == 1u && reopened.iNextLogicOccurrenceOrdinal == nextWindowOrdinal &&
+				reopened.LogicOccurrences.front().strOccurrenceId == placed.strOccurrenceId &&
+				reopened.LogicOccurrences.front().iStartMs == resizedFirstBox.iStartMs &&
+				reopened.LogicOccurrences.front().iDurationMs == resizedFirstBox.iDurationMs &&
+				reopened.LogicOccurrences.front().OnSuccessLogicIds == std::vector<std::string>{result.strLogicId} &&
+				reopened.PresentationOccurrences == std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>{resizedFirstBox},
+				"first Trigger Save/Reload lost its link, interval, Collider pose or Success result");
+			const auto savedTrigger = firstTriggerWorkbench.Get_Composition();
+			const auto savedTriggerBytes = ReadText(triggerSourcePath);
+			const auto savedTriggerGeneration = firstTriggerWorkbench.Get_DraftGeneration();
+			const auto findSavedLogic = [&](const std::string& id) {
+				const auto found = std::find_if(savedTrigger.Logics.begin(), savedTrigger.Logics.end(),
+					[&](const auto& logic) { return logic.strLogicId == id; });
+				Require(found != savedTrigger.Logics.end(), "first Trigger Save dropped a Logic definition");
+				return *found;
+			};
+			Require(findSavedLogic(firstContact.strLogicId) == firstContact && findSavedLogic(result.strLogicId) == result,
+				"Save/Reload lost ENTER_AREA rearmOnExit or 2 m / 242 ms damage knockback");
+			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> invalidResults(8u, result);
+			invalidResults[0].fPushRangeM = 0.0;
+			invalidResults[1].iPushMs = 0u;
+			invalidResults[2].fPushRangeM = std::numeric_limits<double>::quiet_NaN();
+			invalidResults[3].fPushRangeM = std::numeric_limits<double>::infinity();
+			invalidResults[4].fPushRangeM = 20.01;
+			invalidResults[5].iPushMs = 600001u;
+			invalidResults[6].strOutcomeKind = "MADNESS_GAUGE_ADD_PERCENT";
+			invalidResults[7].bRearmOnExit = true;
+			for (const auto& invalidResult : invalidResults)
+				Require(!firstTriggerWorkbench.Set_LogicDefinitionValues(result.strLogicId, invalidResult, status) && !status.empty() &&
+					firstTriggerWorkbench.Get_Composition() == savedTrigger && !firstTriggerWorkbench.Is_Dirty() &&
+					firstTriggerWorkbench.Get_DraftGeneration() == savedTriggerGeneration && ReadText(triggerSourcePath) == savedTriggerBytes,
+					"invalid knockback fields changed the damage Result, linked Trigger or saved source");
+			auto invalidContact = firstContact; invalidContact.strTriggerKind = "HUD_ENTER"; invalidContact.strHudMode = "NONE";
+			Require(!firstTriggerWorkbench.Set_LogicDefinitionValues(firstContact.strLogicId, invalidContact, status) &&
+				firstTriggerWorkbench.Get_Composition() == savedTrigger && !firstTriggerWorkbench.Is_Dirty(),
+				"non-contact Trigger accepted rearmOnExit or changed the saved definition");
+			const auto rejectFieldText = [&](const std::string& logicId, const std::string& from, const std::string& to) {
+				auto invalidText = CKoukuSaydonCompositionDocument::Serialize(savedTrigger);
+				const auto definitionStart = invalidText.find("\"logicId\": \"" + logicId + "\"");
+				Require(definitionStart != std::string::npos, "serialized Trigger fixture lost its definition");
+				const auto position = invalidText.find(from, definitionStart);
+				Require(position != std::string::npos && position < invalidText.find("\n    }", definitionStart),
+					"serialized Trigger fixture lost a knockback/rearm field");
+				invalidText.replace(position, from.size(), to);
+				auto parsed = savedTrigger;
+				Require(!CKoukuSaydonCompositionDocument::Parse_Text(invalidText, parsed, status) && !status.empty() && parsed == savedTrigger,
+					"malformed knockback/rearm JSON was accepted or replaced the previous parsed document");
+			};
+			rejectFieldText(result.strLogicId, ",\n      \"pushRangeM\": 2", "");
+			rejectFieldText(result.strLogicId, ",\n      \"pushMs\": 242", "");
+			rejectFieldText(result.strLogicId, "\"pushRangeM\": 2", "\"pushRangeM\": 1e309");
+			rejectFieldText(result.strLogicId, "\"outcomeKind\": \"MAX_HP_PERCENT_DAMAGE\"", "\"outcomeKind\": \"MADNESS_GAUGE_ADD_PERCENT\"");
+			rejectFieldText(firstContact.strLogicId, "\"rearmOnExit\": true", "\"rearmOnExit\": 1");
+			Require(firstTriggerWorkbench.Get_Composition() == savedTrigger && ReadText(triggerSourcePath) == savedTriggerBytes,
+				"knockback/rearm rejection checks changed the applied draft or saved source");
+			auto continuousContact = firstContact; continuousContact.bRearmOnExit = false; continuousContact.bRepeatAfterKnockback = true;
+			RequireEditorStep(firstTriggerWorkbench.Set_LogicDefinitionValues(firstContact.strLogicId, continuousContact, status), status,
+				"select repeated contact after knockback finishes");
+			RequireEditorRoundtrip(firstTriggerWorkbench);
+			const auto& continuousSaved = firstTriggerWorkbench.Get_Composition();
+			const auto continuousFound = std::find_if(continuousSaved.Logics.begin(), continuousSaved.Logics.end(),
+				[&](const auto& row) { return row.strLogicId == continuousContact.strLogicId; });
+			Require(continuousFound != continuousSaved.Logics.end() && *continuousFound == continuousContact,
+				"Save/Reload lost repeat after knockback mode");
+			continuousContact.bRearmOnExit = true;
+			Require(!firstTriggerWorkbench.Set_LogicDefinitionValues(continuousContact.strLogicId, continuousContact, status),
+				"mutually exclusive contact modes were accepted");
+		}
+		Require(ReadText(sourcePath) == colliderSavedBytes, "first Trigger fixture changed the separate Collider source");
 
 		// A linked circular Sector cannot persist an ellipse that the publisher rejects.
 		{

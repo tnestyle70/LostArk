@@ -220,6 +220,72 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             anchored = copy.deepcopy(source)
             anchored["objectResources"][-1]["anchorKind"] = anchor
             cases.append(("resource_anchor_" + anchor, anchored, True))
+        boss_source = copy.deepcopy(source)
+        boss_source["objectResources"][-1].update(
+            anchorKind="BOSS", anchorBossArchetypeId="BOSS_KOUKU", anchorBone="bip001_R_Hand")
+        boss_source["instances"][-1]["anchorKind"] = "BOSS"
+        cases.append(("boss_hand_anchor", boss_source, True))
+        for name, bone, valid in (
+            ("root", "", True), ("maximum", "a" * 128, True), ("korean", "오른손", True),
+            ("bytes_over", "한" * 43, False), ("too_long", "a" * 129, False),
+            ("control", "hand\n", False), ("number", 7, False),
+            ("boolean", True, False), ("null", None, False),
+        ):
+            candidate = copy.deepcopy(boss_source)
+            candidate["objectResources"][-1]["anchorBone"] = bone
+            cases.append(("boss_bone_" + name, candidate, valid))
+        boss_root = copy.deepcopy(boss_source)
+        del boss_root["objectResources"][-1]["anchorBone"]
+        cases.append(("boss_bone_absent_root", boss_root, True))
+        for name, boss_id, valid in (
+            ("maximum", "a" * 128, True), ("empty", "", False),
+            ("space", "boss kouku", False), ("path", "../kouku", False),
+            ("too_long", "a" * 129, False), ("number", 7, False),
+            ("boolean", True, False), ("null", None, False),
+        ):
+            candidate = copy.deepcopy(boss_source)
+            candidate["objectResources"][-1]["anchorBossArchetypeId"] = boss_id
+            cases.append(("boss_archetype_" + name, candidate, valid))
+        missing_boss = copy.deepcopy(boss_source)
+        del missing_boss["objectResources"][-1]["anchorBossArchetypeId"]
+        cases.append(("boss_archetype_absent", missing_boss, False))
+        for anchor in ("WORLD", "PLAYER"):
+            empty_fields = copy.deepcopy(source)
+            empty_fields["objectResources"][-1].update(
+                anchorKind=anchor, anchorBossArchetypeId="", anchorBone="")
+            cases.append(("nonboss_empty_fields_" + anchor, empty_fields, True))
+            for field, value in (("anchorBossArchetypeId", "BOSS_KOUKU"), ("anchorBone", "hand"),
+                                 ("anchorBossArchetypeId", None), ("anchorBone", None)):
+                candidate = copy.deepcopy(empty_fields)
+                candidate["objectResources"][-1][field] = value
+                cases.append((f"nonboss_{anchor}_{field}_{value}", candidate, False))
+            candidate = copy.deepcopy(boss_source)
+            candidate["instances"][-1]["anchorKind"] = anchor
+            cases.append(("boss_resource_instance_mismatch_" + anchor, candidate, False))
+            candidate = copy.deepcopy(source)
+            candidate["objectResources"][-1]["anchorKind"] = anchor
+            candidate["instances"][-1]["anchorKind"] = "BOSS"
+            cases.append(("boss_instance_resource_mismatch_" + anchor, candidate, False))
+        implicit_instance = copy.deepcopy(boss_source)
+        del implicit_instance["instances"][-1]["anchorKind"]
+        cases.append(("boss_resource_implicit_world_instance", implicit_instance, False))
+        multiple_boss_bindings = copy.deepcopy(boss_source)
+        second_object = copy.deepcopy(multiple_boss_bindings["objectResources"][-1])
+        second_object["objectId"] = "test.second.boss.object"
+        multiple_boss_bindings["objectResources"].append(second_object)
+        second_track = copy.deepcopy(multiple_boss_bindings["templates"][-1]["tracks"][0])
+        second_track["slotId"] = "second.object"
+        multiple_boss_bindings["templates"][-1]["tracks"].append(second_track)
+        multiple_boss_bindings["instances"][-1]["bindings"].append({
+            "slotId": "second.object", "targetKind": "OBJECT_RESOURCE", "targetId": second_object["objectId"]})
+        cases.append(("boss_anchor_multiple_resources", multiple_boss_bindings, False))
+        placed_boss = copy.deepcopy(source)
+        placed_boss["instances"][0]["anchorKind"] = "BOSS"
+        cases.append(("boss_anchor_placed_instance", placed_boss, False))
+        alias_boss = copy.deepcopy(source)
+        alias_boss["objectResources"][0].update(
+            anchorKind="BOSS", anchorBossArchetypeId="BOSS_KOUKU", anchorBone="")
+        cases.append(("boss_anchor_placed_alias", alias_boss, False))
         for name, mutate in (
             ("bad_count", lambda d: d["templates"][-1]["objectMotion"].update(count=0)),
             ("spawn_after_lifetime", lambda d: d["templates"][-1]["objectMotion"].update(intervalMs=1000)),
@@ -227,8 +293,8 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             ("path_escape", lambda d: d["objectResources"][-1].update(modelAssetId="Map/../test.wmodel")),
             ("unknown_property", lambda d: d["objectResources"][-1].update(velocty=1)),
             ("unknown_alias", lambda d: d["objectResources"][-1].update(modelAssetId="", sequenceInstanceId="missing.instance")),
-            ("invalid_anchor", lambda d: d["instances"][-1].update(anchorKind="BOSS")),
-            ("invalid_resource_anchor", lambda d: d["objectResources"][-1].update(anchorKind="BOSS")),
+            ("invalid_anchor", lambda d: d["instances"][-1].update(anchorKind="UNKNOWN")),
+            ("invalid_resource_anchor", lambda d: d["objectResources"][-1].update(anchorKind="UNKNOWN")),
             ("invalid_resource_anchor_type", lambda d: d["objectResources"][-1].update(anchorKind=0)),
             ("placed_alias_character_anchor", lambda d: d["objectResources"][0].update(anchorKind="PLAYER")),
         ):

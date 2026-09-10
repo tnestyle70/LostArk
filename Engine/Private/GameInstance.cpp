@@ -465,6 +465,24 @@ HEIGHT_FOG_SETTINGS CGameInstance::Get_HeightFogSettings() const
 	return m_pRenderer->Get_HeightFogSettings();
 }
 
+HRESULT CGameInstance::Stage_RenderEnvironment(const wstring_t& cubePath,
+    const float4_t& color, const float4_t& rotationIntensity,
+    RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload) const
+{
+    return m_pRenderer ? m_pRenderer->Stage_RenderEnvironment(
+        cubePath, color, rotationIntensity, outState, forceReload) : E_FAIL;
+}
+
+void CGameInstance::Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state)
+{
+    if (m_pRenderer) m_pRenderer->Commit_RenderEnvironment(state);
+}
+
+RENDER_ENVIRONMENT_STATE CGameInstance::Get_RenderEnvironment() const
+{
+    return m_pRenderer ? m_pRenderer->Get_RenderEnvironment() : RENDER_ENVIRONMENT_STATE{};
+}
+
 HRESULT CGameInstance::Apply_HeightFog(
 	const HEIGHT_FOG_SETTINGS& Settings)
 {

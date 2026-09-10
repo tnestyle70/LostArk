@@ -150,3 +150,37 @@ Cooked 파일은 실제1000ticks/s와 TIG733.333ticks, DRA2000ticks를 저장했
 - 미실행: Client/UI 실행·조작·캡처와 사용자 실제스킬/화면 판정. source프로그램/수치검증은 visual PASS가 아니다.
 
 원본 모델의 정확한 runtime asset ID와 물리 위치는 `Client/Bin/Resources/Effect/Artist/Models/SK_SDM_TIG_00/sk_sdm_tig_00_sk.wmodel`, `Client/Bin/Resources/Effect/Artist/Models/SK_SDM_DRA_00/sk_sdm_dra_00_sk.wmodel`이다. E crane의 `Effect/Artist/Meshes/SK_SDM_RCC_00_SK_FX_01/SK_SDM_RCC_00_SK_FX_01.wmodel`도full.restore에 유지했다. Native mesh는 `Effect/Artist/Meshes/Native/<SOURCE_PACKAGE>/<mesh>.wmodel`, texture는 `Effect/Artist/Textures/<SOURCE_PACKAGE>/<texture>.dds`에서 소비한다. Resources실물은 준비됐으며 Git추적/force-add하지 않았다. Drive전달은 팀장수행전이다.
+
+## G07. 사용자 재검토 후 미르새김 몸통 횡폭 조정
+
+사용자가 새 실행에서도 원작보다 얇은 몸통을 보고했다. 현재 설치본은 어제 PSA non-root 회전을 교정한 `e548f69…` 모델과 byte exact였고 회전 수정의 퇴행은 없었다. 원본 projectile319500의 scale1/FIXAREA speed0, GPU skin VS의 unpack→skin→world/projection 경로를 다시 확인했으며 추가 폭 scale/WPO 누락 근거는 찾지 못했다. 어제 변경은 뒤집힌 면을 고친 것이고 원본 bind 폭0.190895m를 유지한 상태였다.
+
+이번 사용자 요청의 두꺼운 몸통은 PROJECT_AUTHORED 횡폭5배 조정으로 설치했다. bind 폭은0.954474m, 길이는1.80681m로 기존과 같다.20bone·2clip·1386정점의 가중치와 원본 animation payload, 사용자31950 문서23Element/1ModelCue 및 별도 helix3개를 보존했다. global cue Scale 대신 bind 횡폭만 조정하므로 골격 중심 경로를 늘리지 않는다.
+
+기존 `Tools/ActorXAssetCooker/rebuild_artist_dragon.py`에 `--body-width-scale`을 추가했고 기본값은1이다. 위치 횡폭과 normal inverse-transpose/tangent 정규화를 함께 처리한다. CLI5로 다시 만든 mesh/material/skeleton은 검증된 후보와 byte exact였으며 quaternion q/-q의 물리 회전 차이는0이었다. 기존 clip bytes를 완전히 보존하는 검증 후보 `b729893…`를 원본 hash 확인 후 설치했다. 바로 전 모델은 `out/ArtistWarlordVisualFollowup20260910/DRA/width-resume-before/`에 보존했다.
+
+122개 CPU pose가 모두 finite이며 면적은 기존 대비4.787~4.833배다. 최대 뒷면 면적 비율0.027868%는 남아 있고 전체 면을 강제로 양면 렌더링하지 않았다. Python 문법, JSON/glTF parse와 scoped diff check는 통과했다. 근거는 `out/ArtistWarlordVisualFollowup20260910/DRA/width_resume_install.json`이다. 현재 설치본은 기존 실제 CModel probe에서 소환6모델·21clip·189bone palette가 finite이고21clip 모두 움직임을 확인했다(`out/ArtistWarlordVisualFollowup20260910/DRA/width-installed-cmodel.log`, errors0). 사용자의 두께 화면 확인은 아직 미실시다.
+
+
+## G08. Alt V 단일 restore와 꽃밭 drawable 복구
+
+사용자는 기존 clip1의 컷신 카메라가 정상이라고 관찰했고 clip2가 invalid로 재생되지 않는다고 보고했다. 기존 clip2의 꽃밭32행은 숨김 위치 provider2개와 실제 표시30개로 존재했다. 일반 Load/Save와 Stage의 provider graph는 유효했지만 `CEffectDocumentCodec::Validate_Drawable`가 숨김 provider에도 Base texture를 요구했다. 기존 루프에 simulation-only 제외 조건을 추가해 graph·순서·참조 검사는 유지하고 실제 drawable resource 검사만 제외했다.
+
+새 `effect.artist.skill.31930.full.restore`에 clip1의52행과 clip2의202행을 합쳤다. 원본 Artist animation의52tick/30Hz를 기준으로 clip2 Element 시작만1.733333초 뒤로 옮겼다. 카메라는 기존 clip1 끝1733ms에 clip2를 붙여 공백0ms이며, animation2의 시작은 기존 row 길이1734ms를 유지한다. 이 정수 반올림 차이는 각각 -0.333ms/+0.667ms다. 카메라4행·1065key, 첫 clip의458key·animation, 전체254Element의 시작 지연 외 필드와 provider 참조를 보존했다.
+
+Catalog/ResourceTree에서 `이펙트_도화가AltV_전체` 하나를 선택하고 첫 `sdm_sk_super_pungnyudo_01` animevent에서 NATURAL로 한 번 생성한다. 두 번째 clip의 중복 full notify는 제거했다. 새 full과 sequence를 Client 프로젝트의96.DataFiles None 항목에 연결하고 기존 clip별 full/sequence4개는 정확한 byte 백업 뒤 저작 목록에서 제거했다. 이전 unified 비교본과 sourceNode의 원본 출처 표기는 보존한다.
+
+| 검사 | 실제 결과 |
+|---|---|
+| 실제 Codec/Playback | full254행 Drawable, Save/Load 동일 직렬화, Stage 성공 |
+| 꽃밭 실제 계산 | 표시30행 모두 양수 alpha·변하는 위치, provider draw0·nonfinite0 |
+| provider를 포함한 개별 재생 |30개 모두 Drawable/Stage와 시간 이동 성공 |
+| 시간 이동·실패 보존 |5시점 Seek 결과 delta0, 잘못된13입력 거절과 기존 상태 보존 |
+| 통합 카메라 실제 소비 | actual Load4행·1065key,2root/3aspect에서12,138sample의 eye/look/up/FOV 차이0,36,450check·failures0. 경계 공백0ms·종료3933ms |
+| 데이터·프로젝트 | JSON4/XML2 parse 및17개 보존 비교 모두 성공, 전체 변경 JSON/XML17개 parse와 git diff --check 성공 |
+| 최종 제품 EXE | Debug Product compile/link·DLL/CSO 배포 PASS (`out/BuildPipeline/runs/20260910T063843956Z-debug-product.json`) |
+| 새 실행의 화면 | 사용자의 카메라→꽃밭·미르 몸통 두께 최종 관찰 대기 |
+
+근거는 `out/ArtistAltVUnified20260910/merge-receipt.json`, `final-data-checks.json`, `provider-merged.log`, `camera-merged.log`, `final-parse-diff.json`과 `handoff.md`다. 백업 정본은 `before-exact/`에 있다. 복사한 옛 generic Solo probe는 provider를 잘라내는 자체 구성 때문에32행을 거절했으나, 실제 provider closure를 포함한 위 검사30개는 모두 통과했다. 그 옛 probe의 실패를 full 문서 invalid로 기록하지 않는다.
+
+원본의 emitterDuration500초인 burst-only6행 때문에 Playback의 종료 하한은506.633초다. 해당행은 rate0·1회 burst·입자 수명2~2.25초여서8분 동안 입자가 계속 표시된다는 뜻은 아니며, NATURAL 빈 객체가 오래 남는 기존 경계다. 시간 분포를 임의 변경하지 않았고, 전체 source emitter의 안전한 종료시간 계산 최적화는 이번 단일 restore 연결과 분리해 미구현으로 남겼다.

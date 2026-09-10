@@ -125,6 +125,8 @@ namespace Client
 		std::string strOutcomeKind;
 		std::uint32_t iPercent = 0u;
 		std::uint32_t iDurationMs = 0u;
+		double fPushRangeM = 0.0;
+		std::uint32_t iPushMs = 0u;
 		std::string strFollowupPatternId;
 		std::string strSceneProfileId;
 		std::string strEffectResourceId;
@@ -138,6 +140,8 @@ namespace Client
 		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
+		bool_t bRearmOnExit = false;
+		bool_t bRepeatAfterKnockback = false;
 		double fBossChargeDistanceM = 0.0;
 		std::string strHudMode;
 		std::array<double, 3> TeleportPosition{};

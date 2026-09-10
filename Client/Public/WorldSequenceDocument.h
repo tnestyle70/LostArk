@@ -43,8 +43,11 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string objectId;
 	std::string displayName;
 	std::string modelAssetId;
-	// Resource category and default anchor for its authored states (Map/Character).
+	// Resource category and default anchor for its authored states.
 	std::string anchorKind = "WORLD";
+	// BOSS states follow this replicated actor and BODY bone (empty = root).
+	std::string anchorBossArchetypeId;
+	std::string anchorBone;
 	std::string diffuseTextureAssetId;
 	f32_t modelPreScale = 0.01f;
 	bool_t animated = false;

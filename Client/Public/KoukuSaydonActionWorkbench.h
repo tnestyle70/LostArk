@@ -715,6 +715,8 @@ namespace Client
 		// Typed Logic values under edit; committed to the draft by Apply Values.
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION m_LogicValueDraft;
 		std::string m_strLogicValueDraftId;
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION m_ColliderLogicValueDraft;
+		std::string m_strColliderLogicValueDraftId;
 		// Which gate the shell selected; only the pattern list header and model filter follow it.
 		std::string m_strBossVariantLabel;
 

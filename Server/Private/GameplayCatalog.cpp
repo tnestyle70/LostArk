@@ -1333,6 +1333,32 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
 }
 
+bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct()
+{
+	const auto dataRoot = Resolve_DataRoot();
+	const auto repositoryRoot = dataRoot.parent_path().parent_path().parent_path();
+	const auto ownerScript = repositoryRoot / L"Tools" / L"Build" / L"Invoke-BuildDomainOwner.ps1";
+	std::error_code error;
+	struct PUBLISH_READ_LOCK final
+	{
+		HANDLE handle = INVALID_HANDLE_VALUE;
+		~PUBLISH_READ_LOCK() { if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle); }
+	} publishLock;
+	if (std::filesystem::is_regular_file(ownerScript, error))
+	{
+		const auto lockPath = repositoryRoot / L"out" / L"BuildPipeline" /
+			L"receipts" / L"locks" / L"runtime-owner.lock";
+		publishLock.handle = CreateFileW(lockPath.c_str(), GENERIC_READ,
+			FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (publishLock.handle == INVALID_HANDLE_VALUE)
+		{
+			m_strStatus = "KoukuSaydon publish is in progress or its transaction lock is unavailable; retry after Publish completes";
+			return false;
+		}
+	}
+	return Load();
+}
+
 bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
 	const std::filesystem::path& bootstrapPath,
 	const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
@@ -2550,6 +2576,25 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			owner->LogicWindows.push_back(std::move(window));
 		}
+		else if (!fields.empty() && "PATTERNLOGICREARM" == fields[0])
+		{
+			if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || (fields[4] != "ON_REENTER" && fields[4] != "AFTER_KNOCKBACK"))
+			{ m_strStatus = "Boss logic rearm row is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Boss logic rearm encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end())
+			{ m_strStatus = "Boss logic rearm pattern is missing"; return false; }
+			const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+				[&](const auto& row) { return row.strWindowId == fields[3]; });
+			if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || window->bRearmOnExit || window->bRepeatAfterKnockback)
+			{ m_strStatus = "Boss logic rearm needs one ENTER_AREA owner"; return false; }
+			window->bRearmOnExit = fields[4] == "ON_REENTER";
+			window->bRepeatAfterKnockback = fields[4] == "AFTER_KNOCKBACK";
+		}
         else if (!fields.empty() && "PATTERNLOGICCHARGE" == fields[0])
         {
             float distance = 0.f;
@@ -2813,6 +2858,35 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			slot.push_back(std::move(result));
+		}
+		else if (!fields.empty() && "PATTERNLOGICPUSH" == fields[0])
+		{
+			std::uint32_t ordinal = 0u, pushMs = 0u;
+			float rangeM = 0.f;
+			if (fields.size() != 8u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				(fields[4] != "SUCCESS" && fields[4] != "FAIL" && fields[4] != "TIMEOUT") ||
+				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
+				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > 20.f ||
+				!ParseNumber(fields[7], pushMs) || pushMs == 0u || pushMs > 600000u)
+			{ m_strStatus = "Boss logic push requires paired bounded range and duration"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end())
+			{ m_strStatus = "Boss logic push encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end())
+			{ m_strStatus = "Boss logic push pattern is missing"; return false; }
+			const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+				[&](const auto& row) { return row.strWindowId == fields[3]; });
+			if (window == pattern->LogicWindows.end())
+			{ m_strStatus = "Boss logic push window is missing"; return false; }
+			auto& outcomes = fields[4] == "SUCCESS" ? window->OnSuccess :
+				(fields[4] == "FAIL" ? window->OnFail : window->OnTimeout);
+			if (ordinal >= outcomes.size() || outcomes[ordinal].eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+				outcomes[ordinal].fPushRangeM != 0.f || outcomes[ordinal].iPushMs != 0u)
+			{ m_strStatus = "Boss logic push needs one max-HP damage outcome"; return false; }
+			outcomes[ordinal].fPushRangeM = rangeM;
+			outcomes[ordinal].iPushMs = pushMs;
 		}
 		else if (!fields.empty() && (fields[0] == "PATTERNLOGICCONTACTTARGET" || fields[0] == "PATTERNLOGICCONTACTGROUP" ||
 			fields[0] == "PATTERNLOGICCONTACTMOTION" || fields[0] == "PATTERNLOGICSIGNAL"))
@@ -6620,13 +6694,57 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 	}
 
+	/* Hash the already parsed bytes, not a second disk read. Scope is resolved
+	   from validated owners because target/bundle rows use IDs in column 1. */
+	std::string nonKoukuRows = "LOSTARK_NON_KOUKU_GAMEPLAY\t" +
+		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\n";
+	std::istringstream domainInput{ bootstrapBytes };
+	std::getline(domainInput, line);
+	const auto* koukuPatterns = Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+	while (std::getline(domainInput, line))
+	{
+		StripCarriageReturn(line);
+		const auto fields = SplitTabs(line);
+		bool koukuOwned = false;
+		if (fields.size() >= 2u)
+		{
+			const auto kind = fields[0];
+			koukuOwned = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
+				(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
+				 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
+			if (kind == "PATTERNTARGET" && nullptr != koukuPatterns)
+				koukuOwned = std::any_of(koukuPatterns->begin(), koukuPatterns->end(),
+					[&fields](const auto& pattern) { return pattern.strPatternId == fields[1]; });
+			if (kind == "PATTERNBUNDLE" || kind == "PATTERNBUNDLEMEMBER")
+			{
+				const auto* bundle = Find_BossPatternBundle(std::string(fields[1]));
+				koukuOwned = nullptr != bundle &&
+					bundle->strEncounterId == "ENCOUNTER_KAKULSAYDON_G1";
+			}
+		}
+		if (!koukuOwned) { nonKoukuRows.append(line); nonKoukuRows.push_back('\n'); }
+	}
+	LostArk::Shared::GameplayDataRevision nonKoukuRevision{};
+	if (!Calculate_GameplayDataRevision(nonKoukuRows, nonKoukuRevision))
+	{
+		m_strStatus = "Gameplay non-Kouku domain revision could not be calculated";
+		return false;
+	}
 	rollback.committed = true;
+	m_NonKoukuGameplayRevision = nonKoukuRevision;
 	m_ActiveRevision = nullptr == parentRevision ?
 		admittedRevision : *parentRevision;
 	m_strStatus = nullptr == parentRevision ?
 		"Loaded gameplay bootstrap" :
 		"Loaded staged gameplay parent revision";
 	return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Has_SameNonKoukuGameplay(
+	const CGameplayCatalog& other) const noexcept
+{
+	return m_NonKoukuGameplayRevision.Is_Valid() &&
+		m_NonKoukuGameplayRevision == other.m_NonKoukuGameplayRevision;
 }
 
 const LostArk::Server::PLAYER_RUNTIME_PROFILE*

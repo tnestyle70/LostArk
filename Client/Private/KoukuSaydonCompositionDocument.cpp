@@ -323,10 +323,10 @@ namespace
 			0.0 != logic.fMaxDistanceM || 0u != logic.iPoseIndex || 0u != logic.iThreshold ||
 			0.0 != logic.fShieldArcDegrees || logic.bEndsPatternOnSuccess || logic.fNormalYawOffsetDegrees != 0.0 || logic.strInsideOutcome != "SUCCESS" || (logic.fTargetRadiusM != 0.0 && logic.strTriggerKind != "OBJECT_CONTACT");
 		if ((logic.strInsideOutcome != "SUCCESS" && logic.strInsideOutcome != "FAIL") ||
-			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP"))))
-		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
+			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP" && logic.strJudgementKind != "GAZE_REAL_BOSS"))))
+		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
 		const bool_t hasResultValues = !logic.strOutcomeKind.empty() ||
-			0u != logic.iPercent || 0u != logic.iDurationMs || !logic.strFollowupPatternId.empty() ||
+			0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.iPushMs != 0u || !logic.strFollowupPatternId.empty() ||
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
 			!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || logic.iEffectDelayMs != 0u ||
 			!logic.strAttachmentSlot.empty() || logic.GripLocalOffset != std::array<double, 3u>{} ||
@@ -337,7 +337,15 @@ namespace
         if (!std::isfinite(logic.fBossChargeDistanceM) || logic.fBossChargeDistanceM < 0.0 || logic.fBossChargeDistanceM > 1000.0 ||
             (logic.fBossChargeDistanceM != 0.0 && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")))
         { outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m."; return false; }
-		const bool_t hasTriggerValues = logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
+		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
+			(logic.bRearmOnExit && logic.bRepeatAfterKnockback))
+		{ outStatus = "ENTER_AREA accepts one contact repeat policy."; return false; }
+		if (!std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 || logic.fPushRangeM > 20.0 ||
+			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0) != (logic.iPushMs == 0u)) ||
+			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
+			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
+		{ outStatus = "Damage knockback needs both a distance of 0..20 m and time of 0..600000 ms; zero disables both."; return false; }
+		const bool_t hasTriggerValues = logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
 		if (!std::isfinite(logic.fNormalYawOffsetDegrees) || std::abs(logic.fNormalYawOffsetDegrees) > 360.0 ||
@@ -1993,8 +2001,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					{ "judgementKind", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
-					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "followupPatternId", "triggerKind", "bossChargeDistanceM", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
+					  "followupPatternId", "triggerKind", "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -2036,6 +2044,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				return nullptr == value || Try_ParseFinite(*value, minimum, maximum, out);
 			};
 			const DATA_JSON_VALUE* const endsPattern = logicValue.Find("endsPatternOnSuccess");
+			const DATA_JSON_VALUE* const rearmOnExit = logicValue.Find("rearmOnExit");
+			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
 				!optionalText("insideOutcome", stagedLogic.strInsideOutcome) ||
 				!optionalUnsigned("sectorCount", 64u, stagedLogic.iSectorCount) ||
@@ -2059,6 +2069,10 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("motionInstanceId", stagedLogic.strMotionInstanceId) ||
 				!optionalUnsigned("percent", 100u, stagedLogic.iPercent) ||
 				!optionalUnsigned("durationMs", MAX_TIME_MS, stagedLogic.iDurationMs) ||
+				!optionalFinite("pushRangeM", 0.0, 20.0, stagedLogic.fPushRangeM) ||
+				!optionalUnsigned("pushMs", MAX_TIME_MS, stagedLogic.iPushMs) ||
+				(nullptr != rearmOnExit && !rearmOnExit->Is_Boolean()) ||
+				(nullptr != repeatAfterKnockback && !repeatAfterKnockback->Is_Boolean()) ||
 				!optionalText("followupPatternId", stagedLogic.strFollowupPatternId) ||
 				!optionalText("sceneProfileId", stagedLogic.strSceneProfileId) ||
 				!optionalText("effectResourceId", stagedLogic.strEffectResourceId) ||
@@ -2078,6 +2092,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
+			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
+			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
+			if ((logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
+				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
+				((rearmOnExit || repeatAfterKnockback) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")))
+			{ outStatus = "Knockback fields belong together on a damage Result; rearmOnExit belongs to ENTER_AREA."; return false; }
 			const auto* grip = logicValue.Find("gripLocalOffset");
 			if ((stagedLogic.strOutcomeKind == "CAPTURE_PLAYER") != (grip != nullptr) ||
 				(stagedLogic.strOutcomeKind == "CAPTURE_PLAYER") != (logicValue.Find("attachmentSlot") != nullptr))
@@ -3071,7 +3091,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			else if ("GAZE_REAL_BOSS" == logic.strJudgementKind)
 			{
 				output << ",\n      \"halfAngleDegrees\": " << logic.fHalfAngleDegrees
-					<< ",\n      \"maxDistanceM\": " << logic.fMaxDistanceM;
+					<< ",\n      \"maxDistanceM\": " << logic.fMaxDistanceM
+					<< ",\n      \"insideOutcome\": \"" << logic.strInsideOutcome << "\"";
 			}
 			else if ("POSE_INPUT" == logic.strJudgementKind)
 			{
@@ -3092,6 +3113,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< ",\n      \"percent\": " << logic.iPercent
 				<< ",\n      \"durationMs\": " << logic.iDurationMs
 				<< ",\n      \"followupPatternId\": \"" << CDataJson::Escape(logic.strFollowupPatternId) << "\"";
+			if (logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && (logic.fPushRangeM != 0.0 || logic.iPushMs != 0u))
+				output << ",\n      \"pushRangeM\": " << logic.fPushRangeM
+					<< ",\n      \"pushMs\": " << logic.iPushMs;
 			if (logic.strOutcomeKind == "FEAR")
                 output << ",\n      \"sceneProfileId\": \"" << CDataJson::Escape(logic.strSceneProfileId)
                     << "\",\n      \"effectResourceId\": \"" << CDataJson::Escape(logic.strEffectResourceId)
@@ -3122,6 +3146,10 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		if (logic.strLogicType == "TRIGGER" && !logic.strTriggerKind.empty())
 		{
 			output << ",\n      \"triggerKind\": \"" << logic.strTriggerKind << "\"";
+			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRearmOnExit)
+				output << ",\n      \"rearmOnExit\": true";
+			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRepeatAfterKnockback)
+				output << ",\n      \"repeatAfterKnockback\": true";
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fBossChargeDistanceM != 0.0)
                 output << ",\n      \"bossChargeDistanceM\": " << logic.fBossChargeDistanceM;
 			if (logic.strTriggerKind == "OBJECT_CONTACT")

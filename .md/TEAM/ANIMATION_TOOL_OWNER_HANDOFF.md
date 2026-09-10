@@ -1023,7 +1023,13 @@ Dance/Roulette의 `resetBossToSpawn`은 Server 패턴 시작 때 적용된다. W
 
 F1 Tools → World Object Tool에서 카드·조커카드·공·세토·칼날·갈고리·빙고폭탄·빙고와
 기존 커튼·룰렛을 편집한다. Object Resources는 왼쪽, Object Sequencer는 아래, Object Detail은 오른쪽의 독립 창이다.
-Resources의 Map/Character 분류와 Create의 anchor는 resource.anchorKind(WORLD/PLAYER)에 저장하고 상태 생성에 사용한다.
+Resources의 Map/Character/Boss 분류와 Create의 anchor는 resource.anchorKind(WORLD/PLAYER/BOSS)에 저장하고 상태 생성에 사용한다.
+Boss는 부모 Object의 `anchorBossArchetypeId`와 BODY `anchorBone`을 지정한다. 상태는 BOSS 앵커로
+같은 부모를 참조하며 매 샘플에 실제 보스 손의 위치·회전을 따라간다. 본을 비우면 보스 root다.
+Product는 살아 있는 복제 보스, Model View는 선택한 preview actor를 사용하고 다른 보스로 대체하지 않는다.
+원본 쿠크·세이튼의 `b_wp_1`은 오른손, `b_wp_2`는 왼손이다. 손 소품의 local Transform은
+Object 상태에서 편집하며 Composition World는 `anchorKind=NONE`으로 추가한다.
+`BOSS_SPAWN`은 생성 당시 위치를 고정하는 별도 용도이며 손 추적에 사용하지 않는다.
 Object Resources 상단은 저장된 모델과 상태이고, 하단 Physical Resources는
 Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 준다. 모델/texture 슬롯은
 상대 경로만 저장한다. 카드의 들썩임·뒤집힘은 별도 named state로 두되 같은 모델을 공유한다.
@@ -1068,8 +1074,14 @@ Save는 runtime을 게시하지 않는다. Boss Pattern 아래의 `Publish All P
 Server bootstrap이 소유한다. 별도 source나 두 번째 실행 경로는 없다. 미저장 수정은 Save를 요구한다.
 게시 도중에는 편집과 중복 게시를 막고, domain 실패 시 이전 생성물·receipt를 복구하며 성공 후에만 F1을 갱신한다.
 실행 가능한 Pattern이 하나도 없거나 전체 ID/계층이 손상되면 publish를 거절하고 이전 게시물을 보존한다.
-새 Server 실행 자료는 Server 재시작 뒤 적용한다. Physical Resources 검색은 여러 frame에 나누므로
-Save 위젯은 검색 완료를 기다리지 않는다. 정본은 Area `.worldsequences.json` v3이다.
+쿠크 Pattern/Logic 수정은 Publish 성공 뒤 다음 Complete Play에서 Server가 정확한 source revision을
+검증해 적용한다. 현재 재생과 Restart는 기존 Pattern 정의·Logic·애니메이션 binding을 유지하며,
+새 게시본은 Stop Server Play 뒤 새 Complete Play로 시작한다. 후보 파일 누락·손상·revision 불일치,
+게시 진행 중·다른 encounter/player/boss balance 변경은 기존 상태를 보존하고 이유를 표시한다.
+다른 PC에서 게시하면 Server 호스트와 Client에도 동일 Product가 전달되어야 한다.
+World placement와 일반 balance 변경은 여전히 Server 재시작으로 적용한다. 외부 World/Camera/Effect
+리소스 원문은 각각의 기존 게시·수명 계약을 따르며 Pattern source revision과 동일한 버전 계약은 아니다.
+Physical Resources 검색은 여러 frame에 나누므로 Save 위젯은 검색 완료를 기다리지 않는다. 정본은 Area `.worldsequences.json` v3이다.
 커튼/룰렛은 기존 sequence ID를 가리키므로 Object Detail의 편집이 원래 상태를 갱신한다.
 Effect의 기존 WORLD anchor는 살아 있는 단일 object의 pose를 조회할 수 있다. 복수 object의
 각 입자에 자동으로 effect를 붙이는 별도 이벤트 저작은 아직 제공하지 않는다.
@@ -1111,6 +1123,11 @@ Light는 Engine transient 조명 경로만 사용하며 Effect V2 파티클이�
 RenderingProfiles의 optional `mapLightIntensityMultiplier`는 0~4(누락 시 1)이며 Light Resources → Scene Profile →
 Light Detail에서 편집·Save Light·Publish Light한다. 맵 배치 광량에만 곱하고 PLAYER/BOSS 패턴 LIGHT는 유지한다.
 암전 profile은 0.05로 맵 조명을 줄이며 종료·Level 전환은 활성 profile의 배율을 다시 적용한다. Exposure는 화면 전체 배율이다.
+RenderingProfiles의 optional `environment`는 `cubeTexture`(Resources-relative DDS cube), `color`(float4),
+`rotationIntensity`(sin/cos/intensity/0)를 소유한다. Renderer가 cube SRV를 stage하고 profile 전체 적용 성공 후
+commit하며, 누락 profile은 이전 cube를 해제한다. 로드 실패는 이전 profile을 유지한다. 같은 cube의 품질 편집은
+SRV를 재사용하고 명시 Reload에서 다시 읽는다. CMaterial의 source base가 이 scene 입력을 소비하며,
+material-owned2D IBL과는 별도다. cube가 없는 다른 씬에 Character Select의 cube를 자동 적용하지 않는다.
 씬프로필_암전은 기존 scene.kakulsaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
 이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
@@ -1142,8 +1159,19 @@ G1 카드 8종은 Server의 문양·색 snapshot을 따라 머리 위에 지속 
 일반 영역은 `CIRCLE`도 지원한다. DURATION `AREA_OVERLAP`의 `insideOutcome=SUCCESS|FAIL`이
 안쪽 플레이어에게 실행할 기존 결과 슬롯을 정하고, 바깥은 Timeout을 사용한다. 네 번째 룰렛 창은
 카드 지역 24개와 별개인 WORLD Circle 1개를 기존 Duration/Fail 결과에 연결한다.
-TRIGGER `ENTER_AREA`는 최초 진입 Success, 미진입 Timeout을 사용한다. 피해는 기존
-`MAX_HP_PERCENT_DAMAGE` RESULT의 최대 HP %이며 Trigger와 함께 원자 생성·재사용한다.
+TRIGGER `ENTER_AREA`는 플레이어마다 최초 진입 Success, 미진입 Timeout을 사용한다.
+`rearmOnExit`가 true면 모든 연결 Collider 밖으로 나간 뒤 재진입할 때마다 Success를 다시 실행한다.
+rearmOnExit 모드에서 지속 overlap이나 연결 Collider 사이 이동은 재타격하지 않는다.
+`repeatAfterKnockback`가 true면 밀리는 동안 추가 타격을 막고, 밀기가 끝난 뒤에도 내부에 있으면
+다시 타격한다. 이 모드는 양수 push가 있는 단일 피해 Success를 요구하며 rearmOnExit와 함께 켤 수 없다.
+Contact repetition에서 한 모드를 선택한다. 둘 다 false인 기본값은 기존 플레이어당 한 번이다.
+Server 공통 피격 억제 조건과 pushMs 최소 간격을 함께 확인하므로 벽에 밀기가 일찍 멎어도 빠르게 연타하지 않는다.
+피해는 기존 `MAX_HP_PERCENT_DAMAGE` RESULT의 최대 HP %이며 Trigger와 함께 원자 생성·재사용한다.
+이 Result의 optional `pushRangeM`/`pushMs`는 둘 다 0이거나 거리 0 초과 20m 이하·시간 1~600000ms다.
+툴의 Knockback 체크와 거리/시간 입력은 Server의 발탄 hit reaction을 사용해 보스→피격자 방향으로 민다.
+Collider Detail의 Trigger 설정은 Resources 패널과 독립적으로 편집되며 Apply는 미저장 설정·형태·시간·
+Logic 연결을 함께 반영한다. 처음 연결할 때 동일 definition의 유일한 미연결 창을 ID 유지한 채 재사용한다.
+여러 후보가 있으면 Shared Logic window에서 연결 대상을 명시한다.
 WORLD entry는 같은 pattern의 WORLD box와 단일 실제 MAP_PLACEMENT TRS/key를 Server tick에서
 샘플한다. 잘못된 binding·transform과 WORLD 수명을 벗어난 판정 창은 publisher가 거부한다.
 
@@ -1192,7 +1220,7 @@ Preview에만 반영되며 `Apply → Save`로 저장한다. Resource 목록의 
 
 Collider 중심은 실제 Bone의 XZ 위치를 따라가고 offset과 수평 형상 방향은 보스 yaw 및 저작 Rotation을 사용한다. 내려치는 높이 자체는 접촉 활성화 조건이 아니다. Publish는 기존 WModel pose sampler로 실제 body/weapon clip과 attachment에서 boss-local Bone 궤적을 만들어 Server fixed tick 판정에 연결한다. 해당 Bone CONTACT Pattern의 제품 애니메이션은 궤적과 맞도록 전환 blend를 사용하지 않는다. Server는 모델 파일이나 Client Transform을 받아 판정하지 않는다.
 
-Object Tool Save로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Publish All Patterns로 저장·게시한다. Server를 재시작한 뒤 Complete Play로 실제 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.
+Object Tool Save로 목록을 갱신한 뒤 필요한 카드들을 Pattern에 Append하고, 위의 Trigger/Result/Collider 연결을 Composition Save → Publish All Patterns로 저장·게시한다. 기존 재생을 Stop한 뒤 새 Complete Play로 게시된 판정을 확인한다. 구조 구현은 사용자의 기존 Logic과 카드 배치를 자동으로 재작성하지 않는다.
 
 
 ### 17.8 Effect Sequencer의 Composition Resources와 여섯 트랙
@@ -1242,3 +1270,11 @@ Composition publish를 대신하지 않는다.
 자동 검증은 G28 RESULT의 codec 29개와 FMOD 무출력 15개까지이며 최종 Product 빌드는 별도 기록한다.
 새 EXE에서 Add / Append → cursor/box drag → Play/Pause → Save/Load의 실제 동작과
 모델·Effect·Collider·camera·음향 결과는 사용자가 직접 확인한다.
+
+
+### 쿠크 시야 판정의 안쪽 결과
+
+DURATION의 GAZE_REAL_BOSS는 판정 구간이 끝날 때 플레이어 시야 안의 실제 보스를 검사한다.
+`insideOutcome`은 SUCCESS가 기본이며 기존 진짜 세이튼 찾기는 이 값을 유지한다.
+파1빨2는 FAIL을 저장해 바라본 플레이어에게 Fail의 FEAR를 적용하고 시야 밖은 Success로 처리한다.
+Workbench의 Facing boss outcome에서 선택하며 원본 Save와 Publish가 같은 필드를 전달한다.

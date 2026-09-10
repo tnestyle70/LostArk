@@ -100,6 +100,11 @@ public: /* Renderer */
 	HRESULT Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& settings);
 	HEIGHT_FOG_SETTINGS Get_HeightFogSettings() const;
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
+	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
+		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
+	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
+	RENDER_ENVIRONMENT_STATE Get_RenderEnvironment() const;
+
 #ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
 #endif

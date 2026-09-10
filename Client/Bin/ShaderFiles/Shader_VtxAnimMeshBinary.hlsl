@@ -379,6 +379,8 @@ float4 PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFace : SV_IsFront
         [unroll] for(uint i=0u;i<4u;++i) lanceInput.sourceProjection[i] = nativeInput.sourceProjection[i];
         if (g_ArtistModelCueProfile == 1360u)
         {
+            // Skeletal cues consume the authored material value, not particle state.
+            lanceInput.dynamicParameter = g_LanceVASourceMaterialParameters[8u];
             // Source clip-space W and the reconstructed scene depth are centimetres.
             // Derive UV from clip coordinates; SV_POSITION is in viewport pixels.
             lanceInput.screenUV = input.vProjPos.xy / input.vProjPos.w * float2(.5f,-.5f) + .5f;

@@ -4,6 +4,7 @@
 #include "GameInstance.h"
 #include "MapLightPresentationRuntime.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 
 #include <algorithm>
 #include <cmath>
@@ -77,6 +78,18 @@ namespace
 					(character >= '0' && character <= '9') ||
 					'.' == character || '-' == character || '_' == character;
 			});
+	}
+
+	bool_t Is_EnvironmentAssetId(const string& value)
+	{
+		if (value.empty() || value.size() > 1024u || value.front() == '/' ||
+			value.find('\\') != string::npos || value.find(':') != string::npos ||
+			any_of(value.begin(), value.end(), [](unsigned char c) { return c < 32u; })) return false;
+		if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+			static_cast<int>(value.size()), nullptr, 0) <= 0) return false;
+		const filesystem::path path(u8string(value.begin(), value.end()));
+		for (const auto& part : path) if (part == ".." || part == ".") return false;
+		return !path.has_root_path() && path.extension() == L".dds";
 	}
 
 	bool_t Is_DisplayName(const string& value)
@@ -291,7 +304,7 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 	RENDER_QUALITY_SETTINGS effective{};
 	if (!Resolve_EffectiveQuality(
 		levelQuality, profile->second, effective, strOutStatus) ||
-		!Commit_Resolved(profile->second, effective, strOutStatus))
+		!Commit_Resolved(profile->second, effective, strOutStatus, true))
 	{
 		return false;
 	}
@@ -539,7 +552,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		if (!Has_ExactFields(value,
 			{ "profileId", "exposureMultiplier", "bloomIntensityMultiplier",
 			  "light", "shadow", "fog" },
-			{ "displayName", "qualityOverride", "mapLightIntensityMultiplier" }))
+			{ "displayName", "qualityOverride", "mapLightIntensityMultiplier", "environment" }))
 		{
 			strOutStatus = "Scene profile has missing or unsupported fields.";
 			return false;
@@ -553,6 +566,16 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		const DATA_JSON_VALUE* pFog = Required(
 			value, "fog", DATA_JSON_TYPE::OBJECT);
 		SCENE_RENDERING_PROFILE profile;
+		if (const DATA_JSON_VALUE* environment = value.Find("environment"))
+		{
+			const auto* cube = Required(*environment, "cubeTexture", DATA_JSON_TYPE::STRING);
+			if (!Has_ExactFields(*environment, { "cubeTexture", "color", "rotationIntensity" }) ||
+				!cube || !Is_EnvironmentAssetId(cube->Get_String()) ||
+				!Read_Float4(*environment, "color", profile.vEnvironmentColor) ||
+				!Read_Float4(*environment, "rotationIntensity", profile.vEnvironmentRotationIntensity))
+			{ strOutStatus = "Scene environment requires a relative DDS cube, color and rotationIntensity."; return false; }
+			profile.strEnvironmentCubeAssetId = cube->Get_String();
+		}
 		if (value.Find("mapLightIntensityMultiplier") &&
 			!Read_Float(value, "mapLightIntensityMultiplier", 0.f, 4.f,
 				profile.fMapLightIntensityMultiplier))
@@ -778,6 +801,15 @@ bool_t CRenderingProfileService::Validate_Profile(
 	const SCENE_RENDERING_PROFILE& Profile,
 	string& strOutStatus)
 {
+	const auto& color = Profile.vEnvironmentColor;
+	const auto& rotation = Profile.vEnvironmentRotationIntensity;
+	if ((!Profile.strEnvironmentCubeAssetId.empty() && !Is_EnvironmentAssetId(Profile.strEnvironmentCubeAssetId)) ||
+		!Is_FiniteRange(color.x, 0.f, 64.f) || !Is_FiniteRange(color.y, 0.f, 64.f) ||
+		!Is_FiniteRange(color.z, 0.f, 64.f) || !Is_FiniteRange(color.w, 0.f, 64.f) ||
+		!Is_FiniteRange(rotation.x, -1.f, 1.f) || !Is_FiniteRange(rotation.y, -1.f, 1.f) ||
+		!Is_FiniteRange(rotation.z, 0.f, 64.f) || !Is_FiniteRange(rotation.w, 0.f, 0.f) ||
+		abs(rotation.x * rotation.x + rotation.y * rotation.y - 1.f) > .001f)
+	{ strOutStatus = "Scene environment color/rotation/intensity is invalid."; return false; }
 	const float4_t& direction = Profile.Light.vDirection;
 	const SHADOW_SETTINGS& shadow = Profile.ShadowSettings;
 	const bool_t valid = Is_StableId(Profile.strProfileId) && Is_DisplayName(Profile.strDisplayName) &&
@@ -838,8 +870,22 @@ bool_t CRenderingProfileService::Resolve_EffectiveQuality(
 bool_t CRenderingProfileService::Commit_Resolved(
 	const SCENE_RENDERING_PROFILE& Profile,
 	const RENDER_QUALITY_SETTINGS& Effective,
-	string& strOutStatus)
+	string& strOutStatus,
+	bool_t forceReloadEnvironment)
 {
+	RENDER_ENVIRONMENT_STATE stagedEnvironment;
+	filesystem::path cubePath;
+	if (!Profile.strEnvironmentCubeAssetId.empty())
+	{
+		const u8string utf8AssetId(Profile.strEnvironmentCubeAssetId.begin(),
+			Profile.strEnvironmentCubeAssetId.end());
+		cubePath = CRuntimeAssetRoot::Resolve(filesystem::path(utf8AssetId));
+		if (cubePath.empty())
+		{ strOutStatus = "Scene environment path escapes Resources; active state preserved."; return false; }
+	}
+	if (FAILED(CGameInstance::Get().Stage_RenderEnvironment(cubePath.wstring(),
+		Profile.vEnvironmentColor, Profile.vEnvironmentRotationIntensity, stagedEnvironment, forceReloadEnvironment)))
+	{ strOutStatus = "Scene environment RGBM DDS cube rejected: " + Profile.strEnvironmentCubeAssetId + "; active state preserved."; return false; }
 	const RENDER_QUALITY_SETTINGS previous =
 		CGameInstance::Get().Get_RenderQualitySettings();
 	const SHADOW_LIGHT_DESC previousShadow =
@@ -880,6 +926,7 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		strOutStatus = "Light manager rejected the staged scene light; active state preserved.";
 		return false;
 	}
+	CGameInstance::Get().Commit_RenderEnvironment(stagedEnvironment);
 	CMapLightPresentationRuntime::Commit_SceneIntensityMultiplier(
 		Profile.fMapLightIntensityMultiplier);
 	return true;
@@ -928,6 +975,15 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			output << "      \"qualityOverride\": ";
 			Write_Quality(output, profile.QualityOverride);
 			output << ",\n";
+		}
+		if (!profile.strEnvironmentCubeAssetId.empty())
+		{
+			output << "      \"environment\": {\n        \"cubeTexture\": " << Quote(profile.strEnvironmentCubeAssetId)
+				<< ",\n        \"color\": ";
+			Write_Float4(output, profile.vEnvironmentColor);
+			output << ",\n        \"rotationIntensity\": ";
+			Write_Float4(output, profile.vEnvironmentRotationIntensity);
+			output << "\n      },\n";
 		}
 		if (!profile.strDisplayName.empty())
 			output << "      \"displayName\": " << Quote(profile.strDisplayName) << ",\n";
