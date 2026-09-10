@@ -161,6 +161,7 @@ private:
 	f32_t m_fCharacterYawDegrees = 0.f;
 	bool_t m_hasCapturedCharacterYaw = false;
 	f32_t m_fMeasuredEyeHeight = 0.f;
+	f32_t m_fSubjectScale = 1.f;
 	CCustomizingIconDocument m_IconDocument;
 	/* Morph weights each face preset sets, in the same order as the grid's icons. Loaded
 	next to the icons, per class. */
@@ -180,11 +181,22 @@ private:
 	come from the wheel (angle and radius, the way the source art is drawn) and value from
 	the bar beside it. The choice only reaches the model on Apply, so cancelling leaves the
 	character exactly as it was. */
-	/* CCharacter::DYE_SURFACE as an index, so this header keeps its forward declaration
-	instead of pulling the character in for one enum. PICKER_SURFACE_NONE is its END. */
+	/* Which surface the open picker paints. 0-2 are CCharacter::DYE_SURFACE (hair, eye,
+	skin) so this header keeps its forward declaration instead of pulling the character in
+	for one enum; the rest are the face material's own make-up colours, which are named
+	parameters of the retail head material rather than dyes. PICKER_SURFACE_NONE is none. */
 	static constexpr int32_t PICKER_SURFACE_NONE = -1;
 	/* CCharacter::DYE_SURFACE::SKIN. */
 	static constexpr int32_t SKIN_SURFACE_INDEX = 2;
+	static constexpr int32_t FIRST_MAKEUP_SURFACE_INDEX = 3;
+	/* Lip, cheek, eye line, eyebrow -- the four adorn pages, in sub-tab order -- then the
+	eye shadow the eye-line page carries alongside its own colour. */
+	static constexpr int32_t EYESHADOW_SURFACE_INDEX = 7;
+	/* The eye tab's two swatches. Its colours are parameters of the retail eye material, not
+	dyes, and which pair they write depends on the odd-eye sub-tab. */
+	static constexpr int32_t EYE_BASE_SURFACE_INDEX = 8;
+	static constexpr int32_t EYE_IRIS_SURFACE_INDEX = 9;
+	static constexpr size_t SURFACE_COLOR_COUNT = 10;
 	int32_t m_iPickerSurface = PICKER_SURFACE_NONE;
 	f32_t m_fPickerHue = 0.f;
 	f32_t m_fPickerSaturation = 0.f;
@@ -197,7 +209,49 @@ private:
 	bool_t m_bLastDyeApplied = false;
 	/* What each surface is currently wearing, so a swatch shows the choice and re-opening
 	the picker starts from it. w < 0 means the authored colour is still in place. */
-	std::array<float4_t, 3> m_SurfaceColors{};
+	std::array<float4_t, SURFACE_COLOR_COUNT> m_SurfaceColors{};
+	/* How strongly each make-up layer shows. Measured on the retail values: the cheek colour
+	is authored with alpha 0 and the lip with 1, so alpha is the layer's strength and the
+	page's strength slider is that channel. Indexed by adorn sub-tab, with the eye-line page's
+	second slider (the eye shadow) last. */
+	std::array<f32_t, 5> m_AdornStrength{ 1.f, 0.f, 1.f, 1.f, 1.f };
+	/* Which stamp each adorn page is showing, as an index into that page's icon list. -1 is
+	the authored one, which is the transparent Null the retail material ships. */
+	std::array<int32_t, 3> m_SelectedAdornItems{ -1, -1, -1 };
+	/* Wrinkle, gloss and freckle, in SKIN_SLIDERS order. Seeded from the class' authored
+	values the first frame the tab is shown, so a thumb starts where retail put it; -1 is
+	"not seeded yet". */
+	std::array<f32_t, 3> m_SkinSliderValues{ -1.f, -1.f, -1.f };
+	/* Pupil size: var_eye_irissize_ui, seeded from the class' authored value like the skin
+	sliders. -1 is "not seeded yet". */
+	f32_t m_fEyeIrisSize = -1.f;
+	/* Iris clarity: the alpha of var_eye_iriscolor_ui, which the eye program uses as the weight of
+	the iris colour over the base colour. Seeded like the size, -1 until then. */
+	f32_t m_fEyeIrisAlpha = -1.f;
+	/* The left column's six preset slots. A slot holds what this player made, so it is not
+	project data: it is written next to the executable, the way the session diagnostics are,
+	and the class is part of the file name so a Warlord face cannot be loaded onto an Artist. */
+	static constexpr int32_t SAVE_SLOT_COUNT = 6;
+	int32_t m_iSelectedSaveSlot = 0;
+	std::array<bool_t, SAVE_SLOT_COUNT> m_SaveSlotFilled{};
+	void Refresh_SaveSlots();
+	bool_t Save_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
+	bool_t Load_Slot(const shared_ptr<CCharacter>& pCharacter, int32_t iSlot);
+	/* Every material control back to what the class was authored with, and the view's own
+	copies of those values with it. Shared by the first frame of a class and by the whole
+	reset, which is why it is not inline in either. */
+	void Seed_MaterialControls(const shared_ptr<CCharacter>& pCharacter);
+	/* The bottom bar's reset. The face button next to the preset grid resets the face only;
+	this one is the retail avatar reset and puts colour, make-up, hair and eyes back too. */
+	void Reset_All(const shared_ptr<CCharacter>& pCharacter);
+	/* The left column's action row. Cell 0 is the creation pose the screen stands in; the
+	other four play a social action once and fall back to it. */
+	int32_t m_iSelectedAction = 0;
+	void Update_ActionList(const shared_ptr<CCharacter>& pCharacter);
+	/* Applies one picker colour to whatever that surface actually is -- a dye for hair, eye
+	and a non-native skin, a named head-material parameter for everything else. */
+	bool_t Apply_SurfaceColor(const shared_ptr<CCharacter>& pCharacter,
+		int32_t iSurface, const float4_t& vColor) const;
 	/* Set for the whole frame the picker is up, so the panel underneath reads no clicks --
 	the wheel sits directly over the swatches and sliders that opened it. The picker tests
 	its own widgets against the router instead of the view's helper. */
@@ -213,6 +267,7 @@ private:
 	int32_t m_iSelectedCostume = 0;
 	bool_t m_bCostumeChanged = false;
 	int32_t m_iSelectedHair = 0;
+	int32_t m_iFacePresetScrollRow = 0;
 	int32_t m_iHairScrollRow = 0;
 	int32_t m_iEyeIrisScrollRow = 0;
 	int32_t m_iAdornScrollRow = 0;

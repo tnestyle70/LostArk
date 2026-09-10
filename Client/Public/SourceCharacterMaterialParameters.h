@@ -5,37 +5,56 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <set>
+#include <string>
 
 // Generated selected-program packing. The source parameters keep their native
 // names; this is shared by every avatar using the same static program, not by class.
 namespace Client::SourceCharacterMaterial
 {
-inline bool Configure(const std::string& family, const DATA_JSON_VALUE& parameters,
+/* The catalog states these as JSON once, but the character-creation screen moves some of them
+   while the character is on screen -- skin colour, gloss, freckles, the make-up colours and the
+   decal placement are all named parameters here. Keeping the read-and-validate step separate
+   from the packing lets the screen change one value and re-pack, instead of the packing being
+   reachable only from a document. */
+using PARAMETER_VALUES = std::map<std::string, std::array<float, 4>>;
+
+inline bool Read(const DATA_JSON_VALUE& parameters, PARAMETER_VALUES& result)
+{
+    if (!parameters.Is_Object()) return false;
+    PARAMETER_VALUES staged;
+    for (const auto& [name, value] : parameters.Get_Object()) {
+        std::array<float, 4> out{};
+        if (value.Is_Number()) {
+            const double scalar = value.Get_Number();
+            if (!std::isfinite(scalar) || std::abs(scalar) > 1000000.0) return false;
+            out.fill(static_cast<float>(scalar));
+        } else if (value.Is_Array() && value.Get_Array().size() == 4u) {
+            for (size_t i=0;i<4u;++i) {
+                const auto& component=value.Get_Array()[i];
+                if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                    std::abs(component.Get_Number()) > 1000000.0) return false;
+                out[i]=static_cast<float>(component.Get_Number());
+            }
+        } else return false;
+        staged.emplace(name, out);
+    }
+    result = std::move(staged);
+    return true;
+}
+
+inline bool Configure(const std::string& family, const PARAMETER_VALUES& parameters,
     Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& result)
 {
     using Value = std::array<float, 4>;
-    if (!parameters.Is_Object()) return false;
     bool valid = true;
     std::set<std::string> consumed;
     const auto parameter = [&](const char* name) -> Value {
         consumed.insert(name);
-        const auto* value = parameters.Find(name);
-        Value out{};
-        if (!value) { valid = false; return out; }
-        if (value->Is_Number()) {
-            const double scalar = value->Get_Number();
-            if (!std::isfinite(scalar) || std::abs(scalar) > 1000000.0) { valid = false; return out; }
-            out.fill(static_cast<float>(scalar));
-        } else if (value->Is_Array() && value->Get_Array().size() == 4u) {
-            for (size_t i=0;i<4u;++i) {
-                const auto& component=value->Get_Array()[i];
-                if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
-                    std::abs(component.Get_Number()) > 1000000.0) { valid=false; return Value{}; }
-                out[i]=static_cast<float>(component.Get_Number());
-            }
-        } else valid=false;
-        return out;
+        const auto found = parameters.find(name);
+        if (found == parameters.end()) { valid = false; return Value{}; }
+        return found->second;
     };
     const auto add=[](Value a,Value b) { for(size_t i=0;i<4u;++i)a[i]+=b[i];return a; };
     const auto subtract=[](Value a,Value b) { for(size_t i=0;i<4u;++i)a[i]-=b[i];return a; };
@@ -688,8 +707,15 @@ inline bool Configure(const std::string& family, const DATA_JSON_VALUE& paramete
         staged.lightConstants[21] = float4_t(parameter("specular_power_limit")[0],parameter("beckmannspecular_constant_max")[0],parameter("pbr_specular_power")[0],parameter("pbr_specular_intensity")[0]);
     }
     else return false;
-    if (!valid || consumed.size()!=parameters.Get_Object().size()) return false;
+    if (!valid || consumed.size()!=parameters.size()) return false;
     result=staged;
     return true;
+}
+
+inline bool Configure(const std::string& family, const DATA_JSON_VALUE& parameters,
+    Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& result)
+{
+    PARAMETER_VALUES values;
+    return Read(parameters, values) && Configure(family, values, result);
 }
 }

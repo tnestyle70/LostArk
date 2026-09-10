@@ -451,6 +451,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
             m_SourceCharacterTextures[index]->GetDesc(&desc);
             if (desc.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
         }
+        m_AuthoredSourceCharacter = m_Surface.sourceCharacter;
         return S_OK;
     }
 	if (m_Surface.hasEmissive)
@@ -584,6 +585,51 @@ void CMaterial::Clear_TextureOverrides()
 	m_TextureOverrides.clear();
 }
 
+bool_t CMaterial::Set_SourceCharacterConstants(
+	const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters)
+{
+	if (!Has_SourceCharacterProgram() ||
+		parameters.program != m_Surface.sourceCharacter.program ||
+		parameters.baseTextureMask != m_Surface.sourceCharacter.baseTextureMask ||
+		parameters.lightTextureMask != m_Surface.sourceCharacter.lightTextureMask)
+	{
+		return false;
+	}
+	/* The same bound the loader holds these to. A slider that produced a NaN would otherwise
+	spread through the whole lighting row rather than showing up as one wrong value. */
+	for (const auto* constants : { &parameters.baseConstants, &parameters.lightConstants })
+		for (const auto& value : *constants)
+			for (const f32_t scalar : { value.x, value.y, value.z, value.w })
+				if (!std::isfinite(scalar) || std::abs(scalar) > 1000000.f)
+					return false;
+	m_Surface.sourceCharacter = parameters;
+	return true;
+}
+
+bool_t CMaterial::Set_SourceCharacterTextureOverride(
+	const uint32_t iRegister, ComPtr<ID3D11ShaderResourceView> pTexture)
+{
+	const uint32_t mask = m_Surface.sourceCharacter.baseTextureMask |
+		m_Surface.sourceCharacter.lightTextureMask;
+	if (!Has_SourceCharacterProgram() || iRegister >= SOURCE_CHARACTER_TEXTURE_COUNT ||
+		0u == (mask & (1u << iRegister)))
+	{
+		return false;
+	}
+	if (nullptr == pTexture)
+		m_SourceCharacterTextureOverrides.erase(iRegister);
+	else
+		m_SourceCharacterTextureOverrides[iRegister] = pTexture;
+	return true;
+}
+
+void CMaterial::Clear_SourceCharacterOverrides()
+{
+	m_SourceCharacterTextureOverrides.clear();
+	if (Has_SourceCharacterProgram())
+		m_Surface.sourceCharacter = m_AuthoredSourceCharacter;
+}
+
 void CMaterial::Set_DyeColorOverride(
 	const float4_t& vDiffuse, const float4_t& vRegionA)
 {
@@ -676,7 +722,11 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
     {
         if ((mask & (1u << index)) == 0u) continue;
         const auto name = std::string("g_SourceCharacterTexture") + std::to_string(index);
-        if (FAILED(shader->Bind_Texture(name.c_str(), m_SourceCharacterTextures[index]))) return E_FAIL;
+        /* A creation choice repaints the register on the clone; the authored view stays put. */
+        const auto repainted = m_SourceCharacterTextureOverrides.find(index);
+        if (FAILED(shader->Bind_Texture(name.c_str(),
+            repainted != m_SourceCharacterTextureOverrides.end() ?
+            repainted->second : m_SourceCharacterTextures[index]))) return E_FAIL;
     }
     return S_OK;
 }

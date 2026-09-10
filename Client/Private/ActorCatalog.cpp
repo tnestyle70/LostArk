@@ -198,8 +198,13 @@ namespace
                 std::find(entry.weaponModels.begin(),entry.weaponModels.end(),asset)==entry.weaponModels.end()) return false;
             const auto* parameters=definition.Find("parameters");
             const auto* textures=definition.Find("textures");
+            /* The values are kept as well as packed: the creation screen moves named ones
+            (skin colour and gloss, the make-up colours, the decal placement) and has to
+            re-pack the whole row from them. See CHARACTER_MATERIAL_PARAMETERS. */
+            SourceCharacterMaterial::PARAMETER_VALUES values;
             if (!parameters || !textures || !textures->Is_Array() ||
-                !SourceCharacterMaterial::Configure(family,*parameters,replacement.surface.sourceCharacter)) return false;
+                !SourceCharacterMaterial::Read(*parameters,values) ||
+                !SourceCharacterMaterial::Configure(family,values,replacement.surface.sourceCharacter)) return false;
             replacement.surface.family=Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
             const uint32_t required = replacement.surface.sourceCharacter.baseTextureMask |
                 replacement.surface.sourceCharacter.lightTextureMask;
@@ -223,6 +228,8 @@ namespace
                 supplied|=1u<<index;
             }
             if (supplied!=required) return false;
+            entry.modelMaterialParameters[asset].push_back(
+                CHARACTER_MATERIAL_PARAMETERS{replacement.materialName,family,std::move(values)});
             entry.modelMaterialOverrides[asset].push_back(std::move(replacement));
         }
         return true;

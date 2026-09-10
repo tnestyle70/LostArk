@@ -20,6 +20,7 @@
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
 #include "RuntimeAssetRoot.h"
+#include "SourceCharacterMaterialParameters.h"
 #include "SoundCueCatalog.h"
 #include "Gameplay/WorldCollisionContract.h"
 
@@ -2082,9 +2083,34 @@ void CCharacter::Set_CreationPreviewActive(const bool_t isActive)
 		return;
 
 	/* Set before the idle is re-driven below so Set_Animation picks the right
-	pose on the way in and on the way out. */
+	pose on the way in and on the way out.
+
+	Driving it unconditionally stomped whatever else was playing one frame later, because the
+	creation screen re-applies this every frame -- which is what the action list showed: the
+	clip started and the pose replaced it on the next frame.
+
+	But the pose still has to survive a body swap. A class change fits a new model onto the
+	same character and that model starts on the class' own locomotion idle, which for these
+	classes is the battle stance -- spear up, shifting weight. So besides the flag's edge, the
+	locomotion idle itself is corrected back to the pose. Only that one clip: anything the
+	screen deliberately started is left alone. */
+	const bool_t wasActive = m_isCreationPreviewActive;
 	m_isCreationPreviewActive = isActive;
-	Set_Animation(CHARACTER_ANIM::IDLE, true);
+	if (wasActive != isActive)
+	{
+		Set_Animation(CHARACTER_ANIM::IDLE, true);
+	}
+	else if (isActive && nullptr != m_pBodyModel)
+	{
+		const char_t* pPlaying =
+			m_pBodyModel->Get_AnimationName(m_pBodyModel->Get_CurrentAnimIndex());
+		const char_t* pLocomotionIdle = Resolve_LocomotionClip(CHARACTER_ANIM::IDLE);
+		if (nullptr != pPlaying && nullptr != pLocomotionIdle &&
+			0 == std::strcmp(pPlaying, pLocomotionIdle))
+		{
+			Set_Animation(CHARACTER_ANIM::IDLE, true);
+		}
+	}
 
 	/* Weapons are their own part list, so restoring them is an explicit show rather than
 	part of the equipment visibility rule. */
@@ -2403,6 +2429,141 @@ bool_t CCharacter::Set_DyeColor(
 		std::to_string(iMatched) + " material(s)" +
 		(isTintSurface ? " (tint)" : " (dye)") + "\n").c_str());
 	return 0u != iMatched;
+}
+
+namespace
+{
+	/* The retail head material every playable face is on; the skin, make-up and decal
+	variables are its parameters. See Data/Actors/CharacterCatalog.json. */
+	constexpr const char_t* FACE_MATERIAL_FAMILY = "source.character.classic-head.v1";
+}
+
+bool_t CCharacter::Prepare_NativeMaterials()
+{
+	if (m_hasPreparedNativeMaterials)
+		return !m_NativeMaterials.empty();
+	if (nullptr == m_pBodyModel)
+		return false;
+
+	m_hasPreparedNativeMaterials = true;
+	const CHARACTER_ACTOR_ENTRY* pActor = CActorCatalog::Find_Character(m_eCharacterClass);
+	if (nullptr == pActor)
+		return false;
+	const auto found = pActor->modelMaterialParameters.find(pActor->bodyModel);
+	if (found == pActor->modelMaterialParameters.end())
+		return false;
+
+	m_NativeMaterials = found->second;
+	for (const CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
+	{
+		if (material.family != FACE_MATERIAL_FAMILY)
+			continue;
+		m_strFaceMaterialName = material.materialName;
+		break;
+	}
+	return !m_NativeMaterials.empty();
+}
+
+bool_t CCharacter::Set_FaceMaterialParameter(
+	const std::string& strName, const float4_t& vValue)
+{
+	if (!Prepare_NativeMaterials())
+		return false;
+
+	/* Every material that declares the name takes it. The skin colour is stated on the face
+	and on each body part alike, so one choice paints the whole character the way the source
+	game does; a make-up colour is stated only on the head and reaches only that. */
+	uint32_t iApplied = 0u;
+	for (CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
+	{
+		const auto found = material.values.find(strName);
+		if (found == material.values.end())
+			continue;
+
+		const std::array<f32_t, 4> previous = found->second;
+		found->second = { vValue.x, vValue.y, vValue.z, vValue.w };
+		Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed{};
+		if (!SourceCharacterMaterial::Configure(material.family, material.values, packed) ||
+			0u == m_pBodyModel->Override_SourceCharacterConstants(
+				material.materialName.c_str(), packed))
+		{
+			/* Nothing partial: this material keeps the value it was showing. */
+			found->second = previous;
+			continue;
+		}
+		++iApplied;
+	}
+	if (0u == iApplied)
+	{
+		OutputDebugStringA(("[FaceMaterial] no native material states " + strName + "\n").c_str());
+	}
+	return 0u != iApplied;
+}
+
+bool_t CCharacter::Try_Get_FaceMaterialParameter(
+	const std::string& strName, float4_t& outValue)
+{
+	if (!Prepare_NativeMaterials())
+		return false;
+	for (const CHARACTER_MATERIAL_PARAMETERS& material : m_NativeMaterials)
+	{
+		const auto found = material.values.find(strName);
+		if (found == material.values.end())
+			continue;
+		outValue = float4_t(found->second[0], found->second[1],
+			found->second[2], found->second[3]);
+		return true;
+	}
+	return false;
+}
+
+bool_t CCharacter::Set_FaceStampTexture(
+	const FACE_STAMP eStamp, const std::string& strTextureAssetId)
+{
+	if (!Prepare_NativeMaterials() || m_strFaceMaterialName.empty())
+		return false;
+	const uint32_t iRegister = static_cast<uint32_t>(eStamp);
+	if (strTextureAssetId.empty())
+	{
+		return 0u != m_pBodyModel->Override_SourceCharacterTexture(
+			m_strFaceMaterialName.c_str(), iRegister, nullptr);
+	}
+
+	ComPtr<ID3D11ShaderResourceView>& pTexture = m_FaceIrisTextures[strTextureAssetId];
+	if (nullptr == pTexture)
+	{
+		const std::filesystem::path path = CRuntimeAssetRoot::Resolve(strTextureAssetId);
+		if (path.empty() || !std::filesystem::exists(path))
+		{
+			OutputDebugStringA(("[FaceMaterial] no file for " + strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+		/* A stamp is a colour slot, decoded the same sRGB way as the transparent Null the
+		material ships in that register -- otherwise the make-up would light differently from
+		the face it sits on. */
+		if (FAILED(DirectX::CreateDDSTextureFromFileEx(
+			m_pDevice.Get(), path.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+			DirectX::DDS_LOADER_FORCE_SRGB, nullptr, &pTexture)))
+		{
+			OutputDebugStringA(("[FaceMaterial] DDS decode failed for " +
+				strTextureAssetId + "\n").c_str());
+			m_FaceIrisTextures.erase(strTextureAssetId);
+			return false;
+		}
+	}
+	return 0u != m_pBodyModel->Override_SourceCharacterTexture(
+		m_strFaceMaterialName.c_str(), iRegister, pTexture);
+}
+
+void CCharacter::Reset_FaceMaterial()
+{
+	if (nullptr != m_pBodyModel)
+		m_pBodyModel->Clear_SourceCharacterOverrides();
+	m_NativeMaterials.clear();
+	m_strFaceMaterialName.clear();
+	m_hasPreparedNativeMaterials = false;
 }
 
 bool_t CCharacter::Set_HairTwoTone(const f32_t fStrength, const f32_t fRange)

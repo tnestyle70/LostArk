@@ -35,6 +35,12 @@ public:
 	void Update_TransformationMatrix(fmatrix_t TransformationMatrix);
 	void Blend_TransformationMatrix(fmatrix_t FromMatrix, f32_t fWeight);
 	void Update_CombinedTransformationMatrix(const vector<shared_ptr<CBone>>& Bones, fmatrix_t PreTransformMatrix);
+	/* Takes an already-combined pose straight from another skeleton's matching bone, for a worn
+	part that rides a body's animation (CModel::Pose_BonesFrom). The local transform is left
+	alone: it is still what this bone's own children are built from. */
+	void Set_CombinedTransformationMatrix(fmatrix_t CombinedTransformationMatrix) {
+		XMStoreFloat4x4(&m_CombinedTransformationMatrix, CombinedTransformationMatrix);
+	}
 
 public:
 	bool_t Compare_Name(const char_t* pName) {
